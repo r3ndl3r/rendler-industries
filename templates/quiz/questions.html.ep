@@ -45,18 +45,18 @@
             </div>
         </div>
 
-        <div class="question-card">
+    <div class="question-card">
             <div class="question-row">
                 <div id="question-text-en" class="q-text-en"></div>
-                
-                <div style="display: flex; gap: 10px;">
-                    <button id="hint-btn" class="btn-hint" aria-label="Show Hint" style="display: none;">💡</button>
-                    <button id="tts-btn" class="btn-tts" aria-label="Read Question">🔊</button>
-                </div>
             </div>
             
             <div id="question-text-ph" class="q-text-ph"></div>
             <div id="question-text-th" class="q-text-th thai-text"></div>
+                
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                <button id="hint-btn" class="btn-hint" aria-label="Show Hint" style="display: none;">💡</button>
+                <button id="tts-btn" class="btn-tts" aria-label="Read Question">🔊</button>
+            </div>
 
             <div id="hint-image-container" class="quiz-image-wrapper" style="display: none; margin-top: 15px; text-align: center; width: 100%;">
                 <img id="hint-image" src="" alt="Hint Image" loading="lazy" style="max-width: 100%; max-height: 300px; border-radius: 12px; border: 1px solid var(--glass-border); display: block; margin: 0 auto;">
