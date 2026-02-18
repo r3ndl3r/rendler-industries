@@ -1,0 +1,192 @@
+% # /templates/calendar/manage.html.ep
+
+% layout 'default';
+% title 'Manage Calendar Events';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/calendar/calendar.css">
+    <script src="/js/calendar/calendar.js"></script>
+<% end %>
+
+<div class="manage-container">
+    <div class="manage-header">
+        <h1>Manage Calendar Events</h1>
+        <div class="manage-actions">
+            <a href="/calendar" class="btn-secondary">← Back to Calendar</a>
+            <button id="addEventBtn" class="btn-primary">+ Add Event</button>
+        </div>
+    </div>
+
+    <div class="filter-section">
+        <label>Filter by Category:</label>
+        <select id="categoryFilter">
+            <option value="">All Categories</option>
+            % for my $cat (@$categories) {
+            <option value="<%= $cat %>"><%= $cat %></option>
+            % }
+        </select>
+    </div>
+
+    <h2 class="section-header">Upcoming Events</h2>
+    <div class="events-list">
+        <table class="events-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%">Title</th>
+                    <th style="width: 15%">Start</th>
+                    <th style="width: 15%">End</th>
+                    <th style="width: 10%">Category</th>
+                    <th style="width: 15%">Attendees</th>
+                    <th style="width: 10%">Created By</th>
+                    <th style="width: 10%">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="events-table-body">
+                % if (@$upcoming_events) {
+                    % for my $event (@$upcoming_events) {
+                    <tr data-event-id="<%= $event->{id} %>" data-category="<%= $event->{category} %>">
+                        <td>
+                            <span class="event-color-dot" style="background-color: <%= $event->{color} %>"></span>
+                            <strong><%= $event->{title} %></strong>
+                            % if ($event->{description}) {
+                            <div class="event-desc"><%= $event->{description} %></div>
+                            % }
+                        </td>
+                        <td class="date-cell">
+                            <%= $event->{start_date_formatted} %>
+                        </td>
+                        <td class="date-cell">
+                            <%= $event->{end_date_formatted} %>
+                        </td>
+                        <td><%= $event->{category} || '-' %></td>
+                        <td class="attendees-cell">
+                            % if ($event->{attendee_names}) {
+                                <div class="attendee-pills-container">
+                                    % my $i = 0;
+                                    % for my $attendee (split(',', $event->{attendee_names})) {
+                                    % $attendee =~ s/^\s+|\s+$//g;
+                                    % my $color_class = 'attendee-color-' . (($i % 8) + 1);
+                                    <span class="attendee-pill <%= $color_class %>"><%= $attendee %></span>
+                                    % $i++;
+                                    % }
+                                </div>
+                            % } else {
+                                -
+                            % }
+                        </td>
+                        <td><%= $event->{creator_name} || 'Unknown' %></td>
+                        <td class="actions-cell">
+                            <button class="btn-secondary btn-edit" data-id="<%= $event->{id} %>">Edit</button>
+                            <button class="btn-danger btn-delete" data-id="<%= $event->{id} %>">Delete</button>
+                        </td>
+                    </tr>
+                    % }
+                % } else {
+                    <tr><td colspan="7" class="empty-state">No upcoming events found.</td></tr>
+                % }
+            </tbody>
+        </table>
+    </div>
+
+    <h2 class="section-header past">Past Events</h2>
+    <div class="events-list" style="opacity: 0.9;">
+        <table class="events-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%">Title</th>
+                    <th style="width: 15%">Start</th>
+                    <th style="width: 15%">End</th>
+                    <th style="width: 10%">Category</th>
+                    <th style="width: 15%">Attendees</th>
+                    <th style="width: 10%">Created By</th>
+                    <th style="width: 10%">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="events-table-body">
+                % if (@$past_events) {
+                    % for my $event (@$past_events) {
+                    <tr data-event-id="<%= $event->{id} %>" data-category="<%= $event->{category} %>">
+                        <td>
+                            <span class="event-color-dot" style="background-color: <%= $event->{color} %>"></span>
+                            <strong><%= $event->{title} %></strong>
+                            % if ($event->{description}) {
+                            <div class="event-desc"><%= $event->{description} %></div>
+                            % }
+                        </td>
+                        <td class="date-cell">
+                            <%= $event->{start_date_formatted} %>
+                        </td>
+                        <td class="date-cell">
+                            <%= $event->{end_date_formatted} %>
+                        </td>
+                        <td><%= $event->{category} || '-' %></td>
+                        <td class="attendees-cell">
+                            % if ($event->{attendee_names}) {
+                                <div class="attendee-pills-container">
+                                    % my $i = 0;
+                                    % for my $attendee (split(',', $event->{attendee_names})) {
+                                    % $attendee =~ s/^\s+|\s+$//g;
+                                    % my $color_class = 'attendee-color-' . (($i % 8) + 1);
+                                    <span class="attendee-pill <%= $color_class %>"><%= $attendee %></span>
+                                    % $i++;
+                                    % }
+                                </div>
+                            % } else {
+                                -
+                            % }
+                        </td>
+                        <td><%= $event->{creator_name} || 'Unknown' %></td>
+                        <td class="actions-cell">
+                            <button class="btn-secondary btn-edit" data-id="<%= $event->{id} %>">Edit</button>
+                            <button class="btn-danger btn-delete" data-id="<%= $event->{id} %>">Delete</button>
+                        </td>
+                    </tr>
+                    % }
+                % } else {
+                    <tr><td colspan="7" class="empty-state">No past events found.</td></tr>
+                % }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="eventModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modalTitle">Add Event</h2>
+        <form id="eventForm">
+            <input type="hidden" id="eventId" name="id">
+            
+            <div class="form-group"><label>Title *</label><input type="text" id="eventTitle" name="title" required></div>
+            <div class="form-group"><label>Description</label><textarea id="eventDescription" name="description"></textarea></div>
+            <div class="form-group checkbox-group"><label><input type="checkbox" id="eventAllDay" name="all_day"> All-day</label></div>
+            <div class="form-row">
+                <div class="form-group"><label>Start Date *</label><input type="date" id="eventStartDate" name="start_date" required></div>
+                <div class="form-group" id="startTimeGroup"><label>Time</label><input type="time" id="eventStartTime" name="start_time"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>End Date *</label><input type="date" id="eventEndDate" name="end_date" required></div>
+                <div class="form-group" id="endTimeGroup"><label>Time</label><input type="time" id="eventEndTime" name="end_time"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Category</label><input type="text" id="eventCategory" name="category" list="catList"><datalist id="catList"><% for my $c (@$categories) { %><option value="<%= $c %>"><% } %></datalist></div>
+                <div class="form-group"><label>Color</label><input type="color" id="eventColor" name="color" value="#3788d8"></div>
+            </div>
+            <div class="form-group">
+                <label>Attendees</label>
+                <div class="attendees-select-container">
+                    % for my $user (@$users) {
+                    <label class="attendee-checkbox">
+                        <input type="checkbox" name="attendees[]" value="<%= $user->{id} %>" class="attendee-checkbox-input">
+                        <span><%= $user->{display_name} || $user->{username} %></span>
+                    </label>
+                    % }
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
+                <button type="submit" class="btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>

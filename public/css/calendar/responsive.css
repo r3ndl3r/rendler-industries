@@ -1,0 +1,327 @@
+/* /public/css/calendar/responsive.css */
+
+@media (max-width: 768px) {
+    
+    /* =========================================
+       MODAL & DIALOG FIXES
+       ========================================= */
+    
+    /* Disable the desktop "ghost element" centering trick 
+       so we can manually position the modal on mobile. */
+    .modal::before {
+        display: none !important;
+    }
+
+    /* Force the modal to sit near the top (but clear of the navbar) 
+       instead of trying to center vertically, which cuts off the top on phones. */
+    .modal-content {
+        display: block !important;
+        
+        /* Top margin 70px clears the header. Bottom margin 20px for spacing. */
+        margin: 70px auto 20px auto !important; 
+        
+        width: 90%;
+        box-sizing: border-box; /* Ensures padding doesn't widen the box beyond 90% */
+        padding: 15px;
+        
+        /* Enables scrolling inside the modal if the form is taller than the screen */
+        max-height: 80vh; 
+        overflow-y: auto;
+    }
+
+    /* =========================================
+       GENERAL LAYOUT ADJUSTMENTS
+       ========================================= */
+
+    .calendar-container {
+        padding: 3px;
+    }
+    
+    /* Stack header elements vertically on small screens */
+    .calendar-header {
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+    
+    .calendar-controls {
+        gap: 8px;
+    }
+    
+    /* Reduce title size to fit alongside buttons */
+    .calendar-controls h2 {
+        font-size: 0.95em;
+        min-width: 120px;
+    }
+    
+    /* Compact buttons for touch targets */
+    .nav-btn {
+        padding: 5px 10px;
+        font-size: 0.85em;
+    }
+    
+    .calendar-actions {
+        justify-content: center;
+        gap: 4px;
+    }
+    
+    /* Make view toggle buttons (Month/Week/Day) share width equally */
+    .view-toggle {
+        flex: 1;
+    }
+    
+    .view-btn {
+        flex: 1;
+        padding: 5px 6px;
+        font-size: 0.75em;
+    }
+    
+    .action-btn {
+        padding: 5px 10px;
+        font-size: 0.75em;
+    }
+    
+    /* Compact filter bar */
+    .calendar-filters {
+        padding: 6px;
+        margin-bottom: 5px;
+        font-size: 0.8em;
+    }
+    
+    .calendar-filters label {
+        font-size: 0.75em;
+    }
+    
+    .calendar-filters select {
+        font-size: 0.75em;
+        padding: 4px 6px;
+    }
+    
+    /* Allow horizontal scroll if calendar grid gets too squeezed */
+    .calendar-view {
+        overflow-x: visible;
+    }
+    
+    .calendar-grid {
+        width: 100%;
+    }
+    
+    /* =========================================
+       CALENDAR GRID & EVENTS
+       ========================================= */
+
+    /* Shrink day headers (Mon, Tue...) */
+    .calendar-day-header {
+        padding: 4px 1px;
+        font-size: 0.65em;
+        min-width: 0;
+    }
+    
+    /* Hide full day names (Monday) and show abbreviations (Mon) */
+    .calendar-day-header .day-full {
+        display: none;
+    }
+    
+    .calendar-day-header .day-abbr {
+        display: inline;
+    }
+    
+    /* Adjust grid cells for touch */
+    .calendar-day {
+        min-height: 55px;
+        font-size: 0.75em;
+        padding: 2px;
+        min-width: 0;
+    }
+    
+    .day-number {
+        font-size: 0.75em;
+        margin-bottom: 1px;
+    }
+    
+    /* Tiny event bars in month view */
+    .event-item {
+        font-size: 0.6em;
+        padding: 2px 3px;
+    }
+    
+    .event-attendees {
+        margin-top: 2px;
+    }
+    
+    .attendee-pill {
+        font-size: 0.7em;
+        padding: 1px 4px;
+    }
+    
+    /* =========================================
+       UPCOMING EVENTS WIDGET
+       ========================================= */
+
+    .upcoming-events-section {
+        margin-top: 15px;
+        padding: 10px;
+    }
+    
+    .upcoming-events-section h3 {
+        font-size: 1em;
+        margin-bottom: 10px;
+    }
+    
+    .upcoming-event-item {
+        padding: 10px;
+    }
+    
+    .upcoming-event-title {
+        font-size: 0.9em;
+    }
+    
+    .upcoming-event-datetime {
+        font-size: 0.8em;
+    }
+    
+    .upcoming-event-attendees .attendee-pill {
+        font-size: 0.75em;
+        padding: 2px 6px;
+    }
+    
+    .upcoming-event-countdown {
+        font-size: 0.75em;
+    }
+    
+    /* =========================================
+       FORMS & DETAILS
+       ========================================= */
+
+    .attendees-select-container {
+        max-height: 150px;
+    }
+    
+    /* Stack label and value vertically in Event Details modal */
+    .event-detail-row {
+        flex-direction: column;
+        gap: 5px;
+        padding: 8px 0;
+    }
+    
+    .event-detail-row strong {
+        min-width: auto;
+        font-size: 0.85em;
+    }
+    
+    .event-detail-row span {
+        font-size: 0.85em;
+    }
+    
+    .event-detail-attendees .attendee-pill {
+        font-size: 0.75em;
+        padding: 2px 6px;
+    }
+    
+    .event-details-header h2 {
+        font-size: 1.1em;
+    }
+    
+    /* Make form inputs stack vertically instead of side-by-side */
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    /* =========================================
+       MANAGE EVENTS PAGE
+       ========================================= */
+
+    .manage-container {
+        padding: 8px;
+    }
+    
+    .manage-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .manage-actions {
+        flex-direction: column;
+    }
+    
+    /* =========================================
+       CARD VIEW TRANSFORM (for Tables)
+       Transforms the table into a stack of cards on mobile
+       ========================================= */
+
+    /* Force table elements to behave like block elements */
+    .events-table, 
+    .events-table tbody, 
+    .events-table tr, 
+    .events-table td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Hide the traditional table header row */
+    .events-table thead {
+        display: none;
+    }
+
+    /* Style each row as an individual "Card" */
+    .events-table tr {
+        margin-bottom: 15px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        padding: 8px 12px;
+    }
+
+    /* Style each cell to be a row inside the card */
+    .events-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+        text-align: right; /* Aligns the value to the right */
+        min-height: 35px;
+        font-size: 0.9em;
+    }
+
+    /* Remove border from the last item in the card (Actions) */
+    .events-table td:last-child {
+        border-bottom: none;
+        justify-content: flex-end;
+        gap: 8px;
+        padding-top: 12px;
+    }
+
+    /* FIRST COLUMN (Title): Style it as a card header */
+    .events-table td:nth-of-type(1) {
+        display: block;
+        text-align: left;
+        border-bottom: 2px solid #3b82f6;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+    }
+    
+    .events-table td:nth-of-type(1) strong {
+        font-size: 1.2em;
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    /* INJECT LABELS: Uses CSS 'content' to add labels (Start, End, etc.) before the value */
+    .events-table td:nth-of-type(2)::before { content: "Start"; font-weight: bold; color: #666; float: left; }
+    .events-table td:nth-of-type(3)::before { content: "End"; font-weight: bold; color: #666; float: left; }
+    .events-table td:nth-of-type(4)::before { content: "Category"; font-weight: bold; color: #666; float: left; }
+    .events-table td:nth-of-type(5)::before { content: "Attendees"; font-weight: bold; color: #666; float: left; }
+    .events-table td:nth-of-type(6)::before { content: "Created By"; font-weight: bold; color: #666; float: left; }
+
+    /* Touch-friendly buttons */
+    .actions-cell button {
+        padding: 8px 16px;
+        font-size: 0.9em;
+    }
+    
+    .attendee-pills-container {
+        justify-content: flex-end;
+    }
+}

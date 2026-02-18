@@ -1,0 +1,55 @@
+%# /templates/birthdays/birthdays.html.ep
+
+% layout 'default';
+% title 'Birthdays';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/birthdays.css">
+    <script src="/js/birthdays.js"></script>
+<% end %>
+
+<div class="birthday-container">
+    <div class="header-bar">
+        <h1>🎉 Birthday Countdown</h1>
+        <% if (is_admin()) { %>
+            <a href="/birthdays/manage" class="manage-btn">⚙️</a>
+        <% } %>
+    </div>
+
+    <div id="birthday-list">
+        <% if (@$birthdays) { %>
+            <% for my $b (@$birthdays) { %>
+                <div class="birthday-card" data-name="<%= $b->{name} %>" data-birthdate="<%= $b->{birth_date} %>">
+                    <div class="birthday-emoji"><%= $b->{emoji} %></div>
+                    <div class="birthday-info">
+                        <h2 class="birthday-name"><%= $b->{name} %></h2>
+                        <%
+                            my ($year, $month, $day) = split('-', $b->{birth_date});
+                            my $formatted_date = "$day-$month-$year";
+                        %>
+                        <div class="birthday-date"><%= $formatted_date %></div>
+                        <div class="birthday-countdown">
+                            <span class="countdown-days"></span>
+                            <span class="countdown-text"></span>
+                        </div>
+                        <div class="birthday-age">Will be <span class="age-number"></span> years old</div>
+                    </div>
+                </div>
+            <% } %>
+        <% } else { %>
+            <div class="empty-state">
+                <p>No birthdays added yet!</p>
+                <% if (is_admin()) { %>
+                    <a href="/birthdays/manage" class="btn-add">Add Birthday</a>
+                <% } %>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        calculateAllBirthdays();
+        setInterval(calculateAllBirthdays, 60000); // Update every minute
+    });
+</script>

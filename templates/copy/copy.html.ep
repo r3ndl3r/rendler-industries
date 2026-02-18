@@ -1,0 +1,45 @@
+%# /templates/copy/copy.html.ep
+
+% layout 'default';
+% title 'Copy / Paste';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/copy.css">
+    <script src="/js/copy.js"></script>
+<% end %>
+
+<% if (stash('is_admin')) { %>
+    
+    <div class="main-container">
+        <div class="main" id="main">
+            <div class="head">
+                <h2>Copy / Paste : Do Stuff . . . .</h2>
+            </div>
+
+            <div class="paste">
+                <form method="post" action="/copy">
+                    <textarea name="paste" id="paste" class="paste" onkeypress="textIn()"></textarea>
+                    <input type="submit" value="Submit">
+                </form>
+            </div>
+
+            <div class="copy" id="copy">
+                <% my @messages = @{ stash('messages') // [] }; %>
+                <% for my $message ( @messages ) { %>
+                    <div class="message-container">
+                        <% if (stash('is_admin')) { %>
+                            <button class="delete-btn" onclick="removeMessage(<%= $message->{id} %>)" aria-label="Delete message">×</button>
+                        <% } %>
+                        
+                        <span class="message-text"><%== $message->{text} %></span>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+<% } else { %>
+    <div class="main-container">
+        <p style="text-align: center; margin-top: 50px;">Please <a href="/login" style="color: #4CAF50;">login</a> to view this page.</p>
+    </div>
+<% } %>

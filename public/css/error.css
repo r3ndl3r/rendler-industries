@@ -1,0 +1,63 @@
+/* /public/css/error.css */
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.message-container {
+    padding: 3rem;
+    background-color: #1f2937;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    animation: fadeIn 0.5s ease-out;
+    border: 1px solid #374151;
+    margin: 10vh auto 0 auto;
+    max-width: 600px;
+    text-align: center;
+    font-family: system-ui, -apple-system, sans-serif;
+    box-sizing: border-box;
+}
+
+/* Scoped selectors to prevent affecting the main layout */
+.message-container .icon {
+    display: block;
+    width: 5rem;
+    height: 5rem;
+    margin: 0 auto 1.5rem;
+    color: #f87171;
+}
+
+.message-container h1 {
+    color: #f87171;
+    font-size: 2.25rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    margin-top: 0;
+    line-height: 1.2;
+}
+
+.message-container p {
+    font-size: 1.125rem;
+    margin-bottom: 2rem;
+    color: #d1d5db;
+    line-height: 1.5;
+}
+
+.message-container a {
+    color: #60a5fa;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.message-container a:hover {
+    color: #93c5fd;
+    text-decoration: underline;
+}
+
+.message-container .status-code {
+    color: #9ca3af;
+    font-size: 0.875rem;
+    margin-top: -0.5rem;
+    margin-bottom: 1.5rem;
+}

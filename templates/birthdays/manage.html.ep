@@ -1,0 +1,85 @@
+%# /templates/birthdays/manage.html.ep
+
+% layout 'default';
+% title 'Manage Birthdays';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/birthdays.css">
+    <script src="/js/birthdays.js"></script>
+<% end %>
+
+<div class="birthday-container manage-container">
+    <h1>🎂 Manage Birthdays</h1>
+    <a href="/birthdays" class="back-link">&larr; Back to Birthdays</a>
+
+    <div class="glass-panel">
+        <h2 style="margin-top: 0; color: #90caf9;">Add Birthday</h2>
+        <form action="/birthdays/add" method="POST">
+            <label>Name</label>
+            <input type="text" name="name" class="game-input" required placeholder="e.g. John">
+            
+            <label>Birth Date</label>
+            <input type="date" name="birth_date" class="game-input" required>
+            
+            <label>Emoji</label>
+            <input type="text" name="emoji" class="game-input" placeholder="🎂" maxlength="10">
+            
+            <button type="submit" class="game-btn btn-blue">Add Birthday</button>
+        </form>
+    </div>
+
+    <h2 style="margin-top: 30px; padding-left: 10px;">All Birthdays</h2>
+    <div class="glass-panel">
+        <% if (@$birthdays) { %>
+            <% for my $b (@$birthdays) { %>
+                <div class="manage-row">
+                    <div class="manage-info">
+                        <span class="manage-emoji"><%= $b->{emoji} %></span>
+                        <div>
+                            <strong style="font-size: 1.2rem;"><%= $b->{name} %></strong>
+                            <br>
+                            <%
+                                my ($year, $month, $day) = split('-', $b->{birth_date});
+                                my $formatted_date = "$day-$month-$year";
+                            %>
+                            <span style="color: rgba(255,255,255,0.6); font-size: 0.9rem;"><%= $formatted_date %></span>
+                        </div>
+                    </div>
+                    <div class="manage-actions">
+                        <button onclick="editBirthday(<%= $b->{id} %>, '<%= $b->{name} %>', '<%= $b->{birth_date} %>', '<%= $b->{emoji} %>')" class="btn-edit">EDIT</button>
+                        <form action="/birthdays/delete" method="POST" style="display:inline;">
+                            <input type="hidden" name="id" value="<%= $b->{id} %>">
+                            <button type="submit" class="btn-delete" onclick="return confirm('Delete <%= $b->{name} %>?')">DELETE</button>
+                        </form>
+                    </div>
+                </div>
+            <% } %>
+        <% } else { %>
+            <p style="text-align: center; color: rgba(255,255,255,0.5);">No birthdays found.</p>
+        <% } %>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Edit Birthday</h3>
+        <form action="/birthdays/edit" method="POST">
+            <input type="hidden" name="id" id="edit_id">
+            
+            <label>Name</label>
+            <input type="text" name="name" id="edit_name" class="game-input" required>
+            
+            <label>Birth Date</label>
+            <input type="date" name="birth_date" id="edit_date" class="game-input" required>
+            
+            <label>Emoji</label>
+            <input type="text" name="emoji" id="edit_emoji" class="game-input" maxlength="10">
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="submit" class="game-btn btn-blue">Save</button>
+                <button type="button" onclick="closeEditModal()" class="game-btn" style="background: #666;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,64 @@
+%# /templates/users/admin.html.ep
+
+% layout 'default';
+% title 'Users Admin';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/users.css">
+<% end %>
+
+<div class="admin-container">
+    <h1>Users Admin</h1>
+    
+    <table class="users-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Created</th>
+                <th>Status</th>
+                <th>Admin</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% for my $user (@$users) { %>
+                <tr>
+                    <td data-label="ID"><%= $user->{id} %></td>
+                    <td data-label="Username"><span class="text-wrap"><%= $user->{username} %></span></td>
+                    <td data-label="Email"><span class="text-wrap text-small"><%= $user->{email} %></span></td>
+                    <td data-label="Created"><span class="text-wrap text-small"><%= $user->{created_at} %></span></td>
+                    <td data-label="Status">
+                        <% if (defined $user->{status} && $user->{status} eq 'approved') { %>
+                            <span class="status-badge status-approved">Approved</span>
+                        <% } else { %>
+                            <span class="status-badge status-pending">Pending</span>
+                        <% } %>
+                    </td>
+                    <td data-label="Admin">
+                        <% if ($user->{is_admin}) { %>
+                            <span class="admin-badge">Yes</span>
+                        <% } else { %>
+                            <span>No</span>
+                        <% } %>
+                    </td>
+                    <td data-label="Actions">
+                        <div class="action-btns">
+                            <% if (defined $user->{status} && $user->{status} eq 'pending') { %>
+                                <form action="/users/approve/<%= $user->{id} %>" method="POST">
+                                    <button type="submit" class="btn-action btn-approve">Approve</button>
+                                </form>
+                            <% } %>
+                            <a href="/users/edit/<%= $user->{id} %>" class="btn-action btn-edit">Edit</a>
+                            <form action="/users/delete/<%= $user->{id} %>" method="POST" 
+                                  onsubmit="return confirm('Are you sure you want to delete <%= $user->{username} %>?');">
+                                <button type="submit" class="btn-action btn-delete">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            <% } %>
+        </tbody>
+    </table>
+</div>

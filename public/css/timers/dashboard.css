@@ -1,0 +1,267 @@
+/* /public/css/timers/dashboard.css */
+
+.timers-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.timer-card {
+    width: 360px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px var(--timer-shadow);
+    padding: 20px;
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 2px solid transparent;
+}
+
+.timer-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--timer-shadow);
+}
+
+.timer-card[data-status="green"] {
+    border-color: var(--timer-green);
+}
+
+.timer-card[data-status="yellow"] {
+    border-color: var(--timer-yellow);
+}
+
+.timer-card[data-status="red"] {
+    border-color: var(--timer-red);
+}
+
+.timer-card-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.timer-icon {
+    font-size: 40px;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: var(--timer-bg);
+}
+
+.timer-icon.computer {
+    background: #dbeafe;
+}
+
+.timer-icon.phone {
+    background: #fce7f3;
+}
+
+.timer-icon.tablet {
+    background: #e0e7ff;
+}
+
+.timer-icon.gaming.console {
+    background: #fef3c7;
+}
+
+.timer-icon.tv {
+    background: #dcfce7;
+}
+
+.timer-title-group {
+    flex: 1;
+}
+
+.timer-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 4px 0;
+}
+
+.timer-category {
+    font-size: 13px;
+    color: var(--timer-gray);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.timer-status-bar {
+    width: 100%;
+    height: 8px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.status-fill {
+    height: 100%;
+    transition: width 0.5s ease, background-color 0.3s;
+    border-radius: 4px;
+}
+
+.status-fill.green {
+    background: var(--timer-green);
+}
+
+.status-fill.yellow {
+    background: var(--timer-yellow);
+}
+
+.status-fill.red {
+    background: var(--timer-red);
+}
+
+.timer-stats {
+    margin-bottom: 15px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--timer-bg);
+}
+
+.stat-row:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: var(--timer-gray);
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.stat-value.expired {
+    color: var(--timer-red);
+    font-weight: 700;
+}
+
+.bonus-indicator {
+    background: #fef3c7;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-top: 8px;
+}
+
+.bonus-indicator .stat-label,
+.bonus-indicator .stat-value {
+    color: #92400e;
+}
+
+.timer-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.timer-controls .btn {
+    flex: 1;
+}
+
+.btn-start {
+    background: var(--timer-green);
+    color: white;
+}
+
+.btn-start:hover:not(:disabled) {
+    background: #16a34a;
+}
+
+.btn-pause {
+    background: var(--timer-yellow);
+    color: white;
+}
+
+.btn-pause:hover {
+    background: #ca8a04;
+}
+
+.btn-pause.paused {
+    background: var(--timer-gray);
+}
+
+.running-indicator {
+    text-align: center;
+    margin-top: 15px;
+    padding: 10px;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    background: #16a34a;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+    }
+}
+
+.expired-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(239, 68, 68, 0.95);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.expired-message {
+    text-align: center;
+    color: white;
+}
+
+.expired-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.expired-message p {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+}
+
+.expired-message small {
+    font-size: 14px;
+    opacity: 0.9;
+}

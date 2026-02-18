@@ -1,0 +1,257 @@
+<%# /templates/timers/manage.html.ep %>
+% layout 'default';
+% title 'Manage Timers';
+
+<% content_for 'head' => begin %>
+    <link rel="stylesheet" href="/css/timers/base.css">
+    <link rel="stylesheet" href="/css/timers/modals.css">
+    <link rel="stylesheet" href="/css/timers/toast.css">
+    <link rel="stylesheet" href="/css/timers/responsive.css">
+    <link rel="stylesheet" href="/css/timers/manage.css">
+    <script src="/js/timers/utils.js"></script>
+    <script src="/js/timers/manage.js"></script>
+<% end %>
+
+<div class="timers-manage-container">
+    <div class="manage-header">
+        <h1>Timer Management</h1>
+        <button class="btn btn-primary" id="btn-create-timer">➕ Create New Timer</button>
+    </div>
+
+    % if (flash('success')) {
+        <div class="alert alert-success">
+            <%= flash('success') %>
+        </div>
+    % }
+
+    <div class="manage-filters">
+        <label for="user-filter">Filter by User:</label>
+        <select id="user-filter" class="user-select">
+            <option value="">All Users</option>
+            % for my $user (@$users) {
+                % next if $user->{is_admin};
+                <option value="<%= $user->{id} %>" <%= defined $filter_user_id && $filter_user_id == $user->{id} ? 'selected' : '' %>>
+                    <%= $user->{username} %>
+                </option>
+            % }
+        </select>
+    </div>
+
+    % if (@$timers == 0) {
+        <div class="no-timers">
+            <p>No timers found.</p>
+        </div>
+    % } else {
+        <div class="timers-table-wrapper">
+            <table class="timers-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Timer Name</th>
+                        <th>Category</th>
+                        <th>Weekday Limit</th>
+                        <th>Weekend Limit</th>
+                        <th>Used Today</th>
+                        <th>Remaining</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    % for my $timer (@$timers) {
+                        <tr data-timer-id="<%= $timer->{id} %>">
+                            <td class="user-cell" data-label="User">
+                                <%= $timer->{username} %>
+                            </td>
+                            <td class="name-cell" data-label="Timer Name">
+                                <%= $timer->{name} %>
+                            </td>
+                            <td class="category-cell" data-label="Category">
+                                <span class="category-badge <%= lc($timer->{category}) =~ s/ /-/gr %>">
+                                    <%= $timer->{category} %>
+                                </span>
+                            </td>
+                            <td class="limit-cell" data-label="Weekday Limit">
+                                <%= $timer->{weekday_minutes} %>m
+                            </td>
+                            <td class="limit-cell" data-label="Weekend Limit">
+                                <%= $timer->{weekend_minutes} %>m
+                            </td>
+                            <td class="elapsed-cell" data-label="Used Today">
+                                <%= int(($timer->{elapsed_seconds} // 0) / 60) %>m
+                            </td>
+                            <td class="remaining-cell" data-label="Remaining">
+                                % my $remaining = $timer->{remaining_seconds} // 0;
+                                % if ($remaining > 0) {
+                                    <%= int($remaining / 60) %>m
+                                % } else {
+                                    <span class="expired-text">EXPIRED</span>
+                                % }
+                            </td>
+                            <td class="status-cell" data-label="Status">
+                                % if ($timer->{is_running}) {
+                                    <span class="status-badge running">▶️ Running</span>
+                                % } elsif ($timer->{is_paused}) {
+                                    <span class="status-badge paused">⏸️ Paused</span>
+                                % } else {
+                                    <span class="status-badge idle">⏺️ Idle</span>
+                                % }
+                            </td>
+                            <td class="actions-cell" data-label="Actions">
+                                <button class="btn-icon btn-bonus" 
+                                        data-timer-id="<%= $timer->{id} %>"
+                                        title="Grant Bonus Time">
+                                    🎁
+                                </button>
+                                <button class="btn-icon btn-edit" 
+                                        data-timer-id="<%= $timer->{id} %>"
+                                        data-name="<%= $timer->{name} %>"
+                                        data-category="<%= $timer->{category} %>"
+                                        data-weekday="<%= $timer->{weekday_minutes} %>"
+                                        data-weekend="<%= $timer->{weekend_minutes} %>"
+                                        title="Edit Timer">
+                                    ✏️
+                                </button>
+                                <button class="btn-icon btn-delete" 
+                                        data-timer-id="<%= $timer->{id} %>"
+                                        data-name="<%= $timer->{name} %>"
+                                        title="Delete Timer">
+                                    🗑️
+                                </button>
+                            </td>
+                        </tr>
+                    % }
+                </tbody>
+            </table>
+        </div>
+    % }
+</div>
+
+<!-- Create Timer Modal -->
+<div id="modal-create-timer" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Create New Timer</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <form method="POST" action="/timers/create" class="timer-form">
+            <div class="form-group">
+                <label for="create-user-id">User *</label>
+                <select id="create-user-id" name="user_id" required>
+                    <option value="">Select User...</option>
+                    % for my $user (@$users) {
+                        % next if $user->{is_admin};
+                        <option value="<%= $user->{id} %>"><%= $user->{username} %></option>
+                    % }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="create-name">Timer Name *</label>
+                <input type="text" id="create-name" name="name" required placeholder="e.g., iPad Usage">
+            </div>
+
+            <div class="form-group">
+                <label for="create-category">Category *</label>
+                <select id="create-category" name="category" required>
+                    <option value="">Select Category...</option>
+                    <option value="Computer">💻 Computer</option>
+                    <option value="Phone">📱 Phone</option>
+                    <option value="Tablet">📱 Tablet</option>
+                    <option value="Gaming Console">🎮 Gaming Console</option>
+                    <option value="TV">📺 TV</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="create-weekday">Weekday Limit (minutes) *</label>
+                    <input type="number" id="create-weekday" name="weekday_minutes" min="0" required value="60">
+                </div>
+
+                <div class="form-group">
+                    <label for="create-weekend">Weekend Limit (minutes) *</label>
+                    <input type="number" id="create-weekend" name="weekend_minutes" min="0" required value="120">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Create Timer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Timer Modal -->
+<div id="modal-edit-timer" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Timer</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <form method="POST" action="" id="edit-timer-form" class="timer-form">
+            <div class="form-group">
+                <label for="edit-name">Timer Name *</label>
+                <input type="text" id="edit-name" name="name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="edit-category">Category *</label>
+                <select id="edit-category" name="category" required>
+                    <option value="Computer">💻 Computer</option>
+                    <option value="Phone">📱 Phone</option>
+                    <option value="Tablet">📱 Tablet</option>
+                    <option value="Gaming Console">🎮 Gaming Console</option>
+                    <option value="TV">📺 TV</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="edit-weekday">Weekday Limit (minutes) *</label>
+                    <input type="number" id="edit-weekday" name="weekday_minutes" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-weekend">Weekend Limit (minutes) *</label>
+                    <input type="number" id="edit-weekend" name="weekend_minutes" min="0" required>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update Timer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bonus Time Modal -->
+<div id="modal-bonus-time" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Grant Bonus Time</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <form id="bonus-form" class="timer-form">
+            <input type="hidden" id="bonus-timer-id" name="timer_id">
+            
+            <div class="form-group">
+                <label for="bonus-minutes">Additional Minutes *</label>
+                <input type="number" id="bonus-minutes" name="bonus_minutes" min="1" max="180" required value="15">
+                <small>Max 180 minutes (3 hours) per grant</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Grant Time</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Hidden delete form -->
+<form id="delete-timer-form" method="POST" action="" style="display: none;">
+</form>
+
+<script>
+    TimerManagement.init();
+</script>

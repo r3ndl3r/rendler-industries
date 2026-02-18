@@ -1,0 +1,134 @@
+/* /public/css/calendar/forms.css */
+
+/* =========================================
+   STANDARD FORM GROUPS
+   (Wrapper for Label + Input pair)
+   ========================================= */
+
+.form-group {
+    margin-bottom: 10px; /* Space between fields */
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 3px;
+    font-weight: bold;
+    color: #222;
+    font-size: 0.85em;
+}
+
+/* =========================================
+   INPUT FIELDS
+   (Shared styles for text, date, time, select, textarea)
+   ========================================= */
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group input[type="time"],
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 0.9em;
+    box-sizing: border-box; /* Ensures padding doesn't expand width */
+    color: #222;
+}
+
+/* Allow vertical resizing only (prevents breaking layout horizontally) */
+.form-group textarea {
+    resize: vertical;
+}
+
+/* Color Picker Input */
+.form-group input[type="color"] {
+    width: 100%;
+    height: 35px; /* Fixed height for click target */
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* =========================================
+   CHECKBOXES
+   (e.g., "All Day Event")
+   ========================================= */
+
+.checkbox-group label {
+    display: flex;
+    align-items: center; /* Vertically align box and text */
+    gap: 8px;
+    font-weight: normal; /* Not bold like standard labels */
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: auto; /* reset 100% width from general input rule */
+    cursor: pointer;
+}
+
+/* =========================================
+   FORM LAYOUTS
+   ========================================= */
+
+/* Two-column grid for side-by-side inputs (e.g., Start Date | Start Time) */
+/* Note: responsive.css forces this to 1 column on mobile */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+/* Bottom button container (Save / Cancel) */
+.form-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end; /* Aligns buttons to the right */
+    margin-top: 12px;
+}
+
+/* =========================================
+   CALENDAR CONTROLS & FILTERS
+   (Legacy/Shared styles kept for compatibility)
+   ========================================= */
+
+.calendar-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+}
+
+.view-toggle {
+    display: flex;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+/* Category Filter Bar */
+.calendar-filters {
+    margin-bottom: 6px;
+    padding: 8px;
+    background: #f9f9f9;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.calendar-filters label {
+    font-weight: bold;
+    color: #222;
+    font-size: 0.85em;
+}
+
+.calendar-filters select {
+    padding: 5px 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background: white;
+    font-size: 0.85em;
+    color: #222;
+}

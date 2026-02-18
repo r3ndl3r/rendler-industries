@@ -1,0 +1,174 @@
+/* /public/css/calendar/buttons.css */
+
+/* =========================================
+   CALENDAR HEADER CONTROLS
+   (Top bar buttons: Today, Add Event, etc.)
+   ========================================= */
+
+.calendar-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Standard Header Button (e.g., "Today", "Manage") */
+.action-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #374151; /* Dark Gray */
+    color: #e5e7eb;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.action-btn:hover {
+    background-color: #4b5563; /* Lighter Gray on hover */
+}
+
+/* Primary Action (e.g., "+ Add Event") */
+.action-btn.primary {
+    background-color: #3b82f6; /* Blue */
+    color: white;
+}
+
+.action-btn.primary:hover {
+    background-color: #2563eb; /* Darker Blue */
+}
+
+/* Navigation Arrows (Prev/Next) */
+.nav-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #374151;
+    color: #e5e7eb;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+.nav-btn:hover {
+    background-color: #4b5563;
+}
+
+/* =========================================
+   VIEW TOGGLE GROUP
+   (Month / Week / Day Switcher)
+   ========================================= */
+
+.view-toggle {
+    display: flex;
+    gap: 0; /* No gap because borders separate them */
+    border-radius: 4px;
+    overflow: hidden; /* Ensures corners clip correctly */
+}
+
+.view-btn {
+    padding: 8px 16px;
+    border: none;
+    background-color: #374151;
+    color: #e5e7eb;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+    
+    /* Separator line between buttons */
+    border-right: 1px solid #1f2937;
+}
+
+.view-btn:last-child {
+    border-right: none;
+}
+
+.view-btn:hover {
+    background-color: #4b5563;
+}
+
+/* Active State (Selected View) */
+.view-btn.active {
+    background-color: #3b82f6; /* Blue highlight */
+    color: white;
+}
+
+/* =========================================
+   GENERAL UI BUTTONS
+   (Used in Modals, Forms, Confirmation Dialogs)
+   ========================================= */
+
+/* Shared properties for all modal buttons */
+.btn-primary, 
+.btn-secondary, 
+.btn-danger {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+/* Save / Confirm */
+.btn-primary {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #2563eb;
+}
+
+/* Cancel / Close / Edit */
+.btn-secondary {
+    background-color: #6b7280; /* Neutral Gray */
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #4b5563;
+}
+
+/* Delete / Warning */
+.btn-danger {
+    background-color: #ef4444; /* Red */
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+}
+
+/* Disabled state for all buttons */
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Form actions layout - 4 buttons in modal */
+.form-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+/* Push Cancel button to the left */
+.form-actions #cancelBtn {
+    margin-right: auto;
+}
+
+/* Clone button styling - same as secondary */
+#cloneEventBtn {
+    background-color: #6b7280;
+    color: white;
+}
+
+#cloneEventBtn:hover {
+    background-color: #4b5563;
+}

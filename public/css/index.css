@@ -1,0 +1,205 @@
+/* /public/css/index.css */
+
+body {
+    font-size: 160%;
+    background-color: black;
+    margin: 0;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding-top: 50px;
+}
+
+div.main {
+    border: 2px solid white;
+    width: 95%;
+    max-width: 1200px;
+    padding: 20px 30px;
+    background-color: black;
+    color: white;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#box {
+    position: relative;
+}
+
+.banner-logo {
+    width: 30%;
+    height: auto;
+    margin-bottom: 20px;
+}
+
+.info-card {
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    text-align: center;
+    width: 100%;
+    max-width: 600px;
+    box-sizing: border-box;
+}
+
+.label {
+    display: block;
+    font-size: 0.75rem;
+    color: #888;
+    letter-spacing: 1.5px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.data-text {
+    font-size: 1.1rem;
+    line-height: 1.4;
+    color: white;
+}
+
+.age-text {
+    font-size: 1rem;
+}
+
+.subtext {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: #aaa;
+    border-top: 1px solid #333;
+    padding-top: 8px;
+}
+
+#time, #andrea, #nicky, #andreas, #nickys, #server, #servers {
+    color: red;
+}
+
+p.time {
+    margin: auto;
+    text-align: center;
+}
+
+p.footer {
+    color: gray;
+    font-size: 60%;
+    text-align: center;
+}
+
+.footer-link:hover {
+    text-decoration: none;
+    color: white;
+    font-family: impact;
+    font-size: 105%;
+}
+
+img {
+    border-radius: 4px;
+    height: 20px;
+}
+
+img:hover {
+    transform: scaleX(-1);
+}
+
+.debug-box {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background-color: #f0f0f0;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #000000;
+}
+
+.visit-box {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    background-color: #f0f0f0;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #000000;
+}
+
+/* --- NEW: File Map Styles --- */
+
+.file-map-container {
+    margin-top: 15px;
+    border: 1px dashed #444;    /* Tech-looking dashed border */
+    padding: 15px 15px 15px 0;  /* Padding, but keep left tight for tree */
+    background: #0d0d0d;        /* Very dark background */
+    width: 100%;
+    max-width: 500px;           /* Limit width so it doesn't stretch too far */
+    text-align: left;           /* Align text to left (unlike rest of footer) */
+    box-sizing: border-box;
+    border-radius: 8px;
+}
+
+.file-tree, .file-tree ul {
+    list-style-type: none;      /* Remove bullets */
+    padding-left: 20px;         /* Indent children */
+    margin: 0;
+}
+
+.file-tree li {
+    margin: 2px 0;
+    line-height: 1.4;
+    font-family: 'Courier New', monospace; /* Code font */
+    font-size: 0.9rem;
+}
+
+.folder-name {
+    color: #f0ad4e;             /* Orange/Gold for folders */
+    font-weight: bold;
+}
+
+.file-link {
+    color: #aaa;                /* Light grey for files */
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.file-link:hover {
+    color: white;               /* White on hover */
+    text-decoration: underline;
+}
+
+.git-item {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #333; /* Separator line */
+    text-align: center;
+    list-style: none;
+}
+
+@media (min-width: 1024px) {
+    div.main {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        align-items: flex-start !important;
+        padding-top: 60px !important;
+        height: auto !important;
+        min-height: 100vh;
+    }
+
+    div.main {
+        margin-bottom: 50px;
+        width: 95% !important;
+    }
+
+    .banner-logo {
+        width: 85%;
+    }
+}

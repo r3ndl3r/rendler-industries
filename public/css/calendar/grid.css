@@ -1,0 +1,155 @@
+/* /public/css/calendar/grid.css */
+
+/* =========================================
+   MAIN CALENDAR GRID
+   (The actual table of days)
+   ========================================= */
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr); /* 7 equal columns (Sun-Sat) */
+    border-collapse: collapse;
+    width: 100%;
+    height: 100%;
+}
+
+/* =========================================
+   DAY HEADERS
+   (Mon, Tue, Wed...)
+   ========================================= */
+
+.calendar-day-header {
+    background: #f5f5f5;
+    padding: 6px;
+    text-align: center;
+    font-weight: bold;
+    border: 1px solid #ddd;
+    color: #222;
+    font-size: 0.85em;
+}
+
+/* Responsive adjustment: hidden by default, shown via media queries if needed */
+.calendar-day-header .day-abbr {
+    display: none;
+}
+
+/* =========================================
+   DAY CELLS
+   (The individual boxes for each date)
+   ========================================= */
+
+.calendar-day {
+    /* Calculate height to fill the screen (Viewport - Header/Controls) / 6 rows */
+    height: calc((100vh - 240px) / 6);
+    min-height: 0;
+    
+    padding: 0;
+    border: 1px solid #ddd;
+    background: white;
+    cursor: pointer;
+    transition: background 0.2s;
+    color: #222;
+    
+    /* Layout: Vertical stack (Number at top, Events below) */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.calendar-day:hover {
+    background: #f9f9f9;
+}
+
+/* Days belonging to previous/next month */
+.calendar-day.other-month {
+    background: #f5f5f5;
+    opacity: 0.6;
+}
+
+/* Current Day Highlight */
+.calendar-day.today {
+    background: #e0e0e0 !important;
+    /* Use standard border width + inset shadow to maintain layout stability */
+    border: 1px solid #3b82f6 !important; 
+    box-shadow: inset 0 0 0 2px #3b82f6 !important;
+}
+
+/* Day number (the "9") - Enhanced and Bold */
+.calendar-day.today .day-number {
+    background: #e0e0e0 !important;
+    color: rgb(14, 0, 171) !important; /* Dark blue */
+    font-weight: 900 !important; /* Extra bold */
+}
+
+/* Events container background */
+.calendar-day.today .day-events {
+    background: transparent !important; /* Inherit parent grey */
+}
+
+/* =========================================
+   DAY NUMBER
+   (e.g., "1", "15", "30")
+   ========================================= */
+
+.day-number {
+    font-weight: bold;
+    padding: 4px;
+    color: #222;
+    font-size: 0.85em;
+    
+    /* Ensure number stays at top and doesn't shrink */
+    flex-shrink: 0;
+    background: white;
+    z-index: 1;
+    border-bottom: 1px solid transparent;
+}
+
+/* Grey out numbers for other months */
+.calendar-day.other-month .day-number {
+    color: #666;
+    background: #f5f5f5;
+}
+
+/* =========================================
+   EVENTS CONTAINER
+   (The scrollable area inside a day)
+   ========================================= */
+
+.day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 1px; /* Tiny gap between event bars */
+    
+    /* Fill remaining space in the cell */
+    flex: 1;
+    
+    /* Scroll if too many events */
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    
+    padding: 0 2px 2px 2px;
+}
+
+/* Custom Scrollbar for Day Cells */
+.day-events::-webkit-scrollbar {
+    width: 4px;
+}
+
+.day-events::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 2px;
+}
+
+/* Shared 'Inactive' look for the container background */
+.calendar-day.other-month,
+.calendar-day.past-day {
+    background-color: #f9f9f9;
+}
+
+/* 'Inactive' look for the date number */
+.calendar-day.other-month .day-number {
+    color: #999;
+    background-color: #f9f9f9;
+}
+

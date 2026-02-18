@@ -1,0 +1,47 @@
+%# /templates/quiz/study.html.ep
+
+% layout 'default';
+% title 'Quiz Study Guide - All Questions & Answers';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/quiz/questions.css">
+    <script src="/js/quiz/study.js" defer></script>
+<% end %>
+
+<div class="quiz-container">
+  <div class="header-bar">
+    <div class="header-title">
+      <h1>
+        <span>📚 Study Guide</span>
+      </h1>
+      <p class="thai-subtitle">คู่มือการศึกษา - คำถามและคำตอบทั้งหมด</p>
+    </div>
+    <div style="margin-top: 1rem;">
+      <a href="/quiz" style="color: var(--aus-gold); text-decoration: none; margin-right: 1rem;">← Back to Quiz</a>
+      <span id="total-questions" style="color: var(--text-secondary);"></span>
+    </div>
+  </div>
+
+  <div id="loading-state" class="text-center">
+    <div class="spinner"></div>
+    <p style="color: var(--text-secondary);">Loading questions... กำลังโหลดคำถาม...</p>
+  </div>
+
+  <div id="error-state" style="display:none;" class="text-center">
+    <p style="color: var(--danger-red);">Failed to load questions.</p>
+  </div>
+
+  <div id="questions-container" style="display:none;"></div>
+
+  <div id="pagination-controls" class="controls-area" style="display: none; text-align: center; margin-top: 2rem; gap: 1rem; justify-content: center; align-items: center;">
+      <button id="prev-btn" class="btn-next" style="background: #334155; display: none;">
+          ← Previous
+      </button>
+      
+      <span id="page-indicator" style="color: var(--text-secondary); font-weight: 600;"></span>
+      
+      <button id="next-btn" class="btn-next">
+          Next ➜
+      </button>
+  </div>
+</div>

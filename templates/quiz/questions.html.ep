@@ -1,0 +1,99 @@
+%# /templates/quiz/questions.html.ep
+
+% layout 'default';
+% title 'Australian Citizenship Quiz';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/quiz/questions.css">
+    <script src="/js/quiz/questions.js" defer></script>
+<% end %>
+
+<div class="quiz-container">
+    <div class="header-bar">
+        <div class="header-title">
+            <h1>🐨 <span>Citizenship Test</span> 🦘</h1>
+            <span class="thai-subtitle">แบบทดสอบสัญชาติออสเตรเลีย</span>
+        </div>
+        
+        <div style="margin-top: 1rem;">
+            <a href="/quiz/study" class="btn-study">
+                📖 Study Mode <span class="thai-text" style="font-size: 0.85em; opacity: 0.8;">(โหมดการศึกษา)</span>
+            </a>
+        </div>
+    </div>
+
+    <div id="loading-state" class="state-container">
+        <div class="spinner"></div>
+        <p>Loading questions... <br><span class="thai-text text-secondary small">กำลังโหลดคำถาม...</span></p>
+    </div>
+
+    <div id="error-state" class="state-container" style="display: none;">
+        <div class="error-icon" style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+        <p>Failed to load quiz data.<br><span class="thai-text text-secondary">ไม่สามารถโหลดข้อมูลแบบทดสอบได้</span></p>
+        <button onclick="location.reload()" class="btn-restart" style="margin-top: 1rem; width: auto; padding: 10px 30px;">Try Again / ลองอีกครั้ง</button>
+    </div>
+
+    <div id="quiz-interface" style="display: none;">
+        
+        <div class="progress-section">
+            <div class="progress-info">
+                <span>Question <span id="current-q">1</span> / <span id="total-q">20</span></span>
+                <span id="score-tracker" class="score-badge">Score: 0</span>
+            </div>
+            <div class="progress-track">
+                <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div class="question-card">
+            <div class="question-row">
+                <div id="question-text-en" class="q-text-en"></div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button id="hint-btn" class="btn-hint" aria-label="Show Hint" style="display: none;">💡</button>
+                    <button id="tts-btn" class="btn-tts" aria-label="Read Question">🔊</button>
+                </div>
+            </div>
+            
+            <div id="question-text-ph" class="q-text-ph"></div>
+            <div id="question-text-th" class="q-text-th thai-text"></div>
+
+            <div id="hint-image-container" class="quiz-image-wrapper" style="display: none; margin-top: 15px; text-align: center; width: 100%;">
+                <img id="hint-image" src="" alt="Hint Image" loading="lazy" style="max-width: 100%; max-height: 300px; border-radius: 12px; border: 1px solid var(--glass-border); display: block; margin: 0 auto;">
+            </div>
+        </div>
+
+        <div id="answers-container" class="answers-grid"></div>
+
+        <div id="feedback-container" class="feedback-box" style="display: none;">
+            <div id="feedback-icon" class="feedback-icon"></div>
+            <div>
+                <div id="feedback-msg-en" style="font-weight: 700; font-size: 1.1rem;"></div>
+                <div id="feedback-msg-th" class="thai-text" style="opacity: 0.8;"></div>
+            </div>
+        </div>
+
+        <div class="controls-area" style="text-align: right; margin-top: 2rem;">
+            <button id="next-btn" class="btn-next" disabled>
+                Next <span style="font-size: 0.8em; opacity: 0.8; margin-left: 5px;">(ถัดไป)</span> ➜
+            </button>
+        </div>
+    </div>
+
+    <div id="results-interface" style="display: none;">
+        <div class="results-card" style="text-align: center;">
+            <h2 style="margin-bottom: 0.5rem;">Quiz Complete!</h2>
+            <span class="thai-subtitle" style="font-size: 1.1rem; margin-bottom: 2rem;">ทำแบบทดสอบเสร็จสิ้น!</span>
+            
+            <div class="final-score-circle">
+                <span id="final-score-display">0%</span>
+            </div>
+            
+            <div id="result-message" style="margin: 2rem 0; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 12px;"></div>
+            
+            <button id="restart-btn" class="btn-restart">
+                Start New Quiz <span style="display:block; font-size:0.8em; font-weight:400;">เริ่มทำแบบทดสอบใหม่</span>
+            </button>
+        </div>
+    </div>
+</div>

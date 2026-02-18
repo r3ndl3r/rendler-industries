@@ -1,0 +1,30 @@
+%# /templates/connect4/connect4.html.ep
+
+% layout 'default';
+% title 'Connect 4 Online';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/connect4.css">
+    <script src="/js/connect4.js"></script>
+<% end %>
+
+<div id="game-config" 
+     class="game-wrapper"
+     data-game-id="<%= $game->{id} %>"
+     data-my-id="<%= $my_id %>"
+     data-my-role="<%= $player_role %>">
+
+    <div class="status-card">
+        <h1 id="status-message" class="status-text">Loading...</h1>
+        <div id="turn-indicator" class="sub-text">Connecting...</div>
+        
+        <button id="btn-restart" class="btn-glass btn-restart">🔄 Play Again</button>
+    </div>
+
+    <div class="board-container">
+        <div id="board" class="board">
+            </div>
+    </div>
+
+    <a href="/connect4/lobby" class="btn-glass">&larr; Back to Lobby</a>
+</div>

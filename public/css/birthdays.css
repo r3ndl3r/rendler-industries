@@ -1,0 +1,383 @@
+/* /public/css/birthdays.css */
+
+body {
+    background-color: #0f172a;
+    padding-top: 50px;
+    min-height: 100vh;
+}
+
+.birthday-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    padding-top: 30px;
+}
+
+.header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.header-bar h1 {
+    font-size: 2rem;
+    font-weight: 300;
+    margin: 0;
+}
+
+.manage-btn {
+    background: rgba(33, 150, 243, 0.2);
+    border: 1px solid rgba(33, 150, 243, 0.4);
+    color: #64b5f6;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.manage-btn:hover {
+    background: rgba(33, 150, 243, 0.3);
+    color: #fff;
+}
+
+#birthday-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.birthday-card {
+    background: rgba(30, 30, 30, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 15px;
+    transition: all 0.3s;
+}
+
+@media (min-width: 769px) {
+    #birthday-list {
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+    }
+}
+
+.birthday-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.birthday-emoji {
+    font-size: 4rem;
+    line-height: 1;
+}
+
+.birthday-info {
+    width: 100%;
+}
+
+.birthday-name {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin: 0 0 5px 0;
+    color: #64b5f6;
+}
+
+.birthday-date {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+}
+
+.birthday-countdown {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.countdown-days {
+    color: #69f0ae;
+    text-shadow: 0 0 10px rgba(105, 240, 174, 0.5);
+}
+
+.countdown-text {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1rem;
+    margin-left: 0;
+}
+
+.birthday-age {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.1rem;
+}
+
+.age-number {
+    color: #ffd740;
+    font-weight: 700;
+}
+
+.birthday-card.today {
+    background: linear-gradient(135deg, rgba(255, 215, 64, 0.2), rgba(255, 152, 0, 0.2));
+    border: 2px solid #ffd740;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 8px 32px 0 rgba(255, 215, 64, 0.3); }
+    50% { box-shadow: 0 8px 32px 0 rgba(255, 215, 64, 0.6); }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.btn-add {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #43a047, #2e7d32);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 700;
+    transition: all 0.3s;
+}
+
+.btn-add:hover {
+    transform: scale(1.05);
+}
+
+/* Manage Page Styles */
+.back-link {
+    color: #69f0ae;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.glass-panel {
+    background: rgba(30, 30, 30, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+
+.game-input {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 15px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.game-input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.game-btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    color: white;
+    letter-spacing: 0.5px;
+    font-family: inherit;
+}
+
+.btn-blue {
+    background: linear-gradient(135deg, #1976d2, #0d47a1);
+    box-shadow: 0 4px 12px rgba(21, 101, 192, 0.4);
+}
+
+.manage-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.manage-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.manage-emoji {
+    font-size: 2rem;
+}
+
+.manage-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-edit, .btn-delete {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.btn-edit {
+    background: rgba(33, 150, 243, 0.2);
+    border: 1px solid rgba(33, 150, 243, 0.4);
+    color: #64b5f6;
+}
+
+.btn-edit:hover {
+    background: rgba(33, 150, 243, 0.3);
+    color: #fff;
+}
+
+.btn-delete {
+    background: rgba(211, 47, 47, 0.15);
+    border: 1px solid rgba(211, 47, 47, 0.4);
+    color: #ef9a9a;
+}
+
+.btn-delete:hover {
+    background: rgba(211, 47, 47, 0.3);
+    color: #fff;
+}
+
+label {
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.6);
+    margin-bottom: 5px;
+    display: block;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: rgba(30, 30, 30, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    color: #90caf9;
+}
+
+@media (max-width: 768px) {
+    #birthday-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .manage-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .manage-actions {
+        width: 100%;
+    }
+    
+    .btn-edit, .btn-delete {
+        flex: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    #birthday-list {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .birthday-card {
+        padding: 15px;
+    }
+    
+    .birthday-emoji {
+        font-size: 2.5rem;
+    }
+    
+    .birthday-name {
+        font-size: 1rem;
+    }
+    
+    .birthday-date {
+        font-size: 0.7rem;
+        margin-bottom: 10px;
+    }
+    
+    .birthday-countdown {
+        font-size: 1.2rem;
+    }
+    
+    .countdown-text {
+        font-size: 0.75rem;
+        display: block;
+        margin-left: 0;
+        margin-top: 5px;
+    }
+    
+    .birthday-age {
+        font-size: 0.85rem;
+    }
+    
+    .manage-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .manage-actions {
+        width: 100%;
+    }
+    
+    .btn-edit, .btn-delete {
+        flex: 1;
+    }
+}

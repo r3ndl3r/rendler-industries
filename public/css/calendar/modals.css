@@ -1,0 +1,170 @@
+/* /public/css/calendar/modals.css */
+
+/* =========================================
+   MODAL OVERLAY & ANIMATIONS
+   ========================================= */
+
+/* The background overlay that covers the entire screen */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed;
+    z-index: 1000; /* Sit on top of everything */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto; /* Enable scroll if content is too long */
+    background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
+    
+    /* Animation */
+    animation: fadeIn 0.3s;
+    
+    /* CENTERING MAGIC START (Desktop) */
+    /* These properties, combined with the ::before pseudo-element below,
+       allow us to vertically center the modal content box using inline-block. 
+       Note: This is disabled in responsive.css for mobile devices. */
+    text-align: center;
+    white-space: nowrap;
+    /* CENTERING MAGIC END */
+}
+
+/* The "Ghost Element" helper for vertical alignment */
+.modal::before {
+    content: "";
+    display: inline-block;
+    height: 100%;
+    vertical-align: middle;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* =========================================
+   MODAL CONTENT BOX
+   ========================================= */
+
+.modal-content {
+    background-color: #fefefe;
+    
+    /* Resets for the content inside the box */
+    display: inline-block;
+    vertical-align: middle;
+    text-align: left;
+    white-space: normal;
+    
+    /* Positioning & Spacing */
+    margin: 0 auto;
+    padding: 20px;
+    
+    /* Visual styling */
+    border: 1px solid #888;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    
+    /* Size constraints */
+    width: 90%;
+    max-width: 500px;
+}
+
+/* Specific override for the Event Details modal width */
+#eventDetailsModal .modal-content {
+    max-width: 500px;
+}
+
+/* Header inside the generic modal */
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #222;
+    font-size: 1.2em;
+}
+
+/* =========================================
+   CLOSE BUTTON
+   ========================================= */
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+}
+
+/* =========================================
+   EVENT DETAILS SPECIFIC STYLES
+   (For the "View Event" popup)
+   ========================================= */
+
+.event-details-header {
+    border-bottom: 2px solid #3788d8; /* Blue accent line */
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.event-details-header h2 {
+    margin: 0;
+    font-size: 1.3em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.event-details-body {
+    padding: 10px 0;
+}
+
+/* A single row of information (e.g. "Time: 5:00 PM") */
+.event-detail-row {
+    display: flex;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+    gap: 15px;
+}
+
+.event-detail-row:last-child {
+    border-bottom: none;
+}
+
+/* The label (e.g., "Time:", "Location:") */
+.event-detail-row strong {
+    min-width: 140px; /* Fixed width for alignment */
+    color: #222;
+    font-size: 0.95em;
+}
+
+/* The value (e.g., "5:00 PM") */
+.event-detail-row span {
+    flex: 1;
+    color: #444;
+    font-size: 0.95em;
+}
+
+/* Bottom buttons (Close, Edit) */
+.event-details-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}

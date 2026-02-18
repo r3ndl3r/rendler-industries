@@ -1,0 +1,973 @@
+# Format: word_en|hint_en|word_th|hint_th|image_search_terms
+Elephant|Trunk|ช้าง|งวง|elephant animal trunk
+Giraffe|Neck|ยีราฟ|คอ|giraffe animal neck
+Zebra|Stripes|ม้าลาย|ลาย|zebra animal stripes
+Lion|Mane|สิงโต|แผงคอ|lion animal male mane
+Tiger|Stripes|เสือ|ลาย|tiger animal stripes
+Kangaroo|Pouch|จิงโจ้|กระเป๋า|kangaroo animal australia
+Penguin|Ice|เพนกวิน|น้ำแข็ง|penguin animal ice
+Panda|Bamboo|แพนด้า|ไผ่|panda bear bamboo
+Koala|Eucalyptus|โคอาล่า|ยูคาลิปตัส|koala bear tree
+Camel|Hump|อูฐ|โหนก|camel animal desert
+Rhino|Horn|แรด|นอ|rhino animal horn
+Hippo|River|ฮิปโป|แม่น้ำ|hippo animal water
+Crocodile|Swamp|จระเข้|บึง|crocodile alligator reptile
+Snake|Venom|งู|พิษ|snake reptile green
+Turtle|Shell|เต่า|กระดอง|turtle animal shell
+Frog|Pond|กบ|บึง|frog green animal
+Chameleon|Color|กิ้งก่า|สี|chameleon reptile green
+Rabbit|Carrot|กระต่าย|แครอท|rabbit bunny animal
+Squirrel|Nut|กระรอก|ถั่ว|squirrel animal nut
+Bat|Cave|ค้างคาว|ถ้ำ|bat mammal animal flying
+Wolf|Moon|หมาป่า|พระจันทร์|wolf animal forest
+Fox|Orange|จิ้งจอก|ส้ม|fox animal orange
+Bear|Honey|หมี|น้ำผึ้ง|bear animal brown
+Polar Bear|White|หมีขั้วโลก|ขาว|polar bear animal ice
+Monkey|Banana|ลิง|กล้วย|monkey animal banana
+Gorilla|King|กอริลลา|ราชา|gorilla animal silverback
+Sloth|Slow|สลอธ|ช้า|sloth animal tree
+Otter|Water|นาก|น้ำ|otter animal water swimming
+Beaver|Dam|บีเวอร์|เขื่อน|beaver animal wood
+Raccoon|Trash|แรคคูน|ขยะ|raccoon animal trash
+Hedgehog|Spike|เม่น|หนาม|hedgehog animal cute
+Cow|Milk|วัว|นม|cow farm animal
+Pig|Bacon|หมู|เบคอน|pig farm animal pink
+Sheep|Wool|แกะ|ขน|sheep farm animal wool
+Chicken|Egg|ไก่|ไข่|chicken hen farm
+Duck|Pond|เป็ด|สระ|duck bird water
+Horse|Ride|ม้า|ขี่|horse farm animal galloping
+Goat|Horn|แพะ|เขา|goat farm animal
+Dog|Bone|หมา|กระดูก|dog puppy pet
+Cat|Meow|แมว|เหมียว|cat kitten pet
+Hamster|Wheel|แฮมสเตอร์|ล้อ|hamster cute pet
+Whale|Ocean|วาฬ|มหาสมุทร|whale blue ocean
+Dolphin|Intelligent|โลมา|ฉลาด|dolphin ocean water
+Shark|Teeth|ฉลาม|ฟัน|shark great white ocean
+Octopus|Tentacle|ปลาหมึกยักษ์|หนวด|octopus underwater animal
+Jellyfish|Sting|แมงกะพรุน|พิษ|jellyfish ocean glowing
+Crab|Claw|ปู|ก้าม|crab animal beach
+Lobster|Red|กุ้งมังกร|แดง|lobster animal ocean
+Seahorse|Small|ม้าน้ำ|เล็ก|seahorse underwater animal
+Starfish|Five|ปลาดาว|ห้า|starfish beach ocean
+Eagle|Sky|นกอินทรี|ท้องฟ้า|eagle bird flying
+Owl|Night|นกฮูก|กลางคืน|owl bird eyes
+Parrot|Talk|นกแก้ว|พูด|parrot bird colorful
+Peacock|Feather|นกยูง|ขน|peacock bird feathers
+Flamingo|Pink|ฟลามิงโก|ชมพู|flamingo bird pink
+Swan|Lake|หงส์|ทะเลสาบ|swan bird white water
+Bee|Honey|ผึ้ง|น้ำผึ้ง|bee insect flower
+Ant|Sugar|มด|น้ำตาล|ant insect macro
+Spider|Web|แมงมุม|ใย|spider insect web
+Butterfly|Flower|ผีเสื้อ|ดอกไม้|butterfly insect colorful
+Mosquito|Blood|ยุง|เลือด|mosquito insect bite
+Snail|Shell|หอยทาก|เปลือก|snail animal shell
+Ostrich|Egg|นกกระจอกเทศ|ไข่|ostrich bird running
+Platypus|Duck|ตุ่นปากเป็ด|เป็ด|platypus animal water
+Armadillo|Ball|อาร์มาดิลโล|บอล|armadillo animal ball
+Skunk|Smell|สกั๊งค์|กลิ่น|skunk animal black white
+Walrus|Tusk|วอลรัส|เขี้ยว|walrus animal tusks
+Seal|Clap|แมวน้ำ|ตบมือ|seal animal ocean
+Mole|Dig|ตัวตุ่น|ขุด|mole animal digging
+Moose|Antler|กวางมูส|เขา|moose animal antlers
+Deer|Bambi|กวาง|แบมบี้|deer animal forest
+Buffalo|Horn|ควาย|เขา|buffalo bison animal
+Cheetah|Fast|เสือชีตาห์|เร็ว|cheetah animal running
+Leopard|Spot|เสือดาว|จุด|leopard animal spots
+Hyena|Laugh|ไฮยีน่า|หัวเราะ|hyena animal laughing
+Vulture|Dead|อีแร้ง|ตาย|vulture bird scavenger
+Crane|Leg|นกกระเรียน|ขา|crane bird standing water
+Pigeon|City|นกพิราบ|เมือง|pigeon bird city
+Crow|Black|อีกา|ดำ|crow bird black
+Seagull|Beach|นกนางนวล|ชายหาด|seagull bird beach
+Ladybug|Dot|เต่าทอง|จุด|ladybug insect red
+Grasshopper|Jump|ตั๊กแตน|กระโดด|grasshopper insect green
+Cricket|Sound|จิ้งหรีด|เสียง|cricket insect brown
+Worm|Apple|หนอน|แอปเปิ้ล|earthworm animal dirt
+Centipede|Legs|ตะขาบ|ขา|centipede insect legs
+Scorpion|Tail|แมงป่อง|หาง|scorpion arachnid sting
+Firefly|Light|หิ่งห้อย|แสง|firefly insect glowing
+Moth|Lamp|ผีเสื้อกลางคืน|โคมไฟ|moth insect wings
+Dragonfly|Wing|แมลงปอ|ปีก|dragonfly insect flying
+Wasp|Sting|ตัวต่อ|ต่อย|wasp insect yellow
+Termite|Wood|ปลวก|ไม้|termite insect wood
+Dinosaur|Extinct|ไดโนเสาร์|สูญพันธุ์|dinosaur t-rex jurassic
+Dragon|Fire|มังกร|ไฟ|dragon fantasy fire
+Unicorn|Horn|ยูนิคอร์น|เขา|unicorn horse fantasy
+Mermaid|Tail|นางเงือก|หาง|mermaid fantasy water
+Vampire|Blood|แวมไพร์|เลือด|vampire dracula halloween
+Zombie|Brain|ซอมบี้|สมอง|zombie scary halloween
+Ghost|Boo|ผี|หลอก|ghost white scary
+Werewolf|Moon|มนุษย์หมาป่า|จันทร์|werewolf wolf monster
+Alien|UFO|เอเลี่ยน|ยาน|alien grey extraterrestrial
+Robot|Metal|หุ่นยนต์|เหล็ก|robot cyborg futuristic
+Witch|Broom|แม่มด|ไม้กวาด|witch halloween broom
+Goblin|Green|กอบลิน|เขียว|goblin fantasy creature
+Troll|Bridge|โทรลล์|สะพาน|troll fantasy monster
+Elf|Ear|เอลฟ์|หู|elf fantasy ears
+Dwarf|Short|คนแคระ|เตี้ย|dwarf fantasy beard
+Giant|Big|ยักษ์|ใหญ่|giant fantasy human
+Genie|Lamp|จินนี่|ตะเกียง|genie blue lamp
+Mummy|Wrap|มัมมี่|พัน|mummy egypt bandage
+Skeleton|Bone|โครงกระดูก|กระดูก|skeleton human bones
+Reaper|Scythe|ยมทูต|เคียว|grim reaper scythe
+Angel|Halo|นางฟ้า|วงแหวน|angel wings halo
+Devil|Horn|ปีศาจ|เขา|devil red horns
+Pirate|Ship|โจรสลัด|เรือ|pirate eye patch captain
+Ninja|Silent|นินจา|เงียบ|ninja sword japan
+Clown|Circus|ตัวตลก|ละครสัตว์|clown makeup circus
+Astronaut|Space|นักบินอวกาศ|อวกาศ|astronaut space suit
+Doctor|Hospital|หมอ|โรงพยาบาล|doctor uniform stethoscope
+Nurse|Needle|พยาบาล|เข็ม|nurse uniform hospital
+Police|Badge|ตำรวจ|ตรา|police officer uniform
+Firefighter|Hose|นักดับเพลิง|สายยาง|firefighter uniform hose
+Teacher|School|ครู|โรงเรียน|teacher classroom blackboard
+Student|Book|นักเรียน|หนังสือ|student studying classroom
+Chef|Kitchen|เชฟ|ครัว|chef cook hat
+Farmer|Field|ชาวนา|ทุ่ง|farmer overalls tractor
+Soldier|Gun|ทหาร|ปืน|soldier army uniform
+Pilot|Plane|นักบิน|เครื่องบิน|pilot uniform cockpit
+Artist|Paint|ศิลปิน|สี|artist painter canvas
+Musician|Instrument|นักดนตรี|เครื่องดนตรี|musician playing instrument
+Singer|Mic|นักร้อง|ไมค์|singer performing microphone
+Judge|Court|ผู้พิพากษา|ศาล|judge gavel robe
+Lawyer|Suit|ทนายความ|สูท|lawyer suit court
+Scientist|Lab|นักวิทยาศาสตร์|แล็บ|scientist lab coat microscope
+Detective|Magnifier|นักสืบ|แว่นขยาย|detective magnifying glass
+Dentist|Teeth|หมอฟัน|ฟัน|dentist checking teeth
+Vet|Animal|สัตวแพทย์|สัตว์|veterinarian treating dog
+Mechanic|Car|ช่างยนต์|รถ|mechanic fixing car
+Plumber|Pipe|ช่างประปา|ท่อ|plumber fixing sink
+Barber|Hair|ช่างตัดผม|ผม|barber cutting hair
+Magician|Trick|นักมายากล|กล|magician hat rabbit
+Boxer|Ring|นักมวย|เวที|boxer boxing gloves ring
+Pizza|Cheese|พิซซ่า|ชีส|pizza slice cheese pepperoni
+Burger|Bun|เบอร์เกอร์|ขนมปัง|hamburger burger cheeseburger
+Sushi|Rice|ซูชิ|ข้าว|sushi roll japanese food
+Pasta|Italy|พาสต้า|อิตาลี|pasta spaghetti italian food
+Ramen|Noodle|ราเมน|เส้น|ramen noodles bowl
+Taco|Mexico|ทาโก้|เม็กซิโก|taco mexican food shell
+Sandwich|Bread|แซนด์วิช|ขนมปัง|sandwich club bread
+Salad|Health|สลัด|สุขภาพ|salad bowl vegetables
+Steak|Beef|สเต๊ก|เนื้อ|steak grilled beef meat
+Soup|Spoon|ซุป|ช้อน|soup bowl hot
+Curry|Spicy|แกง|เผ็ด|curry indian thai food
+Rice|Grain|ข้าว|เมล็ด|rice bowl white
+Bread|Toast|ขนมปัง|ปิ้ง|bread loaf bakery
+Cheese|Yellow|ชีส|เหลือง|cheese block swiss
+Butter|Toast|เนย|ปิ้ง|butter stick food
+Egg|Shell|ไข่|เปลือก|egg chicken raw
+Bacon|Crispy|เบคอน|กรอบ|bacon strips fried
+Sausage|Hotdog|ไส้กรอก|ฮอทดอก|sausage grilled bratwurst
+Pancake|Syrup|แพนเค้ก|ไซรัป|pancakes stack syrup
+Waffle|Grid|วอฟเฟิล|ตาราง|waffle belgian syrup
+Donut|Hole|โดนัท|รู|donut glazed sprinkles
+Cookie|Chip|คุกกี้|ชิป|cookie chocolate chip
+Cake|Birthday|เค้ก|วันเกิด|cake birthday candles
+Ice Cream|Cone|ไอศกรีม|โคน|ice cream cone scoop
+Chocolate|Bar|ช็อกโกแลต|แท่ง|chocolate bar dark
+Candy|Sweet|ลูกอม|หวาน|candy colorful sweets
+Popcorn|Movie|ป๊อปคอร์น|หนัง|popcorn bucket movie
+Chips|Potato|มันฝรั่งทอด|มัน|potato chips bag
+Fries|Ketchup|เฟรนช์ฟรายส์|ซอส|french fries fast food
+Yogurt|Spoon|โยเกิร์ต|ช้อน|yogurt cup spoon
+Milk|Cow|นม|วัว|milk glass bottle
+Coffee|Caffeine|กาแฟ|คาเฟอีน|coffee cup black beans
+Tea|Leaf|ชา|ใบ|tea cup herbal
+Juice|Orange|น้ำผลไม้|ส้ม|orange juice glass
+Soda|Can|โซดา|กระป๋อง|soda can cola
+Beer|Foam|เบียร์|ฟอง|beer glass mug
+Wine|Grape|ไวน์|องุ่น|wine glass red bottle
+Water|Bottle|น้ำ|ขวด|water bottle drink
+Apple|Red|แอปเปิ้ล|แดง|apple fruit red
+Banana|Peel|กล้วย|เปลือก|banana fruit bunch
+Orange|Peel|ส้ม|เปลือก|orange fruit citrus
+Grape|Vine|องุ่น|เถา|grapes bunch fruit
+Strawberry|Seed|สตรอว์เบอร์รี|เมล็ด|strawberry fruit red
+Watermelon|Green|แตงโม|เขียว|watermelon fruit slice
+Pineapple|Spike|สับปะรด|หนาม|pineapple fruit tropical
+Coconut|Palm|มะพร้าว|ต้น|coconut fruit open
+Mango|Yellow|มะม่วง|เหลือง|mango fruit yellow
+Durian|Smell|ทุเรียน|กลิ่น|durian fruit thai
+Lemon|Sour|เลมอน|เปรี้ยว|lemon fruit yellow
+Lime|Green|มะนาว|เขียว|lime fruit green
+Cherry|Red|เชอร์รี|แดง|cherry fruit red
+Peach|Fuzzy|พีช|ขน|peach fruit fresh
+Pear|Green|ลูกแพร์|เขียว|pear fruit green
+Avocado|Toast|อะโวคาโด|ปิ้ง|avocado fruit half
+Tomato|Ketchup|มะเขือเทศ|ซอส|tomato vegetable red
+Potato|Fry|มันฝรั่ง|ทอด|potato raw vegetable
+Carrot|Orange|แครอท|ส้ม|carrot vegetable orange
+Onion|Tears|หัวหอม|น้ำตา|onion vegetable red white
+Garlic|Vampire|กระเทียม|แวมไพร์|garlic bulb vegetable
+Mushroom|Mario|เห็ด|มาริโอ้|mushroom vegetable
+Corn|Cob|ข้าวโพด|ฝัก|corn on the cob
+Broccoli|Tree|บรอกโคลี|ต้นไม้|broccoli vegetable green
+Cucumber|Pickle|แตงกวา|ดอง|cucumber vegetable green
+Pepper|Spicy|พริก|เผ็ด|chili pepper red spicy
+Pumpkin|Halloween|ฟักทอง|ฮาโลวีน|pumpkin vegetable halloween
+Ginger|Root|ขิง|ราก|ginger root vegetable
+Wasabi|Spicy|วาซาบิ|เผ็ด|wasabi green paste
+Tofu|Bean|เต้าหู้|ถั่ว|tofu block white
+Dumpling|Fill|เกี๊ยว|ไส้|dumpling chinese food
+Croissant|Moon|ครัวซองต์|จันทร์|croissant bakery bread
+Bagel|Hole|เบเกิล|รู|bagel cream cheese
+Pretzel|Salt|เพรทเซล|เกลือ|pretzel salty snack
+Marshmallow|Soft|มาร์ชเมลโล|นุ่ม|marshmallow white fluffy
+Lollipop|Lick|อมยิ้ม|เลีย|lollipop candy swirl
+Gum|Chew|หมากฝรั่ง|เคี้ยว|chewing gum bubble
+Olive|Oil|มะกอก|น้ำมัน|olive oil bottle green
+Pickle|Jar|แตงกวาดอง|โหล|pickle cucumber jar
+Vinegar|Sour|น้ำส้มสายชู|เปรี้ยว|vinegar bottle apple cider
+Soy Sauce|Salty|ซีอิ๊ว|เค็ม|soy sauce bottle pouring
+Chilli Sauce|Hot|ซอสพริก|เผ็ด|sriracha chilli sauce
+Mayonnaise|White|มายองเนส|ขาว|mayonnaise creamy sauce
+Mustard|Yellow|มัสตาร์ด|เหลือง|mustard sauce hot dog
+Pad Thai|Noodle|ผัดไทย|เส้น|pad thai noodles food
+Som Tum|Papaya|ส้มตำ|มะละกอ|som tum papaya salad
+Tom Yum|Shrimp|ต้มยำ|กุ้ง|tom yum soup thai
+Mango Sticky Rice|Sweet|ข้าวเหนียวมะม่วง|หวาน|mango sticky rice thai dessert
+Vegemite|Toast|เวจิไมต์|ขนมปัง|vegemite jar toast
+Bubble Tea|Pearl|ชานมไข่มุก|ไข่มุก|bubble tea boba drink
+Smoothie|Fruit|สมูทตี้|ผลไม้|smoothie fruit drink
+Milkshake|Sweet|มิลค์เชค|หวาน|milkshake drink glass
+Cola|Black|โคล่า|ดำ|cola drink soda glass
+Lemonade|Sour|น้ำมะนาว|เปรี้ยว|lemonade drink glass
+Energy Drink|Awake|เครื่องดื่มชูกำลัง|ตื่น|energy drink can
+Nachos|Cheese|นาโชส์|ชีส|nachos chips cheese mexican
+Burrito|Wrap|เบอร์ริโต้|ห่อ|burrito mexican food
+Guacamole|Avocado|กัวคาโมเล|อะโวคาโด|guacamole dip avocado
+Salsa|Dip|ซัลซ่า|จิ้ม|salsa dip tomato
+Dim Sum|Basket|ติ่มซำ|เข่ง|dim sum basket chinese
+Spring Roll|Fried|ปอเปี๊ยะ|ทอด|spring roll fried food
+Kebab|Skewer|เคบับ|ไม้เสียบ|kebab meat skewer
+Falafel|Chickpea|ฟลาเฟล|ถั่ว|falafel balls food
+Udon|Thick|อูด้ง|หนา|udon noodles soup
+Sashimi|Raw|ซาชิมิ|ดิบ|sashimi raw fish sushi
+Mochi|Rice|โมจิ|แป้ง|mochi japanese dessert
+Macaron|French|มาการอง|ฝรั่งเศส|macaron french pastry colorful
+Cheesecake|Soft|ชีสเค้ก|นุ่ม|cheesecake slice dessert
+Tiramisu|Coffee|ทีรามิสุ|กาแฟ|tiramisu cake italian
+Brownie|Chocolate|บราวนี่|ช็อกโกแลต|brownie chocolate square
+Cupcake|Frosting|คัพเค้ก|ครีม|cupcake dessert frosted
+Muffin|Top|มัฟฟิน|บน|muffin blueberry bakery
+Baguette|Long|บาเก็ต|ยาว|baguette bread french
+Churro|Sugar|ชูโรส|น้ำตาล|churro fried dough sugar
+Gummy Bear|Chewy|เยลลี่หมี|เคี้ยว|gummy bears candy
+Cotton Candy|Fluff|สายไหม|ฟู|cotton candy carnival pink
+Jelly|Wiggle|เยลลี่|ดึ๋ง|jelly gelatin dessert
+Pudding|Spoon|พุดดิ้ง|ช้อน|pudding dessert cup
+Oreo|Milk|โอรีโอ|นม|oreo cookie milk
+KitKat|Break|คิทแคท|พัก|kitkat chocolate bar
+Nutella|Hazelnut|นูเทลล่า|ถั่ว|nutella hazelnut spread
+Peanut Butter|Jam|เนยถั่ว|แยม|peanut butter jar toast
+Syrup|Maple|ไซรัป|เมเปิ้ล|maple syrup pancakes
+BBQ Sauce|Ribs|ซอสบาร์บีคิว|ซี่โครง|bbq sauce ribs
+Hammer|Nail|ค้อน|ตะปู|hammer tool nail
+Screwdriver|Turn|ไขควง|หมุน|screwdriver tool hand
+Saw|Wood|เลื่อย|ไม้|hand saw tool wood
+Axe|Chop|ขวาน|สับ|axe wood chopping
+Shovel|Dig|พลั่ว|ขุด|shovel tool gardening
+Rake|Leaf|คราด|ใบไม้|rake tool leaves
+Ladder|Climb|บันได|ปีน|ladder construction step
+Rope|Tie|เชือก|ผูก|rope knot string
+Chain|Metal|โซ่|เหล็ก|chain metal links
+Whistle|Blow|นกหวีด|เป่า|whistle sports referee
+Bell|Ring|ระฆัง|สั่น|bell gold ringing
+Wrench|Bolt|ประแจ|น็อต|wrench tool bolt
+Pliers|Grip|คีม|จับ|pliers tool handyman
+Drill|Hole|สว่าน|รู|power drill tool
+Tape Measure|Length|ตลับเมตร|ยาว|tape measure tool
+Level|Straight|ระดับน้ำ|ตรง|spirit level tool
+Car|Wheel|รถยนต์|ล้อ|car sedan vehicle
+Truck|Load|รถบรรทุก|ขน|truck lorry transport
+Bus|Stop|รถเมล์|ป้าย|bus city transport
+Train|Track|รถไฟ|ราง|train locomotive railway
+Subway|Under|รถไฟใต้ดิน|ใต้|subway train metro
+Airplane|Wing|เครื่องบิน|ปีก|airplane flying sky
+Helicopter|Blade|เฮลิคอปเตอร์|ใบพัด|helicopter flying sky
+Boat|Sail|เรือ|ใบ|boat sailing water
+Ship|Sea|เรือเดินสมุทร|ทะเล|cruise ship ocean
+Submarine|Underwater|เรือดำน้ำ|ใต้น้ำ|submarine underwater
+Bicycle|Pedal|จักรยาน|ถีบ|bicycle bike cycling
+Motorcycle|Helmet|มอเตอร์ไซค์|หมวก|motorcycle motorbike vehicle
+Scooter|Kick|สกู๊ตเตอร์|เตะ|kick scooter vehicle
+Skateboard|Ramp|สเกตบอร์ด|เนิน|skateboard skating
+Taxi|Cab|แท็กซี่|มิเตอร์|taxi cab yellow car
+Ambulance|Siren|รถพยาบาล|ไซเรน|ambulance vehicle emergency
+Police Car|Blue|รถตำรวจ|ฟ้า|police car vehicle siren
+Fire Truck|Red|รถดับเพลิง|แดง|fire truck vehicle red
+Tractor|Farm|รถแทรกเตอร์|ฟาร์ม|tractor farm vehicle
+Tank|Army|รถถัง|กองทัพ|military tank army
+Rocket|Space|จรวด|อวกาศ|rocket launch space
+Garbage Truck|Trash|รถขยะ|ขยะ|garbage truck trash
+Bulldozer|Push|รถเกลี่ยดิน|ดัน|bulldozer construction
+Crane|Lift|ปั้นจั่น|ยก|construction crane machine
+Forklift|Box|รถยก|กล่อง|forklift warehouse truck
+Limousine|Long|ลีมูซีน|ยาว|limousine car luxury
+Sled|Snow|เลื่อน|หิมะ|sled snow winter
+Segway|Balance|เซกเวย์|ทรงตัว|segway vehicle electric
+Parachute|Jump|ร่มชูชีพ|กระโดด|parachute skydiving
+Canoe|Paddle|เรือแคนู|พาย|canoe boat paddle
+Yacht|Rich|เรือยอชต์|รวย|yacht boat luxury
+Tuk-tuk|Taxi|รถตุ๊กตุ๊ก|แท็กซี่|tuk tuk thailand vehicle
+Ute|Car|รถกระบะ|รถ|pickup truck car
+Hospital|Sick|โรงพยาบาล|ป่วย|hospital building medical
+School|Learn|โรงเรียน|เรียน|school building class
+University|Degree|มหาวิทยาลัย|ปริญญา|university campus building
+Library|Quiet|ห้องสมุด|เงียบ|library books shelves
+Museum|Art|พิพิธภัณฑ์|ศิลปะ|museum art gallery
+Cinema|Popcorn|โรงหนัง|ป๊อปคอร์น|cinema movie theater seats
+Stadium|Sport|สนามกีฬ|กีฬา|stadium sports arena
+Gym|Weights|ยิม|ยกน้ำหนัก|gym workout equipment
+Park|Bench|สวนสาธารณะ|ม้านั่ง|park trees bench nature
+Zoo|Cage|สวนสัตว์|กรง|zoo entrance animals
+Aquarium|Fish|พิพิธภัณฑ์สัตว์น้ำ|ปลา|aquarium tunnel fish
+Beach|Sand|ชายหาด|ทราย|beach ocean sand tropical
+Mountain|Climb|ภูเขา|ปีน|mountain peak nature
+Volcano|Lava|ภูเขาไฟ|ลาวา|volcano erupting lava
+Desert|Cactus|ทะเลทราย|กระบองเพชร|desert sand dunes
+Forest|Trees|ป่า|ต้นไม้|forest trees nature
+Jungle|Wild|ป่าดิบ|ป่า|jungle tropical rain forest
+Island|Ocean|เกาะ|มหาสมุทร|island tropical ocean
+Cave|Dark|ถ้ำ|มืด|cave entrance rock
+Waterfall|Wet|น้ำตก|เปียก|waterfall nature river
+River|Flow|แม่น้ำ|ไหล|river water nature
+Lake|Water|ทะเลสาบ|น้ำ|lake water nature
+Ocean|Salt|มหาสมุทร|เค็ม|ocean waves sea water
+Space|Star|อวกาศ|ดาว|outer space stars galaxy
+Moon|Crater|ดวงจันทร์|หลุม|moon full night sky
+Sun|Heat|ดวงอาทิตย์|ร้อน|sun bright sky
+Star|Twinkle|ดาว|วิบวับ|star shape night sky
+Planet|Orbit|ดาวเคราะห์|วงโคจร|planet saturn earth
+Earth|Home|โลก|บ้าน|earth globe planet space
+Mars|Red|ดาวอังคาร|แดง|mars planet red
+Cloud|Rain|เมฆ|ฝน|cloud sky nature
+Rain|Umbrella|ฝน|ร่ม|rain falling weather
+Snow|Cold|หิมะ|หนาว|snow winter weather white
+Ice|Slip|น้ำแข็ง|ลื่น|ice cubes frozen
+Wind|Blow|ลม|พัด|windy weather trees blowing
+Storm|Thunder|พายุ|ฟ้าผ่า|storm lightning weather
+Rainbow|Color|รุ้ง|สี|rainbow sky colorful
+Tornado|Spin|พายุทอร์นาโด|หมุน|tornado storm weather
+Earthquake|Shake|แผ่นดินไหว|สั่น|earthquake ground crack
+Tsunami|Wave|สึนามิ|คลื่น|tsunami big wave ocean
+Fire|Burn|ไฟ|ไหม้|fire flames burning
+House|Roof|บ้าน|หลังคา|house home building
+Apartment|Floor|อพาร์ตเมนต์|ชั้น|apartment building exterior
+Hotel|Room|โรงแรม|ห้อง|hotel building luxury
+Tent|Camp|เต็นท์|แคมป์|tent camping outdoors
+Igloo|Eskimo|อิกลู|เอสกิโม|igloo snow house
+Castle|King|ปราสาท|ราชา|castle medieval building
+Pyramid|Mummy|พีระมิด|มัมมี่|pyramid egypt giza
+Bridge|Cross|สะพาน|ข้าม|bridge golden gate
+Tower|High|หอคอย|สูง|tower skyscraper building
+Farm|Animal|ฟาร์ม|สัตว์|farm barn agriculture rural
+City|Traffic|เมือง|จราจร|city skyline skyscrapers
+Village|Small|หมู่บ้าน|เล็ก|village cottages rural
+Market|Sell|ตลาด|ขาย|market stalls fresh food
+Mall|Shop|ห้าง|ร้าน|shopping mall interior
+Bank|Money|ธนาคาร|เงิน|bank building finance
+Post Office|Mail|ไปรษณีย์|จดหมาย|post office building mail
+Restaurant|Menu|ร้านอาหาร|เมนู|restaurant dining table
+Bakery|Bread|เบเกอรี่|ขนมปัง|bakery bread display
+Pharmacy|Drug|ร้านขายยา|ยา|pharmacy store medicine
+Lighthouse|Sea|ประภาคาร|ทะเล|lighthouse ocean coast
+Windmill|Wind|กังหันลม|ลม|windmill traditional holland
+Barn|Farm|โรงนา|ฟาร์ม|barn red farm building
+Garage|Car|โรงรถ|รถ|garage car home
+Chimney|Smoke|ปล่องไฟ|ควัน|chimney brick roof smoke
+Fence|Wall|รั้ว|กั้น|fence wood picket
+Gate|Open|รั้วประตู|เปิด|gate garden metal
+Stairs|Step|บันได|ขั้น|stairs staircase indoor
+Elevator|Lift|ลิฟต์|ยก|elevator doors lift
+Escalator|Move|บันไดเลื่อน|เลื่อน|escalator shopping mall
+Balcony|View|ระเบียง|วิว|balcony apartment terrace
+Attic|Top|ห้องใต้หลังคา|บน|attic room roof
+Basement|Down|ห้องใต้ดิน|ล่าง|basement room dark
+Prison|Jail|คุก|ขัง|prison jail bars cell
+Casino|Money|คาสิโน|เงิน|casino interior slot machines
+Factory|Smoke|โรงงาน|ควัน|factory industrial building smoke
+Barbershop|Cut|ร้านตัดผม|ตัด|barbershop chair pole
+Spa|Relax|สปา|พัก|spa massage relax
+Sauna|Steam|ซาวน่า|ไอน้ำ|sauna wooden room steam
+Temple|Gold|วัด|ทอง|temple buddhist thai
+Spirit House|Ghost|ศาลพระภูมิ|ผี|spirit house thai traditional
+Chair|Sit|เก้าอี้|นั่ง|chair furniture wooden
+Table|Eat|โต๊ะ|กิน|table dining wooden
+Sofa|Couch|โซฟา|เบาะ|sofa living room furniture
+Bed|Pillow|เตียง|หมอน|bed bedroom furniture
+Lamp|Light|โคมไฟ|ไฟ|lamp desk light
+Fan|Blade|พัดลม|ใบพัด|electric fan cooling
+Aircon|Cool|แอร์|เย็น|air conditioner wall unit
+Fridge|Cold|ตู้เย็น|เย็น|refrigerator kitchen appliance
+Oven|Bake|เตาอบ|อบ|oven kitchen appliance
+Microwave|Heat|ไมโครเวฟ|ร้อน|microwave kitchen appliance
+Toaster|Bread|เครื่องปิ้ง|ขนมปัง|toaster kitchen appliance bread
+Blender|Mix|เครื่องปั่น|ผสม|blender kitchen appliance smoothie
+Kettle|Boil|กาต้มน้ำ|ต้ม|electric kettle boiling water
+Pot|Lid|หม้อ|ฝา|cooking pot kitchen
+Pan|Fry|กระทะ|ทอด|frying pan kitchen skillet
+Knife|Cut|มีด|ตัด|knife kitchen chef
+Spoon|Soup|ช้อน|ซุป|spoon cutlery silver
+Fork|Stab|ส้อม|จิ้ม|fork cutlery silver
+Plate|Dish|จาน|อาหาร|plate dinner dish white
+Cup|Mug|ถ้วย|แก้ว|cup mug coffee
+Glass|Drink|แก้ว|ดื่ม|drinking glass empty
+Bottle|Cap|ขวด|ฝา|glass bottle empty
+Trash Can|Bin|ถังขยะ|ถัง|trash can bin rubbish
+Broom|Sweep|ไม้กวาด|กวาด|broom sweeping floor
+Mop|Bucket|ไม้ถูพื้น|ถัง|mop and bucket cleaning
+Vacuum|Dust|เครื่องดูดฝุ่น|ฝุ่น|vacuum cleaner appliance
+Iron|Flat|เตารีด|เรียบ|clothes iron appliance
+Washing Machine|Clothes|เครื่องซักผ้า|เสื้อผ้า|washing machine laundry
+Television|Remote|ทีวี|รีโมท|television screen tv
+Computer|Keyboard|คอมพิวเตอร์|คีย์บอร์ด|desktop computer pc monitor
+Laptop|Portable|แล็ปท็อป|พกพา|laptop computer notebook
+Tablet|Screen|แท็บเล็ต|จอ|tablet computer screen ipad
+Phone|App|มือถือ|แอป|smartphone mobile phone
+Camera|Photo|กล้อง|รูป|camera dslr photography
+Headphones|Ear|หูฟัง|หู|headphones music audio
+Speaker|Sound|ลำโพง|เสียง|audio speaker music
+Microphone|Voice|ไมโครโฟน|เสียง|microphone recording singing
+Radio|Signal|วิทยุ|สัญญาณ|radio vintage audio
+Clock|Tick|นาฬิกา|เข็ม|clock wall analog time
+Watch|Wrist|นาฬิกาข้อมือ|ข้อมือ|wristwatch time analog
+Battery|Charge|แบตเตอรี่|ชาร์จ|battery aa power
+Flashlight|Beam|ไฟฉาย|ลำแสง|flashlight torch light
+Umbrella|Rain|ร่ม|ฝน|umbrella rain open
+Wallet|Cash|กระเป๋าตังค์|สด|wallet leather money
+Key|Lock|กุญแจ|ล็อก|key house car metal
+Glasses|Lens|แว่นตา|เลนส์|eyeglasses spectacles vision
+Sunglasses|Sun|แว่นกันแดด|แดด|sunglasses fashion sun
+Backpack|Strap|เป้|สาย|backpack school bag hiking
+Suitcase|Travel|กระเป๋าเดินทาง|เที่ยว|suitcase luggage travel
+Map|Lost|แผนที่|หลง|map paper travel world
+Passport|Stamp|พาสปอร์ต|ตรา|passport book travel
+Ticket|Entry|ตั๋ว|เข้า|ticket concert event
+Money|Coin|เงิน|เหรียญ|money cash banknotes
+Credit Card|Chip|บัตรเครดิต|ชิป|credit card plastic visa
+Ring|Finger|แหวน|นิ้ว|ring diamond finger jewelry
+Necklace|Neck|สร้อยคอ|คอ|necklace gold jewelry
+Earring|Ear|ต่างหู|หู|earrings jewelry stud
+Bracelet|Wrist|กำไล|ข้อมือ|bracelet gold wrist
+Lipstick|Mouth|ลิปสติก|ปาก|lipstick makeup red
+Perfume|Scent|น้ำหอม|กลิ่น|perfume bottle fragrance
+Soap|Bar|สบู่|ก้อน|soap bar washing
+Shampoo|Hair|แชมพู|ผม|shampoo bottle hair
+Toothbrush|Paste|แปรงสีฟัน|ยาสีฟัน|toothbrush plastic bristle
+Toothpaste|Mint|ยาสีฟัน|มิ้นต์|toothpaste tube brush
+Towel|Dry|ผ้าเช็ดตัว|แห้ง|towel bathroom folded
+Toilet Paper|Roll|กระดาษชำระ|ม้วน|toilet paper roll tissue
+Mirror|Reflection|กระจก|เงา|mirror wall reflection
+Comb|Plastic|หวี|พลาสติก|comb hair styling plastic
+Razor|Shave|มีดโกน|โกน|razor shaving blade
+Chopsticks|Pair|ตะเกียบ|คู่|chopsticks wood asian food
+Whisk|Egg|ตะกร้อมือ|ไข่|whisk kitchen tool
+Grater|Cheese|ที่ขูด|ชีส|cheese grater metal
+Peeler|Skin|ที่ปอก|เปลือก|vegetable peeler tool
+Tray|Carry|ถาด|ถือ|serving tray food
+Apron|Cook|ผ้ากันเปื้อน|ครัว|apron cooking chef
+Teapot|Pour|กาน้ำชา|ริน|teapot ceramic tea
+Jug|Water|เหยือก|น้ำ|jug water glass pitcher
+Corkscrew|Wine|ที่เปิดขวด|ไวน์|corkscrew wine opener
+Sponge|Wash|ฟองน้ำ|ล้าง|sponge cleaning yellow
+Plunger|Toilet|ที่ปั๊มส้วม|ส้วม|plunger toilet tool
+Hanger|Clothes|ไม้แขวนเสื้อ|เสื้อ|coat hanger clothes
+Needle|Sharp|เข็ม|คม|needle sewing thread
+Thread|Sew|ด้าย|เย็บ|thread spool sewing
+Pin|Poke|เข็มหมุด|จิ้ม|push pin sewing
+Rubber Band|Stretch|หนังยาง|ยืด|rubber bands elastic
+Paperclip|Hold|คลิปหนีบกระดาษ|หนีบ|paperclip metal office
+Stapler|Click|แม็ก|คลิก|stapler office stationery
+Tape|Sticky|เทป|เหนียว|sticky tape roll dispenser
+Glue|Stick|กาว|ติด|glue stick stick paper
+Envelope|Letter|ซองจดหมาย|จดหมาย|envelope letter mail
+Stamp|Post|แสตมป์|ส่ง|postage stamp mail
+Postcard|Travel|โปสต์การ์ด|เที่ยว|postcard travel picture
+Diary|Lock|ไดอารี่|ล็อก|diary notebook secret
+Diploma|School|ปริญญาบัตร|โรงเรียน|diploma certificate degree
+Trophy|Win|ถ้วยรางวัล|ชนะ|trophy cup gold winner
+Medal|Gold|เหรียญรางวัล|ทอง|medal gold olympics
+Badge|Police|ตรา|ตำรวจ|police badge metal sheriff
+Helmet|Safe|หมวกกันน็อก|ปลอดภัย|helmet motorbike safety
+Mask|Face|หน้ากาก|หน้า|mask face disguise
+Goggles|Swim|แว่นว่ายน้ำ|ว่ายน้ำ|swimming goggles water
+Cape|Hero|ผ้าคลุม|ฮีโร่|superhero cape red
+Vest|Chest|เสื้อกั๊ก|อก|vest clothing safety
+Shirt|Button|เสื้อเชิ้ต|กระดุม|shirt button down formal
+T-shirt|Cotton|เสื้อยืด|ฝ้าย|t-shirt clothing plain
+Pants|Jeans|กางเกง|ยีนส์|pants trousers clothing
+Shorts|Summer|ขาสั้น|ร้อน|shorts clothing summer
+Skirt|Girl|กระโปรง|หญิง|skirt clothing fashion
+Dress|Gown|ชุดเดรส|ราตรี|dress fashion woman
+Suit|Tie|สูท|ไท|suit business tuxedo
+Coat|Winter|เสื้อโค้ท|หนาว|coat winter jacket
+Jacket|Zipper|แจ็กเก็ต|ซิป|jacket clothing zip
+Sweater|Wool|สเวตเตอร์|ไหมพรม|sweater knitted winter
+Socks|Feet|ถุงเท้า|เท้า|socks clothing feet
+Shoes|Lace|รองเท้า|เชือก|shoes sneakers running
+Boots|Leather|บูท|หนัง|boots leather footwear
+Sandals|Toe|รองเท้าแตะ|นิ้ว|sandals footwear summer
+Hat|Head|หมวก|หัว|hat cap fashion
+Scarf|Neck|ผ้าพันคอ|คอ|scarf winter neck
+Gloves|Hand|ถุงมือ|มือ|gloves winter hands
+Belt|Waist|เข็มขัด|เอว|belt leather waist
+Pyjamas|Sleep|ชุดนอน|นอน|pyjamas sleepwear clothes
+Bikini|Swim|บิกินี|ว่าย|bikini swimwear beach
+Underwear|Bottom|กางเกงใน|ล่าง|underwear boxer briefs
+Elephant Pants|Pattern|กางเกงช้าง|ลาย|elephant pants thailand
+Guitar|String|กีตาร์|สาย|acoustic guitar musical instrument
+Piano|Key|เปียโน|คีย์|piano keys grand
+Drums|Stick|กลอง|ไม้|drum set musical instrument
+Violin|Bow|ไวโอลิน|คันชัก|violin musical instrument
+Flute|Blow|ขลุ่ย|เป่า|flute musical instrument silver
+Trumpet|Brass|ทรัมเป็ต|ทองเหลือง|trumpet musical instrument brass
+Saxophone|Jazz|แซกโซโฟน|แจ๊ส|saxophone musical instrument
+Microphone|Sing|ไมโครโฟน|ร้อง|microphone stand singing
+Stage|Play|เวที|แสดง|theater stage curtains
+Harp|Angel|ฮาร์ป|นางฟ้า|harp musical instrument string
+Accordion|Fold|แอคคอร์เดียน|พับ|accordion musical instrument
+Banjo|Country|แบนโจ|ลูกทุ่ง|banjo musical instrument
+Ukulele|Hawaii|อูคูเลเล่|ฮาวาย|ukulele musical instrument
+Harmonica|Mouth|ฮาร์โมนิก้า|ปาก|harmonica musical instrument
+Trombone|Slide|ทรอมโบน|เลื่อน|trombone musical instrument
+Cello|Sit|เชลโล|นั่ง|cello musical instrument
+Conductor|Stick|วาทยกร|ไม้|music conductor baton
+Didgeridoo|Sound|ดิดเจอริดู|เสียง|didgeridoo instrument australia
+Soccer|Kick|ฟุตบอล|เตะ|soccer ball sports
+Basketball|Hoop|บาสเกตบอล|ห่วง|basketball ball hoop
+Tennis|Racket|เทนนิส|ไม้|tennis racket ball court
+Baseball|Bat|เบสบอล|ไม้|baseball bat ball glove
+Golf|Club|กอล์ฟ|ไม้|golf club ball course
+Volleyball|Net|วอลเลย์บอล|ตาข่าย|volleyball ball net game
+Badminton|Birdie|แบดมินตัน|ลูกขนไก่|badminton racket shuttlecock
+Rugby|Egg|รักบี้|ไข่|rugby ball sports
+Boxing|Glove|มวย|นวม|boxing gloves ring
+Swimming|Pool|ว่ายน้ำ|สระ|swimming pool race
+Running|Track|วิ่ง|ลู่|running track race sprint
+Cycling|Bike|ปั่นจักรยาน|จักรยาน|cycling race bicycle
+Skiing|Snow|สกี|หิมะ|skiing snow mountain
+Surfing|Wave|เซิร์ฟ|คลื่น|surfing surfboard wave
+Skating|Ice|สเกต|น้ำแข็ง|ice skating figure skates
+Yoga|Mat|โยคะ|เสื่อ|yoga pose mat exercise
+Fishing|Rod|ตกปลา|เบ็ด|fishing rod fish lake
+Hunting|Rifle|ล่าสัตว์|ปืน|hunting rifle forest camouflage
+Camping|Tent|แคมป์|เต็นท์|camping tent fire outdoors
+Muay Thai|Kick|มวยไทย|เตะ|muay thai boxing kick
+Surfboard|Wave|กระดานโต้คลื่น|คลื่น|surfboard beach sand
+Cricket|Bat|คริกเก็ต|ไม้|cricket bat ball stumps
+Cards|Deck|ไพ่|สำรับ|playing cards deck ace
+Chess|King|หมากรุก|ราชา|chess board pieces game
+Dice|Cube|ลูกเต๋า|สี่เหลี่ยม|dice cubes numbers
+Domino|Dot|โดมิโน|จุด|domino tiles game
+Puzzle|Piece|จิ๊กซอว์|ชิ้น|jigsaw puzzle pieces
+Lego|Block|เลโก้|บล็อก|lego bricks toys colorful
+Balloon|Pop|ลูกโป่ง|แตก|balloons colorful party
+Kite|String|ว่าว|เชือก|kite flying sky
+Doll|Barbie|ตุ๊กตา|บาร์บี้|doll toy girl
+Teddy Bear|Soft|ตุ๊กตาหมี|นุ่ม|teddy bear toy plush
+Rubik's Cube|Puzzle|รูบิค|ปริศนา|rubiks cube puzzle toy
+Tamagotchi|Pet|ทามาก็อตจิ|สัตว์เลี้ยง|tamagotchi toy digital
+Fidget Spinner|Spin|ฟิดเจ็ตสปินเนอร์|หมุน|fidget spinner toy
+Slime|Sticky|สไลม์|เหนียว|slime toy goo colorful
+Play-Doh|Clay|แป้งโดว์|ดินน้ำมัน|play doh clay colorful
+Action Figure|Hero|หุ่นฟิกเกอร์|ฮีโร่|action figure toy hero
+Hot Wheels|Car|ฮอตวีล|รถ|hot wheels toy car
+Nerf Gun|Foam|ปืนเนิร์ฟ|โฟม|nerf gun toy blaster
+Water Gun|Wet|ปืนฉีดน้ำ|เปียก|water gun toy summer
+Yo-yo|String|โยโย่|เชือก|yo yo toy string
+Hula Hoop|Waist|ฮูลาฮูป|เอว|hula hoop toy waist
+Pogo Stick|Jump|ไม้นาบ|กระโดด|pogo stick toy jump
+Unicycle|One|จักรยานล้อเดียว|หนึ่ง|unicycle bike circus
+Stilts|Tall|ไม้ต่อขา|สูง|stilts walking circus
+Juggling Balls|Throw|ลูกบอลจuggling|โยน|juggling balls circus
+Boombox|Music|วิทยุเทป|เพลง|boombox radio vintage 80s
+Walkie Talkie|Radio|วิทยุสื่อสาร|วิทยุ|walkie talkie radio toy
+Gameboy|Portable|เกมบอย|พกพา|gameboy nintendo portable
+Nintendo Switch|Dock|นินเทนโดสวิตช์|แท่น|nintendo switch console
+PlayStation|Console|เพลย์สเตชัน|เครื่องเกม|playstation console controller
+Xbox|Green|เอ็กซ์บ็อกซ์|เขียว|xbox console controller
+Tetris|Block|เตตริส|บล็อก|tetris game blocks
+Pacman|Ghost|แพ็กแมน|ผี|pacman arcade game
+Sonic|Hedgehog|โซนิค|เม่น|sonic the hedgehog game
+Mario|Plumber|มาริโอ้|ช่างประปา|mario bros nintendo game
+Luigi|Green|ลุยจิ|เขียว|luigi mario bros game
+Pikachu|Electric|ปิกาจู|ไฟฟ้า|pikachu pokemon anime
+Pokeball|Catch|โปเกบอล|จับ|pokeball pokemon toy
+Creeper|Explode|ครีปเปอร์|ระเบิด|creeper minecraft game
+Enderman|Teleport|เอนเดอร์แมน|วาร์ป|enderman minecraft game
+Thanos|Snap|ธานอส|ดีดนิ้ว|thanos marvel gauntlet
+Iron Man|Suit|ไอรอนแมน|ชุดเกราะ|iron man marvel hero
+Hulk|Smash|ฮัลค์|ทุบ|hulk marvel green hero
+Thor|Hammer|ธอร์|ค้อน|thor marvel hammer hero
+Captain America|Shield|กัปตันอเมริกา|โล่|captain america shield hero
+Spiderman|Web|สไปเดอร์แมน|ใย|spiderman marvel hero
+Batman|Bat|แบทแมน|ค้างคาว|batman dc hero logo
+Joker|Smile|โจ๊กเกอร์|ยิ้ม|joker dc villain face
+Superman|Kryptonite|ซูเปอร์แมน|คริปโตไนต์|superman dc hero logo
+Wonder Woman|Lasso|วันเดอร์วูแมน|บ่วง|wonder woman dc hero
+Harry Potter|Scar|แฮร์รี่|แผลเป็น|harry potter movie character
+Voldemort|Nose|วอลเดอมอร์|จมูก|voldemort harry potter villain
+Yoda|Green|โยดา|เขียว|yoda star wars jedi
+Darth Vader|Father|ดาร์ธเวเดอร์|พ่อ|darth vader star wars mask
+Stormtrooper|Miss|สตอร์มทรูปเปอร์|ยิงพลาด|stormtrooper star wars helmet
+Minion|Banana|มินเนี่ยน|กล้วย|minion movie character yellow
+Shrek|Ogre|เชร็ค|ยักษ์|shrek movie character ogre
+Elsa|Ice|เอลซ่า|น้ำแข็ง|elsa frozen movie princess
+Mickey Mouse|Mouse|มิกกี้เมาส์|หนู|mickey mouse disney cartoon
+Spongebob|Square|สพันจ์บ็อบ|สี่เหลี่ยม|spongebob squarepants cartoon
+Scooby Doo|Dog|สกูบี้ดู|หมา|scooby doo cartoon dog
+Sherlock Holmes|Pipe|เชอร์ล็อก|ยาสูบ|sherlock holmes detective pipe
+James Bond|Spy|เจมส์บอนด์|สายลับ|james bond 007 suit spy
+Godzilla|Monster|ก็อดซิลล่า|สัตว์ประหลาด|godzilla movie monster kaiju
+King Kong|Gorilla|คิงคอง|กอริลลา|king kong movie monster
+T-Rex|Arm|ทีเร็กซ์|แขน|t rex dinosaur jurassic
+Pencil|Lead|ดินสอ|ไส้|pencil writing drawing
+Pen|Ink|ปากกา|หมึก|pen writing ink
+Paper|Sheet|กระดาษ|แผ่น|paper white sheet
+Notebook|Write|สมุด|เขียน|notebook writing diary
+Eraser|Rubber|ยางลบ|ยาง|eraser rubber stationery
+Ruler|Measure|ไม้บรรทัด|วัด|ruler measuring stationery
+Stapler|Metal|ที่เย็บ|เหล็ก|stapler office stationery
+Calculator|Math|เครื่องคิดเลข|เลข|calculator math electronic
+Whiteboard|Marker|ไวท์บอร์ด|ปากกา|whiteboard classroom marker
+Desk|Wood|โต๊ะเรียน|ไม้|desk office wood
+Wifi|Signal|ไวไฟ|สัญญาณ|wifi symbol icon signal
+Internet|Web|อินเทอร์เน็ต|เว็บ|internet www globe icon
+Email|Send|อีเมล|ส่ง|email icon envelope
+Password|Secret|รหัสผ่าน|ลับ|password security lock
+Virus|Sick|ไวรัส|ป่วย|computer virus bug screen
+Hacker|Steal|แฮกเกอร์|ขโมย|hacker computer hoodie code
+Bitcoin|Crypto|บิตคอยน์|คริปโต|bitcoin crypto coin
+Google|Search|กูเกิล|ค้นหา|google logo search engine
+Facebook|Social|เฟซบุ๊ก|สังคม|facebook logo app
+Instagram|Photo|อินสตาแกรม|รูป|instagram logo app
+YouTube|Video|ยูทูบ|วิดีโอ|youtube logo video
+Netflix|Movie|เน็ตฟลิกซ์|หนัง|netflix logo streaming
+Amazon|Shop|อเมซอน|ร้าน|amazon logo box delivery
+Apple|Iphone|แอปเปิ้ล|ไอโฟน|apple logo tech
+Windows|PC|วินโดวส์|พีซี|microsoft windows logo
+Linux|Penguin|ลินุกซ์|เพนกวิน|linux tux penguin logo
+Python|Code|ไพธอน|โค้ด|python programming logo snake
+Java|Coffee|จาวา|กาแฟ|java programming logo cup
+Database|SQL|ฐานข้อมูล|เอสคิวแอล|database server icon
+Server|Rack|เซิร์ฟเวอร์|ตู้|server rack data center
+Cloud Computing|Storage|ระบบคลาวด์|เก็บข้อมูล|cloud computing server network
+Firewall|Block|ไฟร์วอลล์|บล็อก|firewall security computer wall
+Bug|Error|บั๊ก|เออเร่อ|computer software bug glitch
+Head|Hair|หัว|ผม|human head face anatomy
+Face|Eye|หน้า|ตา|human face close up
+Eye|See|ตา|เห็น|human eye blue close up
+Ear|Hear|หู|ฟัง|human ear anatomy
+Nose|Smell|จมูก|กลิ่น|human nose close up
+Mouth|Eat|ปาก|กิน|human mouth lips smile
+Tooth|Bite|ฟัน|กัด|human tooth white
+Tongue|Taste|ลิ้น|รส|human tongue mouth
+Neck|Throat|คอ|หลอดลม|human neck anatomy
+Shoulder|Arm|ไหล่|แขน|human shoulder body
+Arm|Elbow|แขน|ศอก|human arm muscle
+Hand|Finger|มือ|นิ้ว|human hand palm five
+Finger|Ring|นิ้ว|แหวน|human finger pointing
+Thumb|Up|โป้ง|ขึ้น|thumbs up hand gesture
+Chest|Lungs|อก|ปอด|human chest body man
+Heart|Blood|หัวใจ|เลือด|human heart organ anatomy
+Stomach|Food|ท้อง|อาหาร|human stomach organ anatomy
+Back|Spine|หลัง|กระดูก|human back body spine
+Leg|Knee|ขา|เข่า|human legs walking
+Knee|Bend|เข่า|งอ|human knee joint
+Foot|Shoe|เท้า|รองเท้า|human foot feet
+Toe|Ten|นิ้วเท้า|สิบ|human toes feet
+Bone|Skeleton|กระดูก|โครง|human bone white anatomy
+Muscle|Strong|กล้ามเนื้อ|แรง|human muscle arm bicep
+Skin|Touch|ผิวหนัง|สัมผัส|human skin texture
+Brain|Mind|สมอง|จิต|human brain anatomy
+Blood|Red|เลือด|แดง|blood cell red microscopic
+Skeleton|Skull|โครงกระดูก|กะโหลก|skeleton human bones
+Skull|Head|กะโหลก|หัว|human skull bone
+Chin|Face|คาง|หน้า|human chin face
+Cheek|Face|แก้ม|หน้า|human cheek face
+Forehead|Top|หน้าผาก|บน|human forehead face
+Eyebrow|Eye|คิ้ว|ตา|human eyebrow eye
+Eyelash|Hair|ขนตา|ขน|human eyelash eye macro
+Lip|Kiss|ริมฝีปาก|จูบ|human lips mouth red
+Navel|Belly|สะดือ|ท้อง|human navel belly button
+Waist|Belt|เอว|เข็มขัด|human waist body measuring
+Hip|Dance|สะโพก|เต้น|human hip bone anatomy
+Thigh|Leg|ต้นขา|ขา|human thigh leg muscle
+Calf|Leg|น่อง|ขา|human calf leg muscle
+Heel|Foot|ส้นเท้า|เท้า|human heel foot
+Ankle|Foot|ข้อเท้า|เท้า|human ankle foot
+Elbow|Bend|ข้อศอก|งอ|human elbow joint
+Wrist|Watch|ข้อมือ|นาฬิกา|human wrist hand
+Palm|Hand|ฝ่ามือ|มือ|human palm hand
+Fist|Punch|กำปั้น|ต่อย|human fist punch hand
+Freckle|Dot|กระ|จุด|freckles face skin
+Scar|Cut|แผลเป็น|แผล|scar skin wound
+Tattoo|Ink|รอยสัก|หมึก|tattoo art skin ink
+Beard|Man|เครา|ชาย|beard hair man face
+Mustache|Lip|หนวด|ปาก|mustache hair man face
+Gold|Metal|ทอง|โลหะ|gold bars bullion
+Silver|Coin|เงิน|เหรียญ|silver bars metal
+Diamond|Ring|เพชร|แหวน|diamond gem shiny
+Ruby|Red|ทับทิม|แดง|ruby gem red stone
+Emerald|Green|มรกต|เขียว|emerald gem green stone
+Iron|Magnet|เหล็ก|แม่เหล็ก|iron metal ore ingot
+Steel|Hard|เหล็กกล้า|แข็ง|steel metal texture beams
+Copper|Wire|ทองแดง|สายไฟ|copper pipes metal
+Glass|Break|แก้ว|แตก|shattered glass texture
+Wood|Tree|ไม้|ต้นไม้|wood texture plank grain
+Plastic|Bottle|พลาสติก|ขวด|plastic bottles recycling
+Paper|Tree|กระดาษ|ต้นไม้|paper texture sheet
+Stone|Rock|หิน|ก้อน|stone rock texture
+Brick|Wall|อิฐ|กำแพง|brick wall texture red
+Sand|Grain|ทราย|เม็ด|sand beach texture dune
+Dirt|Mud|ดิน|โคลน|dirt soil ground texture
+Water|Liquid|น้ำ|ของเหลว|water liquid splash blue
+Oil|Black|น้ำมัน|ดำ|crude oil liquid black
+Gas|Car|แก๊ส|รถ|gasoline fuel pump
+Electricity|Shock|ไฟฟ้า|ช็อต|electricity spark lightning
+Fire|Hot|ไฟ|ร้อน|fire flames burning
+Ice|Cold|น้ำแข็ง|เย็น|ice block frozen texture
+Smoke|Cigarette|ควัน|บุหรี่|smoke wisp white
+Steam|Boil|ไอน้ำ|เดือด|steam water vapor
+Dust|Sneeze|ฝุ่น|จาม|dust particles air
+Mud|Dirty|โคลน|สกปรก|mud puddle wet dirt
+Christmas|Tree|คริสต์มาส|ต้นไม้|christmas tree decorated
+Halloween|Pumpkin|ฮาโลวีน|ฟักทอง|halloween pumpkin jack o lantern
+Easter|Egg|อีสเตอร์|ไข่|easter eggs basket
+Valentine|Heart|วาเลนไทน์|หัวใจ|valentine heart red love
+Birthday|Cake|วันเกิด|เค้ก|birthday party cake balloons
+Wedding|Ring|งานแต่ง|แหวน|wedding bride groom ring
+New Year|Firework|ปีใหม่|พลุ|new year fireworks celebration
+Songkran|Water|สงกรานต์|น้ำ|songkran festival water gun
+Loy Krathong|River|ลอยกระทง|แม่น้ำ|loy krathong festival thailand
+Flag|Pole|ธง|เสา|flag pole waving
+Map|World|แผนที่|โลก|world map globe earth
+Globe|Round|ลูกโลก|กลม|globe earth desk
+Compass|North|เข็มทิศ|เหนือ|compass navigation direction
+Anchor|Ship|สมอ|เรือ|anchor ship metal heavy
+Wheel|Round|ล้อ|กลม|wheel tire car rim
+Engine|Car|เครื่องยนต์|รถ|car engine motor mechanic
+Battery|Power|แบตเตอรี่|พลัง|battery power icon
+Magnet|Pull|แม่เหล็ก|ดึง|magnet horseshoe red
+Microscope|Zoom|กล้องจุลทรรศน์|ซูม|microscope lab science
+Telescope|Star|กล้องโทรทรรศน์|ดาว|telescope astronomy space
+Thermometer|Temp|เทอร์โมมิเตอร์|อุณหภูมิ|thermometer temperature hot
+Scale|Weight|ตาชั่ง|น้ำหนัก|weighing scale bathroom weight
+Calculator|Add|เครื่องคิดเลข|บวก|calculator electronic math
+Clock|Time|นาฬิกา|เวลา|clock face time analog
+Calendar|Date|ปฏิทิน|วันที่|calendar date month paper
+Diary|Secret|ไดอารี่|ลับ|diary book personal journal
+Letter|Envelope|จดหมาย|ซอง|letter envelope mail writing
+Box|Cardboard|กล่อง|กระดาษ|cardboard box delivery
+Bag|Plastic|ถุง|พลาสติก|shopping bag plastic paper
+Bottle|Glass|ขวด|แก้ว|glass bottle empty clear
+Can|Metal|กระป๋อง|เหล็ก|tin can food metal
+Jar|Lid|โหล|ฝา|glass jar empty lid
+Tube|Paste|หลอด|ยา|tube toothpaste paint
+Packet|Chip|ซอง|ขนม|snack packet foil bag
+Titanic|Ship|ไททานิค|เรือ|titanic ship sinking movie
+Pyramids|Egypt|พีระมิด|อียิปต์|pyramids giza egypt desert
+Eiffel Tower|Paris|ไอเฟล|ปารีส|eiffel tower paris france
+Statue of Liberty|New York|เทพีเสรีภาพ|นิวยอร์ก|statue of liberty new york
+Great Wall|China|กำแพงเมืองจีน|จีน|great wall of china
+Taj Mahal|India|ทัชมาฮาล|อินเดีย|taj mahal india agra
+Colosseum|Rome|โคลอสเซียม|โรม|colosseum rome italy
+Big Ben|Clock|บิ๊กเบน|นาฬิกา|big ben london clock
+Mount Everest|High|เอเวอเรสต์|สูง|mount everest mountain snow
+Amazon|River|อเมซอน|แม่น้ำ|amazon river rainforest aerial
+Sahara|Sand|ซาฮารา|ทราย|sahara desert sand dunes
+Antarctica|Cold|แอนตาร์กติกา|หนาว|antarctica ice snow penguin
+Nile|River|ไนล์|แม่น้ำ|nile river egypt aerial
+Sunflower|Yellow|ดอกทานตะวัน|เหลือง|sunflower yellow flower
+Tulip|Holland|ทิวลิป|ฮอลแลนด์|tulip flower field holland
+Cactus|Thorn|กระบองเพชร|หนาม|cactus plant desert prickly
+Orchid|Flower|กล้วยไม้|ดอกไม้|orchid flower purple thai
+Lily|White|ดอกลิลลี่|ขาว|lily flower white blooming
+Daisy|Flower|ดอกเดซี่|ดอกไม้|daisy flower white yellow
+Pearl|Oyster|ไข่มุก|หอย|pearl white oyster shell
+Coral|Reef|ปะการัง|แนว|coral reef underwater colorful
+Sponge|Bob|ฟองน้ำ|บ็อบ|sea sponge ocean underwater
+Viking|Ship|ไวกิ้ง|เรือ|viking warrior helmet ship
+Samurai|Sword|ซามูไร|ดาบ|samurai warrior japan sword
+Gladiator|Rome|แกลดิเอเตอร์|โรม|gladiator warrior rome helmet
+Pharaoh|Egypt|ฟาโรห์|อียิปต์|pharaoh egypt king mask
+Mummy|Bandage|มัมมี่|ผ้าพันแผล|mummy horror egypt wrapped
+Sphinx|Riddle|สฟิงซ์|ปริศนา|sphinx egypt statue giza
+Medusa|Snake|เมดูซ่า|งู|medusa greek mythology snakes
+Zeus|Lightning|ซุส|สายฟ้า|zeus greek god lightning
+Poseidon|Trident|โพไซดอน|สามง่าม|poseidon greek god ocean
+Hercules|Strong|เฮอร์คิวลีส|แข็งแรง|hercules greek hero strong
+Sheriff|Star|นายอำเภอ|ดาว|sheriff badge cowboy western
+Cowboy|Horse|คาวบอย|ม้า|cowboy hat horse western
+Sumo|Wrestler|ซูโม่|นักมวยปล้ำ|sumo wrestler japan fight
+Geisha|Japan|เกอิชา|ญี่ปุ่น|geisha japan makeup kimono
+Matador|Bull|มาทาดอร์|วัว|matador bullfight spain red
+Leprechaun|Gold|เลปรีกอน|ทอง|leprechaun irish green gold
+Elf|Shelf|เอลฟ์|ชั้นวาง|elf on the shelf christmas
+Reindeer|Nose|กวางเรนเดียร์|จมูก|reindeer animal antlers rudolph
+Snowman|Carrot|ตุ๊กตาหิมะ|แครอท|snowman snow winter carrot
+Scarecrow|Bird|หุ่นไล่กา|นก|scarecrow field farm straw
+Turkey|Thanksgiving|ไก่งวง|ขอบคุณพระเจ้า|turkey bird roast thanksgiving
+Pilgrim|Hat|พิลกริม|หมวก|pilgrim hat thanksgiving history
+Firework|Boom|ดอกไม้ไฟ|ตู้ม|fireworks night sky explosion
+Confetti|Paper|กระดาษโปรย|กระดาษ|confetti colorful party paper
+Disco Ball|Mirror|ดิสโก้บอล|กระจก|disco ball mirror party shiny
+Opera|Sing|โอเปร่า|ร้อง|opera singer stage theater
+Hip Hop|Rap|ฮิปฮอป|แร็ป|hip hop dancer music style
+Bowling|Strike|โบว์ลิ่ง|สไตรค์|bowling ball pins lane
+Hockey|Puck|ฮอกกี้|ลูกพัค|ice hockey player puck
+Karate|Chop|คาราเต้|สับ|karate martial arts kick
+Judo|Throw|ยูโด|ทุ่ม|judo martial arts throw
+Kung Fu|Panda|กังฟู|แพนด้า|kung fu martial arts
+Wrestling|Mask|มวยปล้ำ|หน้ากาก|pro wrestling ring fighters
+Fencing|Sword|ฟันดาบ|ดาบ|fencing sport sword mask
+Archery|Bow|ยิงธนู|ธนู|archery bow arrow target
+Billiards|Ball|บิลเลียด|ลูก|billiards pool table balls
+London|Bus|ลอนดอน|รถเมล์|london city big ben bus
+Tokyo|Sushi|โตเกียว|ซูชิ|tokyo city japan neon
+Paris|Tower|ปารีส|หอคอย|paris city eiffel tower
+New York|Apple|นิวยอร์ก|แอปเปิ้ล|new york city skyline times square
+Sydney|Opera|ซิดนีย์|โอเปร่า|sydney opera house australia
+Rome|Pizza|โรม|พิซซ่า|rome colosseum italy city
+Egypt|Pyramid|อียิปต์|พีระมิด|egypt pyramids sphinx desert
+China|Wall|จีน|กำแพง|great wall china scenery
+Japan|Anime|ญี่ปุ่น|อนิเมะ|japan mount fuji cherry blossom
+Korea|K-pop|เกาหลี|เคป็อป|seoul korea city skyline
+Thailand|Smile|ไทย|ยิ้ม|thailand grand palace bangkok
+Brazil|Football|บราซิล|บอล|rio de janeiro christ statue
+Mexico|Taco|เม็กซิโก|ทาโก้|mexico city pyramids colorful
+India|Curry|อินเดีย|แกง|india taj mahal street
+Italy|Pasta|อิตาลี|พาสต้า|italy venice canal gondola
+France|Bread|ฝรั่งเศส|ขนมปัง|france paris scenery
+Germany|Beer|เยอรมัน|เบียร์|germany neuschwanstein castle
+Russia|Vodka|รัสเซีย|วอดก้า|moscow russia red square
+Lungs|Breath|ปอด|หายใจ|human lungs anatomy
+Bone|Dog|กระดูก|หมา|dog bone treat cartoon
+Tooth|Fairy|ฟัน|นางฟ้า|tooth fairy cartoon cute
+Nail|Polish|เล็บ|สี|fingernails manicure polish
+Acrobat|Flex|นักกายกรรม|ยืด|acrobat circus gymnastics
+Juggler|Ball|นักมายากล|บอล|juggler juggling balls circus
+Mime|Silent|นักแสดงละครใบ้|เงียบ|mime artist face paint
+Diver|Tank|นักประดาน้ำ|ถัง|scuba diver underwater ocean
+Miner|Gold|คนงานเหมือง|ทอง|coal miner helmet underground
+Lumberjack|Wood|คนตัดไม้|ไม้|lumberjack axe plaid shirt
+Blacksmith|Iron|ช่างตีเหล็ก|เหล็ก|blacksmith anvil hammer fire
+Florist|Flower|คนขายดอกไม้|ดอกไม้|florist flower shop bouquet
+Janitor|Mop|ภารโรง|ไม้ถูพื้น|janitor cleaning mop bucket
+Maid|Clean|แม่บ้าน|สะอาด|maid uniform cleaning duster
+Butler|Serve|พ่อบ้าน|เสิร์ฟ|butler tuxedo tray serving
+Coach|Whistle|โค้ช|นกหวีด|sports coach whistle clipboard
+Referee|Card|กรรมการ|ใบ|referee red card sports
+Hobbit|Ring|ฮอบบิท|แหวน|hobbit feet house shire
+Chewbacca|Hairy|ชิวแบคคา|ขน|chewbacca star wars wookiee
+Simba|Lion|ซิมบ้า|สิงโต|simba lion king disney
+Nemo|Fish|นีโม|ปลา|nemo clownfish finding nemo
+Buzz Lightyear|Toy|บัส|ของเล่น|buzz lightyear toy story
+Woody|Cowboy|วู้ดดี้|คาวบอย|woody toy story cowboy
+Elmo|Red|เอลโม่|แดง|elmo sesame street puppet
+Cookie Monster|Blue|คุกกี้มอนสเตอร์|ฟ้า|cookie monster sesame street
+Big Bird|Yellow|บิ๊กเบิร์ด|เหลือง|big bird sesame street
+Kermit|Frog|เคอร์มิท|กบ|kermit the frog muppets
+Miss Piggy|Pig|มิสพิกกี้|หมู|miss piggy muppets
+Popeye|Spinach|ป๊อปอาย|ผักโขม|popeye sailor cartoon muscle
+Tarzan|Jungle|ทาร์ซาน|ป่า|tarzan jungle disney cartoon
+Zorro|Mask|หน้ากากโซโล|หน้ากาก|zorro mask sword hero
+Robin Hood|Bow|โรบินฮู้ด|ธนู|robin hood archer disney
+Peter Pan|Fly|ปีเตอร์แพน|บิน|peter pan flying disney
+Hook|Hand|กัปตันฮุค|มือ|captain hook peter pan
+Tinkerbell|Fairy|ทิงเกอร์เบลล์|นางฟ้า|tinkerbell fairy disney
+Alice|Wonderland|อลิซ|มหัศจรรย์|alice in wonderland disney
+Mad Hatter|Tea|แมดแฮตเตอร์|ชา|mad hatter alice wonderland
+Queen of Hearts|Card|ราชินีโพแดง|ไพ่|queen of hearts alice wonderland
+Snow White|Apple|สโนว์ไวท์|แอปเปิ้ล|snow white disney princess
+Cinderella|Shoe|ซินเดอเรลล่า|รองเท้า|cinderella glass slipper shoe
+Rapunzel|Hair|ราพันเซล|ผม|rapunzel tangled long hair
+Little Mermaid|Voice|เงือกน้อย|เสียง|ariel little mermaid disney
+Aladdin|Lamp|อะลาดิน|ตะเกียง|aladdin disney movie lamp
+Jasmine|Tiger|จัสมิน|เสือ|jasmine princess aladdin
+Mulan|China|มู่หลาน|จีน|mulan disney warrior china
+Pocahontas|Wind|โพคาฮอนทัส|ลม|pocahontas disney princess
+Frozen|Cold|โฟรเซ่น|หนาว|frozen movie elsa anna
+Olaf|Snowman|โอลาฟ|ตุ๊กตาหิมะ|olaf snowman frozen
+Moana|Ocean|โมอาน่า|ทะเล|moana disney ocean boat
+Anvil|Heavy|ทั่ง|หนัก|blacksmith anvil iron heavy
+Horseshoe|Luck|เกือกม้า|โชค|horseshoe metal luck
+Lasso|Rope|บ่วง|เชือก|lasso rope cowboy western
+Saddle|Horse|อาน|ม้า|horse saddle leather western
+Barrel|Wood|ถังไม้|ไม้|wooden barrel wine keg
+Crate|Box|ลัง|กล่อง|wooden crate shipping box
+Wheelbarrow|Garden|รถเข็นดิน|สวน|wheelbarrow garden tool
+Totem Pole|Face|เสาโทเทม|หน้า|totem pole wood carving
+Tipi|Tent|กระโจม|เต็นท์|tipi tent native american
+Jukebox|Music|ตู้เพลง|เพลง|jukebox vintage music machine
+Slot Machine|Gamble|สล็อต|พนัน|slot machine casino jackpot
+Roulette|Spin|รูเล็ต|หมุน|roulette wheel casino game
+Chandelier|Glass|โคมระย้า|แก้ว|chandelier crystal light luxury
+Fireplace|Wood|เตาผิง|ไม้|fireplace fire home chimney
+Terrarium|Plant|สวนขวด|พืช|terrarium plants glass jar
+Birdcage|Bird|กรงนก|นก|birdcage antique metal
+Doghouse|Dog|บ้านหมา|หมา|doghouse wood backyard
+Cat Litter|Sand|ทรายแมว|ทราย|cat litter box tray
+Leash|Walk|สายจูง|เดิน|dog leash pet walking
+Yarn|Cat|ไหมพรม|แมว|ball of yarn wool knitting
+Pop Tart|Toast|ป๊อปทาร์ต|ปิ้ง|pop tart pastry snack
+Cereal|Milk|ซีเรียล|นม|cereal bowl milk breakfast
+Oatmeal|Bowl|ข้าวโอ๊ต|ชาม|oatmeal porridge bowl healthy
+Pancakes|Stack|แพนเค้ก|ตั้ง|pancakes stack syrup butter
+Waffles|Square|วอฟเฟิล|สี่เหลี่ยม|waffles breakfast syrup
+French Toast|Egg|เฟรนช์โทสต์|ไข่|french toast breakfast syrup
+Ham|Sandwich|แฮม|แซนด์วิช|ham meat glazed slice
+Ribs|Bone|ซี่โครง|กระดูก|bbq ribs pork grilled
+Wings|Chicken|ปีกไก่|ไก่|chicken wings buffalo spicy
+Drumstick|Chicken|น่องไก่|ไก่|chicken drumstick fried
+Nugget|Chicken|นักเก็ต|ไก่|chicken nuggets fast food
+Hummus|Dip|ฮัมมุส|จิ้ม|hummus dip chickpea pita
+Pita|Bread|พิต้า|ขนมปัง|pita bread pocket middle eastern
+Gyro|Greek|ไจโร|กรีก|gyro sandwich greek food
+Naan|Bread|แป้งนาน|ขนมปัง|naan bread indian food
+Samosa|Triangle|ซาโมซ่า|สามเหลี่ยม|samosa indian snack fried
+Bao|Bun|ซาลาเปา|แป้ง|bao bun steamed chinese
+Tempura|Fried|เทมปุระ|ทอด|tempura shrimp fried japanese
+Miso|Soup|มิโซะ|ซุป|miso soup bowl japanese
+Soba|Buckwheat|โซบะ|บัควีท|soba noodles japanese food
+Kimchi|Spicy|กิมจิ|เผ็ด|kimchi korean fermented cabbage
+Bibimbap|Mix|ข้าวยำ|ผสม|bibimbap korean rice bowl
+Pomegranate|Fruit|ทับทิม|ผลไม้|pomegranate fruit red seeds
+Fig|Fruit|มะเดื่อ|ผลไม้|fig fruit fresh cut
+Date|Fruit|อินทผลัม|ผลไม้|date fruit dried sweet
+Spinach|Green|ผักโขม|เขียว|spinach leaves vegetable fresh
+Asparagus|Stick|หน่อไม้ฝรั่ง|แท่ง|asparagus vegetable green
+Mint|Fresh|มิ้นต์|สด|mint leaves herb fresh
+Basil|Herb|โหระพา|สมุนไพร|basil leaves herb italian
+Toucan|Beak|นกทูแคน|ปาก|toucan bird beak tropical
+Pelican|Beak|นกกระทุง|ปาก|pelican bird beak ocean
+Puffin|Bird|นกพัฟฟิน|นก|puffin bird iceland beak
+Guinea Pig|Pet|หนูตะเภา|สัตว์เลี้ยง|guinea pig pet cute
+Ferret|Long|เฟอร์เร็ต|ยาว|ferret animal pet long
+Porcupine|Spike|เม่น|หนาม|porcupine animal quills spikes
+Phoenix|Fire|ฟีนิกซ์|ไฟ|phoenix mythical bird fire
+Griffin|Lion|กริฟฟิน|สิงโต|griffin mythical creature lion eagle
+Yeti|Snow|เยติ|หิมะ|yeti abominable snowman monster
+Bigfoot|Hair|บิ๊กฟุต|ขน|bigfoot sasquatch forest monster
+Oxygen|Air|ออกซิเจน|อากาศ|oxygen molecule air breathing
+Atom|Small|อะตอม|เล็ก|atom structure science physics
+Molecule|Small|โมเลกุล|เล็ก|molecule chemical structure microscopic
+Fossil|Bone|ฟอสซิล|กระดูก|fossil dinosaur bone rock
+Gravity|Fall|แรงโน้มถ่วง|ตก|gravity apple falling newton
+Eclipse|Sun|สุริยุปราคา|อาทิตย์|solar eclipse sun moon
+Meteor|Rock|ดาวตก|หิน|meteor shooting star space
+Supernova|Explode|ซูเปอร์โนวา|ระเบิด|supernova explosion space star
+Pottery|Clay|เครื่องปั้นดินเผา|ดิน|pottery clay wheel ceramics
+Knitting|Wool|ถักไหมพรม|ไหมพรม|knitting needles wool yarn
+Gardening|Plant|ทำสวน|ต้นไม้|gardening tools plants soil
+Ballet|Dance|บัลเลต์|เต้น|ballet dancer shoes tutu
+Rickshaw|Bike|รถลาก|จักรยาน|rickshaw bike asia transport
+Tuba|Big|ทูบา|ใหญ่|tuba musical instrument brass
+Clarinet|Wood|คลาริเน็ต|ไม้|clarinet musical instrument woodwind
+Oboe|Wood|โอโบ|ไม้|oboe musical instrument woodwind
+Kimono|Japan|กิโมโน|ญี่ปุ่น|kimono japanese dress traditional
+Toga|Greek|โทกะ|กรีก|toga greek costume roman
+Poncho|Rain|เสื้อกันฝน|ฝน|rain poncho plastic waterproof
+Sombrero|Hat|หมวกเม็กซิกัน|หมวก|sombrero hat mexican colorful
+Tiara|Princess|รัดเกล้า|เจ้าหญิง|tiara crown diamond princess

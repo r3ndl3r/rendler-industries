@@ -1,0 +1,114 @@
+/* /public/css/calendar/attendees.css */
+
+/* =========================================
+   BASE ATTENDEE PILL STYLES
+   ========================================= */
+.attendee-pill {
+    display: inline-block;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 0.75em;
+    font-weight: bold;
+    color: white;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+/* =========================================
+   COLOR PALETTE
+   (Rotates based on user index)
+   ========================================= */
+.attendee-color-1 { background-color: #97133f; } /* Dark Red/Magenta */
+.attendee-color-2 { background-color: #9c27b0; } /* Purple */
+.attendee-color-3 { background-color: #3f51b5; } /* Indigo */
+.attendee-color-4 { background-color: #05353b; } /* Dark Teal */
+.attendee-color-5 { background-color: #4caf50; } /* Green */
+.attendee-color-6 { background-color: #ff9800; } /* Orange */
+.attendee-color-7 { background-color: #795548; } /* Brown */
+.attendee-color-8 { background-color: #05293a; } /* Dark Blue */
+
+/* =========================================
+   EVENT DETAIL MODAL
+   (Fixes for the "Stretching" issue)
+   ========================================= */
+
+/* Override the default flex behavior of the row so pills don't expand */
+.event-detail-attendees {
+    display: block !important; 
+    width: auto;
+}
+
+/* Force pills to stay compact and respect their text width */
+.event-detail-attendees .attendee-pill {
+    display: inline-block !important;
+    width: auto !important;
+    flex: none !important; /* Critical: Prevents flex-grow */
+    
+    /* Styling consistency */
+    color: white !important;
+    font-size: 0.85em;
+    font-weight: bold;
+    
+    /* Spacing */
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 5px;
+    margin-bottom: 2px;
+}
+
+/* =========================================
+   UPCOMING EVENTS WIDGET (Sidebar)
+   ========================================= */
+.upcoming-event-attendees {
+    display: flex;
+    gap: 5px;
+    margin-top: 6px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+}
+
+.upcoming-event-attendees .attendee-pill {
+    font-size: 0.8em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+/* =========================================
+   FORM SELECTION (Add/Edit Modal)
+   ========================================= */
+
+/* Scrollable container for the checkbox list */
+.attendees-select-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    background: #fafafa;
+}
+
+/* Individual user row */
+.attendee-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    cursor: pointer;
+    font-weight: normal;
+    color: #222;
+}
+
+.attendee-checkbox:hover {
+    background: #f0f0f0;
+}
+
+/* Checkbox input styling override */
+.attendee-checkbox-input {
+    width: auto !important;
+    cursor: pointer;
+}
+
+.attendee-checkbox span {
+    font-size: 0.9em;
+}

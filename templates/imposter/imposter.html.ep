@@ -1,0 +1,214 @@
+%# /templates/imposter/imposter.html.ep
+
+% layout 'default';
+% title 'Imposter Game';
+
+<% content_for head => begin %>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/imposter.css">
+    <script src="/js/imposter.js"></script>
+<% end %>
+
+<div class="min-h-screen flex flex-col p-8 max-w-6xl mx-auto relative game-container">
+
+    <form id="edit_form" action="/imposter/edit_player" method="POST" style="display:none;">
+        <input type="hidden" name="old_name" id="edit_old_name">
+        <input type="hidden" name="new_name" id="edit_new_name">
+    </form>
+
+    <% if ($game->{status} eq 'lobby') { %>
+        <div class="flex items-center justify-between mb-4 md:mb-4 mt-2">
+            <h1 class="text-3xl md:text-2xl font-black text-white game-text-h1">Imposter</h1>
+            <form action="/imposter/clear_lobby" method="POST">
+                <button class="text-slate-400 font-bold bg-slate-800 border border-slate-700 hover:bg-slate-700 transition-colors game-btn" 
+                        style="font-size: 0.875rem; padding: 0.5rem 1rem; border-radius: 0.5rem;">
+                    Reset
+                </button>
+            </form>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 mb-responsive mb-32">
+            <% if (@$lobby) { %>
+                <% my $i = 0; %>
+                <% for my $p (@$lobby) { %>
+                    <% $i++; %>
+                    <div class="game-card flex items-center justify-between">
+                        <div class="flex items-center gap-3 overflow-hidden pl-1">
+                            <span class="text-white truncate game-text-h2 font-bold leading-tight"><%= $p %></span>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button onclick="editPlayer('<%= $p %>')" class="text-slate-400 hover:text-blue-400 action-btn-mobile transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="game-icon-sm h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                            </button>
+
+                            <form action="/imposter/remove_player" method="POST">
+                                <input type="hidden" name="player_name" value="<%= $p %>">
+                                <button class="text-slate-400 hover:text-red-400 action-btn-mobile transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="game-icon-sm h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                <% } %>
+            <% } else { %>
+                <div class="col-span-full py-10 md:py-16 text-center border-2 border-dashed border-slate-700 rounded-3xl bg-slate-800/20">
+                    <p class="text-slate-500 font-bold text-lg md:text-xl">Add players</p>
+                </div>
+            <% } %>
+        </div>
+
+        <div class="fixed bottom-0 left-0 right-0 p-4 md:p-4 z-50 bg-gradient-to-t from-[#0f172a] via-[#0f172a] to-transparent pb-6">
+            <div class="w-full max-w-4xl mx-auto flex flex-col gap-3 md:gap-4">
+                
+                <div class="floating-bar">
+                    <div class="floating-inner">
+                        <form action="/imposter/add_player" method="POST" class="input-form-layout gap-2">
+                            <input type="text" name="player_name" placeholder="" autocomplete="off"
+                                   class="flex-1 bg-transparent text-white outline-none placeholder-slate-500 font-bold game-input">
+                        </form>
+                    </div>
+                </div>
+
+                <% if (@$lobby >= 3) { %>
+                    <form action="/imposter/start" method="POST" class="animate-in slide-in-from-bottom duration-500">
+                        <div class="bg-slate-800/95 backdrop-blur p-2 md:p-4 rounded-xl border border-slate-700 mb-2 shadow-2xl">
+                            <label class="block text-slate-400 text-center text-xs font-bold uppercase mb-2">Timer (Minutes)</label>
+                            <div class="flex justify-between gap-2">
+                                <% for my $m (1..5) { %>
+                                    <label class="flex-1 cursor-pointer">
+                                        <input type="radio" name="timer_duration" value="<%= $m %>" class="peer sr-only" <%= $m == 1 ? 'checked' : '' %>>
+                                        <div class="timer-box text-center py-2 rounded-lg border-2 border-slate-600 bg-slate-900 text-slate-400 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-400 transition-all font-black h-full flex items-center justify-center">
+                                            <%= $m %>
+                                        </div>
+                                    </label>
+                                <% } %>
+                            </div>
+                        </div>
+
+                        <button class="w-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-2xl flex items-center justify-center gap-3 transition-transform active:scale-95 border-emerald-700 game-btn">
+                            START GAME
+                        </button>
+                    </form>
+                <% } %>
+            </div>
+        </div>
+
+    <% } elsif ($game->{status} eq 'passing') { %>
+        <div class="flex-1 flex flex-col items-center justify-center h-full pb-32 md:pb-10 relative">
+            
+            <div class="absolute top-0 right-0 z-10">
+                <form action="/imposter/set_lang" method="POST">
+                    <input type="hidden" name="lang" value="<%= $lang eq 'en' ? 'th' : 'en' %>">
+                    <button class="bg-slate-800/80 text-white text-xs font-bold py-2 px-4 rounded-full border border-slate-600">
+                        <%= $lang eq 'en' ? '🇺🇸 EN' : '🇹🇭 TH' %>
+                    </button>
+                </form>
+            </div>
+
+            <% my $current_name = $game->{players}->[$game->{current_index}]; %>
+            <div class="w-full max-w-3xl text-center">
+                <div class="mb-8"><span class="text-slate-400 uppercase bg-slate-800 rounded-full border border-slate-700 px-6 py-2 text-sm font-bold">Current Turn</span></div>
+                <h1 class="text-5xl md:text-6xl text-white mb-12 font-black tracking-tighter"><%= $current_name %></h1>
+                
+                <% if (!$game->{show_secret}) { %>
+                    <form action="/imposter/toggle_view" method="POST">
+                        <button class="w-full rounded-3xl border-4 border-dashed border-slate-600 hover:bg-slate-800/50 active:bg-slate-800 active:border-blue-500 transition-all group py-20">
+                            <span class="text-2xl md:text-3xl font-black text-slate-400 group-hover:text-blue-400 uppercase tracking-widest">Tap to Reveal</span>
+                        </button>
+                    </form>
+                <% } else { %>
+                    <!-- IMAGE DISPLAY FOR NON-IMPOSTERS -->
+                    <% if ($game->{image_url} && $current_name ne $game->{imposter}) { %>
+                        <div class="mb-6">
+                            <img src="<%= $game->{image_url} %>?t=<%= time() %>" 
+                                 alt="Secret Word Visual" 
+                                 class="mx-auto rounded-2xl shadow-2xl border-4 border-slate-700 max-w-full h-auto object-cover"
+                                 style="max-height: 300px; width: auto;">
+                        </div>
+                    <% } %>
+                    
+                    <div class="bg-slate-900 rounded-3xl mb-8 border-2 border-slate-700 relative overflow-hidden shadow-2xl p-10">
+                        <div class="absolute top-0 left-0 w-3 h-full <%= $current_name eq $game->{imposter} ? 'bg-red-500' : 'bg-sky-500' %>"></div>
+                        
+                        <% if ($current_name eq $game->{imposter}) { %>
+                            <div class="text-red-400 uppercase mb-4 font-bold text-lg">Your Hint</div>
+                            <div class="text-3xl italic font-serif text-white">"<%= $game->{word_data}->{$lang}->{hint} %>"</div>
+                        <% } else { %>
+                            <div class="text-sky-400 uppercase mb-4 font-bold text-lg">Secret Word</div>
+                            <div class="text-4xl font-mono text-white font-black uppercase"><%= $game->{word_data}->{$lang}->{word} %></div>
+                        <% } %>
+                    </div>
+                    <form action="/imposter/next_player" method="POST">
+                        <button class="w-full bg-[#8b5cf6] hover:bg-[#7c3aed] text-white shadow-xl transition-transform active:scale-95 border-b-4 border-purple-800 game-btn">NEXT PLAYER &rarr;</button>
+                    </form>
+                <% } %>
+            </div>
+        </div>
+
+    <% } elsif ($game->{status} eq 'timer') { %>
+        <div class="flex-1 flex flex-col items-center justify-center text-center pb-32 md:pb-10">
+            <div class="mb-8 bg-blue-600/10 border border-blue-500/20 rounded-full px-6 py-2 inline-block">
+                <span class="text-blue-400 font-bold text-lg"><%= $game->{starter} %></span>
+                <span class="text-slate-400 text-sm uppercase font-bold tracking-wide ml-2">
+                    <%= $lang eq 'en' ? 'Starts First' : 'เริ่มคนแรก' %>
+                </span>
+            </div>
+
+            <div id="timer" class="text-white tabular-nums mb-12 leading-none tracking-tighter" style="font-size: 6rem; font-weight: 900;">00:00</div>
+            
+            <div class="w-full max-w-lg flex flex-col gap-4">
+                <form action="/imposter/reveal" method="POST">
+                    <button id="revealBtn" class="hidden w-full bg-slate-800 text-red-400 border-2 border-red-500/50 hover:border-red-500 animate-pulse game-btn">
+                        REVEAL IMPOSTER
+                    </button>
+                </form>
+
+                <form action="/imposter/end_game_early" method="POST">
+                    <button class="w-full text-slate-500 hover:text-white font-bold transition-colors py-4 rounded-xl border-2 border-transparent hover:border-slate-700 bg-transparent" style="font-size: 1rem;">
+                        End Game Early
+                    </button>
+                </form>
+            </div>
+        </div>
+        <script>
+            // Initialize timer via external JS function
+            document.addEventListener('DOMContentLoaded', function() {
+                startTimer(<%= $game->{timer_seconds} %>);
+            });
+        </script>
+
+    <% } elsif ($game->{status} eq 'finished') { %>
+        <div class="flex-1 flex flex-col items-center justify-center w-full max-w-2xl mx-auto pb-10">
+            <div class="bg-slate-800 border-2 border-slate-700 rounded-3xl w-full text-center shadow-2xl relative overflow-hidden p-8">
+                <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-500 to-purple-600"></div>
+                
+                <!-- IMAGE DISPLAY IN RESULTS -->
+                <% if ($game->{image_url}) { %>
+                    <div class="mt-4 mb-6">
+                        <img src="<%= $game->{image_url} %>?t=<%= time() %>" 
+                             alt="Secret Word Visual" 
+                             class="mx-auto rounded-2xl shadow-2xl border-4 border-slate-700/50 max-w-full h-auto object-cover"
+                             style="max-height: 350px; width: auto;">
+                    </div>
+                <% } %>
+                
+                <p class="text-slate-400 uppercase mb-4 mt-2 font-bold">The Imposter Was</p>
+                <h2 class="text-white mb-8 text-5xl font-black"><%= $game->{imposter} %></h2>
+                <div class="bg-slate-900/50 rounded-xl mb-8 border border-slate-700/50 p-4">
+                    <p class="text-slate-500 uppercase mb-2 text-sm font-bold">The Secret Word Was</p>
+                    <div class="flex flex-col gap-1">
+                        <p class="font-mono text-sky-400 uppercase text-3xl font-black"><%= $game->{word_data}->{en}->{word} %></p>
+                        <p class="font-mono text-sky-600 uppercase text-xl font-bold"><%= $game->{word_data}->{th}->{word} %></p>
+                    </div>
+                </div>
+                <form action="/imposter/play_again" method="POST"><button class="w-full bg-[#8b5cf6] text-white shadow-lg mb-4 game-btn">Play Again</button></form>
+                <form action="/imposter/clear_lobby" method="POST"><button class="text-slate-500 hover:text-white font-bold" style="background:none; border:none; padding:1rem;">New Group / Clear Players</button></form>
+            </div>
+        </div>
+    <% } %>
+</div>

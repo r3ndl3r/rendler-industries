@@ -1,0 +1,164 @@
+/* /public/css/connect4.css */
+
+:root {
+    --bg-color: #0f172a;       /* slate-900 */
+    --card-bg: rgba(30, 41, 59, 0.7); /* slate-800 + blur */
+    --text-primary: #f8fafc;   /* slate-50 */
+    --text-secondary: #94a3b8; /* slate-400 */
+    --accent-color: #0ea5e9;   /* sky-500 */
+    
+    /* UPDATED COLORS */
+    --p1-color: #ef4444;       /* Red-500 */
+    --p2-color: #3b82f6;       /* Blue-500 */
+    
+    --board-color: #1e3a8a;    /* blue-900 */
+    --slot-empty: #0f172a;     /* slate-900 */
+    --glass-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+}
+
+.game-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    padding: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* --- Status Card --- */
+.status-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1.5rem 3rem;
+    text-align: center;
+    box-shadow: var(--glass-shadow);
+    width: 100%;
+    max-width: 500px;
+}
+
+.status-text {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: -0.025em;
+}
+
+.sub-text {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-top: 0.5rem;
+    font-family: monospace;
+}
+
+/* --- The Board --- */
+.board-container {
+    padding: 15px;
+    background: rgba(30, 58, 138, 0.3);
+    border-radius: 1.5rem;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    background: var(--board-color);
+    padding: 15px;
+    border-radius: 1rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.cell {
+    width: 50px;
+    height: 50px;
+    background-color: var(--slot-empty);
+    border-radius: 50%;
+
+    border: 2px solid transparent; 
+    box-sizing: border-box; 
+    
+    cursor: default;
+    transition: background-color 0.2s, border-color 0.2s;
+    box-shadow: inset 0 3px 6px rgba(0,0,0,0.6);
+    position: relative;
+    
+    transform: none !important;
+}
+
+.cell.valid-move {
+    cursor: pointer;
+}
+.cell.valid-move:hover {
+    background-color: rgba(255,255,255,0.15);
+    border-color: rgba(255,255,255,0.3);
+}
+
+/* Player Chips */
+.cell.p1 { 
+    background-color: var(--p1-color); 
+    box-shadow: inset 0 -4px 4px rgba(0,0,0,0.2);
+    border-color: transparent;
+}
+.cell.p2 { 
+    background-color: var(--p2-color); 
+    box-shadow: inset 0 -4px 4px rgba(0,0,0,0.2);
+    border-color: transparent;
+}
+
+/* Winner Animation */
+.cell.winner {
+    animation: pulse-win 1.5s infinite;
+    border: 3px solid #fff;
+}
+
+@keyframes pulse-win {
+    0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+
+/* --- Buttons --- */
+.btn-glass {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.btn-glass:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.btn-restart {
+    background: linear-gradient(135deg, #10b981, #059669); /* Green */
+    color: white;
+    font-weight: bold;
+    border: none;
+    margin-top: 10px;
+    display: none;
+}
+.btn-restart:hover {
+    background: linear-gradient(135deg, #34d399, #10b981);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+    .game-wrapper { padding: 1rem; }
+    .cell { width: 38px; height: 38px; }
+}
