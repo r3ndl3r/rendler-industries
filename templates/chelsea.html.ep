@@ -5,29 +5,28 @@
 
 <% content_for 'head' => begin %>
 <style>
-    /* Weather Dashboard Styling
-       Features: Sticky day-nav, high-contrast typography, and color-coded intensity alerts.
-    */
+    /* Weather Dashboard Styling */
     :root {
-        --bg: #0f172a; --card: #1e293b; --border: #334155; --text: #f8fafc;
+        --bg: #0f172a; --card: #1e293b; --border: #334155;
+        --text: #f8fafc;
         --dim: #94a3b8; --accent: #38bdf8;
     }
 
     body { 
-        background: var(--bg); 
+        background: var(--bg);
         color: var(--text); 
         font-family: 'Inter', system-ui, -apple-system, sans-serif; 
         margin: 0; 
-        scroll-behavior: smooth; 
+        scroll-behavior: smooth;
     }
 
     .container { 
         max-width: 900px; 
-        margin: 0 auto; 
+        margin: 0 auto;
         padding: 15px; 
     }
 
-    /* Sticky Navigation - Centered Jump Links */
+    /* Sticky Navigation */
     .jump-nav {
         position: sticky;
         top: 0;
@@ -40,7 +39,7 @@
         gap: 8px;
         overflow-x: auto;
         white-space: nowrap;
-        justify-content: center; /* Centering for desktop */
+        justify-content: center;
         -webkit-overflow-scrolling: touch;
     }
 
@@ -58,41 +57,78 @@
 
     .jump-nav a:hover { 
         color: var(--accent); 
-        border-color: var(--accent); 
+        border-color: var(--accent);
         background: rgba(56, 189, 248, 0.1);
     }
 
     .header { 
-        display: flex; 
+        display: flex;
         justify-content: space-between; 
         align-items: center; 
         padding-bottom: 20px; 
         border-bottom: 2px solid var(--border); 
-        margin-bottom: 20px; 
+        margin-bottom: 20px;
     }
 
+    /* Day Section - Collapsible Container */
     .day-section { 
         background: var(--card); 
         border-radius: 12px; 
-        margin-bottom: 3rem; 
+        margin-bottom: 1rem;
         overflow: hidden; 
         border: 1px solid var(--border); 
-        box-shadow: 0 10px 25px rgba(0,0,0,0.4); 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
     }
 
+    /* Header is now clickable with an arrow indicator */
     .day-header { 
         background: #334155; 
-        padding: 15px 20px; 
+        padding: 15px 20px;
         font-weight: 700; 
         color: var(--accent); 
         font-size: 1.2rem; 
-        text-align: center;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+    }
+
+    /* Arrow Indicator */
+    .day-header::after {
+        content: '▼';
+        font-size: 0.8rem;
+        transition: transform 0.3s ease;
+        opacity: 0.7;
+    }
+
+    /* Rotate arrow when expanded */
+    .day-section.expanded .day-header::after {
+        transform: rotate(180deg);
+        opacity: 1;
     }
 
     table { width: 100%; border-collapse: collapse; margin: 0; }
 
+    /* Collapsed state: Hide table by default */
+    .day-section table {
+        display: none;
+    }
+
+    /* Expanded state: Show table */
+    .day-section.expanded table {
+        display: table;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
     th { 
-        background: rgba(15, 23, 42, 0.5); 
+        background: rgba(15, 23, 42, 0.5);
         color: var(--dim); 
         font-size: 0.65rem; 
         text-transform: uppercase; 
@@ -101,16 +137,15 @@
     }
 
     td { 
-        padding: 14px 8px; 
+        padding: 14px 8px;
         border-bottom: 1px solid var(--border); 
         text-align: center; 
         font-size: 0.95rem; 
     }
 
-    /* Row Highlighting */
     tr:hover { background: rgba(255, 255, 255, 0.02); }
 
-    /* Condition Coloring (Defined in Controller helpers) */
+    /* Condition Coloring */
     .wind-vlow { color: #94a3b8; } 
     .wind-low { color: #4ade80; } 
     .wind-med { color: #fbbf24; } 
@@ -134,6 +169,50 @@
         h1 { font-size: 1.5rem; }
     }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        
+        // 1. Toggle visibility when clicking the Day Header
+        document.querySelectorAll('.day-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const section = header.parentElement;
+                section.classList.toggle('expanded');
+            });
+        });
+
+        // 2. Handle Jump Links: Expand target section and smooth scroll
+        document.querySelectorAll('.jump-nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href');
+                const targetSection = document.querySelector(targetId);
+
+                if (targetSection) {
+                    // Expand the target day
+                    targetSection.classList.add('expanded');
+                    
+                    // Smooth scroll to it
+                    targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    
+                    // Update URL hash manually
+                    history.pushState(null, null, targetId);
+                }
+            });
+        });
+
+        // 3. Handle Deep Linking (e.g. refresh on specific day)
+        if (window.location.hash) {
+            const targetSection = document.querySelector(window.location.hash);
+            if (targetSection) {
+                targetSection.classList.add('expanded');
+                setTimeout(() => {
+                    targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+        }
+    });
+</script>
 <% end %>
 
 <div class="container">
