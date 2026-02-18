@@ -1,0 +1,96 @@
+/* /public/css/auth.css */
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #000000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+.auth-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    padding: 30px;
+    width: 100%;
+    max-width: 350px;
+    color: #333;
+}
+
+.auth-header {
+    text-align: center;
+    color: #333;
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1rem;
+}
+
+.button-container {
+    text-align: center;
+    margin-top: 25px;
+}
+
+input[type="submit"] {
+    padding: 12px 25px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    width: 100%;
+    transition: background-color 0.2s;
+}
+
+input[type="submit"]:hover {
+    background-color: #45a049;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.9rem;
+}
+
+.auth-footer a {
+    color: #4CAF50;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Error Message Box (if needed) */
+.alert {
+    padding: 10px;
+    background-color: #f44336;
+    color: white;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.9rem;
+}

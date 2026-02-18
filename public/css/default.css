@@ -1,0 +1,40 @@
+/* /public/css/default.css */
+
+:root {
+    --bg-color: #111827;
+    --text-color: #e5e7eb;
+    --font-main: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-main);
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+}
+
+a {
+    color: #60a5fa;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: #93c5fd;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+}
+::-webkit-scrollbar-track {
+    background: #1f2937;
+}
+::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}

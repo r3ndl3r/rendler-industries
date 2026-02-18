@@ -1,0 +1,143 @@
+%# /templates/uno/game.html.ep
+
+% layout 'default';
+% title 'UNO Online';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/uno/game.css">
+    <script src="/js/uno.js"></script>
+<% end %>
+
+<% if ($game->{status} eq 'waiting') { %>
+    <div class="waiting-room">
+        <h1>Waiting Lobby</h1>
+        <p class="text-muted">Both players must click Ready to start.</p>
+        
+        <div class="player-card">
+            <span class="player-name"><%= $game->{p1_name} %> (Host)</span>
+            <span class="status-badge <%= $game->{p1_ready} ? 'status-ready' : 'status-waiting' %>">
+                <%= $game->{p1_ready} ? 'READY' : 'NOT READY' %>
+            </span>
+        </div>
+        
+        <div class="player-card">
+            <span class="player-name"><%= $game->{p2_name} %></span>
+            <% if ($game->{player2_id}) { %>
+                <span class="status-badge <%= $game->{p2_ready} ? 'status-ready' : 'status-waiting' %>">
+                    <%= $game->{p2_ready} ? 'READY' : 'NOT READY' %>
+                </span>
+            <% } else { %>
+                <span class="status-badge status-waiting">WAITING FOR JOIN...</span>
+            <% } %>
+        </div>
+        
+        <% if ($game->{player2_id}) { %>
+            <% my $am_i_ready = ($my_id == $game->{player1_id}) ? $game->{p1_ready} : $game->{p2_ready}; %>
+            <button id="btn-toggle-ready" class="btn-ready <%= $am_i_ready ? 'is-ready' : 'not-ready' %>" onclick="toggleReady()">
+                <%= $am_i_ready ? 'CANCEL READY' : 'I AM READY!' %>
+            </button>
+        <% } else { %>
+            <div style="margin-top: 2rem; color: #94a3b8; font-style: italic;">
+                Waiting for an opponent to join...
+            </div>
+        <% } %>
+    </div>
+    
+    <script>
+        function toggleReady() {
+            fetch('/uno/ready', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'id=<%= $game->{id} %>'
+            })
+            .then(res => res.json())
+            .then(() => window.location.reload());
+        }
+        
+        setInterval(() => {
+            fetch('/uno/play/<%= $game->{id} %>', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'active' || (data.p2_id && <%= $game->{player2_id} || 0 %> === 0)) {
+                    window.location.reload();
+                }
+            });
+        }, 3000);
+    </script>
+<% } else { %>
+    <div id="game-config" data-game-id="<%= $game->{id} %>" data-my-id="<%= $my_id %>" data-my-role="<%= $player_role %>"></div>
+    
+    <div class="game-container">
+        <!-- Top Player Panel -->
+        <div class="player-panel opponent-panel" id="opponent-panel">
+            <div class="panel-content">
+                <div class="player-avatar">👤</div>
+                <div class="player-details">
+                    <div class="player-name" id="opp-name"><%= $my_id == $game->{player1_id} ? $game->{p2_name} : $game->{p1_name} %></div>
+                    <div class="card-count" id="opp-card-count">0 Cards</div>
+                </div>
+            </div>
+            <div class="turn-indicator">
+                <span class="turn-dot"></span>
+                <span class="turn-text">Their Turn</span>
+            </div>
+        </div>
+        
+        <!-- Game Board -->
+        <div class="game-board">
+            <div id="opp-hand" class="opponent-hand"></div>
+            
+            <div class="table-area">
+                <div class="deck-area">
+                    <div id="draw-deck" class="deck-pile">
+                        <div class="deck-card">
+                            <span class="deck-text">DRAW</span>
+                        </div>
+                    </div>
+                    <div class="deck-label">Draw Pile</div>
+                </div>
+                
+                <div class="discard-area">
+                    <div id="discard-pile" class="discard-pile"></div>
+                    <div class="current-color" id="current-color">
+                        <span class="color-label">Color:</span>
+                        <span class="color-dot" id="color-dot"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="my-hand" class="my-hand"></div>
+        </div>
+        
+        <!-- Bottom Player Panel (You) -->
+        <div class="player-panel my-panel active" id="my-panel">
+            <div class="panel-content">
+                <div class="player-avatar">⭐</div>
+                <div class="player-details">
+                    <div class="player-name">You</div>
+                    <div class="card-count" id="my-card-count">0 Cards</div>
+                </div>
+            </div>
+            <div class="turn-indicator">
+                <span class="turn-dot"></span>
+                <span class="turn-text">Your Turn</span>
+            </div>
+        </div>
+        
+        <!-- Status Messages -->
+        <div class="status-toast" id="status-toast"></div>
+    </div>
+    
+    <!-- Color Picker Modal -->
+    <div id="color-modal" class="color-modal">
+        <h2 style="color: white; margin-bottom: 20px;">Choose a Color</h2>
+        <div class="color-options">
+            <button class="color-btn" style="background: var(--uno-red);" onclick="pickColor('red')"></button>
+            <button class="color-btn" style="background: var(--uno-blue);" onclick="pickColor('blue')"></button>
+            <button class="color-btn" style="background: var(--uno-green);" onclick="pickColor('green')"></button>
+            <button class="color-btn" style="background: var(--uno-yellow);" onclick="pickColor('yellow')"></button>
+        </div>
+    </div>
+<% } %>

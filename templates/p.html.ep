@@ -1,0 +1,112 @@
+%# /templates/p.html.ep
+
+% layout 'default';
+% title 'Phone Numbers';
+
+<% content_for head => begin %>
+    <style>
+        body {
+            background-color: #121212;
+            background-image: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000000 100%);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .phone-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 300;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #fff;
+        }
+
+        .contact-card {
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 20px 25px;
+            margin-bottom: 15px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .contact-card:hover {
+            background: rgba(40, 40, 40, 0.7);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6);
+        }
+
+        .contact-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #64b5f6;
+            letter-spacing: 0.5px;
+        }
+
+        .contact-card a {
+            color: #69f0ae;
+            text-decoration: none;
+            font-size: 1.3rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            padding: 8px 15px;
+            border-radius: 8px;
+        }
+
+        .contact-card a:hover {
+            color: #fff;
+            background: rgba(105, 240, 174, 0.2);
+            text-shadow: 0 0 10px rgba(105, 240, 174, 0.6);
+        }
+
+        @media (max-width: 600px) {
+            .contact-card {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+            
+            .contact-name {
+                font-size: 1.2rem;
+            }
+            
+            .contact-card a {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+<% end %>
+
+<div class="phone-container">
+    <h1>📱 Phone Numbers</h1>
+    
+    <div class="contact-card">
+        <div class="contact-name">👨 DAD</div>
+        <a href="tel:0422069346">0422 069 346</a>
+    </div>
+
+    <div class="contact-card">
+        <div class="contact-name">👩 MUM</div>
+        <a href="tel:0452432426">0452 432 426</a>
+    </div>
+
+    <div class="contact-card">
+        <div class="contact-name">👧 ANDREA</div>
+        <a href="tel:0493165694">0493 165 694</a>
+    </div>
+
+    <div class="contact-card">
+        <div class="contact-name">🧒 NICKY</div>
+        <a href="tel:0493165670">0493 165 670</a>
+    </div>
+</div>

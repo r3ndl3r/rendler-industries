@@ -1,0 +1,27 @@
+%# templates/contact.html.ep
+% layout 'default';
+% title 'Contacts';
+
+<% content_for 'head' => begin %>
+    <link rel="stylesheet" href="/css/contact.css">
+    <script src="/js/contact.js"></script>
+<% end %>
+
+<div class="contact-container">
+    <div class="grid">
+        <% 
+            my %services = (
+                'discord.png'   => { id => 7,  url => 'https://discord.com/users/497218154586701834', name => 'discord' },
+                'email.png'     => { id => 8,  url => 'mailto:rendler@rendler.org', name => 'email' },
+                'line.jpg'      => { id => 9,  url => 'https://line.me/ti/p/rendler', name => 'line' },
+                'messenger.png' => { id => 10, url => 'https://m.me/rendler', name => 'messenger' }
+            );
+        %>
+        <% for my $filename (@$qr_images) { %>
+            <% my $service = $services{$filename}; %>
+            <a href="<%= $service->{url} %>">
+                <img src="/files/serve/<%= $service->{id} %>" alt="<%= $service->{name} %>">
+            </a>
+        <% } %>
+    </div>
+</div>

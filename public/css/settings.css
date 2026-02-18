@@ -1,0 +1,190 @@
+/* /public/css/settings.css */
+
+body {
+    background-color: #0f172a;
+    margin: 0;
+    min-height: 100vh;
+}
+
+.settings-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    font-size: 2.5rem;
+    font-weight: 300;
+    text-align: center;
+    margin-bottom: 40px;
+    color: #ffffff;
+}
+
+.settings-section {
+    background: rgba(30, 30, 30, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+
+.settings-section h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #64b5f6;
+}
+
+.section-description {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 25px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 80px 12px 14px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    font-family: 'Courier New', monospace;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #64b5f6;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.form-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-toggle {
+    position: absolute;
+    right: 8px;
+    top: 36px;
+    background: rgba(100, 181, 246, 0.2);
+    border: 1px solid rgba(100, 181, 246, 0.4);
+    color: #64b5f6;
+    padding: 6px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.btn-toggle:hover {
+    background: rgba(100, 181, 246, 0.3);
+    border-color: #64b5f6;
+}
+
+.btn-save {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #1976d2, #0d47a1);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 12px rgba(21, 101, 192, 0.4);
+    margin-top: 10px;
+}
+
+.btn-save:hover {
+    box-shadow: 0 6px 16px rgba(21, 101, 192, 0.6);
+}
+
+.btn-save:active {
+    transform: scale(0.98);
+}
+
+.form-info {
+    background: rgba(100, 181, 246, 0.1);
+    border-left: 4px solid #64b5f6;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.form-warning {
+    background: rgba(255, 152, 0, 0.1);
+    border-left: 4px solid #ff9800;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    color: #ffb74d;
+}
+
+.alert {
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    font-size: 0.95rem;
+    text-align: center;
+}
+
+.alert-success {
+    background: rgba(76, 175, 80, 0.2);
+    border: 1px solid rgba(76, 175, 80, 0.5);
+    color: #a5d6a7;
+}
+
+.alert-error {
+    background: rgba(244, 67, 54, 0.2);
+    border: 1px solid rgba(244, 67, 54, 0.5);
+    color: #ef9a9a;
+}
+
+@media (max-width: 768px) {
+    .settings-container {
+        padding: 15px;
+    }
+    
+    h1 {
+        font-size: 2rem;
+        margin-bottom: 30px;
+    }
+    
+    .settings-section {
+        padding: 20px;
+    }
+    
+    .form-input {
+        padding-right: 70px;
+    }
+    
+    .btn-toggle {
+        padding: 5px 12px;
+        font-size: 0.8rem;
+    }
+}

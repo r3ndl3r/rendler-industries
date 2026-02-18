@@ -1,0 +1,97 @@
+/* /public/css/calendar/upcoming.css */
+
+/* =========================================
+   WIDGET CONTAINER
+   ========================================= */
+
+.upcoming-events-section {
+    margin-top: 20px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+}
+
+/* Widget Header ("Upcoming Events") */
+.upcoming-events-section h3 {
+    margin: 0 0 15px 0;
+    color: #222;
+    font-size: 1.2em;
+    border-bottom: 2px solid #3788d8; /* Blue underline */
+    padding-bottom: 8px;
+}
+
+/* List Wrapper */
+.upcoming-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Space between event cards */
+}
+
+/* =========================================
+   EVENT CARDS
+   ========================================= */
+
+.upcoming-event-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: #f9f9f9;
+    border-radius: 5px;
+    
+    /* Left border serves as a color indicator fallback */
+    border-left: 4px solid #3788d8; 
+    
+    transition: background 0.2s;
+    cursor: pointer;
+}
+
+.upcoming-event-item:hover {
+    background: #f0f0f0; /* Slight darken on hover */
+}
+
+/* Circular Color Dot */
+.upcoming-event-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 12px;
+    flex-shrink: 0; /* Prevents shrinking if title is long */
+}
+
+/* =========================================
+   CARD CONTENT DETAILS
+   ========================================= */
+
+.upcoming-event-details {
+    flex: 1; /* Take up remaining width */
+}
+
+.upcoming-event-title {
+    font-weight: bold;
+    color: #222;
+    margin-bottom: 4px;
+}
+
+.upcoming-event-datetime {
+    font-size: 0.9em;
+    color: #444;
+    margin-bottom: 2px;
+}
+
+/* Countdown Timer (e.g., "In 2 hours") */
+.upcoming-event-countdown {
+    font-size: 0.85em;
+    color: #3788d8; /* Blue highlight */
+    font-weight: bold;
+}
+
+/* =========================================
+   EMPTY STATE
+   ========================================= */
+
+.upcoming-empty {
+    text-align: center;
+    padding: 30px;
+    color: #666;
+}

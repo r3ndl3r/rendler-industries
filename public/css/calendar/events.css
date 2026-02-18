@@ -1,0 +1,63 @@
+/* /public/css/calendar/events.css */
+
+/* =========================================
+   CALENDAR GRID EVENT BARS
+   (The colored bars inside the month/week view cells)
+   ========================================= */
+
+.event-item {
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-size: 0.7em; /* Compact text to fit small cells */
+    cursor: pointer;
+    color: white; /* Text is always white on colored background */
+    transition: opacity 0.2s;
+    line-height: 1.3;
+}
+
+/* Visual feedback when hovering over an event */
+.event-item:hover {
+    opacity: 0.8;
+}
+
+/* Bold text for All Day events to make them stand out */
+.event-item.all-day {
+    font-weight: bold;
+}
+
+/* =========================================
+   EVENT CONTENT LAYOUT
+   ========================================= */
+
+/* Flex container to stack Title and Attendees vertically */
+.event-item-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Title text handling */
+.event-title {
+    overflow: hidden;
+    text-overflow: ellipsis; /* Adds "..." if text is too long */
+    white-space: nowrap;     /* Forces text to stay on one line */
+}
+
+/* Container for small attendee pills inside the event bar */
+.event-attendees {
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+}
+
+/* Only fade events if they are actually in the past */
+.calendar-day.past-day .event-item {
+    opacity: 0.5;
+    filter: grayscale(0.8);
+}
+
+/* Ensure hovered past events become readable */
+.calendar-day.past-day .event-item:hover {
+    opacity: 1;
+    filter: none;
+}

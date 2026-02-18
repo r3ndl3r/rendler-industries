@@ -1,0 +1,109 @@
+%# /templates/quick.html.ep
+
+% layout 'default';
+% title 'Quick Access';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/quick.css">
+<% end %>
+
+<div class="quick-container">
+    <div class="header-bar">
+        <h1>🚀 Quick Access</h1>
+    </div>
+
+    <div class="tile-grid">
+        <% if (is_logged_in()) { %>
+            <a href="/calendar" class="tile">
+                <div class="icon">📅</div>
+                <div class="label">Calendar</div>
+            </a>
+            <a href="/shopping" class="tile">
+                <div class="icon">🛒</div>
+                <div class="label">Shopping</div>
+            </a>
+            <a href="<%= is_admin() ? '/timers/manage' : '/timers' %>" class="tile">
+                <div class="icon">⏱️</div>
+                <div class="label">Timers</div>
+            </a>
+            <a href="/birthdays" class="tile">
+                <div class="icon">🎂</div>
+                <div class="label">Birthdays</div>
+            </a>
+            <a href="/swear" class="tile">
+                <div class="icon">🤬</div>
+                <div class="label">Swear Jar</div>
+            </a>
+            <a href="/imposter" class="tile">
+                <div class="icon">🎭</div>
+                <div class="label">Imposter</div>
+            </a>
+            <a href="/uno/lobby" class="tile">
+                <div class="icon">🃏</div>
+                <div class="label">UNO</div>
+            </a>
+            <a href="/connect4/lobby" class="tile">
+                <div class="icon">🔴</div>
+                <div class="label">Connect 4</div>
+            </a>
+            <a href="/chelsea" class="tile">
+                <div class="icon">🏖️</div>
+                <div class="label">Chelsea Weather</div>
+            </a>
+        <% } %>
+
+            <a href="/p" class="tile">
+                <div class="icon">📞</div>
+                <div class="label">Phone Book</div>
+            </a>
+            <a href="/quiz" class="tile">
+                <div class="icon">🦘</div>
+                <div class="label">Citizenship</div>
+            </a>
+
+
+        <% unless (is_logged_in()) { %>
+            <a href="/login" class="tile login">
+                <div class="icon">🔑</div>
+                <div class="label">Login</div>
+            </a>
+            <a href="/register" class="tile register">
+                <div class="icon">📝</div>
+                <div class="label">Register</div>
+            </a>
+        <% } %>
+
+
+        <% if (is_admin()) { %>
+            <div class="separator"></div>
+            
+            <a href="/copy" class="tile admin">
+                <div class="icon">📋</div>
+                <div class="label">Copy / Paste</div>
+            </a>
+            <a href="/files" class="tile admin">
+                <div class="icon">📁</div>
+                <div class="label">Files</div>
+            </a>
+            <a href="/users" class="tile admin">
+                <div class="icon">👥</div>
+                <div class="label">Users</div>
+            </a>
+            <a href="/settings" class="tile admin">
+                <div class="icon">⚙️</div>
+                <div class="label">Settings</div>
+            </a>
+            <button class="tile admin danger" onclick="startRestartSequence(event)">
+                <div class="icon">⚠️</div>
+                <div class="label">Restart</div>
+            </button>
+        <% } %>
+        
+        <% if (is_logged_in()) { %>
+            <a href="/logout" class="tile logout">
+                <div class="icon">🚪</div>
+                <div class="label">Logout</div>
+            </a>
+        <% } %>
+    </div>
+</div>

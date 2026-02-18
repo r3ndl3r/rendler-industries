@@ -1,0 +1,57 @@
+%# /templates/files/upload.html.ep
+
+% layout 'default';
+% title '📤 Upload File';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/upload.css">
+    <script defer src="/js/files.js"></script>
+% end
+
+<div class="files-container">
+    <h1>📤 Upload New File</h1>
+
+    <div class="back-link">
+        <a href="/files">← Back to Files</a>
+    </div>
+
+    <div class="section upload-section">
+        <h2>File Upload</h2>
+        <form method="POST" action="/files" enctype="multipart/form-data" id="uploadForm">
+            <div class="form-group">
+                <label for="file">Choose File (Max 1GB)</label>
+                <div class="file-drop-zone" id="dropZone">
+                    <input type="file" id="file" name="file" required>
+                    <p class="drop-text">📁 Drag & drop file here or click to browse</p>
+                    <p class="file-name" id="fileName"></p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description (Optional)</label>
+                <textarea id="description" name="description" rows="3" placeholder="Add a description for this file..."></textarea>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" name="admin_only" id="admin_only">
+                <label for="admin_only">
+                    🔒 Admin Only Access
+                </label>
+            </div>
+
+            <div class="form-group" id="userAccessGroup">
+                <label>Limit Access to Specific Users (Optional)</label>
+                <select name="allowed_users" multiple size="5" id="allowedUsers">
+                    <% for my $user (@{stash('users')}) { %>
+                        <% if ($user->{status} eq 'approved') { %>
+                            <option value="<%= $user->{username} %>"><%= $user->{username} %></option>
+                        <% } %>
+                    <% } %>
+                </select>
+                <small>Hold Ctrl/Cmd to select multiple users. Leave empty for public access (anyone with link).</small>
+            </div>
+
+            <button type="submit" class="btn-upload">📤 Upload File</button>
+        </form>
+    </div>
+</div>

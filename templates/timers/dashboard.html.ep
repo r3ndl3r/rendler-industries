@@ -1,0 +1,127 @@
+<%# /templates/timers/dashboard.html.ep %>
+% layout 'default';
+% title 'My Timers';
+
+<% content_for 'head' => begin %>
+    <link rel="stylesheet" href="/css/timers/base.css">
+    <link rel="stylesheet" href="/css/timers/dashboard.css">
+    <link rel="stylesheet" href="/css/timers/toast.css">
+    <link rel="stylesheet" href="/css/timers/responsive.css">
+    <script src="/js/timers/utils.js"></script>
+    <script src="/js/timers/dashboard.js"></script>
+<% end %>
+
+<div class="timers-container">
+    % if (@$timers == 0) {
+        <div class="no-timers">
+            <p>📱 You don't have any timers set up yet.</p>
+            <p>Contact an admin to create timers for you.</p>
+        </div>
+    % } else {
+        <div class="timers-grid">
+            % for my $timer (@$timers) {
+                <div class="timer-card" data-timer-id="<%= $timer->{id} %>" data-status="<%= $timer->{status_color} %>">
+                    <div class="timer-card-header">
+                        <div class="timer-icon <%= lc($timer->{category}) %>">
+                            % if ($timer->{category} eq 'Computer') {
+                                💻
+                            % } elsif ($timer->{category} eq 'Phone') {
+                                📱
+                            % } elsif ($timer->{category} eq 'Tablet') {
+                                📱
+                            % } elsif ($timer->{category} eq 'Gaming Console') {
+                                🎮
+                            % } elsif ($timer->{category} eq 'TV') {
+                                📺
+                            % }
+                        </div>
+                        <div class="timer-title-group">
+                            <h3 class="timer-name"><%= $timer->{name} %></h3>
+                            <span class="timer-category"><%= $timer->{category} %></span>
+                        </div>
+                    </div>
+
+                    <div class="timer-status-bar">
+                        <div class="status-fill <%= $timer->{status_color} %>" 
+                             style="width: <%= $timer->{limit_seconds} > 0 ? ($timer->{elapsed_seconds} / $timer->{limit_seconds} * 100) : 0 %>%">
+                        </div>
+                    </div>
+
+                    <div class="timer-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Time Used:</span>
+                            <span class="stat-value elapsed-time" data-seconds="<%= $timer->{elapsed_seconds} %>">
+                                <%= sprintf("%d:%02d:%02d", int($timer->{elapsed_seconds} / 3600), int(($timer->{elapsed_seconds} % 3600) / 60), $timer->{elapsed_seconds} % 60) %>
+                            </span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Remaining:</span>
+                            <span class="stat-value remaining-time <%= $timer->{remaining_seconds} <= 0 ? 'expired' : '' %>" data-seconds="<%= $timer->{remaining_seconds} %>">
+                                <% if ($timer->{remaining_seconds} > 0) { %>
+                                    <%= sprintf('%02d:%02d:%02d', int($timer->{remaining_seconds} / 3600), int(($timer->{remaining_seconds} % 3600) / 60), $timer->{remaining_seconds} % 60) %>
+                                <% } elsif ($timer->{remaining_seconds} < 0) { %>
+                                    <span style="color: #ef4444;">-<%= sprintf('%02d:%02d', int(abs($timer->{remaining_seconds}) / 3600), int((abs($timer->{remaining_seconds}) % 3600) / 60)) %> OVER</span>
+                                <% } else { %>
+                                    EXPIRED
+                                <% } %>
+                            </span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Daily Limit:</span>
+                            <span class="stat-value">
+                                <%= int($timer->{limit_seconds} / 60) %> minutes
+                            </span>
+                        </div>
+                        % if ($timer->{bonus_seconds} && $timer->{bonus_seconds} > 0) {
+                            <div class="stat-row bonus-indicator">
+                                <span class="stat-label">🎁 Bonus Time:</span>
+                                <span class="stat-value">
+                                    +<%= int($timer->{bonus_seconds} / 60) %> minutes
+                                </span>
+                            </div>
+                        % }
+                    </div>
+
+                    <div class="timer-controls">
+                        % if ($timer->{is_running}) {
+                            <button class="btn btn-pause" data-timer-id="<%= $timer->{id} %>">⏸️ Pause</button>
+                        % } elsif ($timer->{is_paused}) {
+                            <button class="btn btn-pause paused" data-timer-id="<%= $timer->{id} %>">▶️ Resume</button>
+                        % } else {
+                            % if ($timer->{remaining_seconds} > 0) {
+                                <button class="btn btn-start" data-timer-id="<%= $timer->{id} %>">▶️ Start</button>
+                            % } else {
+                                <button class="btn btn-start" data-timer-id="<%= $timer->{id} %>" disabled>▶️ Start</button>
+                            % }
+                        % }
+                    </div>
+
+                    % if ($timer->{is_running}) {
+                        <div class="running-indicator">
+                            <span class="pulse-dot"></span>
+                            RUNNING
+                        </div>
+                    % }
+
+                    % if ($timer->{remaining_seconds} <= 0) {
+                        <div class="expired-overlay">
+                            <div class="expired-message">
+                                <span class="expired-icon">🚫</span>
+                                <p>Time's Up!</p>
+                                <small>Ask an admin for more time</small>
+                            </div>
+                        </div>
+                    % }
+                </div>
+            % }
+        </div>
+    % }
+</div>
+
+<script>
+    // Initialize timer dashboard with real-time updates
+    TimerDashboard.init({
+        updateInterval: 10000, // Poll every 10 seconds
+        statusEndpoint: '/timers/api/status'
+    });
+</script>

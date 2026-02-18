@@ -1,0 +1,6 @@
+%# /templates/sus.html.ep
+% layout 'default';
+% title 'Sus';
+<div style="display:flex; justify-content:center; align-items:center; height:80vh; color:white; font-size: 2rem;">
+    Thanks for the IP, bye.
+</div>

@@ -1,0 +1,144 @@
+<%# /templates/calendar/calendar.html.ep %>
+
+% layout 'default';
+% title 'Family Calendar';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/calendar/calendar.css">
+    <script src="/js/calendar/calendar.js"></script>
+<% end %>
+
+<div class="calendar-container">
+    <div class="calendar-header">
+        <div class="calendar-controls">
+            <button id="prevPeriod" class="nav-btn">◀</button>
+            <h2 id="currentPeriod">Loading...</h2>
+            <button id="nextPeriod" class="nav-btn">▶</button>
+        </div>
+        
+        <div class="calendar-actions">
+            <button id="todayBtn" class="action-btn">Today</button>
+            <div class="view-toggle">
+                <button class="view-btn <%= $view eq 'month' ? 'active' : '' %>" data-view="month">Month</button>
+                <button class="view-btn <%= $view eq 'week' ? 'active' : '' %>" data-view="week">Week</button>
+                <button class="view-btn <%= $view eq 'day' ? 'active' : '' %>" data-view="day">Day</button>
+            </div>
+            <button id="addEventBtn" class="action-btn primary">+ Add Event</button>
+            % if ($c->is_admin) {
+                <a href="/calendar/manage" class="action-btn">Manage</a>
+            % }
+        </div>
+    </div>
+
+    <div class="calendar-filters">
+        <label>Filter by Category:</label>
+        <select id="categoryFilter">
+            <option value="">All Categories</option>
+            % for my $cat (@$categories) {
+                <option value="<%= $cat %>"><%= $cat %></option>
+            % }
+        </select>
+    </div>
+
+    <div id="calendarView" class="calendar-view">
+        <div class="calendar-grid"></div>
+    </div>
+    
+    <div class="upcoming-events-section">
+        <h3>Upcoming Events</h3>
+        <div id="upcomingEventsList" class="upcoming-list">
+        </div>
+    </div>
+</div>
+
+<div id="eventModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modalTitle">Add Event</h2>
+        
+        <form id="eventForm">
+            <input type="hidden" id="eventId" name="id">
+            
+            <div class="form-group">
+                <label for="eventTitle">Title *</label>
+                <input type="text" id="eventTitle" name="title" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="eventDescription">Description</label>
+                <textarea id="eventDescription" name="description" rows="3"></textarea>
+            </div>
+            
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="eventAllDay" name="all_day"> All-day event
+                </label>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="eventStartDate">Start Date *</label>
+                    <input type="date" id="eventStartDate" name="start_date" required>
+                </div>
+                <div class="form-group" id="startTimeGroup">
+                    <label for="eventStartTime">Start Time</label>
+                    <input type="time" id="eventStartTime" name="start_time">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="eventEndDate">End Date *</label>
+                    <input type="date" id="eventEndDate" name="end_date" required>
+                </div>
+                <div class="form-group" id="endTimeGroup">
+                    <label for="eventEndTime">End Time</label>
+                    <input type="time" id="eventEndTime" name="end_time">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="eventCategory">Category</label>
+                    <input type="text" id="eventCategory" name="category" list="categoryList">
+                    <datalist id="categoryList">
+                        % for my $cat (@$categories) {
+                            <option value="<%= $cat %>">
+                        % }
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label for="eventColor">Color</label>
+                    <input type="color" id="eventColor" name="color" value="#3788d8">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="eventAttendees">Attendees</label>
+                <div class="attendees-select-container">
+                    % for my $user (@$users) {
+                        <label class="attendee-checkbox">
+                            <input type="checkbox" name="attendees[]" value="<%= $user->{id} %>" class="attendee-checkbox-input">
+                            <span><%= $user->{display_name} || $user->{username} %></span>
+                        </label>
+                    % }
+                </div>
+            </div>
+            
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
+            <button type="button" class="btn-danger" id="deleteEventBtn" style="display: none;">Delete</button>
+            <button type="button" class="btn-secondary" id="cloneEventBtn" style="display: none;">Clone</button>
+            <button type="submit" class="btn-primary">Save</button>
+        </div>
+        </form>
+    </div>
+</div>
+
+<div id="eventDetailsModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <div id="eventDetailsContent">
+        </div>
+    </div>
+</div>

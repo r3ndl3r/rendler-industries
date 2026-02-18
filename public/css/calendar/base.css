@@ -1,0 +1,59 @@
+/* /public/css/calendar/base.css */
+
+/* =========================================
+   MAIN LAYOUT CONTAINER
+   ========================================= */
+.calendar-container {
+    /* Center the calendar on large screens */
+    max-width: 1400px;
+    margin: 0 auto;
+    
+    /* Basic spacing around the edges */
+    padding: 5px;
+}
+
+/* =========================================
+   HEADER & CONTROLS SECTION
+   ========================================= */
+.calendar-header {
+    /* Stack controls and title vertically */
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    
+    /* Separation from the calendar grid */
+    margin-bottom: 6px;
+}
+
+.calendar-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* Period Title (e.g., "January 2026") */
+.calendar-controls h2 {
+    /* Reset defaults */
+    margin: 0;
+    
+    /* Text styling */
+    color: white;
+    font-size: 1.1em;
+    text-align: center;
+    
+    /* Ensure the title has enough space so buttons don't jump around */
+    min-width: 180px; 
+}
+
+/* =========================================
+   MAIN VIEWPORT (Grid Wrapper)
+   ========================================= */
+.calendar-view {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    
+    /* Clip corners to match border-radius */
+    overflow: hidden; 
+}

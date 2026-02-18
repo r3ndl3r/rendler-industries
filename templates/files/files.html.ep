@@ -1,0 +1,127 @@
+%# templates/files/files.html.ep
+
+% layout 'default';
+% title '📁 Files';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/files.css">
+    <script defer src="/js/files.js"></script>
+% end
+
+<div class="files-container">
+    <% if (flash('message')) { %>
+        <div class="alert alert-success">
+            <%= flash('message') %>
+        </div>
+    <% } %>
+
+    <% if (stash('is_admin')) { %>
+        <div class="upload-cta">
+            <a href="/files/upload" class="btn-upload-link">
+                📤 Upload New File
+            </a>
+        </div>
+    <% } %>
+
+    <div class="section">
+        <h2>📋 Uploaded Files</h2>
+
+        <% if (@{stash('files') || []}) { %>
+            <table class="files-table">
+                <thead>
+                    <tr>
+                        <th class="col-icon"></th>
+                        <th class="col-filename">Filename</th>
+                        <th class="col-uploader">Uploader</th>
+                        <th class="col-date">Date</th>
+                        <th class="col-size">Size</th>
+                        <th class="col-downloads">Downloads</th>
+                        <th class="col-access">Access</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% for my $file (@{stash('files')}) { %>
+                        <tr>
+                            <td class="col-icon">
+                                <% if ($file->{mime_type} =~ /^image/) { %>🖼️<% }
+                                   elsif ($file->{mime_type} =~ /pdf/) { %>📄<% }
+                                   elsif ($file->{mime_type} =~ /^text/) { %>📃<% }
+                                   else { %>📎<% } %>
+                            </td>
+                            <td class="col-filename">
+                                <strong><%= $file->{original_filename} %></strong>
+                                <% if ($file->{description}) { %>
+                                    <br><small class="file-desc"><%= $file->{description} %></small>
+                                <% } %>
+                            </td>
+                            <td class="col-uploader"><%= $file->{uploaded_by} %></td>
+                            <td class="col-date"><%= $file->{uploaded_at} %></td>
+                            <td class="col-size"><%= sprintf('%.2f MB', $file->{file_size} / 1024 / 1024) %></td>
+                            <td class="col-downloads"><%= $file->{download_count} || 0 %></td>
+                            <td class="col-access">
+                                <% if ($file->{admin_only}) { %>
+                                    <span class="badge badge-admin">Admin</span>
+                                <% } elsif (defined $file->{allowed_users} && $file->{allowed_users} ne '') { %>
+                                    <span class="badge badge-restricted">Restricted</span>
+                                <% } else { %>
+                                    <span class="badge badge-public">Public</span>
+                                <% } %>
+                            </td>
+                            <td class="col-actions">
+                                <div class="action-buttons">
+                                    <a href="/files/serve/<%= $file->{id} %>" target="_blank" class="btn btn-view" title="View">👁️</a>
+                                    <button type="button" class="btn btn-copy" onclick="copyLink('<%= $file->{id} %>')" title="Copy Link">🔗</button>
+                                    <% if (stash('is_admin')) { %>
+                                        <button type="button" class="btn btn-edit" onclick="openPermissions(<%= $file->{id} %>)" title="Permissions">⚙️</button>
+                                        <form method="POST" action="/files/delete/<%= $file->{id} %>" style="display: inline;">
+                                            <button type="submit" class="btn btn-delete" onclick="return confirm('Delete this file?')" title="Delete">🗑️</button>
+                                        </form>
+                                    <% } %>
+                                </div>
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        <% } else { %>
+            <p class="no-files">No files uploaded yet. <%= stash('is_admin') ? 'Upload the first one!' : '' %></p>
+        <% } %>
+    </div>
+
+    <% if (stash('is_admin')) { %>
+        <div id="permissionModal" class="files-modal-overlay" style="display: none;" role="dialog" aria-modal="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Edit File Permissions</h3>
+                    <button class="close-modal" aria-label="Close" onclick="document.getElementById('permissionModal').style.display='none'">&times;</button>
+                </div>
+                <form method="POST" action="/files/permissions">
+                    <input type="hidden" id="permissionFileId" name="id">
+                    
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" name="admin_only">
+                            Admin only access
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Allowed Users (hold Ctrl/Cmd to select multiple)</label>
+                        <select name="allowed_users" multiple size="6">
+                            <% for my $user (@{stash('users') || []}) { %>
+                                <% next unless $user->{status} && $user->{status} eq 'approved'; %>
+                                <option value="<%= $user->{username} %>"><%= $user->{username} %></option>
+                            <% } %>
+                        </select>
+                        <small>Leave empty for public access.</small>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="submit" class="btn-upload">💾 Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    <% } %>
+</div>

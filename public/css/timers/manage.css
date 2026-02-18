@@ -1,0 +1,367 @@
+/* /public/css/timers/manage.css */
+
+/* --- Desktop Layout --- */
+
+.timers-manage-container {
+    padding: 20px;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.manage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    gap: 15px;
+}
+
+.manage-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+.manage-filters {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.manage-filters label {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+}
+
+.user-select {
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    font-size: 14px;
+    min-width: 200px;
+    background: rgba(0, 0, 0, 0.2);
+    color: #fff;
+}
+
+.timers-table-wrapper {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timers-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.timers-table th {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timers-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+    vertical-align: middle;
+}
+
+.timers-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* --- Badges & Icons --- */
+
+.user-cell {
+    font-weight: 600;
+    color: #60a5fa !important;
+}
+
+.name-cell {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+/* Category Badges with Icons */
+.category-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+/* Custom Icons */
+.category-badge::before { margin-right: 6px; font-size: 1.1em; }
+.category-badge.computer::before { content: "💻"; }
+.category-badge.phone::before { content: "📱"; }
+.category-badge.tablet::before { content: "📱"; }
+.category-badge.gaming-console::before { content: "🎮"; }
+.category-badge.tv::before { content: "📺"; }
+
+/* Category Colors */
+.category-badge.computer { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); }
+.category-badge.phone { background: rgba(236, 72, 153, 0.15); color: #f472b6; border-color: rgba(236, 72, 153, 0.3); }
+.category-badge.tablet { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border-color: rgba(139, 92, 246, 0.3); }
+.category-badge.gaming-console { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
+.category-badge.tv { background: rgba(34, 197, 94, 0.15); color: #4ade80; border-color: rgba(34, 197, 94, 0.3); }
+
+.limit-cell { color: rgba(255, 255, 255, 0.5); font-family: monospace; }
+.elapsed-cell { font-weight: 700; color: #fbbf24; }
+.remaining-cell { font-weight: 700; color: #4ade80; }
+.expired-text { color: #ef4444; font-weight: 700; font-size: 0.9em; }
+
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.status-badge.running { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+.status-badge.paused { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+.status-badge.idle { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+    margin-left: 4px;
+}
+
+.btn-icon:hover { transform: translateY(-2px); filter: brightness(1.2); }
+.btn-bonus:hover { background: rgba(251, 191, 36, 0.2); border-color: #fbbf24; }
+.btn-edit:hover { background: rgba(59, 130, 246, 0.2); border-color: #60a5fa; }
+.btn-delete:hover { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; }
+
+/* --- Mobile Card View (< 768px) --- */
+
+@media (max-width: 768px) {
+    .timers-manage-container { 
+        padding: 12px; 
+    }
+
+    /* Reset Table to Block */
+    .timers-table-wrapper {
+        background: transparent !important;
+        border: none !important;
+        overflow: visible !important;
+    }
+
+    .timers-table thead { 
+        display: none !important; 
+    }
+
+    .timers-table, 
+    .timers-table tbody {
+        display: block;
+        width: 100%;
+    }
+
+    /* Hide limit cells completely in mobile */
+    .timers-table tbody tr .limit-cell {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        width: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        position: absolute !important;
+        left: -9999px !important;
+    }
+
+    /* CSS Grid Card Layout */
+    .timers-table tbody tr {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto auto auto auto;
+        grid-template-areas:
+            "user category"
+            "name name"
+            "status status"
+            "used remaining"
+            "actions actions";
+        gap: 10px;
+        background: rgba(30, 41, 59, 0.95);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 12px;
+        margin-bottom: 14px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+        position: relative;
+    }
+
+    .timers-table tbody tr td { 
+        padding: 0 !important; 
+        border: none !important; 
+        margin: 0;
+        display: block;
+    }
+
+    /* User */
+    .timers-table tbody tr .user-cell {
+        grid-area: user;
+        font-size: 13px;
+        opacity: 0.85;
+        align-self: center;
+    }
+
+    /* Category */
+    .timers-table tbody tr .category-cell {
+        grid-area: category;
+        justify-self: end;
+        align-self: center;
+    }
+
+    .category-badge { 
+        font-size: 11px; 
+        padding: 3px 8px; 
+    }
+
+    /* Timer Name */
+    .timers-table tbody tr .name-cell {
+        grid-area: name;
+        font-size: 14px;
+        font-weight: 700;
+        color: white;
+        padding-bottom: 8px !important;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* Status */
+    .timers-table tbody tr .status-cell {
+        grid-area: status;
+        justify-self: start;
+        margin-top: 2px;
+    }
+
+    .status-badge { 
+        font-size: 11px; 
+        padding: 4px 10px; 
+    }
+
+    /* Used Time */
+    .timers-table tbody tr .elapsed-cell {
+        grid-area: used;
+        background: rgba(251, 191, 36, 0.12);
+        border: 1px solid rgba(251, 191, 36, 0.25);
+        border-radius: 8px;
+        padding: 14px 8px !important;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        min-height: 60px;
+    }
+
+    /* Remaining Time */
+    .timers-table tbody tr .remaining-cell {
+        grid-area: remaining;
+        background: rgba(34, 197, 94, 0.12);
+        border: 1px solid rgba(34, 197, 94, 0.25);
+        border-radius: 8px;
+        padding: 14px 8px !important;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        min-height: 60px;
+    }
+
+    .timers-table tbody tr .elapsed-cell::before { 
+        content: "USED"; 
+        display: block; 
+        font-size: 10px; 
+        font-weight: 700;
+        color: #fbbf24; 
+        opacity: 0.9; 
+        letter-spacing: 1px; 
+        margin-bottom: 2px;
+    }
+
+    .timers-table tbody tr .remaining-cell::before { 
+        content: "LEFT"; 
+        display: block; 
+        font-size: 10px; 
+        font-weight: 700;
+        color: #4ade80; 
+        opacity: 0.9; 
+        letter-spacing: 1px; 
+        margin-bottom: 2px;
+    }
+
+    .timers-table tbody tr .elapsed-cell,
+    .timers-table tbody tr .remaining-cell {
+        font-size: 20px !important;
+        font-weight: 700;
+    }
+
+    /* Actions */
+    .timers-table tbody tr .actions-cell {
+        grid-area: actions;
+        display: flex;
+        gap: 8px;
+        margin-top: 6px;
+        padding-top: 12px !important;
+        border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .timers-table tbody tr .actions-cell .btn-icon {
+        flex: 1;
+        height: 44px;
+        border-radius: 8px;
+        font-size: 15px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.15);
+        font-weight: 600;
+        margin-left: 0;
+    }
+
+    .timers-table tbody tr .actions-cell .btn-bonus::after { 
+        content: " Bonus"; 
+        margin-left: 6px; 
+    }
+
+    .timers-table tbody tr .actions-cell .btn-edit::after { 
+        content: " Edit"; 
+        margin-left: 6px; 
+    }
+
+    .timers-table tbody tr .actions-cell .btn-delete { 
+        flex: 0 0 50px; 
+    }
+}

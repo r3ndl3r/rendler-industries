@@ -1,0 +1,523 @@
+/* /public/css/shopping.css */
+
+body {
+    background-color: #0f172a;
+    margin: 0;
+    padding-top: 40px;
+    min-height: 100vh;
+}
+
+.shopping-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 35px;
+    padding: 10px 0;
+}
+
+.header-bar h1 {
+    font-size: 2.8rem;
+    font-weight: 300;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #ffffff, #90caf9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.glass-panel {
+    background: rgba(30, 30, 30, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+
+.add-item-panel {
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(30, 30, 30, 0.8), rgba(40, 40, 40, 0.6));
+    border: 1px solid rgba(100, 181, 246, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.add-item-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #64b5f6, transparent);
+    opacity: 0.5;
+}
+
+.add-item-form {
+    display: flex;
+    gap: 12px;
+}
+
+.add-item-form .game-input {
+    flex: 1;
+}
+
+.game-input {
+    width: 100%;
+    padding: 16px 18px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    border-radius: 12px;
+    box-sizing: border-box;
+    font-size: 1.05rem;
+    font-family: inherit;
+    transition: all 0.3s ease;
+}
+
+.game-input:focus {
+    outline: none;
+    border-color: #64b5f6;
+    background: rgba(0, 0, 0, 0.7);
+    box-shadow: 0 0 0 3px rgba(100, 181, 246, 0.1);
+}
+
+.game-input::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.game-btn {
+    padding: 16px 32px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    color: white;
+    letter-spacing: 0.8px;
+    transition: all 0.3s ease;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-family: inherit;
+    white-space: nowrap;
+    font-size: 0.95rem;
+}
+
+.game-btn:active {
+    transform: scale(0.97);
+}
+
+.btn-blue {
+    background: linear-gradient(135deg, #2196f3, #1565c0);
+    box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+}
+
+.btn-blue:hover {
+    background: linear-gradient(135deg, #42a5f5, #1976d2);
+    box-shadow: 0 6px 20px rgba(33, 150, 243, 0.6);
+    transform: translateY(-2px);
+}
+
+.items-container {
+    margin-top: 20px;
+}
+
+.section-title {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 700;
+    margin: 30px 0 15px 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: linear-gradient(180deg, #64b5f6, transparent);
+    border-radius: 2px;
+}
+
+.shopping-item {
+    background: linear-gradient(135deg, rgba(40, 40, 40, 0.7), rgba(30, 30, 30, 0.6));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 18px 22px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.shopping-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #64b5f6, #42a5f5);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.shopping-item:hover {
+    background: linear-gradient(135deg, rgba(50, 50, 50, 0.8), rgba(40, 40, 40, 0.7));
+    transform: translateX(4px);
+    box-shadow: 0 6px 24px 0 rgba(0, 0, 0, 0.5);
+    border-color: rgba(100, 181, 246, 0.3);
+}
+
+.shopping-item:hover::before {
+    opacity: 1;
+}
+
+.shopping-item.checked {
+    opacity: 0.5;
+    background: linear-gradient(135deg, rgba(30, 30, 30, 0.5), rgba(25, 25, 25, 0.4));
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.shopping-item.checked::before {
+    background: linear-gradient(180deg, #66bb6a, #43a047);
+}
+
+.shopping-item.checked:hover {
+    opacity: 0.7;
+    transform: translateX(2px);
+}
+
+.item-content {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex: 1;
+}
+
+.checkbox-form {
+    margin: 0;
+}
+
+.checkbox-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.checkbox-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(100, 181, 246, 0.3), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.checkbox-btn:hover::before {
+    opacity: 1;
+}
+
+.checkbox-btn:hover {
+    border-color: #64b5f6;
+    background: rgba(100, 181, 246, 0.15);
+    transform: scale(1.1);
+    box-shadow: 0 0 12px rgba(100, 181, 246, 0.3);
+}
+
+.checkbox-btn.checked {
+    background: linear-gradient(135deg, #66bb6a, #43a047);
+    border-color: #66bb6a;
+    box-shadow: 0 0 12px rgba(102, 187, 106, 0.4);
+}
+
+.checkbox-btn.checked:hover {
+    background: linear-gradient(135deg, #81c784, #4caf50);
+    transform: scale(1.1) rotate(5deg);
+}
+
+.checkmark {
+    color: white;
+    font-size: 1.3rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.item-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.item-name {
+    font-size: 1.15rem;
+    font-weight: 500;
+    color: #ffffff;
+    letter-spacing: 0.2px;
+    line-height: 1.4;
+}
+
+.shopping-item.checked .item-name {
+    text-decoration: line-through;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.item-meta {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-edit-item {
+    background: rgba(33, 150, 243, 0.1);
+    border: 1px solid rgba(33, 150, 243, 0.3);
+    color: #64b5f6;
+    padding: 9px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-edit-item:hover {
+    background: rgba(33, 150, 243, 0.25);
+    border-color: #2196f3;
+    color: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 0 12px rgba(33, 150, 243, 0.4);
+}
+
+.delete-form {
+    margin: 0;
+}
+
+.btn-delete-item {
+    background: rgba(211, 47, 47, 0.1);
+    border: 1px solid rgba(211, 47, 47, 0.3);
+    color: #ef9a9a;
+    padding: 9px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-delete-item:hover {
+    background: rgba(211, 47, 47, 0.25);
+    border-color: #f44336;
+    color: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 0 12px rgba(244, 67, 54, 0.4);
+}
+
+.icon-small {
+    width: 18px;
+    height: 18px;
+}
+
+.checked-section {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.checked-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.btn-clear-all {
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.25), rgba(255, 152, 0, 0.15));
+    border: 1px solid rgba(255, 152, 0, 0.5);
+    color: #ffb74d;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.btn-clear-all:hover {
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.4), rgba(255, 152, 0, 0.25));
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: rgba(255, 255, 255, 0.4);
+    background: rgba(30, 30, 30, 0.3);
+    border-radius: 16px;
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+}
+
+.empty-state p {
+    font-size: 1.3rem;
+    margin: 12px 0;
+    font-weight: 300;
+}
+
+.empty-hint {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.25);
+    font-weight: 400;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, rgba(40, 40, 40, 0.95), rgba(30, 30, 30, 0.95));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    color: #64b5f6;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.shopping-item {
+    animation: slideIn 0.3s ease-out;
+}
+
+.item-link {
+    text-decoration: none;
+    color: inherit; /* Keep the text white/default */
+    display: inline-block;
+}
+
+.item-link:hover .item-name {
+    color: #64b5f6; /* Light blue on hover */
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+}
+
+/* Ensure checked items still look "crossed out" even with the link */
+.shopping-item.checked .item-name {
+    text-decoration: line-through;
+    color: #6b7280; /* Gray out checked items */
+}
+
+.shopping-item.checked .item-link:hover .item-name {
+    color: #9ca3af; /* Slightly lighter gray on hover for checked items */
+    text-decoration: line-through; /* Keep line-through on hover */
+}
+
+@media (max-width: 768px) {
+    .shopping-container {
+        padding: 15px;
+    }
+    
+    .header-bar h1 {
+        font-size: 2.2rem;
+    }
+    
+    .add-item-form {
+        flex-direction: column;
+    }
+    
+    .game-btn {
+        width: 100%;
+    }
+    
+    .shopping-item {
+        padding: 14px 18px;
+    }
+    
+    .item-name {
+        font-size: 1rem;
+    }
+    
+    .checkbox-btn {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .action-buttons {
+        gap: 6px;
+    }
+    
+    .btn-edit-item,
+    .btn-delete-item {
+        padding: 8px;
+    }
+}

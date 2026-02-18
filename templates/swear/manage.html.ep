@@ -1,0 +1,46 @@
+%# /templates/swear/manage.html.ep
+% layout 'default';
+% title 'Manage Swear Jar';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/swear.css">
+<% end %>
+
+<div class="manage-container">
+    <h2 style="font-size: 1.8rem;">Manage Family</h2>
+    <a href="/swear" style="color: #69f0ae; text-decoration: none; display: inline-block; margin-bottom: 20px; font-weight: 600;">&larr; Back to Jar</a>
+
+    <div class="glass-panel">
+        <h3 style="margin-top: 0; color: #90caf9;">Add New Member</h3>
+        <form action="/swear/member/add" method="POST">
+            <label>Name</label>
+            <input type="text" name="name" class="game-input" required placeholder="e.g. Mom">
+            
+            <label>Default Fine ($)</label>
+            <input type="number" name="default_fine" class="game-input" required value="2.00" step="0.50">
+            
+            <button type="submit" class="game-btn btn-blue">Add Member</button>
+        </form>
+    </div>
+
+    <h3 style="margin-top: 30px; padding-left: 10px; color: rgba(255,255,255,0.8);">Active Members</h3>
+    <div class="glass-panel">
+        % if (@$members) {
+            % for my $m (@$members) {
+                <div class="member-row">
+                    <div>
+                        <strong style="font-size: 1.2rem; letter-spacing: 0.5px;"><%= $m->{name} %></strong>
+                        <br>
+                        <span style="color: rgba(255,255,255,0.5); font-size: 0.9rem;">Default: $<%= sprintf("%.2f", $m->{default_fine}) %></span>
+                    </div>
+                    <form action="/swear/member/delete" method="POST" style="margin:0;">
+                        <input type="hidden" name="id" value="<%= $m->{id} %>">
+                        <button type="submit" class="game-btn btn-del">REMOVE</button>
+                    </form>
+                </div>
+            % }
+        % } else {
+            <p style="text-align: center; color: rgba(255,255,255,0.4);">No members found.</p>
+        % }
+    </div>
+</div>

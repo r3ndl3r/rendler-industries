@@ -1,0 +1,147 @@
+/* /public/css/quick.css */
+
+body {
+    background-color: black;
+    color: white;
+    padding-top: 30px; 
+}
+
+.quick-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header-bar h1 {
+    text-align: center;
+    font-weight: 300;
+    margin-bottom: 30px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 15px;
+    color: #fff;
+    font-weight: bold; 
+    font-size: 1.6rem;
+}
+
+/* Grid Layout */
+.tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 15px;
+}
+
+/* Base Tile Style */
+.tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 20px 10px;
+    text-decoration: none;
+    color: #e0e0e0;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    min-height: 100px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+.tile:hover {
+    transform: translateY(-5px);
+    background-color: #252525;
+    border-color: #555;
+    text-decoration: none;
+    color: white;
+    box-shadow: 0 8px 15px rgba(0,0,0,0.5);
+}
+
+/* Icon Styling */
+.icon {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    line-height: 1;
+}
+
+.label {
+    font-size: 1rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Specific Tile Colors */
+
+/* Login/Register */
+.tile.login:hover, .tile.register:hover {
+    border-color: #69f0ae;
+    color: #69f0ae;
+}
+
+/* Admin Tiles */
+.tile.admin {
+    background-color: #1e1515; /* Slight red tint for admin */
+    border-color: #4a2c2c;
+}
+.tile.admin:hover {
+    border-color: #ffb74d;
+    color: #ffb74d;
+}
+
+/* Danger / Restart */
+.tile.danger {
+    background-color: #2a0f0f;
+    border-color: #d32f2f;
+    /* Reset button styles since it's a <button> */
+    font-family: inherit;
+    width: 100%; 
+}
+.tile.danger:hover {
+    background-color: #d32f2f;
+    color: white;
+}
+
+/* Logout */
+.tile.logout {
+    border-color: #d32f2f;
+    color: #ef9a9a;
+}
+.tile.logout:hover {
+    background-color: #d32f2f;
+    color: white;
+}
+
+/* Separator for Admin section */
+.separator {
+    grid-column: 1 / -1;
+    height: 1px;
+    background: #333;
+    margin: 20px 0;
+    position: relative;
+}
+
+.separator::after {
+    content: "ADMINISTRATION";
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: black;
+    padding: 0 10px;
+    color: #555;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+    .tile-grid {
+        grid-template-columns: repeat(2, 1fr); /* 2 columns on mobile */
+    }
+    .icon {
+        font-size: 2rem;
+    }
+    .label {
+        font-size: 0.9rem;
+    }
+}

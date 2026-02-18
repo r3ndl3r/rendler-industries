@@ -1,0 +1,45 @@
+%# /templates/connect4/lobby.html.ep
+
+% layout 'default';
+% title 'Connect 4 Lobby';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/lobby.css">
+<% end %>
+
+<div class="lobby-container">
+    <div class="lobby-header">
+        <h1 class="lobby-title">🔴 Connect 4 Lobby</h1>
+        <p style="color: #94a3b8;">Challenge a friend to a battle of strategy!</p>
+    </div>
+
+    <div class="action-card">
+        <h2 style="margin-top: 0; margin-bottom: 1.5rem;">Ready to play?</h2>
+        <a href="/connect4/create" class="btn-create">Create New Game</a>
+    </div>
+
+    <h3 style="margin-left: 0.5rem; margin-bottom: 1rem;">Open Games</h3>
+    
+    <div class="game-list">
+        <% if (@$lobbies) { %>
+            <% for my $game (@$lobbies) { %>
+                <div class="game-item">
+                    <div class="host-info">
+                        <span class="host-name">Host: <%= $game->{host_name} %></span>
+                        <span class="game-time">Created: <%= $game->{created_at} %></span>
+                    </div>
+                    
+                    <form action="/connect4/join" method="POST" style="margin: 0;">
+                        <input type="hidden" name="id" value="<%= $game->{id} %>">
+                        <button type="submit" class="btn-join">Join Game &rarr;</button>
+                    </form>
+                </div>
+            <% } %>
+        <% } else { %>
+            <div class="empty-state">
+                No active games found.<br>
+                Be the first to start one!
+            </div>
+        <% } %>
+    </div>
+</div>

@@ -1,0 +1,5205 @@
+[
+   {
+      "question" : "What do we remember on Anzac Day?",
+      "question_ph" : "วอท ดู วี รีเมมเบอร์ ออน แอนแซค เดย์?",
+      "question_th" : "เรารำลึกถึงอะไรในวันแอนแซค (Anzac Day)?",
+      "image" : "anzac-day-gallipoli.jpg",
+      "audio" : "what_do_we_remember_on_anzac_day.wav",
+      "answers" : [
+         {
+            "audio" : "the_landing_of_the_australian_and_new_zealand_army_corps_at_.wav",
+            "text" : "The landing of the Australian and New Zealand Army Corps at Gallipoli",
+            "ph" : "เดอะ แลนดิง ออฟ ดิ ออสเตรเลียน แอนด์ นิวซีแลนด์ อาร์มี คอร์ป แอท กัลลิโพลี",
+            "th" : "การยกพลขึ้นบกของกองทัพออสเตรเลียและนิวซีแลนด์ที่กัลลิโพลี",
+            "is_correct" : true
+         },
+         {
+            "text" : "The arrival of the First Fleet from Great Britain",
+            "ph" : "ดิ อะไรวัล ออฟ เดอะ เฟิสต์ ฟลีต ฟรอม เกรท บริเทน",
+            "th" : "การมาถึงของกองเรือคณะแรก (First Fleet) จากบริเตนใหญ่",
+            "is_correct" : false
+         },
+         {
+            "text" : "The federation of the Australian colonies",
+            "ph" : "เดอะ เฟดเดอเรชัน ออฟ ดิ ออสเตรเลียน โคโลนีส์",
+            "th" : "การรวมตัวกันเป็นสหพันธรัฐของอาณานิคมออสเตรเลีย",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Queen's birthday",
+            "ph" : "เดอะ ควีนส์ เบิร์ธเดย์",
+            "th" : "วันคล้ายวันพระราชสมภพของพระราชินี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What are the colors of the Australian Aboriginal Flag?",
+      "question_ph" : "วอท อาร์ เดอะ คัลเลอร์ส ออฟ ดิ ออสเตรเลียน แอบอริจินัล แฟล็ก?",
+      "question_th" : "ธงของชาวออสเตรเลียพื้นเมือง (Aboriginal Flag) มีสีอะไรบ้าง?",
+      "image" : "aboriginal-flag.jpg",
+      "audio" : "what_are_the_colors_of_the_australian_aboriginal_flag.wav",
+      "answers" : [
+         {
+            "audio" : "black_red_and_gold.wav",
+            "text" : "Black, Red and Gold",
+            "ph" : "แบล็ค, เรด แอนด์ โกลด์",
+            "th" : "สีดำ, สีแดง และสีทอง",
+            "is_correct" : true
+         },
+         {
+            "text" : "Green, White and Black",
+            "ph" : "กรีน, ไวท์ แอนด์ แบล็ค",
+            "th" : "สีเขียว, สีขาว และสีดำ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Blue, White and Red",
+            "ph" : "บลู, ไวท์ แอนด์ เรด",
+            "th" : "สีน้ำเงิน, สีขาว และสีแดง",
+            "is_correct" : false
+         },
+         {
+            "text" : "Blue and Gold",
+            "ph" : "บลู แอนด์ โกลด์",
+            "th" : "สีน้ำเงิน และสีทอง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which of the following is an example of freedom of speech?",
+      "question_ph" : "วิช ออฟ เดอะ ฟอลโลวิง อิส แอน เอ็กแซมเปิล ออฟ ฟรีดอม ออฟ สปีช?",
+      "question_th" : "ข้อใดต่อไปนี้คือตัวอย่างของเสรีภาพในการพูด?",
+      "image" : "freedom-of-speech-protest.jpg",
+      "audio" : "which_of_the_following_is_an_example_of_freedom_of_speech.wav",
+      "answers" : [
+         {
+            "audio" : "people_can_peacefully_protest_against_government_decisions.wav",
+            "text" : "People can peacefully protest against government decisions",
+            "ph" : "พีเพิล แคน พีซฟูลลี่ โพรเทสต์ อะเกนสต์ กาวเวอร์เมนท์ ดีซิชันส์",
+            "th" : "ประชาชนสามารถประท้วงอย่างสันติต่อการตัดสินใจของรัฐบาลได้",
+            "is_correct" : true
+         },
+         {
+            "text" : "People can encourage violence against others",
+            "ph" : "พีเพิล แคน เอนเคอเรจ ไวโอเลนซ์ อะเกนสต์ อาเธอร์ส",
+            "th" : "ประชาชนสามารถสนับสนุนความรุนแรงต่อผู้อื่นได้",
+            "is_correct" : false
+         },
+         {
+            "text" : "Men and women are treated differently in a court of law",
+            "ph" : "เมน แอนด์ วีเมน อาร์ ทรีตเทด ดิฟเฟอเรนท์ลี่ อิน อะ คอร์ต ออฟ ลอว์",
+            "th" : "ผู้ชายและผู้หญิงได้รับการปฏิบัติที่แตกต่างกันในศาล",
+            "is_correct" : false
+         },
+         {
+            "text" : "Everyone must agree with the government",
+            "ph" : "เอฟวรีวัน มัสต์ อะกรี วิธ เดอะ กาวเวอร์เมนท์",
+            "th" : "ทุกคนต้องเห็นด้วยกับรัฐบาล",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the capital city of Australia?",
+      "question_ph" : "วอท อิส เดอะ แคปิตอล ซิตี้ ออฟ ออสเตรเลีย?",
+      "question_th" : "เมืองหลวงของประเทศออสเตรเลียคือที่ไหน?",
+      "image" : "canberra-parliament-house.jpg",
+      "audio" : "what_is_the_capital_city_of_australia.wav",
+      "answers" : [
+         {
+            "audio" : "canberra.wav",
+            "text" : "Canberra",
+            "ph" : "แคนเบอร์รา",
+            "th" : "แคนเบอร์รา",
+            "is_correct" : true
+         },
+         {
+            "audio" : "sydney.wav",
+            "text" : "Sydney",
+            "ph" : "ซิดนีย์",
+            "th" : "ซิดนีย์",
+            "is_correct" : false
+         },
+         {
+            "audio" : "melbourne.wav",
+            "text" : "Melbourne",
+            "ph" : "เมลเบิร์น",
+            "th" : "เมลเบิร์น",
+            "is_correct" : false
+         },
+         {
+            "audio" : "brisbane.wav",
+            "text" : "Brisbane",
+            "ph" : "บริสเบน",
+            "th" : "บริสเบน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which of these is a responsibility of Australian citizens aged 18 years or over?",
+      "question_ph" : "วิช ออฟ ดีส อิส อะ เรสปอนซิบิลิตี้ ออฟ ออสเตรเลียน ซิติเซนส์ เอจดฺ เอธทีน เยียร์ส ออร์ โอเวอร์?",
+      "question_th" : "ข้อใดต่อไปนี้คือหน้าที่ของพลเมืองออสเตรเลียที่มีอายุ 18 ปีขึ้นไป?",
+      "image" : "voting.jpg",
+      "audio" : "which_of_these_is_a_responsibility_of_australian_citizens_ag.wav",
+      "answers" : [
+         {
+            "audio" : "to_vote_in_elections.wav",
+            "text" : "To vote in elections",
+            "ph" : "ทู โหวต อิน อีเลคชันส์",
+            "th" : "การลงคะแนนเสียงเลือกตั้ง",
+            "is_correct" : true
+         },
+         {
+            "text" : "To have a current passport",
+            "ph" : "ทู แฮฟ อะ เคอร์เรนท์ พาสพอร์ต",
+            "th" : "การมีหนังสือเดินทางที่เป็นปัจจุบัน",
+            "is_correct" : false
+         },
+         {
+            "text" : "To attend local council meetings",
+            "ph" : "ทู แอทเทนด์ โลคัล เคาน์ซิล มีตติงส์",
+            "th" : "การเข้าร่วมประชุมสภาท้องถิ่น",
+            "is_correct" : false
+         },
+         {
+            "text" : "To become a Christian",
+            "ph" : "ทู บิคัม อะ คริสเตียน",
+            "th" : "การเปลี่ยนมานับถือศาสนาคริสต์",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who is the Head of State of Australia?",
+      "question_ph" : "ฮู อิส เดอะ เฮด ออฟ สเตท ออฟ ออสเตรเลีย?",
+      "question_th" : "ใครคือประมุขแห่งรัฐของออสเตรเลีย?",
+      "image" : "king.jpg",
+      "audio" : "who_is_the_head_of_state_of_australia.wav",
+      "answers" : [
+         {
+            "audio" : "the_king.wav",
+            "text" : "The King",
+            "ph" : "เดอะ คิง",
+            "th" : "กษัตริย์",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_prime_minister.wav",
+            "text" : "The Prime Minister",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์",
+            "th" : "นายกรัฐมนตรี",
+            "is_correct" : false
+         },
+         {
+            "audio" : "the_governorgeneral.wav",
+            "text" : "The Governor-General",
+            "ph" : "เดอะ กาวเวอร์เนอร์-เจนเนอรัล",
+            "th" : "ผู้สำเร็จราชการแทนพระองค์",
+            "is_correct" : false
+         },
+         {
+            "audio" : "the_premier.wav",
+            "text" : "The Premier",
+            "ph" : "เดอะ พรีเมียร์",
+            "th" : "มุขมนตรี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What happened in Australia on 1 January 1901?",
+      "question_ph" : "วอท แฮปเพนดฺ อิน ออสเตรเลีย ออน เฟิสต์ แจนนูอารี ไนน์ทีน-โอ-วัน?",
+      "question_th" : "เกิดอะไรขึ้นในออสเตรเลียเมื่อวันที่ 1 มกราคม ค.ศ. 1901?",
+      "image" : "federation.jpg",
+      "audio" : "what_happened_in_australia_on_1_january_1901.wav",
+      "answers" : [
+         {
+            "audio" : "the_separate_colonies_were_united_into_a_federation_of_state.wav",
+            "text" : "The separate colonies were united into a Federation of States called the Commonwealth of Australia",
+            "ph" : "เดอะ เซพปะเรท โคโลนีส์ เวอร์ ยูไนเต็ด อินทู อะ เฟดเดอเรชัน ออฟ สเตทส์ คอลดฺ เดอะ คอมมอนเวลธ์ ออฟ ออสเตรเลีย",
+            "th" : "อาณานิคมที่แยกจากกันได้รวมตัวเป็นสหพันธรัฐเรียกว่าเครือรัฐออสเตรเลีย",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Australian Constitution was changed by a referendum",
+            "ph" : "ดิ ออสเตรเลียน คอนสติทิวชัน วอส เชนจดฺ บาย อะ เรฟเฟอเรนดัม",
+            "th" : "รัฐธรรมนูญออสเตรเลียถูกแก้ไขโดยการลงประชามติ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Australian and New Zealand Army Corps was formed",
+            "ph" : "ดิ ออสเตรเลียน แอนด์ นิวซีแลนด์ อาร์มี คอร์ป วอส ฟอร์มดฺ",
+            "th" : "มีการจัดตั้งกองทัพออสเตรเลียและนิวซีแลนด์ (ANZAC)",
+            "is_correct" : false
+         },
+         {
+            "text" : "Gold was discovered in New South Wales and Victoria",
+            "ph" : "โกลด์ วอส ดิสคัฟเวอร์ดฺ อิน นิว เซาท์ เวลส์ แอนด์ วิกตอเรีย",
+            "th" : "มีการค้นพบทองคำในรัฐนิวเซาท์เวลส์และวิกตอเรีย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which symbol of Australia is the national flower?",
+      "question_ph" : "วิช ซิมบอล ออฟ ออสเตรเลีย อิส เดอะ เนชันแนล ฟลาวเวอร์?",
+      "question_th" : "สัญลักษณ์ใดของออสเตรเลียคือดอกไม้ประจำชาติ?",
+      "image" : "wattle.jpg",
+      "audio" : "which_symbol_of_australia_is_the_national_flower.wav",
+      "answers" : [
+         {
+            "audio" : "golden_wattle.wav",
+            "text" : "Golden Wattle",
+            "ph" : "โกลเดน วอทเทิล",
+            "th" : "ดอกโกลเดนวอทเทิล (กระถินณรงค์)",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Rose",
+            "ph" : "เดอะ โรส",
+            "th" : "ดอกกุหลาบ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Banksia",
+            "ph" : "เดอะ แบงค์เซีย",
+            "th" : "ดอกแบงค์เซีย",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Waratah",
+            "ph" : "เดอะ วาราธา",
+            "th" : "ดอกวาราธา",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the legal document that sets out the rules for the government of Australia?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ เดอะ ลีกัล ดอคคิวเมนต์ แดท เซ็ทส์ เอาท์ เดอะ รูลส์ ฟอร์ เดอะ กาวเวอร์เมนท์ ออฟ ออสเตรเลีย?",
+      "question_th" : "ชื่อของเอกสารทางกฎหมายที่กำหนดกฎเกณฑ์สำหรับการปกครองของออสเตรเลียคืออะไร?",
+      "image" : "constitution.jpg",
+      "audio" : "what_is_the_name_of_the_legal_document_that_sets_out_the_rul.wav",
+      "answers" : [
+         {
+            "audio" : "the_australian_constitution.wav",
+            "text" : "The Australian Constitution",
+            "ph" : "ดิ ออสเตรเลียน คอนสติทิวชัน",
+            "th" : "รัฐธรรมนูญออสเตรเลีย",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Federation Treaty",
+            "ph" : "เดอะ เฟดเดอเรชัน ทรีตี้",
+            "th" : "สนธิสัญญาสหพันธรัฐ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Magna Carta",
+            "ph" : "เดอะ แมกนา คาร์ตา",
+            "th" : "มหากฎบัตร (แมกนา คาร์ตา)",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Bill of Rights",
+            "ph" : "เดอะ บิล ออฟ ไรท์ส",
+            "th" : "บัญญัติสิทธิ (Bill of Rights)",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is a referendum?",
+      "question_ph" : "วอท อิส อะ เรฟเฟอเรนดัม?",
+      "question_th" : "การลงประชามติ (Referendum) คืออะไร?",
+      "image" : "referendum.jpg",
+      "audio" : "what_is_a_referendum.wav",
+      "answers" : [
+         {
+            "audio" : "a_vote_by_australians_to_change_the_australian_constitution.wav",
+            "text" : "A vote by Australians to change the Australian Constitution",
+            "ph" : "อะ โหวต บาย ออสเตรเลียนส์ ทู เชนจ์ ดิ ออสเตรเลียน คอนสติทิวชัน",
+            "th" : "การลงคะแนนเสียงโดยชาวออสเตรเลียเพื่อแก้ไขรัฐธรรมนูญ",
+            "is_correct" : true
+         },
+         {
+            "text" : "A vote to choose the Prime Minister",
+            "ph" : "อะ โหวต ทู ชูส เดอะ ไพรม์ มินิสเตอร์",
+            "th" : "การลงคะแนนเสียงเพื่อเลือกนายกรัฐมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "A vote to choose the leader of the Opposition",
+            "ph" : "อะ โหวต ทู ชูส เดอะ ลีดเดอร์ ออฟ ดิ ออปโพซิชัน",
+            "th" : "การลงคะแนนเสียงเพื่อเลือกผู้นำฝ่ายค้าน",
+            "is_correct" : false
+         },
+         {
+            "text" : "A vote to change the date of Australia Day",
+            "ph" : "อะ โหวต ทู เชนจ์ เดอะ เดท ออฟ ออสเตรเลีย เดย์",
+            "th" : "การลงคะแนนเสียงเพื่อเปลี่ยนวันชาติออสเตรเลีย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which arm of government has the power to interpret and apply the law?",
+      "question_ph" : "วิช อาร์ม ออฟ กาวเวอร์เมนท์ แฮส เดอะ พาวเวอร์ ทู อินเทอร์เพรท แอนด์ แอพพลาย เดอะ ลอว์?",
+      "question_th" : "ฝ่ายใดของรัฐบาลมีอำนาจในการตีความและบังคับใช้กฎหมาย?",
+      "image" : "judicial.jpg",
+      "audio" : "which_arm_of_government_has_the_power_to_interpret_and_apply.wav",
+      "answers" : [
+         {
+            "audio" : "judicial.wav",
+            "text" : "Judicial",
+            "ph" : "จูดิเชียล",
+            "th" : "ฝ่ายตุลาการ",
+            "is_correct" : true
+         },
+         {
+            "text" : "Legislative",
+            "ph" : "เลจิสเลทีฟ",
+            "th" : "ฝ่ายนิติบัญญัติ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Executive",
+            "ph" : "เอ็กเซ็กคิวทีฟ",
+            "th" : "ฝ่ายบริหาร",
+            "is_correct" : false
+         },
+         {
+            "text" : "Cabinet",
+            "ph" : "แคบิเนต",
+            "th" : "คณะรัฐมนตรี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who is the leader of the Australian Government?",
+      "question_ph" : "ฮู อิส เดอะ ลีดเดอร์ ออฟ ดิ ออสเตรเลียน กาวเวอร์เมนท์?",
+      "question_th" : "ใครคือผู้นำรัฐบาลออสเตรเลีย?",
+      "image" : "prime-minister.jpg",
+      "audio" : "who_is_the_leader_of_the_australian_government.wav",
+      "answers" : [
+         {
+            "audio" : "the_prime_minister.wav",
+            "text" : "The Prime Minister",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์",
+            "th" : "นายกรัฐมนตรี",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_king.wav",
+            "text" : "The King",
+            "ph" : "เดอะ คิง",
+            "th" : "กษัตริย์",
+            "is_correct" : false
+         },
+         {
+            "audio" : "the_governorgeneral.wav",
+            "text" : "The Governor-General",
+            "ph" : "เดอะ กาวเวอร์เนอร์-เจนเนอรัล",
+            "th" : "ผู้สำเร็จราชการแทนพระองค์",
+            "is_correct" : false
+         },
+         {
+            "text" : "The President",
+            "ph" : "เดอะ เพรสซิเดนท์",
+            "th" : "ประธานาธิบดี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which is a role of the Governor-General?",
+      "question_ph" : "วิช อิส อะ โรล ออฟ เดอะ กาวเวอร์เนอร์-เจนเนอรัล?",
+      "question_th" : "ข้อใดคือบทบาทของผู้สำเร็จราชการแทนพระองค์?",
+      "image" : "governor-general-role.jpg",
+      "audio" : "which_is_a_role_of_the_governorgeneral.wav",
+      "answers" : [
+         {
+            "audio" : "signs_all_bills_passed_by_the_australian_parliament_into_law.wav",
+            "text" : "Signs all Bills passed by the Australian Parliament into law",
+            "ph" : "ไซน์ส ออล บิลส์ พาสดฺ บาย ดิ ออสเตรเลียน พาร์เลียเมนต์ อินทู ลอว์",
+            "th" : "ลงนามในร่างกฎหมายทั้งหมดที่ผ่านรัฐสภาออสเตรเลียเพื่อให้เป็นกฎหมาย",
+            "is_correct" : true
+         },
+         {
+            "text" : "Appoints the State Premiers",
+            "ph" : "แอพพอยท์ส เดอะ สเตท พรีเมียร์ส",
+            "th" : "แต่งตั้งมุขมนตรีประจำรัฐ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Chooses the mayors of local councils",
+            "ph" : "ชูสเซส เดอะ เมเยอร์ส ออฟ โลคัล เคาน์ซิลส์",
+            "th" : "เลือกนายกเทศมนตรีของสภาท้องถิ่น",
+            "is_correct" : false
+         },
+         {
+            "text" : "Directs the police force",
+            "ph" : "ไดเร็คต์ส เดอะ โปลิศ ฟอร์ซ",
+            "th" : "สั่งการกองกำลังตำรวจ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the House of Representatives?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ เดอะ เฮาส์ ออฟ เรพพรีเซนทาทีฟส์?",
+      "question_th" : "อีกชื่อหนึ่งของสภาผู้แทนราษฎรคืออะไร?",
+      "image" : "lower-house.jpg",
+      "audio" : "what_is_the_name_of_the_house_of_representatives.wav",
+      "answers" : [
+         {
+            "audio" : "the_lower_house.wav",
+            "text" : "The Lower House",
+            "ph" : "เดอะ โลเวอร์ เฮาส์",
+            "th" : "สภาล่าง",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_upper_house.wav",
+            "text" : "The Upper House",
+            "ph" : "เดอะ อัพเพอร์ เฮาส์",
+            "th" : "สภาสูง",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Senate",
+            "ph" : "เดอะ เซเนท",
+            "th" : "วุฒิสภา",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Cabinet",
+            "ph" : "เดอะ แคบิเนต",
+            "th" : "คณะรัฐมนตรี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the Senate?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ เดอะ เซเนท?",
+      "question_th" : "อีกชื่อหนึ่งของวุฒิสภาคืออะไร?",
+      "image" : "upper-house.jpg",
+      "audio" : "what_is_the_name_of_the_senate.wav",
+      "answers" : [
+         {
+            "audio" : "the_upper_house.wav",
+            "text" : "The Upper House",
+            "ph" : "เดอะ อัพเพอร์ เฮาส์",
+            "th" : "สภาสูง",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_lower_house.wav",
+            "text" : "The Lower House",
+            "ph" : "เดอะ โลเวอร์ เฮาส์",
+            "th" : "สภาล่าง",
+            "is_correct" : false
+         },
+         {
+            "text" : "The House of Representatives",
+            "ph" : "เดอะ เฮาส์ ออฟ เรพพรีเซนทาทีฟส์",
+            "th" : "สภาผู้แทนราษฎร",
+            "is_correct" : false
+         },
+         {
+            "text" : "The High Court",
+            "ph" : "เดอะ ไฮ คอร์ต",
+            "th" : "ศาลสูง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who represents the King in each Australian state?",
+      "question_ph" : "ฮู เรพพรีเซนท์ส เดอะ คิง อิน อีช ออสเตรเลียน สเตท?",
+      "question_th" : "ใครเป็นตัวแทนของกษัตริย์ในแต่ละรัฐของออสเตรเลีย?",
+      "image" : "governor.jpg",
+      "audio" : "who_represents_the_king_in_each_australian_state.wav",
+      "answers" : [
+         {
+            "audio" : "the_governor.wav",
+            "text" : "The Governor",
+            "ph" : "เดอะ กาวเวอร์เนอร์",
+            "th" : "ผู้ว่าการรัฐ",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_governorgeneral.wav",
+            "text" : "The Governor-General",
+            "ph" : "เดอะ กาวเวอร์เนอร์-เจนเนอรัล",
+            "th" : "ผู้สำเร็จราชการแทนพระองค์",
+            "is_correct" : false
+         },
+         {
+            "audio" : "the_premier.wav",
+            "text" : "The Premier",
+            "ph" : "เดอะ พรีเมียร์",
+            "th" : "มุขมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Mayor",
+            "ph" : "เดอะ เมเยอร์",
+            "th" : "นายกเทศมนตรี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the role of the police in Australia?",
+      "question_ph" : "วอท อิส เดอะ โรล ออฟ เดอะ โปลิศ อิน ออสเตรเลีย?",
+      "question_th" : "บทบาทของตำรวจในออสเตรเลียคืออะไร?",
+      "image" : "police.jpg",
+      "audio" : "what_is_the_role_of_the_police_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "to_keep_peace_and_order_in_the_community.wav",
+            "text" : "To keep peace and order in the community",
+            "ph" : "ทู คีพ พีซ แอนด์ ออร์เดอร์ อิน เดอะ คอมมิวนิตี้",
+            "th" : "เพื่อรักษาความสงบเรียบร้อยในชุมชน",
+            "is_correct" : true
+         },
+         {
+            "text" : "To punish people who break the law",
+            "ph" : "ทู พานิช พีเพิล ฮู เบรค เดอะ ลอว์",
+            "th" : "เพื่อลงโทษผู้ที่ฝ่าฝืนกฎหมาย",
+            "is_correct" : false
+         },
+         {
+            "text" : "To make new laws",
+            "ph" : "ทู เมค นิว ลอว์ส",
+            "th" : "เพื่อออกกฎหมายใหม่",
+            "is_correct" : false
+         },
+         {
+            "text" : "To decide who goes to jail",
+            "ph" : "ทู ดีไซด์ ฮู โกส์ ทู เจล",
+            "th" : "เพื่อตัดสินว่าใครต้องเข้าคุก",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which of these statements about Australian law is correct?",
+      "question_ph" : "วิช ออฟ ดีส สเตทเมนต์ส อะเบาท์ ออสเตรเลียน ลอว์ อิส คอร์เรคท์?",
+      "question_th" : "ข้อความใดต่อไปนี้เกี่ยวกับกฎหมายออสเตรเลียถูกต้อง?",
+      "image" : "above-the-law.jpg",
+      "audio" : "which_of_these_statements_about_australian_law_is_correct.wav",
+      "answers" : [
+         {
+            "audio" : "no_person_or_group_is_above_the_law.wav",
+            "text" : "No person or group is above the law",
+            "ph" : "โน เพอร์ซัน ออร์ กรุ๊ป อิส อะโบฟ เดอะ ลอว์",
+            "th" : "ไม่มีบุคคลหรือกลุ่มใดอยู่เหนือกฎหมาย",
+            "is_correct" : true
+         },
+         {
+            "text" : "The police are above the law",
+            "ph" : "เดอะ โปลิศ อาร์ อะโบฟ เดอะ ลอว์",
+            "th" : "ตำรวจอยู่เหนือกฎหมาย",
+            "is_correct" : false
+         },
+         {
+            "text" : "Judges are above the law",
+            "ph" : "จัดเจส อาร์ อะโบฟ เดอะ ลอว์",
+            "th" : "ผู้พิพากษาอยู่เหนือกฎหมาย",
+            "is_correct" : false
+         },
+         {
+            "text" : "Politicians are above the law",
+            "ph" : "โพลิติเชียนส์ อาร์ อะโบฟ เดอะ ลอว์",
+            "th" : "นักการเมืองอยู่เหนือกฎหมาย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What does the term ‘mate’ mean in Australia?",
+      "question_ph" : "วอท ดัส เดอะ เทิร์ม ‘เมท’ มีน อิน ออสเตรเลีย?",
+      "question_th" : "คำว่า ‘mate’ ในออสเตรเลียมีความหมายว่าอย่างไร?",
+      "image" : "mate.jpg",
+      "audio" : "what_does_the_term_mate_mean_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "friend.wav",
+            "text" : "Friend",
+            "ph" : "เฟรนด์",
+            "th" : "เพื่อน",
+            "is_correct" : true
+         },
+         {
+            "text" : "Enemy",
+            "ph" : "เอเนมี่",
+            "th" : "ศัตรู",
+            "is_correct" : false
+         },
+         {
+            "text" : "Boss",
+            "ph" : "บอส",
+            "th" : "เจ้านาย",
+            "is_correct" : false
+         },
+         {
+            "text" : "Neighbor",
+            "ph" : "เนเบอร์",
+            "th" : "เพื่อนบ้าน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which of these is a responsibility of Australian citizens?",
+      "question_ph" : "วิช ออฟ ดีส อิส อะ เรสปอนซิบิลิตี้ ออฟ ออสเตรเลียน ซิติเซนส์?",
+      "question_th" : "ข้อใดต่อไปนี้คือหน้าที่ของพลเมืองออสเตรเลีย?",
+      "image" : "jury.jpg",
+      "audio" : "which_of_these_is_a_responsibility_of_australian_citizens.wav",
+      "answers" : [
+         {
+            "audio" : "serve_on_a_jury_if_called_to_do_so.wav",
+            "text" : "Serve on a jury if called to do so",
+            "ph" : "เสิร์ฟ ออน อะ จูรี่ อิฟ คอลดฺ ทู ดู โซ",
+            "th" : "ทำหน้าที่เป็นคณะลูกขุนหากได้รับการเรียกตัว",
+            "is_correct" : true
+         },
+         {
+            "text" : "Join a political party",
+            "ph" : "จอยน์ อะ โพลิติคัล ปาร์ตี้",
+            "th" : "เข้าร่วมพรรคการเมือง",
+            "is_correct" : false
+         },
+         {
+            "text" : "Work for the government",
+            "ph" : "เวิร์ค ฟอร์ เดอะ กาวเวอร์เมนท์",
+            "th" : "ทำงานให้รัฐบาล",
+            "is_correct" : false
+         },
+         {
+            "text" : "Own a business",
+            "ph" : "โอน อะ บิสเนส",
+            "th" : "เป็นเจ้าของธุรกิจ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "How many states does Australia have?",
+      "question_ph" : "ฮาว เมนี่ สเตทส์ ดัส ออสเตรเลีย แฮฟ?",
+      "question_th" : "ประเทศออสเตรเลียมีกี่รัฐ?",
+      "image" : "how-many-states.jpg",
+      "audio" : "how_many_states_does_australia_have.wav",
+      "answers" : [
+         {
+            "audio" : "6.wav",
+            "text" : "6",
+            "ph" : "ซิกซ์",
+            "th" : "6 รัฐ",
+            "is_correct" : true
+         },
+         {
+            "text" : "5",
+            "ph" : "ไฟฟ์",
+            "th" : "5 รัฐ",
+            "is_correct" : false
+         },
+         {
+            "audio" : "7.wav",
+            "text" : "7",
+            "ph" : "เซเว่น",
+            "th" : "7 รัฐ",
+            "is_correct" : false
+         },
+         {
+            "text" : "8",
+            "ph" : "เอท",
+            "th" : "8 รัฐ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What are the two mainland territories of Australia?",
+      "question_ph" : "วอท อาร์ เดอะ ทู เมนแลนด์ เทร์ริทอรีส์ ออฟ ออสเตรเลีย?",
+      "question_th" : "ดินแดนบนแผ่นดินใหญ่สองแห่งของออสเตรเลียคืออะไร?",
+      "image" : "two-territories.jpg",
+      "audio" : "what_are_the_two_mainland_territories_of_australia.wav",
+      "answers" : [
+         {
+            "audio" : "the_australian_capital_territory_and_the_northern_territory.wav",
+            "text" : "The Australian Capital Territory and the Northern Territory",
+            "ph" : "ดิ ออสเตรเลียน แคปิตอล เทร์ริทอรี แอนด์ เดอะ นอร์ธเทิร์น เทร์ริทอรี",
+            "th" : "ออสเตรเลียนแคปิตอลเทร์ริทอรี (ACT) และนอร์ธเทิร์นเทร์ริทอรี (NT)",
+            "is_correct" : true
+         },
+         {
+            "text" : "Victoria and Tasmania",
+            "ph" : "วิกตอเรีย แอนด์ แทสเมเนีย",
+            "th" : "วิกตอเรียและแทสเมเนีย",
+            "is_correct" : false
+         },
+         {
+            "text" : "New South Wales and Queensland",
+            "ph" : "นิว เซาท์ เวลส์ แอนด์ ควีนส์แลนด์",
+            "th" : "นิวเซาท์เวลส์และควีนส์แลนด์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Western Australia and South Australia",
+            "ph" : "เวสเทิร์น ออสเตรเลีย แอนด์ เซาท์ ออสเตรเลีย",
+            "th" : "เวสเทิร์นออสเตรเลียและเซาท์ออสเตรเลีย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which day of the year is Australia Day?",
+      "question_ph" : "วิช เดย์ ออฟ เดอะ เยียร์ อิส ออสเตรเลีย เดย์?",
+      "question_th" : "วันใดของปีคือวันชาติออสเตรเลีย?",
+      "image" : "australia-day.jpg",
+      "audio" : "which_day_of_the_year_is_australia_day.wav",
+      "answers" : [
+         {
+            "audio" : "26_january.wav",
+            "text" : "26 January",
+            "ph" : "ทเวนตี้-ซิกซ์ แจนนูอารี",
+            "th" : "26 มกราคม",
+            "is_correct" : true
+         },
+         {
+            "audio" : "25_april.wav",
+            "text" : "25 April",
+            "ph" : "ทเวนตี้-ไฟฟ์ เอพริล",
+            "th" : "25 เมษายน",
+            "is_correct" : false
+         },
+         {
+            "text" : "1 January",
+            "ph" : "เฟิสต์ แจนนูอารี",
+            "th" : "1 มกราคม",
+            "is_correct" : false
+         },
+         {
+            "text" : "25 December",
+            "ph" : "ทเวนตี้-ไฟฟ์ ดีเซมเบอร์",
+            "th" : "25 ธันวาคม",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the Australian Indigenous people's musical instrument?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ ดิ ออสเตรเลียน อินดิจินัส พีเพิลส์ มิวสิคัล อินสทรูเมนต์?",
+      "question_th" : "ชื่อเครื่องดนตรีของชนพื้นเมืองออสเตรเลียคืออะไร?",
+      "image" : "didgeridoo.jpg",
+      "audio" : "what_is_the_name_of_the_australian_indigenous_peoples_musica.wav",
+      "answers" : [
+         {
+            "audio" : "didgeridoo.wav",
+            "text" : "Didgeridoo",
+            "ph" : "ดิดเจอริดู",
+            "th" : "ดิดเจอริดู",
+            "is_correct" : true
+         },
+         {
+            "text" : "Piano",
+            "ph" : "เปียโน",
+            "th" : "เปียโน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Guitar",
+            "ph" : "กีตาร์",
+            "th" : "กีตาร์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Violin",
+            "ph" : "ไวโอลิน",
+            "th" : "ไวโอลิน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which two animals are on the Australian Coat of Arms?",
+      "question_ph" : "วิช ทู แอนิมอลส์ อาร์ ออน ดิ ออสเตรเลียน โค้ท ออฟ อาร์มส์?",
+      "question_th" : "สัตว์สองชนิดใดที่ปรากฏอยู่บนตราแผ่นดินของออสเตรเลีย?",
+      "image" : "kangaroo-and-emu.jpg",
+      "audio" : "which_two_animals_are_on_the_australian_coat_of_arms.wav",
+      "answers" : [
+         {
+            "audio" : "kangaroo_and_emu.wav",
+            "text" : "Kangaroo and Emu",
+            "ph" : "แกงการู แอนด์ อีมู",
+            "th" : "จิงโจ้ และ นกอีมู",
+            "is_correct" : true
+         },
+         {
+            "text" : "Koala and Wombat",
+            "ph" : "โคอาลา แอนด์ วอมแบต",
+            "th" : "โคอาลา และ วอมแบต",
+            "is_correct" : false
+         },
+         {
+            "text" : "Possum and Echidna",
+            "ph" : "พอสซั่ม แอนด์ อีคิดนา",
+            "th" : "พอสซั่ม และ ตัวกินมดหนาม (อีคิดนา)",
+            "is_correct" : false
+         },
+         {
+            "text" : "Lion and Unicorn",
+            "ph" : "ไลออน แอนด์ ยูนิคอร์น",
+            "th" : "สิงโต และ ยูนิคอร์น",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What are Australia's national colors?",
+      "question_ph" : "วอท อาร์ ออสเตรเลียส์ เนชันแนล คัลเลอร์ส?",
+      "question_th" : "สีประจำชาติของออสเตรเลียคือสีอะไร?",
+      "image" : "green-and-gold.jpg",
+      "audio" : "what_are_australias_national_colors.wav",
+      "answers" : [
+         {
+            "audio" : "green_and_gold.wav",
+            "text" : "Green and Gold",
+            "ph" : "กรีน แอนด์ โกลด์",
+            "th" : "สีเขียว และ สีทอง",
+            "is_correct" : true
+         },
+         {
+            "text" : "Red and White",
+            "ph" : "เรด แอนด์ ไวท์",
+            "th" : "สีแดง และ สีขาว",
+            "is_correct" : false
+         },
+         {
+            "text" : "Blue and Silver",
+            "ph" : "บลู แอนด์ ซิลเวอร์",
+            "th" : "สีน้ำเงิน และ สีเงิน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Black and Orange",
+            "ph" : "แบล็ค แอนด์ ออเรนจ์",
+            "th" : "สีดำ และ สีส้ม",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of Australia's national anthem?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ ออสเตรเลียส์ เนชันแนล แอนเธม?",
+      "question_th" : "ชื่อเพลงชาติของออสเตรเลียคืออะไร?",
+      "image" : "advance-australia-fair.jpg",
+      "audio" : "what_is_the_name_of_australias_national_anthem.wav",
+      "answers" : [
+         {
+            "audio" : "advance_australia_fair.wav",
+            "text" : "Advance Australia Fair",
+            "ph" : "แอดวานซ์ ออสเตรเลีย แฟร์",
+            "th" : "แอดวานซ์ ออสเตรเลีย แฟร์",
+            "is_correct" : true
+         },
+         {
+            "text" : "God Save the King",
+            "ph" : "กก็อด เซฟ เดอะ คิง",
+            "th" : "ก็อด เซฟ เดอะ คิง",
+            "is_correct" : false
+         },
+         {
+            "text" : "Waltzing Matilda",
+            "ph" : "วอลซิง มาทิลดา",
+            "th" : "วอลซิง มาทิลดา",
+            "is_correct" : false
+         },
+         {
+            "text" : "I Am Australian",
+            "ph" : "ไอ แอม ออสเตรเลียน",
+            "th" : "ไอ แอม ออสเตรเลียน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What are the colors of the Torres Strait Islander Flag?",
+      "question_ph" : "วอท อาร์ เดอะ คัลเลอร์ส ออฟ เดอะ ทอร์เรส สเตรท ไอแลนเดอร์ แฟล็ก?",
+      "question_th" : "ธงของชาวเกาะทอร์เรสสเตรทมีสีอะไรบ้าง?",
+      "image" : "torres-strait-islander-flag.jpg",
+      "audio" : "what_are_the_colors_of_the_torres_strait_islander_flag.wav",
+      "answers" : [
+         {
+            "audio" : "green_blue_black_and_white.wav",
+            "text" : "Green, Blue, Black and White",
+            "ph" : "กรีน, บลู, แบล็ค แอนด์ ไวท์",
+            "th" : "สีเขียว, สีน้ำเงิน, สีดำ และสีขาว",
+            "is_correct" : true
+         },
+         {
+            "text" : "Red, Yellow and Black",
+            "ph" : "เรด, เยลโลว์ แอนด์ แบล็ค",
+            "th" : "สีแดง, สีเหลือง และสีดำ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Orange, Purple and Green",
+            "ph" : "ออเรนจ์, เพอร์เพิล แอนด์ กรีน",
+            "th" : "สีส้ม, สีม่วง และสีเขียว",
+            "is_correct" : false
+         },
+         {
+            "text" : "White, Blue and Red",
+            "ph" : "ไวท์, บลู แอนด์ เรด",
+            "th" : "สีขาว, สีน้ำเงิน และสีแดง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is Australia's national gemstone?",
+      "question_ph" : "วอท อิส ออสเตรเลียส์ เนชันแนล เจมสโตน?",
+      "question_th" : "อัญมณีประจำชาติของออสเตรเลียคืออะไร?",
+      "image" : "opal.jpg",
+      "audio" : "what_is_australias_national_gemstone.wav",
+      "answers" : [
+         {
+            "audio" : "opal.wav",
+            "text" : "Opal",
+            "ph" : "โอปอล",
+            "th" : "โอปอล",
+            "is_correct" : true
+         },
+         {
+            "text" : "Diamond",
+            "ph" : "ไดมอนด์",
+            "th" : "เพชร",
+            "is_correct" : false
+         },
+         {
+            "text" : "Sapphire",
+            "ph" : "แซฟไฟร์",
+            "th" : "ไพลิน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Ruby",
+            "ph" : "รูบี้",
+            "th" : "ทับทิม",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What does the Commonwealth Star on the Australian National Flag represent?",
+      "question_ph" : "วอท ดัส เดอะ คอมมอนเวลธ์ สตาร์ ออน ดิ ออสเตรเลียน เนชันแนล แฟล็ก เรพพรีเซนท์?",
+      "question_th" : "ดาวเครือรัฐ (Commonwealth Star) บนธงชาติออสเตรเลียสื่อถึงอะไร?",
+      "image" : "commonwealth-star-on-flag.jpg",
+      "audio" : "what_does_the_commonwealth_star_on_the_australian_national_f.wav",
+      "answers" : [
+         {
+            "audio" : "the_six_states_and_the_territories.wav",
+            "text" : "The six states and the territories",
+            "ph" : "เดอะ ซิกซ์ สเตทส์ แอนด์ เดอะ เทร์ริทอรีส์",
+            "th" : "รัฐทั้งหกและดินแดนต่างๆ",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Southern Cross",
+            "ph" : "เดอะ เซาเธิร์น ครอส",
+            "th" : "กลุ่มดาวกางเขนใต้",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Queen",
+            "ph" : "เดอะ ควีน",
+            "th" : "พระราชินี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The discovery of Australia",
+            "ph" : "เดอะ ดิสคัฟเวอรี ออฟ ออสเตรเลีย",
+            "th" : "การค้นพบทวีปออสเตรเลีย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is a ‘secret ballot’?",
+      "question_ph" : "วอท อิส อะ ‘ซีเครท บัลลอท’?",
+      "question_th" : "‘การลงคะแนนลับ’ คืออะไร?",
+      "image" : "secret-ballot.jpg",
+      "audio" : "what_is_a_secret_ballot.wav",
+      "answers" : [
+         {
+            "audio" : "no_one_watches_you_vote_and_your_vote_is_private.wav",
+            "text" : "No one watches you vote and your vote is private",
+            "ph" : "โน วัน วอทเชส ยู โหวต แอนด์ ยัวร์ โหวต อิส ไพรเวท",
+            "th" : "ไม่มีใครดูคุณลงคะแนน และการลงคะแนนของคุณเป็นเรื่องส่วนตัว",
+            "is_correct" : true
+         },
+         {
+            "text" : "You must tell your friends who you voted for",
+            "ph" : "ยู มัสต์ เทล ยัวร์ เฟรนด์ส ฮู ยู โหวตเตด ฟอร์",
+            "th" : "คุณต้องบอกเพื่อนว่าคุณลงคะแนนให้ใคร",
+            "is_correct" : false
+         },
+         {
+            "text" : "The government knows who you voted for",
+            "ph" : "เดอะ กาวเวอร์เมนท์ โนวส์ ฮู ยู โหวตเตด ฟอร์",
+            "th" : "รัฐบาลรู้ว่าคุณลงคะแนนให้ใคร",
+            "is_correct" : false
+         },
+         {
+            "text" : "You sign your name on the ballot paper",
+            "ph" : "ยู ไซน์ ยัวร์ เนม ออน เดอะ บัลลอท เปเปอร์",
+            "th" : "คุณเซ็นชื่อของคุณลงในบัตรลงคะแนน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which level of government is responsible for defence and currency?",
+      "question_ph" : "วิช เลเวล ออฟ กาวเวอร์เมนท์ อิส เรสปอนซิเบิล ฟอร์ ดีเฟนซ์ แอนด์ เคอร์เรนซี?",
+      "question_th" : "รัฐบาลระดับใดมีหน้าที่รับผิดชอบด้านการป้องกันประเทศและสกุลเงิน?",
+      "image" : "responsible-for-defence-and-currency.jpg",
+      "audio" : "which_level_of_government_is_responsible_for_defence_and_cur.wav",
+      "answers" : [
+         {
+            "audio" : "the_australian_government_federal.wav",
+            "text" : "The Australian Government (Federal)",
+            "ph" : "ดิ ออสเตรเลียน กาวเวอร์เมนท์ (เฟดเดอรัล)",
+            "th" : "รัฐบาลออสเตรเลีย (รัฐบาลกลาง/สหพันธรัฐ)",
+            "is_correct" : true
+         },
+         {
+            "audio" : "state_and_territory_government.wav",
+            "text" : "State and Territory Government",
+            "ph" : "สเตท แอนด์ เทร์ริทอรี กาวเวอร์เมนท์",
+            "th" : "รัฐบาลระดับรัฐและดินแดน",
+            "is_correct" : false
+         },
+         {
+            "audio" : "local_government.wav",
+            "text" : "Local Government",
+            "ph" : "โลคัล กาวเวอร์เมนท์",
+            "th" : "การปกครองส่วนท้องถิ่น",
+            "is_correct" : false
+         },
+         {
+            "text" : "The United Nations",
+            "ph" : "เดอะ ยูไนเต็ด เนชันส์",
+            "th" : "องค์การสหประชาชาติ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which level of government is responsible for schools and hospitals?",
+      "question_ph" : "วิช เลเวล ออฟ กาวเวอร์เมนท์ อิส เรสปอนซิเบิล ฟอร์ สคูลส์ แอนด์ ฮอสปิตอลส์?",
+      "question_th" : "รัฐบาลระดับใดมีหน้าที่รับผิดชอบด้านโรงเรียนและโรงพยาบาล?",
+      "image" : "responsible-for-schools-and-hospitals.jpg",
+      "audio" : "which_level_of_government_is_responsible_for_schools_and_hos.wav",
+      "answers" : [
+         {
+            "audio" : "state_and_territory_government.wav",
+            "text" : "State and Territory Government",
+            "ph" : "สเตท แอนด์ เทร์ริทอรี กาวเวอร์เมนท์",
+            "th" : "รัฐบาลระดับรัฐและดินแดน",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_australian_government_federal.wav",
+            "text" : "The Australian Government (Federal)",
+            "ph" : "ดิ ออสเตรเลียน กาวเวอร์เมนท์ (เฟดเดอรัล)",
+            "th" : "รัฐบาลออสเตรเลีย (รัฐบาลกลาง/สหพันธรัฐ)",
+            "is_correct" : false
+         },
+         {
+            "audio" : "local_government.wav",
+            "text" : "Local Government",
+            "ph" : "โลคัล กาวเวอร์เมนท์",
+            "th" : "การปกครองส่วนท้องถิ่น",
+            "is_correct" : false
+         },
+         {
+            "text" : "International Government",
+            "ph" : "อินเตอร์เนชันแนล กาวเวอร์เมนท์",
+            "th" : "รัฐบาลระหว่างประเทศ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which level of government is responsible for local parks and rubbish collection?",
+      "question_ph" : "วิช เลเวล ออฟ กาวเวอร์เมนท์ อิส เรสปอนซิเบิล ฟอร์ โลคัล พาร์คส์ แอนด์ รับบิช คอลเลคชัน?",
+      "question_th" : "รัฐบาลระดับใดมีหน้าที่รับผิดชอบด้านสวนสาธารณะท้องถิ่นและการเก็บขยะ?",
+      "image" : "responsible-for-parks-and-rubbish.jpg",
+      "audio" : "which_level_of_government_is_responsible_for_local_parks_and.wav",
+      "answers" : [
+         {
+            "audio" : "local_government.wav",
+            "text" : "Local Government",
+            "ph" : "โลคัล กาวเวอร์เมนท์",
+            "th" : "การปกครองส่วนท้องถิ่น",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_australian_government_federal.wav",
+            "text" : "The Australian Government (Federal)",
+            "ph" : "ดิ ออสเตรเลียน กาวเวอร์เมนท์ (เฟดเดอรัล)",
+            "th" : "รัฐบาลออสเตรเลีย (รัฐบาลกลาง/สหพันธรัฐ)",
+            "is_correct" : false
+         },
+         {
+            "audio" : "state_and_territory_government.wav",
+            "text" : "State and Territory Government",
+            "ph" : "สเตท แอนด์ เทร์ริทอรี กาวเวอร์เมนท์",
+            "th" : "รัฐบาลระดับรัฐและดินแดน",
+            "is_correct" : false
+         },
+         {
+            "text" : "The High Court",
+            "ph" : "เดอะ ไฮ คอร์ต",
+            "th" : "ศาลสูง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is ‘freedom of association’?",
+      "question_ph" : "วอท อิส ‘ฟรีดอม ออฟ แอสโซซิเอชัน’?",
+      "question_th" : "‘เสรีภาพในการรวมกลุ่ม’ คืออะไร?",
+      "image" : "freedom-of-association.jpg",
+      "audio" : "what_is_freedom_of_association.wav",
+      "answers" : [
+         {
+            "audio" : "the_right_to_join_or_not_join_any_group_or_organization.wav",
+            "text" : "The right to join or not join any group or organization",
+            "ph" : "เดอะ ไรท์ ทู จอยน์ ออร์ น็อต จอยน์ เอนี่ กรุ๊ป ออร์ ออร์แกไนเซชัน",
+            "th" : "สิทธิในการเข้าร่วมหรือไม่เข้าร่วมกลุ่มหรือองค์กรใดๆ",
+            "is_correct" : true
+         },
+         {
+            "text" : "You must join a trade union",
+            "ph" : "ยู มัสต์ จอยน์ อะ เทรด ยูเนียน",
+            "th" : "คุณต้องเข้าร่วมสหภาพแรงงาน",
+            "is_correct" : false
+         },
+         {
+            "text" : "You cannot meet with your friends",
+            "ph" : "ยู แคนน็อต มีท วิธ ยัวร์ เฟรนด์ส",
+            "th" : "คุณไม่สามารถพบปะกับเพื่อนของคุณได้",
+            "is_correct" : false
+         },
+         {
+            "text" : "The government chooses your friends",
+            "ph" : "เดอะ กาวเวอร์เมนท์ ชูสเซส ยัวร์ เฟรนด์ส",
+            "th" : "รัฐบาลเป็นผู้เลือกเพื่อนให้คุณ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "How is the Australian Government formed?",
+      "question_ph" : "ฮาว อิส ดิ ออสเตรเลียน กาวเวอร์เมนท์ ฟอร์มดฺ?",
+      "question_th" : "รัฐบาลออสเตรเลียจัดตั้งขึ้นอย่างไร?",
+      "image" : "how-australian-government-formed.jpg",
+      "audio" : "how_is_the_australian_government_formed.wav",
+      "answers" : [
+         {
+            "audio" : "by_the_party_or_coalition_with_the_majority_of_members_in_th.wav",
+            "text" : "By the party or coalition with the majority of members in the House of Representatives",
+            "ph" : "บาย เดอะ ปาร์ตี้ ออร์ โคอะลิชัน วิธ เดอะ เมจอริตี้ ออฟ เมมเบอร์ส อิน เดอะ เฮาส์ ออฟ เรพพรีเซนทาทีฟส์",
+            "th" : "โดยพรรคหรือพรรคร่วมที่มีสมาชิกส่วนใหญ่ในสภาผู้แทนราษฎร",
+            "is_correct" : true
+         },
+         {
+            "text" : "By the party with the most money",
+            "ph" : "บาย เดอะ ปาร์ตี้ วิธ เดอะ โมสต์ มันนี่",
+            "th" : "โดยพรรคที่มีเงินมากที่สุด",
+            "is_correct" : false
+         },
+         {
+            "text" : "By the Queen of England",
+            "ph" : "บาย เดอะ ควีน ออฟ อิงแลนด์",
+            "th" : "โดยราชินีแห่งอังกฤษ",
+            "is_correct" : false
+         },
+         {
+            "text" : "By the Governor-General alone",
+            "ph" : "บาย เดอะ กาวเวอร์เนอร์-เจนเนอรัล อะโลน",
+            "th" : "โดยผู้สำเร็จราชการแทนพระองค์เพียงผู้เดียว",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the role of the Opposition?",
+      "question_ph" : "วอท อิส เดอะ โรล ออฟ ดิ ออปโพซิชัน?",
+      "question_th" : "บทบาทของฝ่ายค้านคืออะไร?",
+      "image" : "role-of-opposition.jpg",
+      "audio" : "what_is_the_role_of_the_opposition.wav",
+      "answers" : [
+         {
+            "audio" : "to_scrutinize_and_question_the_government.wav",
+            "text" : "To scrutinize and question the government",
+            "ph" : "ทู สครูตินิส แอนด์ เควสชัน เดอะ กาวเวอร์เมนท์",
+            "th" : "เพื่อตรวจสอบและตั้งคำถามต่อรัฐบาล",
+            "is_correct" : true
+         },
+         {
+            "text" : "To agree with everything the government says",
+            "ph" : "ทู อะกรี วิธ เอฟวรีธิง เดอะ กาวเวอร์เมนท์ เซย์ส",
+            "th" : "เพื่อเห็นด้วยกับทุกสิ่งที่รัฐบาลพูด",
+            "is_correct" : false
+         },
+         {
+            "text" : "To control the army",
+            "ph" : "ทู คอนโทรล ดิ อาร์มี",
+            "th" : "เพื่อควบคุมกองทัพ",
+            "is_correct" : false
+         },
+         {
+            "text" : "To choose the judges",
+            "ph" : "ทู ชูส เดอะ จัดเจส",
+            "th" : "เพื่อเลือกผู้พิพากษา",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is ‘multiculturalism’?",
+      "question_ph" : "วอท อิส ‘มัลติคัลเจอรัลลิซึม’?",
+      "question_th" : "‘พหุวัฒนธรรม’ คืออะไร?",
+      "image" : "multiculturalism.jpg",
+      "audio" : "what_is_multiculturalism.wav",
+      "answers" : [
+         {
+            "audio" : "people_from_different_cultures_and_backgrounds_living_togeth.wav",
+            "text" : "People from different cultures and backgrounds living together in peace",
+            "ph" : "พีเพิล ฟรอม ดิฟเฟอเรนท์ คัลเจอร์ส แอนด์ แบ็คกราวด์ส ลีฟวิง ทูเกทเธอร์ อิน พีซ",
+            "th" : "ผู้คนจากวัฒนธรรมและภูมิหลังที่แตกต่างกันอาศัยอยู่ร่วมกันอย่างสงบสุข",
+            "is_correct" : true
+         },
+         {
+            "text" : "Everyone must speak only one language",
+            "ph" : "เอฟวรีวัน มัสต์ สปีค โอนลี่ วัน แลงเกวจ",
+            "th" : "ทุกคนต้องพูดเพียงภาษาเดียวเท่านั้น",
+            "is_correct" : false
+         },
+         {
+            "text" : "People must forget their original culture",
+            "ph" : "พีเพิล มัสต์ ฟอร์เกท แดร์ ออริจินัล คัลเจอร์",
+            "th" : "ผู้คนต้องลืมวัฒนธรรมดั้งเดิมของตน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only people born in Australia can live here",
+            "ph" : "โอนลี่ พีเพิล บอร์น อิน ออสเตรเลีย แคน ลีฟ เฮียร์",
+            "th" : "เฉพาะคนที่เกิดในออสเตรเลียเท่านั้นที่สามารถอาศัยอยู่ที่นี่ได้",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What do Australians mean by a ‘fair go’?",
+      "question_ph" : "วอท ดู ออสเตรเลียนส์ มีน บาย อะ ‘แฟร์ โก’?",
+      "question_th" : "ชาวออสเตรเลียหมายถึงอะไรเมื่อพูดว่า ‘fair go’?",
+      "image" : "fair-go.jpg",
+      "audio" : "what_do_australians_mean_by_a_fair_go.wav",
+      "answers" : [
+         {
+            "audio" : "everyone_deserves_a_fair_chance_to_succeed.wav",
+            "text" : "Everyone deserves a fair chance to succeed",
+            "ph" : "เอฟวรีวัน ดีเสิร์ฟส อะ แฟร์ แชนซ์ ทู ซัคซีด",
+            "th" : "ทุกคนสมควรได้รับโอกาสที่ยุติธรรมในการประสบความสำเร็จ",
+            "is_correct" : true
+         },
+         {
+            "text" : "Only rich people should succeed",
+            "ph" : "โอนลี่ ริช พีเพิล ชูต ซัคซีด",
+            "th" : "เฉพาะคนรวยเท่านั้นที่ควรประสบความสำเร็จ",
+            "is_correct" : false
+         },
+         {
+            "text" : "You should cheat to win",
+            "ph" : "ยู ชูต ชีท ทู วิน",
+            "th" : "คุณควรโกงเพื่อให้ชนะ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Life is not fair",
+            "ph" : "ไลฟ์ อิส น็อต แฟร์",
+            "th" : "ชีวิตไม่ยุติธรรม",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which statement is true about men and women in Australia?",
+      "question_ph" : "วิช สเตทเมนต์ อิส ทรู อะเบาท์ เมน แอนด์ วีเมน อิน ออสเตรเลีย?",
+      "question_th" : "ข้อความใดเป็นจริงเกี่ยวกับผู้ชายและผู้หญิงในออสเตรเลีย?",
+      "image" : "true-about-men-and-women.jpg",
+      "audio" : "which_statement_is_true_about_men_and_women_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "men_and_women_have_equal_rights.wav",
+            "text" : "Men and women have equal rights",
+            "ph" : "เมน แอนด์ วีเมน แฮฟ อีควอล ไรท์ส",
+            "th" : "ผู้ชายและผู้หญิงมีสิทธิเท่าเทียมกัน",
+            "is_correct" : true
+         },
+         {
+            "text" : "Men have more rights than women",
+            "ph" : "เมน แฮฟ มอร์ ไรท์ส แดน วีเมน",
+            "th" : "ผู้ชายมีสิทธิมากกว่าผู้หญิง",
+            "is_correct" : false
+         },
+         {
+            "text" : "Women have more rights than men",
+            "ph" : "วีเมน แฮฟ มอร์ ไรท์ส แดน เมน",
+            "th" : "ผู้หญิงมีสิทธิมากกว่าผู้ชาย",
+            "is_correct" : false
+         },
+         {
+            "text" : "Women are not allowed to work",
+            "ph" : "วีเมน อาร์ น็อต อัลลาวด์ ทู เวิร์ค",
+            "th" : "ผู้หญิงไม่ได้รับอนุญาตให้ทำงาน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "How many senators does each state elect?",
+      "question_ph" : "ฮาว เมนี่ เซเนเตอร์ส ดัส อีช สเตท อีเล็คท์?",
+      "question_th" : "แต่ละรัฐเลือกตั้งวุฒิสมาชิกกี่คน?",
+      "image" : "how-many-state-senators.jpg",
+      "audio" : "how_many_senators_does_each_state_elect.wav",
+      "answers" : [
+         {
+            "audio" : "12.wav",
+            "text" : "12",
+            "ph" : "ทเวลฟ์",
+            "th" : "12 คน",
+            "is_correct" : true
+         },
+         {
+            "audio" : "2.wav",
+            "text" : "2",
+            "ph" : "ทู",
+            "th" : "2 คน",
+            "is_correct" : false
+         },
+         {
+            "text" : "20",
+            "ph" : "ทเวนตี้",
+            "th" : "20 คน",
+            "is_correct" : false
+         },
+         {
+            "text" : "76",
+            "ph" : "เซเวนตี้-ซิกซ์",
+            "th" : "76 คน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "How many senators does each mainland territory elect?",
+      "question_ph" : "ฮาว เมนี่ เซเนเตอร์ส ดัส อีช เมนแลนด์ เทร์ริทอรี อีเล็คท์?",
+      "question_th" : "ดินแดนบนแผ่นดินใหญ่แต่ละแห่งเลือกตั้งวุฒิสมาชิกกี่คน?",
+      "image" : "mainland-territory-senators.jpg",
+      "audio" : "how_many_senators_does_each_mainland_territory_elect.wav",
+      "answers" : [
+         {
+            "audio" : "2.wav",
+            "text" : "2",
+            "ph" : "ทู",
+            "th" : "2 คน",
+            "is_correct" : true
+         },
+         {
+            "audio" : "12.wav",
+            "text" : "12",
+            "ph" : "ทเวลฟ์",
+            "th" : "12 คน",
+            "is_correct" : false
+         },
+         {
+            "text" : "5",
+            "ph" : "ไฟฟ์",
+            "th" : "5 คน",
+            "is_correct" : false
+         },
+         {
+            "text" : "10",
+            "ph" : "เท็น",
+            "th" : "10 คน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who appoints judges and magistrates in Australia?",
+      "question_ph" : "ฮู แอพพอยท์ส จัดเจส แอนด์ เมจิสเตรทส์ อิน ออสเตรเลีย?",
+      "question_th" : "ใครเป็นผู้แต่งตั้งผู้พิพากษาและตุลาการในออสเตรเลีย?",
+      "image" : "appoints-judges.jpg",
+      "audio" : "who_appoints_judges_and_magistrates_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "the_governorgeneral.wav",
+            "text" : "The Governor-General",
+            "ph" : "เดอะ กาวเวอร์เนอร์-เจนเนอรัล",
+            "th" : "ผู้สำเร็จราชการแทนพระองค์",
+            "is_correct" : true
+         },
+         {
+            "text" : "The people",
+            "ph" : "เดอะ พีเพิล",
+            "th" : "ประชาชน",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Prime Minister alone",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์ อะโลน",
+            "th" : "นายกรัฐมนตรีเพียงผู้เดียว",
+            "is_correct" : false
+         },
+         {
+            "text" : "The police",
+            "ph" : "เดอะ โปลิศ",
+            "th" : "ตำรวจ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is a ‘coalition’ in the Australian Government?",
+      "question_ph" : "วอท อิส อะ ‘โคอะลิชัน’ อิน ดิ ออสเตรเลียน กาวเวอร์เมนท์?",
+      "question_th" : "‘พรรคร่วม’ (Coalition) ในรัฐบาลออสเตรเลียคืออะไร?",
+      "image" : "coalition.jpg",
+      "audio" : "what_is_a_coalition_in_the_australian_government.wav",
+      "answers" : [
+         {
+            "audio" : "when_two_or_more_political_parties_join_together.wav",
+            "text" : "When two or more political parties join together",
+            "ph" : "เวน ทู ออร์ มอร์ โพลิติคัล ปาร์ตี้ส์ จอยน์ ทูเกทเธอร์",
+            "th" : "เมื่อพรรคการเมืองสองพรรคขึ้นไปรวมตัวกัน",
+            "is_correct" : true
+         },
+         {
+            "text" : "A type of tax",
+            "ph" : "อะ ไทป์ ออฟ แท็กซ์",
+            "th" : "ประเภทของภาษี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The name of the Prime Minister's house",
+            "ph" : "เดอะ เนม ออฟ เดอะ ไพรม์ มินิสเตอร์ส เฮาส์",
+            "th" : "ชื่อบ้านของนายกรัฐมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "A special holiday",
+            "ph" : "อะ สเปเชียล ฮอลิเดย์",
+            "th" : "วันหยุดพิเศษ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "How long have Aboriginal and Torres Strait Islander peoples lived in Australia?",
+      "question_ph" : "ฮาว ลอง แฮฟ แอบอริจินัล แอนด์ ทอร์เรส สเตรท ไอแลนเดอร์ พีเพิลส์ ลีฟดฺ อิน ออสเตรเลีย?",
+      "question_th" : "ชาวออสเตรเลียพื้นเมืองและชาวเกาะทอร์เรสสเตรทอาศัยอยู่ในออสเตรเลียมานานแค่ไหนแล้ว?",
+      "image" : "aboriginal-in-australia.jpg",
+      "audio" : "how_long_have_aboriginal_and_torres_strait_islander_peoples_.wav",
+      "answers" : [
+         {
+            "audio" : "for_at_least_65000_years.wav",
+            "text" : "For at least 65,000 years",
+            "ph" : "ฟอร์ แอท ลีสต์ ซิกซ์ตี้-ไฟฟ์ ธาวซันด์ เยียร์ส",
+            "th" : "อย่างน้อย 65,000 ปี",
+            "is_correct" : true
+         },
+         {
+            "text" : "For 200 years",
+            "ph" : "ฟอร์ ทู ฮันเดรด เยียร์ส",
+            "th" : "เป็นเวลา 200 ปี",
+            "is_correct" : false
+         },
+         {
+            "text" : "For 1,000 years",
+            "ph" : "ฟอร์ วัน ธาวซันด์ เยียร์ส",
+            "th" : "เป็นเวลา 1,000 ปี",
+            "is_correct" : false
+         },
+         {
+            "text" : "For 50 years",
+            "ph" : "ฟอร์ ฟิฟตี้ เยียร์ส",
+            "th" : "เป็นเวลา 50 ปี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which country's flag is found in the top left corner of the Australian National Flag?",
+      "question_ph" : "วิช คันทรีส์ แฟล็ก อิส ฟาวน์ด อิน เดอะ ท็อป เลฟท์ คอร์เนอร์ ออฟ ดิ ออสเตรเลียน เนชันแนล แฟล็ก?",
+      "question_th" : "ธงของประเทศใดปรากฏอยู่ที่มุมซ้ายบนของธงชาติออสเตรเลีย?",
+      "image" : "top-left-corner.jpg",
+      "audio" : "which_countrys_flag_is_found_in_the_top_left_corner_of_the_a.wav",
+      "answers" : [
+         {
+            "audio" : "the_united_kingdom.wav",
+            "text" : "The United Kingdom",
+            "ph" : "เดอะ ยูไนเต็ด คิงดอม",
+            "th" : "สหราชอาณาจักร (อังกฤษ)",
+            "is_correct" : true
+         },
+         {
+            "text" : "The United States",
+            "ph" : "เดอะ ยูไนเต็ด สเตทส์",
+            "th" : "สหรัฐอเมริกา",
+            "is_correct" : false
+         },
+         {
+            "text" : "New Zealand",
+            "ph" : "นิวซีแลนด์",
+            "th" : "นิวซีแลนด์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Canada",
+            "ph" : "แคนาดา",
+            "th" : "แคนาดา",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the main language spoken in Australia?",
+      "question_ph" : "วอท อิส เดอะ เมน แลงเกวจ สโปเคน อิน ออสเตรเลีย?",
+      "question_th" : "ภาษาหลักที่ใช้พูดในออสเตรเลียคือภาษาอะไร?",
+      "image" : "main-language.jpg",
+      "audio" : "what_is_the_main_language_spoken_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "english.wav",
+            "text" : "English",
+            "ph" : "อิงลิช",
+            "th" : "ภาษาอังกฤษ",
+            "is_correct" : true
+         },
+         {
+            "text" : "Italian",
+            "ph" : "อิตาเลียน",
+            "th" : "ภาษาอิตาลี",
+            "is_correct" : false
+         },
+         {
+            "text" : "Chinese",
+            "ph" : "ไชนีส",
+            "th" : "ภาษาจีน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Greek",
+            "ph" : "กรีก",
+            "th" : "ภาษากรีก",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Is voting compulsory in Australia?",
+      "question_ph" : "อิส โหวตติง คอมพัลซารี อิน ออสเตรเลีย?",
+      "question_th" : "การลงคะแนนเสียงเป็นการบังคับในออสเตรเลียหรือไม่?",
+      "image" : "compulsory-voting.jpg",
+      "audio" : "is_voting_compulsory_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "yes.wav",
+            "text" : "Yes",
+            "ph" : "เยส",
+            "th" : "ใช่",
+            "is_correct" : true
+         },
+         {
+            "audio" : "no.wav",
+            "text" : "No",
+            "ph" : "โน",
+            "th" : "ไม่ใช่",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only for men",
+            "ph" : "โอนลี่ ฟอร์ เมน",
+            "th" : "เฉพาะผู้ชายเท่านั้น",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only for rich people",
+            "ph" : "โอนลี่ ฟอร์ ริช พีเพิล",
+            "th" : "เฉพาะคนรวยเท่านั้น",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who is the leader of a State Government?",
+      "question_ph" : "ฮู อิส เดอะ ลีดเดอร์ ออฟ อะ สเตท กาวเวอร์เมนท์?",
+      "question_th" : "ผู้นำรัฐบาลระดับรัฐคือใคร?",
+      "image" : "state-goverment-leader.jpg",
+      "audio" : "who_is_the_leader_of_a_state_government.wav",
+      "answers" : [
+         {
+            "audio" : "the_premier.wav",
+            "text" : "The Premier",
+            "ph" : "เดอะ พรีเมียร์",
+            "th" : "มุขมนตรี (Premier)",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_prime_minister.wav",
+            "text" : "The Prime Minister",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์",
+            "th" : "นายกรัฐมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Mayor",
+            "ph" : "เดอะ เมเยอร์",
+            "th" : "นายกเทศมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The President",
+            "ph" : "เดอะ เพรสซิเดนท์",
+            "th" : "ประธานาธิบดี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who is the leader of a Territory Government?",
+      "question_ph" : "ฮู อิส เดอะ ลีดเดอร์ ออฟ อะ เทร์ริทอรี กาวเวอร์เมนท์?",
+      "question_th" : "ผู้นำรัฐบาลระดับดินแดน (Territory) คือใคร?",
+      "image" : "territory-government-leader.jpg",
+      "audio" : "who_is_the_leader_of_a_territory_government.wav",
+      "answers" : [
+         {
+            "audio" : "the_chief_minister.wav",
+            "text" : "The Chief Minister",
+            "ph" : "เดอะ ชีฟ มินิสเตอร์",
+            "th" : "มุขมนตรี (Chief Minister)",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_premier.wav",
+            "text" : "The Premier",
+            "ph" : "เดอะ พรีเมียร์",
+            "th" : "มุขมนตรี (Premier)",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Senator",
+            "ph" : "เดอะ เซเนเตอร์",
+            "th" : "วุฒิสมาชิก",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Captain",
+            "ph" : "เดอะ กัปตัน",
+            "th" : "กัปตัน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What colour are the seats in the House of Representatives?",
+      "question_ph" : "วอท คัลเลอร์ อาร์ เดอะ ซีทส์ อิน เดอะ เฮาส์ ออฟ เรพพรีเซนทาทีฟส์?",
+      "question_th" : "ที่นั่งในสภาผู้แทนราษฎรมีสีอะไร?",
+      "image" : "seat-colour-house-of-representatives.jpg",
+      "audio" : "what_colour_are_the_seats_in_the_house_of_representatives.wav",
+      "answers" : [
+         {
+            "audio" : "green.wav",
+            "text" : "Green",
+            "ph" : "กรีน",
+            "th" : "สีเขียว",
+            "is_correct" : true
+         },
+         {
+            "audio" : "red.wav",
+            "text" : "Red",
+            "ph" : "เรด",
+            "th" : "สีแดง",
+            "is_correct" : false
+         },
+         {
+            "text" : "Blue",
+            "ph" : "บลู",
+            "th" : "สีน้ำเงิน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Yellow",
+            "ph" : "เยลโลว์",
+            "th" : "สีเหลือง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What colour are the seats in the Senate?",
+      "question_ph" : "วอท คัลเลอร์ อาร์ เดอะ ซีทส์ อิน เดอะ เซเนท?",
+      "question_th" : "ที่นั่งในวุฒิสภามีสีอะไร?",
+      "image" : "seats-senate.jpg",
+      "audio" : "what_colour_are_the_seats_in_the_senate.wav",
+      "answers" : [
+         {
+            "audio" : "red.wav",
+            "text" : "Red",
+            "ph" : "เรด",
+            "th" : "สีแดง",
+            "is_correct" : true
+         },
+         {
+            "audio" : "green.wav",
+            "text" : "Green",
+            "ph" : "กรีน",
+            "th" : "สีเขียว",
+            "is_correct" : false
+         },
+         {
+            "text" : "White",
+            "ph" : "ไวท์",
+            "th" : "สีขาว",
+            "is_correct" : false
+         },
+         {
+            "text" : "Black",
+            "ph" : "แบล็ค",
+            "th" : "สีดำ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the capital city of Victoria?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ เดอะ แคปิตอล ซิตี้ ออฟ วิกตอเรีย?",
+      "question_th" : "ชื่อเมืองหลวงของรัฐวิกตอเรียคืออะไร?",
+      "image" : "victorian-capital.jpg",
+      "audio" : "what_is_the_name_of_the_capital_city_of_victoria.wav",
+      "answers" : [
+         {
+            "audio" : "melbourne.wav",
+            "text" : "Melbourne",
+            "ph" : "เมลเบิร์น",
+            "th" : "เมลเบิร์น",
+            "is_correct" : true
+         },
+         {
+            "audio" : "sydney.wav",
+            "text" : "Sydney",
+            "ph" : "ซิดนีย์",
+            "th" : "ซิดนีย์",
+            "is_correct" : false
+         },
+         {
+            "audio" : "perth.wav",
+            "text" : "Perth",
+            "ph" : "เพิร์ธ",
+            "th" : "เพิร์ธ",
+            "is_correct" : false
+         },
+         {
+            "audio" : "adelaide.wav",
+            "text" : "Adelaide",
+            "ph" : "แอดิเลด",
+            "th" : "แอดิเลด",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the capital city of New South Wales?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ เดอะ แคปิตอล ซิตี้ ออฟ นิว เซาท์ เวลส์?",
+      "question_th" : "ชื่อเมืองหลวงของรัฐนิวเซาท์เวลส์คืออะไร?",
+      "image" : "nsw-capital.jpg",
+      "audio" : "what_is_the_name_of_the_capital_city_of_new_south_wales.wav",
+      "answers" : [
+         {
+            "audio" : "sydney.wav",
+            "text" : "Sydney",
+            "ph" : "ซิดนีย์",
+            "th" : "ซิดนีย์",
+            "is_correct" : true
+         },
+         {
+            "audio" : "canberra.wav",
+            "text" : "Canberra",
+            "ph" : "แคนเบอร์รา",
+            "th" : "แคนเบอร์รา",
+            "is_correct" : false
+         },
+         {
+            "audio" : "darwin.wav",
+            "text" : "Darwin",
+            "ph" : "ดาร์วิน",
+            "th" : "ดาร์วิน",
+            "is_correct" : false
+         },
+         {
+            "audio" : "hobart.wav",
+            "text" : "Hobart",
+            "ph" : "โฮบาร์ต",
+            "th" : "โฮบาร์ต",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the capital city of Queensland?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ เดอะ แคปิตอล ซิตี้ ออฟ ควีนส์แลนด์?",
+      "question_th" : "ชื่อเมืองหลวงของรัฐควีนส์แลนด์คืออะไร?",
+      "image" : "queensland-capital.jpg",
+      "audio" : "what_is_the_name_of_the_capital_city_of_queensland.wav",
+      "answers" : [
+         {
+            "audio" : "brisbane.wav",
+            "text" : "Brisbane",
+            "ph" : "บริสเบน",
+            "th" : "บริสเบน",
+            "is_correct" : true
+         },
+         {
+            "text" : "Cairns",
+            "ph" : "แคร์นส์",
+            "th" : "แคร์นส์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Gold Coast",
+            "ph" : "โกลด์ โคสต์",
+            "th" : "โกลด์โคสต์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Alice Springs",
+            "ph" : "อลิซ สปริงส์",
+            "th" : "อลิซสปริงส์",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the capital city of Western Australia?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ เดอะ แคปิตอล ซิตี้ ออฟ เวสเทิร์น ออสเตรเลีย?",
+      "question_th" : "ชื่อเมืองหลวงของรัฐเวสเทิร์นออสเตรเลียคืออะไร?",
+      "image" : "wa-capital.jpg",
+      "audio" : "what_is_the_name_of_the_capital_city_of_western_australia.wav",
+      "answers" : [
+         {
+            "audio" : "perth.wav",
+            "text" : "Perth",
+            "ph" : "เพิร์ธ",
+            "th" : "เพิร์ธ",
+            "is_correct" : true
+         },
+         {
+            "text" : "Broome",
+            "ph" : "บรูม",
+            "th" : "บรูม",
+            "is_correct" : false
+         },
+         {
+            "text" : "Albany",
+            "ph" : "อัลบานี",
+            "th" : "อัลบานี",
+            "is_correct" : false
+         },
+         {
+            "text" : "Geraldton",
+            "ph" : "เจอรัลด์ตัน",
+            "th" : "เจอรัลด์ตัน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the capital city of South Australia?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ เดอะ แคปิตอล ซิตี้ ออฟ เซาท์ ออสเตรเลีย?",
+      "question_th" : "ชื่อเมืองหลวงของรัฐเซาท์ออสเตรเลียคืออะไร?",
+      "image" : "sa-capital.jpg",
+      "audio" : "what_is_the_name_of_the_capital_city_of_south_australia.wav",
+      "answers" : [
+         {
+            "audio" : "adelaide.wav",
+            "text" : "Adelaide",
+            "ph" : "แอดิเลด",
+            "th" : "แอดิเลด",
+            "is_correct" : true
+         },
+         {
+            "text" : "Port Augusta",
+            "ph" : "พอร์ต ออกัสตา",
+            "th" : "พอร์ตออกัสตา",
+            "is_correct" : false
+         },
+         {
+            "text" : "Mount Gambier",
+            "ph" : "เมาท์ แกมเบียร์",
+            "th" : "เมาท์แกมเบียร์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Whyalla",
+            "ph" : "ไวอัลลา",
+            "th" : "ไวอัลลา",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the capital city of Tasmania?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ เดอะ แคปิตอล ซิตี้ ออฟ แทสเมเนีย?",
+      "question_th" : "ชื่อเมืองหลวงของรัฐแทสเมเนียคืออะไร?",
+      "image" : "tasmania-capital.jpg",
+      "audio" : "what_is_the_name_of_the_capital_city_of_tasmania.wav",
+      "answers" : [
+         {
+            "audio" : "hobart.wav",
+            "text" : "Hobart",
+            "ph" : "โฮบาร์ต",
+            "th" : "โฮบาร์ต",
+            "is_correct" : true
+         },
+         {
+            "text" : "Launceston",
+            "ph" : "ลอนเซสตัน",
+            "th" : "ลอนเซสตัน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Devonport",
+            "ph" : "เดวอนพอร์ต",
+            "th" : "เดวอนพอร์ต",
+            "is_correct" : false
+         },
+         {
+            "text" : "Burnie",
+            "ph" : "เบอร์นี",
+            "th" : "เบอร์นี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the capital city of the Northern Territory?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ เดอะ แคปิตอล ซิตี้ ออฟ เดอะ นอร์ธเทิร์น เทร์ริทอรี?",
+      "question_th" : "ชื่อเมืองหลวงของนอร์ธเทิร์นเทร์ริทอรีคืออะไร?",
+      "image" : "nt-capital.jpg",
+      "audio" : "what_is_the_name_of_the_capital_city_of_the_northern_territo.wav",
+      "answers" : [
+         {
+            "audio" : "darwin.wav",
+            "text" : "Darwin",
+            "ph" : "ดาร์วิน",
+            "th" : "ดาร์วิน",
+            "is_correct" : true
+         },
+         {
+            "text" : "Alice Springs",
+            "ph" : "อลิซ สปริงส์",
+            "th" : "อลิซสปริงส์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Katherine",
+            "ph" : "แคเธอรีน",
+            "th" : "แคเธอรีน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Palmerston",
+            "ph" : "พาล์มเมอร์สตัน",
+            "th" : "พาล์มเมอร์สตัน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who collects taxes in Australia?",
+      "question_ph" : "ฮู คอลเลคต์ส แท็กเซส อิน ออสเตรเลีย?",
+      "question_th" : "ใครเป็นผู้เก็บภาษีในออสเตรเลีย?",
+      "image" : "ato.jpg",
+      "audio" : "who_collects_taxes_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "the_australian_taxation_office_ato.wav",
+            "text" : "The Australian Taxation Office (ATO)",
+            "ph" : "ดิ ออสเตรเลียน แท็กเซชัน ออฟฟิศ (เอ-ที-โอ)",
+            "th" : "สำนักงานภาษีออสเตรเลีย (ATO)",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Police",
+            "ph" : "เดอะ โปลิศ",
+            "th" : "ตำรวจ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Bank",
+            "ph" : "เดอะ แบงค์",
+            "th" : "ธนาคาร",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Post Office",
+            "ph" : "เดอะ โพสต์ ออฟฟิศ",
+            "th" : "ที่ทำการไปรษณีย์",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is a 'volunteer'?",
+      "question_ph" : "วอท อิส อะ ‘วอลันเทียร์’?",
+      "question_th" : "‘อาสาสมัคร’ คืออะไร?",
+      "image" : "volunteer.jpg",
+      "audio" : "what_is_a_volunteer.wav",
+      "answers" : [
+         {
+            "audio" : "someone_who_helps_the_community_without_being_paid.wav",
+            "text" : "Someone who helps the community without being paid",
+            "ph" : "ซัมวัน ฮู เฮลป์ส เดอะ คอมมิวนิตี้ วิธเอาท์ บีอิง เพด",
+            "th" : "คนที่ช่วยเหลือชุมชนโดยไม่ได้รับค่าจ้าง",
+            "is_correct" : true
+         },
+         {
+            "text" : "Someone who works for the government",
+            "ph" : "ซัมวัน ฮู เวิร์คส์ ฟอร์ เดอะ กาวเวอร์เมนท์",
+            "th" : "คนที่ทำงานให้รัฐบาล",
+            "is_correct" : false
+         },
+         {
+            "text" : "Someone who joins the army",
+            "ph" : "ซัมวัน ฮู จอยน์ส ดิ อาร์มี",
+            "th" : "คนที่เข้าร่วมกองทัพ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Someone who pays taxes",
+            "ph" : "ซัมวัน ฮู เพย์ส แท็กเซส",
+            "th" : "คนที่จ่ายภาษี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "When is Anzac Day celebrated?",
+      "question_ph" : "เวน อิส แอนแซค เดย์ เซเลเบรเตด?",
+      "question_th" : "วันแอนแซค (Anzac Day) เฉลิมฉลองเมื่อไหร่?",
+      "image" : "anzac-day.jpg",
+      "audio" : "when_is_anzac_day_celebrated.wav",
+      "answers" : [
+         {
+            "audio" : "25_april.wav",
+            "text" : "25 April",
+            "ph" : "ทเวนตี้-ไฟฟ์ เอพริล",
+            "th" : "25 เมษายน",
+            "is_correct" : true
+         },
+         {
+            "audio" : "26_january.wav",
+            "text" : "26 January",
+            "ph" : "ทเวนตี้-ซิกซ์ แจนนูอารี",
+            "th" : "26 มกราคม",
+            "is_correct" : false
+         },
+         {
+            "text" : "1 January",
+            "ph" : "เฟิสต์ แจนนูอารี",
+            "th" : "1 มกราคม",
+            "is_correct" : false
+         },
+         {
+            "text" : "25 December",
+            "ph" : "ทเวนตี้-ไฟฟ์ ดีเซมเบอร์",
+            "th" : "25 ธันวาคม",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which European country's settlers were the first to arrive in Australia?",
+      "question_ph" : "วิช ยูโรเปียน คันทรีส์ เซตเลอร์ส เวอร์ เดอะ เฟิสต์ ทู อะไรฟ์ อิน ออสเตรเลีย?",
+      "question_th" : "ผู้ตั้งถิ่นฐานจากประเทศยุโรปใดที่มาถึงออสเตรเลียเป็นกลุ่มแรก?",
+      "image" : "european-settlers.jpg",
+      "audio" : "which_european_countrys_settlers_were_the_first_to_arrive_in.wav",
+      "answers" : [
+         {
+            "audio" : "great_britain.wav",
+            "text" : "Great Britain",
+            "ph" : "เกรท บริเทน",
+            "th" : "บริเตนใหญ่ (อังกฤษ)",
+            "is_correct" : true
+         },
+         {
+            "text" : "France",
+            "ph" : "ฟรานซ์",
+            "th" : "ฝรั่งเศส",
+            "is_correct" : false
+         },
+         {
+            "text" : "Spain",
+            "ph" : "สเปน",
+            "th" : "สเปน",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Netherlands",
+            "ph" : "เดอะ เนเธอร์แลนด์",
+            "th" : "เนเธอร์แลนด์",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the Southern Cross?",
+      "question_ph" : "วอท อิส เดอะ เซาเธิร์น ครอส?",
+      "question_th" : "กลุ่มดาวกางเขนใต้ (Southern Cross) คืออะไร?",
+      "image" : "southern-cross.jpg",
+      "audio" : "what_is_the_southern_cross.wav",
+      "answers" : [
+         {
+            "audio" : "a_group_of_stars_seen_in_the_southern_sky.wav",
+            "text" : "A group of stars seen in the southern sky",
+            "ph" : "อะ กรุ๊ป ออฟ สตาร์ส ซีน อิน เดอะ เซาเธิร์น สกาย",
+            "th" : "กลุ่มดาวที่มองเห็นได้ในท้องฟ้าทางซีกโลกใต้",
+            "is_correct" : true
+         },
+         {
+            "text" : "A famous building",
+            "ph" : "อะ เฟมัส บิลดิง",
+            "th" : "อาคารที่มีชื่อเสียง",
+            "is_correct" : false
+         },
+         {
+            "text" : "A type of animal",
+            "ph" : "อะ ไทป์ ออฟ แอนิมอล",
+            "th" : "ประเภทของสัตว์",
+            "is_correct" : false
+         },
+         {
+            "text" : "A river in Victoria",
+            "ph" : "อะ ริเวอร์ อิน วิกตอเรีย",
+            "th" : "แม่น้ำสายหนึ่งในรัฐวิกตอเรีย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who signs Bills to make them law?",
+      "question_ph" : "ฮู ไซน์ส บิลส์ ทู เมค เดม ลอว์?",
+      "question_th" : "ใครเป็นผู้ลงนามในร่างกฎหมายเพื่อให้เป็นกฎหมาย?",
+      "image" : "sign-bills.jpg",
+      "audio" : "who_signs_bills_to_make_them_law.wav",
+      "answers" : [
+         {
+            "audio" : "the_governorgeneral.wav",
+            "text" : "The Governor-General",
+            "ph" : "เดอะ กาวเวอร์เนอร์-เจนเนอรัล",
+            "th" : "ผู้สำเร็จราชการแทนพระองค์",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_prime_minister.wav",
+            "text" : "The Prime Minister",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์",
+            "th" : "นายกรัฐมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Opposition Leader",
+            "ph" : "ดิ ออปโพซิชัน ลีดเดอร์",
+            "th" : "ผู้นำฝ่ายค้าน",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Chief Justice",
+            "ph" : "เดอะ ชีฟ จัสติซ",
+            "th" : "ประธานศาลฎีกา",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which government is responsible for police and fire services?",
+      "question_ph" : "วิช กาวเวอร์เมนท์ อิส เรสปอนซิเบิล ฟอร์ โปลิศ แอนด์ ไฟร์ เซอร์วิสเซส?",
+      "question_th" : "รัฐบาลใดมีหน้าที่รับผิดชอบด้านตำรวจและบริการดับเพลิง?",
+      "image" : "police-fire.jpg",
+      "audio" : "which_government_is_responsible_for_police_and_fire_services.wav",
+      "answers" : [
+         {
+            "audio" : "state_and_territory_government.wav",
+            "text" : "State and Territory Government",
+            "ph" : "สเตท แอนด์ เทร์ริทอรี กาวเวอร์เมนท์",
+            "th" : "รัฐบาลระดับรัฐและดินแดน",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_australian_government_federal.wav",
+            "text" : "The Australian Government (Federal)",
+            "ph" : "ดิ ออสเตรเลียน กาวเวอร์เมนท์ (เฟดเดอรัล)",
+            "th" : "รัฐบาลออสเตรเลีย (รัฐบาลกลาง)",
+            "is_correct" : false
+         },
+         {
+            "audio" : "local_government.wav",
+            "text" : "Local Government",
+            "ph" : "โลคัล กาวเวอร์เมนท์",
+            "th" : "การปกครองส่วนท้องถิ่น",
+            "is_correct" : false
+         },
+         {
+            "text" : "The United Nations",
+            "ph" : "เดอะ ยูไนเต็ด เนชันส์",
+            "th" : "องค์การสหประชาชาติ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which government is responsible for trade and immigration?",
+      "question_ph" : "วิช กาวเวอร์เมนท์ อิส เรสปอนซิเบิล ฟอร์ เทรด แอนด์ อิมมิเกรชัน?",
+      "question_th" : "รัฐบาลใดมีหน้าที่รับผิดชอบด้านการค้าและการตรวจคนเข้าเมือง?",
+      "image" : "trade-immigration.jpg",
+      "audio" : "which_government_is_responsible_for_trade_and_immigration.wav",
+      "answers" : [
+         {
+            "audio" : "the_australian_government_federal.wav",
+            "text" : "The Australian Government (Federal)",
+            "ph" : "ดิ ออสเตรเลียน กาวเวอร์เมนท์ (เฟดเดอรัล)",
+            "th" : "รัฐบาลออสเตรเลีย (รัฐบาลกลาง)",
+            "is_correct" : true
+         },
+         {
+            "audio" : "state_and_territory_government.wav",
+            "text" : "State and Territory Government",
+            "ph" : "สเตท แอนด์ เทร์ริทอรี กาวเวอร์เมนท์",
+            "th" : "รัฐบาลระดับรัฐและดินแดน",
+            "is_correct" : false
+         },
+         {
+            "audio" : "local_government.wav",
+            "text" : "Local Government",
+            "ph" : "โลคัล กาวเวอร์เมนท์",
+            "th" : "การปกครองส่วนท้องถิ่น",
+            "is_correct" : false
+         },
+         {
+            "audio" : "the_governorgeneral.wav",
+            "text" : "The Governor-General",
+            "ph" : "เดอะ กาวเวอร์เนอร์-เจนเนอรัล",
+            "th" : "ผู้สำเร็จราชการแทนพระองค์",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What pledge do new citizens make?",
+      "question_ph" : "วอท เพลจ ดู นิว ซิติเซนส์ เมค?",
+      "question_th" : "พลเมืองใหม่ต้องกล่าวคำปฏิญาณว่าอย่างไร?",
+      "image" : "pledge.jpg",
+      "audio" : "what_pledge_do_new_citizens_make.wav",
+      "answers" : [
+         {
+            "audio" : "to_be_loyal_to_australia_and_its_people.wav",
+            "text" : "To be loyal to Australia and its people",
+            "ph" : "ทู บี ลอยัล ทู ออสเตรเลีย แอนด์ อิทส์ พีเพิล",
+            "th" : "ที่จะซื่อสัตย์ต่อออสเตรเลียและประชาชนชาวออสเตรเลีย",
+            "is_correct" : true
+         },
+         {
+            "text" : "To pay money to the government",
+            "ph" : "ทู เพย์ มันนี่ ทู เดอะ กาวเวอร์เมนท์",
+            "th" : "ที่จะจ่ายเงินให้กับรัฐบาล",
+            "is_correct" : false
+         },
+         {
+            "text" : "To never leave Australia",
+            "ph" : "ทู เนเวอร์ ลีฟ ออสเตรเลีย",
+            "th" : "ที่จะไม่ไปจากออสเตรเลีย",
+            "is_correct" : false
+         },
+         {
+            "text" : "To join a political party",
+            "ph" : "ทู จอยน์ อะ โพลิติคัล ปาร์ตี้",
+            "th" : "ที่จะเข้าร่วมพรรคการเมือง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Where is the Great Barrier Reef located?",
+      "question_ph" : "แวร์ อิส เดอะ เกรท แบร์ริเออร์ รีฟ โลเคเตด?",
+      "question_th" : "เกรตแบร์ริเออร์รีฟ (แนวปะการังใหญ่) ตั้งอยู่ที่ไหน?",
+      "image" : "barrier-reef.jpg",
+      "audio" : "where_is_the_great_barrier_reef_located.wav",
+      "answers" : [
+         {
+            "audio" : "queensland.wav",
+            "text" : "Queensland",
+            "ph" : "ควีนส์แลนด์",
+            "th" : "รัฐควีนส์แลนด์",
+            "is_correct" : true
+         },
+         {
+            "text" : "Victoria",
+            "ph" : "วิกตอเรีย",
+            "th" : "รัฐวิกตอเรีย",
+            "is_correct" : false
+         },
+         {
+            "text" : "Western Australia",
+            "ph" : "เวสเทิร์น ออสเตรเลีย",
+            "th" : "รัฐเวสเทิร์นออสเตรเลีย",
+            "is_correct" : false
+         },
+         {
+            "audio" : "tasmania.wav",
+            "text" : "Tasmania",
+            "ph" : "แทสเมเนีย",
+            "th" : "รัฐแทสเมเนีย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who is the commander-in-chief of the Australian Defence Force?",
+      "question_ph" : "ฮู อิส เดอะ คอมมานเดอร์-อิน-ชีฟ ออฟ ดิ ออสเตรเลียน ดีเฟนซ์ ฟอร์ซ?",
+      "question_th" : "ใครคือผู้บัญชาการทหารสูงสุดของกองทัพออสเตรเลีย? (ในทางพิธีการ)",
+      "image" : "commander-in-chief.jpg",
+      "audio" : "who_is_the_commanderinchief_of_the_australian_defence_force.wav",
+      "answers" : [
+         {
+            "audio" : "the_governorgeneral.wav",
+            "text" : "The Governor-General",
+            "ph" : "เดอะ กาวเวอร์เนอร์-เจนเนอรัล",
+            "th" : "ผู้สำเร็จราชการแทนพระองค์",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_prime_minister.wav",
+            "text" : "The Prime Minister",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์",
+            "th" : "นายกรัฐมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Minister for Defence",
+            "ph" : "เดอะ มินิสเตอร์ ฟอร์ ดีเฟนซ์",
+            "th" : "รัฐมนตรีว่าการกระทรวงกลาโหม",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Police Commissioner",
+            "ph" : "เดอะ โปลิศ คอมมิชชันเนอร์",
+            "th" : "ผู้บัญชาการตำรวจ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who were the first Europeans to settle in Australia?",
+      "question_ph" : "ฮู เวอร์ เดอะ เฟิสต์ ยูโรเปียนส์ ทู เซตเทิล อิน ออสเตรเลีย?",
+      "question_th" : "ชาวยุโรปกลุ่มแรกที่เข้ามาตั้งถิ่นฐานในออสเตรเลียคือใคร?",
+      "image" : "first-european-settlers.jpg",
+      "audio" : "who_were_the_first_europeans_to_settle_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "convicts_from_great_britain.wav",
+            "text" : "Convicts from Great Britain",
+            "ph" : "คอนวิคทส์ ฟรอม เกรท บริเทน",
+            "th" : "นักโทษจากบริเตนใหญ่ (อังกฤษ)",
+            "is_correct" : true
+         },
+         {
+            "text" : "Soldiers from France",
+            "ph" : "โซลเจอร์ส ฟรอม ฟรานซ์",
+            "th" : "ทหารจากฝรั่งเศส",
+            "is_correct" : false
+         },
+         {
+            "text" : "Farmers from America",
+            "ph" : "ฟาร์เมอร์ส ฟรอม อเมริกา",
+            "th" : "เกษตรกรจากอเมริกา",
+            "is_correct" : false
+         },
+         {
+            "text" : "Gold miners from China",
+            "ph" : "โกลด์ ไมเนอร์ส ฟรอม ไชน่า",
+            "th" : "คนขุดทองจากจีน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What was discovered in New South Wales and Victoria in 1851?",
+      "question_ph" : "วอท วอส ดิสคัฟเวอร์ดฺ อิน นิว เซาท์ เวลส์ แอนด์ วิกตอเรีย อิน เอธทีน-ฟิฟตี้-วัน?",
+      "question_th" : "มีการค้นพบอะไรในรัฐนิวเซาท์เวลส์และวิกตอเรียในปี ค.ศ. 1851?",
+      "image" : "gold.jpg",
+      "audio" : "what_was_discovered_in_new_south_wales_and_victoria_in_1851.wav",
+      "answers" : [
+         {
+            "audio" : "gold.wav",
+            "text" : "Gold",
+            "ph" : "โกลด์",
+            "th" : "ทองคำ",
+            "is_correct" : true
+         },
+         {
+            "text" : "Silver",
+            "ph" : "ซิลเวอร์",
+            "th" : "เงิน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Oil",
+            "ph" : "ออยล์",
+            "th" : "น้ำมัน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Diamonds",
+            "ph" : "ไดมอนด์ส",
+            "th" : "เพชร",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What happened in the 1967 Referendum?",
+      "question_ph" : "วอท แฮปเพนดฺ อิน เดอะ ไนน์ทีน-ซิกซ์ตี้-เซเว่น เรฟเฟอเรนดัม?",
+      "question_th" : "เกิดอะไรขึ้นในการลงประชามติปี 1967?",
+      "image" : "1967-referendum.jpg",
+      "audio" : "what_happened_in_the_1967_referendum.wav",
+      "answers" : [
+         {
+            "audio" : "australians_voted_to_include_aboriginal_and_torres_strait_is.wav",
+            "text" : "Australians voted to include Aboriginal and Torres Strait Islander peoples in the census",
+            "ph" : "ออสเตรเลียนส์ โหวตเตด ทู อินคลูด แอบอริจินัล แอนด์ ทอร์เรส สเตรท ไอแลนเดอร์ พีเพิลส์ อิน เดอะ เซนซัส",
+            "th" : "ชาวออสเตรเลียลงคะแนนเสียงให้นับรวมชาวอะบอริจินและชาวเกาะทอร์เรสสเตรทในการสำรวจสำมะโนประชากร",
+            "is_correct" : true
+         },
+         {
+            "text" : "Australia became a republic",
+            "ph" : "ออสเตรเลีย บิคัม อะ รีพับลิก",
+            "th" : "ออสเตรเลียกลายเป็นสาธารณรัฐ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Women got the right to vote",
+            "ph" : "วีเมน ก็อท เดอะ ไรท์ ทู โหวต",
+            "th" : "ผู้หญิงได้รับสิทธิในการเลือกตั้ง",
+            "is_correct" : false
+         },
+         {
+            "text" : "The White Australia Policy began",
+            "ph" : "เดอะ ไวท์ ออสเตรเลีย โพลิซี บิแกน",
+            "th" : "นโยบายออสเตรเลียขาวเริ่มต้นขึ้น",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the first line of Australia's national anthem?",
+      "question_ph" : "วอท อิส เดอะ เฟิสต์ ไลน์ ออฟ ออสเตรเลียส์ เนชันแนล แอนเธม?",
+      "question_th" : "ท่อนแรกของเพลงชาติออสเตรเลียคืออะไร?",
+      "image" : "anthem-first-line.jpg",
+      "audio" : "what_is_the_first_line_of_australias_national_anthem.wav",
+      "answers" : [
+         {
+            "audio" : "australians_all_let_us_rejoice.wav",
+            "text" : "Australians all let us rejoice",
+            "ph" : "ออสเตรเลียนส์ ออล เล็ท อัส รีจอยซ์",
+            "th" : "ชาวออสเตรเลียทั้งหลาย ขอให้เรายินดีปรีดา",
+            "is_correct" : true
+         },
+         {
+            "text" : "God save our gracious King",
+            "ph" : "ก็อด เซฟ อาวเออร์ เกรเชียส คิง",
+            "th" : "พระเจ้าคุ้มครองกษัตริย์ผู้ทรงพระคุณ",
+            "is_correct" : false
+         },
+         {
+            "text" : "We are one, but we are many",
+            "ph" : "วี อาร์ วัน, บัท วี อาร์ เมนี่",
+            "th" : "เราเป็นหนึ่ง แต่เรามีมากหลาย",
+            "is_correct" : false
+         },
+         {
+            "text" : "Waltzing Matilda, Waltzing Matilda",
+            "ph" : "วอลซิง มาทิลดา, วอลซิง มาทิลดา",
+            "th" : "วอลซิง มาทิลดา, วอลซิง มาทิลดา",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who chooses the Prime Minister?",
+      "question_ph" : "ฮู ชูสเซส เดอะ ไพรม์ มินิสเตอร์?",
+      "question_th" : "ใครเป็นผู้เลือกนายกรัฐมนตรี?",
+      "image" : "choose-prime-minister.jpg",
+      "audio" : "who_chooses_the_prime_minister.wav",
+      "answers" : [
+         {
+            "audio" : "the_governorgeneral_swears_in_the_leader_of_the_majority_par.wav",
+            "text" : "The Governor-General swears in the leader of the majority party",
+            "ph" : "เดอะ กาวเวอร์เนอร์-เจนเนอรัล สแวร์ส อิน เดอะ ลีดเดอร์ ออฟ เดอะ เมจอริตี้ ปาร์ตี้",
+            "th" : "ผู้สำเร็จราชการแทนพระองค์สาบานตนให้กับผู้นำพรรคที่มีเสียงข้างมาก",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Queen",
+            "ph" : "เดอะ ควีน",
+            "th" : "พระราชินี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The people vote directly for the Prime Minister",
+            "ph" : "เดอะ พีเพิล โหวต ไดเร็คท์ลี่ ฟอร์ เดอะ ไพรม์ มินิสเตอร์",
+            "th" : "ประชาชนลงคะแนนเสียงเลือกนายกรัฐมนตรีโดยตรง",
+            "is_correct" : false
+         },
+         {
+            "text" : "The State Premiers",
+            "ph" : "เดอะ สเตท พรีเมียร์ส",
+            "th" : "มุขมนตรีของรัฐต่างๆ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "How are people chosen for jury service?",
+      "question_ph" : "ฮาว อาร์ พีเพิล โชเซน ฟอร์ จูรี่ เซอร์วิส?",
+      "question_th" : "ประชาชนถูกคัดเลือกให้มาทำหน้าที่ลูกขุนอย่างไร?",
+      "image" : "chosen-jury-duty.jpg",
+      "audio" : "how_are_people_chosen_for_jury_service.wav",
+      "answers" : [
+         {
+            "audio" : "randomly_from_the_electoral_roll.wav",
+            "text" : "Randomly from the electoral roll",
+            "ph" : "แรนดอมลี่ ฟรอม ดิ อีเล็คโทรอล โรล",
+            "th" : "สุ่มเลือกจากบัญชีรายชื่อผู้มีสิทธิเลือกตั้ง",
+            "is_correct" : true
+         },
+         {
+            "text" : "By applying for the job",
+            "ph" : "บาย แอพพลายอิง ฟอร์ เดอะ จ็อบ",
+            "th" : "โดยการสมัครงาน",
+            "is_correct" : false
+         },
+         {
+            "text" : "The police choose them",
+            "ph" : "เดอะ โปลิศ ชูส เดม",
+            "th" : "ตำรวจเป็นผู้เลือก",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only lawyers can be jurors",
+            "ph" : "โอนลี่ ลอว์เยอร์ส แคน บี จูเรอร์ส",
+            "th" : "เฉพาะทนายความเท่านั้นที่สามารถเป็นลูกขุนได้",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Is it a crime to bribe a police officer in Australia?",
+      "question_ph" : "อิส อิท อะ ไครม์ ทู ไบรบ์ อะ โปลิศ ออฟฟิเซอร์ อิน ออสเตรเลีย?",
+      "question_th" : "การติดสินบนเจ้าหน้าที่ตำรวจในออสเตรเลียถือเป็นอาชญากรรมหรือไม่?",
+      "image" : "police-bribery.jpg",
+      "audio" : "is_it_a_crime_to_bribe_a_police_officer_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "yes_it_is_a_serious_crime.wav",
+            "text" : "Yes, it is a serious crime",
+            "ph" : "เยส, อิท อิส อะ ซีเรียส ไครม์",
+            "th" : "ใช่ ถือเป็นอาชญากรรมร้ายแรง",
+            "is_correct" : true
+         },
+         {
+            "text" : "No, it is allowed",
+            "ph" : "โน, อิท อิส อัลลาวด์",
+            "th" : "ไม่ เป็นสิ่งที่ทำได้",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only in some states",
+            "ph" : "โอนลี่ อิน ซัม สเตทส์",
+            "th" : "เฉพาะในบางรัฐเท่านั้น",
+            "is_correct" : false
+         },
+         {
+            "text" : "Yes, but the fine is small",
+            "ph" : "เยส, บัท เดอะ ไฟน์ อิส สมอล",
+            "th" : "ใช่ แต่ค่าปรับเล็กน้อย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is a 'Welcome to Country'?",
+      "question_ph" : "วอท อิส อะ ‘เวลคัม ทู คันทรี’?",
+      "question_th" : "‘พิธีต้อนรับสู่แผ่นดิน’ (Welcome to Country) คืออะไร?",
+      "image" : "welcome-to-country.jpg",
+      "audio" : "what_is_a_welcome_to_country.wav",
+      "answers" : [
+         {
+            "audio" : "a_ceremony_by_aboriginal_or_torres_strait_islander_tradition.wav",
+            "text" : "A ceremony by Aboriginal or Torres Strait Islander Traditional Custodians to welcome people to their land",
+            "ph" : "อะ เซเรโมนี บาย แอบอริจินัล ออร์ ทอร์เรส สเตรท ไอแลนเดอร์ เทรดิชันแนล คัสโตเดียนส์ ทู เวลคัม พีเพิล ทู แดร์ แลนด์",
+            "th" : "พิธีการโดยผู้ดูแลตามประเพณีชาวอะบอริจินหรือชาวเกาะทอร์เรสสเตรทเพื่อต้อนรับผู้คนสู่แผ่นดินของพวกเขา",
+            "is_correct" : true
+         },
+         {
+            "text" : "A speech by the Prime Minister",
+            "ph" : "อะ สปีช บาย เดอะ ไพรม์ มินิสเตอร์",
+            "th" : "สุนทรพจน์โดยนายกรัฐมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "A welcome sign at the airport",
+            "ph" : "อะ เวลคัม ไซน์ แอท ดิ แอร์พอร์ต",
+            "th" : "ป้ายต้อนรับที่สนามบิน",
+            "is_correct" : false
+         },
+         {
+            "text" : "A song sung by school children",
+            "ph" : "อะ ซอง ซัง บาย สคูล ชิลเดรน",
+            "th" : "เพลงที่ร้องโดยเด็กนักเรียน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which of these is a responsibility of Local Government?",
+      "question_ph" : "วิช ออฟ ดีส อิส อะ เรสปอนซิบิลิตี้ ออฟ โลคัล กาวเวอร์เมนท์?",
+      "question_th" : "ข้อใดต่อไปนี้คือหน้าที่ของรัฐบาลท้องถิ่น?",
+      "image" : "local-government-responsibility.jpg",
+      "audio" : "which_of_these_is_a_responsibility_of_local_government.wav",
+      "answers" : [
+         {
+            "audio" : "pet_registration_cats_and_dogs.wav",
+            "text" : "Pet registration (cats and dogs)",
+            "ph" : "เพ็ท เรจิสเทรชัน (แคทส์ แอนด์ ด็อกส์)",
+            "th" : "การลงทะเบียนสัตว์เลี้ยง (แมวและสุนัข)",
+            "is_correct" : true
+         },
+         {
+            "text" : "Defence",
+            "ph" : "ดีเฟนซ์",
+            "th" : "การป้องกันประเทศ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Immigration",
+            "ph" : "อิมมิเกรชัน",
+            "th" : "การตรวจคนเข้าเมือง",
+            "is_correct" : false
+         },
+         {
+            "text" : "Universities",
+            "ph" : "ยูนิเวอร์ซิตี้ส์",
+            "th" : "มหาวิทยาลัย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the Cabinet?",
+      "question_ph" : "วอท อิส เดอะ แคบิเนต?",
+      "question_th" : "คณะรัฐมนตรี (Cabinet) คืออะไร?",
+      "image" : "cabinet.jpg",
+      "audio" : "what_is_the_cabinet.wav",
+      "answers" : [
+         {
+            "audio" : "the_prime_minister_and_senior_ministers_who_make_key_governm.wav",
+            "text" : "The Prime Minister and Senior Ministers who make key government decisions",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์ แอนด์ ซีเนียร์ มินิสเตอร์ส ฮู เมค คีย์ กาวเวอร์เมนท์ ดีซิชันส์",
+            "th" : "นายกรัฐมนตรีและรัฐมนตรีอาวุโสผู้ทำการตัดสินใจหลักของรัฐบาล",
+            "is_correct" : true
+         },
+         {
+            "text" : "A piece of furniture",
+            "ph" : "อะ พีซ ออฟ เฟอร์นิเจอร์",
+            "th" : "เฟอร์นิเจอร์ชิ้นหนึ่ง",
+            "is_correct" : false
+         },
+         {
+            "text" : "The judges of the High Court",
+            "ph" : "เดอะ จัดเจส ออฟ เดอะ ไฮ คอร์ต",
+            "th" : "ผู้พิพากษาของศาลสูง",
+            "is_correct" : false
+         },
+         {
+            "text" : "The leaders of the Opposition",
+            "ph" : "เดอะ ลีดเดอร์ส ออฟ ดิ ออปโพซิชัน",
+            "th" : "ผู้นำฝ่ายค้าน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is a Member of the House of Representatives called?",
+      "question_ph" : "วอท อิส อะ เมมเบอร์ ออฟ เดอะ เฮาส์ ออฟ เรพพรีเซนทาทีฟส์ คอลดฺ?",
+      "question_th" : "สมาชิกของสภาผู้แทนราษฎรเรียกว่าอะไร?",
+      "image" : "member-of-parliament.jpg",
+      "audio" : "what_is_a_member_of_the_house_of_representatives_called.wav",
+      "answers" : [
+         {
+            "audio" : "member_of_parliament_mp.wav",
+            "text" : "Member of Parliament (MP)",
+            "ph" : "เมมเบอร์ ออฟ พาร์เลียเมนต์ (เอ็ม-พี)",
+            "th" : "สมาชิกรัฐสภา (ส.ส.)",
+            "is_correct" : true
+         },
+         {
+            "text" : "Senator",
+            "ph" : "เซเนเตอร์",
+            "th" : "วุฒิสมาชิก (ส.ว.)",
+            "is_correct" : false
+         },
+         {
+            "text" : "Governor",
+            "ph" : "กาวเวอร์เนอร์",
+            "th" : "ผู้ว่าการ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Mayor",
+            "ph" : "เมเยอร์",
+            "th" : "นายกเทศมนตรี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who do Senators represent?",
+      "question_ph" : "ฮู ดู เซเนเตอร์ส เรพพรีเซนท์?",
+      "question_th" : "วุฒิสมาชิกเป็นตัวแทนของใคร?",
+      "image" : "senators-represent.jpg",
+      "audio" : "who_do_senators_represent.wav",
+      "answers" : [
+         {
+            "audio" : "the_whole_state_or_territory.wav",
+            "text" : "The whole state or territory",
+            "ph" : "เดอะ โฮล สเตท ออร์ เทร์ริทอรี",
+            "th" : "ทั้งรัฐหรือดินแดน",
+            "is_correct" : true
+         },
+         {
+            "text" : "Only the people in their local area",
+            "ph" : "โอนลี่ เดอะ พีเพิล อิน แดร์ โลคัล แอเรีย",
+            "th" : "เฉพาะประชาชนในพื้นที่ท้องถิ่นของตน",
+            "is_correct" : false
+         },
+         {
+            "audio" : "the_prime_minister.wav",
+            "text" : "The Prime Minister",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์",
+            "th" : "นายกรัฐมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The political party only",
+            "ph" : "เดอะ โพลิติคัล ปาร์ตี้ โอนลี่",
+            "th" : "พรรคการเมืองเท่านั้น",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is a 'double majority' in a referendum?",
+      "question_ph" : "วอท อิส อะ ‘ดับเบิล เมจอริตี้’ อิน อะ เรฟเฟอเรนดัม?",
+      "question_th" : "‘เสียงข้างมากสองชั้น’ (Double Majority) ในการลงประชามติคืออะไร?",
+      "image" : "double-majority.jpg",
+      "audio" : "what_is_a_double_majority_in_a_referendum.wav",
+      "answers" : [
+         {
+            "audio" : "a_majority_of_voters_across_australia_and_a_majority_of_vote.wav",
+            "text" : "A majority of voters across Australia AND a majority of voters in a majority of states",
+            "ph" : "อะ เมจอริตี้ ออฟ โหวตเตอร์ส อะครอส ออสเตรเลีย แอนด์ อะ เมจอริตี้ ออฟ โหวตเตอร์ส อิน อะ เมจอริตี้ ออฟ สเตทส์",
+            "th" : "เสียงข้างมากของผู้ลงคะแนนทั่วออสเตรเลีย และเสียงข้างมากของผู้ลงคะแนนในจำนวนรัฐส่วนใหญ่",
+            "is_correct" : true
+         },
+         {
+            "text" : "A majority of politicians must agree",
+            "ph" : "อะ เมจอริตี้ ออฟ โพลิติเชียนส์ มัสต์ อะกรี",
+            "th" : "นักการเมืองส่วนใหญ่ต้องเห็นด้วย",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Prime Minister and the Queen must agree",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์ แอนด์ เดอะ ควีน มัสต์ อะกรี",
+            "th" : "นายกรัฐมนตรีและพระราชินีต้องเห็นด้วย",
+            "is_correct" : false
+         },
+         {
+            "text" : "You must vote twice",
+            "ph" : "ยู มัสต์ โหวต ทไวซ์",
+            "th" : "คุณต้องลงคะแนนสองครั้ง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Is domestic and family violence against the law in Australia?",
+      "question_ph" : "อิส โดเมสติก แอนด์ แฟมิลี่ ไวโอเลนซ์ อะเกนสต์ เดอะ ลอว์ อิน ออสเตรเลีย?",
+      "question_th" : "ความรุนแรงในครอบครัวผิดกฎหมายในออสเตรเลียหรือไม่?",
+      "image" : "domestic-violence.jpg",
+      "audio" : "is_domestic_and_family_violence_against_the_law_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "yes.wav",
+            "text" : "Yes",
+            "ph" : "เยส",
+            "th" : "ใช่",
+            "is_correct" : true
+         },
+         {
+            "audio" : "no.wav",
+            "text" : "No",
+            "ph" : "โน",
+            "th" : "ไม่",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only if it happens in public",
+            "ph" : "โอนลี่ อิฟ อิท แฮปเพนส์ อิน พับลิก",
+            "th" : "เฉพาะถ้าเกิดขึ้นในที่สาธารณะเท่านั้น",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only for men",
+            "ph" : "โอนลี่ ฟอร์ เมน",
+            "th" : "เฉพาะสำหรับผู้ชาย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the document that proves you are an Australian citizen?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ เดอะ ดอคคิวเมนต์ แดท พรูฟส์ ยู อาร์ แอน ออสเตรเลียน ซิติเซน?",
+      "question_th" : "ชื่อของเอกสารที่พิสูจน์ว่าคุณเป็นพลเมืองออสเตรเลียคืออะไร?",
+      "image" : "citizenship-certificate.jpg",
+      "audio" : "what_is_the_name_of_the_document_that_proves_you_are_an_aust.wav",
+      "answers" : [
+         {
+            "audio" : "australian_citizenship_certificate.wav",
+            "text" : "Australian Citizenship Certificate",
+            "ph" : "ออสเตรเลียน ซิติเซนชิป เซอร์ติฟิเคท",
+            "th" : "ใบประกาศนียบัตรสัญชาติออสเตรเลีย",
+            "is_correct" : true
+         },
+         {
+            "text" : "Driver's Licence",
+            "ph" : "ไดรเวอร์ส ไลเซนส์",
+            "th" : "ใบอนุญาตขับขี่",
+            "is_correct" : false
+         },
+         {
+            "text" : "Medicare Card",
+            "ph" : "เมดิแคร์ การ์ด",
+            "th" : "บัตรเมดิแคร์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Bank Statement",
+            "ph" : "แบงค์ สเตทเมนต์",
+            "th" : "รายการเดินบัญชีธนาคาร",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Can the government take away your house or land without paying you?",
+      "question_ph" : "แคน เดอะ กาวเวอร์เมนท์ เทค อะเวย์ ยัวร์ เฮาส์ ออร์ แลนด์ วิธเอาท์ เพย์อิง ยู?",
+      "question_th" : "รัฐบาลสามารถยึดบ้านหรือที่ดินของคุณโดยไม่จ่ายเงินให้คุณได้หรือไม่?",
+      "image" : "take-house-land.jpg",
+      "audio" : "can_the_government_take_away_your_house_or_land_without_payi.wav",
+      "answers" : [
+         {
+            "audio" : "no.wav",
+            "text" : "No",
+            "ph" : "โน",
+            "th" : "ไม่ได้",
+            "is_correct" : true
+         },
+         {
+            "audio" : "yes.wav",
+            "text" : "Yes",
+            "ph" : "เยส",
+            "th" : "ได้",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only if you are not born in Australia",
+            "ph" : "โอนลี่ อิฟ ยู อาร์ น็อต บอร์น อิน ออสเตรเลีย",
+            "th" : "ได้เฉพาะถ้าคุณไม่ได้เกิดในออสเตรเลีย",
+            "is_correct" : false
+         },
+         {
+            "text" : "Yes, if they need to build a road",
+            "ph" : "เยส, อิฟ เด นีด ทู บิลด์ อะ โรด",
+            "th" : "ได้ ถ้าพวกเขาต้องการสร้างถนน (โดยปกติจะต้องมีการชดเชย)",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is 'freedom of peaceful assembly'?",
+      "question_ph" : "วอท อิส ‘ฟรีดอม ออฟ พีซฟูล แอสเซมบลี’?",
+      "question_th" : "‘เสรีภาพในการชุมนุมโดยสงบ’ คืออะไร?",
+      "image" : "peaceful-assembly.jpg",
+      "audio" : "what_is_freedom_of_peaceful_assembly.wav",
+      "answers" : [
+         {
+            "audio" : "the_right_to_meet_with_other_people_in_public_or_private_pla.wav",
+            "text" : "The right to meet with other people in public or private places to share ideas",
+            "ph" : "เดอะ ไรท์ ทู มีท วิธ อาเธอร์ พีเพิล อิน พับลิก ออร์ ไพรเวท เพลซเซส ทู แชร์ ไอเดียส์",
+            "th" : "สิทธิในการพบปะกับผู้อื่นในที่สาธารณะหรือที่รโหฐานเพื่อแลกเปลี่ยนความคิดเห็น",
+            "is_correct" : true
+         },
+         {
+            "text" : "The right to damage property",
+            "ph" : "เดอะ ไรท์ ทู ดาเมจ พร็อพเพอร์ตี้",
+            "th" : "สิทธิในการทำลายทรัพย์สิน",
+            "is_correct" : false
+         },
+         {
+            "text" : "The right to block traffic",
+            "ph" : "เดอะ ไรท์ ทู บล็อค ทราฟฟิก",
+            "th" : "สิทธิในการปิดกั้นการจราจร",
+            "is_correct" : false
+         },
+         {
+            "text" : "The right to fight in the street",
+            "ph" : "เดอะ ไรท์ ทู ไฟท์ อิน เดอะ สตรีท",
+            "th" : "สิทธิในการต่อสู้บนท้องถนน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who leads the Australian Defence Force?",
+      "question_ph" : "ฮู ลีดส์ ดิ ออสเตรเลียน ดีเฟนซ์ ฟอร์ซ?",
+      "question_th" : "ใครเป็นผู้นำกองทัพออสเตรเลีย? (ในทางปฏิบัติ/ผู้บัญชาการทหาร)",
+      "image" : "leads-defence-force.jpg",
+      "audio" : "who_leads_the_australian_defence_force.wav",
+      "answers" : [
+         {
+            "audio" : "the_chief_of_the_defence_force.wav",
+            "text" : "The Chief of the Defence Force",
+            "ph" : "เดอะ ชีฟ ออฟ เดอะ ดีเฟนซ์ ฟอร์ซ",
+            "th" : "ผู้บัญชาการทหารสูงสุด (Chief of the Defence Force)",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Police",
+            "ph" : "เดอะ โปลิศ",
+            "th" : "ตำรวจ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Queen",
+            "ph" : "เดอะ ควีน",
+            "th" : "พระราชินี",
+            "is_correct" : false
+         },
+         {
+            "audio" : "the_premier.wav",
+            "text" : "The Premier",
+            "ph" : "เดอะ พรีเมียร์",
+            "th" : "มุขมนตรี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which court is the highest court in Australia?",
+      "question_ph" : "วิช คอร์ต อิส เดอะ ไฮ คอร์ต อิน ออสเตรเลีย?",
+      "question_th" : "ศาลใดคือศาลสูงสุดในออสเตรเลีย?",
+      "image" : "highest-court.jpg",
+      "audio" : "which_court_is_the_highest_court_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "the_high_court_of_australia.wav",
+            "text" : "The High Court of Australia",
+            "ph" : "เดอะ ไฮ คอร์ต ออฟ ออสเตรเลีย",
+            "th" : "ศาลสูงแห่งออสเตรเลีย (High Court)",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Magistrates Court",
+            "ph" : "เดอะ เมจิสเตรทส์ คอร์ต",
+            "th" : "ศาลแขวง",
+            "is_correct" : false
+         },
+         {
+            "text" : "The District Court",
+            "ph" : "เดอะ ดิสทริกต์ คอร์ต",
+            "th" : "ศาลประจำเขต",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Family Court",
+            "ph" : "เดอะ แฟมิลี่ คอร์ต",
+            "th" : "ศาลครอบครัว",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "How often are federal elections held in Australia?",
+      "question_ph" : "ฮาว ออฟเฟน อาร์ เฟดเดอรัล อีเลคชันส์ เฮลดฺ อิน ออสเตรเลีย?",
+      "question_th" : "การเลือกตั้งระดับสหพันธรัฐในออสเตรเลียจัดขึ้นบ่อยแค่ไหน?",
+      "image" : "federal-elections-held.jpg",
+      "audio" : "how_often_are_federal_elections_held_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "about_every_3_years.wav",
+            "text" : "About every 3 years",
+            "ph" : "อะเบาท์ เอฟวรี ทรี เยียร์ส",
+            "th" : "ประมาณทุกๆ 3 ปี",
+            "is_correct" : true
+         },
+         {
+            "text" : "Every 4 years",
+            "ph" : "เอฟวรี โฟร์ เยียร์ส",
+            "th" : "ทุกๆ 4 ปี",
+            "is_correct" : false
+         },
+         {
+            "text" : "Every 5 years",
+            "ph" : "เอฟวรี ไฟฟ์ เยียร์ส",
+            "th" : "ทุกๆ 5 ปี",
+            "is_correct" : false
+         },
+         {
+            "text" : "Every 2 years",
+            "ph" : "เอฟวรี ทู เยียร์ส",
+            "th" : "ทุกๆ 2 ปี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What does the black colour on the Australian Aboriginal Flag represent?",
+      "question_ph" : "วอท ดัส เดอะ แบล็ค คัลเลอร์ ออน ดิ ออสเตรเลียน แอบอริจินัล แฟล็ก เรพพรีเซนท์?",
+      "question_th" : "สีดำบนธงชาวออสเตรเลียพื้นเมืองสื่อถึงอะไร?",
+      "image" : "black-colour-flag.jpg",
+      "audio" : "what_does_the_black_colour_on_the_australian_aboriginal_flag.wav",
+      "answers" : [
+         {
+            "audio" : "the_aboriginal_people_of_australia.wav",
+            "text" : "The Aboriginal people of Australia",
+            "ph" : "ดิ แอบอริจินัล พีเพิล ออฟ ออสเตรเลีย",
+            "th" : "ชาวออสเตรเลียพื้นเมือง (Aboriginal people)",
+            "is_correct" : true
+         },
+         {
+            "text" : "The earth",
+            "ph" : "ดิ เอิร์ธ",
+            "th" : "ผืนแผ่นดิน",
+            "is_correct" : false
+         },
+         {
+            "audio" : "the_sun.wav",
+            "text" : "The sun",
+            "ph" : "เดอะ ซัน",
+            "th" : "ดวงอาทิตย์",
+            "is_correct" : false
+         },
+         {
+            "text" : "The night sky",
+            "ph" : "เดอะ ไนท์ สกาย",
+            "th" : "ท้องฟ้ายามค่ำคืน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What does the red colour on the Australian Aboriginal Flag represent?",
+      "question_ph" : "วอท ดัส เดอะ เรด คัลเลอร์ ออน ดิ ออสเตรเลียน แอบอริจินัล แฟล็ก เรพพรีเซนท์?",
+      "question_th" : "สีแดงบนธงชาวออสเตรเลียพื้นเมืองสื่อถึงอะไร?",
+      "image" : "red-colour-flag.jpg",
+      "audio" : "what_does_the_red_colour_on_the_australian_aboriginal_flag_r.wav",
+      "answers" : [
+         {
+            "audio" : "the_earth_and_the_peoples_relationship_to_the_land.wav",
+            "text" : "The earth and the people's relationship to the land",
+            "ph" : "ดิ เอิร์ธ แอนด์ เดอะ พีเพิลส์ รีเลชันชิป ทู เดอะ แลนด์",
+            "th" : "ผืนแผ่นดินและความสัมพันธ์ของประชาชนต่อผืนดิน",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_sun.wav",
+            "text" : "The sun",
+            "ph" : "เดอะ ซัน",
+            "th" : "ดวงอาทิตย์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Fire",
+            "ph" : "ไฟร์",
+            "th" : "ไฟ",
+            "is_correct" : false
+         },
+         {
+            "text" : "War",
+            "ph" : "วอร์",
+            "th" : "สงคราม",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What does the yellow circle on the Australian Aboriginal Flag represent?",
+      "question_ph" : "วอท ดัส เดอะ เยลโลว์ เซอร์เคิล ออน ดิ ออสเตรเลียน แอบอริจินัล แฟล็ก เรพพรีเซนท์?",
+      "question_th" : "วงกลมสีเหลืองบนธงชาวออสเตรเลียพื้นเมืองสื่อถึงอะไร?",
+      "image" : "yellow-colour-flag.jpg",
+      "audio" : "what_does_the_yellow_circle_on_the_australian_aboriginal_fla.wav",
+      "answers" : [
+         {
+            "audio" : "the_sun.wav",
+            "text" : "The sun",
+            "ph" : "เดอะ ซัน",
+            "th" : "ดวงอาทิตย์",
+            "is_correct" : true
+         },
+         {
+            "audio" : "gold.wav",
+            "text" : "Gold",
+            "ph" : "โกลด์",
+            "th" : "ทองคำ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The moon",
+            "ph" : "เดอะ มูน",
+            "th" : "ดวงจันทร์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Unity",
+            "ph" : "ยูนิตี้",
+            "th" : "ความสามัคคี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the white symbol on the Torres Strait Islander Flag?",
+      "question_ph" : "วอท อิส เดอะ ไวท์ ซิมบอล ออน เดอะ ทอร์เรส สเตรท ไอแลนเดอร์ แฟล็ก?",
+      "question_th" : "สัญลักษณ์สีขาวบนธงชาวเกาะทอร์เรสสเตรทคืออะไร?",
+      "image" : "white-symbol-torres-flag.jpg",
+      "audio" : "what_is_the_white_symbol_on_the_torres_strait_islander_flag.wav",
+      "answers" : [
+         {
+            "audio" : "a_dancers_headdress.wav",
+            "text" : "A dancer’s headdress",
+            "ph" : "อะ แดนเซอร์ส เฮดเดรส",
+            "th" : "เครื่องประดับศีรษะของนักเต้น (Dhari)",
+            "is_correct" : true
+         },
+         {
+            "text" : "A star",
+            "ph" : "อะ สตาร์",
+            "th" : "ดวงดาว",
+            "is_correct" : false
+         },
+         {
+            "text" : "A boat",
+            "ph" : "อะ โบ๊ท",
+            "th" : "เรือ",
+            "is_correct" : false
+         },
+         {
+            "text" : "A weapon",
+            "ph" : "อะ เวพอน",
+            "th" : "อาวุธ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What does the white star on the Torres Strait Islander Flag represent?",
+      "question_ph" : "วอท ดัส เดอะ ไวท์ สตาร์ ออน เดอะ ทอร์เรส สเตรท ไอแลนเดอร์ แฟล็ก เรพพรีเซนท์?",
+      "question_th" : "ดาวสีขาวบนธงชาวเกาะทอร์เรสสเตรทสื่อถึงอะไร?",
+      "image" : "white-star-torres-flag.jpg",
+      "audio" : "what_does_the_white_star_on_the_torres_strait_islander_flag_.wav",
+      "answers" : [
+         {
+            "audio" : "the_five_major_island_groups.wav",
+            "text" : "The five major island groups",
+            "ph" : "เดอะ ไฟฟ์ เมเจอร์ ไอแลนด์ กรุ๊ปส์",
+            "th" : "กลุ่มเกาะหลักทั้งห้ากลุ่ม",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Southern Cross",
+            "ph" : "เดอะ เซาเธิร์น ครอส",
+            "th" : "กลุ่มดาวกางเขนใต้",
+            "is_correct" : false
+         },
+         {
+            "text" : "Peace",
+            "ph" : "พีซ",
+            "th" : "สันติภาพ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The direction North",
+            "ph" : "เดอะ ไดเร็คชัน นอร์ธ",
+            "th" : "ทิศเหนือ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What are the three parts of the Australian Parliament?",
+      "question_ph" : "วอท อาร์ เดอะ ทรี พาร์ทส์ ออฟ ดิ ออสเตรเลียน พาร์เลียเมนต์?",
+      "question_th" : "ส่วนประกอบสามส่วนของรัฐสภาออสเตรเลียคืออะไร?",
+      "image" : "three-parts-of-parliament.jpg",
+      "audio" : "what_are_the_three_parts_of_the_australian_parliament.wav",
+      "answers" : [
+         {
+            "audio" : "the_king_represented_by_the_governorgeneral_the_senate_and_t.wav",
+            "text" : "The King (represented by the Governor-General), the Senate, and the House of Representatives",
+            "ph" : "เดอะ คิง, เดอะ เซเนท, แอนด์ เดอะ เฮาส์ ออฟ เรพพรีเซนทาทีฟส์",
+            "th" : "กษัตริย์ (โดยผู้สำเร็จราชการฯ), วุฒิสภา และสภาผู้แทนราษฎร",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Prime Minister, the Premier, and the Mayor",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์, เดอะ พรีเมียร์, แอนด์ เดอะ เมเยอร์",
+            "th" : "นายกรัฐมนตรี, มุขมนตรี และนายกเทศมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Police, the Army, and the Navy",
+            "ph" : "เดอะ โปลิศ, ดิ อาร์มี, แอนด์ เดอะ เนวี",
+            "th" : "ตำรวจ, กองทัพบก และกองทัพเรือ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Judges, the Lawyers, and the Jury",
+            "ph" : "เดอะ จัดเจส, เดอะ ลอว์เยอร์ส, แอนด์ เดอะ จูรี่",
+            "th" : "ผู้พิพากษา, ทนายความ และคณะลูกขุน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Is the media in Australia controlled by the government?",
+      "question_ph" : "อิส เดอะ มีเดีย อิน ออสเตรเลีย คอนโทรลดฺ บาย เดอะ กาวเวอร์เมนท์?",
+      "question_th" : "สื่อในออสเตรเลียถูกควบคุมโดยรัฐบาลหรือไม่?",
+      "image" : "is-the-media-controlled.jpg",
+      "audio" : "is_the_media_in_australia_controlled_by_the_government.wav",
+      "answers" : [
+         {
+            "audio" : "no.wav",
+            "text" : "No",
+            "ph" : "โน",
+            "th" : "ไม่",
+            "is_correct" : true
+         },
+         {
+            "audio" : "yes.wav",
+            "text" : "Yes",
+            "ph" : "เยส",
+            "th" : "ใช่",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only newspapers",
+            "ph" : "โอนลี่ นิวส์เปเปอร์ส",
+            "th" : "เฉพาะหนังสือพิมพ์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only television",
+            "ph" : "โอนลี่ เทเลวิชัน",
+            "th" : "เฉพาะโทรทัศน์",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What happens if you do not vote in a federal election?",
+      "question_ph" : "วอท แฮปเพนส์ อิฟ ยู ดู น็อต โหวต อิน อะ เฟดเดอรัล อีเลคชัน?",
+      "question_th" : "จะเกิดอะไรขึ้นถ้าคุณไม่ไปลงคะแนนเสียงในการเลือกตั้งระดับสหพันธรัฐ?",
+      "image" : "do-not-vote.jpg",
+      "audio" : "what_happens_if_you_do_not_vote_in_a_federal_election.wav",
+      "answers" : [
+         {
+            "audio" : "you_may_have_to_pay_a_fine.wav",
+            "text" : "You may have to pay a fine",
+            "ph" : "ยู เมย์ แฮฟ ทู เพย์ อะ ไฟน์",
+            "th" : "คุณอาจต้องเสียค่าปรับ",
+            "is_correct" : true
+         },
+         {
+            "text" : "You will go to jail",
+            "ph" : "ยู วิล โก ทู เจล",
+            "th" : "คุณจะติดคุก",
+            "is_correct" : false
+         },
+         {
+            "text" : "Nothing happens",
+            "ph" : "นัธธิง แฮปเพนส์",
+            "th" : "ไม่เกิดอะไรขึ้น",
+            "is_correct" : false
+         },
+         {
+            "text" : "You lose your citizenship",
+            "ph" : "ยู ลูส ยัวร์ ซิติเซนชิป",
+            "th" : "คุณจะเสียสัญชาติ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which government is responsible for airports and air safety?",
+      "question_ph" : "วิช กาวเวอร์เมนท์ อิส เรสปอนซิเบิล ฟอร์ แอร์พอร์ตส์ แอนด์ แอร์ เซฟตี้?",
+      "question_th" : "รัฐบาลใดมีหน้าที่รับผิดชอบด้านสนามบินและความปลอดภัยทางอากาศ?",
+      "image" : "airports-and-air-safety.jpg",
+      "audio" : "which_government_is_responsible_for_airports_and_air_safety.wav",
+      "answers" : [
+         {
+            "audio" : "the_australian_government_federal.wav",
+            "text" : "The Australian Government (Federal)",
+            "ph" : "ดิ ออสเตรเลียน กาวเวอร์เมนท์ (เฟดเดอรัล)",
+            "th" : "รัฐบาลออสเตรเลีย (รัฐบาลกลาง)",
+            "is_correct" : true
+         },
+         {
+            "audio" : "state_and_territory_government.wav",
+            "text" : "State and Territory Government",
+            "ph" : "สเตท แอนด์ เทร์ริทอรี กาวเวอร์เมนท์",
+            "th" : "รัฐบาลระดับรัฐและดินแดน",
+            "is_correct" : false
+         },
+         {
+            "audio" : "local_government.wav",
+            "text" : "Local Government",
+            "ph" : "โลคัล กาวเวอร์เมนท์",
+            "th" : "การปกครองส่วนท้องถิ่น",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Airlines",
+            "ph" : "ดิ แอร์ไลน์ส",
+            "th" : "สายการบินต่างๆ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the role of a jury in a court?",
+      "question_ph" : "วอท อิส เดอะ โรล ออฟ อะ จูรี่ อิน อะ คอร์ต?",
+      "question_th" : "บทบาทของคณะลูกขุนในศาลคืออะไร?",
+      "image" : "role-of-jury.jpg",
+      "audio" : "what_is_the_role_of_a_jury_in_a_court.wav",
+      "answers" : [
+         {
+            "audio" : "to_decide_if_a_person_is_guilty_or_not_guilty.wav",
+            "text" : "To decide if a person is guilty or not guilty",
+            "ph" : "ทู ดีไซด์ อิฟ อะ เพอร์ซัน อิส กิลตี้ ออร์ น็อต กิลตี้",
+            "th" : "เพื่อตัดสินว่าจำเลยมีความผิดหรือไม่มีความผิด",
+            "is_correct" : true
+         },
+         {
+            "text" : "To decide the punishment (sentence)",
+            "ph" : "ทู ดีไซด์ เดอะ พานิชเมนต์ (เซนเทนซ์)",
+            "th" : "เพื่อตัดสินบทลงโทษ",
+            "is_correct" : false
+         },
+         {
+            "text" : "To defend the accused person",
+            "ph" : "ทู ดีเฟน เดอะ แอคคิวสดฺ เพอร์ซัน",
+            "th" : "เพื่อว่าความแก้ต่างให้จำเลย",
+            "is_correct" : false
+         },
+         {
+            "text" : "To arrest the criminal",
+            "ph" : "ทู อะไรสท์ เดอะ คริรมินอล",
+            "th" : "เพื่อจับกุมอาชญากร",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which government issues Australian passports?",
+      "question_ph" : "วิช กาวเวอร์เมนท์ อิชชูส์ ออสเตรเลียน พาสพอร์ตส์?",
+      "question_th" : "รัฐบาลใดเป็นผู้ออกหนังสือเดินทางออสเตรเลีย?",
+      "image" : "issues-passports.jpg",
+      "audio" : "which_government_issues_australian_passports.wav",
+      "answers" : [
+         {
+            "audio" : "the_australian_government_federal.wav",
+            "text" : "The Australian Government (Federal)",
+            "ph" : "ดิ ออสเตรเลียน กาวเวอร์เมนท์ (เฟดเดอรัล)",
+            "th" : "รัฐบาลออสเตรเลีย (รัฐบาลกลาง)",
+            "is_correct" : true
+         },
+         {
+            "text" : "State Government",
+            "ph" : "สเตท กาวเวอร์เมนท์",
+            "th" : "รัฐบาลระดับรัฐ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Local Council",
+            "ph" : "โลคัล เคาน์ซิล",
+            "th" : "สภาท้องถิ่น",
+            "is_correct" : false
+         },
+         {
+            "text" : "The United Nations",
+            "ph" : "เดอะ ยูไนเต็ด เนชันส์",
+            "th" : "องค์การสหประชาชาติ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the Governor-General’s official representative in the Northern Territory?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ เดอะ กาวเวอร์เนอร์-เจนเนอรัลส์ ออฟฟิเชียล เรพพรีเซนทาทีฟ อิน เดอะ นอร์ธเทิร์น เทร์ริทอรี?",
+      "question_th" : "ชื่อตำแหน่งของผู้แทนอย่างเป็นทางการของผู้สำเร็จราชการฯ ประจำนอร์ธเทิร์นเทร์ริทอรีคืออะไร?",
+      "image" : "representative-in-nt.jpg",
+      "audio" : "what_is_the_name_of_the_governorgenerals_official_representa.wav",
+      "answers" : [
+         {
+            "audio" : "administrator.wav",
+            "text" : "Administrator",
+            "ph" : "แอดมินิสเตรเตอร์",
+            "th" : "ผู้บริหารดินแดน (Administrator)",
+            "is_correct" : true
+         },
+         {
+            "text" : "Governor",
+            "ph" : "กาวเวอร์เนอร์",
+            "th" : "ผู้ว่าการรัฐ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Premier",
+            "ph" : "พรีเมียร์",
+            "th" : "มุขมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "President",
+            "ph" : "เพรสซิเดนท์",
+            "th" : "ประธานาธิบดี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which body has the power to interpret the Australian Constitution?",
+      "question_ph" : "วิช บอดี้ แฮส เดอะ พาวเวอร์ ทู อินเทอร์เพรท ดิ ออสเตรเลียน คอนสติทิวชัน?",
+      "question_th" : "องค์กรใดมีอำนาจในการตีความรัฐธรรมนูญออสเตรเลีย?",
+      "image" : "power-to-interpret-constitution.jpg",
+      "audio" : "which_body_has_the_power_to_interpret_the_australian_constit.wav",
+      "answers" : [
+         {
+            "audio" : "the_high_court_of_australia.wav",
+            "text" : "The High Court of Australia",
+            "ph" : "เดอะ ไฮ คอร์ต ออฟ ออสเตรเลีย",
+            "th" : "ศาลสูงแห่งออสเตรเลีย",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_prime_minister.wav",
+            "text" : "The Prime Minister",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์",
+            "th" : "นายกรัฐมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Parliament",
+            "ph" : "เดอะ พาร์เลียเมนต์",
+            "th" : "รัฐสภา",
+            "is_correct" : false
+         },
+         {
+            "audio" : "the_governorgeneral.wav",
+            "text" : "The Governor-General",
+            "ph" : "เดอะ กาวเวอร์เนอร์-เจนเนอรัล",
+            "th" : "ผู้สำเร็จราชการแทนพระองค์",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who is responsible for paying tax to the government?",
+      "question_ph" : "ฮู อิส เรสปอนซิเบิล ฟอร์ เพย์อิง แท็กซ์ ทู เดอะ กาวเวอร์เมนท์?",
+      "question_th" : "ใครมีหน้าที่ต้องเสียภาษีให้รัฐบาล?",
+      "image" : "responsible-for-paying-tax.jpg",
+      "audio" : "who_is_responsible_for_paying_tax_to_the_government.wav",
+      "answers" : [
+         {
+            "audio" : "people_who_earn_money_from_a_job_or_business.wav",
+            "text" : "People who earn money from a job or business",
+            "ph" : "พีเพิล ฮู เอิร์น มันนี่ ฟรอม อะ จ็อบ ออร์ บิสเนส",
+            "th" : "ผู้ที่มีรายได้จากการทำงานหรือทำธุรกิจ",
+            "is_correct" : true
+         },
+         {
+            "text" : "Only people who own a house",
+            "ph" : "โอนลี่ พีเพิล ฮู โอน อะ เฮาส์",
+            "th" : "เฉพาะคนที่มีบ้านเป็นของตัวเอง",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only people born in Australia",
+            "ph" : "โอนลี่ พีเพิล บอร์น อิน ออสเตรเลีย",
+            "th" : "เฉพาะคนที่เกิดในออสเตรเลีย",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only large companies",
+            "ph" : "โอนลี่ ลาร์จ คอมพานีส์",
+            "th" : "เฉพาะบริษัทขนาดใหญ่",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What symbol identifies the authority of the Commonwealth of Australia?",
+      "question_ph" : "วอท ซิมบอล ไอเดนทิฟายส์ ดิ ออโธริตี้ ออฟ เดอะ คอมมอนเวลธ์ ออฟ ออสเตรเลีย?",
+      "question_th" : "สัญลักษณ์ใดแสดงถึงอำนาจของเครือรัฐออสเตรเลีย?",
+      "image" : "authority-symbol-of-the-commonwealth-of-australia.jpg",
+      "audio" : "what_symbol_identifies_the_authority_of_the_commonwealth_of_.wav",
+      "answers" : [
+         {
+            "audio" : "the_commonwealth_coat_of_arms.wav",
+            "text" : "The Commonwealth Coat of Arms",
+            "ph" : "เดอะ คอมมอนเวลธ์ โค้ท ออฟ อาร์มส์",
+            "th" : "ตราแผ่นดินของเครือรัฐ (Commonwealth Coat of Arms)",
+            "is_correct" : true
+         },
+         {
+            "text" : "The National Flag",
+            "ph" : "เดอะ เนชันแนล แฟล็ก",
+            "th" : "ธงชาติ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Golden Wattle",
+            "ph" : "เดอะ โกลเดน วอทเทิล",
+            "th" : "ดอกโกลเดนวอทเทิล",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Opal",
+            "ph" : "ดิ โอปอล",
+            "th" : "โอปอล",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which of these is a responsibility of the State Government?",
+      "question_ph" : "วิช ออฟ ดีส อิส อะ เรสปอนซิบิลิตี้ ออฟ เดอะ สเตท กาวเวอร์เมนท์?",
+      "question_th" : "ข้อใดต่อไปนี้คือหน้าที่ของรัฐบาลระดับรัฐ?",
+      "image" : "roads-and-licences.jpg",
+      "audio" : "which_of_these_is_a_responsibility_of_the_state_government.wav",
+      "answers" : [
+         {
+            "audio" : "roads_and_drivers_licences.wav",
+            "text" : "Roads and Driver's Licences",
+            "ph" : "โรดส์ แอนด์ ไดรเวอร์ส ไลเซนส์",
+            "th" : "ถนนและใบอนุญาตขับขี่",
+            "is_correct" : true
+         },
+         {
+            "text" : "Currency (Money)",
+            "ph" : "เคอร์เรนซี (มันนี่)",
+            "th" : "สกุลเงิน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Immigration",
+            "ph" : "อิมมิเกรชัน",
+            "th" : "การตรวจคนเข้าเมือง",
+            "is_correct" : false
+         },
+         {
+            "text" : "Rubbish collection",
+            "ph" : "รับบิช คอลเลคชัน",
+            "th" : "การเก็บขยะ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What does 'equality of opportunity' mean in Australia?",
+      "question_ph" : "วอท ดัส ‘อีควอลิตี้ ออฟ ออปพอร์ทูนิตี้’ มีน อิน ออสเตรเลีย?",
+      "question_th" : "‘ความเสมอภาคทางโอกาส’ ในออสเตรเลียหมายถึงอะไร?",
+      "image" : "equality-of-opportunity.jpg",
+      "audio" : "what_does_equality_of_opportunity_mean_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "what_you_achieve_in_life_depends_on_your_skills_and_hard_wor.wav",
+            "text" : "What you achieve in life depends on your skills and hard work, not your background",
+            "ph" : "วอท ยู อะชีฟ อิน ไลฟ์ ดีเพนส์ ออน ยัวร์ สกิลส์ แอนด์ ฮาร์ด เวิร์ค, น็อต ยัวร์ แบ็คกราวด์",
+            "th" : "ความสำเร็จในชีวิตขึ้นอยู่กับทักษะและการทำงานหนักของคุณ ไม่ใช่ภูมิหลังของคุณ",
+            "is_correct" : true
+         },
+         {
+            "text" : "Everyone earns the same amount of money",
+            "ph" : "เอฟวรีวัน เอิร์นส์ เดอะ เซม อะเมาท์ ออฟ มันนี่",
+            "th" : "ทุกคนมีรายได้เท่ากัน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Everyone must have the same job",
+            "ph" : "เอฟวรีวัน มัสต์ แฮฟ เดอะ เซม จ็อบ",
+            "th" : "ทุกคนต้องทำงานเหมือนกัน",
+            "is_correct" : false
+         },
+         {
+            "text" : "The government gives everyone a house",
+            "ph" : "เดอะ กาวเวอร์เมนท์ กิฟส์ เอฟวรีวัน อะ เฮาส์",
+            "th" : "รัฐบาลแจกบ้านให้ทุกคน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which organization runs federal elections and referendums?",
+      "question_ph" : "วิช ออร์แกไนเซชัน รันส์ เฟดเดอรัล อีเลคชันส์ แอนด์ เรฟเฟอเรนดัมส์?",
+      "question_th" : "องค์กรใดเป็นผู้จัดการเลือกตั้งระดับสหพันธรัฐและการลงประชามติ?",
+      "image" : "who-runs-federal-elections.jpg",
+      "audio" : "which_organization_runs_federal_elections_and_referendums.wav",
+      "answers" : [
+         {
+            "audio" : "the_australian_electoral_commission_aec.wav",
+            "text" : "The Australian Electoral Commission (AEC)",
+            "ph" : "ดิ ออสเตรเลียน อีเล็คโทรอล คอมมิชชัน (เอ-อี-ซี)",
+            "th" : "คณะกรรมการการเลือกตั้งออสเตรเลีย (AEC)",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Police",
+            "ph" : "เดอะ โปลิศ",
+            "th" : "ตำรวจ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Parliament",
+            "ph" : "เดอะ พาร์เลียเมนต์",
+            "th" : "รัฐสภา",
+            "is_correct" : false
+         },
+         {
+            "text" : "The High Court",
+            "ph" : "เดอะ ไฮ คอร์ต",
+            "th" : "ศาลสูง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What does it mean that Australia is a ‘secular’ country?",
+      "question_ph" : "วอท ดัส อิท มีน แดท ออสเตรเลีย อิส อะ ‘เซคคิวลาร์’ คันทรี?",
+      "question_th" : "การที่ออสเตรเลียเป็นประเทศ ‘ทางโลก’ (Secular) หมายความว่าอย่างไร?",
+      "image" : "secular-country.jpg",
+      "audio" : "what_does_it_mean_that_australia_is_a_secular_country.wav",
+      "answers" : [
+         {
+            "audio" : "the_government_and_the_church_are_separate.wav",
+            "text" : "The government and the church are separate",
+            "ph" : "เดอะ กาวเวอร์เมนท์ แอนด์ เดอะ เชิร์ช อาร์ เซพปะเรท",
+            "th" : "รัฐบาลและศาสนจักรแยกจากกัน",
+            "is_correct" : true
+         },
+         {
+            "text" : "Everyone must be Christian",
+            "ph" : "เอฟวรีวัน มัสต์ บี คริสเตียน",
+            "th" : "ทุกคนต้องเป็นชาวคริสต์",
+            "is_correct" : false
+         },
+         {
+            "text" : "There is no religion in Australia",
+            "ph" : "แดร์ อิส โน รีลิเจียน อิน ออสเตรเลีย",
+            "th" : "ไม่มีศาสนาในออสเตรเลีย",
+            "is_correct" : false
+         },
+         {
+            "text" : "The church controls the government",
+            "ph" : "เดอะ เชิร์ช คอนโทรลส์ เดอะ กาวเวอร์เมนท์",
+            "th" : "ศาสนจักรควบคุมรัฐบาล",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "In Australia, are you considered innocent or guilty before a trial?",
+      "question_ph" : "อิน ออสเตรเลีย, อาร์ ยู คอนซิเดอร์ดฺ อินโนเซ็นต์ ออร์ กิลตี้ บิฟอร์ อะ ไทรอัล?",
+      "question_th" : "ในออสเตรเลีย คุณถือเป็นผู้บริสุทธิ์หรือมีความผิดก่อนการพิจารณาคดี?",
+      "image" : "innocent-or-guilty.jpg",
+      "audio" : "in_australia_are_you_considered_innocent_or_guilty_before_a_.wav",
+      "answers" : [
+         {
+            "audio" : "innocent_until_proven_guilty.wav",
+            "text" : "Innocent until proven guilty",
+            "ph" : "อินโนเซ็นต์ อันทิล พรูเวน กิลตี้",
+            "th" : "บริสุทธิ์จนกว่าจะพิสูจน์ได้ว่ามีความผิด",
+            "is_correct" : true
+         },
+         {
+            "text" : "Guilty until proven innocent",
+            "ph" : "กิลตี้ อันทิล พรูเวน อินโนเซ็นต์",
+            "th" : "มีความผิดจนกว่าจะพิสูจน์ได้ว่าบริสุทธิ์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Guilty only if you are poor",
+            "ph" : "กิลตี้ โอนลี่ อิฟ ยู อาร์ พัวร์",
+            "th" : "มีความผิดเฉพาะถ้าคุณยากจน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Innocent only if you are rich",
+            "ph" : "อินโนเซ็นต์ โอนลี่ อิฟ ยู อาร์ ริช",
+            "th" : "บริสุทธิ์เฉพาะถ้าคุณรวย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who usually makes up a jury in a court case?",
+      "question_ph" : "ฮู ยูชวลลี่ เมคส์ อัพ อะ จูรี่ อิน อะ คอร์ต เคส?",
+      "question_th" : "โดยปกติแล้วใครเป็นผู้ประกอบขึ้นเป็นคณะลูกขุนในคดีความ?",
+      "image" : "people-on-jury.jpg",
+      "audio" : "who_usually_makes_up_a_jury_in_a_court_case.wav",
+      "answers" : [
+         {
+            "audio" : "ordinary_australian_citizens.wav",
+            "text" : "Ordinary Australian citizens",
+            "ph" : "ออร์ดินารี ออสเตรเลียน ซิติเซนส์",
+            "th" : "พลเมืองออสเตรเลียทั่วไป",
+            "is_correct" : true
+         },
+         {
+            "text" : "Judges and lawyers",
+            "ph" : "จัดเจส แอนด์ ลอว์เยอร์ส",
+            "th" : "ผู้พิพากษาและทนายความ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Police officers",
+            "ph" : "โปลิศ ออฟฟิเซอร์ส",
+            "th" : "เจ้าหน้าที่ตำรวจ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Politicians",
+            "ph" : "โพลิติเชียนส์",
+            "th" : "นักการเมือง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which is the only Australian state that is an island?",
+      "question_ph" : "วิช อิส ดิ โอนลี่ ออสเตรเลียน สเตท แดท อิส แอน ไอแลนด์?",
+      "question_th" : "รัฐเดียวของออสเตรเลียที่เป็นเกาะคือรัฐใด?",
+      "image" : "island-state.jpg",
+      "audio" : "which_is_the_only_australian_state_that_is_an_island.wav",
+      "answers" : [
+         {
+            "audio" : "tasmania.wav",
+            "text" : "Tasmania",
+            "ph" : "แทสเมเนีย",
+            "th" : "แทสเมเนีย",
+            "is_correct" : true
+         },
+         {
+            "text" : "Victoria",
+            "ph" : "วิกตอเรีย",
+            "th" : "วิกตอเรีย",
+            "is_correct" : false
+         },
+         {
+            "audio" : "queensland.wav",
+            "text" : "Queensland",
+            "ph" : "ควีนส์แลนด์",
+            "th" : "ควีนส์แลนด์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Western Australia",
+            "ph" : "เวสเทิร์น ออสเตรเลีย",
+            "th" : "เวสเทิร์นออสเตรเลีย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which was the first British colony established in Australia?",
+      "question_ph" : "วิช วอส เดอะ เฟิสต์ บริติช โคโลนี เอสตาบลิชดฺ อิน ออสเตรเลีย?",
+      "question_th" : "อาณานิคมอังกฤษแห่งแรกที่ก่อตั้งในออสเตรเลียคือที่ใด?",
+      "image" : "first-british-colony.jpg",
+      "audio" : "which_was_the_first_british_colony_established_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "new_south_wales.wav",
+            "text" : "New South Wales",
+            "ph" : "นิว เซาท์ เวลส์",
+            "th" : "นิวเซาท์เวลส์",
+            "is_correct" : true
+         },
+         {
+            "text" : "Victoria",
+            "ph" : "วิกตอเรีย",
+            "th" : "วิกตอเรีย",
+            "is_correct" : false
+         },
+         {
+            "text" : "Western Australia",
+            "ph" : "เวสเทิร์น ออสเตรเลีย",
+            "th" : "เวสเทิร์นออสเตรเลีย",
+            "is_correct" : false
+         },
+         {
+            "audio" : "tasmania.wav",
+            "text" : "Tasmania",
+            "ph" : "แทสเมเนีย",
+            "th" : "แทสเมเนีย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is a proposal for a new law called?",
+      "question_ph" : "วอท อิส อะ โปรโพซอล ฟอร์ อะ นิว ลอว์ คอลดฺ?",
+      "question_th" : "ข้อเสนอสำหรับกฎหมายใหม่เรียกว่าอะไร?",
+      "image" : "proposal-for-new-law.jpg",
+      "audio" : "what_is_a_proposal_for_a_new_law_called.wav",
+      "answers" : [
+         {
+            "audio" : "a_bill.wav",
+            "text" : "A Bill",
+            "ph" : "อะ บิล",
+            "th" : "ร่างกฎหมาย (Bill)",
+            "is_correct" : true
+         },
+         {
+            "text" : "A Law",
+            "ph" : "อะ ลอว์",
+            "th" : "กฎหมาย",
+            "is_correct" : false
+         },
+         {
+            "text" : "A Constitution",
+            "ph" : "อะ คอนสติทิวชัน",
+            "th" : "รัฐธรรมนูญ",
+            "is_correct" : false
+         },
+         {
+            "text" : "A Debate",
+            "ph" : "อะ ดีเบท",
+            "th" : "การอภิปราย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "How many points does the Commonwealth Star on the Australian flag have?",
+      "question_ph" : "ฮาว เมนี่ พอยท์ส ดัส เดอะ คอมมอนเวลธ์ สตาร์ ออน ดิ ออสเตรเลียน แฟล็ก แฮฟ?",
+      "question_th" : "ดาวเครือรัฐ (Commonwealth Star) บนธงชาติออสเตรเลียมีกี่แฉก?",
+      "image" : "how-many-points.jpg",
+      "audio" : "how_many_points_does_the_commonwealth_star_on_the_australian.wav",
+      "answers" : [
+         {
+            "audio" : "7.wav",
+            "text" : "7",
+            "ph" : "เซเว่น",
+            "th" : "7 แฉก",
+            "is_correct" : true
+         },
+         {
+            "text" : "5",
+            "ph" : "ไฟฟ์",
+            "th" : "5 แฉก",
+            "is_correct" : false
+         },
+         {
+            "audio" : "6.wav",
+            "text" : "6",
+            "ph" : "ซิกซ์",
+            "th" : "6 แฉก",
+            "is_correct" : false
+         },
+         {
+            "text" : "8",
+            "ph" : "เอท",
+            "th" : "8 แฉก",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the area of government that a Minister is responsible for called?",
+      "question_ph" : "วอท อิส ดิ แอเรีย ออฟ กาวเวอร์เมนท์ แดท อะ มินิสเตอร์ อิส เรสปอนซิเบิล ฟอร์ คอลดฺ?",
+      "question_th" : "ขอบเขตงานของรัฐบาลที่รัฐมนตรีรับผิดชอบเรียกว่าอะไร?",
+      "image" : "area-of-goverment-minister.jpg",
+      "audio" : "what_is_the_area_of_government_that_a_minister_is_responsibl.wav",
+      "answers" : [
+         {
+            "audio" : "a_portfolio.wav",
+            "text" : "A portfolio",
+            "ph" : "อะ พอร์ตโฟลิโอ",
+            "th" : "กระทรวง/ภาระหน้าที่ (Portfolio)",
+            "is_correct" : true
+         },
+         {
+            "text" : "A department",
+            "ph" : "อะ ดีพาร์ทเมนต์",
+            "th" : "แผนก",
+            "is_correct" : false
+         },
+         {
+            "text" : "A council",
+            "ph" : "อะ เคาน์ซิล",
+            "th" : "สภา",
+            "is_correct" : false
+         },
+         {
+            "text" : "A section",
+            "ph" : "อะ เซกชัน",
+            "th" : "ฝ่าย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is another name for the Senate?",
+      "question_ph" : "วอท อิส อะนาเธอร์ เนม ฟอร์ เดอะ เซเนท?",
+      "question_th" : "อีกชื่อหนึ่งของวุฒิสภาคืออะไร?",
+      "image" : "other-name-for-senate.jpg",
+      "audio" : "what_is_another_name_for_the_senate.wav",
+      "answers" : [
+         {
+            "audio" : "the_house_of_review.wav",
+            "text" : "The House of Review",
+            "ph" : "เดอะ เฮาส์ ออฟ รีวิว",
+            "th" : "สภาทบทวน (House of Review)",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_peoples_house.wav",
+            "text" : "The People's House",
+            "ph" : "เดอะ พีเพิลส์ เฮาส์",
+            "th" : "สภาประชาชน",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Government House",
+            "ph" : "เดอะ กาวเวอร์เมนท์ เฮาส์",
+            "th" : "ทำเนียบรัฐบาล",
+            "is_correct" : false
+         },
+         {
+            "text" : "The High Court",
+            "ph" : "เดอะ ไฮ คอร์ต",
+            "th" : "ศาลสูง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is another name for the House of Representatives?",
+      "question_ph" : "วอท อิส อะนาเธอร์ เนม ฟอร์ เดอะ เฮาส์ ออฟ เรพพรีเซนทาทีฟส์?",
+      "question_th" : "อีกชื่อหนึ่งของสภาผู้แทนราษฎรคืออะไร?",
+      "image" : "other-name-house-representatives.jpg",
+      "audio" : "what_is_another_name_for_the_house_of_representatives.wav",
+      "answers" : [
+         {
+            "audio" : "the_peoples_house.wav",
+            "text" : "The People's House",
+            "ph" : "เดอะ พีเพิลส์ เฮาส์",
+            "th" : "สภาประชาชน (People's House)",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_house_of_review.wav",
+            "text" : "The House of Review",
+            "ph" : "เดอะ เฮาส์ ออฟ รีวิว",
+            "th" : "สภาทบทวน",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Senate",
+            "ph" : "เดอะ เซเนท",
+            "th" : "วุฒิสภา",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Cabinet",
+            "ph" : "เดอะ แคบิเนต",
+            "th" : "คณะรัฐมนตรี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Can you hold dual citizenship in Australia?",
+      "question_ph" : "แคน ยู โฮลดฺ ดูอัล ซิติเซนชิป อิน ออสเตรเลีย?",
+      "question_th" : "คุณสามารถถือสองสัญชาติในออสเตรเลียได้หรือไม่?",
+      "image" : "dual-citizenship.jpg",
+      "audio" : "can_you_hold_dual_citizenship_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "yes.wav",
+            "text" : "Yes",
+            "ph" : "เยส",
+            "th" : "ได้",
+            "is_correct" : true
+         },
+         {
+            "audio" : "no.wav",
+            "text" : "No",
+            "ph" : "โน",
+            "th" : "ไม่ได้",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only with New Zealand",
+            "ph" : "โอนลี่ วิธ นิวซีแลนด์",
+            "th" : "ได้เฉพาะกับนิวซีแลนด์เท่านั้น",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only with the UK",
+            "ph" : "โอนลี่ วิธ เดอะ ยู-เค",
+            "th" : "ได้เฉพาะกับสหราชอาณาจักรเท่านั้น",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Are the police part of the army in Australia?",
+      "question_ph" : "อาร์ เดอะ โปลิศ พาร์ท ออฟ ดิ อาร์มี อิน ออสเตรเลีย?",
+      "question_th" : "ตำรวจเป็นส่วนหนึ่งของกองทัพในออสเตรเลียหรือไม่?",
+      "image" : "police-army.jpg",
+      "audio" : "are_the_police_part_of_the_army_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "no_they_are_separate.wav",
+            "text" : "No, they are separate",
+            "ph" : "โน, เด อาร์ เซพปะเรท",
+            "th" : "ไม่ เป็นหน่วยงานแยกจากกัน",
+            "is_correct" : true
+         },
+         {
+            "text" : "Yes, always",
+            "ph" : "เยส, ออลเวย์ส",
+            "th" : "ใช่ เสมอ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only in an emergency",
+            "ph" : "โอนลี่ อิน แอน อีเมอร์เจนซี",
+            "th" : "เฉพาะในกรณีฉุกเฉินเท่านั้น",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only in the Northern Territory",
+            "ph" : "โอนลี่ อิน เดอะ นอร์ธเทิร์น เทร์ริทอรี",
+            "th" : "เฉพาะในนอร์ธเทิร์นเทร์ริทอรีเท่านั้น",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who appoints the Governor-General?",
+      "question_ph" : "ฮู แอพพอยท์ส เดอะ กาวเวอร์เนอร์-เจนเนอรัล?",
+      "question_th" : "ใครเป็นผู้แต่งตั้งผู้สำเร็จราชการแทนพระองค์?",
+      "image" : "governor-general-appointmnet.jpg",
+      "audio" : "who_appoints_the_governorgeneral.wav",
+      "answers" : [
+         {
+            "audio" : "the_king_on_the_advice_of_the_prime_minister.wav",
+            "text" : "The King (on the advice of the Prime Minister)",
+            "ph" : "เดอะ คิง (ออน ดิ แอดไวซ์ ออฟ เดอะ ไพรม์ มินิสเตอร์)",
+            "th" : "กษัตริย์ (ตามคำแนะนำของนายกรัฐมนตรี)",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Prime Minister alone",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์ อะโลน",
+            "th" : "นายกรัฐมนตรีเพียงผู้เดียว",
+            "is_correct" : false
+         },
+         {
+            "text" : "The People",
+            "ph" : "เดอะ พีเพิล",
+            "th" : "ประชาชน",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Parliament",
+            "ph" : "เดอะ พาร์เลียเมนต์",
+            "th" : "รัฐสภา",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which level of government is responsible for town planning?",
+      "question_ph" : "วิช เลเวล ออฟ กาวเวอร์เมนท์ อิส เรสปอนซิเบิล ฟอร์ ทาวน์ แพลนนิง?",
+      "question_th" : "รัฐบาลระดับใดรับผิดชอบด้านการวางผังเมือง?",
+      "image" : "town-planning.jpg",
+      "audio" : "which_level_of_government_is_responsible_for_town_planning.wav",
+      "answers" : [
+         {
+            "audio" : "local_government.wav",
+            "text" : "Local Government",
+            "ph" : "โลคัล กาวเวอร์เมนท์",
+            "th" : "การปกครองส่วนท้องถิ่น",
+            "is_correct" : true
+         },
+         {
+            "text" : "State Government",
+            "ph" : "สเตท กาวเวอร์เมนท์",
+            "th" : "รัฐบาลระดับรัฐ",
+            "is_correct" : false
+         },
+         {
+            "audio" : "the_australian_government_federal.wav",
+            "text" : "The Australian Government (Federal)",
+            "ph" : "ดิ ออสเตรเลียน กาวเวอร์เมนท์ (เฟดเดอรัล)",
+            "th" : "รัฐบาลออสเตรเลีย (รัฐบาลกลาง)",
+            "is_correct" : false
+         },
+         {
+            "text" : "The United Nations",
+            "ph" : "เดอะ ยูไนเต็ด เนชันส์",
+            "th" : "องค์การสหประชาชาติ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Can the government interfere with the judges in a court?",
+      "question_ph" : "แคน เดอะ กาวเวอร์เมนท์ อินเตอร์เฟียร์ วิธ เดอะ จัดเจส อิน อะ คอร์ต?",
+      "question_th" : "รัฐบาลสามารถแทรกแซงผู้พิพากษาในศาลได้หรือไม่?",
+      "image" : "government-interference-in-court.jpg",
+      "audio" : "can_the_government_interfere_with_the_judges_in_a_court.wav",
+      "answers" : [
+         {
+            "audio" : "no_the_judiciary_is_independent.wav",
+            "text" : "No, the judiciary is independent",
+            "ph" : "โน, เดอะ จูดิเชียรี อิส อินดิเพนเดนท์",
+            "th" : "ไม่ได้ ฝ่ายตุลาการมีความเป็นอิสระ",
+            "is_correct" : true
+         },
+         {
+            "text" : "Yes, always",
+            "ph" : "เยส, ออลเวย์ส",
+            "th" : "ได้ เสมอ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only if the Prime Minister says so",
+            "ph" : "โอนลี่ อิฟ เดอะ ไพรม์ มินิสเตอร์ เซย์ส โซ",
+            "th" : "ได้ เฉพาะถ้านายกรัฐมนตรีสั่ง",
+            "is_correct" : false
+         },
+         {
+            "text" : "Yes, in serious cases",
+            "ph" : "เยส, อิน ซีเรียส เคสเซส",
+            "th" : "ได้ ในคดีร้ายแรง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the emergency telephone number in Australia?",
+      "question_ph" : "วอท อิส ดิ อีเมอร์เจนซี เทเลโฟน นัมเบอร์ อิน ออสเตรเลีย?",
+      "question_th" : "หมายเลขโทรศัพท์ฉุกเฉินในออสเตรเลียคือเบอร์อะไร?",
+      "image" : "000.jpg",
+      "audio" : "what_is_the_emergency_telephone_number_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "000.wav",
+            "text" : "000",
+            "ph" : "ทริปเปิล ซีโร่",
+            "th" : "000 (ทริปเปิล ซีโร่)",
+            "is_correct" : true
+         },
+         {
+            "text" : "911",
+            "ph" : "ไนน์-วัน-วัน",
+            "th" : "911",
+            "is_correct" : false
+         },
+         {
+            "text" : "112",
+            "ph" : "วัน-วัน-ทู",
+            "th" : "112",
+            "is_correct" : false
+         },
+         {
+            "text" : "999",
+            "ph" : "ไนน์-ไนน์-ไนน์",
+            "th" : "999",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the name of the Australian currency?",
+      "question_ph" : "วอท อิส เดอะ เนม ออฟ ดิ ออสเตรเลียน เคอร์เรนซี?",
+      "question_th" : "ชื่อสกุลเงินของออสเตรเลียคืออะไร?",
+      "image" : "aud.jpg",
+      "audio" : "what_is_the_name_of_the_australian_currency.wav",
+      "answers" : [
+         {
+            "audio" : "australian_dollar.wav",
+            "text" : "Australian Dollar",
+            "ph" : "ออสเตรเลียน ดอลลาร์",
+            "th" : "ดอลลาร์ออสเตรเลีย",
+            "is_correct" : true
+         },
+         {
+            "text" : "Pound Sterling",
+            "ph" : "ปอนด์ สเตอร์ลิง",
+            "th" : "ปอนด์สเตอร์ลิง",
+            "is_correct" : false
+         },
+         {
+            "text" : "Euro",
+            "ph" : "ยูโร",
+            "th" : "ยูโร",
+            "is_correct" : false
+         },
+         {
+            "text" : "Yen",
+            "ph" : "เยน",
+            "th" : "เยน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which side of the road do Australians drive on?",
+      "question_ph" : "วิช ไซด์ ออฟ เดอะ โรด ดู ออสเตรเลียนส์ ไดรฟ์ ออน?",
+      "question_th" : "ชาวออสเตรเลียขับรถชิดฝั่งไหนของถนน?",
+      "image" : "driving-side.jpg",
+      "audio" : "which_side_of_the_road_do_australians_drive_on.wav",
+      "answers" : [
+         {
+            "audio" : "the_left_side.wav",
+            "text" : "The left side",
+            "ph" : "เดอะ เลฟท์ ไซด์",
+            "th" : "ฝั่งซ้าย",
+            "is_correct" : true
+         },
+         {
+            "text" : "The right side",
+            "ph" : "เดอะ ไรท์ ไซด์",
+            "th" : "ฝั่งขวา",
+            "is_correct" : false
+         },
+         {
+            "text" : "The middle",
+            "ph" : "เดอะ มิดเดิล",
+            "th" : "ตรงกลาง",
+            "is_correct" : false
+         },
+         {
+            "text" : "Any side",
+            "ph" : "เอนี่ ไซด์",
+            "th" : "ฝั่งไหนก็ได้",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the 'Shadow Cabinet'?",
+      "question_ph" : "วอท อิส เดอะ ‘แชโดว์ แคบิเนต’?",
+      "question_th" : "‘คณะรัฐมนตรีเงา’ (Shadow Cabinet) คืออะไร?",
+      "image" : "shadow-cabinet.jpg",
+      "audio" : "what_is_the_shadow_cabinet.wav",
+      "answers" : [
+         {
+            "audio" : "senior_ministers_from_the_opposition_party.wav",
+            "text" : "Senior ministers from the Opposition party",
+            "ph" : "ซีเนียร์ มินิสเตอร์ส ฟรอม ดิ ออปโพซิชัน ปาร์ตี้",
+            "th" : "รัฐมนตรีอาวุโสจากพรรคฝ่ายค้าน",
+            "is_correct" : true
+         },
+         {
+            "text" : "A secret group in the government",
+            "ph" : "อะ ซีเครท กรุ๊ป อิน เดอะ กาวเวอร์เมนท์",
+            "th" : "กลุ่มลับในรัฐบาล",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Prime Minister's advisers",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์ส แอดไวเซอร์ส",
+            "th" : "ที่ปรึกษาของนายกรัฐมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The judges of the High Court",
+            "ph" : "เดอะ จัดเจส ออฟ เดอะ ไฮ คอร์ต",
+            "th" : "ผู้พิพากษาของศาลสูง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "If an Australian law conflicts with a religious law, which one must you follow?",
+      "question_ph" : "อิฟ แอน ออสเตรเลียน ลอว์ คอนฟลิกต์ส วิธ อะ รีลิเจียส ลอว์, วิช วัน มัสต์ ยู ฟอลโลว์?",
+      "question_th" : "หากกฎหมายออสเตรเลียขัดแย้งกับกฎทางศาสนา คุณต้องปฏิบัติตามกฎใด?",
+      "image" : "religious-law.jpg",
+      "audio" : "if_an_australian_law_conflicts_with_a_religious_law_which_on.wav",
+      "answers" : [
+         {
+            "audio" : "australian_law.wav",
+            "text" : "Australian law",
+            "ph" : "ออสเตรเลียน ลอว์",
+            "th" : "กฎหมายออสเตรเลีย",
+            "is_correct" : true
+         },
+         {
+            "text" : "Religious law",
+            "ph" : "รีลิเจียส ลอว์",
+            "th" : "กฎทางศาสนา",
+            "is_correct" : false
+         },
+         {
+            "text" : "Whichever one you prefer",
+            "ph" : "วิชเอฟเวอร์ วัน ยู พรีเฟอร์",
+            "th" : "กฎใดก็ได้ที่คุณชอบ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The law of your home country",
+            "ph" : "เดอะ ลอว์ ออฟ ยัวร์ โฮม คันทรี",
+            "th" : "กฎหมายของประเทศบ้านเกิดของคุณ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Is it legal to force someone to get married in Australia?",
+      "question_ph" : "อิส อิท ลีกัล ทู ฟอร์ซ ซัมวัน ทู เก็ท แมร์ริด อิน ออสเตรเลีย?",
+      "question_th" : "การบังคับให้ผู้อื่นแต่งงานเป็นเรื่องถูกกฎหมายในออสเตรเลียหรือไม่?",
+      "image" : "force-marriage.jpg",
+      "audio" : "is_it_legal_to_force_someone_to_get_married_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "no_people_must_have_the_freedom_to_choose_who_they_marry.wav",
+            "text" : "No, people must have the freedom to choose who they marry",
+            "ph" : "โน, พีเพิล มัสต์ แฮฟ เดอะ ฟรีดอม ทู ชูส ฮู เด แมร์รี",
+            "th" : "ไม่ ประชาชนต้องมีอิสระในการเลือกคู่สมรส",
+            "is_correct" : true
+         },
+         {
+            "text" : "Yes, if the parents agree",
+            "ph" : "เยส, อิฟ เดอะ พาเรนต์ส อะกรี",
+            "th" : "ได้ หากพ่อแม่เห็นชอบ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Yes, if it is a cultural tradition",
+            "ph" : "เยส, อิฟ อิท อิส อะ คัลเจอรอล เทรดิชัน",
+            "th" : "ได้ หากเป็นประเพณีทางวัฒนธรรม",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only for women",
+            "ph" : "โอนลี่ ฟอร์ วีเมน",
+            "th" : "ได้เฉพาะสำหรับผู้หญิง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "In Australia, can you use violence to try to change the government?",
+      "question_ph" : "อิน ออสเตรเลีย, แคน ยู ยูส ไวโอเลนซ์ ทู ไทร ทู เชนจ์ เดอะ กาวเวอร์เมนท์?",
+      "question_th" : "ในออสเตรเลีย คุณสามารถใช้ความรุนแรงเพื่อพยายามเปลี่ยนแปลงรัฐบาลได้หรือไม่?",
+      "image" : "political-violence.jpg",
+      "audio" : "in_australia_can_you_use_violence_to_try_to_change_the_gover.wav",
+      "answers" : [
+         {
+            "audio" : "no_violence_is_illegal.wav",
+            "text" : "No, violence is illegal",
+            "ph" : "โน, ไวโอเลนซ์ อิส อิลลีกัล",
+            "th" : "ไม่ ความรุนแรงเป็นสิ่งผิดกฎหมาย",
+            "is_correct" : true
+         },
+         {
+            "text" : "Yes, if you are angry",
+            "ph" : "เยส, อิฟ ยู อาร์ แองกรี",
+            "th" : "ได้ ถ้าคุณโกรธ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Yes, if you disagree with the Prime Minister",
+            "ph" : "เยส, อิฟ ยู ดิสอะกรี วิธ เดอะ ไพรม์ มินิสเตอร์",
+            "th" : "ได้ ถ้าคุณไม่เห็นด้วยกับนายกรัฐมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only during an election",
+            "ph" : "โอนลี่ ดูริง แอน อีเลคชัน",
+            "th" : "ได้เฉพาะช่วงการเลือกตั้ง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What should you do if you suspect your neighbour is hitting their child?",
+      "question_ph" : "วอท ชูต ยู ดู อิฟ ยู ซัสเพคท์ ยัวร์ เนเบอร์ อิส ฮิตติง แดร์ ชายลด์?",
+      "question_th" : "คุณควรทำอย่างไรหากสงสัยว่าเพื่อนบ้านกำลังทำร้ายร่างกายลูกของพวกเขา?",
+      "image" : "hitting-children.jpg",
+      "audio" : "what_should_you_do_if_you_suspect_your_neighbour_is_hitting_.wav",
+      "answers" : [
+         {
+            "audio" : "report_it_to_the_police_or_child_protection_services.wav",
+            "text" : "Report it to the police or child protection services",
+            "ph" : "รีพอร์ต อิท ทู เดอะ โปลิศ ออร์ ชายลด์ โพรเทคชัน เซอร์วิสเซส",
+            "th" : "แจ้งตำรวจหรือหน่วยงานคุ้มครองเด็ก",
+            "is_correct" : true
+         },
+         {
+            "text" : "Ignore it, it is private",
+            "ph" : "อิกนอร์ อิท, อิท อิส ไพรเวท",
+            "th" : "เพิกเฉยเสีย เพราะเป็นเรื่องส่วนตัว",
+            "is_correct" : false
+         },
+         {
+            "text" : "Help the neighbour hit the child",
+            "ph" : "เฮลป์ เดอะ เนเบอร์ ฮิต เดอะ ชายลด์",
+            "th" : "ช่วยเพื่อนบ้านตีเด็ก",
+            "is_correct" : false
+         },
+         {
+            "text" : "Move to a different house",
+            "ph" : "มูฟ ทู อะ ดิฟเฟอเรนท์ เฮาส์",
+            "th" : "ย้ายบ้านหนี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Can an employer refuse to hire a woman because she is pregnant?",
+      "question_ph" : "แคน แอน เอ็มพลอยเยอร์ รีฟิวส์ ทู ไฮร์ อะ วูแมน บิคอส ชี อิส เพร็กแนนท์?",
+      "question_th" : "นายจ้างสามารถปฏิเสธไม่รับผู้หญิงเข้าทำงานเพราะเธอตั้งครรภ์ได้หรือไม่?",
+      "image" : "hire-while-pregnant.jpg",
+      "audio" : "can_an_employer_refuse_to_hire_a_woman_because_she_is_pregna.wav",
+      "answers" : [
+         {
+            "audio" : "no_discrimination_is_against_the_law.wav",
+            "text" : "No, discrimination is against the law",
+            "ph" : "โน, ดิสคริมมิเนชัน อิส อะเกนสต์ เดอะ ลอว์",
+            "th" : "ไม่ การเลือกปฏิบัติเป็นสิ่งผิดกฎหมาย",
+            "is_correct" : true
+         },
+         {
+            "text" : "Yes, always",
+            "ph" : "เยส, ออลเวย์ส",
+            "th" : "ได้ เสมอ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Yes, if it is a small business",
+            "ph" : "เยส, อิฟ อิท อิส อะ สมอล บิสเนส",
+            "th" : "ได้ ถ้าเป็นธุรกิจขนาดเล็ก",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only if she is married",
+            "ph" : "โอนลี่ อิฟ ชี อิส แมร์ริด",
+            "th" : "ได้เฉพาะถ้าเธอแต่งงานแล้ว",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the age required to become a Member of Parliament?",
+      "question_ph" : "วอท อิส ดิ เอจ รีไควร์ด ทู บิคัม อะ เมมเบอร์ ออฟ พาร์เลียเมนต์?",
+      "question_th" : "อายุที่กำหนดในการเป็นสมาชิกรัฐสภาคือเท่าไร?",
+      "image" : "minimum-mp-age.jpg",
+      "audio" : "what_is_the_age_required_to_become_a_member_of_parliament.wav",
+      "answers" : [
+         {
+            "audio" : "18_years_or_older.wav",
+            "text" : "18 years or older",
+            "ph" : "เอธทีน เยียร์ส ออร์ โอลเดอร์",
+            "th" : "18 ปีขึ้นไป",
+            "is_correct" : true
+         },
+         {
+            "text" : "21 years or older",
+            "ph" : "ทเวนตี้-วัน เยียร์ส ออร์ โอลเดอร์",
+            "th" : "21 ปีขึ้นไป",
+            "is_correct" : false
+         },
+         {
+            "text" : "35 years or older",
+            "ph" : "เทอร์ตี้-ไฟฟ์ เยียร์ส ออร์ โอลเดอร์",
+            "th" : "35 ปีขึ้นไป",
+            "is_correct" : false
+         },
+         {
+            "text" : "50 years or older",
+            "ph" : "ฟิฟตี้ เยียร์ส ออร์ โอลเดอร์",
+            "th" : "50 ปีขึ้นไป",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "How long is the term for a Member of the House of Representatives?",
+      "question_ph" : "ฮาว ลอง อิส เดอะ เทอม ฟอร์ อะ เมมเบอร์ ออฟ เดอะ เฮาส์ ออฟ เรพพรีเซนทาทีฟส์?",
+      "question_th" : "วาระการดำรงตำแหน่งของสมาชิกสภาผู้แทนราษฎรมีระยะเวลานานเท่าใด?",
+      "image" : "term-for-house-of-representatives.jpg",
+      "audio" : "how_long_is_the_term_for_a_member_of_the_house_of_representa.wav",
+      "answers" : [
+         {
+            "audio" : "3_years.wav",
+            "text" : "3 years",
+            "ph" : "ทรี เยียร์ส",
+            "th" : "3 ปี",
+            "is_correct" : true
+         },
+         {
+            "text" : "4 years",
+            "ph" : "โฟร์ เยียร์ส",
+            "th" : "4 ปี",
+            "is_correct" : false
+         },
+         {
+            "audio" : "6_years.wav",
+            "text" : "6 years",
+            "ph" : "ซิกซ์ เยียร์ส",
+            "th" : "6 ปี",
+            "is_correct" : false
+         },
+         {
+            "text" : "Life",
+            "ph" : "ไลฟ์",
+            "th" : "ตลอดชีวิต",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "How long is the standard term for a State Senator?",
+      "question_ph" : "ฮาว ลอง อิส เดอะ สแตนดาร์ด เทอม ฟอร์ อะ สเตท เซเนเตอร์?",
+      "question_th" : "วาระปกติของวุฒิสมาชิกประจำรัฐ (State Senator) มีระยะเวลานานเท่าใด?",
+      "image" : "term-for-state-senator.jpg",
+      "audio" : "how_long_is_the_standard_term_for_a_state_senator.wav",
+      "answers" : [
+         {
+            "audio" : "6_years.wav",
+            "text" : "6 years",
+            "ph" : "ซิกซ์ เยียร์ส",
+            "th" : "6 ปี",
+            "is_correct" : true
+         },
+         {
+            "audio" : "3_years.wav",
+            "text" : "3 years",
+            "ph" : "ทรี เยียร์ส",
+            "th" : "3 ปี",
+            "is_correct" : false
+         },
+         {
+            "text" : "4 years",
+            "ph" : "โฟร์ เยียร์ส",
+            "th" : "4 ปี",
+            "is_correct" : false
+         },
+         {
+            "text" : "10 years",
+            "ph" : "เท็น เยียร์ส",
+            "th" : "10 ปี",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which level of government is responsible for social security and pensions?",
+      "question_ph" : "วิช เลเวล ออฟ กาวเวอร์เมนท์ อิส เรสปอนซิเบิล ฟอร์ โซเชียล ซีคิวริตี้ แอนด์ เพนชันส์?",
+      "question_th" : "รัฐบาลระดับใดรับผิดชอบด้านประกันสังคมและเงินบำนาญ?",
+      "image" : "social-security-responsibility.jpg",
+      "audio" : "which_level_of_government_is_responsible_for_social_security.wav",
+      "answers" : [
+         {
+            "audio" : "the_australian_government_federal.wav",
+            "text" : "The Australian Government (Federal)",
+            "ph" : "ดิ ออสเตรเลียน กาวเวอร์เมนท์ (เฟดเดอรัล)",
+            "th" : "รัฐบาลออสเตรเลีย (รัฐบาลกลาง)",
+            "is_correct" : true
+         },
+         {
+            "text" : "State Government",
+            "ph" : "สเตท กาวเวอร์เมนท์",
+            "th" : "รัฐบาลระดับรัฐ",
+            "is_correct" : false
+         },
+         {
+            "audio" : "local_government.wav",
+            "text" : "Local Government",
+            "ph" : "โลคัล กาวเวอร์เมนท์",
+            "th" : "การปกครองส่วนท้องถิ่น",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Banks",
+            "ph" : "เดอะ แบงค์ส",
+            "th" : "ธนาคารต่างๆ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which level of government manages public transport and railways?",
+      "question_ph" : "วิช เลเวล ออฟ กาวเวอร์เมนท์ แมนเนจเจส พับลิก ทรานสปอร์ต แอนด์ เรลเวย์ส?",
+      "question_th" : "รัฐบาลระดับใดบริหารจัดการระบบขนส่งสาธารณะและทางรถไฟ?",
+      "image" : "public-transport.jpg",
+      "audio" : "which_level_of_government_manages_public_transport_and_railw.wav",
+      "answers" : [
+         {
+            "audio" : "state_and_territory_government.wav",
+            "text" : "State and Territory Government",
+            "ph" : "สเตท แอนด์ เทร์ริทอรี กาวเวอร์เมนท์",
+            "th" : "รัฐบาลระดับรัฐและดินแดน",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_australian_government_federal.wav",
+            "text" : "The Australian Government (Federal)",
+            "ph" : "ดิ ออสเตรเลียน กาวเวอร์เมนท์ (เฟดเดอรัล)",
+            "th" : "รัฐบาลออสเตรเลีย (รัฐบาลกลาง)",
+            "is_correct" : false
+         },
+         {
+            "audio" : "local_government.wav",
+            "text" : "Local Government",
+            "ph" : "โลคัล กาวเวอร์เมนท์",
+            "th" : "การปกครองส่วนท้องถิ่น",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Police",
+            "ph" : "เดอะ โปลิศ",
+            "th" : "ตำรวจ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Which level of government looks after libraries and local streets?",
+      "question_ph" : "วิช เลเวล ออฟ กาวเวอร์เมนท์ ลุคส์ อาฟเตอร์ ไลบรารีส์ แอนด์ โลคัล สตรีทส์?",
+      "question_th" : "รัฐบาลระดับใดดูแลห้องสมุดและถนนในท้องถิ่น?",
+      "image" : "libraries-and-streets.jpg",
+      "audio" : "which_level_of_government_looks_after_libraries_and_local_st.wav",
+      "answers" : [
+         {
+            "audio" : "local_government.wav",
+            "text" : "Local Government",
+            "ph" : "โลคัล กาวเวอร์เมนท์",
+            "th" : "การปกครองส่วนท้องถิ่น",
+            "is_correct" : true
+         },
+         {
+            "text" : "State Government",
+            "ph" : "สเตท กาวเวอร์เมนท์",
+            "th" : "รัฐบาลระดับรัฐ",
+            "is_correct" : false
+         },
+         {
+            "audio" : "the_australian_government_federal.wav",
+            "text" : "The Australian Government (Federal)",
+            "ph" : "ดิ ออสเตรเลียน กาวเวอร์เมนท์ (เฟดเดอรัล)",
+            "th" : "รัฐบาลออสเตรเลีย (รัฐบาลกลาง)",
+            "is_correct" : false
+         },
+         {
+            "text" : "The High Court",
+            "ph" : "เดอะ ไฮ คอร์ต",
+            "th" : "ศาลสูง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is 'freedom of speech'?",
+      "question_ph" : "วอท อิส ‘ฟรีดอม ออฟ สปีช’?",
+      "question_th" : "‘เสรีภาพในการพูด’ คืออะไร?",
+      "image" : "freedom-of-speech.jpg",
+      "audio" : "what_is_freedom_of_speech.wav",
+      "answers" : [
+         {
+            "audio" : "being_able_to_say_what_you_think_about_the_government_withou.wav",
+            "text" : "Being able to say what you think about the government without being put in jail",
+            "ph" : "บีอิง เอเบิล ทู เซย์ วอท ยู ธิงค์ อะเบาท์ เดอะ กาวเวอร์เมนท์ วิธเอาท์ บีอิง พุท อิน เจล",
+            "th" : "การสามารถพูดสิ่งที่คุณคิดเกี่ยวกับรัฐบาลได้โดยไม่ถูกจำคุก",
+            "is_correct" : true
+         },
+         {
+            "text" : "Being able to shout in a library",
+            "ph" : "บีอิง เอเบิล ทู เชาท์ อิน อะ ไลบรารี",
+            "th" : "การสามารถตะโกนในห้องสมุด",
+            "is_correct" : false
+         },
+         {
+            "text" : "Being able to lie to the police",
+            "ph" : "บีอิง เอเบิล ทู ไล ทู เดอะ โปลิศ",
+            "th" : "การสามารถโกหกตำรวจ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Being able to threaten other people",
+            "ph" : "บีอิง เอเบิล ทู เธรทเทน อาเธอร์ พีเพิล",
+            "th" : "การสามารถข่มขู่ผู้อื่น",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Is racism allowed in Australia?",
+      "question_ph" : "อิส เรซิซึม อัลลาวด์ อิน ออสเตรเลีย?",
+      "question_th" : "การเหยียดเชื้อชาติเป็นสิ่งที่ยอมรับได้ในออสเตรเลียหรือไม่?",
+      "image" : "racism.jpg",
+      "audio" : "is_racism_allowed_in_australia.wav",
+      "answers" : [
+         {
+            "audio" : "no_racism_is_against_australian_values_and_laws.wav",
+            "text" : "No, racism is against Australian values and laws",
+            "ph" : "โน, เรซิซึม อิส อะเกนสต์ ออสเตรเลียน แวลลูส์ แอนด์ ลอว์ส",
+            "th" : "ไม่ การเหยียดเชื้อชาติขัดต่อค่านิยมและกฎหมายของออสเตรเลีย",
+            "is_correct" : true
+         },
+         {
+            "text" : "Yes, it is allowed",
+            "ph" : "เยส, อิท อิส อัลลาวด์",
+            "th" : "ใช่ เป็นสิ่งที่ยอมรับได้",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only against tourists",
+            "ph" : "โอนลี่ อะเกนสต์ ทัวริสต์ส",
+            "th" : "ได้เฉพาะกับนักท่องเที่ยว",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only at sporting events",
+            "ph" : "โอนลี่ แอท สปอร์ตติง อีเวนต์ส",
+            "th" : "ได้เฉพาะในงานกีฬา",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "If you cannot afford a lawyer, can you get help?",
+      "question_ph" : "อิฟ ยู แคนน็อต แอฟฟอร์ด อะ ลอว์เยอร์, แคน ยู เก็ท เฮลป์?",
+      "question_th" : "หากคุณไม่มีเงินจ้างทนายความ คุณจะได้รับความช่วยเหลือได้หรือไม่?",
+      "image" : "afford-lawyer.jpg",
+      "audio" : "if_you_cannot_afford_a_lawyer_can_you_get_help.wav",
+      "answers" : [
+         {
+            "audio" : "yes_through_legal_aid.wav",
+            "text" : "Yes, through Legal Aid",
+            "ph" : "เยส, ทรู ลีกัล เอด",
+            "th" : "ได้ ผ่านองค์กรช่วยเหลือทางกฎหมาย (Legal Aid)",
+            "is_correct" : true
+         },
+         {
+            "text" : "No, you must defend yourself",
+            "ph" : "โน, ยู มัสต์ ดีเฟน ยัวร์เซลฟ์",
+            "th" : "ไม่ คุณต้องว่าความให้ตัวเอง",
+            "is_correct" : false
+         },
+         {
+            "text" : "No, you will go to jail immediately",
+            "ph" : "โน, ยู วิล โก ทู เจล อิมมีเดียทลี่",
+            "th" : "ไม่ คุณจะติดคุกทันที",
+            "is_correct" : false
+         },
+         {
+            "text" : "Yes, but only if you are Australian born",
+            "ph" : "เยส, บัท โอนลี่ อิฟ ยู อาร์ ออสเตรเลียน บอร์น",
+            "th" : "ได้ แต่เฉพาะถ้าคุณเกิดในออสเตรเลีย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is an 'electorate'?",
+      "question_ph" : "วอท อิส แอน ‘อีเล็คโทรเรต’?",
+      "question_th" : "‘เขตเลือกตั้ง’ (Electorate) คืออะไร?",
+      "image" : "electorate.jpg",
+      "audio" : "what_is_an_electorate.wav",
+      "answers" : [
+         {
+            "audio" : "a_specific_geographic_area_represented_by_a_member_of_parlia.wav",
+            "text" : "A specific geographic area represented by a Member of Parliament",
+            "ph" : "อะ สเปซิฟิก จีโอกราฟฟิก แอเรีย เรพพรีเซนเตด บาย อะ เมมเบอร์ ออฟ พาร์เลียเมนต์",
+            "th" : "พื้นที่ทางภูมิศาสตร์เฉพาะที่มีสมาชิกสภาผู้แทนราษฎรเป็นตัวแทน",
+            "is_correct" : true
+         },
+         {
+            "text" : "A type of voting machine",
+            "ph" : "อะ ไทป์ ออฟ โหวตติง แมชชีน",
+            "th" : "เครื่องลงคะแนนเสียงชนิดหนึ่ง",
+            "is_correct" : false
+         },
+         {
+            "text" : "A political party",
+            "ph" : "อะ โพลิติคัล ปาร์ตี้",
+            "th" : "พรรคการเมือง",
+            "is_correct" : false
+         },
+         {
+            "text" : "A person who counts the votes",
+            "ph" : "อะ เพอร์ซัน ฮู เคานท์ส เดอะ โหวตส์",
+            "th" : "คนนับคะแนนเสียง",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "If you are unable to go to a polling place on election day, what can you do?",
+      "question_ph" : "อิฟ ยู อาร์ อันเอเบิล ทู โก ทู อะ โพลลิง เพลซ ออน อีเลคชัน เดย์, วอท แคน ยู ดู?",
+      "question_th" : "หากคุณไม่สามารถไปที่หน่วยเลือกตั้งในวันเลือกตั้งได้ คุณสามารถทำอะไรได้บ้าง?",
+      "image" : "unable-to-attend-polling.jpg",
+      "audio" : "if_you_are_unable_to_go_to_a_polling_place_on_election_day_w.wav",
+      "answers" : [
+         {
+            "audio" : "apply_for_a_postal_vote_or_vote_early.wav",
+            "text" : "Apply for a postal vote or vote early",
+            "ph" : "แอพพลาย ฟอร์ อะ โพสตัล โหวต ออร์ โหวต เออร์ลี่",
+            "th" : "ขอลงคะแนนทางไปรษณีย์หรือลงคะแนนล่วงหน้า",
+            "is_correct" : true
+         },
+         {
+            "text" : "Don't vote",
+            "ph" : "ด้อนท์ โหวต",
+            "th" : "ไม่ต้องลงคะแนน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Ask a friend to vote for you",
+            "ph" : "อาสค์ อะ เฟรนด์ ทู โหวต ฟอร์ ยู",
+            "th" : "ขอให้เพื่อนไปลงคะแนนแทน",
+            "is_correct" : false
+         },
+         {
+            "text" : "Pay a fine",
+            "ph" : "เพย์ อะ ไฟน์",
+            "th" : "จ่ายค่าปรับ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Why is English the national language of Australia?",
+      "question_ph" : "วาย อิส อิงลิช เดอะ เนชันแนล แลงเกวจ ออฟ ออสเตรเลีย?",
+      "question_th" : "ทำไมภาษาอังกฤษจึงเป็นภาษาประจำชาติของออสเตรเลีย?",
+      "image" : "why-english.jpg",
+      "audio" : "why_is_english_the_national_language_of_australia.wav",
+      "answers" : [
+         {
+            "audio" : "it_helps_to_unify_the_society_and_is_used_for_business_and_g.wav",
+            "text" : "It helps to unify the society and is used for business and government",
+            "ph" : "อิท เฮลป์ส ทู ยูนิไฟ เดอะ โซไซตี้ แอนด์ อิส ยูสดฺ ฟอร์ บิสเนส แอนด์ กาวเวอร์เมนท์",
+            "th" : "ช่วยให้สังคมเป็นอันหนึ่งอันเดียวกันและใช้ในการทำธุรกิจและราชการ",
+            "is_correct" : true
+         },
+         {
+            "text" : "Because it is the easiest language",
+            "ph" : "บิคอส อิท อิส ดิ อีซีเอสต์ แลงเกวจ",
+            "th" : "เพราะเป็นภาษาที่ง่ายที่สุด",
+            "is_correct" : false
+         },
+         {
+            "text" : "Because other languages are banned",
+            "ph" : "บิคอส อาเธอร์ แลงเกวจเจส อาร์ แบนด์",
+            "th" : "เพราะภาษาอื่นถูกห้ามใช้",
+            "is_correct" : false
+         },
+         {
+            "text" : "Because Australia is in Europe",
+            "ph" : "บิคอส ออสเตรเลีย อิส อิน ยุโรป",
+            "th" : "เพราะออสเตรเลียอยู่ในยุโรป",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who officially opens the Australian Parliament?",
+      "question_ph" : "ฮู ออฟฟิเชียลลี่ โอเพนส์ ดิ ออสเตรเลียน พาร์เลียเมนต์?",
+      "question_th" : "ใครเป็นผู้เปิดประชุมรัฐสภาออสเตรเลียอย่างเป็นทางการ?",
+      "image" : "parliament-openning.jpg",
+      "audio" : "who_officially_opens_the_australian_parliament.wav",
+      "answers" : [
+         {
+            "audio" : "the_governorgeneral.wav",
+            "text" : "The Governor-General",
+            "ph" : "เดอะ กาวเวอร์เนอร์-เจนเนอรัล",
+            "th" : "ผู้สำเร็จราชการแทนพระองค์",
+            "is_correct" : true
+         },
+         {
+            "audio" : "the_prime_minister.wav",
+            "text" : "The Prime Minister",
+            "ph" : "เดอะ ไพรม์ มินิสเตอร์",
+            "th" : "นายกรัฐมนตรี",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Speaker of the House",
+            "ph" : "เดอะ สปีกเกอร์ ออฟ เดอะ เฮาส์",
+            "th" : "ประธานสภาผู้แทนราษฎร",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Chief Justice",
+            "ph" : "เดอะ ชีฟ จัสติซ",
+            "th" : "ประธานศาลฎีกา",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What does the term 'fair play' mean in Australian sports and life?",
+      "question_ph" : "วอท ดัส เดอะ เทิร์ม ‘แฟร์ เพลย์’ มีน อิน ออสเตรเลียน สปอร์ตส์ แอนด์ ไลฟ์?",
+      "question_th" : "คำว่า ‘การเล่นที่ยุติธรรม’ (Fair play) ในกีฬาและชีวิตของชาวออสเตรเลียหมายถึงอะไร?",
+      "image" : "fair-play.jpg",
+      "audio" : "what_does_the_term_fair_play_mean_in_australian_sports_and_l.wav",
+      "answers" : [
+         {
+            "audio" : "following_the_rules_and_accepting_the_result_without_arguing.wav",
+            "text" : "Following the rules and accepting the result without arguing",
+            "ph" : "ฟอลโลวิง เดอะ รูลส์ แอนด์ แอคเซปติง เดอะ รีซัลต์ วิธเอาท์ อาร์กิวอิง",
+            "th" : "การปฏิบัติตามกฎและยอมรับผลการแข่งขันโดยไม่โต้เถียง",
+            "is_correct" : true
+         },
+         {
+            "text" : "Winning at all costs",
+            "ph" : "วินนิง แอท ออล คอสท์ส",
+            "th" : "การชนะให้ได้ไม่ว่าจะต้องแลกด้วยอะไรก็ตาม",
+            "is_correct" : false
+         },
+         {
+            "text" : "Cheating if no one is looking",
+            "ph" : "ชีทติง อิฟ โน วัน อิส ลุคคิง",
+            "th" : "การโกงถ้าไม่มีใครมองอยู่",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only playing with people from your country",
+            "ph" : "โอนลี่ เพลย์อิง วิธ พีเพิล ฟรอม ยัวร์ คันทรี",
+            "th" : "เล่นกับคนจากประเทศของคุณเท่านั้น",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Can women vote in all Australian elections?",
+      "question_ph" : "แคน วีเมน โหวต อิน ออล ออสเตรเลียน อีเลคชันส์?",
+      "question_th" : "ผู้หญิงสามารถลงคะแนนเสียงในการเลือกตั้งทั้งหมดของออสเตรเลียได้หรือไม่?",
+      "image" : "women-voting.jpg",
+      "audio" : "can_women_vote_in_all_australian_elections.wav",
+      "answers" : [
+         {
+            "audio" : "yes.wav",
+            "text" : "Yes",
+            "ph" : "เยส",
+            "th" : "ได้",
+            "is_correct" : true
+         },
+         {
+            "audio" : "no.wav",
+            "text" : "No",
+            "ph" : "โน",
+            "th" : "ไม่ได้",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only if they are married",
+            "ph" : "โอนลี่ อิฟ เด อาร์ แมร์ริด",
+            "th" : "เฉพาะถ้าแต่งงานแล้ว",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only if they own land",
+            "ph" : "โอนลี่ อิฟ เด โอน แลนด์",
+            "th" : "เฉพาะถ้ามีที่ดิน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What is the main role of the Australian Public Service?",
+      "question_ph" : "วอท อิส เดอะ เมน โรล ออฟ ดิ ออสเตรเลียน พับลิก เซอร์วิส?",
+      "question_th" : "บทบาทหลักของข้าราชการพลเรือนออสเตรเลียคืออะไร?",
+      "image" : "aps-function.jpg",
+      "audio" : "what_is_the_main_role_of_the_australian_public_service.wav",
+      "answers" : [
+         {
+            "audio" : "to_deliver_services_to_the_community_and_advise_the_governme.wav",
+            "text" : "To deliver services to the community and advise the government",
+            "ph" : "ทู เดลิเวอร์ เซอร์วิสเซส ทู เดอะ คอมมิวนิตี้ แอนด์ แอดไวซ์ เดอะ กาวเวอร์เมนท์",
+            "th" : "เพื่อให้บริการแก่ชุมชนและให้คำแนะนำแก่รัฐบาล",
+            "is_correct" : true
+         },
+         {
+            "text" : "To make laws",
+            "ph" : "ทู เมค ลอว์ส",
+            "th" : "เพื่อออกกฎหมาย",
+            "is_correct" : false
+         },
+         {
+            "text" : "To judge criminals",
+            "ph" : "ทู จัดจ์ คริรมินอลส์",
+            "th" : "เพื่อตัดสินอาชญากร",
+            "is_correct" : false
+         },
+         {
+            "text" : "To run the army",
+            "ph" : "ทู รัน ดิ อาร์มี",
+            "th" : "เพื่อบริหารกองทัพ",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Should you offer money to a government official to get a service faster?",
+      "question_ph" : "ชูต ยู ออฟเฟอร์ มันนี่ ทู อะ กาวเวอร์เมนท์ ออฟฟิเชียล ทู เก็ท อะ เซอร์วิส ฟาสเตอร์?",
+      "question_th" : "คุณควรเสนอเงินให้กับเจ้าหน้าที่รัฐเพื่อให้ได้รับบริการเร็วขึ้นหรือไม่?",
+      "image" : "offer-money.jpg",
+      "audio" : "should_you_offer_money_to_a_government_official_to_get_a_ser.wav",
+      "answers" : [
+         {
+            "audio" : "no_bribery_is_a_crime.wav",
+            "text" : "No, bribery is a crime",
+            "ph" : "โน, ไบรเบอรี อิส อะ ไครม์",
+            "th" : "ไม่ การให้สินบนเป็นอาชญากรรม",
+            "is_correct" : true
+         },
+         {
+            "text" : "Yes, it is normal",
+            "ph" : "เยส, อิท อิส นอร์มอล",
+            "th" : "ใช่ เป็นเรื่องปกติ",
+            "is_correct" : false
+         },
+         {
+            "text" : "Yes, if no one sees",
+            "ph" : "เยส, อิฟ โน วัน ซีส์",
+            "th" : "ใช่ ถ้าไม่มีใครเห็น",
+            "is_correct" : false
+         },
+         {
+            "text" : "Only if it is a small amount",
+            "ph" : "โอนลี่ อิฟ อิท อิส อะ สมอล อะเมาท์",
+            "th" : "เฉพาะถ้าเป็นเงินจำนวนน้อย",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "Who has the highest authority in a court of law?",
+      "question_ph" : "ฮู แฮส เดอะ ไฮเอสต์ ออโธริตี้ อิน อะ คอร์ต ออฟ ลอว์?",
+      "question_th" : "ใครมีอำนาจสูงสุดในศาล?",
+      "image" : "highest-authority-in-court.jpg",
+      "audio" : "who_has_the_highest_authority_in_a_court_of_law.wav",
+      "answers" : [
+         {
+            "audio" : "the_judge_or_magistrate.wav",
+            "text" : "The Judge or Magistrate",
+            "ph" : "เดอะ จัดจ์ ออร์ เมจิสเตรท",
+            "th" : "ผู้พิพากษาหรือตุลาการ",
+            "is_correct" : true
+         },
+         {
+            "text" : "The Police",
+            "ph" : "เดอะ โปลิศ",
+            "th" : "ตำรวจ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Lawyer",
+            "ph" : "เดอะ ลอว์เยอร์",
+            "th" : "ทนายความ",
+            "is_correct" : false
+         },
+         {
+            "text" : "The Witness",
+            "ph" : "เดอะ วิทเนส",
+            "th" : "พยาน",
+            "is_correct" : false
+         }
+      ]
+   },
+   {
+      "question" : "What does the term 'mateship' mean?",
+      "question_ph" : "วอท ดัส เดอะ เทิร์ม ‘เมทชิป’ มีน?",
+      "question_th" : "คำว่า ‘mateship’ (ความเป็นเพื่อน) หมายถึงอะไร?",
+      "image" : "mateship.jpg",
+      "audio" : "what_does_the_term_mateship_mean.wav",
+      "answers" : [
+         {
+            "audio" : "helping_and_looking_out_for_each_other_especially_in_difficu.wav",
+            "text" : "Helping and looking out for each other, especially in difficult times",
+            "ph" : "เฮลป์ปิง แอนด์ ลุคคิง เอาท์ ฟอร์ อีช อาเธอร์, เอสเปเชียลลี่ อิน ดิฟฟิคัลท์ ไทมส์",
+            "th" : "การช่วยเหลือและดูแลซึ่งกันและกัน โดยเฉพาะในช่วงเวลาที่ยากลำบาก",
+            "is_correct" : true
+         },
+         {
+            "text" : "Only helping your family",
+            "ph" : "โอนลี่ เฮลป์ปิง ยัวร์ แฟมิลี่",
+            "th" : "ช่วยเหลือเฉพาะครอบครัวของคุณเท่านั้น",
+            "is_correct" : false
+         },
+         {
+            "text" : "Drinking alcohol",
+            "ph" : "ดริงกิง แอลกอฮอล์",
+            "th" : "การดื่มแอลกอฮอล์",
+            "is_correct" : false
+         },
+         {
+            "text" : "Being rude to others",
+            "ph" : "บีอิง รู๊ด ทู อาเธอร์ส",
+            "th" : "การหยาบคายต่อผู้อื่น",
+            "is_correct" : false
+         }
+      ]
+   }
+]

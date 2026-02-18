@@ -1,0 +1,137 @@
+%# /templates/index.html.ep
+
+% layout 'default';
+% title 'Welcome!';
+
+<% content_for head => begin %>
+    <script src="/js/moment.js"></script>
+    <script src="/js/moment-tz.js"></script>
+    <script src="/js/index.js"></script>
+    <script src="/js/age.js"></script>
+    <link rel="stylesheet" href="/css/index.css">
+<% end %>
+
+<div class="main" id="box">
+    <img src="/files/serve/58" class="banner-logo" alt="Banner">
+    <div class="info-card">
+        <span class="label">LOCAL TIME (AEST)</span>
+        <div class="data-text">
+            <span id="time">Loading...</span>
+        </div>
+        <div style="border-top: 1px solid #333; margin: 15px 0;"></div>
+        <span class="label">SERVER UPTIME [KUMA]</span>
+        <div class="age-text">
+            <span id="server">Loading...</span>
+        </div>
+        <div class="subtext">
+            Runtime: <span id="servers">Loading...</span> seconds
+        </div>
+    </div>
+                
+    <div class="info-card">
+        <span class="label">ANDREA'S UPTIME</span>
+        <div class="age-text">
+            <span id="andrea">Loading...</span>
+        </div>
+        <div class="subtext">
+            Runtime: <span id="andreas">Loading...</span> seconds
+        </div>
+    </div>
+
+    <div class="info-card">
+        <span class="label">NICKY'S UPTIME</span>
+        <div class="age-text">
+            <span id="nicky">Loading...</span>
+        </div>
+        <div class="subtext">
+            Runtime: <span id="nickys">Loading...</span> seconds
+        </div>
+    </div>
+
+    <p class="footer">
+        Powered by <a href="https://debian.org" class="footer-link"> Debian <img alt="debian" src="/files/serve/2"></a> || 
+        <a href="https://perl.org/" class="footer-link"> Perl <img alt="perl" src="/files/serve/4"></a> || 
+        <a href="http://mojolicious.org" class="footer-link"> Mojolicious <img alt="mojo" src="/files/serve/5"></a> ||
+        <a href="https://apache.org/" class="footer-link"> Apache <img alt="apache" src="/files/serve/1"></a> || 
+        <a href="https://mariadb.org" class="footer-link"> MariaDB <img alt="mariadb" src="/files/serve/3"></a>
+    </p>
+
+    <p class="footer">
+        Made possible by:
+        <a href="javascript:void(0);"
+           id="listFilesLink" onclick="toggleFileList()" class="footer-link">these thingies</a>
+    </p>
+
+    <div id="fileListBox" class="file-map-container" style="display: none;">
+            <ul class="file-tree">
+                <% 
+                # Custom Sorter: Files First, then Directories (Alphabetical)
+                my $files_first_sorter = sub {
+                    my @a_parts = split '/', $a;
+                    my @b_parts = split '/', $b;
+                    
+                    # Determine the depth to compare
+                    my $limit = @a_parts < @b_parts ? $#a_parts : $#b_parts;
+                    
+                    for my $i (0 .. $limit) {
+                        # If the path segments differ at this depth
+                        if ($a_parts[$i] ne $b_parts[$i]) {
+                            my $a_is_file = ($i == $#a_parts);
+                            my $b_is_file = ($i == $#b_parts);
+                            
+                            # Priority Rule: Files come before Directories
+                            return -1 if $a_is_file && !$b_is_file;
+                            return 1  if !$a_is_file && $b_is_file;
+                            
+                            # Otherwise, standard case-insensitive sort
+                            return fc($a_parts[$i]) cmp fc($b_parts[$i]);
+                        }
+                    }
+                    return 0;
+                };
+
+                my @files = sort $files_first_sorter grep { $_ ne 'MyApp.pm' } @{listFiles()};
+                my @dirs; 
+                
+                for my $file (@files) {
+                    my @parts = split '/', $file;
+                    my $filename = pop @parts;
+                    my $depth = 0;
+                    
+                    while (@dirs && $depth < @dirs && defined $parts[$depth] && $dirs[$depth] eq $parts[$depth]) { 
+                        $depth++; 
+                    }
+                    
+                    while (@dirs > $depth) { 
+                        pop @dirs; 
+                %> 
+                        </ul></li> 
+                <%    }
+                    
+                    while ($depth < @parts) {
+                        my $new_dir = $parts[$depth];
+                        push @dirs, $new_dir;
+                        $depth++; 
+                %> 
+                            <li><span class="folder-name"><%= $new_dir %>/</span><ul> 
+                <%     } %>
+                    
+                    <li><a href="/source?f=<%= $file %>" class="file-link"><%= $filename %></a></li>
+                <% } %>
+                
+                <%
+                while (@dirs) { pop @dirs; %> </ul></li> <% } 
+                %>
+
+                <li class="git-item">
+                    [ <a href="https://git.rendler.org/" class="footer-link">git</a> ]
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="debug-box" style="position: fixed; bottom: 10px; right: 10px; background-color: #f0f0f0; padding: 5px; border-radius: 5px; font-size: 12px; color: #000000;">
+        Client IP: <%= $client_ip %>
+    </div>
+    <div class="visit-box" style="position: fixed; bottom: 10px; left: 10px; background-color: #f0f0f0; padding: 5px; border-radius: 5px; font-size: 12px; color: #000000;">
+        Last visit: <%= scalar localtime($last_visit) %>
+    </div>
