@@ -28,7 +28,7 @@ sub index {
     my $files = $c->db->get_all_files_metadata;
     my $users = $c->db->get_all_users;
     
-    $c->render('files/files');
+    $c->render('files/files', files => $files, users => $users);
 }
 
 # Renders the file upload form.
