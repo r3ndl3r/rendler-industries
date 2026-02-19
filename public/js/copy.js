@@ -7,7 +7,7 @@ function textIn() {
 function removeMessage(id) {
     if (!confirm("Are you sure you want to delete this?")) return;
     
-    $.post('/delete', { id: id }, function() {
+    $.post('/copy/delete/' + id, function() {
         location.reload();
     }).fail(function() {
         alert('Unauthorized: You are not allowed to delete messages.');

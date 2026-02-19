@@ -10,7 +10,6 @@ use Mojo::Util qw(trim);
 #   - Handles updates for Pushover, Gotify, Unsplash, App Secret, and Email settings
 # Integration points:
 #   - Uses DB::Settings for retrieving and updating configuration
-#   - Admin-only access enforced via is_admin helper
 
 # Renders the settings management interface.
 # Route: GET /settings
@@ -19,9 +18,6 @@ use Mojo::Util qw(trim);
 #   Rendered HTML template 'settings' with current configuration
 sub index {
     my $c = shift;
-    
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-    
     my $settings = $c->db->get_all_settings();
     my $email_settings = $c->db->get_email_settings();
     my $timer_reset_hour = $c->db->get_timer_reset_hour();
@@ -51,9 +47,6 @@ sub index {
 #   Redirects to settings page with flash message (Success/Error)
 sub update {
     my $c = shift;
-    
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-    
     my $section = $c->param('section');
     
     if ($section eq 'pushover') {

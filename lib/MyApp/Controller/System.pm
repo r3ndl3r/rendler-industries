@@ -7,7 +7,6 @@ use Mojo::Base 'Mojolicious::Controller';
 # Features:
 #   - Service lifecycle management (Hot Restart)
 # Integration points:
-#   - Restricted to Admin-level users via `is_admin` helper
 #   - Interacts directly with the operating system shell
 #   - Controls the Hypnotoad application server process
 
@@ -23,9 +22,6 @@ use Mojo::Base 'Mojolicious::Controller';
 #   - Changes working directory to app home to ensure relative paths resolve
 sub restart {
     my $c = shift;
-    
-    # Enforce Admin Access Control
-    return $c->redirect_to('/noperm') unless $c->is_admin;
     
     # Fork a child process to handle the blocking system command
     my $pid = fork();

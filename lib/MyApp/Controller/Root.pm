@@ -185,12 +185,8 @@ sub contact {
 #   Rendered HTML template 'copy/copy' with history
 sub copy_get {
     my $c = shift;
-    
-    # Enforce Admin Access Control
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-
-    my @msgs       = $c->db->get_pasted();
-    my $client_ip  = $c->tx->remote_address;
+    my @msgs = $c->db->get_pasted();
+    my $client_ip = $c->tx->remote_address;
 
     $c->stash(
         messages  => \@msgs,
@@ -213,10 +209,6 @@ sub copy_get {
 #   - Triggers external notifications (Pushover, Gotify)
 sub copy_post {
     my $c = shift;
-
-    # Enforce Admin Access Control
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-
     my $text = trim($c->param('paste') // '');
     $text = encode_entities($text);
 
@@ -245,11 +237,8 @@ sub copy_post {
 #   Redirects to clipboard page
 sub remove_message {
     my $c = shift;
-    
-    # Enforce Admin Access Control
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-
     my $id = $c->param('id');
+
     unless (defined $id && $id =~ /^\d+$/) {
         return $c->render_error('Invalid ID');
     }
