@@ -185,16 +185,19 @@ sub startup {
     $r->get('/t')->to(cb => sub { shift->redirect_to('https://stash.rendler.org/stash?n=Movies&u=rendler') });
     $r->get('/quick')->to('root#quick');
     $auth->get('/chelsea')->to('chelsea#index');
-    $auth->get('/copy')->to('root#copy_get');
-    $auth->post('/copy')->to('root#copy_post');
-    $auth->post('/delete')->to('root#remove_message');
+    $admin->get('/restart')->to('system#restart');
+
+    # --- Copy Routes ---
+    $admin->get('/copy')->to('root#copy_get');
+    $admin->post('/copy')->to('root#copy_post');
+    $admin->post('/copy/delete/:id')->to('root#remove_message');
 
     # --- User Administration Routes ---
-    $auth->get('/users')->to('admin#user_list');
-    $auth->post('/users/delete/:id')->to('admin#delete_user');
-    $auth->post('/users/approve/:id')->to('admin#approve_user');
-    $auth->get('/users/edit/:id')->to('admin#edit_user_form');
-    $auth->post('/users/update/:id')->to('admin#edit_user');
+    $admin->get('/users')->to('admin#user_list');
+    $admin->post('/users/delete/:id')->to('admin#delete_user');
+    $admin->post('/users/approve/:id')->to('admin#approve_user');
+    $admin->get('/users/edit/:id')->to('admin#edit_user_form');
+    $admin->post('/users/update/:id')->to('admin#edit_user');
     
     # --- Imposter Game Routes ---
     $auth->get('/imposter')->to('imposter#index');
@@ -221,22 +224,22 @@ sub startup {
     
     # --- Birthday Calendar Routes ---
     $auth->get('/birthdays')->to('birthdays#index');
-    $auth->get('/birthdays/manage')->to('birthdays#manage');
-    $auth->post('/birthdays/add')->to('birthdays#add');
-    $auth->post('/birthdays/edit')->to('birthdays#edit');
-    $auth->post('/birthdays/delete')->to('birthdays#delete');
+    $admin->get('/birthdays/manage')->to('birthdays#manage');
+    $admin->post('/birthdays/add')->to('birthdays#add');
+    $admin->post('/birthdays/edit')->to('birthdays#edit');
+    $admin->post('/birthdays/delete')->to('birthdays#delete');
 
     # --- System Settings Routes ---
-    $auth->get('/settings')->to('settings#index');
-    $auth->post('/settings/update')->to('settings#update');
+    $admin->get('/settings')->to('settings#index');
+    $admin->post('/settings/update')->to('settings#update');
 
     # --- File Management Routes ---
     $r->get('/files/serve/:id')->to('files#serve');
-    $auth->get('/files')->to('files#index');
-    $auth->get('/files/upload')->to('files#upload_form');
-    $auth->post('/files')->to('files#upload'); 
-    $auth->post('/files/delete/:id')->to('files#delete_file');
-    $auth->post('/files/permissions/:id')->to('files#edit_permissions');
+    $admin->get('/files')->to('files#index');
+    $admin->get('/files/upload')->to('files#upload_form');
+    $admin->post('/files')->to('files#upload'); 
+    $admin->post('/files/delete/:id')->to('files#delete_file');
+    $admin->post('/files/permissions/:id')->to('files#edit_permissions');
 
     # --- Shopping List Routes ---
     $auth->get('/shopping')->to('shopping_list#index');
@@ -266,10 +269,10 @@ sub startup {
     # --- Calendar Routes ---
     $auth->get('/calendar')->to('calendar#index');
     $auth->get('/calendar/events')->to('calendar#get_events');
-    $auth->get('/calendar/manage')->to('calendar#manage');
     $auth->post('/calendar/add')->to('calendar#add');
     $auth->post('/calendar/edit')->to('calendar#edit');
     $auth->post('/calendar/delete')->to('calendar#delete');
+    $admin->get('/calendar/manage')->to('calendar#manage');
 
     # --- Timer Routes ---
     $auth->get('/timers')->to('timers#dashboard');
@@ -277,12 +280,11 @@ sub startup {
     $auth->post('/timers/start')->to('timers#start_timer');
     $auth->post('/timers/stop')->to('timers#stop_timer');
     $auth->post('/timers/pause')->to('timers#toggle_pause');
-    $auth->get('/timers/manage')->to('timers#manage');
-    $auth->post('/timers/create')->to('timers#create');
-    $auth->post('/timers/update/:id')->to('timers#update');
-    $auth->post('/timers/delete/:id')->to('timers#delete');
-    $auth->post('/timers/bonus')->to('timers#grant_bonus');
-    $auth->get('/timers/api/check_notifications')->to('timers#check_notifications');
+    $admin->get('/timers/manage')->to('timers#manage');
+    $admin->post('/timers/create')->to('timers#create');
+    $admin->post('/timers/update/:id')->to('timers#update');
+    $admin->post('/timers/delete/:id')->to('timers#delete');
+    $admin->post('/timers/bonus')->to('timers#grant_bonus');
     $r->get('/timers/api/maintenance')->to('timers#run_maintenance');
 
     # --- Citizenship Quiz Routes ---
@@ -290,9 +292,6 @@ sub startup {
     $r->get('/quiz/all')->to('quiz#index', mode => 'all');
     $r->get('/quiz/study')->to('quiz#study_mode');
     $r->get('/api/quiz/questions')->to('quiz#get_questions');
-
-    # --- System Control Routes ---
-    $auth->get('/restart')->to('system#restart');
 
     # --- Go Links Routes ---
     $r->get('/g/:keyword')->to('go#resolve');

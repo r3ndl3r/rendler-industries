@@ -28,7 +28,6 @@ sub index {
     my $files = $c->db->get_all_files_metadata;
     my $users = $c->db->get_all_users;
     
-    $c->stash(files => $files, users => $users, is_admin => $c->is_admin);
     $c->render('files/files');
 }
 
@@ -40,9 +39,6 @@ sub index {
 #   Redirect to 'noperm' if not Admin
 sub upload_form {
     my $c = shift;
-    
-    # Enforce Admin Access Control
-    return $c->redirect_to('/noperm') unless $c->is_admin;
     
     # Fetch users for the permission selector
     my $users = $c->db->get_all_users;
@@ -62,9 +58,6 @@ sub upload_form {
 #   Renders error on validation failure or DB error
 sub upload {
     my $c = shift;
-    
-    # Enforce Admin Access Control
-    return $c->redirect_to('/noperm') unless $c->is_admin;
     
     # Validate file presence
     my $upload = $c->param('file');
@@ -208,9 +201,6 @@ sub serve {
 sub delete_file {
     my $c = shift;
 
-    # Enforce Admin Access Control
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-
     # Validate ID
     my $id = $c->param('id');
     unless (defined $id && $id =~ /^\d+$/) {
@@ -243,9 +233,6 @@ sub delete_file {
 #   Redirects to file list on success
 sub edit_permissions {
     my $c = shift;
-
-    # Enforce Admin Access Control
-    return $c->redirect_to('/noperm') unless $c->is_admin;
 
     # Validate ID
     my $id = $c->param('id');

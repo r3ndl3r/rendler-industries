@@ -11,7 +11,6 @@ use Mojo::Util qw(trim);
 #   - User profile editing (Roles, Details, Passwords)
 #   - Account deletion
 # Integration points:
-#   - Restricted to Admin-level users via `is_admin` helper
 #   - Uses DB::Users helpers for all data persistence
 
 # Renders the main user administration dashboard.
@@ -21,9 +20,6 @@ use Mojo::Util qw(trim);
 #   Rendered HTML template 'users/admin' with list of all users
 sub user_list {
     my $c = shift;
-    
-    # Verify authentication and admin privileges
-    return $c->redirect_to('/noperm') unless $c->is_admin;
 
     # Fetch full user roster for display
     my $users = $c->db->get_all_users();
@@ -41,10 +37,6 @@ sub user_list {
 #   Renders error if ID is invalid
 sub delete_user {
     my $c = shift;
-
-    # Enforce Admin Access Control
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-
     my $id = $c->param('id');
     
     # Validate User ID format
@@ -67,10 +59,6 @@ sub delete_user {
 #   Renders error if ID is invalid
 sub approve_user {
     my $c = shift;
-    
-    # Enforce Admin Access Control
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-    
     my $id = $c->param('id');
     
     # Validate User ID format
@@ -93,10 +81,6 @@ sub approve_user {
 #   Renders 404 if user not found
 sub edit_user_form {
     my $c = shift;
-    
-    # Enforce Admin Access Control
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-    
     my $id = $c->param('id');
 
     # Validate User ID format
@@ -129,10 +113,6 @@ sub edit_user_form {
 #   Renders error on validation failure
 sub edit_user {
     my $c = shift;
-    
-    # Enforce Admin Access Control
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-    
     my $id = $c->param('id');
     my $username = trim($c->param('username') // '');
     my $email = trim($c->param('email') // '');

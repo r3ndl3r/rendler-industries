@@ -39,8 +39,6 @@ sub dashboard {
 sub manage {
     my $c = shift;
     
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-    
     my $filter_user_id = $c->param('user_id');
     my $timers = $c->db->get_all_timers($filter_user_id);
     my $users = $c->db->get_all_users();
@@ -168,8 +166,6 @@ sub toggle_pause {
 sub create {
     my $c = shift;
     
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-    
     my $user_id = $c->param('user_id');
     my $name = trim($c->param('name') // '');
     my $category = $c->param('category');
@@ -210,8 +206,6 @@ sub create {
 sub update {
     my $c = shift;
     
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-    
     my $timer_id = $c->param('id');
     my $name = trim($c->param('name') // '');
     my $category = $c->param('category');
@@ -245,8 +239,6 @@ sub update {
 sub delete {
     my $c = shift;
     
-    return $c->redirect_to('/noperm') unless $c->is_admin;
-    
     my $timer_id = $c->param('id');
     
     return $c->render_error('Invalid timer ID') unless $timer_id && $timer_id =~ /^\d+$/;
@@ -271,7 +263,6 @@ sub delete {
 #   JSON object { success => 1/0, message => "..." }
 sub grant_bonus {
     my $c = shift;
-    return $c->render(json => { success => 0, message => 'Admin access required' }) unless $c->is_admin;
     
     my $json = $c->req->json || {};
     my $timer_id = $json->{timer_id};
@@ -289,19 +280,6 @@ sub grant_bonus {
     } else {
         $c->render(json => { success => 0, message => 'Failed to grant bonus time' });
     }
-}
-
-# Check for timers needing notifications and send emails.
-# Route: GET /timers/api/check_notifications (Cron endpoint)
-# Parameters: None
-# Returns:
-#   JSON object with counts of warnings and expiry emails sent
-sub check_notifications {
-    my $c = shift;
-    
-    my $result = $c->_check_and_send_notifications();
-    
-    $c->render(json => $result);
 }
 
 # ============================================================================

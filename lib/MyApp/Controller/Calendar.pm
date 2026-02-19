@@ -58,14 +58,11 @@ sub get_events {
 
 # Renders the administrative management list for all events.
 # Separates events into 'Upcoming' and 'Past' lists.
-# Access restricted to Administrators.
 # Parameters: None
 # Returns:
 #   Renders 'calendar/manage' template or redirects to '/noperm'.
 sub manage {
     my $c = shift;
-    
-    return $c->redirect_to('/noperm') unless $c->is_admin;
     
     my $events = $c->db->get_calendar_events();
     

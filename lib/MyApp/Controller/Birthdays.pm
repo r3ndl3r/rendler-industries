@@ -34,9 +34,6 @@ sub index {
 sub manage {
     my $c = shift;
     
-    # Verify authentication and admin privileges
-    return $c->render('noperm') unless $c->is_admin;
-    
     # Fetch records for editing table
     my @birthdays = $c->db->get_all_birthdays();
     $c->render('birthdays/manage', birthdays => \@birthdays);
@@ -52,10 +49,6 @@ sub manage {
 #   Redirects to management page on success
 sub add {
     my $c = shift;
-    
-    # Enforce Admin Access Control
-    return $c->render('noperm') unless $c->is_admin;
-    
     my $name = $c->param('name');
     my $birth_date = $c->param('birth_date');
     my $emoji = $c->param('emoji') || '🎂';
@@ -76,10 +69,6 @@ sub add {
 #   Redirects to management page on success
 sub edit {
     my $c = shift;
-    
-    # Enforce Admin Access Control
-    return $c->render('noperm') unless $c->is_admin;
-    
     my $id = $c->param('id');
     my $name = $c->param('name');
     my $birth_date = $c->param('birth_date');
@@ -98,10 +87,6 @@ sub edit {
 #   Redirects to management page on success
 sub delete {
     my $c = shift;
-    
-    # Enforce Admin Access Control
-    return $c->render('noperm') unless $c->is_admin;
-    
     my $id = $c->param('id');
     
     # Execute deletion
