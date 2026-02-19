@@ -34,6 +34,7 @@
         <a href="/p">📞 Phone Numbers</a>
         <a href="/quiz">🦘Citizenship Test</a>
     <% if (is_admin()) { %>
+        <a href="/go" class="<%= (stash('current') // '') eq 'go' ? 'active' : '' %>">🔗 Go Links</a>
         <a href="/copy">📋 Copy / Paste</a>
         <a href="/files">📁 Files</a>
     <% } %>
