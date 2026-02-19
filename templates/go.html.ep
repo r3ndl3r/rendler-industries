@@ -1,0 +1,122 @@
+<%# /templates/go.html.ep %>
+
+<% layout 'default'; %>
+<% title 'Go Links'; %>
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/go.css">
+    <script src="/js/go.js"></script>
+% end
+
+<div class="go-container">
+    <div class="header-bar">
+        <h1>🔗 Go Links</h1>
+    </div>
+    
+    <div class="glass-panel add-item-panel">
+        <form action="/go/add" method="POST" class="add-item-form">
+            <div class="form-inputs">
+                <input 
+                    type="text" 
+                    name="keyword" 
+                    class="game-input" 
+                    placeholder="Keyword (e.g. plex)" 
+                    autocomplete="off"
+                    required
+                    maxlength="50"
+                >
+                <input 
+                    type="url" 
+                    name="url" 
+                    class="game-input" 
+                    placeholder="Target URL" 
+                    autocomplete="off"
+                    required
+                >
+                <input 
+                    type="text" 
+                    name="description" 
+                    class="game-input" 
+                    placeholder="Description (Optional)" 
+                    autocomplete="off"
+                    maxlength="255"
+                >
+            </div>
+            <button type="submit" class="game-btn btn-blue">Add Link</button>
+        </form>
+    </div>
+
+    <div class="items-container">
+        <% if (@$links) { %>
+            <h3 class="section-title">Active Links</h3>
+            
+            <% for my $link (@$links) { %>
+                <div class="go-item glass-panel">
+                    <div class="item-details">
+                        <div class="link-header">
+                            <a href="<%= $link->{url} %>" target="_blank" class="item-link">
+                                g/<%= $link->{keyword} %>
+                            </a>
+                            <span class="visit-badge"><%= $link->{visits} %> visits</span>
+                        </div>
+                        <div class="item-meta">
+                            <i class="url-text">→ <%= $link->{url} %></i>
+                            <% if ($link->{description}) { %>
+                                <span class="description-text"><%= $link->{description} %></span>
+                            <% } %>
+                        </div>
+                    </div>
+                    
+                    <div class="item-actions">
+                        <button type="button" class="game-btn copy-btn" data-url="<%= url_for('/g/' . $link->{keyword})->to_abs %>" title="Copy Link">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                        
+                        <button type="button" class="game-btn edit-btn" onclick="editLink(<%= $link->{id} %>, '<%= $link->{keyword} %>', '<%= $link->{url} %>', '<%= $link->{description} // '' %>')" title="Edit">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                        </button>
+                        
+                        <form action="/go/delete" method="POST" class="delete-form" onsubmit="return confirm('Delete this link?');">
+                            <input type="hidden" name="id" value="<%= $link->{id} %>">
+                            <button type="submit" class="game-btn delete-btn" title="Delete">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            <% } %>
+            
+        <% } else { %>
+            <div class="empty-state">
+                <p>No Go Links configured yet!</p>
+                <p class="empty-hint">Create your first short link above.</p>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<div id="editModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Edit Link</h3>
+        <form id="editForm" method="POST" action="/go/edit">
+            <input type="hidden" id="editId" name="id">
+            
+            <div class="modal-body">
+                <input type="text" id="editKeyword" name="keyword" class="game-input" required maxlength="50">
+                <input type="url" id="editUrl" name="url" class="game-input" required>
+                <input type="text" id="editDescription" name="description" class="game-input" maxlength="255">
+            </div>
+            
+            <div class="modal-actions">
+                <button type="submit" class="game-btn btn-blue">Save Changes</button>
+                <button type="button" onclick="closeEditModal()" class="game-btn cancel-btn">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -146,26 +146,28 @@ sub startup {
     
     # Define Application Routes
     my $r = $self->routes;
+
+    # Protected Application Routes (Require Login or Admin)
+    my $auth = $r->under('/')->to('auth#check_login');
+    # Admin bridge nested under the auth bridge
+    my $admin = $auth->under(sub {
+        my $c = shift;
+        
+        # Use your existing helper which is already working in Timers.pm
+        return 1 if $c->is_admin; 
+        
+        $c->render('noperm');
+        return undef;
+    });
     
-    # ========================================================================
-    # 1. PUBLIC ROUTES (Open to everyone)
-    # ========================================================================
-    # These routes do NOT require a login.
-    
+
     $r->get('/login')->to('auth#login_form');
     $r->post('/login')->to('auth#login');
     $r->get('/logout')->to('auth#logout');
     $r->get('/register')->to('auth#register_form');
     $r->post('/register')->to('auth#register');
     
-    # ========================================================================
-    # 2. PROTECTED ROUTES (Require Login)
-    # ========================================================================
-    # This 'under' command creates a bridge. 
-    # It checks 'auth#check_login' BEFORE allowing access to any route attached to $auth.
-    my $auth = $r->under('/')->to('auth#check_login');
-
-    # --- Root / Utility Routes ---
+    # --- Root / Utility / Misc Routes ---
     $r->get('/')->to('root#index');
     $r->get('/noperm')->to('root#no_permission');
     $r->get('/source')->to('root#view_source');
@@ -183,7 +185,6 @@ sub startup {
     $r->get('/t')->to(cb => sub { shift->redirect_to('https://stash.rendler.org/stash?n=Movies&u=rendler') });
     $r->get('/quick')->to('root#quick');
     $auth->get('/chelsea')->to('chelsea#index');
-
     $auth->get('/copy')->to('root#copy_get');
     $auth->post('/copy')->to('root#copy_post');
     $auth->post('/delete')->to('root#remove_message');
@@ -230,10 +231,10 @@ sub startup {
     $auth->post('/settings/update')->to('settings#update');
 
     # --- File Management Routes ---
+    $r->get('/files/serve/:id')->to('files#serve');
     $auth->get('/files')->to('files#index');
     $auth->get('/files/upload')->to('files#upload_form');
     $auth->post('/files')->to('files#upload'); 
-    $r->get('/files/serve/:id')->to('files#serve');
     $auth->post('/files/delete/:id')->to('files#delete_file');
     $auth->post('/files/permissions/:id')->to('files#edit_permissions');
 
@@ -292,6 +293,14 @@ sub startup {
 
     # --- System Control Routes ---
     $auth->get('/restart')->to('system#restart');
+
+    # --- Go Links Routes ---
+    $r->get('/g/:keyword')->to('go#resolve');
+    $admin->get('/go')->to('go#index');
+    $admin->post('/go/add')->to('go#add');
+    $admin->post('/go/edit')->to('go#edit');
+    $admin->post('/go/delete')->to('go#delete');
 }
+
 
 1;
