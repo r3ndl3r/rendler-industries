@@ -306,6 +306,9 @@ sub startup {
     $auth->post('/chess/join')->to('chess#join_game');
     $auth->get('/chess/play/:id')->to('chess#play');
     $auth->post('/chess/move')->to('chess#move');
+    $auth->get('/chess/status/:id')->to('chess#poll_status');
+    $auth->post('/chess/offer_draw/:id')->to('chess#offer_draw');
+    $auth->post('/chess/respond_draw/:id')->to('chess#respond_draw');
 }
 
 

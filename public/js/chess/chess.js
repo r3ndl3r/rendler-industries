@@ -31,52 +31,51 @@ document.addEventListener('DOMContentLoaded', () => {
     // State variables for UI interaction
     let selectedSquare = null;
     let validMoves = [];
+    let currentFen = initialFen;
+    let drawOfferByMe = false;
+    let serverLastMove = null;
 
     // Unicode map for rendering chess pieces natively.
-    // We use the solid versions for both, and will color them via CSS.
     const pieceUnicode = {
         'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚'
     };
 
     /**
      * Renders the 8x8 HTML grid based on the current chess.js internal board state.
-     * Clears the board container and rebuilds the squares to ensure exact synchronization.
-     * * Parameters: None
-     * Returns: void
+     * Flips the board perspective so the current user is always at the bottom.
      */
     function renderBoard() {
         boardElement.innerHTML = '';
-        const boardState = game.board(); // Returns 2D array [8][8] from a8 to h1
+        const boardState = game.board();
+        const isBlackPerspective = (currentUserId === p2Id);
 
-        for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 8; col++) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                // Flip indices if playing as Black
+                const row = isBlackPerspective ? (7 - r) : r;
+                const col = isBlackPerspective ? (7 - c) : c;
+
                 const squareDiv = document.createElement('div');
                 squareDiv.classList.add('square');
                 
-                // Determine square color (alternating pattern)
                 const isDark = (row + col) % 2 !== 0;
                 if (isDark) squareDiv.classList.add('dark');
 
-                // Convert [row, col] to algebraic notation (e.g., 'e2')
                 const file = String.fromCharCode(97 + col);
                 const rank = 8 - row;
                 const squareName = `${file}${rank}`;
                 squareDiv.dataset.square = squareName;
 
-                // Render piece if it exists on this square
                 const piece = boardState[row][col];
                 if (piece) {
                     const pieceSpan = document.createElement('span');
                     pieceSpan.classList.add('piece');
-                    // Color class based on 'w' or 'b'
                     pieceSpan.classList.add(piece.color === 'w' ? 'white-piece' : 'black-piece');
                     pieceSpan.textContent = pieceUnicode[piece.type];
                     squareDiv.appendChild(pieceSpan);
                 }
 
-                // Attach click listener for interaction
                 squareDiv.addEventListener('click', () => handleSquareClick(squareName));
-                
                 boardElement.appendChild(squareDiv);
             }
         }
@@ -84,52 +83,59 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Updates the DOM to visually indicate the currently selected piece and its legal moves.
-     * Matches the 'squareName' against the 'selectedSquare' state and the 'validMoves' array.
-     * * Parameters: None
-     * Returns: void
+     * Updates highlights for selection, valid moves, and the last move made.
      */
     function updateHighlights() {
         const squares = boardElement.querySelectorAll('.square');
+        
+        let lastMoveFrom = null;
+        let lastMoveTo = null;
+
+        if (serverLastMove && serverLastMove.includes('-')) {
+            [lastMoveFrom, lastMoveTo] = serverLastMove.split('-');
+        }
+
         squares.forEach(sq => {
-            sq.classList.remove('selected', 'valid-move');
-            if (sq.dataset.square === selectedSquare) {
-                sq.classList.add('selected');
-            }
-            if (validMoves.some(m => m.to === sq.dataset.square)) {
-                sq.classList.add('valid-move');
+            sq.classList.remove('selected', 'valid-move', 'last-move');
+            
+            // Selected piece highlight
+            if (sq.dataset.square === selectedSquare) sq.classList.add('selected');
+            
+            // Valid move dots
+            if (validMoves.some(m => m.to === sq.dataset.square)) sq.classList.add('valid-move');
+
+            // Last move highlight (from and to) from server state
+            if (sq.dataset.square === lastMoveFrom || sq.dataset.square === lastMoveTo) {
+                sq.classList.add('last-move');
             }
         });
     }
 
     /**
-     * Processes user clicks on the chess board.
-     * Determines whether to select a piece, change selection, or execute a move.
-     * Enforces turn-based locking to prevent a player from moving out of turn.
-     * * Parameters:
-     * squareName (String) : Algebraic notation of the clicked square (e.g., 'e4')
-     * Returns: void
+     * Handles square clicks for piece selection and move execution.
      */
     function handleSquareClick(squareName) {
-        // Prevent interaction if it is not the user's turn or game is finished
         if (currentTurnId !== currentUserId || gameStatus !== 'active') return;
 
-        // Check if the clicked square is a valid destination for the currently selected piece
         const moveAttempt = validMoves.find(m => m.to === squareName);
 
         if (moveAttempt) {
-            // Execute the move in the chess.js engine
-            game.move(moveAttempt.san);
+            // Basic move execution - default to queen promotion for now if applicable
+            game.move({
+                from: selectedSquare,
+                to: squareName,
+                promotion: 'q' 
+            });
+            serverLastMove = `${selectedSquare}-${squareName}`;
             selectedSquare = null;
             validMoves = [];
             renderBoard();
+            playMoveSound();
             submitMove();
         } else {
-            // Select a new piece
             const piece = game.get(squareName);
             const playerColor = currentUserId === p1Id ? 'w' : 'b';
 
-            // Only allow selecting pieces that belong to the current player
             if (piece && piece.color === playerColor) {
                 selectedSquare = squareName;
                 validMoves = game.moves({ square: squareName, verbose: true });
@@ -141,74 +147,180 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function playMoveSound() {
+        const audio = document.getElementById('moveSound');
+        if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(e => console.log("Audio play failed:", e));
+        }
+    }
+
     /**
-     * Transmits the updated board state (FEN) to the Mojolicious backend after a valid move.
-     * Calculates the next player's ID and determines if the game has ended (checkmate/draw).
-     * * Parameters: None
-     * Returns: void
+     * Submits a move or action payload to the server.
      */
+    function submitMovePayload(endpoint, payload = {}) {
+        fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                pollGameState(); // Immediate poll after action
+            } else {
+                console.error('Action failed');
+            }
+        });
+    }
+
     function submitMove() {
         const newFen = game.fen();
         const nextTurnId = currentUserId === p1Id ? p2Id : p1Id;
-        
         let newStatus = 'active';
         let winnerId = null;
 
         if (game.game_over()) {
             newStatus = 'finished';
-            if (game.in_checkmate()) {
-                winnerId = currentUserId; // The person who just moved wins
-            } else {
-                winnerId = 0; // Draw
-            }
+            winnerId = game.in_checkmate() ? currentUserId : 0;
         }
 
-        // Send payload to controller
-        fetch('/chess/move', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                game_id: gameId,
-                fen: newFen,
-                next_turn_id: nextTurnId,
-                status: newStatus,
-                winner_id: winnerId
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                // Update local state and wait for opponent
-                currentTurnId = nextTurnId;
-                gameStatus = newStatus;
-                document.getElementById('game-status-text').textContent = "🔴 Opponent's Turn";
-                document.getElementById('fen-display').textContent = `Current FEN: ${newFen}`;
-                startPolling();
-            } else {
-                alert('Move synchronization failed.');
-            }
+        // Update local state immediately before sending
+        currentFen = newFen;
+        // Last move is calculated inside handleSquareClick where selectedSquare is still known
+        // but we'll ensure serverLastMove is set here for clarity if needed.
+
+        submitMovePayload('/chess/move', {
+            game_id: gameId,
+            fen: newFen,
+            next_turn_id: nextTurnId,
+            status: newStatus,
+            winner_id: winnerId,
+            last_move: serverLastMove
         });
     }
 
     /**
-     * Periodically fetches the latest game state from the server if it is the opponent's turn.
-     * Reloads the page if a new move is detected to ensure full state synchronization.
-     * * Parameters: None
-     * Returns: void
+     * Polls the server for the current game status.
      */
-    function startPolling() {
-        if (currentTurnId === currentUserId || gameStatus !== 'active') return;
+    function pollGameState() {
+        fetch(`/chess/status/${gameId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) return;
 
-        const pollInterval = setInterval(() => {
-            // Note: If you don't have an API endpoint like /api/chess/state/:id,
-            // polling by reloading the page is a simple fallback mechanism.
-            window.location.reload();
-        }, 3000);
+            // Handle Move/FEN updates
+            if (data.fen !== currentFen) {
+                currentFen = data.fen;
+                serverLastMove = data.last_move;
+                game.load(data.fen);
+                renderBoard();
+                updateHighlights(); // Explicitly refresh highlights
+                if (data.turn === currentUserId) playMoveSound();
+            }
+
+            // Update local state
+            currentTurnId = parseInt(data.turn, 10);
+            gameStatus = data.status;
+
+            // Update UI text
+            const statusText = document.getElementById('game-status-text');
+            if (gameStatus === 'finished') {
+                if (data.winner_id === 0) {
+                    if (drawOfferByMe) {
+                        alert('Your draw offer was accepted.');
+                        drawOfferByMe = false;
+                    }
+                    statusText.textContent = "🤝 Game Over - Draw";
+                } else {
+                    const winnerName = (data.winner_id === p1Id) ? "White" : "Black";
+                    statusText.textContent = `🏆 Game Over - ${winnerName} Wins!`;
+                }
+                document.getElementById('offerDrawBtn').style.display = 'none';
+                document.getElementById('resignBtn').style.display = 'none';
+            } else if (gameStatus === 'waiting') {
+                statusText.textContent = "⏳ Waiting for opponent...";
+            } else {
+                statusText.textContent = currentTurnId === currentUserId ? "🟢 Your Turn" : "🔴 Opponent's Turn";
+            }
+
+            document.getElementById('fen-display').textContent = `Current FEN: ${currentFen}`;
+
+            // Handle Draw Offers
+            const overlay = document.getElementById('draw-offer-overlay');
+            const offerBtn = document.getElementById('offerDrawBtn');
+
+            if (data.draw_offered_by) {
+                if (parseInt(data.draw_offered_by, 10) === currentUserId) {
+                    // I offered it
+                    offerBtn.textContent = "⌛ Waiting for response...";
+                    offerBtn.disabled = true;
+                    offerBtn.style.display = 'inline-block';
+                    drawOfferByMe = true;
+                } else {
+                    // Opponent offered it
+                    overlay.style.display = 'flex';
+                }
+            } else {
+                // No active offer - only alert if we WERE tracking a pending offer that is now gone
+                if (drawOfferByMe && gameStatus === 'active') {
+                    // Slight delay to allow server to persist refuse action before we alert
+                    drawOfferByMe = false;
+                    alert('Draw offer was refused.');
+                }
+                
+                overlay.style.display = 'none';
+                if (gameStatus === 'active') {
+                    offerBtn.textContent = "Offer Draw";
+                    offerBtn.disabled = false;
+                    offerBtn.style.display = 'inline-block';
+                }
+            }
+        });
     }
 
-    // Initial render and setup
+    // Polling setup
+    setInterval(pollGameState, 2000);
+
+    // Button Listeners
+    const resignBtn = document.getElementById('resignBtn');
+    if (resignBtn) {
+        resignBtn.addEventListener('click', () => {
+            if (gameStatus !== 'active') return;
+            if (confirm('Are you sure you want to resign?')) {
+                const opponentId = currentUserId === p1Id ? p2Id : p1Id;
+                submitMovePayload('/chess/move', {
+                    game_id: gameId, fen: game.fen(), next_turn_id: 0, status: 'finished', winner_id: opponentId
+                });
+            }
+        });
+    }
+
+    const offerDrawBtn = document.getElementById('offerDrawBtn');
+    if (offerDrawBtn) {
+        offerDrawBtn.addEventListener('click', () => {
+            if (gameStatus !== 'active') return;
+            if (confirm('Offer a draw?')) {
+                drawOfferByMe = true;
+                submitMovePayload(`/chess/offer_draw/${gameId}`);
+            }
+        });
+    }
+
+    const acceptDrawBtn = document.getElementById('acceptDrawBtn');
+    if (acceptDrawBtn) {
+        acceptDrawBtn.addEventListener('click', () => {
+            submitMovePayload(`/chess/respond_draw/${gameId}?accept=1`);
+        });
+    }
+
+    const refuseDrawBtn = document.getElementById('refuseDrawBtn');
+    if (refuseDrawBtn) {
+        refuseDrawBtn.addEventListener('click', () => {
+            submitMovePayload(`/chess/respond_draw/${gameId}?accept=0`);
+        });
+    }
+
+    // Initial setup
     renderBoard();
-    if (currentTurnId !== currentUserId && gameStatus === 'active') {
-        startPolling();
-    }
 });
