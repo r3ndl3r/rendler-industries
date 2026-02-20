@@ -394,7 +394,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     if (statusText.textContent.indexOf("Game Over") === -1) {
                         if (isMeWinner) {
-                            customAlert("Opponent resigned or checkmate. You win!");
+                            if (game.in_checkmate()) {
+                                customAlert("Checkmate. You win!");
+                            } else {
+                                customAlert("Opponent resigned. You win!");
+                            }
                         }
                     }
                     
