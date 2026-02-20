@@ -641,11 +641,20 @@ sub DB::get_timer_logs {
 # PRIVATE HELPER METHODS
 # ============================================================================
 
-# Get current date in Australia/Melbourne timezone.
+# Get current date in Australia/Melbourne timezone, respecting reset hour.
 # Returns: Date string in YYYY-MM-DD format
 sub DB::_get_current_date {
     my ($self) = @_;
+    
     my $dt = DateTime->now(time_zone => 'Australia/Melbourne');
+    my $reset_hour = $self->get_timer_reset_hour();
+    
+    # If we haven't reached the reset hour yet today, 
+    # then for timer purposes it's still "yesterday".
+    if ($dt->hour < $reset_hour) {
+        $dt->subtract(days => 1);
+    }
+    
     return $dt->ymd;
 }
 
