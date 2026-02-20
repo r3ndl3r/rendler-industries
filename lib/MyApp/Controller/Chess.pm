@@ -8,14 +8,24 @@ use Mojo::Base 'Mojolicious::Controller', -signatures;
 # The approach separates lobby management from active gameplay to mirror the Connect 4 architecture.
 
 # Renders the chess lobby showing available games to join.
-# Fetches all games currently in 'waiting' status.
+# Fetches all games currently in 'waiting' status and the user's active games.
 # Parameters:
 #   $c : Mojolicious::Controller object
 # Returns:
-#   Renders 'chess/lobby' template with 'lobbies' array
+#   Renders 'chess/lobby' template with 'lobbies' and 'user_games' arrays
 sub lobby ($c) {
+    my $user_id = $c->current_user_id;
     my $lobbies = $c->db->get_open_chess_lobbies();
-    $c->render('chess/lobby', lobbies => $lobbies);
+    my $user_games = $c->db->get_user_chess_games($user_id);
+    
+    # Filter out user's own games from the general "Open Games" list
+    # to avoid duplication and encourage joining other people's games.
+    my @filtered_lobbies = grep { $_->{player1_id} != $user_id } @$lobbies;
+    
+    $c->render('chess/lobby', 
+        lobbies => \@filtered_lobbies,
+        user_games => $user_games
+    );
 }
 
 # Creates a new chess game and redirects the host to the play screen.
