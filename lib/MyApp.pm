@@ -302,6 +302,7 @@ sub startup {
 
         # --- Chess Routes ---
     $auth->get('/chess/lobby')->to('chess#lobby');
+    $auth->get('/chess/lobby_status')->to('chess#lobby_status');
     $auth->post('/chess/create')->to('chess#create');
     $auth->post('/chess/join')->to('chess#join_game');
     $auth->get('/chess/play/:id')->to('chess#play');

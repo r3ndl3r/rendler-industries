@@ -5,6 +5,7 @@
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/lobby.css">
+    <script src="/js/chess/lobby.js" defer></script>
 <% end %>
 
 <div class="lobby-container">
@@ -20,9 +21,9 @@
         </form>
     </div>
 
-    <% if (@$user_games) { %>
+    <div id="user-games-section" style="<%= @$user_games ? '' : 'display: none;' %>">
         <h3 style="margin-left: 0.5rem; margin-bottom: 1rem;">Your Active Games</h3>
-        <div class="game-list" style="margin-bottom: 2rem;">
+        <div id="user-game-list" class="game-list" style="margin-bottom: 2rem;">
             <% for my $game (@$user_games) { %>
                 <div class="game-item user-game">
                     <div class="host-info">
@@ -38,11 +39,11 @@
                 </div>
             <% } %>
         </div>
-    <% } %>
+    </div>
 
     <h3 style="margin-left: 0.5rem; margin-bottom: 1rem;">Open Games</h3>
     
-    <div class="game-list">
+    <div id="open-game-list" class="game-list">
         <% if (@$lobbies) { %>
             <% for my $lobby (@$lobbies) { %>
                 <div class="game-item">

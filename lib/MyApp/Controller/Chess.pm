@@ -28,6 +28,20 @@ sub lobby ($c) {
     );
 }
 
+# API Endpoint: Returns lobby status (open games and user games) as JSON.
+sub lobby_status ($c) {
+    my $user_id = $c->current_user_id;
+    my $lobbies = $c->db->get_open_chess_lobbies();
+    my $user_games = $c->db->get_user_chess_games($user_id);
+    
+    my @filtered_lobbies = grep { $_->{player1_id} != $user_id } @$lobbies;
+    
+    $c->render(json => {
+        open_games => \@filtered_lobbies,
+        user_games => $user_games
+    });
+}
+
 # Creates a new chess game and redirects the host to the play screen.
 # Uses the active session to identify the host player.
 # Parameters:
