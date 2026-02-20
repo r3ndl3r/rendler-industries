@@ -42,14 +42,14 @@ sub DB::create_chess_lobby {
 # Retrieves a list of all games currently in 'waiting' status.
 # Parameters: None
 # Returns:
-#   ArrayRef of HashRefs containing open game details (id, host_name, created_at)
+#   ArrayRef of HashRefs containing open game details (id, host_name, player1_id, created_at)
 sub DB::get_open_chess_lobbies {
     my $self = shift;
     
     $self->ensure_connection;
     
     return $self->{dbh}->selectall_arrayref(
-        "SELECT g.id, u.username as host_name, g.created_at 
+        "SELECT g.id, u.username as host_name, g.player1_id, g.created_at 
          FROM chess_sessions g 
          JOIN users u ON g.player1_id = u.id 
          WHERE g.status = 'waiting' AND g.game_type = 'chess'
@@ -58,10 +58,34 @@ sub DB::get_open_chess_lobbies {
     );
 }
 
-# Adds a second player to an existing lobby.
+# Retrieves all games (active or waiting) involving the specified user.
+# Parameters:
+#   user_id : Unique ID of the user
+# Returns:
+#   ArrayRef of HashRefs containing game details
+sub DB::get_user_chess_games {
+    my ($self, $user_id) = @_;
+    
+    $self->ensure_connection;
+    
+    my $sql = "
+        SELECT g.id, u1.username as p1_name, u2.username as p2_name, g.status, g.created_at
+        FROM chess_sessions g
+        JOIN users u1 ON g.player1_id = u1.id
+        LEFT JOIN users u2 ON g.player2_id = u2.id
+        WHERE (g.player1_id = ? OR g.player2_id = ?)
+          AND g.status IN ('waiting', 'active')
+          AND g.game_type = 'chess'
+        ORDER BY g.created_at DESC
+    ";
+    
+    return $self->{dbh}->selectall_arrayref($sql, { Slice => {} }, $user_id, $user_id);
+}
+
+# Adds a second player to an existing lobby or allows a player to re-join an active one.
 # Parameters:
 #   game_id : Target game ID
-#   user_id : ID of the joining player
+#   user_id : ID of the joining/re-joining player
 # Returns:
 #   Result of execute() (true on success, 0 on failure)
 sub DB::join_chess_lobby {
@@ -69,14 +93,27 @@ sub DB::join_chess_lobby {
     
     $self->ensure_connection;
     
-    # Prevent user from joining their own game
-    my ($p1) = $self->{dbh}->selectrow_array("SELECT player1_id FROM chess_sessions WHERE id = ?", undef, $game_id);
-    return 0 if ($p1 && $p1 == $user_id);
+    # Retrieve existing participants
+    my $game = $self->{dbh}->selectrow_hashref("SELECT player1_id, player2_id, status FROM chess_sessions WHERE id = ?", undef, $game_id);
+    return 0 unless $game;
 
-    my $sth = $self->{dbh}->prepare(
-        "UPDATE chess_sessions SET player2_id = ?, status = 'active' WHERE id = ? AND status = 'waiting'"
-    );
-    return $sth->execute($user_id, $game_id);
+    # Allow re-joining if already a player
+    if (($game->{player1_id} && $game->{player1_id} == $user_id) || ($game->{player2_id} && $game->{player2_id} == $user_id)) {
+        return 1;
+    }
+
+    # Prevent host from joining as player 2
+    return 0 if ($game->{player1_id} && $game->{player1_id} == $user_id);
+
+    # Standard join for player 2 if game is still waiting
+    if ($game->{status} eq 'waiting') {
+        my $sth = $self->{dbh}->prepare(
+            "UPDATE chess_sessions SET player2_id = ?, status = 'active' WHERE id = ? AND status = 'waiting'"
+        );
+        return $sth->execute($user_id, $game_id);
+    }
+
+    return 0;
 }
 
 # Retrieves full game record including the current FEN state.
