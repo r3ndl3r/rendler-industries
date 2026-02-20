@@ -380,8 +380,8 @@ sub run_maintenance {
         expiry_sent => 0
     };
     
-    # 1. Clean up old sessions
-    my $today = DateTime->now(time_zone => 'Australia/Melbourne')->ymd;
+    # 1. Clean up old sessions (older than current timer day)
+    my $today = $c->db->_get_current_date();
     my $sql = "DELETE FROM timer_sessions WHERE session_date < ?";
     $result->{cleaned_sessions} = $c->db->{dbh}->do($sql, undef, $today) || 0;
     

@@ -41,9 +41,9 @@ sub main {
     print "[" . $now->strftime('%Y-%m-%d %H:%M:%S') . "] Timer maintenance complete\n";
 }
 
-# Remove timer sessions older than today
+# Remove timer sessions older than today (respecting reset hour)
 sub cleanup_old_sessions {
-    my $today = DateTime->now(time_zone => 'Australia/Melbourne')->ymd;
+    my $today = $db->_get_current_date();
     
     my $sql = "DELETE FROM timer_sessions WHERE session_date < ?";
     my $rows = $db->{dbh}->do($sql, undef, $today);
