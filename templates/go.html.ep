@@ -80,14 +80,11 @@
                             </svg>
                         </button>
                         
-                        <form action="/go/delete" method="POST" class="delete-form" onsubmit="return confirm('Delete this link?');">
-                            <input type="hidden" name="id" value="<%= $link->{id} %>">
-                            <button type="submit" class="game-btn delete-btn" title="Delete">
-                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
-                        </form>
+                        <button type="button" class="game-btn delete-btn" onclick="openDeleteModal(<%= $link->{id} %>, '<%= $link->{keyword} %>')" title="Delete">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
             <% } %>
@@ -108,15 +105,41 @@
             <input type="hidden" id="editId" name="id">
             
             <div class="modal-body">
-                <input type="text" id="editKeyword" name="keyword" class="game-input" required maxlength="50">
-                <input type="url" id="editUrl" name="url" class="game-input" required>
-                <input type="text" id="editDescription" name="description" class="game-input" maxlength="255">
+                <div class="modal-group">
+                    <label for="editKeyword">Keyword</label>
+                    <input type="text" id="editKeyword" name="keyword" class="game-input" required maxlength="50" placeholder="plex">
+                </div>
+                <div class="modal-group">
+                    <label for="editUrl">Target URL</label>
+                    <input type="url" id="editUrl" name="url" class="game-input" required placeholder="https://plex.example.com">
+                </div>
+                <div class="modal-group">
+                    <label for="editDescription">Description</label>
+                    <input type="text" id="editDescription" name="description" class="game-input" maxlength="255" placeholder="Home Media Server">
+                </div>
             </div>
             
             <div class="modal-actions">
                 <button type="submit" class="game-btn btn-blue">Save Changes</button>
-                <button type="button" onclick="closeEditModal()" class="game-btn cancel-btn">Cancel</button>
+                <button type="button" onclick="closeEditModal()" class="game-btn btn-cancel">Cancel</button>
             </div>
         </form>
+    </div>
+</div>
+
+<div id="deleteModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Delete Link</h3>
+        <div class="modal-body">
+            <p>Are you sure you want to delete the link for <strong id="deleteKeyword"></strong>?</p>
+            <p class="text-danger" style="color: #dc2626; font-size: 0.85rem; margin-top: 5px;">This action cannot be undone.</p>
+        </div>
+        <div class="modal-actions">
+            <form id="deleteForm" method="POST" action="/go/delete">
+                <input type="hidden" id="deleteId" name="id">
+                <button type="submit" class="game-btn btn-danger">Delete Link</button>
+            </form>
+            <button type="button" onclick="closeDeleteModal()" class="game-btn btn-cancel">Cancel</button>
+        </div>
     </div>
 </div>
