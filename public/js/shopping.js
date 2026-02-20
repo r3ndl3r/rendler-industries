@@ -76,45 +76,119 @@ function updateItemCount() {
     }
 }
 
+// Modal handling
 function editItem(id, currentName) {
     const modal = document.getElementById('editModal');
     const form = document.getElementById('editForm');
     const editId = document.getElementById('editId');
     const editName = document.getElementById('editName');
     
-    // Set form action
-    form.action = '/shopping/edit/' + id;
-    
-    // Set values
-    editId.value = id;
-    editName.value = currentName;
-    
-    // Show modal
-    modal.style.display = 'flex';
-    
-    // Focus on input
-    setTimeout(() => {
-        editName.focus();
-        editName.select();
-    }, 100);
+    if (modal && form && editId && editName) {
+        form.action = '/shopping/edit/' + id;
+        editId.value = id;
+        editName.value = currentName;
+        modal.style.display = 'flex';
+        
+        setTimeout(() => {
+            editName.focus();
+            editName.select();
+        }, 100);
+    }
 }
 
 function closeEditModal() {
     const modal = document.getElementById('editModal');
-    modal.style.display = 'none';
+    if (modal) modal.style.display = 'none';
 }
 
-// Close modal on escape key
+function openDeleteModal(id, itemName) {
+    const modal = document.getElementById('deleteModal');
+    const form = document.getElementById('deleteForm');
+    const deleteItemName = document.getElementById('deleteItemName');
+    
+    if (modal && form && deleteItemName) {
+        form.action = '/shopping/delete/' + id;
+        deleteItemName.textContent = itemName;
+        modal.style.display = 'flex';
+    }
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function openClearAllModal() {
+    const modal = document.getElementById('clearAllModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeClearAllModal() {
+    const modal = document.getElementById('clearAllModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Close modals on escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeEditModal();
+        closeDeleteModal();
+        closeClearAllModal();
     }
 });
 
 // Close modal when clicking outside
 document.addEventListener('click', function(e) {
-    const modal = document.getElementById('editModal');
-    if (e.target === modal) {
-        closeEditModal();
-    }
+    const editModal = document.getElementById('editModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const clearAllModal = document.getElementById('clearAllModal');
+    
+    if (e.target === editModal) closeEditModal();
+    if (e.target === deleteModal) closeDeleteModal();
+    if (e.target === clearAllModal) closeClearAllModal();
 });
+
+// Toast Notification Function (matching the one in go.js/files.js)
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        transform: translateX(400px);
+        transition: transform 0.3s ease;
+        backdrop-filter: blur(10px);
+    `;
+
+    if (type === 'success') {
+        toast.style.background = 'rgba(76, 175, 80, 0.95)';
+        toast.style.border = '1px solid rgba(76, 175, 80, 0.3)';
+    } else if (type === 'error') {
+        toast.style.background = 'rgba(239, 68, 68, 0.95)';
+        toast.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+    } else {
+        toast.style.background = 'rgba(59, 130, 246, 0.95)';
+        toast.style.border = '1px solid rgba(59, 130, 246, 0.3)';
+    }
+
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.transform = 'translateX(0)';
+    }, 100);
+
+    setTimeout(() => {
+        toast.style.transform = 'translateX(400px)';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                document.body.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}

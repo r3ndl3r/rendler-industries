@@ -58,13 +58,11 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                 </svg>
                             </button>
-                            <form action="/shopping/delete/<%= $item->{id} %>" method="POST" class="delete-form">
-                                <button type="submit" class="btn-delete-item" onclick="return confirm('Delete this item?')">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </form>
+                            <button type="button" class="btn-delete-item" onclick="openDeleteModal(<%= $item->{id} %>, '<%= $item->{item_name} %>')" title="Delete">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 <% } %>
@@ -74,11 +72,9 @@
                 <div class="checked-section">
                     <div class="checked-header">
                         <h3 class="section-title">Checked Items</h3>
-                        <form action="/shopping/clear" method="POST" style="display: inline;">
-                            <button type="submit" class="btn-clear-all" onclick="return confirm('Clear all checked items?')">
-                                Clear All
-                            </button>
-                        </form>
+                        <button type="button" class="btn-clear-all" onclick="openClearAllModal()">
+                            Clear All
+                        </button>
                     </div>
                     <% for my $item (@checked) { %>
                         <div class="shopping-item checked">
@@ -99,13 +95,11 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                     </svg>
                                 </button>
-                                <form action="/shopping/delete/<%= $item->{id} %>" method="POST" class="delete-form">
-                                    <button type="submit" class="btn-delete-item" onclick="return confirm('Delete this item?')">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn-delete-item" onclick="openDeleteModal(<%= $item->{id} %>, '<%= $item->{item_name} %>')" title="Delete">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
                             </div>
                         </div>
                     <% } %>
@@ -127,18 +121,57 @@
         <h3>Edit Item</h3>
         <form id="editForm" method="POST">
             <input type="hidden" id="editId" name="id">
-            <input 
-                type="text" 
-                id="editName" 
-                name="item_name" 
-                class="game-input" 
-                required 
-                maxlength="255"
-            >
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button type="submit" class="game-btn btn-blue">Save</button>
-                <button type="button" onclick="closeEditModal()" class="game-btn" style="background: #666;">Cancel</button>
+            <div class="modal-body">
+                <div class="modal-group">
+                    <label for="editName">Item Name</label>
+                    <input 
+                        type="text" 
+                        id="editName" 
+                        name="item_name" 
+                        class="game-input" 
+                        required 
+                        maxlength="255"
+                        placeholder="e.g. Milk"
+                    >
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="game-btn btn-blue">Save Changes</button>
+                <button type="button" onclick="closeEditModal()" class="game-btn btn-cancel">Cancel</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div id="deleteModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Delete Item</h3>
+        <div class="modal-body">
+            <p>Are you sure you want to remove <strong id="deleteItemName"></strong> from the list?</p>
+        </div>
+        <div class="modal-actions">
+            <form id="deleteForm" method="POST">
+                <button type="submit" class="game-btn btn-danger">Delete Item</button>
+            </form>
+            <button type="button" onclick="closeDeleteModal()" class="game-btn btn-cancel">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Clear All Modal -->
+<div id="clearAllModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Clear Checked Items</h3>
+        <div class="modal-body">
+            <p>Are you sure you want to remove all checked items from the list?</p>
+            <p class="text-danger" style="color: #dc2626; font-size: 0.85rem; margin-top: 5px;">This will permanently delete all items that have been checked off.</p>
+        </div>
+        <div class="modal-actions">
+            <form action="/shopping/clear" method="POST">
+                <button type="submit" class="game-btn btn-danger">Clear All</button>
+            </form>
+            <button type="button" onclick="closeClearAllModal()" class="game-btn btn-cancel">Cancel</button>
+        </div>
     </div>
 </div>
