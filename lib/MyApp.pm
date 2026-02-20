@@ -272,7 +272,7 @@ sub startup {
     $auth->post('/calendar/add')->to('calendar#add');
     $auth->post('/calendar/edit')->to('calendar#edit');
     $auth->post('/calendar/delete')->to('calendar#delete');
-    $admin->get('/calendar/manage')->to('calendar#manage');
+    $auth->get('/calendar/manage')->to('calendar#manage');
 
     # --- Timer Routes ---
     $auth->get('/timers')->to('timers#dashboard');
