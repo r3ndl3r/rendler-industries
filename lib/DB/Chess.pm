@@ -140,26 +140,59 @@ sub DB::get_chess_game_state {
     return $self->{dbh}->selectrow_hashref($sql, undef, $game_id);
 }
 
+# Records a draw offer from a specific user.
+# Parameters:
+#   game_id : Unique game ID
+#   user_id : ID of the user offering the draw
+# Returns: Boolean success
+sub DB::offer_chess_draw {
+    my ($self, $game_id, $user_id) = @_;
+    $self->ensure_connection;
+    
+    my $sth = $self->{dbh}->prepare("UPDATE chess_sessions SET draw_offered_by = ? WHERE id = ? AND status = 'active'");
+    return $sth->execute($user_id, $game_id);
+}
+
+# Processes a response to a draw offer.
+# If accepted, status becomes 'finished' and winner_id is 0 (draw).
+# If refused, draw_offered_by is cleared.
+# Parameters:
+#   game_id : Unique game ID
+#   accepted: Boolean (1 for accept, 0 for refuse)
+# Returns: Boolean success
+sub DB::respond_chess_draw {
+    my ($self, $game_id, $accepted) = @_;
+    $self->ensure_connection;
+    
+    if ($accepted) {
+        my $sth = $self->{dbh}->prepare("UPDATE chess_sessions SET status = 'finished', winner_id = 0, draw_offered_by = NULL WHERE id = ?");
+        return $sth->execute($game_id);
+    } else {
+        my $sth = $self->{dbh}->prepare("UPDATE chess_sessions SET draw_offered_by = NULL WHERE id = ?");
+        return $sth->execute($game_id);
+    }
+}
+
 # Processes a board state update after a move is verified.
-# Because chess validation (en passant, castling, pins) is highly complex, 
-# the FEN generation and validation is delegated to the frontend/controller logic.
 # Parameters:
 #   game_id      : Unique game ID
 #   next_turn_id : User ID of the player whose turn is next
 #   new_fen      : The updated FEN string after the move
 #   status       : Game status string ('active', 'finished')
 #   winner_id    : User ID of winner (if finished), 0 for draw, undef otherwise
+#   last_move    : String representing the move (e.g., "e2-e4")
 # Returns:
 #   Boolean (1 for success, 0 for failure)
 sub DB::update_chess_game_state {
-    my ($self, $game_id, $next_turn_id, $new_fen, $status, $winner_id) = @_;
+    my ($self, $game_id, $next_turn_id, $new_fen, $status, $winner_id, $last_move) = @_;
     
     $self->ensure_connection;
     
+    # We clear draw_offered_by on any move to ensure the offer doesn't persist past a turn
     my $sth = $self->{dbh}->prepare(
-        "UPDATE chess_sessions SET fen_state = ?, current_turn = ?, status = ?, winner_id = ? WHERE id = ?"
+        "UPDATE chess_sessions SET fen_state = ?, current_turn = ?, status = ?, winner_id = ?, draw_offered_by = NULL, last_move = ? WHERE id = ?"
     );
-    return $sth->execute($new_fen, $next_turn_id, $status, $winner_id, $game_id);
+    return $sth->execute($new_fen, $next_turn_id, $status, $winner_id, $last_move, $game_id);
 }
 
 1;

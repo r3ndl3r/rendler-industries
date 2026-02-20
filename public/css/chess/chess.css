@@ -20,7 +20,17 @@
     align-items: center;
     max-width: 800px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 0 20px 20px 20px;
+}
+
+.header-bar {
+    width: 100%;
+    text-align: center;
+}
+
+.header-bar h1 {
+    margin-top: 0;
+    margin-bottom: 5px;
 }
 
 /* Game wrapper maintains the layout hierarchy between player info and the board */
@@ -85,6 +95,15 @@
     z-index: 1;
 }
 
+/* Visual indicator for the last move made */
+.square.last-move::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(255, 255, 0, 0.3); /* Pale yellow for last move */
+    z-index: 1;
+}
+
 /* Visual indicator for valid destination squares during a move calculation */
 .square.valid-move::after {
     content: '';
@@ -111,33 +130,107 @@
     color: #000000;
 }
 
-/* Player information panels (names and captured pieces container) */
-.player-info {
+/* Styled action button for Header Bar */
+.btn-action {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 12px 15px;
-    background: #1e293b; /* Dark slate background */
-    color: #f8fafc; /* Light text */
-    border-radius: 8px;
+    gap: 8px;
+    background: #334155;
+    color: #f8fafc;
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s;
 }
 
-.player-name {
-    font-size: 1.1rem;
+.btn-action:hover {
+    background: #475569;
+    border-color: rgba(255, 255, 255, 0.2);
+    color: white;
 }
 
-.player-name strong {
-    color: var(--accent-color, #38bdf8);
-    margin-right: 5px;
-}
-
-.captured-pieces {
+/* Game Controls (Resign, Draw) */
+.game-controls {
     display: flex;
-    gap: 2px;
-    min-height: 1.5rem;
-    font-size: 1.2rem;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.btn-control {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.1s, opacity 0.2s;
+    font-size: 1rem;
+}
+
+.btn-control:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.btn-control.danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-control.secondary {
+    background: #64748b;
+    color: white;
+}
+
+.btn-control.success {
+    background: #22c55e;
+    color: white;
+}
+
+.btn-control.lobby {
+    background: #334155;
+    color: #f8fafc;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.board-container {
+    width: 100%;
+    max-width: 75vh;
+    margin: 0 auto;
+    position: relative; /* Base for overlay */
+}
+
+.game-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    border-radius: 4px;
+}
+
+.overlay-content {
+    background: #1e293b;
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.overlay-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 1.5rem;
+    justify-content: center;
 }
 
 /* Status panel for turn tracking and debug information */

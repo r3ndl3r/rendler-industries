@@ -86,11 +86,48 @@ sub move ($c) {
     my $next_turn_id = $json->{next_turn_id};
     my $status = $json->{status} || 'active';
     my $winner_id = $json->{winner_id};
+    my $last_move = $json->{last_move};
     
     my $success = $c->db->update_chess_game_state(
-        $game_id, $next_turn_id, $new_fen, $status, $winner_id
+        $game_id, $next_turn_id, $new_fen, $status, $winner_id, $last_move
     );
     
+    $c->render(json => { success => $success ? \1 : \0 });
+}
+
+# API Endpoint: Returns current game status for frontend polling.
+# Returns JSON: { fen, turn, status, winner_id, draw_offered_by, last_move }
+sub poll_status ($c) {
+    my $game_id = $c->param('id');
+    my $game = $c->db->get_chess_game_state($game_id);
+    
+    return $c->render(json => { error => 'Game not found' }, status => 404) unless $game;
+    
+    $c->render(json => {
+        fen => $game->{fen_state},
+        turn => $game->{current_turn},
+        status => $game->{status},
+        winner_id => $game->{winner_id},
+        draw_offered_by => $game->{draw_offered_by},
+        last_move => $game->{last_move}
+    });
+}
+
+# API Endpoint: Initiates a draw offer.
+sub offer_draw ($c) {
+    my $game_id = $c->param('id');
+    my $user_id = $c->current_user_id;
+    
+    my $success = $c->db->offer_chess_draw($game_id, $user_id);
+    $c->render(json => { success => $success ? \1 : \0 });
+}
+
+# API Endpoint: Responds to a draw offer (accept or refuse).
+sub respond_draw ($c) {
+    my $game_id = $c->param('id');
+    my $accepted = $c->param('accept') ? 1 : 0;
+    
+    my $success = $c->db->respond_chess_draw($game_id, $accepted);
     $c->render(json => { success => $success ? \1 : \0 });
 }
 
