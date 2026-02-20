@@ -46,6 +46,10 @@
                 <div class="icon">🔴</div>
                 <div class="label">Connect 4</div>
             </a>
+            <a href="/chess/lobby" class="tile">
+                <div class="icon">♟️</div>
+                <div class="label">Chess</div>
+            </a>
             <a href="/chelsea" class="tile">
                 <div class="icon">🏖️</div>
                 <div class="label">Chelsea Weather</div>

@@ -299,6 +299,13 @@ sub startup {
     $admin->post('/go/add')->to('go#add');
     $admin->post('/go/edit')->to('go#edit');
     $admin->post('/go/delete')->to('go#delete');
+
+        # --- Chess Routes ---
+    $auth->get('/chess/lobby')->to('chess#lobby');
+    $auth->post('/chess/create')->to('chess#create');
+    $auth->post('/chess/join')->to('chess#join_game');
+    $auth->get('/chess/play/:id')->to('chess#play');
+    $auth->post('/chess/move')->to('chess#move');
 }
 
 
