@@ -81,8 +81,10 @@
         </h3>
 
         <div class="game-controls">
-            <button id="offerDrawBtn" class="btn-control secondary" style="<%= ($game->{status} eq 'active' && !defined $game->{draw_offered_by}) ? '' : 'display: none;' %>">Offer Draw</button>
-            <button id="resignBtn" class="btn-control danger" style="<%= $game->{status} eq 'active' ? '' : 'display: none;' %>">Resign</button>
+            <% if ($uid == $game->{player1_id} || ($game->{player2_id} && $uid == $game->{player2_id})) { %>
+                <button id="offerDrawBtn" class="btn-control secondary" style="<%= ($game->{status} eq 'active' && !defined $game->{draw_offered_by}) ? '' : 'display: none;' %>">Offer Draw</button>
+                <button id="resignBtn" class="btn-control danger" style="<%= $game->{status} eq 'active' ? '' : 'display: none;' %>">Resign</button>
+            <% } %>
             <a href="/chess/lobby" class="btn-control lobby">
                 <span class="icon">🚪</span> Exit to Lobby
             </a>
