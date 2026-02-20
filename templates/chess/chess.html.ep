@@ -93,7 +93,3 @@
         </p>
     </div>
 </div>
-
-<audio id="moveSound" preload="auto">
-    <source src="/audio/chess_move.mp3" type="audio/mpeg">
-</audio>

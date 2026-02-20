@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         squares.forEach(sq => {
-            sq.classList.remove('selected', 'valid-move', 'last-move');
+            sq.classList.remove('selected', 'valid-move', 'last-move', 'in-check');
             
             // Selected piece highlight
             if (sq.dataset.square === selectedSquare) sq.classList.add('selected');
@@ -109,6 +109,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 sq.classList.add('last-move');
             }
         });
+
+        // Highlight King if in check
+        if (game.in_check()) {
+            const board = game.board();
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const p = board[r][c];
+                    if (p && p.type === 'k' && p.color === game.turn()) {
+                        const sqName = String.fromCharCode(97 + c) + (8 - r);
+                        const sqEl = boardElement.querySelector(`[data-square="${sqName}"]`);
+                        if (sqEl) sqEl.classList.add('in-check');
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -131,16 +146,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 promotionPiece = await getPromotionPiece();
             }
 
-            game.move({
+            const moveResult = game.move({
                 from: selectedSquare,
                 to: squareName,
                 promotion: promotionPiece 
             });
+
             serverLastMove = `${selectedSquare}-${squareName}`;
             selectedSquare = null;
             validMoves = [];
             renderBoard();
-            playMoveSound();
+            
+            // Play synthesized sound based on move type
+            playMoveSound(moveResult.captured ? true : false, game.in_check());
+            
             submitMove();
         } else {
             const piece = game.get(squareName);
@@ -157,11 +176,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function playMoveSound() {
-        const audio = document.getElementById('moveSound');
-        if (audio) {
-            audio.currentTime = 0;
-            audio.play().catch(e => console.log("Audio play failed:", e));
+    /**
+     * Synthesized Audio System using Web Audio API
+     */
+    const AudioEngine = (() => {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playTone(freq, type, duration, volume = 0.1) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            gain.gain.setValueAtTime(volume, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + duration);
+        }
+
+        return {
+            move: () => playTone(600, 'sine', 0.1),
+            capture: () => {
+                playTone(400, 'square', 0.05, 0.05);
+                setTimeout(() => playTone(300, 'square', 0.1, 0.05), 50);
+            },
+            check: () => {
+                playTone(800, 'sawtooth', 0.1, 0.05);
+                setTimeout(() => playTone(800, 'sawtooth', 0.1, 0.05), 150);
+            },
+            gameOver: () => {
+                playTone(400, 'sine', 0.5);
+                setTimeout(() => playTone(300, 'sine', 0.5), 200);
+                setTimeout(() => playTone(200, 'sine', 0.8), 400);
+            }
+        };
+    })();
+
+    function playMoveSound(isCapture = false, isCheck = false) {
+        if (isCheck) {
+            AudioEngine.check();
+        } else if (isCapture) {
+            AudioEngine.capture();
+        } else {
+            AudioEngine.move();
         }
     }
 
@@ -227,24 +285,35 @@ document.addEventListener('DOMContentLoaded', () => {
      * Submits a move or action payload to the server.
      */
     function submitMovePayload(endpoint, payload = {}) {
+        console.log("Submitting to:", endpoint, "with payload:", payload);
         fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
-        .then(res => res.json())
+        .then(res => {
+            console.log("Response status:", res.status);
+            return res.json();
+        })
         .then(data => {
             if (data.success) {
                 pollGameState(); // Immediate poll after action
             } else {
-                console.error('Action failed');
+                // Action failed on server (e.g., unauthorized or out of turn)
+                customAlert('Action failed: ' + (data.error || 'Unknown error'));
+                pollGameState(); // Force re-sync
             }
+        })
+        .catch(err => {
+            console.error('FETCH ERROR detail:', err);
+            customAlert('Network error occurred. Resyncing...');
+            pollGameState();
         });
     }
 
     function submitMove() {
         const newFen = game.fen();
-        const nextTurnId = currentUserId === p1Id ? p2Id : p1Id;
+        const nextTurnId = (currentUserId === p1Id) ? p2Id : p1Id;
         let newStatus = 'active';
         let winnerId = null;
 
@@ -253,10 +322,8 @@ document.addEventListener('DOMContentLoaded', () => {
             winnerId = game.in_checkmate() ? currentUserId : 0;
         }
 
-        // Update local state immediately before sending
+        // IMPORTANT: Update local tracker immediately so poll doesn't see old state
         currentFen = newFen;
-        // Last move is calculated inside handleSquareClick where selectedSquare is still known
-        // but we'll ensure serverLastMove is set here for clarity if needed.
 
         submitMovePayload('/chess/move', {
             game_id: gameId,
@@ -279,17 +346,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Handle Move/FEN updates
             if (data.fen !== currentFen) {
+                const oldFen = currentFen;
                 currentFen = data.fen;
                 serverLastMove = data.last_move;
+                
+                // Determine if a capture occurred by checking piece count before loading new FEN
+                const getPieceCount = (f) => f.split(' ')[0].replace(/[^a-zA-Z]/g, '').length;
+                const wasCapture = getPieceCount(data.fen) < getPieceCount(oldFen);
+
                 game.load(data.fen);
                 renderBoard();
                 updateHighlights(); // Explicitly refresh highlights
-                if (data.turn === currentUserId) playMoveSound();
+                
+                if (data.turn === currentUserId) {
+                    if (game.in_check()) {
+                        AudioEngine.check();
+                    } else if (wasCapture) {
+                        AudioEngine.capture();
+                    } else {
+                        AudioEngine.move();
+                    }
+                }
             }
 
             // Update local state
             currentTurnId = parseInt(data.turn, 10);
+            const oldStatus = gameStatus;
             gameStatus = data.status;
+
+            if (gameStatus === 'finished' && oldStatus === 'active') {
+                AudioEngine.gameOver();
+            }
 
             // Update UI text
             const statusText = document.getElementById('game-status-text');
