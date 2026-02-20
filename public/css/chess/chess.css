@@ -30,6 +30,13 @@
     gap: 15px;
     width: 100%;
     max-width: 600px;
+    margin: 0 auto;
+}
+
+.board-container {
+    width: 100%;
+    max-width: 75vh; /* Prevents the board from becoming taller than the screen */
+    margin: 0 auto;
 }
 
 /* The core 8x8 grid definition. 
@@ -37,13 +44,14 @@
    regardless of the viewport width. */
 #chess-board {
     display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    grid-template-rows: repeat(8, 1fr);
+    grid-template-columns: repeat(8, 12.5%);
+    grid-template-rows: repeat(8, 12.5%);
     aspect-ratio: 1 / 1;
     width: 100%;
     border: 4px solid var(--board-border);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     background-color: var(--light-square);
+    overflow: hidden;
 }
 
 /* Individual squares on the board.
@@ -54,9 +62,12 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: clamp(2rem, 5vw, 4rem); /* Scales unicode piece size based on board width */
+    font-size: clamp(2rem, 5vw, 3.5rem);
     user-select: none;
     cursor: pointer;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
 }
 
 /* Dark squares override the background color. 
@@ -105,10 +116,28 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px;
-    background: #f8f9fa;
-    border-radius: 5px;
-    border: 1px solid #ddd;
+    padding: 12px 15px;
+    background: #1e293b; /* Dark slate background */
+    color: #f8fafc; /* Light text */
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.player-name {
+    font-size: 1.1rem;
+}
+
+.player-name strong {
+    color: var(--accent-color, #38bdf8);
+    margin-right: 5px;
+}
+
+.captured-pieces {
+    display: flex;
+    gap: 2px;
+    min-height: 1.5rem;
+    font-size: 1.2rem;
 }
 
 /* Status panel for turn tracking and debug information */
