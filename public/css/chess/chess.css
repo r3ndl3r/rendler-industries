@@ -233,6 +233,39 @@
     justify-content: center;
 }
 
+.promotion-choices {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.promo-btn {
+    font-size: 2.5rem;
+    background: #334155;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.promo-btn:hover {
+    background: #475569;
+    transform: scale(1.1);
+}
+
+#game-modal {
+    z-index: 200; /* Higher than draw overlay */
+}
+
+#modal-message {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: #f8fafc;
+}
+
 /* Status panel for turn tracking and debug information */
 .status-panel {
     margin-top: 20px;

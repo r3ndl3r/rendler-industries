@@ -96,6 +96,17 @@ sub play ($c) {
 sub move ($c) {
     my $json = $c->req->json;
     my $game_id = $json->{game_id};
+    my $user_id = $c->current_user_id;
+    
+    # Verify game exists and user is a player
+    my $game = $c->db->get_chess_game_state($game_id);
+    return $c->render(json => { success => \0, error => 'Unauthorized' })
+        unless $game && ($game->{player1_id} == $user_id || $game->{player2_id} == $user_id);
+
+    # Verify it is actually the user's turn
+    return $c->render(json => { success => \0, error => 'Not your turn' })
+        unless $game->{current_turn} == $user_id;
+
     my $new_fen = $json->{fen};
     my $next_turn_id = $json->{next_turn_id};
     my $status = $json->{status} || 'active';
@@ -132,6 +143,11 @@ sub offer_draw ($c) {
     my $game_id = $c->param('id');
     my $user_id = $c->current_user_id;
     
+    # Verify user is a player in this game
+    my $game = $c->db->get_chess_game_state($game_id);
+    return $c->render(json => { success => \0, error => 'Unauthorized' })
+        unless $game && ($game->{player1_id} == $user_id || $game->{player2_id} == $user_id);
+
     my $success = $c->db->offer_chess_draw($game_id, $user_id);
     $c->render(json => { success => $success ? \1 : \0 });
 }
@@ -139,8 +155,18 @@ sub offer_draw ($c) {
 # API Endpoint: Responds to a draw offer (accept or refuse).
 sub respond_draw ($c) {
     my $game_id = $c->param('id');
+    my $user_id = $c->current_user_id;
     my $accepted = $c->param('accept') ? 1 : 0;
     
+    # Verify user is a player in this game
+    my $game = $c->db->get_chess_game_state($game_id);
+    return $c->render(json => { success => \0, error => 'Unauthorized' })
+        unless $game && ($game->{player1_id} == $user_id || $game->{player2_id} == $user_id);
+
+    # Verify a draw was offered and NOT by the current user
+    return $c->render(json => { success => \0, error => 'No pending offer for you' })
+        unless $game->{draw_offered_by} && $game->{draw_offered_by} != $user_id;
+
     my $success = $c->db->respond_chess_draw($game_id, $accepted);
     $c->render(json => { success => $success ? \1 : \0 });
 }
