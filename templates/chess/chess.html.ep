@@ -1,0 +1,65 @@
+<%# /templates/chess/chess.html.ep %>
+
+% layout 'default';
+% title 'Chess - Game ' . $game->{id};
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/chess/chess.css">
+    <%# Using chess.js for complex move validation (castling, en passant, checkmate) on the frontend %>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="/js/chess/chess.js" defer></script>
+<% end %>
+
+<div class="chess-container">
+    <div class="header-bar">
+        <h1>♟️ Chess - Game #<%= $game->{id} %></h1>
+        <a href="/chess/lobby" class="btn btn-secondary back-btn">Exit to Lobby</a>
+    </div>
+
+    <div class="game-wrapper">
+        <div class="player-info opponent-info">
+            <div class="player-name">
+                <strong>Black:</strong> <%= $game->{p2_name} // 'Waiting for opponent...' %>
+            </div>
+            <div class="captured-pieces" id="captured-by-black"></div>
+        </div>
+        
+        <div class="board-container">
+            <div id="chess-board" 
+                 data-game-id="<%= $game->{id} %>" 
+                 data-fen="<%= $game->{fen_state} %>"
+                 data-turn="<%= $game->{current_turn} %>"
+                 data-p1="<%= $game->{player1_id} %>"
+                 data-p2="<%= $game->{player2_id} %>"
+                 data-status="<%= $game->{status} %>"
+                 data-user-id="<%= current_user_id() %>">
+                 </div>
+        </div>
+
+        <div class="player-info local-info">
+            <div class="player-name">
+                <strong>White:</strong> <%= $game->{p1_name} %>
+            </div>
+            <div class="captured-pieces" id="captured-by-white"></div>
+        </div>
+    </div>
+
+    <div class="status-panel">
+        <h3 id="game-status-text">
+            <% if ($game->{status} eq 'waiting') { %>
+                ⏳ Waiting for an opponent to join...
+            <% } elsif ($game->{status} eq 'finished') { %>
+                🏆 Game Over!
+            <% } else { %>
+                <% if ($game->{current_turn} == current_user_id()) { %>
+                    🟢 Your Turn
+                <% } else { %>
+                    🔴 Opponent's Turn
+                <% } %>
+            <% } %>
+        </h3>
+        <p id="fen-display" class="debug-text" style="font-size: 0.8em; color: #777; margin-top: 10px;">
+            Current FEN: <%= $game->{fen_state} %>
+        </p>
+    </div>
+</div>

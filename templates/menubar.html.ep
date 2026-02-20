@@ -30,6 +30,7 @@
             <a href="/imposter" style="padding-left: 25px;">🎭 Imposter</a>
             <a href="/uno/lobby" style="padding-left: 25px;">🃏 UNO</a>
             <a href="/connect4/lobby" style="padding-left: 25px;">🔴 Connect 4</a>
+            <a href="/chess/lobby" style="padding-left: 25px;">♟️ Chess</a>
         </div>
         <a href="/p">📞 Phone Numbers</a>
         <a href="/quiz">🦘Citizenship Test</a>
