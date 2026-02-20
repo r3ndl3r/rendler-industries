@@ -32,10 +32,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedSquare = null;
     let validMoves = [];
 
-    // Unicode map for rendering chess pieces natively without image assets
+    // Unicode map for rendering chess pieces natively.
+    // We use the solid versions for both, and will color them via CSS.
     const pieceUnicode = {
-        'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚',
-        'P': '♙', 'N': '♘', 'B': '♗', 'R': '♖', 'Q': '♕', 'K': '♔'
+        'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚'
     };
 
     /**
@@ -68,9 +68,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (piece) {
                     const pieceSpan = document.createElement('span');
                     pieceSpan.classList.add('piece');
-                    // Map the piece type and color to the correct Unicode character
-                    const charCode = piece.color === 'w' ? piece.type.toUpperCase() : piece.type;
-                    pieceSpan.textContent = pieceUnicode[charCode];
+                    // Color class based on 'w' or 'b'
+                    pieceSpan.classList.add(piece.color === 'w' ? 'white-piece' : 'black-piece');
+                    pieceSpan.textContent = pieceUnicode[piece.type];
                     squareDiv.appendChild(pieceSpan);
                 }
 

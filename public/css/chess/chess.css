@@ -91,6 +91,15 @@
     z-index: 3;
 }
 
+.white-piece {
+    color: #ffffff;
+    text-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+.black-piece {
+    color: #000000;
+}
+
 /* Player information panels (names and captured pieces container) */
 .player-info {
     display: flex;
