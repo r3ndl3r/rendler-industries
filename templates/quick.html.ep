@@ -76,7 +76,10 @@
 
         <% if (is_admin()) { %>
             <div class="separator"></div>
-            
+            <a href="/go" class="tile admin">
+                <div class="icon">🔗</div>
+                <div class="label">Go Links</div>
+            </a>
             <a href="/copy" class="tile admin">
                 <div class="icon">📋</div>
                 <div class="label">Copy / Paste</div>
