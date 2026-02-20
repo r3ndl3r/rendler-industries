@@ -103,13 +103,16 @@ sub move ($c) {
     return $c->render(json => { success => \0, error => 'Unauthorized' })
         unless $game && ($game->{player1_id} == $user_id || $game->{player2_id} == $user_id);
 
-    # Verify it is actually the user's turn
-    return $c->render(json => { success => \0, error => 'Not your turn' })
-        unless $game->{current_turn} == $user_id;
+    my $status = $json->{status} || 'active';
+
+    # Verify it is actually the user's turn (ONLY if they are NOT resigning)
+    if ($status ne 'finished') {
+        return $c->render(json => { success => \0, error => 'Not your turn' })
+            unless $game->{current_turn} == $user_id;
+    }
 
     my $new_fen = $json->{fen};
     my $next_turn_id = $json->{next_turn_id};
-    my $status = $json->{status} || 'active';
     my $winner_id = $json->{winner_id};
     my $last_move = $json->{last_move};
     
