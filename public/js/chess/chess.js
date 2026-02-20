@@ -4,12 +4,6 @@
  * Utilizes the chess.js library for complex move validation (checkmate, castling, en passant)
  * entirely on the client side. This reduces server load and latency by only sending 
  * finalized FEN strings back to the Mojolicious backend.
- * * Flow:
- * 1. Read initial state from DOM data attributes.
- * 2. Render 8x8 grid.
- * 3. Handle user interactions (click to select, click to move).
- * 4. Submit valid moves via fetch() to /chess/move.
- * 5. Poll for updates if it is the opponent's turn.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -34,6 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFen = initialFen;
     let drawOfferByMe = false;
     let serverLastMove = null;
+    let isInteracting = false;
+    let pollInterval = null;
 
     // Unicode map for rendering chess pieces natively.
     const pieceUnicode = {
@@ -41,10 +37,48 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /**
+     * Synthesized Audio System using Web Audio API
+     */
+    const AudioEngine = (() => {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playTone(freq, type, duration, volume = 0.1) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            gain.gain.setValueAtTime(volume, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + duration);
+        }
+
+        return {
+            move: () => playTone(600, 'sine', 0.1),
+            capture: () => {
+                playTone(400, 'square', 0.05, 0.05);
+                setTimeout(() => playTone(300, 'square', 0.1, 0.05), 50);
+            },
+            check: () => {
+                playTone(800, 'sawtooth', 0.1, 0.05);
+                setTimeout(() => playTone(800, 'sawtooth', 0.1, 0.05), 150);
+            },
+            gameOver: () => {
+                playTone(400, 'sine', 0.5);
+                setTimeout(() => playTone(300, 'sine', 0.5), 200);
+                setTimeout(() => playTone(200, 'sine', 0.8), 400);
+            }
+        };
+    })();
+
+    /**
      * Renders the 8x8 HTML grid based on the current chess.js internal board state.
      * Flips the board perspective so the current user is always at the bottom.
      */
     function renderBoard() {
+        if (isInteracting) return; // Don't re-render while user is promoting or in a modal
         boardElement.innerHTML = '';
         const boardState = game.board();
         const isBlackPerspective = (currentUserId === p2Id);
@@ -158,7 +192,13 @@ document.addEventListener('DOMContentLoaded', () => {
             renderBoard();
             
             // Play synthesized sound based on move type
-            playMoveSound(moveResult.captured ? true : false, game.in_check());
+            if (game.in_check()) {
+                AudioEngine.check();
+            } else if (moveResult.captured) {
+                AudioEngine.capture();
+            } else {
+                AudioEngine.move();
+            }
             
             submitMove();
         } else {
@@ -177,53 +217,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Synthesized Audio System using Web Audio API
-     */
-    const AudioEngine = (() => {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        function playTone(freq, type, duration, volume = 0.1) {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, ctx.currentTime);
-            gain.gain.setValueAtTime(volume, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + duration);
-        }
-
-        return {
-            move: () => playTone(600, 'sine', 0.1),
-            capture: () => {
-                playTone(400, 'square', 0.05, 0.05);
-                setTimeout(() => playTone(300, 'square', 0.1, 0.05), 50);
-            },
-            check: () => {
-                playTone(800, 'sawtooth', 0.1, 0.05);
-                setTimeout(() => playTone(800, 'sawtooth', 0.1, 0.05), 150);
-            },
-            gameOver: () => {
-                playTone(400, 'sine', 0.5);
-                setTimeout(() => playTone(300, 'sine', 0.5), 200);
-                setTimeout(() => playTone(200, 'sine', 0.8), 400);
-            }
-        };
-    })();
-
-    function playMoveSound(isCapture = false, isCheck = false) {
-        if (isCheck) {
-            AudioEngine.check();
-        } else if (isCapture) {
-            AudioEngine.capture();
-        } else {
-            AudioEngine.move();
-        }
-    }
-
-    /**
      * Custom Modal Helpers to replace alert/confirm
      */
     const modal = document.getElementById('game-modal');
@@ -233,6 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const okBtn = document.getElementById('modal-ok-btn');
 
     function customAlert(message) {
+        isInteracting = true;
         return new Promise((resolve) => {
             modalMsg.textContent = message;
             confirmBtn.style.display = 'none';
@@ -242,12 +236,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             okBtn.onclick = () => {
                 modal.style.display = 'none';
+                isInteracting = false;
                 resolve();
             };
         });
     }
 
     function customConfirm(message) {
+        isInteracting = true;
         return new Promise((resolve) => {
             modalMsg.textContent = message;
             confirmBtn.style.display = 'inline-block';
@@ -257,10 +253,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             confirmBtn.onclick = () => {
                 modal.style.display = 'none';
+                isInteracting = false;
                 resolve(true);
             };
             cancelBtn.onclick = () => {
                 modal.style.display = 'none';
+                isInteracting = false;
                 resolve(false);
             };
         });
@@ -268,6 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const promoModal = document.getElementById('promotion-modal');
     function getPromotionPiece() {
+        isInteracting = true;
         return new Promise((resolve) => {
             promoModal.style.display = 'flex';
             const buttons = promoModal.querySelectorAll('.promo-btn');
@@ -275,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.onclick = () => {
                     const piece = btn.dataset.piece;
                     promoModal.style.display = 'none';
+                    isInteracting = false;
                     resolve(piece);
                 };
             });
@@ -285,27 +285,22 @@ document.addEventListener('DOMContentLoaded', () => {
      * Submits a move or action payload to the server.
      */
     function submitMovePayload(endpoint, payload = {}) {
-        console.log("Submitting to:", endpoint, "with payload:", payload);
         fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
-        .then(res => {
-            console.log("Response status:", res.status);
-            return res.json();
-        })
+        .then(res => res.json())
         .then(data => {
             if (data.success) {
                 pollGameState(); // Immediate poll after action
             } else {
-                // Action failed on server (e.g., unauthorized or out of turn)
                 customAlert('Action failed: ' + (data.error || 'Unknown error'));
-                pollGameState(); // Force re-sync
+                pollGameState(); 
             }
         })
         .catch(err => {
-            console.error('FETCH ERROR detail:', err);
+            console.error('Fetch error:', err);
             customAlert('Network error occurred. Resyncing...');
             pollGameState();
         });
@@ -322,8 +317,8 @@ document.addEventListener('DOMContentLoaded', () => {
             winnerId = game.in_checkmate() ? currentUserId : 0;
         }
 
-        // IMPORTANT: Update local tracker immediately so poll doesn't see old state
         currentFen = newFen;
+        drawOfferByMe = false; // Move cancels any pending offer
 
         submitMovePayload('/chess/move', {
             game_id: gameId,
@@ -339,10 +334,12 @@ document.addEventListener('DOMContentLoaded', () => {
      * Polls the server for the current game status.
      */
     function pollGameState() {
+        if (isInteracting || gameStatus === 'finished') return;
+
         fetch(`/chess/status/${gameId}`)
         .then(res => res.json())
         .then(data => {
-            if (data.error) return;
+            if (data.error || isInteracting) return;
 
             // Handle Move/FEN updates
             if (data.fen !== currentFen) {
@@ -350,13 +347,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentFen = data.fen;
                 serverLastMove = data.last_move;
                 
-                // Determine if a capture occurred by checking piece count before loading new FEN
                 const getPieceCount = (f) => f.split(' ')[0].replace(/[^a-zA-Z]/g, '').length;
                 const wasCapture = getPieceCount(data.fen) < getPieceCount(oldFen);
 
                 game.load(data.fen);
                 renderBoard();
-                updateHighlights(); // Explicitly refresh highlights
+                updateHighlights(); 
                 
                 if (data.turn === currentUserId) {
                     if (game.in_check()) {
@@ -369,18 +365,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Update local state
             currentTurnId = parseInt(data.turn, 10);
             const oldStatus = gameStatus;
             gameStatus = data.status;
 
-            if (gameStatus === 'finished' && oldStatus === 'active') {
-                AudioEngine.gameOver();
-            }
-
-            // Update UI text
-            const statusText = document.getElementById('game-status-text');
             if (gameStatus === 'finished') {
+                if (oldStatus === 'active') AudioEngine.gameOver();
+                if (pollInterval) clearInterval(pollInterval);
+                
+                const statusText = document.getElementById('game-status-text');
                 const winnerId = parseInt(data.winner_id, 10);
                 if (winnerId === 0) {
                     if (drawOfferByMe) {
@@ -389,31 +382,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     statusText.textContent = "🤝 Game Over - Draw";
                 } else {
-                    const winnerName = (winnerId === p1Id) ? "White" : "Black";
                     const isMeWinner = (winnerId === currentUserId);
-                    
-                    if (statusText.textContent.indexOf("Game Over") === -1) {
-                        if (isMeWinner) {
-                            if (game.in_checkmate()) {
-                                customAlert("Checkmate. You win!");
-                            } else {
-                                customAlert("Opponent resigned. You win!");
-                            }
+                    if (statusText.textContent.indexOf("Game Over") === -1 && isMeWinner) {
+                        if (game.in_checkmate()) {
+                            customAlert("Checkmate. You win!");
+                        } else {
+                            customAlert("Opponent resigned. You win!");
                         }
                     }
-                    
-                    if (isMeWinner) {
-                        statusText.textContent = `🏆 Game Over - You Win!`;
-                    } else {
-                        statusText.textContent = `Game Over - You Resigned/Lost`;
-                    }
+                    statusText.textContent = isMeWinner ? `🏆 Game Over - You Win!` : `Game Over - You Resigned/Lost`;
                 }
-                document.getElementById('offerDrawBtn').style.display = 'none';
-                document.getElementById('resignBtn').style.display = 'none';
+                const offerBtn = document.getElementById('offerDrawBtn');
+                const resignBtn = document.getElementById('resignBtn');
+                if (offerBtn) offerBtn.style.display = 'none';
+                if (resignBtn) resignBtn.style.display = 'none';
             } else if (gameStatus === 'waiting') {
-                statusText.textContent = "⏳ Waiting for opponent...";
+                document.getElementById('game-status-text').textContent = "⏳ Waiting for opponent...";
             } else {
-                statusText.textContent = currentTurnId === currentUserId ? "🟢 Your Turn" : "🔴 Opponent's Turn";
+                document.getElementById('game-status-text').textContent = currentTurnId === currentUserId ? "🟢 Your Turn" : "🔴 Opponent's Turn";
             }
 
             document.getElementById('fen-display').textContent = `Current FEN: ${currentFen}`;
@@ -421,6 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Handle Draw Offers
             const overlay = document.getElementById('draw-offer-overlay');
             const offerBtn = document.getElementById('offerDrawBtn');
+            if (!offerBtn) return;
 
             if (data.draw_offered_by) {
                 if (parseInt(data.draw_offered_by, 10) === currentUserId) {
@@ -432,29 +419,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     overlay.style.display = 'flex';
                 }
             } else {
-                // No active offer in DB. 
-                // Only alert 'refused' if we previously knew we had an offer pending
-                // AND this isn't just the first poll after we clicked the button
                 if (drawOfferByMe && gameStatus === 'active') {
                     drawOfferByMe = false;
                     customAlert('Draw offer was refused.');
                 }
-                
                 overlay.style.display = 'none';
-                if (gameStatus === 'active') {
-                    // Only reset button text if we aren't mid-action
-                    if (!drawOfferByMe) {
-                        offerBtn.textContent = "Offer Draw";
-                        offerBtn.disabled = false;
-                        offerBtn.style.display = 'inline-block';
-                    }
+                if (gameStatus === 'active' && !drawOfferByMe) {
+                    offerBtn.textContent = "Offer Draw";
+                    offerBtn.disabled = false;
+                    offerBtn.style.display = 'inline-block';
                 }
             }
         });
     }
 
     // Polling setup
-    setInterval(pollGameState, 2000);
+    pollInterval = setInterval(pollGameState, 2000);
 
     // Button Listeners
     const resignBtn = document.getElementById('resignBtn');
