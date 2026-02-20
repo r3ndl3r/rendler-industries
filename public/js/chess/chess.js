@@ -114,17 +114,27 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Handles square clicks for piece selection and move execution.
      */
-    function handleSquareClick(squareName) {
+    async function handleSquareClick(squareName) {
         if (currentTurnId !== currentUserId || gameStatus !== 'active') return;
 
         const moveAttempt = validMoves.find(m => m.to === squareName);
 
         if (moveAttempt) {
-            // Basic move execution - default to queen promotion for now if applicable
+            // Check for pawn promotion
+            const piece = game.get(selectedSquare);
+            const isPawn = piece && piece.type === 'p';
+            const isPromotionRank = (piece.color === 'w' && squareName[1] === '8') || 
+                                    (piece.color === 'b' && squareName[1] === '1');
+            
+            let promotionPiece = 'q'; // Default
+            if (isPawn && isPromotionRank) {
+                promotionPiece = await getPromotionPiece();
+            }
+
             game.move({
                 from: selectedSquare,
                 to: squareName,
-                promotion: 'q' 
+                promotion: promotionPiece 
             });
             serverLastMove = `${selectedSquare}-${squareName}`;
             selectedSquare = null;
@@ -153,6 +163,64 @@ document.addEventListener('DOMContentLoaded', () => {
             audio.currentTime = 0;
             audio.play().catch(e => console.log("Audio play failed:", e));
         }
+    }
+
+    /**
+     * Custom Modal Helpers to replace alert/confirm
+     */
+    const modal = document.getElementById('game-modal');
+    const modalMsg = document.getElementById('modal-message');
+    const confirmBtn = document.getElementById('modal-confirm-btn');
+    const cancelBtn = document.getElementById('modal-cancel-btn');
+    const okBtn = document.getElementById('modal-ok-btn');
+
+    function customAlert(message) {
+        return new Promise((resolve) => {
+            modalMsg.textContent = message;
+            confirmBtn.style.display = 'none';
+            cancelBtn.style.display = 'none';
+            okBtn.style.display = 'inline-block';
+            modal.style.display = 'flex';
+            
+            okBtn.onclick = () => {
+                modal.style.display = 'none';
+                resolve();
+            };
+        });
+    }
+
+    function customConfirm(message) {
+        return new Promise((resolve) => {
+            modalMsg.textContent = message;
+            confirmBtn.style.display = 'inline-block';
+            cancelBtn.style.display = 'inline-block';
+            okBtn.style.display = 'none';
+            modal.style.display = 'flex';
+
+            confirmBtn.onclick = () => {
+                modal.style.display = 'none';
+                resolve(true);
+            };
+            cancelBtn.onclick = () => {
+                modal.style.display = 'none';
+                resolve(false);
+            };
+        });
+    }
+
+    const promoModal = document.getElementById('promotion-modal');
+    function getPromotionPiece() {
+        return new Promise((resolve) => {
+            promoModal.style.display = 'flex';
+            const buttons = promoModal.querySelectorAll('.promo-btn');
+            buttons.forEach(btn => {
+                btn.onclick = () => {
+                    const piece = btn.dataset.piece;
+                    promoModal.style.display = 'none';
+                    resolve(piece);
+                };
+            });
+        });
     }
 
     /**
@@ -226,15 +294,28 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update UI text
             const statusText = document.getElementById('game-status-text');
             if (gameStatus === 'finished') {
-                if (data.winner_id === 0) {
+                const winnerId = parseInt(data.winner_id, 10);
+                if (winnerId === 0) {
                     if (drawOfferByMe) {
-                        alert('Your draw offer was accepted.');
+                        customAlert('Your draw offer was accepted.');
                         drawOfferByMe = false;
                     }
                     statusText.textContent = "🤝 Game Over - Draw";
                 } else {
-                    const winnerName = (data.winner_id === p1Id) ? "White" : "Black";
-                    statusText.textContent = `🏆 Game Over - ${winnerName} Wins!`;
+                    const winnerName = (winnerId === p1Id) ? "White" : "Black";
+                    const isMeWinner = (winnerId === currentUserId);
+                    
+                    if (statusText.textContent.indexOf("Game Over") === -1) {
+                        if (isMeWinner) {
+                            customAlert("Opponent resigned or checkmate. You win!");
+                        }
+                    }
+                    
+                    if (isMeWinner) {
+                        statusText.textContent = `🏆 Game Over - You Win!`;
+                    } else {
+                        statusText.textContent = `Game Over - You Resigned/Lost`;
+                    }
                 }
                 document.getElementById('offerDrawBtn').style.display = 'none';
                 document.getElementById('resignBtn').style.display = 'none';
@@ -252,28 +333,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.draw_offered_by) {
                 if (parseInt(data.draw_offered_by, 10) === currentUserId) {
-                    // I offered it
                     offerBtn.textContent = "⌛ Waiting for response...";
                     offerBtn.disabled = true;
                     offerBtn.style.display = 'inline-block';
                     drawOfferByMe = true;
                 } else {
-                    // Opponent offered it
                     overlay.style.display = 'flex';
                 }
             } else {
-                // No active offer - only alert if we WERE tracking a pending offer that is now gone
+                // No active offer in DB. 
+                // Only alert 'refused' if we previously knew we had an offer pending
+                // AND this isn't just the first poll after we clicked the button
                 if (drawOfferByMe && gameStatus === 'active') {
-                    // Slight delay to allow server to persist refuse action before we alert
                     drawOfferByMe = false;
-                    alert('Draw offer was refused.');
+                    customAlert('Draw offer was refused.');
                 }
                 
                 overlay.style.display = 'none';
                 if (gameStatus === 'active') {
-                    offerBtn.textContent = "Offer Draw";
-                    offerBtn.disabled = false;
-                    offerBtn.style.display = 'inline-block';
+                    // Only reset button text if we aren't mid-action
+                    if (!drawOfferByMe) {
+                        offerBtn.textContent = "Offer Draw";
+                        offerBtn.disabled = false;
+                        offerBtn.style.display = 'inline-block';
+                    }
                 }
             }
         });
@@ -285,9 +368,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Button Listeners
     const resignBtn = document.getElementById('resignBtn');
     if (resignBtn) {
-        resignBtn.addEventListener('click', () => {
+        resignBtn.addEventListener('click', async () => {
             if (gameStatus !== 'active') return;
-            if (confirm('Are you sure you want to resign?')) {
+            if (await customConfirm('Are you sure you want to resign?')) {
                 const opponentId = currentUserId === p1Id ? p2Id : p1Id;
                 submitMovePayload('/chess/move', {
                     game_id: gameId, fen: game.fen(), next_turn_id: 0, status: 'finished', winner_id: opponentId
@@ -298,9 +381,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const offerDrawBtn = document.getElementById('offerDrawBtn');
     if (offerDrawBtn) {
-        offerDrawBtn.addEventListener('click', () => {
+        offerDrawBtn.addEventListener('click', async () => {
             if (gameStatus !== 'active') return;
-            if (confirm('Offer a draw?')) {
+            if (await customConfirm('Offer a draw?')) {
                 drawOfferByMe = true;
                 submitMovePayload(`/chess/offer_draw/${gameId}`);
             }

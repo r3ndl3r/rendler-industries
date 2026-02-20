@@ -42,6 +42,29 @@
         </div>
     </div>
 
+    <div id="game-modal" class="game-overlay" style="display: none;">
+        <div class="overlay-content">
+            <p id="modal-message"></p>
+            <div class="overlay-buttons">
+                <button id="modal-confirm-btn" class="btn-control success">Confirm</button>
+                <button id="modal-cancel-btn" class="btn-control danger">Cancel</button>
+                <button id="modal-ok-btn" class="btn-control secondary" style="display: none;">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="promotion-modal" class="game-overlay" style="display: none;">
+        <div class="overlay-content">
+            <p>Promote your pawn:</p>
+            <div class="promotion-choices">
+                <button class="promo-btn" data-piece="q">♛</button>
+                <button class="promo-btn" data-piece="r">♜</button>
+                <button class="promo-btn" data-piece="b">♝</button>
+                <button class="promo-btn" data-piece="n">♞</button>
+            </div>
+        </div>
+    </div>
+
     <div class="status-panel">
         <h3 id="game-status-text">
             <% if ($game->{status} eq 'waiting') { %>
