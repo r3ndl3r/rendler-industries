@@ -1,9 +1,9 @@
 // /public/js/chess/chess.js
 
-/* * Frontend logic for the Chess application.
- * Utilizes the chess.js library for complex move validation (checkmate, castling, en passant)
- * entirely on the client side. This reduces server load and latency by only sending 
- * finalized FEN strings back to the Mojolicious backend.
+/**
+ * Frontend logic for the Chess application.
+ * Handles board rendering, move validation, AJAX synchronization,
+ * and synthesized audio alerts.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,10 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Extract game state provided by the Mojolicious controller
     const gameId = boardElement.dataset.gameId;
     const initialFen = boardElement.dataset.fen;
-    let currentTurnId = parseInt(boardElement.dataset.turn, 10);
-    const p1Id = parseInt(boardElement.dataset.p1, 10); // White
-    const p2Id = parseInt(boardElement.dataset.p2, 10); // Black
-    const currentUserId = parseInt(boardElement.dataset.userId, 10);
+    let currentTurnId = parseInt(boardElement.dataset.turn, 10) || 0;
+    let p1Id = parseInt(boardElement.dataset.p1, 10) || 0; 
+    let p2Id = parseInt(boardElement.dataset.p2, 10) || 0; 
+    const currentUserId = parseInt(boardElement.dataset.userId, 10) || 0;
     let gameStatus = boardElement.dataset.status;
 
     // Initialize the chess.js engine with the server-provided FEN
@@ -37,22 +37,37 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /**
-     * Synthesized Audio System using Web Audio API
+     * Synthesized Audio System using Web Audio API.
+     * Prevents auto-start issues by initializing on first interaction.
      */
+    let audioCtx = null;
     const AudioEngine = (() => {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        function getCtx() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
         
         function playTone(freq, type, duration, volume = 0.1) {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, ctx.currentTime);
-            gain.gain.setValueAtTime(volume, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + duration);
+            try {
+                const ctx = getCtx();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                gain.gain.setValueAtTime(volume, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + duration);
+            } catch (e) {
+                console.warn("Audio playback failed:", e);
+            }
         }
 
         return {
@@ -78,20 +93,18 @@ document.addEventListener('DOMContentLoaded', () => {
      * Flips the board perspective so the current user is always at the bottom.
      */
     function renderBoard() {
-        if (isInteracting) return; // Don't re-render while user is promoting or in a modal
+        if (isInteracting) return;
         boardElement.innerHTML = '';
         const boardState = game.board();
         const isBlackPerspective = (currentUserId === p2Id);
 
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
-                // Flip indices if playing as Black
                 const row = isBlackPerspective ? (7 - r) : r;
                 const col = isBlackPerspective ? (7 - c) : c;
 
                 const squareDiv = document.createElement('div');
                 squareDiv.classList.add('square');
-                
                 const isDark = (row + col) % 2 !== 0;
                 if (isDark) squareDiv.classList.add('dark');
 
@@ -117,13 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Updates highlights for selection, valid moves, and the last move made.
+     * Updates visual highlights for selection, valid moves, and the last move.
      */
     function updateHighlights() {
         const squares = boardElement.querySelectorAll('.square');
-        
-        let lastMoveFrom = null;
-        let lastMoveTo = null;
+        let lastMoveFrom = null, lastMoveTo = null;
 
         if (serverLastMove && serverLastMove.includes('-')) {
             [lastMoveFrom, lastMoveTo] = serverLastMove.split('-');
@@ -131,20 +142,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         squares.forEach(sq => {
             sq.classList.remove('selected', 'valid-move', 'last-move', 'in-check');
-            
-            // Selected piece highlight
             if (sq.dataset.square === selectedSquare) sq.classList.add('selected');
-            
-            // Valid move dots
             if (validMoves.some(m => m.to === sq.dataset.square)) sq.classList.add('valid-move');
-
-            // Last move highlight (from and to) from server state
             if (sq.dataset.square === lastMoveFrom || sq.dataset.square === lastMoveTo) {
                 sq.classList.add('last-move');
             }
         });
 
-        // Highlight King if in check
         if (game.in_check()) {
             const board = game.board();
             for (let r = 0; r < 8; r++) {
@@ -169,13 +173,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const moveAttempt = validMoves.find(m => m.to === squareName);
 
         if (moveAttempt) {
-            // Check for pawn promotion
             const piece = game.get(selectedSquare);
             const isPawn = piece && piece.type === 'p';
             const isPromotionRank = (piece.color === 'w' && squareName[1] === '8') || 
                                     (piece.color === 'b' && squareName[1] === '1');
             
-            let promotionPiece = 'q'; // Default
+            let promotionPiece = 'q';
             if (isPawn && isPromotionRank) {
                 promotionPiece = await getPromotionPiece();
             }
@@ -191,14 +194,9 @@ document.addEventListener('DOMContentLoaded', () => {
             validMoves = [];
             renderBoard();
             
-            // Play synthesized sound based on move type
-            if (game.in_check()) {
-                AudioEngine.check();
-            } else if (moveResult.captured) {
-                AudioEngine.capture();
-            } else {
-                AudioEngine.move();
-            }
+            if (game.in_check()) AudioEngine.check();
+            else if (moveResult.captured) AudioEngine.capture();
+            else AudioEngine.move();
             
             submitMove();
         } else {
@@ -217,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Custom Modal Helpers to replace alert/confirm
+     * Custom themed modals.
      */
     const modal = document.getElementById('game-modal');
     const modalMsg = document.getElementById('modal-message');
@@ -233,12 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelBtn.style.display = 'none';
             okBtn.style.display = 'inline-block';
             modal.style.display = 'flex';
-            
-            okBtn.onclick = () => {
-                modal.style.display = 'none';
-                isInteracting = false;
-                resolve();
-            };
+            okBtn.onclick = () => { modal.style.display = 'none'; isInteracting = false; resolve(); };
         });
     }
 
@@ -250,17 +243,8 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelBtn.style.display = 'inline-block';
             okBtn.style.display = 'none';
             modal.style.display = 'flex';
-
-            confirmBtn.onclick = () => {
-                modal.style.display = 'none';
-                isInteracting = false;
-                resolve(true);
-            };
-            cancelBtn.onclick = () => {
-                modal.style.display = 'none';
-                isInteracting = false;
-                resolve(false);
-            };
+            confirmBtn.onclick = () => { modal.style.display = 'none'; isInteracting = false; resolve(true); };
+            cancelBtn.onclick = () => { modal.style.display = 'none'; isInteracting = false; resolve(false); };
         });
     }
 
@@ -282,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Submits a move or action payload to the server.
+     * API communication logic with response validation.
      */
     function submitMovePayload(endpoint, payload = {}) {
         fetch(endpoint, {
@@ -290,27 +274,24 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error('Response status ' + res.status);
+            return res.json();
+        })
         .then(data => {
-            if (data.success) {
-                pollGameState(); // Immediate poll after action
-            } else {
+            if (data.success) pollGameState();
+            else {
                 customAlert('Action failed: ' + (data.error || 'Unknown error'));
                 pollGameState(); 
             }
         })
-        .catch(err => {
-            console.error('Fetch error:', err);
-            customAlert('Network error occurred. Resyncing...');
-            pollGameState();
-        });
+        .catch(err => console.error('Submission failed:', err));
     }
 
     function submitMove() {
         const newFen = game.fen();
         const nextTurnId = (currentUserId === p1Id) ? p2Id : p1Id;
-        let newStatus = 'active';
-        let winnerId = null;
+        let newStatus = 'active', winnerId = null;
 
         if (game.game_over()) {
             newStatus = 'finished';
@@ -318,30 +299,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentFen = newFen;
-        drawOfferByMe = false; // Move cancels any pending offer
+        drawOfferByMe = false;
 
         submitMovePayload('/chess/move', {
-            game_id: gameId,
-            fen: newFen,
-            next_turn_id: nextTurnId,
-            status: newStatus,
-            winner_id: winnerId,
-            last_move: serverLastMove
+            game_id: gameId, fen: newFen, next_turn_id: nextTurnId,
+            status: newStatus, winner_id: winnerId, last_move: serverLastMove
         });
     }
 
-    /**
-     * Polls the server for the current game status.
-     */
     function pollGameState() {
         if (isInteracting || gameStatus === 'finished') return;
 
         fetch(`/chess/status/${gameId}`)
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error('Poll failed');
+            return res.json();
+        })
         .then(data => {
             if (data.error || isInteracting) return;
 
-            // Handle Move/FEN updates
             if (data.fen !== currentFen) {
                 const oldFen = currentFen;
                 currentFen = data.fen;
@@ -352,20 +328,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 game.load(data.fen);
                 renderBoard();
-                updateHighlights(); 
                 
                 if (data.turn === currentUserId) {
-                    if (game.in_check()) {
-                        AudioEngine.check();
-                    } else if (wasCapture) {
-                        AudioEngine.capture();
-                    } else {
-                        AudioEngine.move();
-                    }
+                    if (game.in_check()) AudioEngine.check();
+                    else if (wasCapture) AudioEngine.capture();
+                    else AudioEngine.move();
                 }
             }
 
             currentTurnId = parseInt(data.turn, 10);
+            p1Id = parseInt(data.p1_id, 10) || p1Id;
+            p2Id = parseInt(data.p2_id, 10) || p2Id;
+
+            // Ensure controls are visible if user is now a player (relevant for P2 who just joined)
+            if (currentUserId === p1Id || currentUserId === p2Id) {
+                const offerBtn = document.getElementById('offerDrawBtn');
+                const resignBtn = document.getElementById('resignBtn');
+                if (gameStatus === 'active') {
+                    if (offerBtn) offerBtn.style.display = 'inline-block';
+                    if (resignBtn) resignBtn.style.display = 'inline-block';
+                }
+            }
+
             const oldStatus = gameStatus;
             gameStatus = data.status;
 
@@ -376,21 +360,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 const statusText = document.getElementById('game-status-text');
                 const winnerId = parseInt(data.winner_id, 10);
                 if (winnerId === 0) {
-                    if (drawOfferByMe) {
-                        customAlert('Your draw offer was accepted.');
-                        drawOfferByMe = false;
-                    }
+                    if (drawOfferByMe) { customAlert('Your draw offer was accepted.'); drawOfferByMe = false; }
                     statusText.textContent = "🤝 Game Over - Draw";
                 } else {
                     const isMeWinner = (winnerId === currentUserId);
-                    if (statusText.textContent.indexOf("Game Over") === -1 && isMeWinner) {
-                        if (game.in_checkmate()) {
-                            customAlert("Checkmate. You win!");
+                    if (statusText.textContent.indexOf("Game Over") === -1) {
+                        if (isMeWinner) {
+                            if (game.in_checkmate()) customAlert("Checkmate. You win!");
+                            else customAlert("Opponent resigned. You win!");
                         } else {
-                            customAlert("Opponent resigned. You win!");
+                            // I am the loser
+                            if (game.in_checkmate()) customAlert("Checkmate. You lost.");
+                            else if (winnerId !== 0) customAlert("Game over. You lost.");
                         }
                     }
-                    statusText.textContent = isMeWinner ? `🏆 Game Over - You Win!` : `Game Over - You Resigned/Lost`;
+                    
+                    if (isMeWinner) {
+                        statusText.textContent = `🏆 Game Over - You Win!`;
+                    } else {
+                        if (game.in_checkmate()) {
+                            statusText.textContent = `Game Over - Checkmate (You Lost)`;
+                        } else {
+                            statusText.textContent = `Game Over - You Resigned`;
+                        }
+                    }
                 }
                 const offerBtn = document.getElementById('offerDrawBtn');
                 const resignBtn = document.getElementById('resignBtn');
@@ -404,7 +397,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.getElementById('fen-display').textContent = `Current FEN: ${currentFen}`;
 
-            // Handle Draw Offers
             const overlay = document.getElementById('draw-offer-overlay');
             const offerBtn = document.getElementById('offerDrawBtn');
             if (!offerBtn) return;
@@ -433,10 +425,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Polling setup
     pollInterval = setInterval(pollGameState, 2000);
 
-    // Button Listeners
     const resignBtn = document.getElementById('resignBtn');
     if (resignBtn) {
         resignBtn.addEventListener('click', async () => {
@@ -463,18 +453,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const acceptDrawBtn = document.getElementById('acceptDrawBtn');
     if (acceptDrawBtn) {
-        acceptDrawBtn.addEventListener('click', () => {
-            submitMovePayload(`/chess/respond_draw/${gameId}?accept=1`);
-        });
+        acceptDrawBtn.addEventListener('click', () => submitMovePayload(`/chess/respond_draw/${gameId}?accept=1`));
     }
 
     const refuseDrawBtn = document.getElementById('refuseDrawBtn');
     if (refuseDrawBtn) {
-        refuseDrawBtn.addEventListener('click', () => {
-            submitMovePayload(`/chess/respond_draw/${gameId}?accept=0`);
-        });
+        refuseDrawBtn.addEventListener('click', () => submitMovePayload(`/chess/respond_draw/${gameId}?accept=0`));
     }
 
-    // Initial setup
     renderBoard();
 });

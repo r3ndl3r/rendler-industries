@@ -24,8 +24,8 @@
                  data-game-id="<%= $game->{id} %>" 
                  data-fen="<%= $game->{fen_state} %>"
                  data-turn="<%= $game->{current_turn} %>"
-                 data-p1="<%= $game->{player1_id} %>"
-                 data-p2="<%= $game->{player2_id} %>"
+                 data-p1="<%= $game->{player1_id} || 0 %>"
+                 data-p2="<%= $game->{player2_id} || 0 %>"
                  data-status="<%= $game->{status} %>"
                  data-user-id="<%= $uid %>">
                  </div>

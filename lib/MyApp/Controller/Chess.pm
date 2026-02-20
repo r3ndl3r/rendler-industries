@@ -112,13 +112,20 @@ sub move ($c) {
     }
 
     my $new_fen = $json->{fen};
-    my $next_turn_id = $json->{next_turn_id};
-    my $winner_id = $json->{winner_id};
-    my $last_move = $json->{last_move};
+    my $next_turn_id = int($json->{next_turn_id} // 0);
+    my $winner_id = $json->{winner_id}; # Can be null
+    my $last_move = $json->{last_move} // '';
     
-    my $success = $c->db->update_chess_game_state(
-        $game_id, $next_turn_id, $new_fen, $status, $winner_id, $last_move
-    );
+    my $success = 0;
+    eval {
+        $success = $c->db->update_chess_game_state(
+            $game_id, $next_turn_id, $new_fen, $status, $winner_id, $last_move
+        );
+    };
+    if ($@) {
+        $c->app->log->error("Chess move failed for game $game_id: $@");
+        return $c->render(json => { success => \0, error => 'Database update failed' });
+    }
     
     $c->render(json => { success => $success ? \1 : \0 });
 }
@@ -137,7 +144,9 @@ sub poll_status ($c) {
         status => $game->{status},
         winner_id => $game->{winner_id},
         draw_offered_by => $game->{draw_offered_by},
-        last_move => $game->{last_move}
+        last_move => $game->{last_move},
+        p1_id => $game->{player1_id},
+        p2_id => $game->{player2_id}
     });
 }
 
