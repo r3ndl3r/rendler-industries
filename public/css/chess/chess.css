@@ -104,6 +104,15 @@
     z-index: 1;
 }
 
+/* Visual indicator for a King in check */
+.square.in-check::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(255, 0, 0, 0.5); /* Red for check */
+    z-index: 1;
+}
+
 /* Visual indicator for valid destination squares during a move calculation */
 .square.valid-move::after {
     content: '';
