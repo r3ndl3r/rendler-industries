@@ -53,18 +53,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         function updateFileName(name) {
-            fileNameDisplay.textContent = name;
-            fileNameDisplay.style.display = 'block';
+            if (fileNameDisplay) {
+                fileNameDisplay.textContent = name;
+                fileNameDisplay.style.display = 'block';
+            }
         }
 
         function handleFiles(files) {
             const file = files[0];
             const maxSize = 1024 * 1024 * 1024;
             if (file.size > maxSize) {
-                alert('File too large! Maximum size is 1GB.');
+                if (typeof showToast === 'function') {
+                    showToast('File too large! Maximum size is 1GB.', 'error');
+                } else {
+                    alert('File too large! Maximum size is 1GB.');
+                }
                 fileInput.value = '';
-                fileNameDisplay.textContent = '';
-                fileNameDisplay.style.display = 'none';
+                if (fileNameDisplay) {
+                    fileNameDisplay.textContent = '';
+                    fileNameDisplay.style.display = 'none';
+                }
                 return;
             }
         }
@@ -106,46 +114,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const fileInput = document.getElementById('file');
         if (!fileInput.files.length) {
             e.preventDefault();
-            alert('Please select a file');
+            if (typeof showToast === 'function') {
+                showToast('Please select a file', 'error');
+            } else {
+                alert('Please select a file');
+            }
             return false;
         }
     });
-
-    function showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.textContent = message;
-        toast.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
-            color: white;
-            font-weight: 500;
-            z-index: 10000;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            backdrop-filter: blur(10px);
-        `;
-
-        if (type === 'success') {
-            toast.style.background = 'rgba(76, 175, 80, 0.95)';
-            toast.style.border = '1px solid rgba(76, 175, 80, 0.3)';
-        }
-
-        document.body.appendChild(toast);
-        setTimeout(() => {
-            toast.style.transform = 'translateX(0)';
-        }, 100);
-
-        setTimeout(() => {
-            toast.style.transform = 'translateX(400px)';
-            setTimeout(() => {
-                document.body.removeChild(toast);
-            }, 300);
-        }, 3000);
-    }
 
     document.querySelectorAll('.alert').forEach(alert => {
         setTimeout(() => {
