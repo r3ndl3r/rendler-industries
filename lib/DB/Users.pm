@@ -111,7 +111,7 @@ sub DB::get_all_users {
     
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("SELECT id, username, email, created_at, is_admin, status FROM users");
+    my $sth = $self->{dbh}->prepare("SELECT id, username, email, created_at, is_admin, is_family, status FROM users");
     $sth->execute();
     
     return $sth->fetchall_arrayref({});
@@ -126,7 +126,7 @@ sub DB::get_user_by_id {
     my ($self, $id) = @_;
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("SELECT id, username, email, is_admin, status FROM users WHERE id = ?");
+    my $sth = $self->{dbh}->prepare("SELECT id, username, email, is_admin, is_family, status FROM users WHERE id = ?");
     $sth->execute($id);
     
     return $sth->fetchrow_hashref();
@@ -134,18 +134,19 @@ sub DB::get_user_by_id {
 
 # Updates user profile information.
 # Parameters:
-#   id       : User ID to update
-#   username : New username
-#   email    : New email
-#   is_admin : Admin flag (1/0)
-#   status   : Account status (e.g., 'approved', 'pending')
+#   id        : User ID to update
+#   username  : New username
+#   email     : New email
+#   is_admin  : Admin flag (1/0)
+#   is_family : Family flag (1/0)
+#   status    : Account status (e.g., 'approved', 'pending')
 # Returns: Void
 sub DB::update_user {
-    my ($self, $id, $username, $email, $is_admin, $status) = @_;
+    my ($self, $id, $username, $email, $is_admin, $is_family, $status) = @_;
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("UPDATE users SET username = ?, email = ?, is_admin = ?, status = ? WHERE id = ?");
-    $sth->execute($username, $email, $is_admin, $status, $id);
+    my $sth = $self->{dbh}->prepare("UPDATE users SET username = ?, email = ?, is_admin = ?, is_family = ?, status = ? WHERE id = ?");
+    $sth->execute($username, $email, $is_admin, $is_family, $status, $id);
 }
 
 # Resets a user's password.
@@ -216,6 +217,23 @@ sub DB::is_admin {
     my ($is_admin) = $sth->fetchrow_array();
     
     return $is_admin ? 1 : 0;
+}
+
+# Checks if a user has family member status.
+# Parameters:
+#   username : Username to check
+# Returns:
+#   1 if family, 0 otherwise
+sub DB::is_family {
+    my ($self, $username) = @_;
+    
+    $self->ensure_connection;
+    
+    my $sth = $self->{dbh}->prepare("SELECT is_family FROM users WHERE username = ?");
+    $sth->execute($username);
+    my ($is_family) = $sth->fetchrow_array();
+    
+    return $is_family ? 1 : 0;
 }
 
 # Helper to resolve username to internal ID.

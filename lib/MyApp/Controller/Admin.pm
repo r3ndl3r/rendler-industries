@@ -117,6 +117,7 @@ sub edit_user {
     my $username = trim($c->param('username') // '');
     my $email = trim($c->param('email') // '');
     my $is_admin = $c->param('is_admin') ? 1 : 0;
+    my $is_family = $c->param('is_family') ? 1 : 0;
     my $status = $c->param('status') // 'pending';
     my $password = $c->param('password');
     
@@ -137,7 +138,7 @@ sub edit_user {
     }
     
     # Update profile details
-    $c->db->update_user($id, $username, $email, $is_admin, $status);
+    $c->db->update_user($id, $username, $email, $is_admin, $is_family, $status);
     
     return $c->redirect_to('/users');
 }

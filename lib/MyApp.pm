@@ -80,6 +80,19 @@ sub startup {
             return $db->is_admin($c->session('user'));
         }
     );
+
+    # Helper: Check if current user is a Family Member (or Admin)
+    # Parameters: None (Uses session)
+    # Returns: Boolean (1 if family/admin, 0 otherwise)
+    $self->helper(
+        is_family => sub {
+            my $c = shift;
+            return 0 unless $c->session('user');
+            my $username = $c->session('user');
+            return 1 if $db->is_admin($username);
+            return $db->is_family($username);
+        }
+    );
     
     # Helper: Retrieve database ID for current user
     # Parameters: None
@@ -146,7 +159,14 @@ sub startup {
     $self->helper(
         menu => sub {
             my $c = shift;
-            my $permission = $c->is_admin ? 'admin' : ($c->is_logged_in ? 'user' : 'guest');
+            my $permission = 'guest';
+            if ($c->is_admin) {
+                $permission = 'admin';
+            } elsif ($c->is_family) {
+                $permission = 'family';
+            } elsif ($c->is_logged_in) {
+                $permission = 'user';
+            }
             return $c->db->get_menu_tree($permission);
         }
     );
@@ -168,6 +188,14 @@ sub startup {
         # Use your existing helper which is already working in Timers.pm
         return 1 if $c->is_admin; 
         
+        $c->render('noperm');
+        return undef;
+    });
+
+    # Family bridge nested under the auth bridge
+    my $family = $auth->under(sub {
+        my $c = shift;
+        return 1 if $c->is_family;
         $c->render('noperm');
         return undef;
     });
@@ -219,30 +247,30 @@ sub startup {
     $admin->post('/users/update/:id')->to('admin#edit_user');
     
     # --- Imposter Game Routes ---
-    $auth->get('/imposter')->to('imposter#index');
-    $auth->post('/imposter/add_player')->to('imposter#add_custom_player');
-    $auth->post('/imposter/edit_player')->to('imposter#edit_player');
-    $auth->post('/imposter/remove_player')->to('imposter#remove_player');
-    $auth->post('/imposter/clear_lobby')->to('imposter#clear_lobby');
-    $auth->post('/imposter/start')->to('imposter#start_game');
-    $auth->post('/imposter/toggle_view')->to('imposter#toggle_view');
-    $auth->post('/imposter/set_lang')->to('imposter#set_language');
-    $auth->post('/imposter/next_player')->to('imposter#next_player');
-    $auth->post('/imposter/end_game_early')->to('imposter#end_game_early');
-    $auth->post('/imposter/reveal')->to('imposter#reveal_results');
-    $auth->post('/imposter/play_again')->to('imposter#play_again');
+    $family->get('/imposter')->to('imposter#index');
+    $family->post('/imposter/add_player')->to('imposter#add_custom_player');
+    $family->post('/imposter/edit_player')->to('imposter#edit_player');
+    $family->post('/imposter/remove_player')->to('imposter#remove_player');
+    $family->post('/imposter/clear_lobby')->to('imposter#clear_lobby');
+    $family->post('/imposter/start')->to('imposter#start_game');
+    $family->post('/imposter/toggle_view')->to('imposter#toggle_view');
+    $family->post('/imposter/set_lang')->to('imposter#set_language');
+    $family->post('/imposter/next_player')->to('imposter#next_player');
+    $family->post('/imposter/end_game_early')->to('imposter#end_game_early');
+    $family->post('/imposter/reveal')->to('imposter#reveal_results');
+    $family->post('/imposter/play_again')->to('imposter#play_again');
     
     # --- Swear Jar Routes ---
-    $auth->get('/swear')->to('swear#index');
-    $auth->post('/swear/add')->to('swear#add_fine');
-    $auth->post('/swear/pay')->to('swear#pay_debt');
-    $auth->post('/swear/spend')->to('swear#spend');
-    $auth->get('/swear/manage')->to('swear#manage');
-    $auth->post('/swear/member/add')->to('swear#add_member');
-    $auth->post('/swear/member/delete')->to('swear#delete_member');
+    $family->get('/swear')->to('swear#index');
+    $family->post('/swear/add')->to('swear#add_fine');
+    $family->post('/swear/pay')->to('swear#pay_debt');
+    $family->post('/swear/spend')->to('swear#spend');
+    $family->get('/swear/manage')->to('swear#manage');
+    $family->post('/swear/member/add')->to('swear#add_member');
+    $family->post('/swear/member/delete')->to('swear#delete_member');
     
     # --- Birthday Calendar Routes ---
-    $auth->get('/birthdays')->to('birthdays#index');
+    $family->get('/birthdays')->to('birthdays#index');
     $admin->get('/birthdays/manage')->to('birthdays#manage');
     $admin->post('/birthdays/add')->to('birthdays#add');
     $admin->post('/birthdays/edit')->to('birthdays#edit');
@@ -261,12 +289,12 @@ sub startup {
     $admin->post('/files/permissions/:id')->to('files#edit_permissions');
 
     # --- Shopping List Routes ---
-    $auth->get('/shopping')->to('shopping_list#index');
-    $auth->post('/shopping/add')->to('shopping_list#add');
-    $auth->post('/shopping/toggle/:id')->to('shopping_list#toggle');
-    $auth->post('/shopping/delete/:id')->to('shopping_list#delete');
-    $auth->post('/shopping/clear')->to('shopping_list#clear_checked');
-    $auth->post('/shopping/edit/:id')->to('shopping_list#edit');
+    $family->get('/shopping')->to('shopping_list#index');
+    $family->post('/shopping/add')->to('shopping_list#add');
+    $family->post('/shopping/toggle/:id')->to('shopping_list#toggle');
+    $family->post('/shopping/delete/:id')->to('shopping_list#delete');
+    $family->post('/shopping/clear')->to('shopping_list#clear_checked');
+    $family->post('/shopping/edit/:id')->to('shopping_list#edit');
 
     # --- Connect 4 Routes ---
     $auth->get('/connect4/lobby')->to('connect4#lobby');
@@ -286,19 +314,19 @@ sub startup {
     $auth->post('/uno/draw_card')->to('uno#draw_card');
 
     # --- Calendar Routes ---
-    $auth->get('/calendar')->to('calendar#index');
-    $auth->get('/calendar/events')->to('calendar#get_events');
-    $auth->post('/calendar/add')->to('calendar#add');
-    $auth->post('/calendar/edit')->to('calendar#edit');
-    $auth->post('/calendar/delete')->to('calendar#delete');
-    $auth->get('/calendar/manage')->to('calendar#manage');
+    $family->get('/calendar')->to('calendar#index');
+    $family->get('/calendar/events')->to('calendar#get_events');
+    $family->post('/calendar/add')->to('calendar#add');
+    $family->post('/calendar/edit')->to('calendar#edit');
+    $family->post('/calendar/delete')->to('calendar#delete');
+    $family->get('/calendar/manage')->to('calendar#manage');
 
     # --- Timer Routes ---
-    $auth->get('/timers')->to('timers#dashboard');
-    $auth->get('/timers/api/status')->to('timers#api_status');
-    $auth->post('/timers/start')->to('timers#start_timer');
-    $auth->post('/timers/stop')->to('timers#stop_timer');
-    $auth->post('/timers/pause')->to('timers#toggle_pause');
+    $family->get('/timers')->to('timers#dashboard');
+    $family->get('/timers/api/status')->to('timers#api_status');
+    $family->post('/timers/start')->to('timers#start_timer');
+    $family->post('/timers/stop')->to('timers#stop_timer');
+    $family->post('/timers/pause')->to('timers#toggle_pause');
     $admin->get('/timers/manage')->to('timers#manage');
     $admin->post('/timers/create')->to('timers#create');
     $admin->post('/timers/update/:id')->to('timers#update');

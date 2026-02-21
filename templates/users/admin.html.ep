@@ -19,6 +19,7 @@
                 <th>Created</th>
                 <th>Status</th>
                 <th>Admin</th>
+                <th>Family</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -39,6 +40,13 @@
                     <td data-label="Admin">
                         <% if ($user->{is_admin}) { %>
                             <span class="admin-badge">Yes</span>
+                        <% } else { %>
+                            <span>No</span>
+                        <% } %>
+                    </td>
+                    <td data-label="Family">
+                        <% if ($user->{is_family}) { %>
+                            <span class="family-badge">Yes</span>
                         <% } else { %>
                             <span>No</span>
                         <% } %>
