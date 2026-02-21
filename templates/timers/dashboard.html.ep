@@ -5,7 +5,6 @@
 <% content_for 'head' => begin %>
     <link rel="stylesheet" href="/css/timers/base.css">
     <link rel="stylesheet" href="/css/timers/dashboard.css">
-    <link rel="stylesheet" href="/css/timers/toast.css">
     <link rel="stylesheet" href="/css/timers/responsive.css">
     <script src="/js/timers/utils.js"></script>
     <script src="/js/timers/dashboard.js"></script>

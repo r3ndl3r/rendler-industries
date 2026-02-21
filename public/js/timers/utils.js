@@ -42,23 +42,12 @@ const TimerUtils = {
 
     // Show toast notification
     showToast: function(message, type = 'info') {
-        const existingToast = document.querySelector('.timer-toast');
-        if (existingToast) {
-            existingToast.remove();
+        if (typeof showToast === 'function') {
+            showToast(message, type);
+        } else {
+            console.warn('Global showToast not found, falling back to alert');
+            alert(message);
         }
-        
-        const toast = document.createElement('div');
-        toast.className = `timer-toast timer-toast-${type}`;
-        toast.textContent = message;
-        
-        document.body.appendChild(toast);
-        
-        setTimeout(() => toast.classList.add('show'), 10);
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
     },
 
     // Calculate status color based on usage percentage
