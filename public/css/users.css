@@ -203,6 +203,77 @@ h1 {
     border-color: #3b82f6;
 }
 
+/* Toggle Switch Styles */
+.toggle-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0f172a;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #334155;
+    margin-bottom: 1.5rem;
+}
+
+.toggle-group label {
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #334155;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #3b82f6;
+}
+
+input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+.slider.family:checked + .slider {
+    background-color: #a855f7;
+}
+
+/* Variant for family member toggle color */
+input:checked + .slider-family {
+    background-color: #a855f7;
+}
+
 .form-actions {
     display: flex;
     gap: 1rem;
