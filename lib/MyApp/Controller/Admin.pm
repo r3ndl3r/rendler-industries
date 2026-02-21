@@ -143,4 +143,33 @@ sub edit_user {
     return $c->redirect_to('/users');
 }
 
+# API Endpoint: Granularly toggles a user role (Admin/Family) via AJAX.
+# Route: POST /users/toggle_role
+# Parameters:
+#   id    : User ID
+#   role  : 'admin' or 'family'
+#   value : 1 or 0
+# Returns:
+#   JSON: { success => 1 } or { success => 0, error => $msg }
+sub toggle_role {
+    my $c = shift;
+    my $id = $c->param('id');
+    my $role = $c->param('role');
+    my $value = $c->param('value');
+
+    unless ($id && $id =~ /^\d+$/ && $role =~ /^(admin|family)$/ && defined $value) {
+        return $c->render(json => { success => 0, error => 'Invalid parameters' });
+    }
+
+    eval {
+        $c->db->toggle_user_role($id, $role, $value);
+        $c->render(json => { success => 1 });
+    };
+
+    if ($@) {
+        $c->app->log->error("Failed to toggle role ($role) for user $id: $@");
+        $c->render(json => { success => 0, error => 'Database error' });
+    }
+}
+
 1;

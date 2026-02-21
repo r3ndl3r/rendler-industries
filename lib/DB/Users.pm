@@ -236,6 +236,21 @@ sub DB::is_family {
     return $is_family ? 1 : 0;
 }
 
+# Granularly toggles a specific user role (is_admin or is_family).
+# Parameters:
+#   id    : User ID
+#   role  : Column name ('admin' -> is_admin, 'family' -> is_family)
+#   value : 1 or 0
+# Returns: Void
+sub DB::toggle_user_role {
+    my ($self, $id, $role, $value) = @_;
+    $self->ensure_connection;
+    
+    my $column = $role eq 'admin' ? 'is_admin' : 'is_family';
+    my $sth = $self->{dbh}->prepare("UPDATE users SET $column = ? WHERE id = ?");
+    $sth->execute($value, $id);
+}
+
 # Helper to resolve username to internal ID.
 # Parameters:
 #   username : Username

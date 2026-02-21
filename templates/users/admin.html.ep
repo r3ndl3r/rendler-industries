@@ -5,6 +5,7 @@
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/users.css">
+    <script src="/js/users.js"></script>
 <% end %>
 
 <div class="admin-container">
@@ -38,18 +39,20 @@
                         <% } %>
                     </td>
                     <td data-label="Admin">
-                        <% if ($user->{is_admin}) { %>
-                            <span class="admin-badge">Yes</span>
-                        <% } else { %>
-                            <span>No</span>
-                        <% } %>
+                        <label class="switch">
+                            <input type="checkbox" 
+                                   onchange="toggleRole(<%= $user->{id} %>, 'admin', this.checked)" 
+                                   <%= $user->{is_admin} ? 'checked' : '' %>>
+                            <span class="slider"></span>
+                        </label>
                     </td>
                     <td data-label="Family">
-                        <% if ($user->{is_family}) { %>
-                            <span class="family-badge">Yes</span>
-                        <% } else { %>
-                            <span>No</span>
-                        <% } %>
+                        <label class="switch">
+                            <input type="checkbox" 
+                                   onchange="toggleRole(<%= $user->{id} %>, 'family', this.checked)" 
+                                   <%= $user->{is_family} ? 'checked' : '' %>>
+                            <span class="slider slider-family"></span>
+                        </label>
                     </td>
                     <td data-label="Actions">
                         <div class="action-btns">
