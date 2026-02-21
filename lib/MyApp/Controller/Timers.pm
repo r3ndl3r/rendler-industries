@@ -24,6 +24,9 @@ use Mojo::Util qw(trim);
 sub dashboard {
     my $c = shift;
     
+    # Admins are redirected to the management interface as they don't use personal timers
+    return $c->redirect_to('/timers/manage') if $c->is_admin;
+
     my $user_id = $c->current_user_id;
     my $timers = $c->db->get_user_timers($user_id);
     
