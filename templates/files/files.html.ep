@@ -8,24 +8,25 @@
     <script defer src="/js/files.js"></script>
 % end
 
-<div class="files-container">
+<div class="admin-container">
+    <div class="manage-header">
+        <h1>📁 Files</h1>
+        <% if (stash('is_admin')) { %>
+            <div class="manage-actions">
+                <a href="/files/upload" class="btn-primary">
+                    + Upload New File
+                </a>
+            </div>
+        <% } %>
+    </div>
+
     <% if (flash('message')) { %>
         <div class="alert alert-success">
             <%= flash('message') %>
         </div>
     <% } %>
 
-    <% if (stash('is_admin')) { %>
-        <div class="upload-cta">
-            <a href="/files/upload" class="btn-upload-link">
-                📤 Upload New File
-            </a>
-        </div>
-    <% } %>
-
-    <div class="section">
-        <h2>📋 Uploaded Files</h2>
-
+    <div class="files-list">
         <% if (@{stash('files') || []}) { %>
             <table class="files-table">
                 <thead>
@@ -43,23 +44,23 @@
                 <tbody>
                     <% for my $file (@{stash('files')}) { %>
                         <tr>
-                            <td class="col-icon">
+                            <td class="col-icon" data-label="Icon">
                                 <% if ($file->{mime_type} =~ /^image/) { %>🖼️<% }
                                    elsif ($file->{mime_type} =~ /pdf/) { %>📄<% }
                                    elsif ($file->{mime_type} =~ /^text/) { %>📃<% }
                                    else { %>📎<% } %>
                             </td>
-                            <td class="col-filename">
+                            <td class="col-filename" data-label="Filename">
                                 <strong><%= $file->{original_filename} %></strong>
                                 <% if ($file->{description}) { %>
                                     <br><small class="file-desc"><%= $file->{description} %></small>
                                 <% } %>
                             </td>
-                            <td class="col-uploader"><%= $file->{uploaded_by} %></td>
-                            <td class="col-date"><%= $file->{uploaded_at} %></td>
-                            <td class="col-size"><%= sprintf('%.2f MB', $file->{file_size} / 1024 / 1024) %></td>
-                            <td class="col-downloads"><%= $file->{download_count} || 0 %></td>
-                            <td class="col-access">
+                            <td class="col-uploader" data-label="Uploader"><%= $file->{uploaded_by} %></td>
+                            <td class="col-date" data-label="Date"><%= $file->{uploaded_at} %></td>
+                            <td class="col-size" data-label="Size"><%= sprintf('%.2f MB', $file->{file_size} / 1024 / 1024) %></td>
+                            <td class="col-downloads" data-label="Downloads"><%= $file->{download_count} || 0 %></td>
+                            <td class="col-access" data-label="Access">
                                 <% if ($file->{admin_only}) { %>
                                     <span class="badge badge-admin">Admin</span>
                                 <% } elsif (defined $file->{allowed_users} && $file->{allowed_users} ne '') { %>
