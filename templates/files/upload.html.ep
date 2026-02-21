@@ -4,20 +4,15 @@
 % title '📤 Upload File';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/upload.css">
+    <link rel="stylesheet" href="/css/files.css">
     <script defer src="/js/files.js"></script>
 % end
 
-<div class="files-container">
+<div class="admin-container">
     <h1>📤 Upload New File</h1>
 
-    <div class="back-link">
-        <a href="/files">← Back to Files</a>
-    </div>
-
-    <div class="section upload-section">
-        <h2>File Upload</h2>
-        <form method="POST" action="/files" enctype="multipart/form-data" id="uploadForm">
+    <div class="edit-container">
+        <form method="POST" action="/files" enctype="multipart/form-data" id="uploadForm" class="edit-form">
             <div class="form-group">
                 <label for="file">Choose File (Max 1GB)</label>
                 <div class="file-drop-zone" id="dropZone">
@@ -32,9 +27,9 @@
                 <textarea id="description" name="description" rows="3" placeholder="Add a description for this file..."></textarea>
             </div>
 
-            <div class="checkbox-group">
-                <input type="checkbox" name="admin_only" id="admin_only">
+            <div class="form-group checkbox-group">
                 <label for="admin_only">
+                    <input type="checkbox" name="admin_only" id="admin_only">
                     🔒 Admin Only Access
                 </label>
             </div>
@@ -48,10 +43,13 @@
                         <% } %>
                     <% } %>
                 </select>
-                <small>Hold Ctrl/Cmd to select multiple users. Leave empty for public access (anyone with link).</small>
+                <small>Hold Ctrl/Cmd to select multiple users. Leave empty for public access.</small>
             </div>
 
-            <button type="submit" class="btn-upload">📤 Upload File</button>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-save">📤 Upload File</button>
+                <a href="/files" class="btn btn-cancel">Cancel</a>
+            </div>
         </form>
     </div>
 </div>

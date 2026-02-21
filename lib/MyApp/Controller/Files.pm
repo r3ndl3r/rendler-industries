@@ -28,7 +28,13 @@ sub index {
     my $files = $c->db->get_all_files_metadata;
     my $users = $c->db->get_all_users;
     
-    $c->render('files/files', files => $files, users => $users);
+    $c->stash(
+        files    => $files, 
+        users    => $users,
+        is_admin => $c->is_admin
+    );
+    
+    $c->render('files/files');
 }
 
 # Renders the file upload form.
@@ -42,7 +48,10 @@ sub upload_form {
     
     # Fetch users for the permission selector
     my $users = $c->db->get_all_users;
-    $c->stash(users => $users);
+    $c->stash(
+        users    => $users,
+        is_admin => $c->is_admin
+    );
     $c->render('files/upload');
 }
 
