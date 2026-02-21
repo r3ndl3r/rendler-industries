@@ -36,17 +36,17 @@
                     % for my $link (@$links) {
                     <tr data-id="<%= $link->{id} %>" class="<%= $link->{parent_id} ? 'child-row' : 'parent-row' %>">
                         <td class="drag-handle">☰</td>
-                        <td>
+                        <td data-label="Label">
                             % if ($link->{is_separator}) {
                                 <span class="separator-label">───── SEPARATOR ─────</span>
                             % } else {
                                 <span class="<%= $link->{css_class} %>"><strong><%= $link->{label} %></strong></span>
                             % }
                         </td>
-                        <td><code><%= $link->{url} %></code></td>
-                        <td><%= $link->{parent_label} || '-' %></td>
-                        <td><span class="permission-tag tag-<%= $link->{permission_level} %>"><%= ucfirst($link->{permission_level}) %></span></td>
-                        <td>
+                        <td data-label="URL"><code><%= $link->{url} %></code></td>
+                        <td data-label="Parent"><%= $link->{parent_label} || '-' %></td>
+                        <td data-label="Permission"><span class="permission-tag tag-<%= $link->{permission_level} %>"><%= ucfirst($link->{permission_level}) %></span></td>
+                        <td data-label="Status">
                             <span class="status-pill <%= $link->{is_active} ? 'active' : 'inactive' %>">
                                 <%= $link->{is_active} ? 'Active' : 'Hidden' %>
                             </span>
