@@ -1,0 +1,156 @@
+% # /templates/menu/manage.html.ep
+
+% layout 'default';
+% title 'Manage Menu Links';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/menu/manage.css">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="/js/menu/manage.js"></script>
+<% end %>
+
+<div class="manage-container">
+    <div class="manage-header">
+        <h1>Manage Menu Links</h1>
+        <div class="manage-actions">
+            <a href="/" class="btn-secondary">← Back to Home</a>
+            <button id="addLinkBtn" class="btn-primary">+ Add Link</button>
+        </div>
+    </div>
+
+    <div class="menu-list">
+        <table class="menu-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%"></th> <!-- For drag handle -->
+                    <th style="width: 25%">Label</th>
+                    <th style="width: 25%">URL</th>
+                    <th style="width: 15%">Parent</th>
+                    <th style="width: 10%">Permission</th>
+                    <th style="width: 10%">Status</th>
+                    <th style="width: 10%">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="menuTableBody">
+                % if (@$links) {
+                    % for my $link (@$links) {
+                    <tr data-id="<%= $link->{id} %>" class="<%= $link->{parent_id} ? 'child-row' : 'parent-row' %>">
+                        <td class="drag-handle">☰</td>
+                        <td>
+                            % if ($link->{is_separator}) {
+                                <span class="separator-label">───── SEPARATOR ─────</span>
+                            % } else {
+                                <span class="<%= $link->{css_class} %>"><strong><%= $link->{label} %></strong></span>
+                            % }
+                        </td>
+                        <td><code><%= $link->{url} %></code></td>
+                        <td><%= $link->{parent_label} || '-' %></td>
+                        <td><span class="permission-tag tag-<%= $link->{permission_level} %>"><%= ucfirst($link->{permission_level}) %></span></td>
+                        <td>
+                            <span class="status-pill <%= $link->{is_active} ? 'active' : 'inactive' %>">
+                                <%= $link->{is_active} ? 'Active' : 'Hidden' %>
+                            </span>
+                        </td>
+                        <td class="actions-cell">
+                            <button class="btn-secondary btn-edit" 
+                                data-id="<%= $link->{id} %>"
+                                data-label="<%= $link->{label} %>"
+                                data-url="<%= $link->{url} %>"
+                                data-parent="<%= $link->{parent_id} %>"
+                                data-permission="<%= $link->{permission_level} %>"
+                                data-class="<%= $link->{css_class} %>"
+                                data-target="<%= $link->{target} %>"
+                                data-active="<%= $link->{is_active} %>"
+                                data-sort="<%= $link->{sort_order} %>"
+                                data-separator="<%= $link->{is_separator} %>">Edit</button>
+                        </td>
+                    </tr>
+                    % }
+                % } else {
+                    <tr><td colspan="7" class="empty-state">No menu links found.</td></tr>
+                % }
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="manage-footer">
+        <p class="hint-text">💡 Tip: Drag and drop rows to reorder the menu items.</p>
+        <button id="saveOrderBtn" class="btn-success" style="display: none;">Save New Order</button>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="linkModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modalTitle">Add Menu Link</h2>
+        <form id="linkForm">
+            <input type="hidden" id="linkId" name="id">
+            <input type="hidden" id="linkSort" name="sort_order">
+            
+            <div class="form-group">
+                <label>Label *</label>
+                <input type="text" id="linkLabel" name="label" placeholder="e.g. 📅 Calendar" required>
+            </div>
+            
+            <div class="form-group">
+                <label>URL *</label>
+                <input type="text" id="linkUrl" name="url" placeholder="e.g. /calendar or https://..." required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Parent Item</label>
+                    <select id="linkParent" name="parent_id">
+                        <option value="">None (Top Level)</option>
+                        % for my $p (@$parents) {
+                            <option value="<%= $p->{id} %>"><%= $p->{label} %></option>
+                        % }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Permission Level</label>
+                    <select id="linkPermission" name="permission_level">
+                        <option value="guest">Guest (Public)</option>
+                        <option value="user" selected>User (Logged In)</option>
+                        <option value="admin">Admin Only</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>CSS Class</label>
+                    <input type="text" id="linkClass" name="css_class" placeholder="e.g. text-red">
+                </div>
+                <div class="form-group">
+                    <label>Target</label>
+                    <select id="linkTarget" name="target">
+                        <option value="_self">Same Tab</option>
+                        <option value="_blank">New Tab</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="linkSeparator" name="is_separator" value="1">
+                    Is Separator (Horizontal Line)
+                </label>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="linkActive" name="is_active" value="1" checked>
+                    Visible in Menu
+                </label>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-danger" id="modalDeleteBtn" style="display: none; margin-right: auto;">Delete Link</button>
+                <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
+                <button type="submit" class="btn-success">Save Link</button>
+            </div>
+        </form>
+    </div>
+</div>

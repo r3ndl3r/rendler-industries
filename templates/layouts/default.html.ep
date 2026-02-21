@@ -12,13 +12,13 @@
     <link rel="stylesheet" href="/css/default.css">
     
     <script src="/js/jquery.js"></script>
-    <script src="/js/menubar.js"></script>
-    <link rel="stylesheet" href="/css/menubar.css">
+    <script src="/js/menu/menubar.js"></script>
+    <link rel="stylesheet" href="/css/menu/menubar.css">
     
     <%= content_for 'head' %>
 </head>
 <body class="bg-gray-900 text-gray-200 font-sans">
-    <%= include 'menubar' %>
+    <%= include 'menu/menubar' %>
     <%= content %>
 </body>
 </html>

@@ -2,6 +2,7 @@
 
 package MyApp;
 
+use utf8;
 use Mojolicious::Controller;
 use Mojo::Base 'Mojolicious';
 use DB;
@@ -139,6 +140,17 @@ sub startup {
         }
     );
     
+    # Helper: Retrieve hierarchical menu tree based on user permissions
+    # Parameters: None
+    # Returns: ArrayRef of HashRefs (Tree structure)
+    $self->helper(
+        menu => sub {
+            my $c = shift;
+            my $permission = $c->is_admin ? 'admin' : ($c->is_logged_in ? 'user' : 'guest');
+            return $c->db->get_menu_tree($permission);
+        }
+    );
+    
     # Helper: Singleton Database Connection
     # Parameters: None
     # Returns: DB object instance
@@ -186,6 +198,13 @@ sub startup {
     $r->get('/quick')->to('root#quick');
     $auth->get('/chelsea')->to('chelsea#index');
     $admin->get('/restart')->to('system#restart');
+
+    # --- Menu Administration Routes ---
+    $admin->get('/menu')->to('menu#manage');
+    $admin->post('/menu/add')->to('menu#add');
+    $admin->post('/menu/update')->to('menu#update');
+    $admin->post('/menu/delete')->to('menu#delete');
+    $admin->post('/menu/reorder')->to('menu#reorder');
 
     # --- Copy Routes ---
     $admin->get('/copy')->to('root#copy_get');

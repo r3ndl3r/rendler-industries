@@ -80,6 +80,9 @@ sub connect {
         PrintError => 0,
         RaiseError => 1
     }) or die $DBI::errstr;
+
+    # Ensure the session uses utf8mb4 for full emoji support
+    $self->{dbh}->do("SET NAMES utf8mb4");
 }
 
 # Checks connection health and reconnects if necessary.

@@ -24,9 +24,9 @@ function updateModal(status, isSpinning = true) {
     if (spinner) spinner.style.display = isSpinning ? 'block' : 'none';
 }
 
-function toggleGamesMenu() {
-    var submenu = document.getElementById('gamesSubmenu');
-    var arrow = document.getElementById('gamesArrow');
+function toggleSubmenu(id) {
+    var submenu = document.getElementById('submenu-' + id);
+    var arrow = document.getElementById('arrow-' + id);
     if (submenu.style.display === 'none') {
         submenu.style.display = 'block';
         arrow.innerHTML = '▲';
