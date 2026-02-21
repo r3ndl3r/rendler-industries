@@ -1,0 +1,79 @@
+<%# /templates/menubar.html.ep %>
+
+<div class="navbar">   
+    <div class="navbar-brand">
+        <button class="menu-btn" onclick="toggleMenu()">☰</button>
+        <div class="navbar-title">
+            <%= title %>
+        </div>
+    </div>
+    <a href="/" class="navbar-home" title="Home">
+        <img src="/files/serve/53" alt="Home">
+    </a>
+</div>
+
+<div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+
+<div class="side-menu" id="sideMenu">
+    <div class="menu-header">Menu</div>
+    
+    <% if (is_logged_in()) { %>
+        <% my $menu_tree = menu(); %>
+        
+        <% # Helper to render a menu item and its children recursively %>
+        <% my $render_item; $render_item = begin %>
+            <% my $item = shift; %>
+            <% my $has_children = @{$item->{children} // []} > 0; %>
+            
+            <% if ($has_children) { %>
+                <a href="javascript:void(0)" onclick="toggleSubmenu('<%= $item->{id} %>')" class="submenu-toggle">
+                    <span class="<%= $item->{css_class} %>"><%= $item->{label} %></span>
+                    <span id="arrow-<%= $item->{id} %>" class="submenu-arrow" style="font-size: 0.8em;">▼</span>
+                </a>
+                <div id="submenu-<%= $item->{id} %>" class="submenu-container" style="display: none;">
+                    <% for my $child (@{$item->{children}}) { %>
+                        <%= $render_item->($child) %>
+                    <% } %>
+                </div>
+            <% } else { %>
+                <a href="<%= $item->{url} %>" 
+                   class="<%= $item->{css_class} %> <%= (stash('current') // '') eq ($item->{url} =~ s/^\///r) ? 'active' : '' %> <%= $item->{parent_id} ? 'menu-item-child' : '' %>" 
+                   target="<%= $item->{target} %>">
+                   <%= $item->{label} %>
+                </a>
+            <% } %>
+        <% end %>
+
+        <% # Main Loop %>
+        <% for my $item (@$menu_tree) { %>
+            <% if ($item->{is_separator}) { %>
+                <div class="menu-separator"></div>
+            <% } else { %>
+                <%= $render_item->($item) %>
+            <% } %>
+        <% } %>
+
+        <div class="menu-spacer"></div>
+        <% if (is_admin()) { %>
+            <button class="menu-action text-red" onclick="startRestartSequence(event)">⚠️ Restart Server</button>
+        <% } %>
+        <a href="/logout" class="text-red">🚪 Logout</a>
+    <% } else { %>
+        <div class="menu-spacer"></div>
+        <a href="/login" class="text-green">🔑 Login</a>
+        <a href="/register">📝 Register</a>
+    <% } %>
+</div>
+
+<div id="restart-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🔄 Server Restart</h3>
+            <span class="close-modal" onclick="closeRestartModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Initiating server restart...</p>
+            <div class="spinner"></div>
+        </div>
+    </div>
+</div>
