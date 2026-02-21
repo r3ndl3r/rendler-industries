@@ -14,30 +14,39 @@
 
     <div class="tile-grid">
         <% if (is_logged_in()) { %>
-            <a href="/calendar" class="tile">
-                <div class="icon">📅</div>
-                <div class="label">Calendar</div>
-            </a>
-            <a href="/shopping" class="tile">
-                <div class="icon">🛒</div>
-                <div class="label">Shopping</div>
-            </a>
-            <a href="<%= is_admin() ? '/timers/manage' : '/timers' %>" class="tile">
-                <div class="icon">⏱️</div>
-                <div class="label">Timers</div>
-            </a>
-            <a href="/birthdays" class="tile">
-                <div class="icon">🎂</div>
-                <div class="label">Birthdays</div>
-            </a>
-            <a href="/swear" class="tile">
-                <div class="icon">🤬</div>
-                <div class="label">Swear Jar</div>
-            </a>
-            <a href="/imposter" class="tile">
-                <div class="icon">🎭</div>
-                <div class="label">Imposter</div>
-            </a>
+            <% if (is_family()) { %>
+                <a href="/calendar" class="tile">
+                    <div class="icon">📅</div>
+                    <div class="label">Calendar</div>
+                </a>
+                <a href="/shopping" class="tile">
+                    <div class="icon">🛒</div>
+                    <div class="label">Shopping</div>
+                </a>
+            <% } %>
+            
+            <% if (is_family()) { %>
+                <a href="<%= is_admin() ? '/timers/manage' : '/timers' %>" class="tile">
+                    <div class="icon">⏱️</div>
+                    <div class="label">Timers</div>
+                </a>
+            <% } %>
+
+            <% if (is_family()) { %>
+                <a href="/birthdays" class="tile">
+                    <div class="icon">🎂</div>
+                    <div class="label">Birthdays</div>
+                </a>
+                <a href="/swear" class="tile">
+                    <div class="icon">🤬</div>
+                    <div class="label">Swear Jar</div>
+                </a>
+                <a href="/imposter" class="tile">
+                    <div class="icon">🎭</div>
+                    <div class="label">Imposter</div>
+                </a>
+            <% } %>
+            
             <a href="/uno/lobby" class="tile">
                 <div class="icon">🃏</div>
                 <div class="label">UNO</div>
