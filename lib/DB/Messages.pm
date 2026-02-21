@@ -51,6 +51,7 @@ sub DB::get_pasted {
     # Fetch all records ordered by newest first
     for my $m (@{ $self->{dbh}->selectall_arrayref("SELECT id, text FROM copy ORDER BY id DESC") }) {
         my ($id, $text) = @$m;
+        my $raw = $text;
         
         # Apply specific formatting if the message appears to be a URL
         if ($text =~ /^http/) {
@@ -58,7 +59,7 @@ sub DB::get_pasted {
             $text =~ s/\n//g;
         }
         
-        push @messages, { id => $id, text => $text };
+        push @messages, { id => $id, text => $text, raw => $raw };
     }
     
     return @messages;
@@ -78,6 +79,18 @@ sub DB::delete_message {
     # Execute deletion
     my $sth = $self->{dbh}->prepare("DELETE FROM copy WHERE id = ?");
     $sth->execute($id);
+}
+
+# Updates an existing paste entry.
+# Parameters:
+#   id    : Record ID
+#   text  : New content
+# Returns: Void
+sub DB::update_message {
+    my ($self, $id, $text) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare("UPDATE copy SET text = ? WHERE id = ?");
+    $sth->execute($text, $id);
 }
 
 1;

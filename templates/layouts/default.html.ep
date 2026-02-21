@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="/css/default.css">
     
     <script src="/js/jquery.js"></script>
+    <script src="/js/toast.js"></script>
     <script src="/js/menu/menubar.js"></script>
     <link rel="stylesheet" href="/css/menu/menubar.css">
     

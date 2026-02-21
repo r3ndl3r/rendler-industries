@@ -210,22 +210,36 @@ sub copy_get {
 sub copy_post {
     my $c = shift;
     my $text = trim($c->param('paste') // '');
-    $text = encode_entities($text);
 
-    # Validate URL format to prevent malformed links
-    if ($text =~ m{^https?://}i) {
-        unless ($text =~ m{^https?://[\w\-]+(?:\.[\w\-]+)+(?:/[^\s]*)?$}i) {
-            return $c->render_error('Invalid URL');
-        }
-    }
-
-    # Persist to database
-    $c->db->paste($text);
+    # Persist to database (entities encoded inside the paste method or before)
+    my $encoded_text = encode_entities($text);
+    $c->db->paste($encoded_text);
     
     # Dispatch external notifications
     $c->db->push_over($text);
     $c->db->push_gotify($text);
     
+    return $c->redirect_to('/copy');
+}
+
+# Updates an existing item in the Admin Clipboard.
+# Route: POST /copy/update
+# Parameters:
+#   id    : Unique ID of the message
+#   paste : New text content
+# Returns:
+#   Redirects to clipboard page
+sub copy_update {
+    my $c = shift;
+    my $id = $c->param('id');
+    my $text = trim($c->param('paste') // '');
+
+    unless (defined $id && $id =~ /^\d+$/) {
+        return $c->render_error('Invalid ID');
+    }
+
+    my $encoded_text = encode_entities($text);
+    $c->db->update_message($id, $encoded_text);
     return $c->redirect_to('/copy');
 }
 
