@@ -13,7 +13,6 @@
     <div class="manage-header">
         <h1>🛠️ <span>Manage Menu Links</span></h1>
         <div class="manage-actions">
-            <a href="/" class="btn-secondary">← Back to Home</a>
             <button id="addLinkBtn" class="btn-primary">+ Add Link</button>
         </div>
     </div>
