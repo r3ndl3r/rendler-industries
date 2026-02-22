@@ -1,27 +1,66 @@
 /* /public/css/swear.css */
 
+* {
+    box-sizing: border-box;
+}
+
 body {
-    background-color: #0f172a;
+    background-color: #050c1d;
     margin: 0;
     min-height: 100vh;
 }
 
-.swear-container,
-.manage-container {
-    max-width: 600px;
+.swear-container {
+    padding: 2rem 1rem;
+    padding-top: 0;
+    max-width: 1000px;
     margin: 0 auto;
-    padding: 20px;
+    background-color: #050c1d;
+    min-height: 100vh;
+}
+
+.manage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+}
+
+.swear-container h1 {
+    font-size: 2.5rem;
+    font-weight: 300;
+    text-align: center;
+    margin: 0;
+    color: #ffffff;
+}
+
+.manage-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    background: #3b82f6;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+}
+
+.action-btn:hover {
+    background: #2563eb;
 }
 
 .glass-panel {
-    background: rgba(30, 30, 30, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
+    background: #1e293b;
+    border-radius: 0.75rem;
     padding: 20px;
     margin-bottom: 25px;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    border: 1px solid #334155;
 }
 
 .jar-balance-card {
@@ -37,16 +76,6 @@ body {
     overflow: hidden;
 }
 
-.jar-balance-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: -50%;
-    width: 100%; height: 100%;
-    background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
-    transform: skewX(-25deg);
-    pointer-events: none;
-}
-
 .jar-amount {
     font-size: 3.5rem;
     font-weight: 800;
@@ -58,15 +87,14 @@ body {
 
 .jar-row,
 .member-row {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: #0f172a;
+    border: 1px solid #334155;
     border-radius: 12px;
     padding: 15px;
     margin-bottom: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: all 0.2s ease;
 }
 
 .debt-amount {
@@ -79,7 +107,7 @@ body {
 
 .history-item {
     font-size: 0.95rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid #334155;
     padding: 14px 5px;
     color: #e0e0e0;
 }
@@ -92,28 +120,18 @@ body {
     width: 100%;
     padding: 14px;
     margin-bottom: 15px;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: #0f172a;
+    border: 1px solid #334155;
     color: white;
     border-radius: 8px;
     box-sizing: border-box;
     font-size: 1rem;
     font-family: inherit;
-    transition: border-color 0.2s, background 0.2s;
 }
 
 .game-input:focus {
     outline: none;
-    border-color: rgba(255, 255, 255, 0.5);
-    background: rgba(0, 0, 0, 0.6);
-}
-
-select.game-input {
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-    background-repeat: no-repeat;
-    background-position: right 15px top 50%;
-    background-size: 12px auto;
+    border-color: #3b82f6;
 }
 
 .game-btn {
@@ -134,34 +152,19 @@ select.game-input {
 .game-btn:active { transform: scale(0.98); }
 
 .btn-red {
-    background: linear-gradient(135deg, #d32f2f, #b71c1c);
-    box-shadow: 0 4px 12px rgba(183, 28, 28, 0.4);
+    background: #ef4444;
+}
+
+.btn-red:hover {
+    background: #dc2626;
 }
 
 .btn-green {
-    background: linear-gradient(135deg, #43a047, #2e7d32);
-    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.4);
+    background: #10b981;
 }
 
-.btn-blue {
-    background: linear-gradient(135deg, #1976d2, #0d47a1);
-    box-shadow: 0 4px 12px rgba(21, 101, 192, 0.4);
-    width: 100%;
-    margin-top: 10px;
-}
-
-.btn-del {
-    background: rgba(211, 47, 47, 0.15);
-    border: 1px solid rgba(211, 47, 47, 0.4);
-    font-size: 0.8rem;
-    padding: 8px 16px;
-    color: #ef9a9a;
-    width: auto;
-}
-
-.btn-del:hover {
-    background: rgba(211, 47, 47, 0.3);
-    color: #fff;
+.btn-green:hover {
+    background: #059669;
 }
 
 .btn-small {
@@ -173,32 +176,20 @@ select.game-input {
 h2, h3 {
     font-weight: 300;
     margin-bottom: 20px;
+    color: #fff;
 }
 
 label {
     font-size: 0.9rem;
-    color: rgba(255,255,255,0.6);
+    color: #94a3b8;
     margin-bottom: 5px;
     display: block;
 }
 
-a { color: #fff; }
-
 .harmony-jar-header {
     text-align: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
     padding: 0 1rem;
-}
-
-.harmony-jar-link {
-    display: inline-block;
-    position: relative;
-    text-decoration: none;
-    transition: transform 0.3s ease;
-}
-
-.harmony-jar-link:hover {
-    transform: scale(1.05);
 }
 
 .harmony-jar-img {
@@ -206,38 +197,53 @@ a { color: #fff; }
     height: auto;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    border: 2px solid #334155;
 }
 
-.harmony-jar-link:hover .harmony-jar-img {
-    border-color: rgba(100, 181, 246, 0.4);
-    box-shadow: 0 12px 32px rgba(100, 181, 246, 0.3);
+/* Modal for Image Viewer */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(5px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
 }
 
-.view-full-hint {
-    margin-top: 0.5rem;
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.5);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+.image-modal-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
 }
 
-.harmony-jar-link:hover .view-full-hint {
-    color: rgba(100, 181, 246, 0.8);
+.image-modal-content img {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.close-btn {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
 }
 
 @media (max-width: 768px) {
-    .harmony-jar-img {
-        max-width: 400px;
-    }
-}
-
-@media (max-width: 480px) {
-    .harmony-jar-img {
-        max-width: 100%;
+    .swear-container {
+        padding: 0.5rem;
+        padding-top: 0;
     }
     
-    .view-full-hint {
-        font-size: 0.75rem;
-    }
+    .swear-container h1 { font-size: 1.75rem; }
+    .manage-header { flex-direction: column; gap: 1rem; }
+    .jar-amount { font-size: 2.5rem; }
 }

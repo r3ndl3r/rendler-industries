@@ -10,14 +10,16 @@
 <div class="swear-container">
 
     <div class="harmony-jar-header">
-        <a href="https://rendler.org/files/serve/6" target="_blank" class="harmony-jar-link">
+        <a href="javascript:void(0)" onclick="openImageModal('https://rendler.org/files/serve/6')" class="harmony-jar-link">
             <img src="https://rendler.org/files/serve/6" alt="Family Harmony Jar Rules" class="harmony-jar-img">
-            <div class="view-full-hint">🔍</div>
         </a>
     </div>
     
-    <div style="text-align: right; margin-bottom: 15px;">
-        <a href="/swear/manage" style="color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.85rem; background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">⚙</a>
+    <div class="manage-header">
+        <h1>🤬 Swear Jar</h1>
+        <div class="manage-actions">
+            <a href="/swear/manage" class="action-btn">Manage Members</a>
+        </div>
     </div>
 
     <div class="jar-balance-card">
@@ -26,7 +28,7 @@
     </div>
 
     <div class="glass-panel">
-        <h3 style="margin-top: 0; color: #ff8a80; text-align: center; margin-bottom: 20px; font-weight: 600;">🤬 Report Offense</h3>
+        <h3 style="margin-top: 0; color: #ff8a80; text-align: center; margin-bottom: 20px; font-weight: 600;">Report Offense</h3>
         <form action="/swear/add" method="POST">
             
             <select name="perpetrator" id="perp_select" class="game-input" required onchange="updateFine()">
@@ -36,7 +38,6 @@
                         <%= $m->{name} %>
                     </option>
                 % }
-                <option value="Guest" data-fine="5.00" style="background: #222;">Guest</option>
             </select>
 
             <div style="display: flex; gap: 10px;">
@@ -124,5 +125,13 @@
                 </small>
             </div>
         % }
+    </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div id="imageModal" class="modal-overlay" style="display: none;">
+    <div class="image-modal-content">
+        <span class="close-btn" onclick="closeImageModal()">&times;</span>
+        <img id="modalImage" src="" alt="Full Screen Rules">
     </div>
 </div>

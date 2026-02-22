@@ -1,12 +1,32 @@
-// /public/js/swear.js
+/* /public/js/swear.js */
 
 function updateFine() {
-    var select = document.getElementById('perp_select');
-    var amountInput = document.getElementById('fine_amount');
-    var selectedOption = select.options[select.selectedIndex];
+    const select = document.getElementById('perp_select');
+    const amountInput = document.getElementById('fine_amount');
+    const selectedOption = select.options[select.selectedIndex];
+    const defaultFine = selectedOption.getAttribute('data-fine');
     
-    var fine = selectedOption.getAttribute('data-fine');
-    if (fine && fine > 0) {
-        amountInput.value = parseFloat(fine).toFixed(2);
+    if (defaultFine && defaultFine > 0) {
+        amountInput.value = defaultFine;
+    }
+}
+
+function openImageModal(src) {
+    const modal = document.getElementById('imageModal');
+    const img = document.getElementById('modalImage');
+    img.src = src;
+    modal.style.display = 'flex';
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('imageModal');
+    modal.style.display = 'none';
+}
+
+// Close modal when clicking outside the content
+window.onclick = function(event) {
+    const modal = document.getElementById('imageModal');
+    if (event.target == modal) {
+        closeImageModal();
     }
 }
