@@ -22,16 +22,18 @@
 .settings-header {
     padding: 1.25rem 1.5rem;
     cursor: pointer;
-    display: flex;
+    display: flex !important; /* Force flex for mobile browsers */
     justify-content: space-between;
     align-items: center;
-    list-style: none;
+    list-style: none !important; /* Hide default list marker */
     background: rgba(255, 255, 255, 0.03);
     transition: background 0.2s;
 }
 
-.settings-header::-webkit-details-marker {
-    display: none;
+/* More robust hiding of summary markers */
+.settings-header::-webkit-details-marker,
+.settings-header::marker {
+    display: none !important;
 }
 
 .settings-header:hover {
@@ -178,5 +180,13 @@ details[open] .chevron {
     
     .settings-section {
         padding: 1.5rem;
+    }
+
+    .group-title {
+        font-size: 1rem;
+    }
+
+    .settings-header {
+        padding: 1rem;
     }
 }
