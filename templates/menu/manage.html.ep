@@ -79,78 +79,98 @@
 </div>
 
 <!-- Add/Edit Modal -->
-<div id="linkModal" class="modal">
-    <div class="modal-content">
-        <span class="close">&times;</span>
-        <h2 id="modalTitle">Add Menu Link</h2>
+<div id="linkModal" class="delete-modal-overlay">
+    <div class="delete-modal-content" style="max-width: 600px;">
+        <div class="delete-modal-header">
+            <h3 id="modalTitle">Add Menu Link</h3>
+            <span class="delete-modal-close" id="closeModalBtn">&times;</span>
+        </div>
         <form id="linkForm">
             <input type="hidden" id="linkId" name="id">
             <input type="hidden" id="linkSort" name="sort_order">
             
-            <div class="form-group">
-                <label>Label *</label>
-                <input type="text" id="linkLabel" name="label" placeholder="e.g. 📅 Calendar" required>
-            </div>
-            
-            <div class="form-group">
-                <label>URL *</label>
-                <input type="text" id="linkUrl" name="url" placeholder="e.g. /calendar or https://..." required>
-            </div>
-
-            <div class="form-row">
+            <div class="modal-body delete-modal-body">
                 <div class="form-group">
-                    <label>Parent Item</label>
-                    <select id="linkParent" name="parent_id">
-                        <option value="">None (Top Level)</option>
-                        % for my $p (@$parents) {
-                            <option value="<%= $p->{id} %>"><%= $p->{label} %></option>
-                        % }
-                    </select>
+                    <label>Label *</label>
+                    <input type="text" id="linkLabel" name="label" placeholder="e.g. 📅 Calendar" class="game-input" required>
                 </div>
+                
                 <div class="form-group">
-                    <label>Permission Level</label>
-                    <select id="linkPermission" name="permission_level">
-                        <option value="guest">Guest (Public)</option>
-                        <option value="user" selected>User (Logged In)</option>
-                        <option value="family">Family (Members)</option>
-                        <option value="admin">Admin Only</option>
-                    </select>
+                    <label>URL *</label>
+                    <input type="text" id="linkUrl" name="url" placeholder="e.g. /calendar or https://..." class="game-input" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Parent Item</label>
+                        <select id="linkParent" name="parent_id" class="game-input">
+                            <option value="">None (Top Level)</option>
+                            % for my $p (@$parents) {
+                                <option value="<%= $p->{id} %>"><%= $p->{label} %></option>
+                            % }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Permission Level</label>
+                        <select id="linkPermission" name="permission_level" class="game-input">
+                            <option value="guest">Guest (Public)</option>
+                            <option value="user" selected>User (Logged In)</option>
+                            <option value="family">Family (Members)</option>
+                            <option value="admin">Admin Only</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>CSS Class</label>
+                        <input type="text" id="linkClass" name="css_class" placeholder="e.g. text-red" class="game-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Target</label>
+                        <select id="linkTarget" name="target" class="game-input">
+                            <option value="_self">Same Tab</option>
+                            <option value="_blank">New Tab</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="linkSeparator" name="is_separator" value="1">
+                        Is Separator (Horizontal Line)
+                    </label>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="linkActive" name="is_active" value="1" checked>
+                        Visible in Menu
+                    </label>
                 </div>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label>CSS Class</label>
-                    <input type="text" id="linkClass" name="css_class" placeholder="e.g. text-red">
-                </div>
-                <div class="form-group">
-                    <label>Target</label>
-                    <select id="linkTarget" name="target">
-                        <option value="_self">Same Tab</option>
-                        <option value="_blank">New Tab</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-group checkbox-group">
-                <label>
-                    <input type="checkbox" id="linkSeparator" name="is_separator" value="1">
-                    Is Separator (Horizontal Line)
-                </label>
-            </div>
-
-            <div class="form-group checkbox-group">
-                <label>
-                    <input type="checkbox" id="linkActive" name="is_active" value="1" checked>
-                    Visible in Menu
-                </label>
-            </div>
-
-            <div class="form-actions">
+            <div class="modal-actions delete-modal-actions">
                 <button type="button" class="btn-danger" id="modalDeleteBtn" style="display: none; margin-right: auto;">Delete Link</button>
-                <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
                 <button type="submit" class="btn-success">Save Link</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="delete-modal-overlay">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
+            <h3>Confirm Deletion</h3>
+            <span class="delete-modal-close" onclick="closeDeleteConfirmModal()">&times;</span>
+        </div>
+        <div class="delete-modal-body">
+            <p>Are you sure you want to delete menu link "<strong id="deleteLinkLabel"></strong>"?</p>
+            <p style="color: #ef4444; font-size: 0.85rem; margin-top: 5px;">⚠️ Warning: All sub-menu items will also be deleted.</p>
+        </div>
+        <div class="delete-modal-actions">
+            <button type="button" class="btn-danger-confirm" id="finalDeleteBtn">Delete Everything</button>
+        </div>
     </div>
 </div>

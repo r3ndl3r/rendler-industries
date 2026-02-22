@@ -64,14 +64,29 @@
                                 </form>
                             <% } %>
                             <a href="/users/edit/<%= $user->{id} %>" class="btn-action btn-edit">Edit</a>
-                            <form action="/users/delete/<%= $user->{id} %>" method="POST" 
-                                  onsubmit="return confirm('Are you sure you want to delete <%= $user->{username} %>?');">
-                                <button type="submit" class="btn-action btn-delete">Delete</button>
-                            </form>
+                            <button type="button" class="btn-action btn-delete" onclick="confirmDeleteUser(<%= $user->{id} %>, '<%= $user->{username} %>')">Delete</button>
                         </div>
                     </td>
                 </tr>
             <% } %>
         </tbody>
     </table>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="delete-modal-overlay">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
+            <h3>Confirm Deletion</h3>
+            <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
+        </div>
+        <div class="delete-modal-body">
+            <p>Are you sure you want to delete user "<strong id="deleteUserName"></strong>"?</p>
+        </div>
+        <div class="delete-modal-actions">
+            <form id="deleteUserForm" method="POST" action="">
+                <button type="submit" class="btn-danger-confirm">Delete User</button>
+            </form>
+        </div>
+    </div>
 </div>

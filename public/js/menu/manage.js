@@ -2,13 +2,15 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('linkModal');
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
     const form = document.getElementById('linkForm');
     const addBtn = document.getElementById('addLinkBtn');
-    const closeBtn = document.querySelector('.close');
-    const cancelBtn = document.getElementById('cancelBtn');
+    const closeBtn = document.getElementById('closeModalBtn');
     const saveOrderBtn = document.getElementById('saveOrderBtn');
     const tableBody = document.getElementById('menuTableBody');
     
+    let linkIdToDelete = null;
+
     // --- Modal Logic ---
     
     function openModal(title, data = null) {
@@ -28,8 +30,9 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('linkTarget').value = data.target;
             document.getElementById('linkActive').checked = data.active == "1";
             document.getElementById('linkSeparator').checked = data.separator == "1";
-            deleteBtn.style.display = 'block';
+            deleteBtn.style.display = 'inline-flex';
             deleteBtn.dataset.id = data.id;
+            deleteBtn.dataset.label = data.label;
         } else {
             document.getElementById('linkId').value = "";
             document.getElementById('linkSort').value = "0";
@@ -45,12 +48,23 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.style.display = 'none';
     }
 
-    addBtn.addEventListener('click', () => openModal('Add Menu Link'));
-    closeBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
+    function openDeleteConfirmModal(id, label) {
+        linkIdToDelete = id;
+        document.getElementById('deleteLinkLabel').textContent = label;
+        deleteConfirmModal.style.display = 'flex';
+    }
+
+    window.closeDeleteConfirmModal = function() {
+        linkIdToDelete = null;
+        deleteConfirmModal.style.display = 'none';
+    }
+
+    if (addBtn) addBtn.addEventListener('click', () => openModal('Add Menu Link'));
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
     
     window.addEventListener('click', (e) => {
         if (e.target === modal) closeModal();
+        if (e.target === deleteConfirmModal) closeDeleteConfirmModal();
     });
 
     // --- CRUD Actions ---
@@ -83,7 +97,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const labelInput = document.getElementById('linkLabel');
         const urlInput = document.getElementById('linkUrl');
 
-        // If it's a separator, we can provide defaults if empty
         if (isSeparator) {
             if (!labelInput.value.trim()) labelInput.value = 'SEPARATOR';
             if (!urlInput.value.trim()) urlInput.value = '#';
@@ -92,15 +105,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const endpoint = id ? '/menu/update' : '/menu/add';
         const formData = new FormData(form);
         
-        // Ensure checkbox value is sent correctly (is_active)
-        if (!formData.has('is_active')) {
-            formData.append('is_active', '0');
-        }
-        
-        // Ensure checkbox value is sent correctly (is_separator)
-        if (!formData.has('is_separator')) {
-            formData.append('is_separator', '0');
-        }
+        if (!formData.has('is_active')) formData.append('is_active', '0');
+        if (!formData.has('is_separator')) formData.append('is_separator', '0');
 
         try {
             const response = await fetch(endpoint, {
@@ -122,13 +128,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Delete Button Click (Now in Modal)
-    document.getElementById('modalDeleteBtn').addEventListener('click', async function() {
-        if (!confirm('Are you sure you want to delete this menu link? (Child items will also be deleted)')) return;
-        
+    // Intermediate Delete Button Click (Inside Edit Modal)
+    document.getElementById('modalDeleteBtn').addEventListener('click', function() {
         const id = this.dataset.id;
+        const label = this.dataset.label;
+        openDeleteConfirmModal(id, label);
+    });
+
+    // Final Delete Confirmation Click
+    document.getElementById('finalDeleteBtn').addEventListener('click', async function() {
+        if (!linkIdToDelete) return;
+        
         const formData = new FormData();
-        formData.append('id', id);
+        formData.append('id', linkIdToDelete);
 
         try {
             const response = await fetch('/menu/delete', {
@@ -143,9 +155,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 location.reload();
             } else {
                 if (typeof showToast === 'function') showToast('Error: ' + result.error, 'error');
+                closeDeleteConfirmModal();
             }
         } catch (error) {
             console.error('Delete error:', error);
+            closeDeleteConfirmModal();
         }
     });
 
@@ -165,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
     saveOrderBtn.addEventListener('click', async function() {
         const orders = {};
         document.querySelectorAll('#menuTableBody tr').forEach((row, index) => {
-            orders[row.dataset.id] = (index + 1) * 10; // Use increments of 10
+            orders[row.dataset.id] = (index + 1) * 10;
         });
 
         try {
@@ -180,8 +194,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (result.success) {
                 if (typeof showToast === 'function') showToast('Order saved!', 'success');
                 saveOrderBtn.style.display = 'none';
-                // No reload needed after simple reorder success, 
-                // but reload if we want the child-row classes to re-align properly
                 setTimeout(() => location.reload(), 500);
             } else {
                 if (typeof showToast === 'function') showToast('Reorder failed', 'error');

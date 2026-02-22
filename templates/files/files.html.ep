@@ -75,9 +75,7 @@
                                     <button type="button" class="btn btn-copy" onclick="copyLink('<%= $file->{id} %>')" title="Copy Link">🔗</button>
                                     <% if (stash('is_admin')) { %>
                                         <button type="button" class="btn btn-edit" onclick="openPermissions(<%= $file->{id} %>)" title="Permissions">⚙️</button>
-                                        <form method="POST" action="/files/delete/<%= $file->{id} %>" style="display: inline;">
-                                            <button type="submit" class="btn btn-delete" onclick="return confirm('Delete this file?')" title="Delete">🗑️</button>
-                                        </form>
+                                        <button type="button" class="btn btn-delete" onclick="confirmDeleteFile(<%= $file->{id} %>, '<%= $file->{original_filename} %>')" title="Delete">🗑️</button>
                                     <% } %>
                                 </div>
                             </td>
@@ -91,6 +89,24 @@
     </div>
 
     <% if (stash('is_admin')) { %>
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteConfirmModal" class="delete-modal-overlay">
+            <div class="delete-modal-content">
+                <div class="delete-modal-header">
+                    <h3>Confirm Deletion</h3>
+                    <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
+                </div>
+                <div class="delete-modal-body">
+                    <p>Are you sure you want to delete file "<strong id="deleteFileName"></strong>"?</p>
+                </div>
+                <div class="delete-modal-actions">
+                    <form id="deleteFileForm" method="POST" action="">
+                        <button type="submit" class="btn-danger-confirm">Delete File</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <div id="permissionModal" class="files-modal-overlay" style="display: none;" role="dialog" aria-modal="true">
             <div class="modal-content">
                 <div class="modal-header">

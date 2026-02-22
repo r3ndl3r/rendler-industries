@@ -1,5 +1,7 @@
 /* /public/js/todo.js */
 
+let todoIdToDelete = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     const taskInput = document.getElementById('taskInput');
     if (taskInput) taskInput.focus();
@@ -16,7 +18,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // Modal Close logic
     window.onclick = function(event) {
         const editModal = document.getElementById('editModal');
+        const deleteModal = document.getElementById('deleteConfirmModal');
+        const clearModal = document.getElementById('clearCompletedModal');
+        
         if (event.target == editModal) closeEditModal();
+        if (event.target == deleteModal) closeDeleteConfirmModal();
+        if (event.target == clearModal) closeClearCompletedModal();
+    }
+
+    // Setup final delete button
+    const finalDeleteBtn = document.getElementById('finalDeleteBtn');
+    if (finalDeleteBtn) {
+        finalDeleteBtn.onclick = function() {
+            if (todoIdToDelete) {
+                performDelete(todoIdToDelete);
+            }
+        };
     }
 });
 
@@ -117,9 +134,7 @@ async function toggleTodo(id) {
                         completedSection.innerHTML = `
                             <div class="completed-header">
                                 <h3 class="section-title">Completed</h3>
-                                <form action="/todo/clear" method="POST" onsubmit="return confirm('Clear all completed tasks?')">
-                                    <button type="submit" class="btn-clear-all">Clear All</button>
-                                </form>
+                                <button type="button" class="btn-clear-all" onclick="openClearCompletedModal()">Clear All</button>
                             </div>
                         `;
                         document.querySelector('.items-container').appendChild(completedSection);
@@ -142,10 +157,20 @@ async function toggleTodo(id) {
     }
 }
 
-async function deleteTodo(id) {
-    // Rely on native confirm for now or we could add a custom modal later
-    if (!confirm('Delete this task?')) return;
+function deleteTodo(id) {
+    todoIdToDelete = id;
+    const item = document.querySelector(`.todo-item[data-id="${id}"]`);
+    const name = item.querySelector('.item-name').textContent;
+    document.getElementById('deleteTaskName').textContent = name;
+    document.getElementById('deleteConfirmModal').style.display = 'flex';
+}
 
+function closeDeleteConfirmModal() {
+    todoIdToDelete = null;
+    document.getElementById('deleteConfirmModal').style.display = 'none';
+}
+
+async function performDelete(id) {
     try {
         const response = await fetch(`/todo/delete/${id}`, { method: 'POST' });
         const result = await response.json();
@@ -166,6 +191,7 @@ async function deleteTodo(id) {
                     }
                 }
             }, 300);
+            closeDeleteConfirmModal();
         } else {
             showToast('Error: ' + result.error, 'error');
         }
@@ -218,4 +244,16 @@ async function submitEdit() {
     } catch (err) {
         showToast('Request failed', 'error');
     }
+}
+
+function openClearCompletedModal() {
+    document.getElementById('clearCompletedModal').style.display = 'flex';
+}
+
+function closeClearCompletedModal() {
+    document.getElementById('clearCompletedModal').style.display = 'none';
+}
+
+function textIn() {
+    document.getElementById("taskInput").style.backgroundColor = "#1e293b";
 }
