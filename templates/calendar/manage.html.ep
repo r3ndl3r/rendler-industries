@@ -76,7 +76,7 @@
                         </td>
                         <td><%= $event->{creator_name} || 'Unknown' %></td>
                         <td class="actions-cell">
-                            <button class="btn-secondary btn-edit" data-id="<%= $event->{id} %>">Edit</button>
+                            <button class="btn-edit btn-small" data-id="<%= $event->{id} %>">Edit</button>
                         </td>
                     </tr>
                     % }
@@ -136,7 +136,7 @@
                         </td>
                         <td><%= $event->{creator_name} || 'Unknown' %></td>
                         <td class="actions-cell">
-                            <button class="btn-secondary btn-edit" data-id="<%= $event->{id} %>">Edit</button>
+                            <button class="btn-edit btn-small" data-id="<%= $event->{id} %>">Edit</button>
                         </td>
                     </tr>
                     % }
@@ -219,17 +219,16 @@
                             <span><%= $user->{display_name} || $user->{username} %></span>
                         </label>
                     % }
+                                </div>
+                            </div>
+                            <div class="modal-actions">
+                                <button type="button" class="btn-danger btn-small" id="deleteEventBtn" style="display: none;">Delete</button>
+                                <button type="button" class="btn-clone btn-small" id="cloneEventBtn" style="display: none;">Clone</button>
+                                <button type="submit" class="btn-primary btn-small">Save</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </div>
-            
-        <div class="form-actions">
-            <button type="button" class="btn-danger" id="deleteEventBtn" style="display: none;">Delete</button>
-            <button type="button" class="btn-secondary" id="cloneEventBtn" style="display: none;">Clone</button>
-            <button type="submit" class="btn-primary">Save</button>
-        </div>
-        </form>
-    </div>
-</div>
 
 <div id="eventDetailsModal" class="modal">
     <div class="modal-content">

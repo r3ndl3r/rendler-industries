@@ -125,7 +125,7 @@ function showEventDetails(eventId) {
             </div>
         </div>
         <div class="event-details-actions">
-            <button class="btn-primary" onclick="editEventFromDetails(${event.id})">Edit</button>
+            <button class="btn-edit" onclick="editEventFromDetails(${event.id})">Edit</button>
         </div>
     `;
     
