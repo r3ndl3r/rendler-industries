@@ -99,6 +99,10 @@
 
         <% if (is_admin()) { %>
             <div class="separator"></div>
+            <a href="/reminders" class="tile admin">
+                <div class="icon">🔔</div>
+                <div class="label">Reminders</div>
+            </a>
             <a href="/menu" class="tile admin">
                 <div class="icon">🛠️</div>
                 <div class="label">Menu</div>
