@@ -15,7 +15,7 @@
     
     <!-- Add Item Form -->
     <div class="glass-panel add-item-panel">
-        <form action="/shopping/add" method="POST" class="add-item-form">
+        <form id="addShoppingForm" class="add-item-form">
             <input 
                 type="text" 
                 name="item_name" 
@@ -38,27 +38,25 @@
             <% if (@unchecked) { %>
                 <h3 class="section-title">To Buy</h3>
                 <% for my $item (@unchecked) { %>
-                    <div class="shopping-item">
+                    <div class="shopping-item" data-id="<%= $item->{id} %>">
                         <div class="item-content">
-                            <form action="/shopping/toggle/<%= $item->{id} %>" method="POST" class="checkbox-form">
-                                <button type="submit" class="checkbox-btn unchecked">
-                                    <span class="checkmark"></span>
-                                </button>
-                            </form>
-                        <div class="item-details">
-                            <a href="https://www.google.com/search?q=<%= $item->{item_name} %>" target="_blank" class="item-link">
-                                <span class="item-name" data-id="<%= $item->{id} %>"><%= $item->{item_name} %></span>
-                            </a>
-                            <small class="item-meta">Added by <%= $item->{added_by} %></small>
-                        </div>
+                            <button type="button" class="checkbox-btn" onclick="toggleItem(<%= $item->{id} %>)" title="Mark as bought">
+                                <span class="checkmark"></span>
+                            </button>
+                            <div class="item-details">
+                                <a href="https://www.google.com/search?q=<%= $item->{item_name} %>" target="_blank" class="item-link">
+                                    <span class="item-name"><%= $item->{item_name} %></span>
+                                </a>
+                                <small class="item-meta">Added by <%= $item->{added_by} %></small>
+                            </div>
                         </div>
                         <div class="action-buttons">
-                            <button class="btn-edit-item" onclick="editItem(<%= $item->{id} %>, '<%= $item->{item_name} %>')">
+                            <button type="button" class="btn-edit-item" onclick="editItem(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Edit">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                 </svg>
                             </button>
-                            <button type="button" class="btn-delete-item" onclick="openDeleteModal(<%= $item->{id} %>, '<%= $item->{item_name} %>')" title="Delete">
+                            <button type="button" class="btn-delete-item" onclick="openDeleteModal(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Delete">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -77,25 +75,18 @@
                         </button>
                     </div>
                     <% for my $item (@checked) { %>
-                        <div class="shopping-item checked">
+                        <div class="shopping-item checked" data-id="<%= $item->{id} %>">
                             <div class="item-content">
-                                <form action="/shopping/toggle/<%= $item->{id} %>" method="POST" class="checkbox-form">
-                                    <button type="submit" class="checkbox-btn checked">
-                                        <span class="checkmark">✓</span>
-                                    </button>
-                                </form>
+                                <button type="button" class="checkbox-btn checked" onclick="toggleItem(<%= $item->{id} %>)" title="Uncheck">
+                                    <span class="checkmark">✓</span>
+                                </button>
                                 <div class="item-details">
-                                    <span class="item-name" data-id="<%= $item->{id} %>"><%= $item->{item_name} %></span>
+                                    <span class="item-name"><%= $item->{item_name} %></span>
                                     <small class="item-meta">Added by <%= $item->{added_by} %></small>
                                 </div>
                             </div>
                             <div class="action-buttons">
-                                <button class="btn-edit-item" onclick="editItem(<%= $item->{id} %>, '<%= $item->{item_name} %>')">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                    </svg>
-                                </button>
-                                <button type="button" class="btn-delete-item" onclick="openDeleteModal(<%= $item->{id} %>, '<%= $item->{item_name} %>')" title="Delete">
+                                <button type="button" class="btn-delete-item" onclick="openDeleteModal(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Delete">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
@@ -119,27 +110,25 @@
 <div id="editModal" class="modal" style="display: none;">
     <div class="modal-content">
         <h3>Edit Item</h3>
-        <form id="editForm" method="POST">
-            <input type="hidden" id="editId" name="id">
-            <div class="modal-body">
-                <div class="modal-group">
-                    <label for="editName">Item Name</label>
-                    <input 
-                        type="text" 
-                        id="editName" 
-                        name="item_name" 
-                        class="game-input" 
-                        required 
-                        maxlength="255"
-                        placeholder="e.g. Milk"
-                    >
-                </div>
+        <div class="modal-body">
+            <div class="modal-group">
+                <label for="editName">Item Name</label>
+                <input 
+                    type="text" 
+                    id="editName" 
+                    name="item_name" 
+                    class="game-input" 
+                    required 
+                    maxlength="255"
+                    placeholder="e.g. Milk"
+                >
+                <input type="hidden" id="editId">
             </div>
-            <div class="modal-actions">
-                <button type="submit" class="game-btn btn-blue">Save Changes</button>
-                <button type="button" onclick="closeEditModal()" class="game-btn btn-cancel">Cancel</button>
-            </div>
-        </form>
+        </div>
+        <div class="modal-actions">
+            <button type="button" onclick="submitEdit()" class="game-btn btn-blue">Save Changes</button>
+            <button type="button" onclick="closeEditModal()" class="game-btn btn-cancel">Cancel</button>
+        </div>
     </div>
 </div>
 
@@ -151,9 +140,7 @@
             <p>Are you sure you want to remove <strong id="deleteItemName"></strong> from the list?</p>
         </div>
         <div class="modal-actions">
-            <form id="deleteForm" method="POST">
-                <button type="submit" class="game-btn btn-danger">Delete Item</button>
-            </form>
+            <button type="button" id="confirmDeleteBtn" class="game-btn btn-danger">Delete Item</button>
             <button type="button" onclick="closeDeleteModal()" class="game-btn btn-cancel">Cancel</button>
         </div>
     </div>
@@ -165,7 +152,6 @@
         <h3>Clear Checked Items</h3>
         <div class="modal-body">
             <p>Are you sure you want to remove all checked items from the list?</p>
-            <p class="text-danger" style="color: #dc2626; font-size: 0.85rem; margin-top: 5px;">This will permanently delete all items that have been checked off.</p>
         </div>
         <div class="modal-actions">
             <form action="/shopping/clear" method="POST">
