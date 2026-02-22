@@ -1,4 +1,4 @@
-<%# /templates/todo/list.html.ep %>
+<%# /templates/todo.html.ep %>
 
 % layout 'default';
 % title 'Todo List';
