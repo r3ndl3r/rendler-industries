@@ -8,7 +8,7 @@
 <% end %>
 
 <div class="settings-container">
-    <h1>Application Settings</h1>
+    <h1>⚙️ <span>Application Settings</span></h1>
     
     <% if (flash('message')) { %>
         <div class="alert alert-success"><%= flash('message') %></div>
