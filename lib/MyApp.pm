@@ -222,6 +222,7 @@ sub startup {
     $r->get('/mobile')->to('root#p_page');
     $r->get('/this.is.totally.not.sus')->to('root#sus');
     $r->get('/api/v1/dynamic_data')->to('root#api_dynamic_data');
+    $r->get('/api/maintenance')->to('system#maintenance');
     $r->get('/t')->to(cb => sub { shift->redirect_to('https://stash.rendler.org/stash?n=Movies&u=rendler') });
     $r->get('/quick')->to('root#quick');
     $auth->get('/chelsea')->to('chelsea#index');
@@ -342,7 +343,6 @@ sub startup {
     $admin->post('/timers/update/:id')->to('timers#update');
     $admin->post('/timers/delete/:id')->to('timers#delete');
     $admin->post('/timers/bonus')->to('timers#grant_bonus');
-    $r->get('/timers/api/maintenance')->to('timers#run_maintenance');
 
     # --- Citizenship Quiz Routes ---
     $r->get('/quiz')->to('quiz#index');
