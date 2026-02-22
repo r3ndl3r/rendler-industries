@@ -298,6 +298,14 @@ sub startup {
     $family->post('/shopping/clear')->to('shopping_list#clear_checked');
     $family->post('/shopping/edit/:id')->to('shopping_list#edit');
 
+    # --- Todo List Routes ---
+    $auth->get('/todo')->to('todo#index');
+    $auth->post('/todo/add')->to('todo#add');
+    $auth->post('/todo/toggle/:id')->to('todo#toggle');
+    $auth->post('/todo/delete/:id')->to('todo#delete');
+    $auth->post('/todo/edit/:id')->to('todo#edit');
+    $auth->post('/todo/clear')->to('todo#clear_completed');
+
     # --- Connect 4 Routes ---
     $auth->get('/connect4/lobby')->to('connect4#lobby');
     $auth->get('/connect4/create')->to('connect4#create');
