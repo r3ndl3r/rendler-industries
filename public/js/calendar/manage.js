@@ -5,11 +5,6 @@ function setupManagementPage() {
     setupAllDayToggle();
     setupManagementListeners();
     
-    const addEventBtn = document.getElementById('addEventBtn');
-    if (addEventBtn) {
-        addEventBtn.addEventListener('click', openAddEventModal);
-    }
-    
     const categoryFilter = document.getElementById('categoryFilter');
     if (categoryFilter) {
         categoryFilter.addEventListener('change', filterManagementTable);
