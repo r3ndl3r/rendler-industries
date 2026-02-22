@@ -32,7 +32,10 @@ sub index {
     my $users     = $c->db->get_all_users();
     
     # Filter for approved family/admin users only for selection pool
-    my @eligible_recipients = grep { ($_->{status} // '') eq 'approved' } @$users;
+    my @eligible_recipients = grep { 
+        ($_->{status} // '') eq 'approved' && 
+        (($_->{is_family} // 0) == 1 || ($_->{is_admin} // 0) == 1)
+    } @$users;
 
     $c->render('reminders/index', 
         reminders  => $reminders,
