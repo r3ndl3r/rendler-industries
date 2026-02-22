@@ -185,7 +185,8 @@ sub contact {
 #   Rendered HTML template 'copy/copy' with history
 sub copy_get {
     my $c = shift;
-    my @msgs = $c->db->get_pasted();
+    my $user_id = $c->current_user_id;
+    my @msgs = $c->db->get_pasted($user_id);
     my $client_ip = $c->tx->remote_address;
 
     $c->stash(
@@ -205,19 +206,22 @@ sub copy_get {
 #   Redirects to clipboard page on success
 # Behavior:
 #   - Encodes HTML entities for safety
-#   - Validates URL format if input looks like a link
-#   - Triggers external notifications (Pushover, Gotify)
+#   - Triggers external notifications (Pushover, Gotify) ONLY for user 'rendler'
 sub copy_post {
     my $c = shift;
+    my $user_id = $c->current_user_id;
+    my $username = $c->session('user');
     my $text = trim($c->param('paste') // '');
 
-    # Persist to database (entities encoded inside the paste method or before)
+    # Persist to database
     my $encoded_text = encode_entities($text);
-    $c->db->paste($encoded_text);
+    $c->db->paste($user_id, $encoded_text);
     
-    # Dispatch external notifications
-    $c->db->push_over($text);
-    $c->db->push_gotify($text);
+    # Dispatch external notifications ONLY for rendler
+    if ($username eq 'rendler') {
+        $c->db->push_over($text);
+        $c->db->push_gotify($text);
+    }
     
     return $c->redirect_to('/copy');
 }
@@ -232,6 +236,7 @@ sub copy_post {
 sub copy_update {
     my $c = shift;
     my $id = $c->param('id');
+    my $user_id = $c->current_user_id;
     my $text = trim($c->param('paste') // '');
 
     unless (defined $id && $id =~ /^\d+$/) {
@@ -239,7 +244,7 @@ sub copy_update {
     }
 
     my $encoded_text = encode_entities($text);
-    $c->db->update_message($id, $encoded_text);
+    $c->db->update_message($id, $user_id, $encoded_text);
     return $c->redirect_to('/copy');
 }
 
@@ -252,12 +257,13 @@ sub copy_update {
 sub remove_message {
     my $c = shift;
     my $id = $c->param('id');
+    my $user_id = $c->current_user_id;
 
     unless (defined $id && $id =~ /^\d+$/) {
         return $c->render_error('Invalid ID');
     }
 
-    $c->db->delete_message($id);
+    $c->db->delete_message($id, $user_id);
     $c->redirect_to('/copy');
 }
 
