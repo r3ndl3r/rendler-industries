@@ -53,11 +53,11 @@ function createTaskElement(id, taskName, isCompleted = false) {
         </div>
         <div class="action-buttons">
             ${!isCompleted ? `
-                <button class="btn-edit-item" onclick="openEditModal(${id}, \`${taskName}\`)" title="Edit">
+                <button class="btn-icon-edit" onclick="openEditModal(${id}, \`${taskName}\`)" title="Edit">
                     ✎
                 </button>
             ` : ''}
-            <button class="btn-delete-item" onclick="deleteTodo(${id})" title="Delete">
+            <button class="btn-icon-delete" onclick="deleteTodo(${id})" title="Delete">
                 🗑️
             </button>
         </div>
@@ -232,7 +232,7 @@ async function submitEdit() {
             item.querySelector('.item-name').textContent = name;
             
             // Update the edit button's onclick to reflect new name
-            const editBtn = item.querySelector('.btn-edit-item');
+            const editBtn = item.querySelector('.btn-icon-edit');
             if (editBtn) {
                 editBtn.setAttribute('onclick', `openEditModal(${id}, \`${name}\`)`);
             }

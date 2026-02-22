@@ -218,31 +218,6 @@
     align-items: center;
 }
 
-.btn-edit-item, .btn-delete-item {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.6);
-    padding: 9px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.btn-edit-item:hover {
-    background: rgba(33, 150, 243, 0.25);
-    border-color: #2196f3;
-    color: #fff;
-}
-
-.btn-delete-item:hover {
-    background: rgba(211, 47, 47, 0.25);
-    border-color: #f44336;
-    color: #fff;
-}
-
 .icon-small {
     width: 18px;
     height: 18px;
