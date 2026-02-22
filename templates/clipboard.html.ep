@@ -16,6 +16,14 @@
         </div>
     </div>
 
+    <% if (my $msg = flash('message')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $msg %>", 'success');
+            });
+        </script>
+    <% } %>
+
     <div class="section">
         <h2>Recent Clippings</h2>
         <div class="messages-list">
