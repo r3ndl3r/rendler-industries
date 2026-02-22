@@ -25,7 +25,7 @@
                 required
                 maxlength="255"
             >
-            <button type="submit" class="game-btn btn-blue">Add Item</button>
+            <button type="submit" class="btn-blue-add">Add Item</button>
         </form>
     </div>
 

@@ -149,6 +149,34 @@ body {
     background: #2563eb; 
 }
 
+/* Classic Blue Add Button Gradient Style */
+.btn-blue-add {
+    background: linear-gradient(135deg, #2196f3, #1565c0);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+}
+
+.btn-blue-add:hover {
+    box-shadow: 0 6px 20px rgba(33, 150, 243, 0.5);
+    transform: translateY(-1px);
+}
+
+.btn-blue-add:active {
+    transform: scale(0.97);
+}
+
 /* Gray Buttons (Cancel, Clone, Secondary) */
 .btn-secondary, .btn-clone { 
     background: #334155; 
