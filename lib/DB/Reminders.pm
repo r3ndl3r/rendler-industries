@@ -23,10 +23,14 @@ sub DB::get_all_reminders {
     $self->ensure_connection;
     
     my $sql = q{
-        SELECT r.*, GROUP_CONCAT(rr.user_id) as recipient_ids, u.username as creator_name
+        SELECT r.*, 
+               GROUP_CONCAT(rr.user_id) as recipient_ids,
+               GROUP_CONCAT(u_rec.username) as recipient_names,
+               u_creator.username as creator_name
         FROM reminders r
         LEFT JOIN reminder_recipients rr ON r.id = rr.reminder_id
-        LEFT JOIN users u ON r.created_by = u.id
+        LEFT JOIN users u_rec ON rr.user_id = u_rec.id
+        LEFT JOIN users u_creator ON r.created_by = u_creator.id
         GROUP BY r.id
         ORDER BY r.reminder_time ASC
     };
