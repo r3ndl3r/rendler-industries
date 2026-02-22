@@ -51,13 +51,34 @@ function editBirthday(id, name, date, emoji) {
 }
 
 function closeEditModal() {
-    document.getElementById('editModal').style.display = 'none';
+    const modal = document.getElementById('editModal');
+    if (modal) modal.style.display = 'none';
 }
 
-// Close modal on outside click
+function confirmDeleteBirthday(id, name) {
+    const modal = document.getElementById('deleteConfirmModal');
+    const nameEl = document.getElementById('deleteBirthdayName');
+    const idInput = document.getElementById('deleteBirthdayId');
+    
+    if (nameEl) nameEl.textContent = name;
+    if (idInput) idInput.value = id;
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteConfirmModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Close modals on outside click
 window.onclick = function(event) {
-    const modal = document.getElementById('editModal');
-    if (event.target == modal) {
+    const editModal = document.getElementById('editModal');
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    
+    if (event.target == editModal) {
         closeEditModal();
+    }
+    if (event.target == deleteModal) {
+        closeDeleteModal();
     }
 }

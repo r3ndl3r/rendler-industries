@@ -47,39 +47,61 @@
                     </div>
                     <div class="manage-actions">
                         <button onclick="editBirthday(<%= $b->{id} %>, '<%= $b->{name} %>', '<%= $b->{birth_date} %>', '<%= $b->{emoji} %>')" class="btn-edit">EDIT</button>
-                        <form action="/birthdays/delete" method="POST" style="display:inline;">
-                            <input type="hidden" name="id" value="<%= $b->{id} %>">
-                            <button type="submit" class="btn-delete" onclick="return confirm('Delete <%= $b->{name} %>?')">DELETE</button>
-                        </form>
+                        <button type="button" class="btn-delete" onclick="confirmDeleteBirthday(<%= $b->{id} %>, '<%= $b->{name} %>')">DELETE</button>
                     </div>
                 </div>
             <% } %>
         <% } else { %>
-            <p style="text-align: center; color: rgba(255,255,255,0.5);">No birthdays found.</p>
+            <div class="empty-state">
+                <p>📭 No birthdays found.</p>
+            </div>
         <% } %>
     </div>
 </div>
 
 <!-- Edit Modal -->
-<div id="editModal" class="modal" style="display: none;">
+<div id="editModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
-        <h3>Edit Birthday</h3>
+        <div class="delete-modal-header">
+            <h3>Edit Birthday</h3>
+            <span class="delete-modal-close" onclick="closeEditModal()">&times;</span>
+        </div>
         <form action="/birthdays/edit" method="POST">
-            <input type="hidden" name="id" id="edit_id">
+            <div class="delete-modal-body">
+                <input type="hidden" name="id" id="edit_id">
+                
+                <label>Name</label>
+                <input type="text" name="name" id="edit_name" class="game-input" required>
+                
+                <label>Birth Date</label>
+                <input type="date" name="birth_date" id="edit_date" class="game-input" required>
+                
+                <label>Emoji</label>
+                <input type="text" name="emoji" id="edit_emoji" class="game-input" maxlength="10">
+            </div>
             
-            <label>Name</label>
-            <input type="text" name="name" id="edit_name" class="game-input" required>
-            
-            <label>Birth Date</label>
-            <input type="date" name="birth_date" id="edit_date" class="game-input" required>
-            
-            <label>Emoji</label>
-            <input type="text" name="emoji" id="edit_emoji" class="game-input" maxlength="10">
-            
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button type="submit" class="game-btn btn-blue">Save</button>
-                <button type="button" onclick="closeEditModal()" class="game-btn" style="background: #666;">Cancel</button>
+            <div class="modal-actions">
+                <button type="submit" class="btn-success">Save Changes</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="delete-modal-overlay" style="display: none;">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
+            <h3>Confirm Deletion</h3>
+            <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
+        </div>
+        <div class="delete-modal-body">
+            <p>Are you sure you want to remove "<strong id="deleteBirthdayName"></strong>" from the list?</p>
+        </div>
+        <div class="delete-modal-actions">
+            <form id="deleteBirthdayForm" method="POST" action="/birthdays/delete">
+                <input type="hidden" name="id" id="deleteBirthdayId">
+                <button type="submit" class="btn-danger-confirm">Delete Birthday</button>
+            </form>
+        </div>
     </div>
 </div>
