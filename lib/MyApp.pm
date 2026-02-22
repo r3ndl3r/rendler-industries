@@ -309,6 +309,7 @@ sub startup {
     # --- Reminders Administration Routes ---
     $admin->get('/reminders')->to('reminders#index');
     $admin->post('/reminders/add')->to('reminders#add');
+    $admin->post('/reminders/update/:id')->to('reminders#update');
     $admin->post('/reminders/delete/:id')->to('reminders#delete');
     $admin->post('/reminders/toggle/:id')->to('reminders#toggle');
     
