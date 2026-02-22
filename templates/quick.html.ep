@@ -29,6 +29,11 @@
                 <div class="icon">✅</div>
                 <div class="label">Todo</div>
             </a>
+
+            <a href="/copy" class="tile">
+                <div class="icon">📋</div>
+                <div class="label">Copy</div>
+            </a>
             
             <% if (is_family()) { %>
                 <a href="<%= is_admin() ? '/timers/manage' : '/timers' %>" class="tile">
@@ -101,10 +106,6 @@
             <a href="/go" class="tile admin">
                 <div class="icon">🔗</div>
                 <div class="label">Go Links</div>
-            </a>
-            <a href="/copy" class="tile admin">
-                <div class="icon">📋</div>
-                <div class="label">Copy / Paste</div>
             </a>
             <a href="/files" class="tile admin">
                 <div class="icon">📁</div>

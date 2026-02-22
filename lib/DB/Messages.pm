@@ -18,30 +18,32 @@ use warnings;
 
 # Saves a text snippet to the database.
 # Parameters:
-#   paste : Text content to store (String)
+#   user_id : Unique user ID
+#   paste   : Text content to store (String)
 # Returns:
 #   Result of execute() (true on success)
 sub DB::paste {
-    my ($self, $paste) = @_;
+    my ($self, $user_id, $paste) = @_;
     
     # Verify database connectivity
     $self->ensure_connection;
     
     # Insert new record
-    my $sth = $self->{dbh}->prepare("INSERT INTO copy (text) VALUES(?)");
-    $sth->execute($paste);
+    my $sth = $self->{dbh}->prepare("INSERT INTO copy (user_id, text) VALUES(?, ?)");
+    $sth->execute($user_id, $paste);
 }
 
-# Retrieves paste history formatted for display.
-# Parameters: None
+# Retrieves paste history for a specific user formatted for display.
+# Parameters:
+#   user_id : Unique user ID
 # Returns:
-#   Array of HashRefs: [{ id => Int, text => String }, ...]
+#   Array of HashRefs: [{ id => Int, text => String, raw => String }, ...]
 # Behavior:
 #   - Sorts by newest first (DESC)
 #   - Auto-converts text starting with 'http' into HTML links
 #   - Strips newlines from URL-only entries for cleaner display
 sub DB::get_pasted {
-    my ($self) = @_;
+    my ($self, $user_id) = @_;
     
     # Verify database connectivity
     $self->ensure_connection;
@@ -49,7 +51,11 @@ sub DB::get_pasted {
     my @messages;
     
     # Fetch all records ordered by newest first
-    for my $m (@{ $self->{dbh}->selectall_arrayref("SELECT id, text FROM copy ORDER BY id DESC") }) {
+    my $sql = "SELECT id, text FROM copy WHERE user_id = ? ORDER BY id DESC";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute($user_id);
+
+    while (my $m = $sth->fetchrow_arrayref()) {
         my ($id, $text) = @$m;
         my $raw = $text;
         
@@ -67,30 +73,32 @@ sub DB::get_pasted {
 
 # Removes a paste entry from the database.
 # Parameters:
-#   id : Unique ID of the message to delete
+#   id      : Unique ID of the message to delete
+#   user_id : Verification user ID
 # Returns:
 #   Result of execute() (true on success)
 sub DB::delete_message {
-    my ($self, $id) = @_;
+    my ($self, $id, $user_id) = @_;
     
     # Verify database connectivity
     $self->ensure_connection;
     
     # Execute deletion
-    my $sth = $self->{dbh}->prepare("DELETE FROM copy WHERE id = ?");
-    $sth->execute($id);
+    my $sth = $self->{dbh}->prepare("DELETE FROM copy WHERE id = ? AND user_id = ?");
+    $sth->execute($id, $user_id);
 }
 
 # Updates an existing paste entry.
 # Parameters:
-#   id    : Record ID
-#   text  : New content
+#   id      : Record ID
+#   user_id : Verification user ID
+#   text    : New content
 # Returns: Void
 sub DB::update_message {
-    my ($self, $id, $text) = @_;
+    my ($self, $id, $user_id, $text) = @_;
     $self->ensure_connection;
-    my $sth = $self->{dbh}->prepare("UPDATE copy SET text = ? WHERE id = ?");
-    $sth->execute($text, $id);
+    my $sth = $self->{dbh}->prepare("UPDATE copy SET text = ? WHERE id = ? AND user_id = ?");
+    $sth->execute($text, $id, $user_id);
 }
 
 1;

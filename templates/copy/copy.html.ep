@@ -8,37 +8,33 @@
     <script src="/js/copy.js"></script>
 <% end %>
 
-<% if (stash('is_admin')) { %>
-    
-    <div class="admin-container">
-        <div class="manage-header">
-            <h1>📋 Copy / Paste</h1>
-            <div class="manage-actions">
-                <button class="btn-primary" onclick="openModal()">+ Add Content</button>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>Recent Clippings</h2>
-            <div class="messages-list">
-                <% my @messages = @{ stash('messages') // [] }; %>
-                <% for my $message ( @messages ) { %>
-                    <div class="message-item">
-                        <% if (stash('is_admin')) { %>
-                            <div class="item-actions">
-                                <button class="action-btn copy-btn" data-text="<%= $message->{raw} %>" onclick="copyToClipboard(this)" title="Copy to Clipboard">📋</button>
-                                <button class="action-btn edit-btn" data-text="<%= $message->{raw} %>" onclick="editMessage(<%= $message->{id} %>, this)" title="Edit">✎</button>
-                                <button class="action-btn delete-btn" onclick="removeMessage(<%= $message->{id} %>)" title="Delete">×</button>
-                            </div>
-                        <% } %>
-                        <span class="message-text"><%== $message->{text} %></span>
-                    </div>
-                <% } %>
-            </div>
+<div class="admin-container">
+    <div class="manage-header">
+        <h1>📋 Copy / Paste</h1>
+        <div class="manage-actions">
+            <button class="btn-primary" onclick="openModal()">+ Add Content</button>
         </div>
     </div>
 
-    <!-- Add/Edit Content Modal -->
+    <div class="section">
+        <h2>Recent Clippings</h2>
+        <div class="messages-list">
+            <% my @messages = @{ stash('messages') // [] }; %>
+            <% for my $message ( @messages ) { %>
+                <div class="message-item">
+                    <div class="item-actions">
+                        <button class="action-btn copy-btn" data-text="<%= $message->{raw} %>" onclick="copyToClipboard(this)" title="Copy to Clipboard">📋</button>
+                        <button class="action-btn edit-btn" data-text="<%= $message->{raw} %>" onclick="editMessage(<%= $message->{id} %>, this)" title="Edit">✎</button>
+                        <button class="action-btn delete-btn" onclick="removeMessage(<%= $message->{id} %>)" title="Delete">×</button>
+                    </div>
+                    <span class="message-text"><%== $message->{text} %></span>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Content Modal -->
     <div id="contentModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
@@ -75,9 +71,3 @@
             </div>
         </div>
     </div>
-
-<% } else { %>
-    <div class="main-container">
-        <p style="text-align: center; margin-top: 50px;">Please <a href="/login" style="color: #4CAF50;">login</a> to view this page.</p>
-    </div>
-<% } %>

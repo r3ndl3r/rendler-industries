@@ -235,10 +235,10 @@ sub startup {
     $admin->post('/menu/reorder')->to('menu#reorder');
 
     # --- Copy Routes ---
-    $admin->get('/copy')->to('root#copy_get');
-    $admin->post('/copy')->to('root#copy_post');
-    $admin->post('/copy/update')->to('root#copy_update');
-    $admin->post('/copy/delete/:id')->to('root#remove_message');
+    $auth->get('/copy')->to('root#copy_get');
+    $auth->post('/copy')->to('root#copy_post');
+    $auth->post('/copy/update')->to('root#copy_update');
+    $auth->post('/copy/delete/:id')->to('root#remove_message');
 
     # --- User Administration Routes ---
     $admin->get('/users')->to('admin#user_list');
