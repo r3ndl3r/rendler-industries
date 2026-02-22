@@ -257,7 +257,7 @@ body {
     z-index: 10001;
 }
 
-/* Force flex centering if JS sets display to block */
+/* Maintain centering for delete modals */
 .delete-modal-overlay[style*="display: block"] {
     display: flex !important;
 }
@@ -272,6 +272,7 @@ body {
     color: white;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
     animation: deleteModalSlideDown 0.3s ease-out;
+    margin: 0; /* Reset margin to stay centered via flexbox */
 }
 
 @keyframes deleteModalSlideDown {
@@ -371,13 +372,13 @@ body {
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(4px);
     display: none;
-    justify-content: center;
-    align-items: center;
     z-index: 10000;
+    overflow-y: auto; /* Enable scrolling on the overlay */
 }
 
+.modal-overlay[style*="display: flex"],
 .modal-overlay[style*="display: block"] {
-    display: flex !important;
+    display: block !important;
 }
 
 .modal-content {
@@ -386,9 +387,11 @@ body {
     border-radius: 0.75rem;
     padding: 2rem;
     max-width: 500px;
-    width: 90vw;
+    width: 95%;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     color: #ffffff;
+    margin: 2rem auto; /* Horizontally centered and 2rem from top/bottom */
+    position: relative;
 }
 
 .modal-header {
@@ -515,30 +518,4 @@ a:hover {
 @keyframes toast-out {
     from { transform: translateX(0); opacity: 1; }
     to { transform: translateX(100%); opacity: 0; }
-}
-
-/* Specialized Scrollable Modal Variant */
-.modal-content-scrollable {
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 0.75rem;
-    padding: 2rem;
-    max-width: 600px;
-    width: 90vw;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    color: #ffffff;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.modal-body-scrollable {
-    flex: 1;
-    overflow-y: auto;
-    margin-bottom: 1.5rem;
-    color: #e2e8f0;
-    line-height: 1.5;
-    text-align: left;
-    padding-right: 10px;
 }
