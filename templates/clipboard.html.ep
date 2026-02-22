@@ -23,9 +23,9 @@
             <% for my $message ( @messages ) { %>
                 <div class="message-item">
                     <div class="item-actions">
-                        <button class="action-btn copy-btn" data-text="<%= $message->{raw} %>" onclick="copyToClipboard(this)" title="Copy to Clipboard">📋</button>
-                        <button class="action-btn edit-btn" data-text="<%= $message->{raw} %>" onclick="editMessage(<%= $message->{id} %>, this)" title="Edit">✎</button>
-                        <button class="action-btn delete-btn" onclick="removeMessage(<%= $message->{id} %>)" title="Delete">×</button>
+                        <button class="btn-icon-copy" data-text="<%= $message->{raw} %>" onclick="copyToClipboard(this)" title="Copy to Clipboard">📋</button>
+                        <button class="btn-icon-edit" data-text="<%= $message->{raw} %>" onclick="editMessage(<%= $message->{id} %>, this)" title="Edit">✎</button>
+                        <button class="btn-icon-delete" onclick="removeMessage(<%= $message->{id} %>)" title="Delete">🗑️</button>
                     </div>
                     <span class="message-text"><%== $message->{text} %></span>
                 </div>
