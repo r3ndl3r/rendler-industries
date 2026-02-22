@@ -174,24 +174,20 @@
 /* Modal Enhancements */
 .days-selector, .recipients-selector {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column; /* Stack vertically by default */
     gap: 0.75rem;
     background: #0f172a;
     padding: 1.25rem;
     border-radius: 0.75rem;
     border: 1px solid #334155;
     margin-top: 0.5rem;
+    align-items: flex-start; /* Ensure left alignment on desktop */
+    text-align: left;
 }
 
-.recipients-selector {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    background: #0f172a;
-    padding: 1.25rem;
-    border-radius: 0.75rem;
-    border: 1px solid #334155;
-    margin-top: 0.5rem;
+.days-selector {
+    flex-direction: row; /* Days remain horizontal */
+    flex-wrap: wrap;
 }
 
 .day-checkbox, .recipient-checkbox {
@@ -208,7 +204,7 @@
 
 .day-checkbox {
     flex-direction: row;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .recipient-checkbox {
@@ -227,6 +223,7 @@
     font-size: 0.8rem;
     font-weight: 600;
     color: #94a3b8;
+    text-transform: none; /* Ensure no uppercase transformation globally */
 }
 
 .day-checkbox:has(input:checked), .recipient-checkbox:has(input:checked) {
