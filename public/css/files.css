@@ -224,6 +224,20 @@
         border-top: 1px solid #334155;
         margin-left: -3.5rem; /* Counteract parent padding to center globally */
     }
+
+    /* Fix Permission Checkboxes in Mobile Cards */
+    .recipient-checkbox {
+        text-align: left !important;
+    }
+
+    .recipient-checkbox::before {
+        content: none !important; /* Remove the "ALLOWED USERS" label from every single checkbox */
+    }
+
+    .recipient-checkbox span {
+        text-transform: none !important; /* Force lowercase/original casing */
+    }
+
     .edit-container { padding: 1rem 0; }
     .form-actions { flex-direction: column; }
 }
