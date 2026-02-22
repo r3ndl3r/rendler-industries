@@ -52,9 +52,7 @@
             <div class="completed-section">
                 <div class="completed-header">
                     <h3 class="section-title">Completed</h3>
-                    <form action="/todo/clear" method="POST" onsubmit="return confirm('Clear all completed tasks?')">
-                        <button type="submit" class="btn-clear-all">Clear All</button>
-                    </form>
+                    <button type="button" class="btn-clear-all" onclick="openClearCompletedModal()">Clear All</button>
                 </div>
                 <% for my $todo (@completed) { %>
                     <div class="todo-item completed" data-id="<%= $todo->{id} %>">
@@ -101,6 +99,40 @@
         </div>
         <div class="modal-actions">
             <button type="button" onclick="submitEdit()" class="game-btn btn-blue btn-small">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="delete-modal-overlay">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
+            <h3>Confirm Deletion</h3>
+            <span class="delete-modal-close" onclick="closeDeleteConfirmModal()">&times;</span>
+        </div>
+        <div class="delete-modal-body">
+            <p>Are you sure you want to delete "<strong id="deleteTaskName"></strong>"?</p>
+        </div>
+        <div class="modal-actions delete-modal-actions">
+            <button type="button" class="btn-danger-confirm" id="finalDeleteBtn">Delete Task</button>
+        </div>
+    </div>
+</div>
+
+<!-- Clear Completed Modal -->
+<div id="clearCompletedModal" class="delete-modal-overlay">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header delete-modal-header">
+            <h3>Clear Completed</h3>
+            <span class="delete-modal-close" onclick="closeClearCompletedModal()">&times;</span>
+        </div>
+        <div class="delete-modal-body">
+            <p>Are you sure you want to remove all completed tasks?</p>
+        </div>
+        <div class="modal-actions delete-modal-actions">
+            <form action="/todo/clear" method="POST">
+                <button type="submit" class="btn-danger-confirm">Clear All</button>
+            </form>
         </div>
     </div>
 </div>

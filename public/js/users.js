@@ -26,3 +26,26 @@ function toggleRole(userId, role, value) {
         location.reload();
     });
 }
+
+function confirmDeleteUser(id, username) {
+    const modal = document.getElementById('deleteConfirmModal');
+    const nameEl = document.getElementById('deleteUserName');
+    const form = document.getElementById('deleteUserForm');
+    
+    if (nameEl) nameEl.textContent = username;
+    if (form) form.action = '/users/delete/' + id;
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteConfirmModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('deleteConfirmModal');
+    if (event.target == modal) {
+        closeDeleteModal();
+    }
+}

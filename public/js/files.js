@@ -101,11 +101,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    window.confirmDeleteFile = function(id, filename) {
+        const modal = document.getElementById('deleteConfirmModal');
+        const nameEl = document.getElementById('deleteFileName');
+        const form = document.getElementById('deleteFileForm');
+        
+        if (nameEl) nameEl.textContent = filename;
+        if (form) form.action = '/files/delete/' + id;
+        if (modal) modal.style.display = 'flex';
+    };
+
+    window.closeDeleteModal = function() {
+        const modal = document.getElementById('deleteConfirmModal');
+        if (modal) modal.style.display = 'none';
+    };
+
     document.querySelectorAll('.close-modal, .files-modal-overlay').forEach(el => {
         el.addEventListener('click', function(e) {
             if (e.target === this || e.target.classList.contains('close-modal')) {
                 const modal = document.getElementById('permissionModal');
                 if (modal) modal.style.display = 'none';
+                const delModal = document.getElementById('deleteConfirmModal');
+                if (delModal && e.target === delModal) closeDeleteModal();
             }
         });
     });
