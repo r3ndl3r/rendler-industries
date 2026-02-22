@@ -107,11 +107,11 @@
             </div>
         </div>
 
-        <div id="permissionModal" class="files-modal-overlay" style="display: none;" role="dialog" aria-modal="true">
+        <div id="permissionModal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true">
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>Edit File Permissions</h3>
-                    <button class="close-modal" aria-label="Close" onclick="document.getElementById('permissionModal').style.display='none'">&times;</button>
+                    <span class="close-btn" onclick="document.getElementById('permissionModal').style.display='none'">&times;</span>
                 </div>
                 <form method="POST" action="/files/permissions">
                     <input type="hidden" id="permissionFileId" name="id">
