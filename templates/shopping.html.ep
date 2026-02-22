@@ -51,16 +51,8 @@
                             </div>
                         </div>
                         <div class="action-buttons">
-                            <button type="button" class="btn-edit-item" onclick="editItem(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Edit">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
-                            </button>
-                            <button type="button" class="btn-delete-item" onclick="openDeleteModal(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Delete">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
+                            <button type="button" class="btn-icon-edit" onclick="editItem(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Edit">✎</button>
+                            <button type="button" class="btn-icon-delete" onclick="openDeleteModal(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Delete">🗑️</button>
                         </div>
                     </div>
                 <% } %>
@@ -86,11 +78,7 @@
                                 </div>
                             </div>
                             <div class="action-buttons">
-                                <button type="button" class="btn-delete-item" onclick="openDeleteModal(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Delete">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
+                                <button type="button" class="btn-icon-delete" onclick="openDeleteModal(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Delete">🗑️</button>
                             </div>
                         </div>
                     <% } %>
