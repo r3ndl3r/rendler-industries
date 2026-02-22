@@ -107,7 +107,7 @@
 </div>
 
 <!-- Edit Modal -->
-<div id="editModal" class="modal" style="display: none;">
+<div id="editModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
             <h3>Edit Item</h3>
@@ -129,7 +129,7 @@
             </div>
         </div>
         <div class="modal-actions">
-            <button type="button" onclick="submitEdit()" class="game-btn btn-blue btn-small">Save Changes</button>
+            <button type="button" onclick="submitEdit()" class="btn-primary btn-small">Save Changes</button>
         </div>
     </div>
 </div>
