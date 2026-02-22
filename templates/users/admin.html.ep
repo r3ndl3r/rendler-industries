@@ -15,25 +15,32 @@
     
     <table class="users-table">
         <thead>
-            <tr>
-                <th>ID</th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Created</th>
-                <th>Status</th>
-                <th>Admin</th>
-                <th>Family</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% for my $user (@$users) { %>
-                <tr>
-                    <td data-label="ID"><%= $user->{id} %></td>
-                    <td data-label="Username"><span class="text-wrap"><%= $user->{username} %></span></td>
-                    <td data-label="Email"><span class="text-wrap text-small"><%= $user->{email} %></span></td>
-                    <td data-label="Created"><span class="text-wrap text-small"><%= $user->{created_at} %></span></td>
-                    <td data-label="Status">
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Discord ID</th>
+                                <th>Created</th>
+                                <th>Status</th>
+                                <th>Admin</th>
+                                <th>Family</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% for my $user (@$users) { %>
+                                <tr>
+                                    <td data-label="ID"><%= $user->{id} %></td>
+                                    <td data-label="Username"><span class="text-wrap"><%= $user->{username} %></span></td>
+                                    <td data-label="Email"><span class="text-wrap text-small"><%= $user->{email} %></span></td>
+                                    <td data-label="Discord ID">
+                                        <% if ($user->{discord_id}) { %>
+                                            <span class="text-wrap text-small" style="color: #7289da;"><%= $user->{discord_id} %></span>
+                                        <% } else { %>
+                                            <span style="opacity: 0.3;">-</span>
+                                        <% } %>
+                                    </td>
+                                    <td data-label="Created"><span class="text-wrap text-small"><%= $user->{created_at} %></span></td>                    <td data-label="Status">
                         <% if (defined $user->{status} && $user->{status} eq 'approved') { %>
                             <span class="status-badge status-approved">Approved</span>
                         <% } else { %>
