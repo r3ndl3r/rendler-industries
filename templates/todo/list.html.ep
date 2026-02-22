@@ -37,10 +37,10 @@
                         </div>
                     </div>
                     <div class="action-buttons">
-                        <button class="btn-edit-item" onclick="openEditModal(<%= $todo->{id} %>, `<%= $todo->{task_name} %>`)" title="Edit">
+                        <button class="btn-icon-edit" onclick="openEditModal(<%= $todo->{id} %>, `<%= $todo->{task_name} %>`)" title="Edit">
                             ✎
                         </button>
-                        <button class="btn-delete-item" onclick="deleteTodo(<%= $todo->{id} %>)" title="Delete">
+                        <button class="btn-icon-delete" onclick="deleteTodo(<%= $todo->{id} %>)" title="Delete">
                             🗑️
                         </button>
                     </div>
@@ -65,7 +65,7 @@
                             </div>
                         </div>
                         <div class="action-buttons">
-                            <button class="btn-delete-item" onclick="deleteTodo(<%= $todo->{id} %>)" title="Delete">
+                            <button class="btn-icon-delete" onclick="deleteTodo(<%= $todo->{id} %>)" title="Delete">
                                 🗑️
                             </button>
                         </div>
