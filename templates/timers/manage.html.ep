@@ -12,8 +12,8 @@
 <% end %>
 
 <div class="timers-manage-container">
-    <div class="manage-header">
-        <h1>Timer Management</h1>
+    <div class="header-bar">
+        <h1>⏱️ <span>Timer Management</span></h1>
         <button class="btn btn-primary" id="btn-create-timer">➕ Create New Timer</button>
     </div>
 
