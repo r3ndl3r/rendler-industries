@@ -98,46 +98,6 @@
     flex-wrap: wrap;
 }
 
-.btn-action {
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-block;
-    transition: all 0.2s;
-    border: none;
-    cursor: pointer;
-    font-family: inherit;
-}
-
-.btn-approve {
-    background: #10b981;
-    color: #fff;
-}
-
-.btn-approve:hover {
-    background: #059669;
-}
-
-.btn-edit {
-    background: #3b82f6;
-    color: #fff;
-}
-
-.btn-edit:hover {
-    background: #2563eb;
-}
-
-.btn-delete {
-    background: #ef4444;
-    color: #fff;
-}
-
-.btn-delete:hover {
-    background: #dc2626;
-}
-
 .edit-container {
     padding: 2rem 1rem;
     padding-top: 0;
@@ -438,6 +398,7 @@ input:checked + .slider-family {
         margin-top: 0.4rem;
         padding-top: 0.5rem;
         border-top: 1px solid #334155;
+        justify-content: flex-end; /* Align icons to the right */
     }
     
     .users-table td[data-label="Actions"]::before {
@@ -450,64 +411,14 @@ input:checked + .slider-family {
         flex-direction: row;
         gap: 0.4rem;
         max-width: 100%;
+        justify-content: flex-end;
     }
     
     .action-btns form,
     .action-btns a {
-        flex: 1 1 0;
-        min-width: 0;
-        margin: 0;
-        padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-    }
-    
-    .btn-action {
-        width: 100%;
-        min-width: 0;
-        text-align: center;
-        padding: 0.5rem 0.5rem;
-        font-size: 0.8125rem;
-        font-weight: 700;
-        display: block;
-        box-sizing: border-box;
-        border-radius: 0.5rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        text-decoration: none;
-    }
-    
-    /* Approve button styling */
-    .btn-approve {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
-    }
-    
-    .btn-approve:active {
-        transform: translateY(1px);
-        box-shadow: 0 1px 3px rgba(16, 185, 129, 0.4);
-    }
-    
-    /* Edit button styling */
-    .btn-edit {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
-    }
-    
-    .btn-edit:active {
-        transform: translateY(1px);
-        box-shadow: 0 1px 3px rgba(59, 130, 246, 0.4);
-    }
-    
-    /* Delete button styling */
-    .btn-delete {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
-    }
-    
-    .btn-delete:active {
-        transform: translateY(1px);
-        box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4);
     }
     
     /* Edit Page Mobile */

@@ -66,12 +66,12 @@
                     <td data-label="Actions">
                         <div class="action-btns">
                             <% if (defined $user->{status} && $user->{status} eq 'pending') { %>
-                                <form action="/users/approve/<%= $user->{id} %>" method="POST">
-                                    <button type="submit" class="btn-action btn-approve">Approve</button>
+                                <form action="/users/approve/<%= $user->{id} %>" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn-icon-view" title="Approve">✅</button>
                                 </form>
                             <% } %>
-                            <a href="/users/edit/<%= $user->{id} %>" class="btn-action btn-edit">Edit</a>
-                            <button type="button" class="btn-action btn-delete" onclick="confirmDeleteUser(<%= $user->{id} %>, '<%= $user->{username} %>')">Delete</button>
+                            <a href="/users/edit/<%= $user->{id} %>" class="btn-icon-edit" title="Edit">✎</a>
+                            <button type="button" class="btn-icon-delete" onclick="confirmDeleteUser(<%= $user->{id} %>, '<%= $user->{username} %>')" title="Delete">🗑️</button>
                         </div>
                     </td>
                 </tr>
