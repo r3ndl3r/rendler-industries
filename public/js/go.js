@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     // Handle Copy Buttons
-    document.querySelectorAll('.copy-btn').forEach(btn => {
+    document.querySelectorAll('.btn-icon-copy').forEach(btn => {
         btn.addEventListener('click', function() {
             const url = this.dataset.url;
             
