@@ -55,6 +55,22 @@
                    name="password" 
                    placeholder="Enter new password or leave blank">
         </div>
+
+        <div class="toggle-group">
+            <label for="is_admin">Administrator Privileges</label>
+            <label class="switch">
+                <input type="checkbox" id="is_admin" name="is_admin" value="1" <%= $user->{is_admin} ? 'checked' : '' %>>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="toggle-group">
+            <label for="is_family">Family Member Status</label>
+            <label class="switch">
+                <input type="checkbox" id="is_family" name="is_family" value="1" <%= $user->{is_family} ? 'checked' : '' %>>
+                <span class="slider slider-family"></span>
+            </label>
+        </div>
         
         <div class="form-actions">
             <button type="submit" class="btn btn-save">Save Changes</button>
