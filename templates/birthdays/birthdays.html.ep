@@ -10,9 +10,11 @@
 
 <div class="birthday-container">
     <div class="header-bar">
-        <h1>🎉 Birthday Countdown</h1>
+        <h1>🎉 <span>Birthday Countdown</span></h1>
         <% if (is_admin()) { %>
-            <a href="/birthdays/manage" class="manage-btn">⚙️</a>
+            <div class="manage-actions">
+                <a href="/birthdays/manage" class="action-btn">Manage</a>
+            </div>
         <% } %>
     </div>
 

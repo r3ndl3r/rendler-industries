@@ -9,7 +9,9 @@
 <% end %>
 
 <div class="admin-container">
-    <h1>👥 <span>Users Admin</span></h1>
+    <div class="header-bar">
+        <h1>👥 <span>Users Admin</span></h1>
+    </div>
     
     <table class="users-table">
         <thead>

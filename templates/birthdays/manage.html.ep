@@ -9,7 +9,7 @@
 <% end %>
 
 <div class="birthday-container manage-container">
-    <h1>🎂 Manage Birthdays</h1>
+    <h1>🎂 <span>Manage Birthdays</span></h1>
     <a href="/birthdays" class="back-link">&larr; Back to Birthdays</a>
 
     <div class="glass-panel">
