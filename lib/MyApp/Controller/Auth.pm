@@ -171,8 +171,8 @@ Please log in to the admin panel to approve or reject this account.
         $c->app->log->error("Failed to send admin registration email: $@");
     }
 
-    # Return success message (Frontend should handle redirection)
-    $c->render(text => 'New user registered (pending approval).', status => 200);
+    # Return themed success page
+    $c->render('auth/registration_success', username => $username);
 }
 
 1;

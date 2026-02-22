@@ -1,0 +1,29 @@
+<%# /templates/auth/registration_success.html.ep %>
+
+% layout 'default';
+% title 'Registration Successful';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/auth.css">
+<% end %>
+
+<div class="auth-container">
+    <div class="header-bar">
+        <h1>📝 <span>Registration</span></h1>
+    </div>
+
+    <div class="glass-panel message-card" style="text-align: center; padding: 2rem;">
+        <div style="font-size: 4rem; margin-bottom: 1.5rem;">📬</div>
+        <h2 style="font-weight: 300; margin-bottom: 1rem; color: #ffffff;">Account Pending</h2>
+        <p style="color: #94a3b8; line-height: 1.6; margin-bottom: 2rem;">
+            Thank you for registering, <strong><%= $username %></strong>!<br>
+            Your account is currently <strong>awaiting approval</strong> by an administrator.
+        </p>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">
+            An email has been sent to the admins to notify them of your request.
+        </p>
+        <div class="error-actions" style="display: flex; justify-content: center;">
+            <a href="/" class="btn-primary">Return to Homepage</a>
+        </div>
+    </div>
+</div>
