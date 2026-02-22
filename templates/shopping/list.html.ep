@@ -109,7 +109,10 @@
 <!-- Edit Modal -->
 <div id="editModal" class="modal" style="display: none;">
     <div class="modal-content">
-        <h3>Edit Item</h3>
+        <div class="modal-header">
+            <h3>Edit Item</h3>
+            <span class="close-btn" onclick="closeEditModal()">&times;</span>
+        </div>
         <div class="modal-body">
             <div class="modal-group">
                 <label for="editName">Item Name</label>
@@ -126,8 +129,7 @@
             </div>
         </div>
         <div class="modal-actions">
-            <button type="button" onclick="submitEdit()" class="game-btn btn-blue">Save Changes</button>
-            <button type="button" onclick="closeEditModal()" class="game-btn btn-cancel">Cancel</button>
+            <button type="button" onclick="submitEdit()" class="game-btn btn-blue btn-small">Save Changes</button>
         </div>
     </div>
 </div>
@@ -135,13 +137,15 @@
 <!-- Delete Modal -->
 <div id="deleteModal" class="modal" style="display: none;">
     <div class="modal-content">
-        <h3>Delete Item</h3>
+        <div class="modal-header">
+            <h3>Delete Item</h3>
+            <span class="close-btn" onclick="closeDeleteModal()">&times;</span>
+        </div>
         <div class="modal-body">
             <p>Are you sure you want to remove <strong id="deleteItemName"></strong> from the list?</p>
         </div>
         <div class="modal-actions">
-            <button type="button" id="confirmDeleteBtn" class="game-btn btn-danger">Delete Item</button>
-            <button type="button" onclick="closeDeleteModal()" class="game-btn btn-cancel">Cancel</button>
+            <button type="button" id="confirmDeleteBtn" class="game-btn btn-danger btn-small">Delete Item</button>
         </div>
     </div>
 </div>
@@ -149,15 +153,17 @@
 <!-- Clear All Modal -->
 <div id="clearAllModal" class="modal" style="display: none;">
     <div class="modal-content">
-        <h3>Clear Checked Items</h3>
+        <div class="modal-header">
+            <h3>Clear Checked Items</h3>
+            <span class="close-btn" onclick="closeClearAllModal()">&times;</span>
+        </div>
         <div class="modal-body">
             <p>Are you sure you want to remove all checked items from the list?</p>
         </div>
         <div class="modal-actions">
             <form action="/shopping/clear" method="POST">
-                <button type="submit" class="game-btn btn-danger">Clear All</button>
+                <button type="submit" class="game-btn btn-danger btn-small">Clear All</button>
             </form>
-            <button type="button" onclick="closeClearAllModal()" class="game-btn btn-cancel">Cancel</button>
         </div>
     </div>
 </div>
