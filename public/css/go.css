@@ -1,7 +1,7 @@
 /* /public/css/go.css */
 
 .go-container {
-    max-width: 1200px;
+    max-width: 900px;
     margin: 0 auto;
     padding: 20px;
 }
@@ -24,10 +24,20 @@
     display: flex;
     gap: 15px;
     flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+}
+
+.form-inputs {
+    flex: 1;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
 }
 
 .add-item-form .game-input {
-    flex: 1;
     min-width: 200px;
     padding: 12px 15px;
     background: rgba(0, 0, 0, 0.2);
@@ -36,6 +46,7 @@
     color: #ffffff;
     font-size: 1rem;
     transition: all 0.3s ease;
+    margin-bottom: 0;
 }
 
 .add-item-form .game-input:focus {
