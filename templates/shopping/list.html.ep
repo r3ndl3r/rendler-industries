@@ -10,7 +10,7 @@
 
 <div class="shopping-container">
     <div class="header-bar">
-        <h1>🛒 Shopping List</h1>
+        <h1>🛒 <span>Shopping List</span></h1>
     </div>
     
     <!-- Add Item Form -->

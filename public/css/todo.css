@@ -27,6 +27,12 @@ body {
     color: #ffffff;
     margin: 0;
     letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-bar h1 span {
     background: linear-gradient(135deg, #ffffff, #90caf9);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;

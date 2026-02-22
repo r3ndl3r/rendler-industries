@@ -10,7 +10,7 @@
 
 <div class="todo-container">
     <div class="header-bar">
-        <h1>✅ Todo List</h1>
+        <h1>✅ <span>Todo List</span></h1>
     </div>
 
     <div class="glass-panel add-item-panel">
