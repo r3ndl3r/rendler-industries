@@ -127,19 +127,20 @@
     </div>
 </div>
 
-<div id="deleteModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <h3>Delete Link</h3>
-        <div class="modal-body">
+<div id="deleteModal" class="delete-modal-overlay" style="display: none;">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
+            <h3>Delete Link</h3>
+            <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
+        </div>
+        <div class="delete-modal-body">
             <p>Are you sure you want to delete the link for <strong id="deleteKeyword"></strong>?</p>
-            <p class="text-danger" style="color: #dc2626; font-size: 0.85rem; margin-top: 5px;">This action cannot be undone.</p>
         </div>
         <div class="modal-actions">
             <form id="deleteForm" method="POST" action="/go/delete">
                 <input type="hidden" id="deleteId" name="id">
-                <button type="submit" class="game-btn btn-danger">Delete Link</button>
+                <button type="submit" class="btn-danger-confirm">Delete Link</button>
             </form>
-            <button type="button" onclick="closeDeleteModal()" class="game-btn btn-cancel">Cancel</button>
         </div>
     </div>
 </div>

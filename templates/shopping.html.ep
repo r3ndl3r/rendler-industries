@@ -135,34 +135,34 @@
 </div>
 
 <!-- Delete Modal -->
-<div id="deleteModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
+<div id="deleteModal" class="delete-modal-overlay" style="display: none;">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
             <h3>Delete Item</h3>
-            <span class="close-btn" onclick="closeDeleteModal()">&times;</span>
+            <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
         </div>
-        <div class="modal-body">
+        <div class="delete-modal-body">
             <p>Are you sure you want to remove <strong id="deleteItemName"></strong> from the list?</p>
         </div>
         <div class="modal-actions">
-            <button type="button" id="confirmDeleteBtn" class="game-btn btn-danger btn-small">Delete Item</button>
+            <button type="button" id="confirmDeleteBtn" class="btn-danger-confirm">Delete Item</button>
         </div>
     </div>
 </div>
 
 <!-- Clear All Modal -->
-<div id="clearAllModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
+<div id="clearAllModal" class="delete-modal-overlay" style="display: none;">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
             <h3>Clear Checked Items</h3>
-            <span class="close-btn" onclick="closeClearAllModal()">&times;</span>
+            <span class="delete-modal-close" onclick="closeClearAllModal()">&times;</span>
         </div>
-        <div class="modal-body">
+        <div class="delete-modal-body">
             <p>Are you sure you want to remove all checked items from the list?</p>
         </div>
         <div class="modal-actions">
             <form action="/shopping/clear" method="POST">
-                <button type="submit" class="game-btn btn-danger btn-small">Clear All</button>
+                <button type="submit" class="btn-danger-confirm">Clear All</button>
             </form>
         </div>
     </div>
