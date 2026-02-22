@@ -70,19 +70,22 @@ sub add_fine {
     $c->redirect_to('/swear');
 }
 
-# Settles outstanding debts for a user.
+# Records a payment/deposit made by a user.
 # Route: POST /swear/pay
 # Parameters:
 #   perpetrator : Name of the user clearing their debt
+#   amount      : Amount deposited
 # Returns:
 #   Redirects to dashboard
 sub pay_debt {
     my $c = shift;
     
     my $name = trim($c->param('perpetrator') // '');
-    if ($name) {
-        # Update ledger status to Paid
-        $c->db->mark_user_paid($name);
+    my $amount = trim($c->param('amount') // '');
+
+    if ($name && $amount =~ /^\d+(\.\d{1,2})?$/) {
+        # Record the explicit payment amount
+        $c->db->mark_user_paid($name, $amount);
     }
     $c->redirect_to('/swear');
 }
