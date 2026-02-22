@@ -45,7 +45,7 @@
                 <input type="hidden" name="id" id="messageId">
                 <div class="form-group">
                     <label for="paste">Content</label>
-                    <textarea name="paste" id="paste" placeholder="Paste content here..." onkeypress="textIn()"></textarea>
+                    <textarea name="paste" id="paste" class="game-input" placeholder="Paste content here..." onkeypress="textIn()"></textarea>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>

@@ -63,3 +63,16 @@
         padding: 1.25rem;
     }
 }
+
+/* Modal Customizations */
+#contentModal .modal-content {
+    max-width: 800px;
+}
+
+#paste {
+    min-height: 300px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    resize: vertical;
+}
