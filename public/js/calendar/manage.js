@@ -47,7 +47,9 @@ function setupManagementListeners() {
     document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', function() {
             const eventId = this.dataset.id;
-            deleteEventFromTable(eventId);
+            const row = this.closest('tr');
+            const title = row ? row.querySelector('strong').textContent : '';
+            deleteEventFromTable(eventId, title);
         });
     });
 }
@@ -70,26 +72,31 @@ function editEventFromTable(eventId) {
         });
 }
 
-function deleteEventFromTable(eventId) {
-    if (!confirm('Are you sure you want to delete this event?')) return;
-    
-    fetch('/calendar/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ id: eventId })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            location.reload();
-        } else {
-            alert('Error: ' + (result.error || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('Error deleting event:', error);
-        alert('Failed to delete event');
-    });
+function deleteEventFromTable(eventId, title) {
+    if (typeof deleteEventFromModal === 'function') {
+        deleteEventFromModal(eventId, title);
+    } else {
+        // Fallback if modals.js is not loaded correctly
+        if (!confirm(`Are you sure you want to delete "${title || 'this event'}"?`)) return;
+        
+        fetch('/calendar/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ id: eventId })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (result.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting event:', error);
+            alert('Failed to delete event');
+        });
+    }
 }
 
 function sortEventsTable() {

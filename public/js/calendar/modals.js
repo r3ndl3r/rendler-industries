@@ -161,7 +161,7 @@ function openEditModal(event) {
     const cloneBtn = document.getElementById('cloneEventBtn');
     if (deleteBtn) {
         deleteBtn.style.display = 'inline-block';
-        deleteBtn.onclick = () => deleteEventFromModal(event.id);
+        deleteBtn.onclick = () => deleteEventFromModal(event.id, event.title);
     }
     if (cloneBtn) {
         cloneBtn.style.display = 'inline-block';
@@ -271,15 +271,52 @@ function handleEventSubmit(e) {
     });
 }
 
-function deleteEventFromModal(eventId) {
-    if (!confirm('Are you sure you want to delete this event?')) {
+function deleteEventFromModal(eventId, title) {
+    const modal = document.getElementById('deleteConfirmModal');
+    if (!modal) {
+        // Fallback if modal doesn't exist in template
+        if (!confirm(`Are you sure you want to delete "${title || 'this event'}"?`)) {
+            return;
+        }
+        performDelete(eventId);
         return;
     }
     
+    // Set up the final delete button
+    const finalDeleteBtn = document.getElementById('finalDeleteBtn');
+    if (finalDeleteBtn) {
+        finalDeleteBtn.onclick = () => performDelete(eventId);
+    }
+    
+    // Set title if element exists
+    const titleEl = document.getElementById('deleteEventTitle');
+    if (titleEl) {
+        titleEl.textContent = title || 'this event';
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function closeDeleteConfirmModal() {
+    const modal = document.getElementById('deleteConfirmModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function performDelete(eventId) {
     const deleteBtn = document.getElementById('deleteEventBtn');
-    const originalText = deleteBtn.innerHTML;
-    deleteBtn.disabled = true;
-    deleteBtn.innerHTML = 'Deleting...';
+    const finalDeleteBtn = document.getElementById('finalDeleteBtn');
+    
+    const originalText = deleteBtn ? deleteBtn.innerHTML : 'Delete';
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = 'Deleting...';
+    }
+    if (finalDeleteBtn) {
+        finalDeleteBtn.disabled = true;
+        finalDeleteBtn.innerHTML = 'Deleting...';
+    }
     
     fetch('/calendar/delete', {
         method: 'POST',
@@ -291,6 +328,7 @@ function deleteEventFromModal(eventId) {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
+            closeDeleteConfirmModal();
             closeModal();
             if (typeof isManagementPage !== 'undefined' && isManagementPage) {
                 location.reload();
@@ -303,15 +341,29 @@ function deleteEventFromModal(eventId) {
             }
         } else {
             alert('Error: ' + (result.error || 'Failed to delete event'));
-            deleteBtn.disabled = false;
-            deleteBtn.innerHTML = originalText;
+            if (deleteBtn) {
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalText;
+            }
+            if (finalDeleteBtn) {
+                finalDeleteBtn.disabled = false;
+                finalDeleteBtn.innerHTML = 'Delete';
+            }
+            closeDeleteConfirmModal();
         }
     })
     .catch(error => {
         console.error('Error deleting event:', error);
         alert('Failed to delete event');
-        deleteBtn.disabled = false;
-        deleteBtn.innerHTML = originalText;
+        if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = originalText;
+        }
+        if (finalDeleteBtn) {
+            finalDeleteBtn.disabled = false;
+            finalDeleteBtn.innerHTML = 'Delete';
+        }
+        closeDeleteConfirmModal();
     });
 }
 
@@ -390,12 +442,16 @@ function cloneEventFromModal(event) {
 document.addEventListener('click', function(e) {
     const eventModal = document.getElementById('eventModal');
     const detailsModal = document.getElementById('eventDetailsModal');
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
     
     if (e.target === eventModal) {
         closeModal();
     }
     if (e.target === detailsModal) {
         closeEventDetailsModal();
+    }
+    if (e.target === deleteConfirmModal) {
+        closeDeleteConfirmModal();
     }
 });
 
@@ -404,5 +460,6 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeModal();
         closeEventDetailsModal();
+        closeDeleteConfirmModal();
     }
 });
