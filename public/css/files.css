@@ -97,31 +97,6 @@
     gap: 0.5rem;
 }
 
-.btn {
-    padding: 0.5rem;
-    border-radius: 0.5rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    color: white;
-    text-decoration: none;
-}
-
-.btn-view { background: #10b981; }
-.btn-view:hover { background: #059669; }
-.btn-copy { background: #f59e0b; }
-.btn-copy:hover { background: #d97706; }
-.btn-edit { background: #3b82f6; }
-.btn-edit:hover { background: #2563eb; }
-.btn-delete { background: #ef4444; }
-.btn-delete:hover { background: #dc2626; }
-
-/* Buttons for Header/Form */
 .btn-primary {
     background: #3b82f6;
     color: white;
@@ -132,71 +107,6 @@
 }
 
 .btn-primary:hover { background: #2563eb; }
-
-/* Modal Styling */
-.files-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-}
-
-.modal-content {
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 0.75rem;
-    padding: 2.5rem;
-    max-width: 520px;
-    width: 90vw;
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    border-bottom: 1px solid #334155;
-    padding-bottom: 1.5rem;
-}
-
-.modal-header h3 {
-    margin: 0;
-    font-size: 1.75rem;
-    color: #fff;
-    font-weight: 300;
-}
-
-.close-modal {
-    background: #334155;
-    border: none;
-    color: #94a3b8;
-    width: 36px;
-    height: 36px;
-    border-radius: 0.5rem;
-    font-size: 1.5rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.btn-upload {
-    width: 100%;
-    padding: 0.875rem;
-    background: #10b981;
-    color: white;
-    border: none;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-}
 
 /* Edit Form Styles (from users.css) */
 .edit-container {

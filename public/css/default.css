@@ -188,12 +188,13 @@ body {
 }
 
 /* Red Buttons (Delete, Remove, Danger) */
-.btn-danger { 
-    background: #ef4444; 
-    color: white; 
+.btn-danger, .btn-danger-confirm { 
+    background: #ef4444 !important; 
+    color: white !important; 
 }
-.btn-danger:hover { 
-    background: #dc2626; 
+.btn-danger:hover, .btn-danger-confirm:hover { 
+    background: #dc2626 !important;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
 }
 
 /* Green Buttons (Success, Add) */
@@ -204,6 +205,34 @@ body {
 .btn-success:hover { 
     background: #059669; 
 }
+
+/* Standardized Icon-only Action Buttons */
+.btn-icon-view, .btn-icon-copy, .btn-icon-edit, .btn-icon-delete {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    font-size: 1.1rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: white !important;
+}
+
+.btn-icon-view { background: #10b981; }
+.btn-icon-view:hover { background: #059669; }
+
+.btn-icon-copy { background: #f59e0b; }
+.btn-icon-copy:hover { background: #d97706; }
+
+.btn-icon-edit { background: #3b82f6; }
+.btn-icon-edit:hover { background: #2563eb; }
+
+.btn-icon-delete { background: #ef4444; }
+.btn-icon-delete:hover { background: #dc2626; }
 
 /* Disabled states */
 .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled, .btn-success:disabled {
@@ -371,6 +400,13 @@ body {
     margin-bottom: 1.5rem;
     border-bottom: 1px solid #334155;
     padding-bottom: 1rem;
+    position: relative;
+}
+
+.modal-header .close-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
 }
 
 .modal-header h2, .modal-header h3 {
