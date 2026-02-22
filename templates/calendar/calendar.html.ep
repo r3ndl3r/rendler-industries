@@ -124,7 +124,6 @@
             </div>
             
         <div class="form-actions">
-            <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
             <button type="button" class="btn-danger" id="deleteEventBtn" style="display: none;">Delete</button>
             <button type="button" class="btn-secondary" id="cloneEventBtn" style="display: none;">Clone</button>
             <button type="submit" class="btn-primary">Save</button>

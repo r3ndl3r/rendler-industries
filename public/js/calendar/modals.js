@@ -5,11 +5,9 @@ function setupModalListeners() {
     if (!modal) return;
     
     const closeBtn = modal.querySelector('.close');
-    const cancelBtn = document.getElementById('cancelBtn');
     const eventForm = document.getElementById('eventForm');
     
     if (closeBtn) closeBtn.addEventListener('click', closeModal);
-    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
     
     if (eventForm) eventForm.addEventListener('submit', handleEventSubmit);
 

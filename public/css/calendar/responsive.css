@@ -6,26 +6,15 @@
        MODAL & DIALOG FIXES
        ========================================= */
     
-    /* Disable the desktop "ghost element" centering trick 
-       so we can manually position the modal on mobile. */
-    .modal::before {
-        display: none !important;
+    .modal {
+        padding-top: 30px;
     }
 
-    /* Force the modal to sit near the top (but clear of the navbar) 
-       instead of trying to center vertically, which cuts off the top on phones. */
     .modal-content {
-        display: block !important;
-        
-        /* Top margin 70px clears the header. Bottom margin 20px for spacing. */
-        margin: 70px auto 20px auto !important; 
-        
-        width: 90%;
-        box-sizing: border-box; /* Ensures padding doesn't widen the box beyond 90% */
+        margin: 0 auto 20px auto !important; 
+        width: 95%;
         padding: 15px;
-        
-        /* Enables scrolling inside the modal if the form is taller than the screen */
-        max-height: 80vh; 
+        max-height: 85vh; 
         overflow-y: auto;
     }
 
