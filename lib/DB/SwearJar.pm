@@ -209,7 +209,7 @@ sub DB::get_swear_history {
     $self->ensure_connection;
     
     # Fetch recent history including payments, excluding migration markers
-    my $sth = $self->{dbh}->prepare("SELECT id, type, name as perpetrator, amount, reason, created_at FROM swear_ledger WHERE type IN ('fine', 'spend', 'payment') AND reason != 'Legacy Payment Conversion' ORDER BY created_at DESC LIMIT 20");
+    my $sth = $self->{dbh}->prepare("SELECT id, type, name as perpetrator, amount, reason, created_at FROM swear_ledger WHERE type IN ('fine', 'spend', 'payment') AND reason NOT IN ('Legacy Payment Conversion', 'Legacy Fine Payment') ORDER BY created_at DESC LIMIT 20");
     $sth->execute();
     
     return $sth->fetchall_arrayref({});
