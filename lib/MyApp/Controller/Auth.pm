@@ -141,6 +141,36 @@ sub register {
     # Log registration event
     $c->app->log->info("New user registered (pending approval): $username from IP " . $c->tx->remote_address);
     
+    # Send email notification to admins
+    eval {
+        my $users = $c->db->get_all_users();
+        my @admin_emails;
+        foreach my $user (@$users) {
+            if ($user->{is_admin} && $user->{email}) {
+                push @admin_emails, $user->{email};
+            }
+        }
+
+        if (@admin_emails) {
+            my $subject = "New User Registration / ลงทะเบียนผู้ใช้ใหม่: $username";
+            my $body = qq{A new user has registered and is awaiting approval:
+            
+Username: $username
+Email: $email
+IP Address: } . $c->tx->remote_address . qq{
+
+Please log in to the admin panel to approve or reject this account.
+กรุณาเข้าสู่ระบบในส่วนการดูแลระบบเพื่ออนุมัติหรือปฏิเสธบัญชีนี้
+
+- Family Dashboard System};
+
+            $c->send_email_via_gmail(\@admin_emails, $subject, $body);
+        }
+    };
+    if ($@) {
+        $c->app->log->error("Failed to send admin registration email: $@");
+    }
+
     # Return success message (Frontend should handle redirection)
     $c->render(text => 'New user registered (pending approval).', status => 200);
 }
