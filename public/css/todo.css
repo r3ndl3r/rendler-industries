@@ -1,7 +1,7 @@
 /* /public/css/todo.css */
 
 body {
-    background-color: #0f172a;
+    background-color: #050c1d;
     margin: 0;
     padding-top: 40px;
     min-height: 100vh;
@@ -342,18 +342,43 @@ body {
     color: white;
 }
 
-.modal-content h3 {
-    margin-top: 0;
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 15px;
+}
+
+.modal-header h3 {
+    margin: 0;
     font-weight: 300;
     font-size: 1.5rem;
+}
+
+.close-btn {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close-btn:hover {
+    color: white;
+}
+
+.modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
 }
 
 .modal-group {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-bottom: 20px;
 }
 
 .modal-group label {
@@ -367,6 +392,11 @@ body {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
+}
+
+.btn-small {
+    padding: 10px 20px;
+    font-size: 0.85rem;
 }
 
 @media (max-width: 768px) {
