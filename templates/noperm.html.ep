@@ -7,11 +7,19 @@
     <link rel="stylesheet" href="/css/noperm.css">
 <% end %>
 
-<div class="message-container">
-    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-    </svg>
-    <h1>Access Denied</h1>
-    <p>You do not have the required permissions to view this page.</p>
-    <p><a href="/">Return to the homepage</a></p>
+<div class="error-container">
+    <div class="header-bar">
+        <h1>🚫 <span>Access Denied</span></h1>
+    </div>
+
+    <div class="glass-panel message-card">
+        <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+        </svg>
+        <h2 class="error-title">Restricted Area</h2>
+        <p class="error-message">You do not have the required permissions to view this page.</p>
+        <div class="error-actions">
+            <a href="/" class="btn-primary">Return Home</a>
+        </div>
+    </div>
 </div>
