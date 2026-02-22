@@ -35,8 +35,7 @@
                                 <input type="checkbox" onchange="toggleReminder(<%= $r->{id} %>, this.checked)" <%= $r->{is_active} ? 'checked' : '' %>>
                                 <span class="slider"></span>
                             </label>
-                            <% my $json_data = Mojo::JSON::encode_json($r); %>
-                            <button class="btn-icon-edit" onclick='openEditModal(<%== $json_data %>)' title="Edit Reminder">✎</button>
+                            <button class="btn-icon-edit" onclick='openEditModal(<%== Mojo::JSON::to_json($r) %>)' title="Edit Reminder">✎</button>
                             <button class="btn-icon-delete" onclick="confirmDeleteReminder(<%= $r->{id} %>, '<%= $r->{title} %>')">🗑️</button>
                         </div>
                     </div>
