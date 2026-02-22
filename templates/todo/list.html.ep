@@ -1,0 +1,104 @@
+<%# /templates/todo/list.html.ep %>
+
+% layout 'default';
+% title 'Todo List';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/todo.css">
+    <script src="/js/todo.js"></script>
+<% end %>
+
+<div class="todo-container">
+    <div class="header-bar">
+        <h1>✅ Todo List</h1>
+    </div>
+
+    <div class="glass-panel add-item-panel">
+        <form id="addTodoForm" class="add-item-form">
+            <input type="text" id="taskInput" name="task_name" class="game-input" placeholder="What needs to be done?" autocomplete="off" required maxlength="255">
+            <button type="submit" class="game-btn btn-blue">Add Task</button>
+        </form>
+    </div>
+
+    <div class="items-container">
+        <% my @active = grep { !$_->{is_completed} } @$todos; %>
+        <% my @completed = grep { $_->{is_completed} } @$todos; %>
+
+        <% if (@active) { %>
+            <h3 class="section-title">Active Tasks</h3>
+            <% for my $todo (@active) { %>
+                <div class="todo-item" data-id="<%= $todo->{id} %>">
+                    <div class="item-content">
+                        <button class="checkbox-btn" onclick="toggleTodo(<%= $todo->{id} %>)" title="Complete Task">
+                            <span class="checkmark"></span>
+                        </button>
+                        <div class="item-details">
+                            <span class="item-name"><%= $todo->{task_name} %></span>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-edit-item" onclick="openEditModal(<%= $todo->{id} %>, `<%= $todo->{task_name} %>`)" title="Edit">
+                            ✎
+                        </button>
+                        <button class="btn-delete-item" onclick="deleteTodo(<%= $todo->{id} %>)" title="Delete">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            <% } %>
+        <% } %>
+
+        <% if (@completed) { %>
+            <div class="completed-section">
+                <div class="completed-header">
+                    <h3 class="section-title">Completed</h3>
+                    <form action="/todo/clear" method="POST" onsubmit="return confirm('Clear all completed tasks?')">
+                        <button type="submit" class="btn-clear-all">Clear All</button>
+                    </form>
+                </div>
+                <% for my $todo (@completed) { %>
+                    <div class="todo-item completed" data-id="<%= $todo->{id} %>">
+                        <div class="item-content">
+                            <button class="checkbox-btn completed" onclick="toggleTodo(<%= $todo->{id} %>)" title="Re-open Task">
+                                <span class="checkmark">✓</span>
+                            </button>
+                            <div class="item-details">
+                                <span class="item-name"><%= $todo->{task_name} %></span>
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn-delete-item" onclick="deleteTodo(<%= $todo->{id} %>)" title="Delete">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                <% } %>
+            </div>
+        <% } %>
+
+        <% unless (@$todos) { %>
+            <div class="empty-state">
+                <p>Your list is empty!</p>
+                <p class="empty-hint">Add your first task above to get started.</p>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h3>Edit Task</h3>
+        <div class="modal-body">
+            <div class="modal-group">
+                <label for="editName">Task Description</label>
+                <input type="text" id="editName" class="game-input" maxlength="255">
+                <input type="hidden" id="editId">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" onclick="closeEditModal()" class="game-btn btn-cancel">Cancel</button>
+            <button type="button" onclick="submitEdit()" class="game-btn btn-blue">Save Changes</button>
+        </div>
+    </div>
+</div>

@@ -24,6 +24,11 @@
                     <div class="label">Shopping</div>
                 </a>
             <% } %>
+
+            <a href="/todo" class="tile">
+                <div class="icon">✅</div>
+                <div class="label">Todo</div>
+            </a>
             
             <% if (is_family()) { %>
                 <a href="<%= is_admin() ? '/timers/manage' : '/timers' %>" class="tile">
