@@ -1,0 +1,252 @@
+/* /public/css/reminders.css */
+
+.reminders-container {
+    padding: 2rem 1rem;
+    padding-top: 0;
+    max-width: 900px;
+    margin: 0 auto;
+    min-height: 100vh;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: rgba(255, 255, 255, 0.4);
+    background: rgba(30, 30, 30, 0.3);
+    border-radius: 16px;
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+    width: 100%;
+}
+
+.empty-state p {
+    font-size: 1.3rem;
+    margin: 12px 0;
+    font-weight: 300;
+}
+
+.empty-hint {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.25);
+    font-weight: 400;
+}
+
+.reminders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.reminder-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 2rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+}
+
+.reminder-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+    opacity: 0.3;
+}
+
+.reminder-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(100, 181, 246, 0.4);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.reminder-card.paused {
+    opacity: 0.5;
+    filter: grayscale(0.8);
+}
+
+.reminder-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.reminder-title {
+    font-size: 1.4rem;
+    font-weight: 300;
+    margin: 0;
+    color: #ffffff;
+    letter-spacing: 0.5px;
+}
+
+.reminder-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.reminder-time {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #90caf9;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-shadow: 0 0 20px rgba(144, 202, 249, 0.3);
+}
+
+.clock-icon {
+    font-size: 1.4rem;
+    opacity: 0.8;
+}
+
+.reminder-days {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.day-dot {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.2);
+    transition: all 0.2s;
+}
+
+.day-dot.active {
+    background: #3b82f6;
+    border-color: #60a5fa;
+    color: white;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+.reminder-desc {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    margin: 0;
+    line-height: 1.5;
+    min-height: 2.8rem;
+}
+
+.reminder-recipients {
+    margin-top: auto;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.reminder-recipients .label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.recipient-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.recipient-badge {
+    background: rgba(59, 130, 246, 0.1);
+    color: #93c5fd;
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* Modal Enhancements */
+.days-selector, .recipients-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    background: #0f172a;
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    border: 1px solid #334155;
+    margin-top: 0.5rem;
+}
+
+.recipients-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: #0f172a;
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    border: 1px solid #334155;
+    margin-top: 0.5rem;
+}
+
+.day-checkbox, .recipient-checkbox {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #1e293b;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #334155;
+    transition: all 0.2s;
+}
+
+.day-checkbox {
+    flex-direction: row;
+    justify-content: center;
+}
+
+.recipient-checkbox {
+    flex-direction: row;
+    justify-content: flex-start;
+    width: 100%;
+}
+
+.day-checkbox span {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.recipient-checkbox span {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.day-checkbox:has(input:checked), .recipient-checkbox:has(input:checked) {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: #3b82f6;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+}
+
+.day-checkbox:has(input:checked) span, .recipient-checkbox:has(input:checked) span {
+    color: #ffffff;
+}
+
+.day-checkbox input, .recipient-checkbox input {
+    margin: 0;
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+@media (max-width: 768px) {
+    .reminders-grid {
+        grid-template-columns: 1fr;
+    }
+}

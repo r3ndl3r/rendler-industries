@@ -1,0 +1,230 @@
+%# /templates/reminders/index.html.ep
+
+% layout 'default';
+% title 'Manage Reminders';
+
+<% content_for head => begin %>
+    <link rel="stylesheet" href="/css/reminders.css">
+    <script src="/js/reminders.js"></script>
+<% end %>
+
+<div class="reminders-container">
+    <div class="header-bar">
+        <h1>🔔 <span>Manage Reminders</span></h1>
+        <div class="manage-actions">
+            <button class="btn-primary" onclick="openAddModal()">+ New Reminder</button>
+        </div>
+    </div>
+
+    <% if (my $msg = flash('message')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $msg %>", 'success');
+            });
+        </script>
+    <% } %>
+
+    <% if (@$reminders) { %>
+        <div class="reminders-grid">
+            <% for my $r (@$reminders) { %>
+                <div class="glass-panel reminder-card <%= $r->{is_active} ? '' : 'paused' %>" data-id="<%= $r->{id} %>">
+                    <div class="reminder-header">
+                        <h2 class="reminder-title"><%= $r->{title} %></h2>
+                        <div class="reminder-actions">
+                            <label class="switch">
+                                <input type="checkbox" onchange="toggleReminder(<%= $r->{id} %>, this.checked)" <%= $r->{is_active} ? 'checked' : '' %>>
+                                <span class="slider"></span>
+                            </label>
+                            <% my $json_data = Mojo::JSON::encode_json($r); %>
+                            <button class="btn-icon-edit" onclick='openEditModal(<%== $json_data %>)' title="Edit Reminder">✎</button>
+                            <button class="btn-icon-delete" onclick="confirmDeleteReminder(<%= $r->{id} %>, '<%= $r->{title} %>')">🗑️</button>
+                        </div>
+                    </div>
+                    
+                    <div class="reminder-time">
+                        <span class="clock-icon">🕒</span> 
+                        <% 
+                            my $raw_time = substr($r->{reminder_time}, 0, 5); 
+                            my ($h, $m) = split(':', $raw_time);
+                            my $ampm = $h >= 12 ? 'PM' : 'AM';
+                            $h = $h % 12;
+                            $h = 12 if $h == 0;
+                            my $display_time = sprintf("%d:%02d %s", $h, $m, $ampm);
+                        %>
+                        <%= $display_time %>
+                    </div>
+
+                    <div class="reminder-days">
+                        <% my %active_days = map { $_ => 1 } split(',', $r->{days_of_week}); %>
+                        <span class="day-dot <%= $active_days{1} ? 'active' : '' %>" title="Monday">M</span>
+                        <span class="day-dot <%= $active_days{2} ? 'active' : '' %>" title="Tuesday">T</span>
+                        <span class="day-dot <%= $active_days{3} ? 'active' : '' %>" title="Wednesday">W</span>
+                        <span class="day-dot <%= $active_days{4} ? 'active' : '' %>" title="Thursday">T</span>
+                        <span class="day-dot <%= $active_days{5} ? 'active' : '' %>" title="Friday">F</span>
+                        <span class="day-dot <%= $active_days{6} ? 'active' : '' %>" title="Saturday">S</span>
+                        <span class="day-dot <%= $active_days{7} ? 'active' : '' %>" title="Sunday">S</span>
+                    </div>
+
+                    <% if ($r->{description}) { %>
+                        <p class="reminder-desc"><%= $r->{description} %></p>
+                    <% } else { %>
+                        <p class="reminder-desc" style="font-style: italic; opacity: 0.5;">No description provided.</p>
+                    <% } %>
+
+                    <div class="reminder-recipients">
+                        <span class="label">Recipients</span>
+                        <div class="recipient-pills">
+                            % if ($r->{recipient_names}) {
+                                % for my $name (split(',', $r->{recipient_names})) {
+                                    <span class="recipient-badge"><%= $name %></span>
+                                % }
+                            % }
+                            
+                            <% if ($r->{last_run_at}) { %>
+                                <span class="recipient-badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2);">
+                                    ✓ Sent Today
+                                </span>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    <% } else { %>
+        <div class="empty-state">
+            <p>📭 No recurring reminders configured.</p>
+            <p class="empty-hint">Click the button above to create your first weekly reminder.</p>
+        </div>
+    <% } %>
+</div>
+
+<!-- Add Reminder Modal -->
+<div id="addReminderModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>New Recurring Reminder</h3>
+            <span class="close-btn" onclick="closeAddModal()">&times;</span>
+        </div>
+        <form action="/reminders/add" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" name="title" class="game-input" required placeholder="e.g. Take out Bins">
+                </div>
+                
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" name="description" class="game-input" placeholder="e.g. Green bin only this week">
+                </div>
+
+                <div class="form-group" style="max-width: 200px;">
+                    <label>Trigger Time</label>
+                    <input type="time" name="reminder_time" class="game-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Days of the week</label>
+                    <div class="days-selector">
+                        <% my @day_names = qw(Mon Tue Wed Thu Fri Sat Sun); %>
+                        <% for my $i (1..7) { %>
+                            <label class="day-checkbox">
+                                <input type="checkbox" name="days[]" value="<%= $i %>">
+                                <span><%= $day_names[$i-1] %></span>
+                            </label>
+                        <% } %>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Target Recipients</label>
+                    <div class="recipients-selector">
+                        <% for my $user (@$recipients) { %>
+                            <label class="recipient-checkbox">
+                                <input type="checkbox" name="recipients[]" value="<%= $user->{id} %>">
+                                <span><%= $user->{username} %></span>
+                            </label>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn-primary">Create Reminder</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Reminder Modal -->
+<div id="editReminderModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Edit Recurring Reminder</h3>
+            <span class="close-btn" onclick="closeEditModal()">&times;</span>
+        </div>
+        <form id="editReminderForm" method="POST" action="">
+            <div class="modal-body">
+                <input type="hidden" name="id" id="editReminderId">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" name="title" id="editReminderTitle" class="game-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" name="description" id="editReminderDescription" class="game-input">
+                </div>
+
+                <div class="form-group" style="max-width: 200px;">
+                    <label>Trigger Time</label>
+                    <input type="time" name="reminder_time" id="editReminderTime" class="game-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Days of the week</label>
+                    <div class="days-selector">
+                        <% @day_names = qw(Mon Tue Wed Thu Fri Sat Sun); %>
+                        <% for my $i (1..7) { %>
+                            <label class="day-checkbox">
+                                <input type="checkbox" name="days[]" value="<%= $i %>" id="editDay<%= $i %>">
+                                <span><%= $day_names[$i-1] %></span>
+                            </label>
+                        <% } %>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Target Recipients</label>
+                    <div class="recipients-selector">
+                        <% for my $user (@$recipients) { %>
+                            <label class="recipient-checkbox">
+                                <input type="checkbox" name="recipients[]" value="<%= $user->{id} %>" id="editRecipient<%= $user->{id} %>">
+                                <span><%= $user->{username} %></span>
+                            </label>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="delete-modal-overlay">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
+            <h3>Confirm Deletion</h3>
+            <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
+        </div>
+        <div class="delete-modal-body">
+            <p>Are you sure you want to delete "<strong id="deleteReminderTitle"></strong>"?</p>
+        </div>
+        <div class="delete-modal-actions">
+            <form id="deleteForm" method="POST" action="">
+                <button type="submit" class="btn-danger-confirm">Delete Reminder</button>
+            </form>
+        </div>
+    </div>
+</div>
