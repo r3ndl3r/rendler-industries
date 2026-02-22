@@ -8,19 +8,27 @@
     margin: 0 auto;
 }
 
-.manage-header {
+.header-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 25px;
-    gap: 15px;
+    margin-bottom: 35px;
+    padding: 10px 0;
 }
 
-.manage-header h1 {
-    font-size: 26px;
-    font-weight: 700;
-    color: #fff;
+.header-bar h1 {
+    font-size: 2.8rem;
+    font-weight: 300;
+    color: #ffffff;
     margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.header-bar h1 span {
+    background: linear-gradient(135deg, #ffffff, #90caf9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .manage-filters {
