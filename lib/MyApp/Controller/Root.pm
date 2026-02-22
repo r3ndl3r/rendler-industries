@@ -213,16 +213,23 @@ sub copy_post {
     my $username = $c->session('user');
     my $text = trim($c->param('paste') // '');
 
+    return $c->redirect_to('/clipboard') unless $text;
+
     # Persist to database
     my $encoded_text = encode_entities($text);
     $c->db->paste($user_id, $encoded_text);
     
-    # Dispatch external notifications ONLY for rendler
+    # Notify user via Discord (if configured)
+    my $msg = "📋 NEW CLIPPING:\n\n$text";
+    $c->notify_user($user_id, $msg, "Clipboard: New Content");
+
+    # Legacy external notifications ONLY for rendler
     if ($username eq 'rendler') {
         $c->db->push_over($text);
         $c->db->push_gotify($text);
     }
     
+    $c->flash(message => "Content added successfully.");
     return $c->redirect_to('/clipboard');
 }
 
@@ -245,6 +252,12 @@ sub copy_update {
 
     my $encoded_text = encode_entities($text);
     $c->db->update_message($id, $user_id, $encoded_text);
+
+    # Notify user of the update
+    my $msg = "📋 CLIPPING UPDATED:\n\n$text";
+    $c->notify_user($user_id, $msg, "Clipboard: Content Updated");
+
+    $c->flash(message => "Content updated successfully.");
     return $c->redirect_to('/clipboard');
 }
 
