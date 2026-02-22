@@ -7,7 +7,7 @@
     <script src="/js/swear.js"></script>
 <% end %>
 
-<div class="manage-container">
+<div class="swear-container">
     <div class="header-bar">
         <h1>👥 <span>Manage Family</span></h1>
     </div>
@@ -36,7 +36,7 @@
                         <br>
                         <span style="color: rgba(255,255,255,0.5); font-size: 0.9rem;">Default: $<%= sprintf("%.2f", $m->{default_fine}) %></span>
                     </div>
-                    <button type="button" class="btn-danger btn-small" onclick="confirmDeleteMember(<%= $m->{id} %>, '<%= $m->{name} %>')">REMOVE</button>
+                    <button type="button" class="game-btn btn-red btn-small" onclick="confirmDeleteMember(<%= $m->{id} %>, '<%= $m->{name} %>')">REMOVE</button>
                 </div>
             % }
         % } else {
