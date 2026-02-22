@@ -6,6 +6,10 @@
     --font-main: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+* {
+    box-sizing: border-box;
+}
+
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
@@ -14,6 +18,30 @@ body {
     padding: 0;
     line-height: 1.5;
     overflow-x: hidden;
+}
+
+/* Global Form Elements */
+.game-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: #0f172a;
+    border: 1px solid #334155;
+    color: #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: all 0.2s;
+    display: block;
+}
+
+.game-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 15px rgba(100, 181, 246, 0.3);
+}
+
+.game-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
 }
 
 /* Global Header Bar & Standardized Titles */
@@ -279,6 +307,85 @@ body {
     background: #dc2626;
     box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
     transform: translateY(-1px);
+}
+
+/* Standard Global Modals (Edit, Add, etc.) */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.modal-overlay[style*="display: block"] {
+    display: flex !important;
+}
+
+.modal-content {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 0.75rem;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90vw;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 1rem;
+}
+
+.modal-header h2, .modal-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 300;
+    color: #ffffff;
+}
+
+.modal-body {
+    margin-bottom: 1.5rem;
+    color: #e2e8f0;
+    line-height: 1.5;
+    text-align: left;
+}
+
+.modal-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.modal-group label {
+    display: block;
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.close-btn {
+    color: #94a3b8;
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.close-btn:hover {
+    color: #ffffff;
 }
 
 a {

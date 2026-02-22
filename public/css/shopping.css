@@ -41,31 +41,18 @@
     gap: 12px;
 }
 
-.game-input {
+.add-item-form input[name="item_name"] {
+    flex: 1;
+}
+
+.items-container {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    padding: 16px 18px;
-    background: rgba(0, 0, 0, 0.5);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    color: white;
-    border-radius: 12px;
-    box-sizing: border-box;
-    font-size: 1.05rem;
-    font-family: inherit;
-    transition: all 0.3s ease;
 }
 
-.game-input:focus {
-    outline: none;
-    border-color: #64b5f6;
-    background: rgba(0, 0, 0, 0.7);
-    box-shadow: 0 0 15px rgba(100, 181, 246, 0.5);
-}
-
-.game-input::placeholder {
-    color: rgba(255, 255, 255, 0.35);
-}
-
-.game-btn {
+.section-title {
     padding: 16px 32px;
     border: none;
     border-radius: 12px;
@@ -119,6 +106,7 @@
 }
 
 .shopping-item {
+    width: 100%;
     background: linear-gradient(135deg, rgba(40, 40, 40, 0.7), rgba(30, 30, 30, 0.6));
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -337,16 +325,6 @@
 .item-link:hover .item-name {
     color: #64b5f6;
     text-decoration: underline;
-}
-
-.btn-small {
-    padding: 10px 20px;
-    font-size: 0.85rem;
-}
-
-.btn-cancel {
-    background: #334155;
-    color: #e2e8f0;
 }
 
 @media (max-width: 768px) {
