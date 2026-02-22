@@ -1,4 +1,4 @@
-%# /templates/shopping/list.html.ep
+%# /templates/shopping.html.ep
 
 <% layout 'default'; %>
 <% title 'Shopping List'; %>

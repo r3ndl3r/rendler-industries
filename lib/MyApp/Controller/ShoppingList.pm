@@ -29,7 +29,7 @@ sub index {
         username => $c->session('user')
     );
     
-    $c->render('shopping/list');
+    $c->render('shopping');
 }
 
 # Adds a new item to the list.
