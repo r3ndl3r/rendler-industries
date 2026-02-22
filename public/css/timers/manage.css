@@ -43,35 +43,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.timers-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-}
-
-.timers-table th {
-    background: rgba(0, 0, 0, 0.2);
-    padding: 14px 16px;
-    text-align: left;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.timers-table td {
-    padding: 14px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.9);
-    vertical-align: middle;
-}
-
-.timers-table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.04);
-}
+/* .timers-table uses global .data-table styles */
 
 /* --- Badges & Icons --- */
 

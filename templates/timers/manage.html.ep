@@ -42,7 +42,7 @@
         </div>
     % } else {
         <div class="timers-table-wrapper">
-            <table class="timers-table">
+            <table class="data-table timers-table">
                 <thead>
                     <tr>
                         <th>User</th>
