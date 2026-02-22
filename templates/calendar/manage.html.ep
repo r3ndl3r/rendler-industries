@@ -13,7 +13,6 @@
         <h1>🗓️ <span>Manage Events</span></h1>
         <div class="manage-actions">
             <a href="/calendar" class="btn-back">← Back</a>
-            <button id="addEventBtn" class="btn-primary">+ Add Event</button>
         </div>
     </div>
 
