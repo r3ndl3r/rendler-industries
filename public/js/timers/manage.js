@@ -21,8 +21,8 @@ const TimerManagement = {
                 this.openEditModal(e.target.closest('.btn-edit'));
             } else if (e.target.closest('.btn-delete')) {
                 this.handleDelete(e.target.closest('.btn-delete'));
-            } else if (e.target.closest('.btn-bonus')) {
-                this.openBonusModal(e.target.closest('.btn-bonus'));
+            } else if (e.target.closest('.btn-icon-bonus')) {
+                this.openBonusModal(e.target.closest('.btn-icon-bonus'));
             } else if (e.target.classList.contains('modal-close') || e.target.classList.contains('modal')) {
                 this.closeModals();
             }
