@@ -19,7 +19,7 @@ use Mojo::Util qw(trim);
 # Route: GET /reminders
 # Parameters: None
 # Returns:
-#   Rendered HTML template 'reminders/index' with:
+#   Rendered HTML template 'reminders' with:
 #     - reminders: List of all configured rules
 #     - recipients: List of approved users for assignment
 sub index {
@@ -37,7 +37,7 @@ sub index {
         (($_->{is_family} // 0) == 1 || ($_->{is_admin} // 0) == 1)
     } @$users;
 
-    $c->render('reminders/index', 
+    $c->render('reminders', 
         reminders  => $reminders,
         recipients => \@eligible_recipients
     );
