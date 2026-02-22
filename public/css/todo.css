@@ -85,7 +85,7 @@ body {
     outline: none;
     border-color: #64b5f6;
     background: rgba(0, 0, 0, 0.7);
-    box-shadow: 0 0 0 3px rgba(100, 181, 246, 0.1);
+    box-shadow: 0 0 15px rgba(100, 181, 246, 0.5);
 }
 
 .game-input::placeholder {
@@ -112,15 +112,13 @@ body {
     transform: scale(0.97);
 }
 
-.btn-blue {
-    background: linear-gradient(135deg, #2196f3, #1565c0);
-    box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+.game-btn:hover {
+    box-shadow: 0 0 20px rgba(100, 181, 246, 0.6);
+    transform: translateY(-1px);
 }
 
-.btn-blue:hover {
-    background: linear-gradient(135deg, #42a5f5, #1976d2);
-    box-shadow: 0 6px 20px rgba(33, 150, 243, 0.6);
-    transform: translateY(-2px);
+.btn-blue {
+    background: linear-gradient(135deg, #2196f3, #1565c0);
 }
 
 .items-container {
@@ -388,6 +386,21 @@ body {
     letter-spacing: 1px;
 }
 
+.modal-content .game-input {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.modal-content .game-input:focus {
+    outline: none;
+    border-color: #64b5f6;
+    box-shadow: 0 0 15px rgba(100, 181, 246, 0.5);
+}
+
 .modal-actions {
     display: flex;
     gap: 12px;
@@ -397,6 +410,16 @@ body {
 .btn-small {
     padding: 10px 20px;
     font-size: 0.85rem;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-cancel {
+    background: #334155;
+    color: #e2e8f0;
 }
 
 @media (max-width: 768px) {
