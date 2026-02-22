@@ -69,6 +69,102 @@ body {
     background: #2563eb;
 }
 
+/* Global Confirm Deletion Modal */
+.delete-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10001;
+}
+
+/* Force flex centering if JS sets display to block */
+.delete-modal-overlay[style*="display: block"] {
+    display: flex !important;
+}
+
+.delete-modal-content {
+    background: #1e293b;
+    padding: 25px;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 400px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    animation: deleteModalSlideDown 0.3s ease-out;
+}
+
+@keyframes deleteModalSlideDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.delete-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 15px;
+}
+
+.delete-modal-header h3 {
+    margin: 0;
+    font-weight: 300;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.delete-modal-body {
+    margin-bottom: 25px;
+    color: #e2e8f0;
+    line-height: 1.5;
+}
+
+.delete-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.delete-modal-close {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.delete-modal-close:hover {
+    color: white;
+}
+
+.btn-danger-confirm {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-danger-confirm:hover {
+    background: #dc2626;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    transform: translateY(-1px);
+}
+
 a {
     color: #60a5fa;
     text-decoration: none;
