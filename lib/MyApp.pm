@@ -11,6 +11,7 @@ use Mojo::File 'path';
 use Cwd 'abs_path';
 use Path::Iterator::Rule;
 use Mojo::JSON qw(decode_json encode_json);
+use Mojo::UserAgent;
 use URI;
 
 # Core Application Class and Entry Point.
@@ -175,6 +176,62 @@ sub startup {
     # Parameters: None
     # Returns: DB object instance
     $self->helper(db => sub { state $db = DB->new; return $db });
+
+    # Helper: Send a Direct Message via local Discord API
+    # Parameters: 
+    #   discord_id : Target user's Discord ID
+    #   text       : Message content
+    # Returns: Boolean success
+    $self->helper(send_discord_dm => sub {
+        my ($c, $discord_id, $text) = @_;
+        return 0 unless $discord_id;
+        
+        my $ua = Mojo::UserAgent->new;
+        my $url = "http://127.0.0.1:3000/message/dm/$discord_id";
+        
+        eval {
+            my $tx = $ua->post($url => json => { text => $text });
+            if (my $res = $tx->success) {
+                $c->app->log->info("Discord DM sent to $discord_id");
+                return 1;
+            } else {
+                my $err = $tx->error;
+                $c->app->log->error("Discord API error ($discord_id): " . $err->{message});
+                return 0;
+            }
+        };
+        if ($@) {
+            $c->app->log->error("Discord DM failed ($discord_id): $@");
+            return 0;
+        }
+    });
+
+    # Helper: Unified notification dispatcher (Discord priority with Email fallback)
+    # Parameters:
+    #   user_id : Internal Database ID of the user
+    #   message : Text content of the notification
+    #   subject : (Optional) Email subject if fallback used
+    # Returns: Boolean success
+    $self->helper(notify_user => sub {
+        my ($c, $user_id, $message, $subject) = @_;
+        $subject //= "System Notification";
+        
+        my $user = $c->db->get_user_by_id($user_id);
+        return 0 unless $user;
+
+        # 1. Try Discord if ID is set
+        if ($user->{discord_id}) {
+            return $c->send_discord_dm($user->{discord_id}, $message);
+        }
+
+        # 2. Fallback to Email
+        if ($user->{email}) {
+            return $c->send_email_via_gmail($user->{email}, $subject, $message);
+        }
+
+        $c->app->log->warn("No notification channels configured for user ID $user_id");
+        return 0;
+    });
     
     # Define Application Routes
     my $r = $self->routes;
