@@ -206,8 +206,7 @@ body {
     background: #059669; 
 }
 
-/* Standardized Icon-only Action Buttons */
-.btn-icon-view, .btn-icon-copy, .btn-icon-edit, .btn-icon-delete {
+.btn-icon-view, .btn-icon-copy, .btn-icon-edit, .btn-icon-delete, .btn-icon-bonus {
     width: 36px;
     height: 36px;
     padding: 0;
@@ -225,8 +224,8 @@ body {
 .btn-icon-view { background: #10b981; }
 .btn-icon-view:hover { background: #059669; }
 
-.btn-icon-copy { background: #f59e0b; }
-.btn-icon-copy:hover { background: #d97706; }
+.btn-icon-copy, .btn-icon-bonus { background: #f59e0b; }
+.btn-icon-copy:hover, .btn-icon-bonus:hover { background: #d97706; }
 
 .btn-icon-edit { background: #3b82f6; }
 .btn-icon-edit:hover { background: #2563eb; }

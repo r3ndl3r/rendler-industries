@@ -97,21 +97,21 @@
                                 % }
                             </td>
                             <td class="actions-cell" data-label="Actions">
-                                <button class="btn-icon btn-bonus" 
+                                <button class="btn-icon-bonus" 
                                         data-timer-id="<%= $timer->{id} %>"
                                         title="Grant Bonus Time">
                                     🎁
                                 </button>
-                                <button class="btn-icon btn-edit" 
+                                <button class="btn-icon-edit btn-edit" 
                                         data-timer-id="<%= $timer->{id} %>"
                                         data-name="<%= $timer->{name} %>"
                                         data-category="<%= $timer->{category} %>"
                                         data-weekday="<%= $timer->{weekday_minutes} %>"
                                         data-weekend="<%= $timer->{weekend_minutes} %>"
                                         title="Edit Timer">
-                                    ✏️
+                                    ✎
                                 </button>
-                                <button class="btn-icon btn-delete" 
+                                <button class="btn-icon-delete btn-delete" 
                                         data-timer-id="<%= $timer->{id} %>"
                                         data-name="<%= $timer->{name} %>"
                                         title="Delete Timer">

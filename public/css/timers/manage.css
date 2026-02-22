@@ -128,27 +128,6 @@
 .status-badge.paused { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
 .status-badge.idle { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
 
-.btn-icon {
-    width: 32px;
-    height: 32px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.8);
-    cursor: pointer;
-    font-size: 16px;
-    transition: all 0.2s;
-    margin-left: 4px;
-}
-
-.btn-icon:hover { transform: translateY(-2px); filter: brightness(1.2); }
-.btn-bonus:hover { background: rgba(251, 191, 36, 0.2); border-color: #fbbf24; }
-.btn-edit:hover { background: rgba(59, 130, 246, 0.2); border-color: #60a5fa; }
-.btn-delete:hover { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; }
-
 /* --- Mobile Card View (< 768px) --- */
 
 @media (max-width: 768px) {
@@ -325,28 +304,18 @@
         border-top: 1px solid rgba(255,255,255,0.1);
     }
 
-    .timers-table tbody tr .actions-cell .btn-icon {
+    .timers-table tbody tr .actions-cell .btn-icon-bonus,
+    .timers-table tbody tr .actions-cell .btn-icon-edit,
+    .timers-table tbody tr .actions-cell .btn-icon-delete {
         flex: 1;
         height: 44px;
         border-radius: 8px;
         font-size: 15px;
-        background: rgba(255,255,255,0.08);
-        border: 1px solid rgba(255,255,255,0.15);
         font-weight: 600;
         margin-left: 0;
     }
 
-    .timers-table tbody tr .actions-cell .btn-bonus::after { 
-        content: " Bonus"; 
-        margin-left: 6px; 
-    }
-
-    .timers-table tbody tr .actions-cell .btn-edit::after { 
-        content: " Edit"; 
-        margin-left: 6px; 
-    }
-
-    .timers-table tbody tr .actions-cell .btn-delete { 
+    .timers-table tbody tr .actions-cell .btn-icon-delete { 
         flex: 0 0 50px; 
     }
 }
