@@ -8,7 +8,9 @@
 <% end %>
 
 <div class="settings-container">
-    <h1>⚙️ <span>Application Settings</span></h1>
+    <div class="header-bar">
+        <h1>⚙️ <span>Application Settings</span></h1>
+    </div>
     
     <% if (flash('message')) { %>
         <div class="alert alert-success"><%= flash('message') %></div>
@@ -18,218 +20,240 @@
         <div class="alert alert-error"><%= flash('error') %></div>
     <% } %>
     
-    <div class="settings-section">
-        <h2>Pushover Notifications</h2>
-        <p class="section-description">Configure Pushover API credentials for push notifications</p>
-        
-        <form method="POST" action="/settings/update">
-            <input type="hidden" name="section" value="pushover">
+    <details class="settings-group">
+        <summary class="settings-header">
+            <span class="group-title">🔔 Pushover Notifications</span>
+            <span class="chevron"></span>
+        </summary>
+        <div class="glass-panel settings-section">
+            <p class="section-description">Configure Pushover API credentials for push notifications</p>
             
-            <div class="form-group">
-                <label for="pushover_token">API Token</label>
-                <input type="password" 
-                       id="pushover_token" 
-                       name="pushover_token" 
-                       class="form-input"
-                       value="<%= $settings->{pushover}->{token} || '' %>"
-                       placeholder="Enter Pushover API token">
-                <button type="button" class="btn-toggle" onclick="togglePassword('pushover_token')">Show</button>
-            </div>
-            
-            <div class="form-group">
-                <label for="pushover_user">User Key</label>
-                <input type="password" 
-                       id="pushover_user" 
-                       name="pushover_user" 
-                       class="form-input"
-                       value="<%= $settings->{pushover}->{user} || '' %>"
-                       placeholder="Enter Pushover user key">
-                <button type="button" class="btn-toggle" onclick="togglePassword('pushover_user')">Show</button>
-            </div>
-            
-            <button type="submit" class="btn-save">Save Pushover Settings</button>
-        </form>
-    </div>
+            <form method="POST" action="/settings/update">
+                <input type="hidden" name="section" value="pushover">
+                
+                <div class="form-group">
+                    <label for="pushover_token">API Token</label>
+                    <input type="password" 
+                           id="pushover_token" 
+                           name="pushover_token" 
+                           class="form-input"
+                           value="<%= $settings->{pushover}->{token} || '' %>"
+                           placeholder="Enter Pushover API token">
+                    <button type="button" class="btn-toggle" onclick="togglePassword('pushover_token')">Show</button>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pushover_user">User Key</label>
+                    <input type="password" 
+                           id="pushover_user" 
+                           name="pushover_user" 
+                           class="form-input"
+                           value="<%= $settings->{pushover}->{user} || '' %>"
+                           placeholder="Enter Pushover user key">
+                    <button type="button" class="btn-toggle" onclick="togglePassword('pushover_user')">Show</button>
+                </div>
+                
+                <button type="submit" class="btn-primary">Save Pushover Settings</button>
+            </form>
+        </div>
+    </details>
     
-    <div class="settings-section">
-        <h2>Gotify Notifications</h2>
-        <p class="section-description">Configure Gotify server and application token</p>
-        
-        <form method="POST" action="/settings/update">
-            <input type="hidden" name="section" value="gotify">
+    <details class="settings-group">
+        <summary class="settings-header">
+            <span class="group-title">💬 Gotify Notifications</span>
+            <span class="chevron"></span>
+        </summary>
+        <div class="glass-panel settings-section">
+            <p class="section-description">Configure Gotify server and application token</p>
             
-            <div class="form-group">
-                <label for="gotify_token">Application Token</label>
-                <input type="password" 
-                       id="gotify_token" 
-                       name="gotify_token" 
-                       class="form-input"
-                       value="<%= $settings->{gotify}->{token} || '' %>"
-                       placeholder="Enter Gotify application token">
-                <button type="button" class="btn-toggle" onclick="togglePassword('gotify_token')">Show</button>
-            </div>
-            
-            <div class="form-info">
-                <strong>Server URL:</strong> https://go.rendler.org
-            </div>
-            
-            <button type="submit" class="btn-save">Save Gotify Settings</button>
-        </form>
-    </div>
+            <form method="POST" action="/settings/update">
+                <input type="hidden" name="section" value="gotify">
+                
+                <div class="form-group">
+                    <label for="gotify_token">Application Token</label>
+                    <input type="password" 
+                           id="gotify_token" 
+                           name="gotify_token" 
+                           class="form-input"
+                           value="<%= $settings->{gotify}->{token} || '' %>"
+                           placeholder="Enter Gotify application token">
+                    <button type="button" class="btn-toggle" onclick="togglePassword('gotify_token')">Show</button>
+                </div>
+                
+                <div class="form-info">
+                    <strong>Server URL:</strong> https://go.rendler.org
+                </div>
+                
+                <button type="submit" class="btn-primary">Save Gotify Settings</button>
+            </form>
+        </div>
+    </details>
 
-    <div class="settings-section">
-        <h2>🖼️ Unsplash Image API</h2>
-        <p class="section-description">Configure Unsplash API key for high-quality images in Imposter game. Leave empty to use random fallback images.</p>
-        
-        <form action="/settings/update" method="POST">
-            <input type="hidden" name="section" value="unsplash">
+    <details class="settings-group">
+        <summary class="settings-header">
+            <span class="group-title">🖼️ Unsplash Image API</span>
+            <span class="chevron"></span>
+        </summary>
+        <div class="glass-panel settings-section">
+            <p class="section-description">Configure Unsplash API key for high-quality images in Imposter game.</p>
             
-            <div class="form-group">
-                <label for="unsplash_key">Access Key</label>
-                <input type="password" 
-                    id="unsplash_key" 
-                    name="unsplash_key" 
-                    value="<%= $settings->{unsplash_key} || '' %>" 
-                    placeholder="Get free key from unsplash.com/developers"
-                    class="form-input">
-                <button type="button" class="btn-toggle" onclick="togglePassword('unsplash_key')">Show</button>
-            </div>
-            
-            <div class="form-info">
-                Free tier: 50 requests/hour. <a href="https://unsplash.com/developers" target="_blank" style="color: #3b82f6;">Create an app here</a>
-            </div>
-            
-            <button type="submit" class="btn-save">Save Unsplash Settings</button>
-        </form>
-    </div>
+            <form action="/settings/update" method="POST">
+                <input type="hidden" name="section" value="unsplash">
+                
+                <div class="form-group">
+                    <label for="unsplash_key">Access Key</label>
+                    <input type="password" 
+                        id="unsplash_key" 
+                        name="unsplash_key" 
+                        value="<%= $settings->{unsplash_key} || '' %>" 
+                        placeholder="Get free key from unsplash.com/developers"
+                        class="form-input">
+                    <button type="button" class="btn-toggle" onclick="togglePassword('unsplash_key')">Show</button>
+                </div>
+                
+                <div class="form-info">
+                    Free tier: 50 requests/hour. <a href="https://unsplash.com/developers" target="_blank" style="color: #3b82f6;">Create an app here</a>
+                </div>
+                
+                <button type="submit" class="btn-primary">Save Unsplash Settings</button>
+            </form>
+        </div>
+    </details>
     
-    <div class="settings-section">
-        <h2>Application Secret</h2>
-        <p class="section-description">Mojolicious session encryption key (requires app restart after change)</p>
-        
-        <form method="POST" action="/settings/update">
-            <input type="hidden" name="section" value="app_secret">
+    <details class="settings-group">
+        <summary class="settings-header">
+            <span class="group-title">🔑 Application Secret</span>
+            <span class="chevron"></span>
+        </summary>
+        <div class="glass-panel settings-section">
+            <p class="section-description">Mojolicious session encryption key (requires app restart after change)</p>
             
-            <div class="form-group">
-                <label for="app_secret">Secret Key (min 32 characters)</label>
-                <input type="password" 
-                       id="app_secret" 
-                       name="app_secret" 
-                       class="form-input"
-                       value="<%= $settings->{app_secret} || '' %>"
-                       placeholder="Enter application secret key"
-                       minlength="32">
-                <button type="button" class="btn-toggle" onclick="togglePassword('app_secret')">Show</button>
-            </div>
-            
-            <div class="form-warning">
-                ⚠️ Changing this will invalidate all existing sessions. Restart required.
-            </div>
-            
-            <button type="submit" class="btn-save">Save App Secret</button>
-        </form>
-    </div>
+            <form method="POST" action="/settings/update">
+                <input type="hidden" name="section" value="app_secret">
+                
+                <div class="form-group">
+                    <label for="app_secret">Secret Key (min 32 characters)</label>
+                    <input type="password" 
+                           id="app_secret" 
+                           name="app_secret" 
+                           class="form-input"
+                           value="<%= $settings->{app_secret} || '' %>"
+                           placeholder="Enter application secret key"
+                           minlength="32">
+                    <button type="button" class="btn-toggle" onclick="togglePassword('app_secret')">Show</button>
+                </div>
+                
+                <div class="form-warning">
+                    ⚠️ Changing this will invalidate all existing sessions. Restart required.
+                </div>
+                
+                <button type="submit" class="btn-primary">Save App Secret</button>
+            </form>
+        </div>
+    </details>
 
-    <div class="settings-section">
-        <h2>📧 Email Notifications</h2>
-        <p class="section-description">
-            Configure Gmail SMTP for sending email notifications (user approvals, password resets, calendar events, etc.)
-        </p>
-        
-        <form method="POST" action="/settings/update">
-            <input type="hidden" name="section" value="email">
+    <details class="settings-group">
+        <summary class="settings-header">
+            <span class="group-title">📧 Email Notifications</span>
+            <span class="chevron"></span>
+        </summary>
+        <div class="glass-panel settings-section">
+            <p class="section-description">
+                Configure Gmail SMTP for sending email notifications.
+            </p>
             
-            <div class="form-group">
-                <label for="gmail_email">Gmail Address</label>
-                <input 
-                    type="email" 
-                    id="gmail_email" 
-                    name="gmail_email" 
-                    class="form-input"
-                    value="<%= $email_settings->{gmail_email} // '' %>"
-                    placeholder="your-email@gmail.com"
-                    required
-                >
-            </div>
-            
-            <div class="form-info">
-                Must be a valid @gmail.com address
-            </div>
-            
-            <div class="form-group">
-                <label for="gmail_app_password">Gmail App Password</label>
-                <input 
-                    type="password" 
-                    id="gmail_app_password" 
-                    name="gmail_app_password" 
-                    class="form-input"
-                    value="<%= $email_settings->{gmail_app_password} // '' %>"
-                    placeholder="xxxx xxxx xxxx xxxx"
-                    required
-                >
-                <button type="button" class="btn-toggle" onclick="togglePassword('gmail_app_password')">Show</button>
-            </div>
-            
-            <div class="form-info">
-                Generate at: <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color: #3b82f6;">Google App Passwords</a> (Requires 2FA enabled)
-            </div>
-            
-            <div class="form-group">
-                <label for="gmail_from_name">From Name (Optional)</label>
-                <input 
-                    type="text" 
-                    id="gmail_from_name" 
-                    name="gmail_from_name" 
-                    class="form-input"
-                    value="<%= $email_settings->{from_name} // '' %>"
-                    placeholder="Family Dashboard"
-                    maxlength="50"
-                >
-            </div>
-            
-            <div class="form-info">
-                Display name that appears in the "From" field
-            </div>
-            
-            <button type="submit" class="btn-save">Save Email Settings</button>
-        </form>
-    </div>
+            <form method="POST" action="/settings/update">
+                <input type="hidden" name="section" value="email">
+                
+                <div class="form-group">
+                    <label for="gmail_email">Gmail Address</label>
+                    <input 
+                        type="email" 
+                        id="gmail_email" 
+                        name="gmail_email" 
+                        class="form-input"
+                        value="<%= $email_settings->{gmail_email} // '' %>"
+                        placeholder="your-email@gmail.com"
+                        required
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="gmail_app_password">Gmail App Password</label>
+                    <input 
+                        type="password" 
+                        id="gmail_app_password" 
+                        name="gmail_app_password" 
+                        class="form-input"
+                        value="<%= $email_settings->{gmail_app_password} // '' %>"
+                        placeholder="xxxx xxxx xxxx xxxx"
+                        required
+                    >
+                    <button type="button" class="btn-toggle" onclick="togglePassword('gmail_app_password')">Show</button>
+                </div>
+                
+                <div class="form-info">
+                    Generate at: <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color: #3b82f6;">Google App Passwords</a>
+                </div>
+                
+                <button type="submit" class="btn-primary">Save Email Settings</button>
+            </form>
+        </div>
+    </details>
 
-    <!-- Timer Settings Section -->
-    <div class="settings-section">
-        <h2>⏱️ Timer Settings</h2>
-        
-        <form method="POST" action="/settings/update">
-            <input type="hidden" name="section" value="timers">
-            
-            <div class="form-group">
-                <label for="timer_reset_hour">Daily Reset Time</label>
-                <select id="timer_reset_hour" name="timer_reset_hour" class="form-control">
-                    <% for my $hour (0..23) { %>
-                        <% my $display_12hr = $hour == 0 ? '12:00 AM' : $hour < 12 ? sprintf("%d:00 AM", $hour) : $hour == 12 ? '12:00 PM' : sprintf("%d:00 PM", $hour - 12); %>
-                        <option value="<%= $hour %>" <%= $timer_reset_hour == $hour ? 'selected' : '' %>>
-                            <%= $display_12hr %>
-                        </option>
-                    <% } %>
-                </select>
-                <small>Time when all timers reset daily (Australia/Melbourne timezone)</small>
-            </div>
-            
-            <div class="info-box">
-                <strong>ℹ️ Timer Reset Behavior:</strong>
-                <ul>
-                    <li>All timer sessions reset at the configured time each day</li>
-                    <li>Running timers are automatically stopped</li>
-                    <li>Elapsed time is cleared back to zero</li>
-                    <li>Bonus time is removed</li>
-                    <li>Default: 3:00 PM (15:00)</li>
-                </ul>
-            </div>
-            
-            <button type="submit" class="btn-save">Save Timer Settings</button>
-        </form>
-    </div>
+    <details class="settings-group">
+        <summary class="settings-header">
+            <span class="group-title">⏱️ Timer Configuration</span>
+            <span class="chevron"></span>
+        </summary>
+        <div class="glass-panel settings-section">
+            <form method="POST" action="/settings/update">
+                <input type="hidden" name="section" value="timers">
+                
+                <div class="form-group">
+                    <label for="timer_reset_hour">Daily Reset Time</label>
+                    <select id="timer_reset_hour" name="timer_reset_hour" class="form-control" style="width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 8px;">
+                        <% for my $hour (0..23) { %>
+                            <% my $display_12hr = $hour == 0 ? '12:00 AM' : $hour < 12 ? sprintf("%d:00 AM", $hour) : $hour == 12 ? '12:00 PM' : sprintf("%d:00 PM", $hour - 12); %>
+                            <option value="<%= $hour %>" <%= $timer_reset_hour == $hour ? 'selected' : '' %>>
+                                <%= $display_12hr %>
+                            </option>
+                        <% } %>
+                    </select>
+                    <small style="display: block; margin-top: 8px; color: #94a3b8;">Time when all timers reset daily (Australia/Melbourne timezone)</small>
+                </div>
+                
+                <button type="submit" class="btn-primary">Save Timer Settings</button>
+            </form>
+        </div>
+    </details>
 </div>
+
+<script>
+// Accordion behavior: only one open at a time
+document.querySelectorAll('details').forEach((el) => {
+  el.addEventListener('toggle', (e) => {
+    if (el.open) {
+      document.querySelectorAll('details').forEach((other) => {
+        if (other !== el) other.removeAttribute('open');
+      });
+    }
+  });
+});
+
+function togglePassword(fieldId) {
+    const field = document.getElementById(fieldId);
+    const button = event.target;
+    
+    if (field.type === 'password') {
+        field.type = 'text';
+        button.textContent = 'Hide';
+    } else {
+        field.type = 'password';
+        button.textContent = 'Show';
+    }
+}
+</script>
 
 <script>
 function togglePassword(fieldId) {
