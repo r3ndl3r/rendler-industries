@@ -13,122 +13,85 @@
     </div>
 
     <div class="tile-grid">
-        <% if (is_logged_in()) { %>
-            <% if (is_family()) { %>
-                <a href="/calendar" class="tile">
-                    <div class="icon">📅</div>
-                    <div class="label">Calendar</div>
-                </a>
-                <a href="/shopping" class="tile">
-                    <div class="icon">🛒</div>
-                    <div class="label">Shopping</div>
-                </a>
-            <% } %>
-
-            <a href="/todo" class="tile">
-                <div class="icon">✅</div>
-                <div class="label">Todo</div>
-            </a>
-
-            <a href="/clipboard" class="tile">
-                <div class="icon">📋</div>
-                <div class="label">Clipboard</div>
-            </a>
+        <% # 1. Regular/Family Tiles %>
+        <% for my $item (@$menu_tree) { %>
+            <% next if $item->{permission_level} eq 'admin'; %>
+            <% next if $item->{is_separator}; %>
             
-            <% if (is_family()) { %>
-                <a href="<%= is_admin() ? '/timers/manage' : '/timers' %>" class="tile">
-                    <div class="icon">⏱️</div>
-                    <div class="label">Timers</div>
+            <% # Extract emoji from label %>
+            <% 
+                my $label = $item->{label};
+                my ($icon, $name) = $label =~ /^(\X+?)\s+(.*)$/u;
+                if (!$name) { $name = $label; $icon = $item->{icon} || '🔗'; }
+            %>
+
+            <% # Render the item (Category or child) %>
+            <% if ($item->{url} && $item->{url} ne '#') { %>
+                <a href="<%= $item->{url} %>" class="tile">
+                    <div class="icon"><%= $icon %></div>
+                    <div class="label"><%= $name %></div>
                 </a>
             <% } %>
 
-            <% if (is_family()) { %>
-                <a href="/birthdays" class="tile">
-                    <div class="icon">🎂</div>
-                    <div class="label">Birthdays</div>
-                </a>
-                <a href="/swear" class="tile">
-                    <div class="icon">🤬</div>
-                    <div class="label">Swear Jar</div>
-                </a>
-                <a href="/imposter" class="tile">
-                    <div class="icon">🎭</div>
-                    <div class="label">Imposter</div>
+            <% # Render children %>
+            <% for my $child (@{$item->{children} || []}) { %>
+                <% 
+                    my $c_label = $child->{label};
+                    my ($c_icon, $c_name) = $c_label =~ /^(\X+?)\s+(.*)$/u;
+                    if (!$c_name) { $c_name = $c_label; $c_icon = $child->{icon} || '🔗'; }
+                %>
+                <a href="<%= $child->{url} %>" class="tile">
+                    <div class="icon"><%= $c_icon %></div>
+                    <div class="label"><%= $c_name %></div>
                 </a>
             <% } %>
-            
-            <a href="/uno/lobby" class="tile">
-                <div class="icon">🃏</div>
-                <div class="label">UNO</div>
-            </a>
-            <a href="/connect4/lobby" class="tile">
-                <div class="icon">🔴</div>
-                <div class="label">Connect 4</div>
-            </a>
-            <a href="/chess/lobby" class="tile">
-                <div class="icon">♟️</div>
-                <div class="label">Chess</div>
-            </a>
-            <a href="/chelsea" class="tile">
-                <div class="icon">🏖️</div>
-                <div class="label">Chelsea Weather</div>
-            </a>
         <% } %>
 
-            <a href="/p" class="tile">
-                <div class="icon">📞</div>
-                <div class="label">Phone Book</div>
-            </a>
-            <a href="/quiz" class="tile">
-                <div class="icon">🦘</div>
-                <div class="label">Citizenship</div>
-            </a>
-
-
-        <% unless (is_logged_in()) { %>
-            <a href="/login" class="tile login">
-                <div class="icon">🔑</div>
-                <div class="label">Login</div>
-            </a>
-            <a href="/register" class="tile register">
-                <div class="icon">📝</div>
-                <div class="label">Register</div>
-            </a>
-        <% } %>
-
-
+        <% # 2. Administration Section %>
         <% if (is_admin()) { %>
-            <div class="separator"></div>
-            <a href="/reminders" class="tile admin">
-                <div class="icon">🔔</div>
-                <div class="label">Reminders</div>
-            </a>
-            <a href="/menu" class="tile admin">
-                <div class="icon">🛠️</div>
-                <div class="label">Menu</div>
-            </a>
-            <a href="/go" class="tile admin">
-                <div class="icon">🔗</div>
-                <div class="label">Go Links</div>
-            </a>
-            <a href="/files" class="tile admin">
-                <div class="icon">📁</div>
-                <div class="label">Files</div>
-            </a>
-            <a href="/users" class="tile admin">
-                <div class="icon">👥</div>
-                <div class="label">Users</div>
-            </a>
-            <a href="/settings" class="tile admin">
-                <div class="icon">⚙️</div>
-                <div class="label">Settings</div>
-            </a>
+            <div class="separator" data-label="ADMINISTRATION"></div>
+            
+            <% for my $item (@$menu_tree) { %>
+                <% next unless $item->{permission_level} eq 'admin'; %>
+                <% next if $item->{is_separator}; %>
+
+                <% 
+                    my $label = $item->{label};
+                    my ($icon, $name) = $label =~ /^(\X+?)\s+(.*)$/u;
+                    if (!$name) { $name = $label; $icon = $item->{icon} || '🛠️'; }
+                    # Strip "Admin: " prefix if present
+                    $name =~ s/^(Admin|Manage):\s*//i;
+                %>
+
+                <% if ($item->{url} && $item->{url} ne '#') { %>
+                    <a href="<%= $item->{url} %>" class="tile admin">
+                        <div class="icon"><%= $icon %></div>
+                        <div class="label"><%= $name %></div>
+                    </a>
+                <% } %>
+
+                <% # Render children of Admin category %>
+                <% for my $child (@{$item->{children} || []}) { %>
+                    <% 
+                        my $c_label = $child->{label};
+                        my ($c_icon, $c_name) = $c_label =~ /^(\X+?)\s+(.*)$/u;
+                        if (!$c_name) { $c_name = $c_label; $c_icon = $child->{icon} || '🛠️'; }
+                        $c_name =~ s/^(Admin|Manage):\s*//i;
+                    %>
+                    <a href="<%= $child->{url} %>" class="tile admin">
+                        <div class="icon"><%= $c_icon %></div>
+                        <div class="label"><%= $c_name %></div>
+                    </a>
+                <% } %>
+            <% } %>
+
+            <% # 3. Special Admin/Logout Buttons %>
             <button class="tile admin danger" onclick="startRestartSequence(event)">
                 <div class="icon">⚠️</div>
                 <div class="label">Restart</div>
             </button>
         <% } %>
-        
+
         <% if (is_logged_in()) { %>
             <a href="/logout" class="tile logout">
                 <div class="icon">🚪</div>
