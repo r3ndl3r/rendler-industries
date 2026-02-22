@@ -22,7 +22,7 @@ use Mojo::Util qw(trim);
 #   Rendered HTML template 'login'
 sub login_form {
     my $c = shift;
-    $c->render('login', msg => $c->param('msg'));
+    $c->render('auth/login', msg => $c->param('msg'));
 }
 
 # Processes user login credentials.
@@ -97,10 +97,10 @@ sub logout {
 # Route: GET /register
 # Parameters: None
 # Returns:
-#   Rendered HTML template 'register'
+#   Rendered HTML template 'auth/register'
 sub register_form {
     my $c = shift;
-    $c->render('register');
+    $c->render('auth/register');
 }
 
 # Processes new user registration.
