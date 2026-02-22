@@ -1,5 +1,9 @@
 /* /public/css/settings.css */
 
+* {
+    box-sizing: border-box;
+}
+
 .settings-container {
     max-width: 900px;
     margin: 0 auto;
@@ -21,7 +25,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    list-style: none; /* Hide default chevron */
+    list-style: none;
     background: rgba(255, 255, 255, 0.03);
     transition: background 0.2s;
 }
@@ -56,7 +60,7 @@ details[open] .chevron {
 
 .settings-section {
     padding: 2rem;
-    background: #0f172a; /* Darker interior */
+    background: #0f172a;
     border-top: 1px solid #334155;
 }
 
@@ -68,7 +72,8 @@ details[open] .chevron {
 
 .form-group {
     margin-bottom: 1.5rem;
-    position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .form-group label {
@@ -81,11 +86,17 @@ details[open] .chevron {
     letter-spacing: 0.05em;
 }
 
+.input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
 .form-input {
     width: 100%;
+    display: block;
     padding: 0.75rem;
     padding-right: 5rem;
-    background: #1e293b;
+    background: #0f172a;
     border: 1px solid #334155;
     color: #e2e8f0;
     border-radius: 0.5rem;
@@ -102,12 +113,13 @@ details[open] .chevron {
 
 .btn-toggle {
     position: absolute;
-    right: 0.5rem;
-    top: 2rem;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
     background: #334155;
     border: 1px solid #475569;
     color: #e2e8f0;
-    padding: 0.4rem 0.8rem;
+    padding: 0.35rem 0.75rem;
     border-radius: 0.4rem;
     cursor: pointer;
     font-size: 0.75rem;
