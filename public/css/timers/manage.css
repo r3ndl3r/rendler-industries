@@ -298,6 +298,7 @@
     .timers-table tbody tr .actions-cell {
         grid-area: actions;
         display: flex;
+        justify-content: flex-end; /* Align buttons to the right */
         gap: 8px;
         margin-top: 6px;
         padding-top: 12px !important;
@@ -307,15 +308,11 @@
     .timers-table tbody tr .actions-cell .btn-icon-bonus,
     .timers-table tbody tr .actions-cell .btn-icon-edit,
     .timers-table tbody tr .actions-cell .btn-icon-delete {
-        flex: 1;
+        flex: 0 0 44px; /* Uniform width for all buttons */
         height: 44px;
         border-radius: 8px;
         font-size: 15px;
         font-weight: 600;
         margin-left: 0;
-    }
-
-    .timers-table tbody tr .actions-cell .btn-icon-delete { 
-        flex: 0 0 50px; 
     }
 }

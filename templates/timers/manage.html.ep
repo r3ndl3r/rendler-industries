@@ -102,7 +102,7 @@
                                         title="Grant Bonus Time">
                                     🎁
                                 </button>
-                                <button class="btn-icon-edit btn-edit" 
+                                <button class="btn-icon-edit" 
                                         data-timer-id="<%= $timer->{id} %>"
                                         data-name="<%= $timer->{name} %>"
                                         data-category="<%= $timer->{category} %>"
@@ -111,7 +111,7 @@
                                         title="Edit Timer">
                                     ✎
                                 </button>
-                                <button class="btn-icon-delete btn-delete" 
+                                <button class="btn-icon-delete" 
                                         data-timer-id="<%= $timer->{id} %>"
                                         data-name="<%= $timer->{name} %>"
                                         title="Delete Timer">

@@ -16,13 +16,12 @@ const TimerManagement = {
             userFilter.addEventListener('change', (e) => this.handleFilterChange(e));
         }
 
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.btn-edit')) {
-                this.openEditModal(e.target.closest('.btn-edit'));
-            } else if (e.target.closest('.btn-delete')) {
-                this.handleDelete(e.target.closest('.btn-delete'));
-            } else if (e.target.closest('.btn-icon-bonus')) {
-                this.openBonusModal(e.target.closest('.btn-icon-bonus'));
+                document.addEventListener('click', (e) => {
+                    if (e.target.closest('.btn-icon-edit')) {
+                        this.openEditModal(e.target.closest('.btn-icon-edit'));
+                    } else if (e.target.closest('.btn-icon-delete')) {
+                        this.handleDelete(e.target.closest('.btn-icon-delete'));
+                    } else if (e.target.closest('.btn-icon-bonus')) {                this.openBonusModal(e.target.closest('.btn-icon-bonus'));
             } else if (e.target.classList.contains('modal-close') || e.target.classList.contains('modal')) {
                 this.closeModals();
             }
