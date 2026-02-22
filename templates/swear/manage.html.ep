@@ -10,8 +10,10 @@
 <div class="swear-container">
     <div class="header-bar">
         <h1>👥 <span>Manage Family</span></h1>
+        <div class="manage-actions">
+            <a href="/swear" class="btn-back">← Back</a>
+        </div>
     </div>
-    <a href="/swear" style="color: #69f0ae; text-decoration: none; display: inline-block; margin-bottom: 20px; font-weight: 600;">&larr; Back to Jar</a>
 
     <div class="glass-panel">
         <h3 style="margin-top: 0; color: #90caf9;">Add New Member</h3>

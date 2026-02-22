@@ -9,10 +9,10 @@
 <% end %>
 
 <div class="manage-container">
-    <div class="manage-header">
-        <h1>Manage Calendar Events</h1>
+    <div class="header-bar">
+        <h1>🗓️ <span>Manage Events</span></h1>
         <div class="manage-actions">
-            <a href="/calendar" class="btn-secondary">← Back to Calendar</a>
+            <a href="/calendar" class="btn-back">← Back</a>
             <button id="addEventBtn" class="btn-primary">+ Add Event</button>
         </div>
     </div>

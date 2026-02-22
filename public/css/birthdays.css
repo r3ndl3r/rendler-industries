@@ -123,15 +123,6 @@
     transform: scale(1.05);
 }
 
-/* Manage Page Styles */
-.back-link {
-    color: #69f0ae;
-    text-decoration: none;
-    display: inline-block;
-    margin-bottom: 20px;
-    font-weight: 600;
-}
-
 .glass-panel {
     background: rgba(30, 30, 30, 0.6);
     backdrop-filter: blur(12px);
