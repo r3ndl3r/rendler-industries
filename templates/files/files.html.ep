@@ -71,11 +71,11 @@
                             </td>
                             <td class="col-actions">
                                 <div class="action-buttons">
-                                    <a href="/files/serve/<%= $file->{id} %>" target="_blank" class="btn btn-view" title="View">👁️</a>
-                                    <button type="button" class="btn btn-copy" onclick="copyLink('<%= $file->{id} %>')" title="Copy Link">🔗</button>
+                                    <a href="/files/serve/<%= $file->{id} %>" target="_blank" class="btn-icon-view" title="View">👁️</a>
+                                    <button type="button" class="btn-icon-copy" onclick="copyLink('<%= $file->{id} %>')" title="Copy Link">📋</button>
                                     <% if (stash('is_admin')) { %>
-                                        <button type="button" class="btn btn-edit" onclick="openPermissions(<%= $file->{id} %>)" title="Permissions">⚙️</button>
-                                        <button type="button" class="btn btn-delete" onclick="confirmDeleteFile(<%= $file->{id} %>, '<%= $file->{original_filename} %>')" title="Delete">🗑️</button>
+                                        <button type="button" class="btn-icon-edit" onclick="openPermissions(<%= $file->{id} %>)" title="Permissions">⚙️</button>
+                                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteFile(<%= $file->{id} %>, '<%= $file->{original_filename} %>')" title="Delete">🗑️</button>
                                     <% } %>
                                 </div>
                             </td>
