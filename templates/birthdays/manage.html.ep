@@ -9,8 +9,12 @@
 <% end %>
 
 <div class="birthday-container manage-container">
-    <h1>🎂 <span>Manage Birthdays</span></h1>
-    <a href="/birthdays" class="back-link">&larr; Back to Birthdays</a>
+    <div class="header-bar">
+        <h1>🎂 <span>Manage Birthdays</span></h1>
+        <div class="manage-actions">
+            <a href="/birthdays" class="btn-back">← Back</a>
+        </div>
+    </div>
 
     <div class="glass-panel">
         <h2 style="margin-top: 0; color: #90caf9;">Add Birthday</h2>
