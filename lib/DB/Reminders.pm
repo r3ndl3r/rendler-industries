@@ -68,6 +68,28 @@ sub DB::create_reminder {
     return $reminder_id;
 }
 
+# Updates an existing reminder and its recipient list.
+sub DB::update_reminder {
+    my ($self, $id, $title, $desc, $days, $time, $recipient_ids) = @_;
+    $self->ensure_connection;
+    
+    # 1. Update main attributes
+    my $sth = $self->{dbh}->prepare("UPDATE reminders SET title = ?, description = ?, days_of_week = ?, reminder_time = ? WHERE id = ?");
+    $sth->execute($title, $desc, $days, $time, $id);
+    
+    # 2. Refresh recipients (Delete and Re-insert)
+    $self->{dbh}->do("DELETE FROM reminder_recipients WHERE reminder_id = ?", undef, $id);
+    
+    if ($recipient_ids && ref($recipient_ids) eq 'ARRAY') {
+        my $sth_rec = $self->{dbh}->prepare("INSERT INTO reminder_recipients (reminder_id, user_id) VALUES (?, ?)");
+        foreach my $uid (@$recipient_ids) {
+            $sth_rec->execute($id, $uid);
+        }
+    }
+    
+    return 1;
+}
+
 # Permanently deletes a reminder and its recipient mappings.
 sub DB::delete_reminder {
     my ($self, $id) = @_;
