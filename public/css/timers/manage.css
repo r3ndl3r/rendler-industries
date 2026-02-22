@@ -36,13 +36,6 @@
     color: #fff;
 }
 
-.timers-table-wrapper {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
 /* .timers-table uses global .data-table styles */
 
 /* --- Badges & Icons --- */

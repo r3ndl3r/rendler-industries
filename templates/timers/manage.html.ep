@@ -41,88 +41,86 @@
             <p>No timers found.</p>
         </div>
     % } else {
-        <div class="timers-table-wrapper">
-            <table class="data-table timers-table">
-                <thead>
-                    <tr>
-                        <th>User</th>
-                        <th>Timer Name</th>
-                        <th>Category</th>
-                        <th>Weekday Limit</th>
-                        <th>Weekend Limit</th>
-                        <th>Used Today</th>
-                        <th>Remaining</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+        <table class="data-table timers-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Timer Name</th>
+                    <th>Category</th>
+                    <th>Weekday Limit</th>
+                    <th>Weekend Limit</th>
+                    <th>Used Today</th>
+                    <th>Remaining</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                % for my $timer (@$timers) {
+                    <tr data-timer-id="<%= $timer->{id} %>">
+                        <td class="user-cell" data-label="User">
+                            <%= $timer->{username} %>
+                        </td>
+                        <td class="name-cell" data-label="Timer Name">
+                            <%= $timer->{name} %>
+                        </td>
+                        <td class="category-cell" data-label="Category">
+                            <span class="category-badge <%= lc($timer->{category}) =~ s/ /-/gr %>">
+                                <%= $timer->{category} %>
+                            </span>
+                        </td>
+                        <td class="limit-cell" data-label="Weekday Limit">
+                            <%= $timer->{weekday_minutes} %>m
+                        </td>
+                        <td class="limit-cell" data-label="Weekend Limit">
+                            <%= $timer->{weekend_minutes} %>m
+                        </td>
+                        <td class="elapsed-cell" data-label="Used Today">
+                            <%= int(($timer->{elapsed_seconds} // 0) / 60) %>m
+                        </td>
+                        <td class="remaining-cell" data-label="Remaining">
+                            % my $remaining = $timer->{remaining_seconds} // 0;
+                            % if ($remaining > 0) {
+                                <%= int($remaining / 60) %>m
+                            % } else {
+                                <span class="expired-text">EXPIRED</span>
+                            % }
+                        </td>
+                        <td class="status-cell" data-label="Status">
+                            % if ($timer->{is_running}) {
+                                <span class="status-badge running">▶️ Running</span>
+                            % } elsif ($timer->{is_paused}) {
+                                <span class="status-badge paused">⏸️ Paused</span>
+                            % } else {
+                                <span class="status-badge idle">⏺️ Idle</span>
+                            % }
+                        </td>
+                        <td class="actions-cell" data-label="Actions">
+                            <button class="btn-icon-bonus" 
+                                    data-timer-id="<%= $timer->{id} %>"
+                                    title="Grant Bonus Time">
+                                🎁
+                            </button>
+                            <button class="btn-icon-edit" 
+                                    data-timer-id="<%= $timer->{id} %>"
+                                    data-name="<%= $timer->{name} %>"
+                                    data-category="<%= $timer->{category} %>"
+                                    data-weekday="<%= $timer->{weekday_minutes} %>"
+                                    data-weekend="<%= $timer->{weekend_minutes} %>"
+                                    title="Edit Timer">
+                                ✎
+                            </button>
+                            <button class="btn-icon-delete" 
+                                    data-timer-id="<%= $timer->{id} %>"
+                                    data-name="<%= $timer->{name} %>"
+                                    title="Delete Timer">
+                                🗑️
+                            </button>
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    % for my $timer (@$timers) {
-                        <tr data-timer-id="<%= $timer->{id} %>">
-                            <td class="user-cell" data-label="User">
-                                <%= $timer->{username} %>
-                            </td>
-                            <td class="name-cell" data-label="Timer Name">
-                                <%= $timer->{name} %>
-                            </td>
-                            <td class="category-cell" data-label="Category">
-                                <span class="category-badge <%= lc($timer->{category}) =~ s/ /-/gr %>">
-                                    <%= $timer->{category} %>
-                                </span>
-                            </td>
-                            <td class="limit-cell" data-label="Weekday Limit">
-                                <%= $timer->{weekday_minutes} %>m
-                            </td>
-                            <td class="limit-cell" data-label="Weekend Limit">
-                                <%= $timer->{weekend_minutes} %>m
-                            </td>
-                            <td class="elapsed-cell" data-label="Used Today">
-                                <%= int(($timer->{elapsed_seconds} // 0) / 60) %>m
-                            </td>
-                            <td class="remaining-cell" data-label="Remaining">
-                                % my $remaining = $timer->{remaining_seconds} // 0;
-                                % if ($remaining > 0) {
-                                    <%= int($remaining / 60) %>m
-                                % } else {
-                                    <span class="expired-text">EXPIRED</span>
-                                % }
-                            </td>
-                            <td class="status-cell" data-label="Status">
-                                % if ($timer->{is_running}) {
-                                    <span class="status-badge running">▶️ Running</span>
-                                % } elsif ($timer->{is_paused}) {
-                                    <span class="status-badge paused">⏸️ Paused</span>
-                                % } else {
-                                    <span class="status-badge idle">⏺️ Idle</span>
-                                % }
-                            </td>
-                            <td class="actions-cell" data-label="Actions">
-                                <button class="btn-icon-bonus" 
-                                        data-timer-id="<%= $timer->{id} %>"
-                                        title="Grant Bonus Time">
-                                    🎁
-                                </button>
-                                <button class="btn-icon-edit" 
-                                        data-timer-id="<%= $timer->{id} %>"
-                                        data-name="<%= $timer->{name} %>"
-                                        data-category="<%= $timer->{category} %>"
-                                        data-weekday="<%= $timer->{weekday_minutes} %>"
-                                        data-weekend="<%= $timer->{weekend_minutes} %>"
-                                        title="Edit Timer">
-                                    ✎
-                                </button>
-                                <button class="btn-icon-delete" 
-                                        data-timer-id="<%= $timer->{id} %>"
-                                        data-name="<%= $timer->{name} %>"
-                                        title="Delete Timer">
-                                    🗑️
-                                </button>
-                            </td>
-                        </tr>
-                    % }
-                </tbody>
-            </table>
-        </div>
+                % }
+            </tbody>
+        </table>
     % }
 </div>
 
