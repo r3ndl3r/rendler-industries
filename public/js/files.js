@@ -93,10 +93,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
-    window.openPermissions = function(fileId) {
+    window.openPermissions = function(file) {
         const modal = document.getElementById('permissionModal');
+        const form = document.getElementById('permissionForm');
         if (modal) {
-            document.getElementById('permissionFileId').value = fileId;
+            document.getElementById('permissionFileId').value = file.id;
+            
+            // Set dynamic action URL
+            if (form) form.action = '/files/permissions/' + file.id;
+            
+            // Set Admin Only checkbox
+            document.getElementById('permissionAdminOnly').checked = file.admin_only == 1;
+            
+            // Reset all user checkboxes
+            document.querySelectorAll('.user-permission-checkbox').forEach(cb => cb.checked = false);
+            
+            // Set allowed users
+            if (file.allowed_users) {
+                const allowed = file.allowed_users.split(',');
+                allowed.forEach(username => {
+                    const cb = document.querySelector(`.user-permission-checkbox[data-username="${username}"]`);
+                    if (cb) cb.checked = true;
+                });
+            }
+            
             modal.style.display = 'flex';
         }
     };

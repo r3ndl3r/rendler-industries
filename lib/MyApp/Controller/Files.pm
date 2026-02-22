@@ -98,8 +98,12 @@ sub upload {
     my $admin_only = $c->param('admin_only') ? 1 : 0;
     my $description = trim($c->param('description') || '');
     
-    # Filter and validate allowed usernames to prevent injection or empty strings
-    my @allowed_users = $c->every_param('allowed_users');
+    # Filter and validate allowed usernames
+    my @allowed_users = $c->every_param('allowed_users[]');
+    
+    # Robust flattening: Ensure we have a list of scalars
+    @allowed_users = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @allowed_users;
+    
     @allowed_users = grep { defined $_ && length($_) > 0 && $_ =~ /^[a-zA-Z0-9_-]+$/ } @allowed_users;
     
     # Convert list to CSV string for storage (or undef if empty)
@@ -257,7 +261,11 @@ sub edit_permissions {
 
     # Process permissions
     my $admin_only = $c->param('admin_only') ? 1 : 0;
-    my @allowed_users = $c->every_param('allowed_users');
+    my @allowed_users = $c->every_param('allowed_users[]');
+    
+    # Robust flattening
+    @allowed_users = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @allowed_users;
+
     my $allowed_users_str = @allowed_users ? join(',', @allowed_users) : undef;
 
     # Update record

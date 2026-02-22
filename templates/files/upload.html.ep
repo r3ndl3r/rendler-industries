@@ -5,6 +5,7 @@
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/files.css">
+    <link rel="stylesheet" href="/css/reminders.css">
     <script defer src="/js/files.js"></script>
 % end
 
@@ -38,14 +39,17 @@
 
             <div class="form-group" id="userAccessGroup">
                 <label>Limit Access to Specific Users (Optional)</label>
-                <select name="allowed_users" multiple size="5" id="allowedUsers">
+                <div class="recipients-selector">
                     <% for my $user (@{stash('users')}) { %>
                         <% if ($user->{status} eq 'approved') { %>
-                            <option value="<%= $user->{username} %>"><%= $user->{username} %></option>
+                            <label class="recipient-checkbox">
+                                <input type="checkbox" name="allowed_users[]" value="<%= $user->{username} %>">
+                                <span><%= $user->{username} %></span>
+                            </label>
                         <% } %>
                     <% } %>
-                </select>
-                <small>Hold Ctrl/Cmd to select multiple users. Leave empty for public access.</small>
+                </div>
+                <small>Leave all unchecked for public access (unless Admin Only is set).</small>
             </div>
 
             <div class="form-actions">
