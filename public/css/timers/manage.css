@@ -308,8 +308,6 @@
     .timers-table tbody tr .actions-cell .btn-icon-bonus,
     .timers-table tbody tr .actions-cell .btn-icon-edit,
     .timers-table tbody tr .actions-cell .btn-icon-delete {
-        flex: 0 0 44px; /* Uniform width for all buttons */
-        height: 44px;
         border-radius: 8px;
         font-size: 15px;
         font-weight: 600;

@@ -213,14 +213,14 @@ body {
 }
 
 .btn-icon-view, .btn-icon-copy, .btn-icon-edit, .btn-icon-delete, .btn-icon-bonus {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     border-radius: 0.5rem;
-    font-size: 1.1rem;
+    font-size: 1rem;
     border: none;
     cursor: pointer;
     transition: all 0.2s;
