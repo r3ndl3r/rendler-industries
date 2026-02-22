@@ -516,3 +516,29 @@ a:hover {
     from { transform: translateX(0); opacity: 1; }
     to { transform: translateX(100%); opacity: 0; }
 }
+
+/* Specialized Scrollable Modal Variant */
+.modal-content-scrollable {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 0.75rem;
+    padding: 2rem;
+    max-width: 600px;
+    width: 90vw;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-body-scrollable {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 1.5rem;
+    color: #e2e8f0;
+    line-height: 1.5;
+    text-align: left;
+    padding-right: 10px;
+}
