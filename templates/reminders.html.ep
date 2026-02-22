@@ -1,4 +1,4 @@
-%# /templates/reminders/index.html.ep
+%# /templates/reminders.html.ep
 
 % layout 'default';
 % title 'Manage Reminders';
