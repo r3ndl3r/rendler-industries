@@ -175,40 +175,6 @@
     margin-left: 20px;
 }
 
-.item-actions .game-btn {
-    padding: 10px;
-    border-radius: 8px;
-    border: none;
-    color: #ffffff;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.item-actions .game-btn:hover {
-    transform: scale(1.1);
-}
-
-.edit-btn {
-    color: #64b5f6;
-    background: rgba(100, 181, 246, 0.1);
-}
-
-.delete-btn {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-}
-
-.copy-btn {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.copy-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
 .empty-state {
     text-align: center;
     padding: 50px 20px;
