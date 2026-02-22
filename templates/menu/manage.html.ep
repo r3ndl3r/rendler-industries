@@ -10,7 +10,7 @@
 <% end %>
 
 <div class="manage-container">
-    <div class="manage-header">
+    <div class="header-bar">
         <h1>🛠️ <span>Manage Menu Links</span></h1>
         <div class="manage-actions">
             <button id="addLinkBtn" class="btn-primary">+ Add Link</button>

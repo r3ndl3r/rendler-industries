@@ -10,7 +10,7 @@
 
 <div class="go-container">
     <div class="header-bar">
-        <h1>🔗 Go Links</h1>
+        <h1>🔗 <span>Go Links</span></h1>
     </div>
     
     <div class="glass-panel add-item-panel">

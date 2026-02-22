@@ -8,7 +8,9 @@
 <% end %>
 
 <div class="edit-container">
-    <h1>Edit User</h1>
+    <div class="header-bar">
+        <h1>👤 <span>Edit User</span></h1>
+    </div>
     
     <form action="/users/update/<%= $user->{id} %>" method="POST" class="edit-form">
         <div class="form-group">
