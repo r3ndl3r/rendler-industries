@@ -52,13 +52,14 @@
     <div class="glass-panel" style="padding: 10px 20px;">
         % if (@$leaderboard) {
             % for my $row (@$leaderboard) {
-                <div class="jar-row">
-                    <span style="font-size: 1.1rem; font-weight: 600; letter-spacing: 0.5px;"><%= $row->{perpetrator} %></span>
-                    <div style="display: flex; align-items: center;">
+                <div class="jar-row" style="flex-wrap: wrap; gap: 10px;">
+                    <span style="font-size: 1.1rem; font-weight: 600; letter-spacing: 0.5px; flex: 1;"><%= $row->{perpetrator} %></span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
                         <span class="debt-amount">$<%= sprintf("%.2f", $row->{total}) %></span>
                         
-                        <form action="/swear/pay" method="POST" style="margin: 0;">
+                        <form action="/swear/pay" method="POST" style="margin: 0; display: flex; gap: 5px;">
                             <input type="hidden" name="perpetrator" value="<%= $row->{perpetrator} %>">
+                            <input type="number" name="amount" value="<%= sprintf("%.2f", $row->{total}) %>" step="0.01" min="0.01" class="game-input" style="width: 80px; padding: 8px; font-size: 0.9rem; margin: 0;">
                             <button type="submit" class="game-btn btn-green btn-small">DEPOSIT</button>
                         </form>
                     </div>
@@ -69,7 +70,26 @@
         % }
     </div>
 
-    <details style="margin-top: 30px; color: rgba(255,255,255,0.5); cursor: pointer;">
+    <details style="margin-top: 20px; color: rgba(255,255,255,0.5); cursor: pointer;">
+        <summary>Jar Deposit (Extra Credit)</summary>
+        <div class="glass-panel" style="margin-top: 15px;">
+            <p style="font-size: 0.85rem; margin-top: 0; margin-bottom: 15px; color: rgba(255,255,255,0.6);">Add extra credit to the jar even if you don't have active debts.</p>
+            <form action="/swear/pay" method="POST" style="display: flex; flex-direction: column; gap: 10px;">
+                <select name="perpetrator" class="game-input" required>
+                    <option value="">Select Member...</option>
+                    % for my $m (@$members) {
+                        <option value="<%= $m->{name} %>"><%= $m->{name} %></option>
+                    % }
+                </select>
+                <div style="display: flex; gap: 10px;">
+                    <input type="number" name="amount" class="game-input" placeholder="Amount to Deposit" step="0.50" required min="0.01">
+                    <button type="submit" class="game-btn btn-green">Deposit Cash</button>
+                </div>
+            </form>
+        </div>
+    </details>
+
+    <details style="margin-top: 20px; color: rgba(255,255,255,0.5); cursor: pointer;">
         <summary>Spend from Jar</summary>
         <div class="glass-panel" style="margin-top: 15px;">
             <form action="/swear/spend" method="POST">
@@ -88,11 +108,15 @@
                     <span>
                         % if ($item->{type} eq 'fine') {
                             <strong style="color: #fff;"><%= $item->{perpetrator} %></strong> owed
+                        % } elsif ($item->{type} eq 'payment') {
+                            <strong style="color: #69f0ae;"><%= $item->{perpetrator} %></strong> deposited
                         % } else {
                             <strong style="color: #66bb6a;">JAR SPEND</strong>
                         % }
                     </span>
-                    <span style="font-weight: bold;">$<%= sprintf("%.2f", $item->{amount}) %></span>
+                    <span style="font-weight: bold; color: <%= $item->{type} eq 'payment' ? '#69f0ae' : '#fff' %>;">
+                        <%= $item->{type} eq 'payment' ? "+" : "" %>$<%= sprintf("%.2f", $item->{amount}) %>
+                    </span>
                 </div>
                 <small style="color: rgba(255,255,255,0.4); display: block; margin-top: 4px;">
                     <%= $item->{created_at} %> 

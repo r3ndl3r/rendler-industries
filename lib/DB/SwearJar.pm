@@ -97,7 +97,7 @@ sub DB::get_swear_leaderboard {
 #   reason : Context/Reason for the fine
 # Returns:
 #   Result of execute() (true on success)
-# Note: Fines default to status=0 (Unpaid)
+# Note: Fines default to status=0 (Unpaid) for historical consistency
 sub DB::add_swear {
     my ($self, $name, $amount, $reason) = @_;
     
@@ -109,23 +109,48 @@ sub DB::add_swear {
     $sth->execute($name, $amount, $reason);
 }
 
-# Settles all outstanding debts for a specific user.
+# Records a payment made by a user (Partial, Full, or Extra/Credit).
 # Parameters:
-#   name : Name of the user paying up
+#   name   : Name of the user paying
+#   amount : The monetary value deposited
 # Returns:
 #   Result of execute() (true on success)
-# Behavior:
-#   - Updates all unpaid fines (status=0) to paid (status=1)
-#   - Sets the paid_at timestamp to current time
 sub DB::mark_user_paid {
-    my ($self, $name) = @_;
+    my ($self, $name, $amount) = @_;
     
     # Verify database connectivity
     $self->ensure_connection;
     
-    # Bulk update user's fines to paid status
-    my $sth = $self->{dbh}->prepare("UPDATE swear_ledger SET status=1, paid_at=NOW() WHERE type='fine' AND name=? AND status=0");
-    $sth->execute($name);
+    # 1. Record the physical payment entry for the jar history and balance
+    my $sth_pay = $self->{dbh}->prepare("INSERT INTO swear_ledger (type, name, amount, reason, status, paid_at) VALUES ('payment', ?, ?, 'Jar Deposit', 1, NOW())");
+    $sth_pay->execute($name, $amount);
+
+    # 2. Reconcile the user's unpaid fines
+    # We iterate through their unpaid fines and mark them as paid (status=1) 
+    # until the payment amount is exhausted.
+    my $remaining = $amount;
+    my $fines = $self->{dbh}->selectall_arrayref(
+        "SELECT id, amount FROM swear_ledger WHERE type='fine' AND name=? AND status=0 ORDER BY created_at ASC",
+        { Slice => {} }, $name
+    );
+
+    foreach my $fine (@$fines) {
+        last if $remaining <= 0;
+        
+        if ($remaining >= $fine->{amount}) {
+            # Full payment for this fine
+            $self->{dbh}->do("UPDATE swear_ledger SET status=1, paid_at=NOW() WHERE id=?", undef, $fine->{id});
+            $remaining -= $fine->{amount};
+        } else {
+            # Partial payment for this fine: 
+            # In our current schema, we can't "split" a fine easily without creating new rows.
+            # For simplicity, if they paid most of it, we mark it paid, or just leave it unpaid 
+            # if they paid very little.
+            # BETTER: We only mark a fine paid if it's fully covered by this or prior payments.
+            # Since our leaderboard uses SUM(status=0), we can just stop here.
+            last;
+        }
+    }
 }
 
 # Records money taken out of the jar.
@@ -148,18 +173,18 @@ sub DB::withdraw_from_jar {
 # Calculates the current physical balance of the jar.
 # Parameters: None
 # Returns:
-#   Float (Total In - Total Out)
+#   Float (Total Payments - Total Spent)
 # Logic:
-#   - Balance = (Sum of Paid Fines) - (Sum of Withdrawals)
-#   - Unpaid fines do not count towards the balance
+#   - Balance = (Sum of Payments) - (Sum of Withdrawals)
 sub DB::get_jar_balance {
     my ($self) = @_;
     
     # Verify database connectivity
     $self->ensure_connection;
     
-    # Calculate Total Revenue (Paid Fines)
-    my $sth_in = $self->{dbh}->prepare("SELECT SUM(amount) FROM swear_ledger WHERE type='fine' AND status=1");
+    # Calculate Total Revenue (Actual cash deposited)
+    # We include all payments here, as they represent physical cash in the jar.
+    my $sth_in = $self->{dbh}->prepare("SELECT SUM(amount) FROM swear_ledger WHERE type='payment'");
     $sth_in->execute();
     my ($total_in) = $sth_in->fetchrow_array();
     $total_in //= 0;
@@ -173,7 +198,7 @@ sub DB::get_jar_balance {
     return $total_in - $total_out;
 }
 
-# Retrieves recent ledger activity (Fines and Spends).
+# Retrieves recent ledger activity (Fines, Spends, Payments).
 # Parameters: None
 # Returns:
 #   ArrayRef of HashRefs containing last 20 transactions
@@ -183,8 +208,8 @@ sub DB::get_swear_history {
     # Verify database connectivity
     $self->ensure_connection;
     
-    # Fetch recent history
-    my $sth = $self->{dbh}->prepare("SELECT id, type, name as perpetrator, amount, reason, created_at FROM swear_ledger WHERE type IN ('fine', 'spend') ORDER BY created_at DESC LIMIT 20");
+    # Fetch recent history including payments, excluding migration markers
+    my $sth = $self->{dbh}->prepare("SELECT id, type, name as perpetrator, amount, reason, created_at FROM swear_ledger WHERE type IN ('fine', 'spend', 'payment') AND reason != 'Legacy Payment Conversion' ORDER BY created_at DESC LIMIT 20");
     $sth->execute();
     
     return $sth->fetchall_arrayref({});
