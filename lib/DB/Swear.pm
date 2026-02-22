@@ -1,6 +1,6 @@
-# /lib/DB/SwearJar.pm
+# /lib/DB/Swear.pm
 
-package DB::SwearJar;
+package DB::Swear;
 
 use strict;
 use warnings;
