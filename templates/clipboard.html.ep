@@ -1,16 +1,16 @@
-%# /templates/copy/copy.html.ep
+%# /templates/clipboard.html.ep
 
 % layout 'default';
-% title 'Copy / Paste';
+% title 'Clipboard';
 
 <% content_for head => begin %>
-    <link rel="stylesheet" href="/css/copy.css">
-    <script src="/js/copy.js"></script>
+    <link rel="stylesheet" href="/css/clipboard.css">
+    <script src="/js/clipboard.js"></script>
 <% end %>
 
 <div class="admin-container">
     <div class="manage-header">
-        <h1>📋 Copy / Paste</h1>
+        <h1>📋 Clipboard</h1>
         <div class="manage-actions">
             <button class="btn-primary" onclick="openModal()">+ Add Content</button>
         </div>
@@ -41,7 +41,7 @@
                 <h3 id="modalTitle">Add New Content</h3>
                 <span class="close-btn" onclick="closeModal()">&times;</span>
             </div>
-            <form id="contentForm" method="post" action="/copy">
+            <form id="contentForm" method="post" action="/clipboard">
                 <input type="hidden" name="id" id="messageId">
                 <div class="form-group">
                     <label for="paste">Content</label>
