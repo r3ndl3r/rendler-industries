@@ -1,6 +1,6 @@
-# /lib/DB/ShoppingList.pm
+# /lib/DB/Shopping.pm
 
-package DB::ShoppingList;
+package DB::Shopping;
 
 use strict;
 use warnings;
