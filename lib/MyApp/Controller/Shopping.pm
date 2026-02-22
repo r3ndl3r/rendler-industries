@@ -1,6 +1,6 @@
-# /lib/MyApp/Controller/ShoppingList.pm
+# /lib/MyApp/Controller/Shopping.pm
 
-package MyApp::Controller::ShoppingList;
+package MyApp::Controller::Shopping;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 

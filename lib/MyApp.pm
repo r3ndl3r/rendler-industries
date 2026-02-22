@@ -356,12 +356,12 @@ sub startup {
     $admin->post('/files/permissions/:id')->to('files#edit_permissions');
 
     # --- Shopping List Routes ---
-    $family->get('/shopping')->to('shopping_list#index');
-    $family->post('/shopping/add')->to('shopping_list#add');
-    $family->post('/shopping/toggle/:id')->to('shopping_list#toggle');
-    $family->post('/shopping/delete/:id')->to('shopping_list#delete');
-    $family->post('/shopping/clear')->to('shopping_list#clear_checked');
-    $family->post('/shopping/edit/:id')->to('shopping_list#edit');
+    $family->get('/shopping')->to('shopping#index');
+    $family->post('/shopping/add')->to('shopping#add');
+    $family->post('/shopping/toggle/:id')->to('shopping#toggle');
+    $family->post('/shopping/delete/:id')->to('shopping#delete');
+    $family->post('/shopping/clear')->to('shopping#clear_checked');
+    $family->post('/shopping/edit/:id')->to('shopping#edit');
 
     # --- Todo List Routes ---
     $auth->get('/todo')->to('todo#index');
