@@ -46,6 +46,12 @@
     padding-right: 7.5rem; /* Space for three buttons */
 }
 
+.message-text {
+    white-space: pre-wrap;
+    display: block;
+    line-height: 1.6;
+}
+
 .item-actions {
     position: absolute;
     top: 0.75rem;
