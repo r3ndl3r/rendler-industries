@@ -123,11 +123,11 @@
                 </div>
             </div>
             
-        <div class="form-actions">
-            <button type="button" class="btn-danger" id="deleteEventBtn" style="display: none;">Delete</button>
-            <button type="button" class="btn-secondary" id="cloneEventBtn" style="display: none;">Clone</button>
-            <button type="submit" class="btn-primary">Save</button>
-        </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-danger btn-small" id="deleteEventBtn" style="display: none;">Delete</button>
+                <button type="button" class="btn-clone btn-small" id="cloneEventBtn" style="display: none;">Clone</button>
+                <button type="submit" class="btn-primary btn-small">Save</button>
+            </div>
         </form>
     </div>
 </div>

@@ -90,6 +90,77 @@ body {
     border-color: rgba(255, 255, 255, 0.3);
 }
 
+/* Standardized Global Buttons */
+.btn-primary, 
+.btn-secondary, 
+.btn-danger,
+.btn-success,
+.btn-clone,
+.btn-edit,
+.btn-save {
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    text-decoration: none;
+    font-family: inherit;
+}
+
+/* Blue Buttons (Save, Confirm, Primary, Edit) */
+.btn-primary, .btn-save, .btn-edit { 
+    background: #3b82f6; 
+    color: white; 
+}
+.btn-primary:hover, .btn-save:hover, .btn-edit:hover { 
+    background: #2563eb; 
+}
+
+/* Gray Buttons (Cancel, Clone, Secondary) */
+.btn-secondary, .btn-clone { 
+    background: #334155; 
+    color: #e2e8f0; 
+}
+.btn-secondary:hover, .btn-clone:hover { 
+    background: #475569; 
+    color: #ffffff;
+}
+
+/* Red Buttons (Delete, Remove, Danger) */
+.btn-danger { 
+    background: #ef4444; 
+    color: white; 
+}
+.btn-danger:hover { 
+    background: #dc2626; 
+}
+
+/* Green Buttons (Success, Add) */
+.btn-success { 
+    background: #10b981; 
+    color: white; 
+}
+.btn-success:hover { 
+    background: #059669; 
+}
+
+/* Disabled states */
+.btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled, .btn-success:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(0.5);
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+}
+
 /* Global Confirm Deletion Modal */
 .delete-modal-overlay {
     position: fixed;
@@ -165,6 +236,15 @@ body {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #334155;
 }
 
 .delete-modal-close {
