@@ -125,6 +125,7 @@ function showEventDetails(eventId) {
             </div>
         </div>
         <div class="event-details-actions">
+            <button class="btn-danger" onclick="deleteEventFromDetails(${event.id}, \`${event.title}\`)">Delete</button>
             <button class="btn-secondary" onclick="cloneEventFromDetails(${event.id})">Clone</button>
             <button class="btn-primary" onclick="editEventFromDetails(${event.id})">Edit</button>
         </div>
@@ -138,6 +139,22 @@ function editEventFromDetails(eventId) {
     const event = allEvents.find(e => e.id == eventId);
     if (event) {
         openEditModal(event);
+    }
+}
+
+function deleteEventFromDetails(eventId, title) {
+    closeEventDetailsModal();
+    if (typeof deleteEventFromModal === 'function') {
+        deleteEventFromModal(eventId, title);
+    } else {
+        // Fallback
+        if (confirm(`Delete event "${title}"?`)) {
+            fetch('/calendar/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ id: eventId })
+            }).then(() => loadEvents());
+        }
     }
 }
 

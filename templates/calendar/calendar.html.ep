@@ -139,3 +139,18 @@
         </div>
     </div>
 </div>
+
+<div id="deleteConfirmModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h3>Confirm Deletion</h3>
+            <span class="close" onclick="closeDeleteConfirmModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete "<strong id="deleteEventTitle"></strong>"?</p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn-danger" id="finalDeleteBtn">Delete</button>
+        </div>
+    </div>
+</div>
