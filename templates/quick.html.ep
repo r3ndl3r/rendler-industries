@@ -30,9 +30,9 @@
                 <div class="label">Todo</div>
             </a>
 
-            <a href="/copy" class="tile">
+            <a href="/clipboard" class="tile">
                 <div class="icon">📋</div>
-                <div class="label">Copy</div>
+                <div class="label">Clipboard</div>
             </a>
             
             <% if (is_family()) { %>

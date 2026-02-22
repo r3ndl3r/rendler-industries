@@ -195,7 +195,7 @@ sub copy_get {
         is_admin  => $c->is_admin
     );
 
-    $c->render('copy/copy');
+    $c->render('clipboard');
 }
 
 # Saves a new item to the Admin Clipboard.
@@ -223,11 +223,11 @@ sub copy_post {
         $c->db->push_gotify($text);
     }
     
-    return $c->redirect_to('/copy');
+    return $c->redirect_to('/clipboard');
 }
 
 # Updates an existing item in the Admin Clipboard.
-# Route: POST /copy/update
+# Route: POST /clipboard/update
 # Parameters:
 #   id    : Unique ID of the message
 #   paste : New text content
@@ -245,11 +245,11 @@ sub copy_update {
 
     my $encoded_text = encode_entities($text);
     $c->db->update_message($id, $user_id, $encoded_text);
-    return $c->redirect_to('/copy');
+    return $c->redirect_to('/clipboard');
 }
 
 # Removes an item from the Admin Clipboard.
-# Route: POST /copy/delete
+# Route: POST /clipboard/delete
 # Parameters:
 #   id : Unique ID of the message to delete
 # Returns:
@@ -264,7 +264,7 @@ sub remove_message {
     }
 
     $c->db->delete_message($id, $user_id);
-    $c->redirect_to('/copy');
+    $c->redirect_to('/clipboard');
 }
 
 1;

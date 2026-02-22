@@ -1,4 +1,4 @@
-/* /public/js/copy.js */
+/* /public/js/clipboard.js */
 
 let messageIdToDelete = null;
 
@@ -6,7 +6,7 @@ function openModal() {
     document.getElementById('modalTitle').textContent = 'Add New Content';
     document.getElementById('messageId').value = '';
     document.getElementById('paste').value = '';
-    document.getElementById('contentForm').action = '/copy';
+    document.getElementById('contentForm').action = '/clipboard';
     document.getElementById('contentModal').style.display = 'flex';
 }
 
@@ -23,7 +23,7 @@ function editMessage(id, btn) {
     const doc = new DOMParser().parseFromString(text, 'text/html');
     document.getElementById('paste').value = doc.documentElement.textContent;
     
-    document.getElementById('contentForm').action = '/copy/update';
+    document.getElementById('contentForm').action = '/clipboard/update';
     document.getElementById('contentModal').style.display = 'flex';
 }
 
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (confirmBtn) {
         confirmBtn.onclick = function() {
             if (messageIdToDelete) {
-                $.post('/copy/delete/' + messageIdToDelete, function() {
+                $.post('/clipboard/delete/' + messageIdToDelete, function() {
                     location.reload();
                 }).fail(function() {
                     showToast('Unauthorized: You are not allowed to delete messages.', 'error');

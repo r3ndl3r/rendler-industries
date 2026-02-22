@@ -234,11 +234,11 @@ sub startup {
     $admin->post('/menu/delete')->to('menu#delete');
     $admin->post('/menu/reorder')->to('menu#reorder');
 
-    # --- Copy Routes ---
-    $auth->get('/copy')->to('root#copy_get');
-    $auth->post('/copy')->to('root#copy_post');
-    $auth->post('/copy/update')->to('root#copy_update');
-    $auth->post('/copy/delete/:id')->to('root#remove_message');
+    # --- Clipboard Routes ---
+    $auth->get('/clipboard')->to('root#copy_get');
+    $auth->post('/clipboard')->to('root#copy_post');
+    $auth->post('/clipboard/update')->to('root#copy_update');
+    $auth->post('/clipboard/delete/:id')->to('root#remove_message');
 
     # --- User Administration Routes ---
     $admin->get('/users')->to('admin#user_list');
