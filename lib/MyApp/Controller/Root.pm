@@ -165,7 +165,16 @@ sub cwd { shift->render(text => "CWD: " . getcwd()) }
 sub t_page { shift->render('t') }
 sub p_page { shift->render('p') }
 sub sus { shift->render('sus') }
-sub quick { shift->render('quick') }
+
+# Renders the Quick Access dashboard with dynamic tiles from DB
+sub quick { 
+    my $c = shift;
+    
+    # Retrieve the menu tree (already filtered by current user permissions)
+    my $menu_tree = $c->menu();
+    
+    $c->render('quick', menu_tree => $menu_tree);
+}
 
 
 # Renders the Contact page.
