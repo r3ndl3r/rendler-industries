@@ -179,6 +179,10 @@
     font-weight: 600;
 }
 
+.checkbox-group {
+    margin-bottom: 1.5rem;
+}
+
 .checkbox-group input { width: 1.2rem; height: 1.2rem; }
 
 .form-actions {
