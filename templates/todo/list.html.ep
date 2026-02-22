@@ -88,7 +88,10 @@
 <!-- Edit Modal -->
 <div id="editModal" class="modal">
     <div class="modal-content">
-        <h3>Edit Task</h3>
+        <div class="modal-header">
+            <h3>Edit Task</h3>
+            <span class="close-btn" onclick="closeEditModal()">&times;</span>
+        </div>
         <div class="modal-body">
             <div class="modal-group">
                 <label for="editName">Task Description</label>
@@ -97,8 +100,7 @@
             </div>
         </div>
         <div class="modal-actions">
-            <button type="button" onclick="closeEditModal()" class="game-btn btn-cancel">Cancel</button>
-            <button type="button" onclick="submitEdit()" class="game-btn btn-blue">Save Changes</button>
+            <button type="button" onclick="submitEdit()" class="game-btn btn-blue btn-small">Save Changes</button>
         </div>
     </div>
 </div>
