@@ -305,6 +305,12 @@ sub startup {
     $admin->post('/users/approve/:id')->to('admin#approve_user');
     $admin->get('/users/edit/:id')->to('admin#edit_user_form');
     $admin->post('/users/update/:id')->to('admin#edit_user');
+
+    # --- Reminders Administration Routes ---
+    $admin->get('/reminders')->to('reminders#index');
+    $admin->post('/reminders/add')->to('reminders#add');
+    $admin->post('/reminders/delete/:id')->to('reminders#delete');
+    $admin->post('/reminders/toggle/:id')->to('reminders#toggle');
     
     # --- Imposter Game Routes ---
     $family->get('/imposter')->to('imposter#index');
