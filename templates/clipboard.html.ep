@@ -9,10 +9,10 @@
 <% end %>
 
 <div class="admin-container">
-    <div class="manage-header">
-        <h1>📋 Clipboard</h1>
+    <div class="header-bar">
+        <h1>📋 <span>Clipboard</span></h1>
         <div class="manage-actions">
-            <button class="btn-primary" onclick="openModal()">+ Add Content</button>
+            <button class="action-btn" onclick="openModal()">+ Add Content</button>
         </div>
     </div>
 

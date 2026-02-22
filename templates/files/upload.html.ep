@@ -9,7 +9,9 @@
 % end
 
 <div class="admin-container">
-    <h1>📤 Upload New File</h1>
+    <div class="header-bar">
+        <h1>📤 <span>Upload New File</span></h1>
+    </div>
 
     <div class="edit-container">
         <form method="POST" action="/files" enctype="multipart/form-data" id="uploadForm" class="edit-form">

@@ -9,8 +9,8 @@
 % end
 
 <div class="admin-container">
-    <div class="manage-header">
-        <h1>📁 Files</h1>
+    <div class="header-bar">
+        <h1>📁 <span>Files</span></h1>
         <% if (stash('is_admin')) { %>
             <div class="manage-actions">
                 <a href="/files/upload" class="btn-primary">
