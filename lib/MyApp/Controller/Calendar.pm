@@ -25,7 +25,10 @@ sub index {
     my $date = $c->param('date') || '';
     
     my $categories = $c->db->get_calendar_categories();
-    my $users = $c->db->get_all_users();
+    my $all_users = $c->db->get_all_users();
+    
+    # Filter to only family members for attendee selection
+    my $users = [ grep { $c->db->is_family($_->{username}) } @$all_users ];
     
     $c->stash(
         view => $view,
@@ -91,7 +94,10 @@ sub manage {
     }
 
     my $categories = $c->db->get_calendar_categories();
-    my $users = $c->db->get_all_users();
+    my $all_users = $c->db->get_all_users();
+    
+    # Filter to only family members for attendee selection
+    my $users = [ grep { $c->db->is_family($_->{username}) } @$all_users ];
     
     $c->stash(
         upcoming_events => \@upcoming,
@@ -229,21 +235,23 @@ View the calendar / ดูปฏิทิน: } . $c->url_for('/calendar')->to_a
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-This notification was sent to all users.
-การแจ้งเตือนนี้ถูกส่งถึงผู้ใช้ทั้งหมด};
+This notification was sent to family members.
+การแจ้งเตือนนี้ถูกส่งถึงสมาชิกครอบครัว};
 
-        my @all_emails;
+        my @family_emails;
         for my $user (@$all_users) {
-            push @all_emails, $user->{email} if $user->{email};
+            if ($user->{email} && $c->db->is_family($user->{username})) {
+                push @family_emails, $user->{email};
+            }
         }
 
-        if (@all_emails) {
-            if ($c->send_email_via_gmail(\@all_emails, $email_subject, $email_body)) {
-                my $sent_count = scalar(@all_emails);
-                $c->app->log->info("Calendar event '$title' created by $creator_name. Notification sent to $sent_count users.");
+        if (@family_emails) {
+            if ($c->send_email_via_gmail(\@family_emails, $email_subject, $email_body)) {
+                my $sent_count = scalar(@family_emails);
+                $c->app->log->info("Calendar event '$title' created by $creator_name. Notification sent to $sent_count family members.");
             }
         } else {
-            $c->app->log->info("Calendar event '$title' created by $creator_name. No users with email addresses.");
+            $c->app->log->info("Calendar event '$title' created by $creator_name. No family members with email addresses.");
         }
         
         $c->render(json => { success => 1, id => $event_id });
