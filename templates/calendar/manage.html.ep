@@ -77,7 +77,6 @@
                         <td><%= $event->{creator_name} || 'Unknown' %></td>
                         <td class="actions-cell">
                             <button class="btn-secondary btn-edit" data-id="<%= $event->{id} %>">Edit</button>
-                            <button class="btn-danger btn-delete" data-id="<%= $event->{id} %>">Delete</button>
                         </td>
                     </tr>
                     % }
@@ -138,7 +137,6 @@
                         <td><%= $event->{creator_name} || 'Unknown' %></td>
                         <td class="actions-cell">
                             <button class="btn-secondary btn-edit" data-id="<%= $event->{id} %>">Edit</button>
-                            <button class="btn-danger btn-delete" data-id="<%= $event->{id} %>">Delete</button>
                         </td>
                     </tr>
                     % }
@@ -154,40 +152,90 @@
     <div class="modal-content">
         <span class="close">&times;</span>
         <h2 id="modalTitle">Add Event</h2>
+        
         <form id="eventForm">
             <input type="hidden" id="eventId" name="id">
             
-            <div class="form-group"><label>Title *</label><input type="text" id="eventTitle" name="title" required></div>
-            <div class="form-group"><label>Description</label><textarea id="eventDescription" name="description"></textarea></div>
-            <div class="form-group checkbox-group"><label><input type="checkbox" id="eventAllDay" name="all_day"> All-day</label></div>
-            <div class="form-row">
-                <div class="form-group"><label>Start Date *</label><input type="date" id="eventStartDate" name="start_date" required></div>
-                <div class="form-group" id="startTimeGroup"><label>Time</label><input type="time" id="eventStartTime" name="start_time"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>End Date *</label><input type="date" id="eventEndDate" name="end_date" required></div>
-                <div class="form-group" id="endTimeGroup"><label>Time</label><input type="time" id="eventEndTime" name="end_time"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Category</label><input type="text" id="eventCategory" name="category" list="catList"><datalist id="catList"><% for my $c (@$categories) { %><option value="<%= $c %>"><% } %></datalist></div>
-                <div class="form-group"><label>Color</label><input type="color" id="eventColor" name="color" value="#3788d8"></div>
-            </div>
             <div class="form-group">
-                <label>Attendees</label>
+                <label for="eventTitle">Title *</label>
+                <input type="text" id="eventTitle" name="title" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="eventDescription">Description</label>
+                <textarea id="eventDescription" name="description" rows="3"></textarea>
+            </div>
+            
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="eventAllDay" name="all_day"> All-day event
+                </label>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="eventStartDate">Start Date *</label>
+                    <input type="date" id="eventStartDate" name="start_date" required>
+                </div>
+                <div class="form-group" id="startTimeGroup">
+                    <label for="eventStartTime">Start Time</label>
+                    <input type="time" id="eventStartTime" name="start_time">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="eventEndDate">End Date *</label>
+                    <input type="date" id="eventEndDate" name="end_date" required>
+                </div>
+                <div class="form-group" id="endTimeGroup">
+                    <label for="eventEndTime">End Time</label>
+                    <input type="time" id="eventEndTime" name="end_time">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="eventCategory">Category</label>
+                    <input type="text" id="eventCategory" name="category" list="categoryList">
+                    <datalist id="categoryList">
+                        % for my $cat (@$categories) {
+                            <option value="<%= $cat %>">
+                        % }
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label for="eventColor">Color</label>
+                    <input type="color" id="eventColor" name="color" value="#3788d8">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="eventAttendees">Attendees</label>
                 <div class="attendees-select-container">
                     % for my $user (@$users) {
-                    <label class="attendee-checkbox">
-                        <input type="checkbox" name="attendees[]" value="<%= $user->{id} %>" class="attendee-checkbox-input">
-                        <span><%= $user->{display_name} || $user->{username} %></span>
-                    </label>
+                        <label class="attendee-checkbox">
+                            <input type="checkbox" name="attendees[]" value="<%= $user->{id} %>" class="attendee-checkbox-input">
+                            <span><%= $user->{display_name} || $user->{username} %></span>
+                        </label>
                     % }
                 </div>
             </div>
-            <div class="form-actions">
-                <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
-                <button type="submit" class="btn-primary">Save</button>
-            </div>
+            
+        <div class="form-actions">
+            <button type="button" class="btn-danger" id="deleteEventBtn" style="display: none;">Delete</button>
+            <button type="button" class="btn-secondary" id="cloneEventBtn" style="display: none;">Clone</button>
+            <button type="submit" class="btn-primary">Save</button>
+        </div>
         </form>
+    </div>
+</div>
+
+<div id="eventDetailsModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <div id="eventDetailsContent">
+        </div>
     </div>
 </div>
 
