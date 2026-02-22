@@ -37,117 +37,95 @@ sub index {
 # Parameters:
 #   item_name : Description of item (max 255 chars)
 # Returns:
-#   Redirects to list view
-#   Renders error on validation failure
+#   JSON: { success => 1, id => Int, item_name => String, added_by => String }
 sub add {
     my $c = shift;
     
     my $item_name = trim($c->param('item_name') // '');
     my $added_by = $c->session('user');
     
-    # Validate input presence
     unless ($item_name) {
-        return $c->render_error('Item name cannot be empty');
+        return $c->render(json => { success => 0, error => 'Item name cannot be empty' });
     }
     
-    # Validate input length
     if (length($item_name) > 255) {
-        return $c->render_error('Item name too long (max 255 characters)');
+        return $c->render(json => { success => 0, error => 'Item name too long' });
     }
     
-    # Persist new item
-    $c->db->add_shopping_item($item_name, $added_by);
-    $c->redirect_to('/shopping');
+    eval {
+        my $sth = $c->db->{dbh}->prepare("INSERT INTO shopping_list (item_name, added_by, is_checked) VALUES (?, ?, 0)");
+        $sth->execute($item_name, $added_by);
+        my $id = $c->db->{dbh}->last_insert_id();
+        $c->render(json => { success => 1, id => $id, item_name => $item_name, added_by => $added_by });
+    };
+    if ($@) {
+        $c->render(json => { success => 0, error => 'Database error' });
+    }
 }
 
-# Toggles the completion status of an item.
+# Toggles the completion status of an item via AJAX.
 # Route: POST /shopping/toggle
-# Parameters:
-#   id : Unique Item ID
-# Returns:
-#   Redirects to list view
-#   Renders error on validation failure
 sub toggle {
     my $c = shift;
-    
     my $id = $c->param('id');
     
-    # Validate ID format
     unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render_error('Invalid item ID');
+        return $c->render(json => { success => 0, error => 'Invalid ID' });
     }
     
-    # Execute toggle logic
-    $c->db->toggle_shopping_item($id);
-    $c->redirect_to('/shopping');
+    eval {
+        $c->db->toggle_shopping_item($id);
+        $c->render(json => { success => 1 });
+    };
+    if ($@) {
+        $c->render(json => { success => 0, error => 'Database error' });
+    }
 }
 
-# Permanently removes an item.
+# Permanently removes an item via AJAX.
 # Route: POST /shopping/delete
-# Parameters:
-#   id : Unique Item ID
-# Returns:
-#   Redirects to list view
-#   Renders error on validation failure
 sub delete {
     my $c = shift;
-    
     my $id = $c->param('id');
     
-    # Validate ID format
     unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render_error('Invalid item ID');
+        return $c->render(json => { success => 0, error => 'Invalid ID' });
     }
     
-    # Execute deletion
-    $c->db->delete_shopping_item($id);
-    $c->redirect_to('/shopping');
+    eval {
+        $c->db->delete_shopping_item($id);
+        $c->render(json => { success => 1 });
+    };
+    if ($@) {
+        $c->render(json => { success => 0, error => 'Database error' });
+    }
+}
+
+# Updates an item description via AJAX.
+# Route: POST /shopping/edit
+sub edit {
+    my $c = shift;
+    my $id = $c->param('id');
+    my $item_name = trim($c->param('item_name') // '');
+    
+    unless ($item_name) {
+        return $c->render(json => { success => 0, error => 'Name cannot be empty' });
+    }
+    
+    eval {
+        $c->db->update_shopping_item($id, $item_name);
+        $c->render(json => { success => 1 });
+    };
+    if ($@) {
+        $c->render(json => { success => 0, error => 'Database error' });
+    }
 }
 
 # Bulk deletes all completed items.
 # Route: POST /shopping/clear
-# Parameters: None
-# Returns:
-#   Redirects to list view
 sub clear_checked {
     my $c = shift;
-    
-    # Execute batch cleanup
     $c->db->clear_checked_items();
-    $c->redirect_to('/shopping');
-}
-
-# Updates an existing item's description.
-# Route: POST /shopping/edit
-# Parameters:
-#   id        : Unique Item ID
-#   item_name : New description (max 255 chars)
-# Returns:
-#   Redirects to list view
-#   Renders error on validation failure
-sub edit {
-    my $c = shift;
-    
-    my $id = $c->param('id');
-    my $item_name = trim($c->param('item_name') // '');
-    
-    # Validate ID format
-    unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render_error('Invalid item ID');
-    }
-    
-    # Validate input presence
-    unless ($item_name) {
-        return $c->render_error('Item name cannot be empty');
-    }
-    
-    # Validate input length
-    if (length($item_name) > 255) {
-        return $c->render_error('Item name too long (max 255 characters)');
-    }
-    
-    # Execute update
-    $c->db->update_shopping_item($id, $item_name);
     $c->redirect_to('/shopping');
 }
 
