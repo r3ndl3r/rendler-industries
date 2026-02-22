@@ -68,10 +68,49 @@ sub maintenance {
     # 1. Run Timer Maintenance
     $result->{timers} = $c->_run_timer_maintenance();
 
-    # 2. Run Reminders Maintenance (Future implementation)
-    # $result->{reminders} = $c->_run_reminder_maintenance($now);
+    # 2. Run Reminders Maintenance
+    $result->{reminders} = $c->_run_reminder_maintenance($now);
 
     $c->render(json => $result);
+}
+
+# Internal helper to handle recurring reminders.
+sub _run_reminder_maintenance {
+    my ($c, $now) = @_;
+    
+    my $stats = {
+        checked_minute => $now->strftime('%H:%M'),
+        day_number     => $now->day_of_week, # 1=Mon, 7=Sun
+        due_found      => 0,
+        notified       => 0,
+        errors         => 0
+    };
+
+    # Fetch reminders that should trigger NOW
+    my $due_reminders = $c->db->get_due_reminders($stats->{day_number}, $stats->{checked_minute});
+    $stats->{due_found} = scalar @$due_reminders;
+
+    # Track processed reminder IDs to avoid double-marking for multi-recipient rules
+    my %processed_reminder_ids;
+
+    foreach my $r (@$due_reminders) {
+        my $msg = "🔔 REMINDER: $r->{title}\n\n$r->{description}";
+        
+        # Dispatch notification using standardized helper
+        if ($c->notify_user($r->{user_id}, $msg, "Reminder: $r->{title}")) {
+            $stats->{notified}++;
+            
+            # Mark as sent for today if not already done
+            unless ($processed_reminder_ids{$r->{id}}) {
+                $c->db->mark_reminder_sent($r->{id});
+                $processed_reminder_ids{$r->{id}} = 1;
+            }
+        } else {
+            $stats->{errors}++;
+        }
+    }
+
+    return $stats;
 }
 
 # Internal helper to handle timer-specific maintenance tasks.
