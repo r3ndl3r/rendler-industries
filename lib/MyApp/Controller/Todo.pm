@@ -17,7 +17,7 @@ use Mojo::Util qw(trim);
 # Route: GET /todo
 # Parameters: None
 # Returns:
-#   Rendered HTML template 'todo/list' with user's specific tasks
+#   Rendered HTML template 'todo' with user's specific tasks
 sub index {
     my $c = shift;
     my $user_id = $c->current_user_id;
@@ -29,7 +29,7 @@ sub index {
         title => 'Todo List'
     );
     
-    $c->render('todo/list');
+    $c->render('todo');
 }
 
 # Adds a new task to the user's private list.
