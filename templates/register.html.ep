@@ -9,7 +9,9 @@
 <% end %>
 
 <div class="auth-container">
-    <h1 class="auth-header">Register</h1>
+    <div class="header-bar">
+        <h1>📝 <span>Register</span></h1>
+    </div>
     
     <form method="POST" action="/register">
         <div class="form-group">
