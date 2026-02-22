@@ -60,6 +60,10 @@ sub add {
     my @days  = $c->every_param('days[]');
     my @uids  = $c->every_param('recipients[]');
     
+    # Robust flattening: Ensure we have a list of scalars
+    @days = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @days;
+    @uids = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @uids;
+    
     # Validate required fields
     unless ($title && $time && @days && @uids) {
         return $c->render_error("Title, Time, Days, and Recipients are all required.");
@@ -104,6 +108,10 @@ sub update {
     my $time  = trim($c->param('reminder_time') // '');
     my @days  = $c->every_param('days[]');
     my @uids  = $c->every_param('recipients[]');
+    
+    # Robust flattening
+    @days = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @days;
+    @uids = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @uids;
     
     unless ($id && $title && $time && @days && @uids) {
         return $c->render_error("All required fields must be provided.");
