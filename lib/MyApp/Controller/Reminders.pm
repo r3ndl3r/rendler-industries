@@ -84,6 +84,49 @@ sub add {
     $c->redirect_to('/reminders');
 }
 
+# Processes updates to an existing reminder.
+# Route: POST /reminders/update/:id
+# Parameters:
+#   id            : Target Reminder ID
+#   title         : Updated heading
+#   description   : Updated notes
+#   reminder_time : Updated trigger time
+#   days[]        : Updated active days
+#   recipients[]  : Updated target users
+# Returns:
+#   Redirects to '/reminders'
+sub update {
+    my $c = shift;
+    
+    my $id    = $c->param('id');
+    my $title = trim($c->param('title') // '');
+    my $desc  = trim($c->param('description') // '');
+    my $time  = trim($c->param('reminder_time') // '');
+    my @days  = $c->every_param('days[]');
+    my @uids  = $c->every_param('recipients[]');
+    
+    unless ($id && $title && $time && @days && @uids) {
+        return $c->render_error("All required fields must be provided.");
+    }
+    
+    # Standardize time format
+    $time .= ":00" if $time =~ /^\d{2}:\d{2}$/;
+    
+    my $days_str = join(',', @days);
+    
+    eval {
+        $c->db->update_reminder($id, $title, $desc, $days_str, $time, \@uids);
+    };
+    
+    if ($@) {
+        $c->app->log->error("Failed to update reminder $id: $@");
+        return $c->render_error("Database error while updating reminder.");
+    }
+    
+    $c->flash(message => "Reminder '$title' updated successfully.");
+    $c->redirect_to('/reminders');
+}
+
 # Permanently deletes a reminder rule and its mappings.
 # Route: POST /reminders/delete/:id
 # Parameters:
