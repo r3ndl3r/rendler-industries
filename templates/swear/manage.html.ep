@@ -4,10 +4,13 @@
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/swear.css">
+    <script src="/js/swear.js"></script>
 <% end %>
 
 <div class="manage-container">
-    <h2 style="font-size: 1.8rem;">Manage Family</h2>
+    <div class="header-bar">
+        <h1>👥 <span>Manage Family</span></h1>
+    </div>
     <a href="/swear" style="color: #69f0ae; text-decoration: none; display: inline-block; margin-bottom: 20px; font-weight: 600;">&larr; Back to Jar</a>
 
     <div class="glass-panel">
@@ -19,7 +22,7 @@
             <label>Default Fine ($)</label>
             <input type="number" name="default_fine" class="game-input" required value="2.00" step="0.50">
             
-            <button type="submit" class="game-btn btn-blue">Add Member</button>
+            <button type="submit" class="btn-success">Add Member</button>
         </form>
     </div>
 
@@ -33,14 +36,33 @@
                         <br>
                         <span style="color: rgba(255,255,255,0.5); font-size: 0.9rem;">Default: $<%= sprintf("%.2f", $m->{default_fine}) %></span>
                     </div>
-                    <form action="/swear/member/delete" method="POST" style="margin:0;">
-                        <input type="hidden" name="id" value="<%= $m->{id} %>">
-                        <button type="submit" class="game-btn btn-del">REMOVE</button>
-                    </form>
+                    <button type="button" class="btn-danger btn-small" onclick="confirmDeleteMember(<%= $m->{id} %>, '<%= $m->{name} %>')">REMOVE</button>
                 </div>
             % }
         % } else {
-            <p style="text-align: center; color: rgba(255,255,255,0.4);">No members found.</p>
+            <div class="empty-state">
+                <p>📭 No members found.</p>
+            </div>
         % }
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="delete-modal-overlay">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
+            <h3>Confirm Deletion</h3>
+            <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
+        </div>
+        <div class="delete-modal-body">
+            <p>Are you sure you want to remove "<strong id="deleteMemberName"></strong>" from the family roster?</p>
+            <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 10px;">Note: This is a soft-delete; historical fine data will be preserved.</p>
+        </div>
+        <div class="delete-modal-actions">
+            <form id="deleteMemberForm" method="POST" action="/swear/member/delete">
+                <input type="hidden" name="id" id="deleteMemberId">
+                <button type="submit" class="btn-danger-confirm">Remove Member</button>
+            </form>
+        </div>
     </div>
 </div>

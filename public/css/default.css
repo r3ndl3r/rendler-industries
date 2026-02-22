@@ -123,6 +123,21 @@ body {
     margin-bottom: 25px;
     color: #e2e8f0;
     line-height: 1.5;
+    text-align: left;
+}
+
+.modal-body {
+    text-align: left;
+}
+
+.delete-modal-body label, .modal-body label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .delete-modal-actions {
