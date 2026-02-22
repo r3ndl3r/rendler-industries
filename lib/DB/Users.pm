@@ -111,7 +111,7 @@ sub DB::get_all_users {
     
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("SELECT id, username, email, created_at, is_admin, is_family, status FROM users");
+    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, created_at, is_admin, is_family, status FROM users");
     $sth->execute();
     
     return $sth->fetchall_arrayref({});
@@ -126,7 +126,7 @@ sub DB::get_user_by_id {
     my ($self, $id) = @_;
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("SELECT id, username, email, is_admin, is_family, status FROM users WHERE id = ?");
+    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, is_admin, is_family, status FROM users WHERE id = ?");
     $sth->execute($id);
     
     return $sth->fetchrow_hashref();
@@ -134,19 +134,20 @@ sub DB::get_user_by_id {
 
 # Updates user profile information.
 # Parameters:
-#   id        : User ID to update
-#   username  : New username
-#   email     : New email
-#   is_admin  : Admin flag (1/0)
-#   is_family : Family flag (1/0)
-#   status    : Account status (e.g., 'approved', 'pending')
+#   id         : User ID to update
+#   username   : New username
+#   email      : New email
+#   discord_id : Discord user ID
+#   is_admin   : Admin flag (1/0)
+#   is_family  : Family flag (1/0)
+#   status     : Account status (e.g., 'approved', 'pending')
 # Returns: Void
 sub DB::update_user {
-    my ($self, $id, $username, $email, $is_admin, $is_family, $status) = @_;
+    my ($self, $id, $username, $email, $discord_id, $is_admin, $is_family, $status) = @_;
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("UPDATE users SET username = ?, email = ?, is_admin = ?, is_family = ?, status = ? WHERE id = ?");
-    $sth->execute($username, $email, $is_admin, $is_family, $status, $id);
+    my $sth = $self->{dbh}->prepare("UPDATE users SET username = ?, email = ?, discord_id = ?, is_admin = ?, is_family = ?, status = ? WHERE id = ?");
+    $sth->execute($username, $email, $discord_id, $is_admin, $is_family, $status, $id);
 }
 
 # Resets a user's password.
