@@ -21,6 +21,15 @@ use Mojo::Util qw(trim);
 sub user_list {
     my $c = shift;
 
+    # Debug Flash Message
+    if (my $msg = $c->flash('message')) {
+        $c->app->log->debug("DEBUG FLASH: $msg");
+        # Re-flash it so it's available to the template (flash is consume-once)
+        $c->flash(message => $msg);
+    } else {
+        $c->app->log->debug("DEBUG FLASH: No message");
+    }
+
     # Fetch full user roster for display
     my $users = $c->db->get_all_users();
     
@@ -47,6 +56,11 @@ sub delete_user {
     # Execute deletion
     $c->db->delete_user($id);
 
+    if ($c->req->is_xhr) {
+        return $c->render(json => { success => 1, message => "User ID $id deleted successfully." });
+    }
+
+    $c->flash(message => "User ID $id deleted successfully.");
     return $c->redirect_to('/users');
 }
 
@@ -69,6 +83,11 @@ sub approve_user {
     # Perform approval status update
     $c->db->approve_user($id);
 
+    if ($c->req->is_xhr) {
+        return $c->render(json => { success => 1, message => "User ID $id approved successfully." });
+    }
+
+    $c->flash(message => "User ID $id approved successfully.");
     return $c->redirect_to('/users');
 }
 
@@ -117,8 +136,13 @@ sub edit_user {
     my $username = trim($c->param('username') // '');
     my $email = trim($c->param('email') // '');
     my $discord_id = trim($c->param('discord_id') // '');
-    my $is_admin = $c->param('is_admin') ? 1 : 0;
-    my $is_family = $c->param('is_family') ? 1 : 0;
+    # Retrieve current user data to preserve roles if not in form
+    my $current_user = $c->db->get_user_by_id($id);
+    return $c->render_error('User not found', 404) unless $current_user;
+
+    my $is_admin = defined $c->param('is_admin') ? ($c->param('is_admin') ? 1 : 0) : $current_user->{is_admin};
+    my $is_family = defined $c->param('is_family') ? ($c->param('is_family') ? 1 : 0) : $current_user->{is_family};
+    
     my $status = $c->param('status') // 'pending';
     my $password = $c->param('password');
     
@@ -141,6 +165,11 @@ sub edit_user {
     # Update profile details
     $c->db->update_user($id, $username, $email, $discord_id, $is_admin, $is_family, $status);
     
+    if ($c->req->is_xhr) {
+        return $c->render(json => { success => 1, message => "User profile updated successfully." });
+    }
+
+    $c->flash(message => "User profile updated successfully.");
     return $c->redirect_to('/users');
 }
 

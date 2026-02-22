@@ -29,18 +29,18 @@
                         </thead>
                         <tbody>
                             <% for my $user (@$users) { %>
-                                <tr>
+                                <tr id="user-row-<%= $user->{id} %>">
                                     <td data-label="ID"><%= $user->{id} %></td>
-                                    <td data-label="Username"><span class="text-wrap"><%= $user->{username} %></span></td>
-                                    <td data-label="Email"><span class="text-wrap text-small"><%= $user->{email} %></span></td>
+                                    <td data-label="Username"><span class="text-wrap user-username"><%= $user->{username} %></span></td>
+                                    <td data-label="Email"><span class="text-wrap text-small user-email"><%= $user->{email} %></span></td>
                                     <td data-label="Discord ID">
                                         <% if ($user->{discord_id}) { %>
-                                            <span class="text-wrap text-small" style="color: #7289da;"><%= $user->{discord_id} %></span>
+                                            <span class="text-wrap text-small user-discord" style="color: #7289da;"><%= $user->{discord_id} %></span>
                                         <% } else { %>
-                                            <span style="opacity: 0.3;">-</span>
+                                            <span class="user-discord" style="opacity: 0.3;">-</span>
                                         <% } %>
                                     </td>
-                                    <td data-label="Created"><span class="text-wrap text-small"><%= $user->{created_at} %></span></td>                    <td data-label="Status">
+                                    <td data-label="Created"><span class="text-wrap text-small"><%= $user->{created_at} %></span></td>                    <td data-label="Status" class="user-status-cell">
                         <% if (defined $user->{status} && $user->{status} eq 'approved') { %>
                             <span class="status-badge status-approved">Approved</span>
                         <% } else { %>
@@ -70,7 +70,7 @@
                                     <button type="submit" class="btn-icon-view" title="Approve">✅</button>
                                 </form>
                             <% } %>
-                            <a href="/users/edit/<%= $user->{id} %>" class="btn-icon-edit" title="Edit">✎</a>
+                            <button type="button" class="btn-icon-edit" onclick='openEditUserModal(<%== Mojo::JSON::to_json($user) %>)' title="Edit">✎</button>
                             <button type="button" class="btn-icon-delete" onclick="confirmDeleteUser(<%= $user->{id} %>, '<%= $user->{username} %>')" title="Delete">🗑️</button>
                         </div>
                     </td>
@@ -78,6 +78,51 @@
             <% } %>
         </tbody>
     </table>
+</div>
+
+<!-- Edit User Modal -->
+<div id="editUserModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit User</h3>
+            <span class="close-btn" onclick="closeEditModal()">&times;</span>
+        </div>
+        <form id="editUserForm" method="POST" action="">
+            <input type="hidden" id="editUserId" name="id">
+            
+            <div class="form-group">
+                <label for="editUsername">Username</label>
+                <input type="text" id="editUsername" name="username" class="game-input" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="editEmail">Email</label>
+                <input type="email" id="editEmail" name="email" class="game-input" required>
+            </div>
+
+            <div class="form-group">
+                <label for="editDiscordId">Discord User ID</label>
+                <input type="text" id="editDiscordId" name="discord_id" class="game-input" placeholder="e.g. 497218154586701834">
+            </div>
+            
+            <div class="form-group">
+                <label for="editStatus">Status</label>
+                <select id="editStatus" name="status" class="game-input" style="appearance: auto;">
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="editPassword">New Password (leave blank to keep)</label>
+                <input type="password" id="editPassword" name="password" class="game-input" placeholder="Enter new password">
+            </div>
+            
+            <div class="modal-actions">
+                <button type="submit" class="btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Delete Confirmation Modal -->
@@ -97,3 +142,15 @@
         </div>
     </div>
 </div>
+
+<% if (my $msg = flash('message')) { %>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof showToast === 'function') {
+                showToast("<%= $msg %>", 'success');
+            } else {
+                console.error('showToast function not found');
+            }
+        });
+    </script>
+<% } %>
