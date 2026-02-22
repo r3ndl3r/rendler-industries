@@ -1,7 +1,7 @@
 /* /public/css/default.css */
 
 :root {
-    --bg-color: #111827;
+    --bg-color: #050c1d;
     --text-color: #e5e7eb;
     --font-main: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
@@ -13,6 +13,60 @@ body {
     margin: 0;
     padding: 0;
     line-height: 1.5;
+    overflow-x: hidden;
+}
+
+/* Global Header Bar & Standardized Titles */
+.header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 35px;
+    padding: 10px 0;
+}
+
+.header-bar h1 {
+    font-size: 2.8rem;
+    font-weight: 300;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-bar h1 span {
+    background: linear-gradient(135deg, #ffffff, #90caf9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Common Management Action Buttons */
+.manage-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    background: #3b82f6;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-btn:hover {
+    background: #2563eb;
 }
 
 a {

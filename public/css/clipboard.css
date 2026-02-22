@@ -4,53 +4,12 @@
     box-sizing: border-box;
 }
 
-body {
-    background-color: #050c1d;
-    overflow-x: hidden;
-}
-
 .admin-container {
     padding: 2rem 1rem;
     padding-top: 0;
     max-width: 1000px;
     margin: 0 auto;
-    background-color: #050c1d;
     min-height: 100vh;
-}
-
-.admin-container h1 {
-    font-size: 2.5rem;
-    font-weight: 300;
-    text-align: center;
-    margin: 0;
-    color: #ffffff;
-}
-
-.manage-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 40px;
-}
-
-.manage-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.btn-primary {
-    background: #3b82f6;
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-primary:hover {
-    background: #2563eb;
 }
 
 .section {
@@ -221,20 +180,6 @@ textarea {
     right: 0.75rem;
     display: flex;
     gap: 0.5rem;
-}
-
-.action-btn {
-    border: none;
-    width: 28px;
-    height: 28px;
-    border-radius: 0.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: all 0.2s;
-    color: white;
 }
 
 .copy-btn {

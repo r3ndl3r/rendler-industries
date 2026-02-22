@@ -4,38 +4,12 @@
     box-sizing: border-box;
 }
 
-body {
-    background-color: #050c1d;
-    overflow-x: hidden;
-}
-
 .admin-container {
     padding: 2rem 1rem;
     padding-top: 0;
     max-width: 1200px;
     margin: 0 auto;
-    background-color: #050c1d;
     min-height: 100vh;
-}
-
-.manage-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 40px;
-}
-
-.admin-container h1 {
-    font-size: 2.5rem;
-    font-weight: 300;
-    text-align: center;
-    margin: 0;
-    color: #ffffff;
-}
-
-.manage-actions {
-    display: flex;
-    gap: 0.5rem;
 }
 
 /* Table Styling */
