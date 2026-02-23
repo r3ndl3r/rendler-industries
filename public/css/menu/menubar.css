@@ -177,3 +177,22 @@ body {
     border-top: 1px solid #333;
     height: 0;
 }
+
+/* Permission Indicators */
+.perm-indicator {
+    opacity: 0.5;
+    font-size: 0.65em;
+    margin-left: 4px;
+    vertical-align: text-top;
+}
+
+/* Submenu Arrow */
+.submenu-arrow {
+    font-size: 0.8em;
+}
+
+.submenu-container {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-left: 3px solid #546e7a;
+    display: none; /* Controlled by JS but set as default here */
+}
