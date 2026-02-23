@@ -161,7 +161,7 @@ IP Address: } . $c->tx->remote_address . qq{
 
 Please log in to the admin panel to approve or reject this account.
 
-- Rendler Industries};
+- Rendler Industries®};
 
             $c->send_email_via_gmail(\@admin_emails, $subject, $body);
         }
