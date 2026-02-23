@@ -44,6 +44,13 @@ body {
     color: rgba(255, 255, 255, 0.3);
 }
 
+.form-group {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
 /* Global Header Bar & Standardized Titles */
 .header-bar {
     display: flex;
@@ -435,6 +442,7 @@ body {
     flex-direction: column;
     gap: 0.5rem;
     margin-bottom: 1rem;
+    position: relative;
 }
 
 .modal-group label {
