@@ -37,6 +37,16 @@ sub register {
         'clock'     => '🕒',
         'calendar'  => '📅',
         'link'      => '🔗',
+        'kangaroo'  => '🦘',
+        'uno'       => '🃏',
+        'chess'     => '♟️',
+        'chelsea'   => '🏖️',
+        
+        # Permissions
+        'perm_admin'  => '🛡️',
+        'perm_family' => '🏠',
+        'perm_user'   => '👤',
+        'perm_guest'  => '🌍',
         
         # Modules
         'shopping'  => '🛒',
