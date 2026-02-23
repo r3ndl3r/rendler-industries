@@ -9,9 +9,9 @@
 
 <div class="swear-container">
     <div class="header-bar">
-        <h1>👥 <span>Manage Family</span></h1>
+        <h1><%= icon('user') %> <span>Manage Family</span></h1>
         <div class="manage-actions">
-            <a href="/swear" class="btn-back">← Back</a>
+            <a href="/swear" class="btn-back"><%= icon('back') %> Back</a>
         </div>
     </div>
 
@@ -54,7 +54,7 @@
                         <br>
                         <span style="color: rgba(255,255,255,0.5); font-size: 0.9rem;">Default: $<%= sprintf("%.2f", $m->{default_fine}) %></span>
                     </div>
-                    <button type="button" class="game-btn btn-red btn-small" onclick="confirmDeleteMember(<%= $m->{id} %>, '<%= $m->{name} %>')">REMOVE</button>
+                    <button type="button" class="btn-icon-delete" onclick="confirmDeleteMember(<%= $m->{id} %>, '<%= $m->{name} %>')"><%= icon('delete') %></button>
                 </div>
             % }
         % } else {
