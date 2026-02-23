@@ -35,7 +35,7 @@
                                 <input type="checkbox" onchange="toggleReminder(<%= $r->{id} %>, this.checked)" <%= $r->{is_active} ? 'checked' : '' %>>
                                 <span class="slider"></span>
                             </label>
-                            <button class="btn-icon-edit" onclick='openEditModal(<%== Mojo::JSON::to_json($r) %>)' title="Edit Reminder"><%= icon('edit') %></button>
+                            <button class="btn-icon-edit" data-reminder='<%== Mojo::JSON::to_json($r) %>' onclick='openEditModal(this)' title="Edit Reminder"><%= icon('edit') %></button>
                             <button class="btn-icon-delete" onclick="confirmDeleteReminder(<%= $r->{id} %>, '<%= $r->{title} %>')"><%= icon('delete') %></button>
                         </div>
                     </div>
@@ -55,13 +55,13 @@
 
                     <div class="reminder-days">
                         <% my %active_days = map { $_ => 1 } split(',', $r->{days_of_week}); %>
-                        <span class="day-dot <%= $active_days{1} ? 'active' : '' %>" title="Monday">M</span>
-                        <span class="day-dot <%= $active_days{2} ? 'active' : '' %>" title="Tuesday">T</span>
-                        <span class="day-dot <%= $active_days{3} ? 'active' : '' %>" title="Wednesday">W</span>
-                        <span class="day-dot <%= $active_days{4} ? 'active' : '' %>" title="Thursday">T</span>
-                        <span class="day-dot <%= $active_days{5} ? 'active' : '' %>" title="Friday">F</span>
-                        <span class="day-dot <%= $active_days{6} ? 'active' : '' %>" title="Saturday">S</span>
-                        <span class="day-dot <%= $active_days{7} ? 'active' : '' %>" title="Sunday">S</span>
+                        <span class="day-dot <%= $active_days{1} ? 'active' : '' %>" onclick="toggleDay(<%= $r->{id} %>, 1, <%= $active_days{1} ? 0 : 1 %>)" title="Monday">M</span>
+                        <span class="day-dot <%= $active_days{2} ? 'active' : '' %>" onclick="toggleDay(<%= $r->{id} %>, 2, <%= $active_days{2} ? 0 : 1 %>)" title="Tuesday">T</span>
+                        <span class="day-dot <%= $active_days{3} ? 'active' : '' %>" onclick="toggleDay(<%= $r->{id} %>, 3, <%= $active_days{3} ? 0 : 1 %>)" title="Wednesday">W</span>
+                        <span class="day-dot <%= $active_days{4} ? 'active' : '' %>" onclick="toggleDay(<%= $r->{id} %>, 4, <%= $active_days{4} ? 0 : 1 %>)" title="Thursday">T</span>
+                        <span class="day-dot <%= $active_days{5} ? 'active' : '' %>" onclick="toggleDay(<%= $r->{id} %>, 5, <%= $active_days{5} ? 0 : 1 %>)" title="Friday">F</span>
+                        <span class="day-dot <%= $active_days{6} ? 'active' : '' %>" onclick="toggleDay(<%= $r->{id} %>, 6, <%= $active_days{6} ? 0 : 1 %>)" title="Saturday">S</span>
+                        <span class="day-dot <%= $active_days{7} ? 'active' : '' %>" onclick="toggleDay(<%= $r->{id} %>, 7, <%= $active_days{7} ? 0 : 1 %>)" title="Sunday">S</span>
                     </div>
 
                     <% if ($r->{description}) { %>

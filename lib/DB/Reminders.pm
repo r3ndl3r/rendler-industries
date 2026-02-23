@@ -119,6 +119,29 @@ sub DB::toggle_reminder_status {
     return $self->{dbh}->do("UPDATE reminders SET is_active = ? WHERE id = ?", undef, $active, $id);
 }
 
+# Toggles a specific day within the days_of_week string.
+sub DB::toggle_reminder_day {
+    my ($self, $id, $day, $active) = @_;
+    $self->ensure_connection;
+    
+    # 1. Fetch current string
+    my $sth = $self->{dbh}->prepare("SELECT days_of_week FROM reminders WHERE id = ?");
+    $sth->execute($id);
+    my ($days_str) = $sth->fetchrow_array();
+    
+    # 2. Parse and update
+    my %days = map { $_ => 1 } split(',', $days_str // '');
+    if ($active) {
+        $days{$day} = 1;
+    } else {
+        delete $days{$day};
+    }
+    
+    # 3. Join back and save
+    my $new_days = join(',', sort keys %days);
+    return $self->{dbh}->do("UPDATE reminders SET days_of_week = ? WHERE id = ?", undef, $new_days, $id);
+}
+
 # Retrieves reminders that are due to fire in the current minute.
 # Parameters:
 #   day_num : Integer (1=Mon, 7=Sun)
