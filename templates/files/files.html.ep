@@ -1,7 +1,7 @@
 %# templates/files/files.html.ep
 
 % layout 'default';
-% title '📁 Files';
+% title icon('files') . ' Files';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/files.css">
