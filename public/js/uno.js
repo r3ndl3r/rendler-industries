@@ -22,7 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
         colorDot: document.getElementById('color-dot'),
         statusToast: document.getElementById('status-toast'),
         myPanel: document.getElementById('my-panel'),
-        oppPanel: document.getElementById('opponent-panel')
+        oppPanel: document.getElementById('opponent-panel'), // This element might not exist
+        unoShoutBtn: document.querySelector('.btn-uno-shout') // Direct reference to the button
     };
 
     let gameState = {
@@ -33,8 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         turn: null,
         direction: null,
         isDrawing: false,
-        isPlaying: false,
-        selectedCardIdx: null
+        isPlaying: false
     };
 
     const animations = {
@@ -186,7 +186,6 @@ document.addEventListener('DOMContentLoaded', () => {
         gameState.isPlaying = true;
 
         gameState.isMyTurn = false;
-        gameState.selectedCardIdx = null; // Reset selection
         updateTurnIndicators();
         
         animations.animatePlay(cardElement, () => {
@@ -214,30 +213,16 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const div = document.createElement('div');
         div.className = `uno-card`;
-        if (gameState.selectedCardIdx === index) {
-            div.classList.add('selected');
-        }
         
-        // Calculate background position based on sprite sheet
-        const posX = card.col * 90 + (card.col * 0.375); 
-        const posY = card.row * 135 + (card.row * 0.375);
-        div.style.backgroundPosition = `-${posX}px -${posY}px`;
+        // Mathematically correct % for 14x8 grid: (index / (total - 1)) * 100
+        const pctX = (card.col / 13) * 100;
+        const pctY = (card.row / 7) * 100;
+        div.style.backgroundPosition = `${pctX}% ${pctY}%`;
 
         if (isPlayable) {
-            div.onclick = (e) => {
-                e.stopPropagation();
-                if (gameState.selectedCardIdx === index) {
-                    gameState.selectedCardIdx = null;
-                } else {
-                    gameState.selectedCardIdx = index;
-                }
-                syncGame();
-            };
-            div.ondblclick = (e) => {
-                e.stopPropagation();
-                window.playCard(index);
-            };
-        } else if (index !== -1) {
+            div.onclick = () => window.playCard(index);
+            div.classList.add('is-playable');
+        } else {
             div.classList.add('uno-disabled');
         }
         
@@ -362,7 +347,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const slots = ['left', 'top', 'right'];
             slots.forEach(s => {
                 const panel = document.getElementById(`opp-slot-${s}`);
-                if (panel) panel.style.visibility = 'hidden';
+                if (panel) {
+                    panel.style.visibility = 'hidden';
+                    // Clear previous card count display
+                    const oldHandDisplay = panel.querySelector('.opponent-hand-display');
+                    if (oldHandDisplay) oldHandDisplay.remove();
+                }
             });
 
             opponents.forEach(opp => {
@@ -379,8 +369,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 panel.style.visibility = 'visible';
                 panel.querySelector('.player-name').textContent = (opp.said_uno ? '📢 ' : '') + opp.name;
-                panel.querySelector('.card-count').textContent = `${opp.card_count} cards`;
-                
+                // panel.querySelector('.card-count').textContent = `${opp.card_count} cards`; // Hide text count
+
+                // Add visual card backs
+                const handDisplay = document.createElement('div');
+                handDisplay.className = 'opponent-hand-display';
+                for (let i = 0; i < opp.card_count; i++) {
+                    const cardBack = document.createElement('div');
+                    cardBack.className = 'opponent-hand-card-back';
+                    handDisplay.appendChild(cardBack);
+                }
+                panel.querySelector('.player-details').appendChild(handDisplay); // Append to player details
+
                 if (data.turn === opp.id) {
                     panel.classList.add('active');
                 } else {
@@ -436,13 +436,6 @@ document.addEventListener('DOMContentLoaded', () => {
             els.statusToast.classList.remove('show');
         }, duration);
     }
-
-    document.addEventListener('click', () => {
-        if (gameState.selectedCardIdx !== null) {
-            gameState.selectedCardIdx = null;
-            syncGame();
-        }
-    });
 
     syncGame();
     setInterval(syncGame, 2000);
