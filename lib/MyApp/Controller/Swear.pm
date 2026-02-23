@@ -62,11 +62,13 @@ sub add_fine {
 
     # Validate amount format (currency)
     unless ($name && $amount =~ /^\d+(\.\d{1,2})?$/) {
-        return $c->render_error('Invalid Name or Amount');
+        $c->flash(error => 'Invalid Name or Amount');
+        return $c->redirect_to('/swear');
     }
 
     # Persist fine to ledger (status: Unpaid)
     $c->db->add_swear($name, $amount, $reason);
+    $c->flash(message => "Fine added: $name (\$$amount)");
     $c->redirect_to('/swear');
 }
 
@@ -86,6 +88,9 @@ sub pay_debt {
     if ($name && $amount =~ /^\d+(\.\d{1,2})?$/) {
         # Record the explicit payment amount
         $c->db->mark_user_paid($name, $amount);
+        $c->flash(message => "Payment recorded: $name (\$$amount)");
+    } else {
+        $c->flash(error => 'Invalid payment details');
     }
     $c->redirect_to('/swear');
 }
@@ -106,6 +111,9 @@ sub spend {
     # Validate amount and process withdrawal
     if ($amount =~ /^\d+(\.\d{1,2})?$/) {
         $c->db->withdraw_from_jar($amount, $reason);
+        $c->flash(message => "Spent \$$amount from jar");
+    } else {
+        $c->flash(error => 'Invalid amount');
     }
     $c->redirect_to('/swear');
 }
@@ -137,7 +145,15 @@ sub add_member {
     
     # Validate currency format before insertion
     if ($name && $def =~ /^\d+(\.\d{1,2})?$/) {
-        eval { $c->db->add_family_member($name, $def); };
+        eval { 
+            $c->db->add_family_member($name, $def);
+            $c->flash(message => "Member '$name' added successfully");
+        };
+        if ($@) {
+            $c->flash(error => "Failed to add member");
+        }
+    } else {
+        $c->flash(error => "Invalid member details");
     }
     $c->redirect_to('/swear/manage');
 }
@@ -155,6 +171,7 @@ sub delete_member {
     
     # Perform soft delete via DB helper
     $c->db->remove_family_member($id);
+    $c->flash(message => "Member removed successfully");
     $c->redirect_to('/swear/manage');
 }
 

@@ -15,6 +15,22 @@
         </div>
     </div>
 
+    <% if (my $msg = flash('message')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $msg %>", 'success');
+            });
+        </script>
+    <% } %>
+    
+    <% if (my $error = flash('error')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $error %>", 'error');
+            });
+        </script>
+    <% } %>
+
     <div class="glass-panel">
         <h3 style="margin-top: 0; color: #90caf9;">Add New Member</h3>
         <form action="/swear/member/add" method="POST">
