@@ -4,7 +4,7 @@
 % title 'UNO Online';
 
 <% content_for head => begin %>
-    <link rel="stylesheet" href="/css/uno/game.css">
+    <link rel="stylesheet" href="/css/uno/game.css?v=<%= time %>">
     <script src="/js/uno.js"></script>
 <% end %>
 
@@ -126,33 +126,36 @@
     <div id="game-config" data-game-id="<%= $game->{id} %>" data-my-id="<%= $my_id %>" data-my-role="<%= $player_role %>"></div>
     
     <div class="game-container">
-        <!-- Opponent Panels -->
-        <div class="player-panel opponent-panel opp-top" id="opp-slot-top">
-            <div class="panel-content">
-                <div class="player-avatar"><%= icon('user') %></div>
-                <div class="player-details">
-                    <div class="player-name">Waiting...</div>
-                    <div class="card-count">0 Cards</div>
+        <!-- Opponents Top Bar -->
+        <div class="opponents-wrapper">
+            <!-- Opponent Panels -->
+            <div class="player-panel opponent-panel opp-top" id="opp-slot-top">
+                <div class="panel-content">
+                    <div class="player-avatar"><%= icon('user') %></div>
+                    <div class="player-details">
+                        <div class="player-name">Waiting...</div>
+                        <div class="card-count">0 Cards</div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="player-panel opponent-panel opp-left" id="opp-slot-left">
-            <div class="panel-content">
-                <div class="player-avatar"><%= icon('user') %></div>
-                <div class="player-details">
-                    <div class="player-name">Waiting...</div>
-                    <div class="card-count">0 Cards</div>
+            <div class="player-panel opponent-panel opp-left" id="opp-slot-left">
+                <div class="panel-content">
+                    <div class="player-avatar"><%= icon('user') %></div>
+                    <div class="player-details">
+                        <div class="player-name">Waiting...</div>
+                        <div class="card-count">0 Cards</div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="player-panel opponent-panel opp-right" id="opp-slot-right">
-            <div class="panel-content">
-                <div class="player-avatar"><%= icon('user') %></div>
-                <div class="player-details">
-                    <div class="player-name">Waiting...</div>
-                    <div class="card-count">0 Cards</div>
+            <div class="player-panel opponent-panel opp-right" id="opp-slot-right">
+                <div class="panel-content">
+                    <div class="player-avatar"><%= icon('user') %></div>
+                    <div class="player-details">
+                        <div class="player-name">Waiting...</div>
+                        <div class="card-count">0 Cards</div>
+                    </div>
                 </div>
             </div>
         </div>
