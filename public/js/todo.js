@@ -118,6 +118,8 @@ async function toggleTodo(id) {
             const isNowCompleted = !item.classList.contains('completed');
             const taskName = item.querySelector('.item-name').textContent;
             
+            showToast(isNowCompleted ? 'Task completed!' : 'Task re-opened!', 'success');
+
             // Fade out
             item.style.opacity = '0';
             item.style.transform = 'translateY(10px)';

@@ -13,6 +13,14 @@
         <h1>✅ <span>Todo List</span></h1>
     </div>
 
+    <% if (my $msg = flash('message')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $msg %>", 'success');
+            });
+        </script>
+    <% } %>
+
     <div class="glass-panel add-item-panel">
         <form id="addTodoForm" class="add-item-form">
             <input type="text" id="taskInput" name="task_name" class="game-input" placeholder="What needs to be done?" autocomplete="off" required maxlength="255">
