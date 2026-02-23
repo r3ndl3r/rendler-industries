@@ -17,11 +17,21 @@
         <button class="btn btn-primary" id="btn-create-timer">➕ Create New Timer</button>
     </div>
 
-    % if (flash('success')) {
-        <div class="alert alert-success">
-            <%= flash('success') %>
-        </div>
-    % }
+    <% if (my $msg = flash('message')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $msg %>", 'success');
+            });
+        </script>
+    <% } %>
+    
+    <% if (my $error = flash('error')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $error %>", 'error');
+            });
+        </script>
+    <% } %>
 
     <div class="manage-filters">
         <label for="user-filter">Filter by User:</label>

@@ -189,10 +189,11 @@ sub create {
     
     if (my $error = $@) {
         $c->app->log->error("Failed to create timer: $error");
-        return $c->render_error("Error creating timer: $error", 500);
+        $c->flash(error => "Error creating timer: $error");
+        return $c->redirect_to('/timers/manage');
     }
     
-    $c->flash(success => "Timer '$name' created successfully");
+    $c->flash(message => "Timer '$name' created successfully");
     $c->redirect_to('/timers/manage');
 }
 
@@ -216,21 +217,20 @@ sub update {
     my $weekend_minutes = $c->param('weekend_minutes');
     
     # Validation
-    return $c->render_error('Invalid timer ID') unless $timer_id && $timer_id =~ /^\d+$/;
-    return $c->render_error('Timer name required') unless $name;
-    return $c->render_error('Invalid category') unless $category && $category =~ /^(Computer|Phone|Tablet|Gaming Console|TV)$/;
-    return $c->render_error('Invalid weekday minutes') unless defined $weekday_minutes && $weekday_minutes =~ /^\d+$/;
-    return $c->render_error('Invalid weekend minutes') unless defined $weekend_minutes && $weekend_minutes =~ /^\d+$/;
+    unless ($timer_id && $timer_id =~ /^\d+$/) {
+        $c->flash(error => 'Invalid timer ID');
+        return $c->redirect_to('/timers/manage');
+    }
     
     my $admin_id = $c->current_user_id;
     my $success = $c->db->update_timer($timer_id, $name, $category, $weekday_minutes, $weekend_minutes, $admin_id);
     
     if ($success) {
-        $c->flash(success => "Timer updated successfully");
-        $c->redirect_to('/timers/manage');
+        $c->flash(message => "Timer updated successfully");
     } else {
-        $c->render_error('Failed to update timer', 500);
+        $c->flash(error => 'Failed to update timer');
     }
+    $c->redirect_to('/timers/manage');
 }
 
 # Delete a timer (Admin only).
@@ -244,17 +244,20 @@ sub delete {
     
     my $timer_id = $c->param('id');
     
-    return $c->render_error('Invalid timer ID') unless $timer_id && $timer_id =~ /^\d+$/;
+    unless ($timer_id && $timer_id =~ /^\d+$/) {
+        $c->flash(error => 'Invalid timer ID');
+        return $c->redirect_to('/timers/manage');
+    }
     
     my $admin_id = $c->current_user_id;
     my $success = $c->db->delete_timer($timer_id, $admin_id);
     
     if ($success) {
-        $c->flash(success => "Timer deleted successfully");
-        $c->redirect_to('/timers/manage');
+        $c->flash(message => "Timer deleted successfully");
     } else {
-        $c->render_error('Failed to delete timer', 500);
+        $c->flash(error => 'Failed to delete timer');
     }
+    $c->redirect_to('/timers/manage');
 }
 
 # Grant bonus time to a timer (Admin only).
