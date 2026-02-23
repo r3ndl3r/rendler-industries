@@ -44,9 +44,24 @@
         <% if ($my_slot) { %>
             <% my $ready_col = "${my_slot}_ready"; %>
             <% my $is_ready = $game->{$ready_col}; %>
-            <button id="btn-toggle-ready" class="btn-ready <%= $is_ready ? 'is-ready' : 'not-ready' %>" onclick="toggleReady()">
-                <%= $is_ready ? 'CANCEL READY' : 'I AM READY!' %>
-            </button>
+            <div class="lobby-actions" style="display: flex; flex-direction: column; gap: 1rem; align-items: center; margin-top: 2rem;">
+                <button id="btn-toggle-ready" class="btn-ready <%= $is_ready ? 'is-ready' : 'not-ready' %>" onclick="toggleReady()">
+                    <%= $is_ready ? 'CANCEL READY' : 'I AM READY!' %>
+                </button>
+
+                <% if ($game->{player1_id} == $my_id) { %>
+                    <% 
+                        my @joined = grep { $game->{"player${_}_id"} } (1..4);
+                        my $all_ready = 1;
+                        foreach my $i (@joined) { $all_ready = 0 unless $game->{"p${i}_ready"}; }
+                        my $can_start = (scalar @joined >= 2 && $all_ready);
+                    %>
+                    <button id="btn-start-game" class="btn-start <%= $can_start ? 'can-start' : 'cannot-start' %>" 
+                            onclick="startGame()" <%= $can_start ? '' : 'disabled' %>>
+                        START GAME
+                    </button>
+                <% } %>
+            </div>
         <% } %>
     </div>
     
@@ -60,6 +75,22 @@
             .then(res => res.json())
             .then(() => window.location.reload());
         }
+
+        function startGame() {
+            fetch('/uno/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'id=<%= $game->{id} %>'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        }
         
         setInterval(() => {
             fetch('/uno/play/<%= $game->{id} %>', {
@@ -67,7 +98,25 @@
             })
             .then(res => res.json())
             .then(data => {
-                if (data.status === 'active' || (data.p2_id && <%= $game->{player2_id} || 0 %> === 0)) {
+                // If game started or player list changed, reload
+                if (data.status === 'active') {
+                    window.location.reload();
+                    return;
+                }
+
+                // Check if players changed or ready status changed
+                // This is a simple way to trigger reload for UI updates
+                const currentPlayers = <%= scalar grep { $game->{"player${_}_id"} } (1..4) %>;
+                const newPlayers = data.players.length;
+                
+                if (newPlayers !== currentPlayers) {
+                    window.location.reload();
+                }
+                
+                // Also check if someone toggled ready
+                const currentReady = <%= scalar grep { $game->{"p${_}_ready"} } (1..4) %>;
+                const newReady = data.players.filter(p => p.ready).length;
+                if (newReady !== currentReady) {
                     window.location.reload();
                 }
             });

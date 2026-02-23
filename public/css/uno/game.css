@@ -521,6 +521,43 @@ body {
     transform: scale(1.05);
 }
 
+.btn-start {
+    padding: 1rem 4rem;
+    font-size: 1.5rem;
+    border: none;
+    border-radius: 3rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-weight: 900;
+    text-transform: uppercase;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.btn-start.cannot-start {
+    background: #334155;
+    color: #64748b;
+    cursor: not-allowed;
+    transform: scale(0.95);
+    opacity: 0.7;
+}
+
+.btn-start.can-start {
+    background: linear-gradient(135deg, var(--uno-yellow), #f59e0b);
+    color: #0f172a;
+    animation: pulse-gold 2s infinite;
+}
+
+.btn-start.can-start:hover {
+    transform: scale(1.1) rotate(-1deg);
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+}
+
+@keyframes pulse-gold {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+    70% { box-shadow: 0 0 0 20px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
 @media (max-width: 768px) {
     .game-container {
         padding: 0.5rem;

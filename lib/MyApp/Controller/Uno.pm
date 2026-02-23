@@ -188,4 +188,20 @@ sub toggle_ready {
     $c->render(json => { status => $status });
 }
 
+# Manually starts the game. Only the host (player 1) can call this.
+# Route: POST /uno/start
+# Parameters:
+#   id : Unique Game ID
+# Returns:
+#   JSON object { success => 1/0, message => '...' }
+sub start {
+    my $c = shift;
+    my $game_id = $c->param('id');
+    my $uid = $c->current_user_id;
+    
+    my ($success, $message) = $c->db->start_uno_game($game_id, $uid);
+    
+    $c->render(json => { success => $success, message => $message });
+}
+
 1;
