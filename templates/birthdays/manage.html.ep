@@ -25,9 +25,6 @@
             <label>Birth Date</label>
             <input type="date" name="birth_date" class="game-input" required>
             
-            <label>Emoji</label>
-            <input type="text" name="emoji" class="game-input" placeholder="<%= icon('birthdays') %>" maxlength="10">
-            
             <button type="submit" class="game-btn btn-blue">Add Birthday</button>
         </form>
     </div>
@@ -38,19 +35,21 @@
             <% for my $b (@$birthdays) { %>
                 <div class="manage-row">
                     <div class="manage-info">
-                        <span class="manage-emoji"><%= $b->{emoji} %></span>
+                        <%
+                            my ($year, $month, $day) = split('-', $b->{birth_date});
+                            my $formatted_date = "$day-$month-$year";
+                            my $zodiac = Tools::get_zodiac_emoji($month, $day);
+                            my $chinese = Tools::get_chinese_zodiac_emoji($year);
+                        %>
+                        <span class="manage-emoji"><%== $zodiac %> <%== $chinese %></span>
                         <div>
                             <strong style="font-size: 1.2rem;"><%= $b->{name} %></strong>
                             <br>
-                            <%
-                                my ($year, $month, $day) = split('-', $b->{birth_date});
-                                my $formatted_date = "$day-$month-$year";
-                            %>
                             <span style="color: rgba(255,255,255,0.6); font-size: 0.9rem;"><%= $formatted_date %></span>
                         </div>
                     </div>
                     <div class="manage-actions">
-                        <button onclick="editBirthday(<%= $b->{id} %>, '<%= $b->{name} %>', '<%= $b->{birth_date} %>', '<%= $b->{emoji} %>')" class="btn-icon-edit"><%= icon('edit') %></button>
+                        <button onclick="editBirthday(<%= $b->{id} %>, '<%= $b->{name} %>', '<%= $b->{birth_date} %>')" class="btn-icon-edit"><%= icon('edit') %></button>
                         <button type="button" class="btn-icon-delete" onclick="confirmDeleteBirthday(<%= $b->{id} %>, '<%= $b->{name} %>')"><%= icon('delete') %></button>
                     </div>
                 </div>
@@ -79,9 +78,6 @@
                 
                 <label>Birth Date</label>
                 <input type="date" name="birth_date" id="edit_date" class="game-input" required>
-                
-                <label>Emoji</label>
-                <input type="text" name="emoji" id="edit_emoji" class="game-input" maxlength="10">
             </div>
             
             <div class="modal-actions">

@@ -42,8 +42,21 @@
 }
 
 .birthday-emoji {
-    font-size: 4rem;
     line-height: 1;
+    text-align: center;
+}
+
+.zodiac-icons {
+    font-size: 3.4rem;
+    display: block;
+    margin-top: 5px;
+}
+
+.manage-emoji {
+    font-size: 2.6rem;
+    min-width: 85px;
+    display: inline-block;
+    text-align: center;
 }
 
 .birthday-info {
@@ -269,25 +282,6 @@ label {
 
 @media (max-width: 768px) {
     #birthday-list {
-        grid-template-columns: 1fr;
-    }
-    
-    .manage-row {
-        flex-direction: column;
-        gap: 15px;
-    }
-    
-    .manage-actions {
-        width: 100%;
-    }
-    
-    .btn-edit, .btn-delete {
-        flex: 1;
-    }
-}
-
-@media (max-width: 768px) {
-    #birthday-list {
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
     }
@@ -296,8 +290,8 @@ label {
         padding: 15px;
     }
     
-    .birthday-emoji {
-        font-size: 2.5rem;
+    .zodiac-icons {
+        font-size: 2.6rem;
     }
     
     .birthday-name {

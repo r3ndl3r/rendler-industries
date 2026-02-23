@@ -44,17 +44,15 @@ sub manage {
 # Parameters:
 #   name       : Name of the person
 #   birth_date : Date string (YYYY-MM-DD format)
-#   emoji      : Optional emoji icon (Defaults to '🎂')
 # Returns:
 #   Redirects to management page on success
 sub add {
     my $c = shift;
     my $name = $c->param('name');
     my $birth_date = $c->param('birth_date');
-    my $emoji = $c->param('emoji') || '🎂';
     
     # Persist new record
-    $c->db->add_birthday($name, $birth_date, $emoji);
+    $c->db->add_birthday($name, $birth_date);
     $c->redirect_to('/birthdays/manage');
 }
 
@@ -64,7 +62,6 @@ sub add {
 #   id         : Unique ID of the record
 #   name       : New name
 #   birth_date : New date string
-#   emoji      : New emoji icon
 # Returns:
 #   Redirects to management page on success
 sub edit {
@@ -72,10 +69,9 @@ sub edit {
     my $id = $c->param('id');
     my $name = $c->param('name');
     my $birth_date = $c->param('birth_date');
-    my $emoji = $c->param('emoji');
     
     # Update record details
-    $c->db->update_birthday($id, $name, $birth_date, $emoji);
+    $c->db->update_birthday($id, $name, $birth_date);
     $c->redirect_to('/birthdays/manage');
 }
 

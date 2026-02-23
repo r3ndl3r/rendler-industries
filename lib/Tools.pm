@@ -3,20 +3,67 @@ package Tools;
 
 use strict;
 use warnings;
+use utf8;
 use DateTime;
 use Exporter qw(import);
 
 # Exportable helper functions.
-# Note: 'rUp' was removed from export list as it is not defined in this module.
-our @EXPORT = qw( howOld source );
+our @EXPORT = qw( howOld source get_zodiac_emoji get_chinese_zodiac_emoji );
 
 # General Utility Module.
 # Features:
 #   - Date/Time calculations (Age from DOB)
 #   - File system reading helpers
+#   - Zodiac and Chinese Zodiac emoji detection
 # Integration points:
-#   - Used by Root.pm for dashboard stats
-#   - Depends on DateTime for timezone-aware calculations
+#   - Used by Root.pm and Birthdays.pm
+#   - Depends on DateTime for precise date arithmetic
+
+# Returns the Astrological (Western) Zodiac emoji for a given month and day.
+sub get_zodiac_emoji {
+    my ($month, $day) = @_;
+    
+    my ($icon, $label);
+    if (($month == 1  && $day <= 19) || ($month == 12 && $day >= 22)) { $icon = "♑"; $label = "Capricorn"; }
+    elsif (($month == 1  && $day >= 20) || ($month == 2  && $day <= 18)) { $icon = "♒"; $label = "Aquarius"; }
+    elsif (($month == 2  && $day >= 19) || ($month == 3  && $day <= 20)) { $icon = "♓"; $label = "Pisces"; }
+    elsif (($month == 3  && $day >= 21) || ($month == 4  && $day <= 19)) { $icon = "♈"; $label = "Aries"; }
+    elsif (($month == 4  && $day >= 20) || ($month == 5  && $day <= 20)) { $icon = "♉"; $label = "Taurus"; }
+    elsif (($month == 5  && $day >= 21) || ($month == 6  && $day <= 20)) { $icon = "♊"; $label = "Gemini"; }
+    elsif (($month == 6  && $day >= 21) || ($month == 7  && $day <= 22)) { $icon = "♋"; $label = "Cancer"; }
+    elsif (($month == 7  && $day >= 23) || ($month == 8  && $day <= 22)) { $icon = "♌"; $label = "Leo"; }
+    elsif (($month == 8  && $day >= 23) || ($month == 9  && $day <= 22)) { $icon = "♍"; $label = "Virgo"; }
+    elsif (($month == 9  && $day >= 23) || ($month == 10 && $day <= 22)) { $icon = "♎"; $label = "Libra"; }
+    elsif (($month == 10 && $day >= 23) || ($month == 11 && $day <= 21)) { $icon = "♏"; $label = "Scorpio"; }
+    elsif (($month == 11 && $day >= 22) || ($month == 12 && $day <= 21)) { $icon = "♐"; $label = "Sagittarius"; }
+    else { $icon = "✨"; $label = "Zodiac"; }
+
+    return qq{<span title="$label">$icon</span>};
+}
+
+# Returns the Chinese Zodiac emoji for a given year.
+sub get_chinese_zodiac_emoji {
+    my ($year) = @_;
+    
+    # 12-year cycle starting with Monkey (year % 12 == 0)
+    my @zodiacs = (
+        { icon => "🐒", label => "Year of the Monkey" },
+        { icon => "🐓", label => "Year of the Rooster" },
+        { icon => "🐕", label => "Year of the Dog" },
+        { icon => "🐖", label => "Year of the Pig" },
+        { icon => "🐀", label => "Year of the Rat" },
+        { icon => "🐂", label => "Year of the Ox" },
+        { icon => "🐅", label => "Year of the Tiger" },
+        { icon => "🐇", label => "Year of the Rabbit" },
+        { icon => "🐉", label => "Year of the Dragon" },
+        { icon => "🐍", label => "Year of the Snake" },
+        { icon => "🐎", label => "Year of the Horse" },
+        { icon => "🐐", label => "Year of the Goat" },
+    );
+    
+    my $z = $zodiacs[$year % 12];
+    return qq{<span title="$z->{label}">$z->{icon}</span>};
+}
 
 # Calculates the elapsed time since a specific date (Age).
 # Parameters:

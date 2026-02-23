@@ -10,10 +10,10 @@
 
 <div class="birthday-container">
     <div class="header-bar">
-        <h1>🎉 <span>Birthday Countdown</span></h1>
+        <h1><%= icon('birthdays') %> <span>Birthday Countdown</span></h1>
         <% if (is_admin()) { %>
             <div class="manage-actions">
-                <a href="/birthdays/manage" class="action-btn">Manage</a>
+                <a href="/birthdays/manage" class="action-btn"><%= icon('settings') %> Manage</a>
             </div>
         <% } %>
     </div>
@@ -22,13 +22,19 @@
         <% if (@$birthdays) { %>
             <% for my $b (@$birthdays) { %>
                 <div class="birthday-card" data-name="<%= $b->{name} %>" data-birthdate="<%= $b->{birth_date} %>">
-                    <div class="birthday-emoji"><%= $b->{emoji} %></div>
+                    <%
+                        my ($year, $month, $day) = split('-', $b->{birth_date});
+                        my $formatted_date = "$day-$month-$year";
+                        my $zodiac = Tools::get_zodiac_emoji($month, $day);
+                        my $chinese = Tools::get_chinese_zodiac_emoji($year);
+                    %>
+                    <div class="birthday-emoji">
+                        <span class="zodiac-icons">
+                            <%== $zodiac %> <%== $chinese %>
+                        </span>
+                    </div>
                     <div class="birthday-info">
                         <h2 class="birthday-name"><%= $b->{name} %></h2>
-                        <%
-                            my ($year, $month, $day) = split('-', $b->{birth_date});
-                            my $formatted_date = "$day-$month-$year";
-                        %>
                         <div class="birthday-date"><%= $formatted_date %></div>
                         <div class="birthday-countdown">
                             <span class="countdown-days"></span>
