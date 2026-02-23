@@ -101,6 +101,7 @@ sub play {
             };
         }
 
+        # SANITY CHECK: Never return full hands p1_hand..p4_hand to frontend
         return $c->render(json => {
             myhand      => $game->{my_hand},
             players     => \@players_data,
@@ -143,16 +144,16 @@ sub play_card {
 # Parameters:
 #   id : Unique Game ID
 # Returns:
-#   JSON object { success => 1/0 }
+#   JSON object { success => 1/0, playable => 1/0 }
 sub draw_card {
     my $c = shift;
     my $game_id = $c->param('id');
     my $uid = $c->current_user_id;
     
     # UPDATED: Specific method call
-    my $success = $c->db->draw_uno_card($game_id, $uid);
+    my $result = $c->db->draw_uno_card($game_id, $uid);
     
-    $c->render(json => { success => $success });
+    $c->render(json => $result);
 }
 
 # Processes a player's 'UNO!' declaration.

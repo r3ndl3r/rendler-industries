@@ -31,7 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
         pendingCardIdx: null,
         pendingCardElement: null,
         turn: null,
-        direction: null
+        direction: null,
+        isDrawing: false,
+        isPlaying: false
     };
 
     const animations = {
@@ -121,9 +123,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        gameState.isMyTurn = false;
-        updateTurnIndicators();
-        
+        // Prevent double-clicks
+        if (gameState.isDrawing) return;
+        gameState.isDrawing = true;
+
         els.deck.style.transform = 'scale(0.95)';
         setTimeout(() => els.deck.style.transform = '', 100);
         
@@ -133,7 +136,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `id=${config.gameId}`
             })
-            .then(() => syncGame());
+            .then(res => res.json())
+            .then(data => {
+                gameState.isDrawing = false;
+                if (data.success) {
+                    if (data.playable) {
+                        showToast('You drew a playable card!', 2000);
+                    }
+                    syncGame();
+                }
+            });
         });
     });
 
@@ -169,6 +181,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function sendMove(idx, color, cardElement) {
+        if (gameState.isPlaying) return;
+        gameState.isPlaying = true;
+
         gameState.isMyTurn = false;
         updateTurnIndicators();
         
@@ -181,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .then(res => res.json())
             .then(data => {
+                gameState.isPlaying = false;
                 if (data.success) {
                     syncGame();
                 } else {
