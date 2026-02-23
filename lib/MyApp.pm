@@ -391,6 +391,7 @@ sub startup {
     $auth->post('/uno/ready')->to('uno#toggle_ready');
     $auth->post('/uno/play_card')->to('uno#play_card');
     $auth->post('/uno/draw_card')->to('uno#draw_card');
+    $auth->post('/uno/shout')->to('uno#shout_uno');
 
     # --- Calendar Routes ---
     $family->get('/calendar')->to('calendar#index');

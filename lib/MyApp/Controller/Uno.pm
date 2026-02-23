@@ -77,26 +77,40 @@ sub play {
     return $c->redirect_to('/uno/lobby') unless $game;
 
     # Identify Player Roles
-    # 0 = Spectator, 1 = Host, 2 = Joiner
+    # 0 = Spectator, 1-4 = Player slot
     my $player_role = 0; 
-    if ($game->{player1_id} == $uid) { $player_role = 1; }
+    if    ($game->{player1_id} == $uid) { $player_role = 1; }
     elsif ($game->{player2_id} && $game->{player2_id} == $uid) { $player_role = 2; }
+    elsif ($game->{player3_id} && $game->{player3_id} == $uid) { $player_role = 3; }
+    elsif ($game->{player4_id} && $game->{player4_id} == $uid) { $player_role = 4; }
 
     # API Mode: Return JSON for AJAX polling
     if ($c->req->headers->header('X-Requested-With')) {
+        # Extract individual player role/said_uno mapping
+        my @players_data;
+        foreach my $p (@{$game->{players}}) {
+            my $role = 0;
+            if    ($game->{player1_id} == $p->{id}) { $role = 1; }
+            elsif ($game->{player2_id} && $game->{player2_id} == $p->{id}) { $role = 2; }
+            elsif ($game->{player3_id} && $game->{player3_id} == $p->{id}) { $role = 3; }
+            elsif ($game->{player4_id} && $game->{player4_id} == $p->{id}) { $role = 4; }
+            
+            push @players_data, {
+                %$p,
+                role => $role
+            };
+        }
+
         return $c->render(json => {
-            myhand => $game->{my_hand},
-            oppcount => $game->{opp_hand_count},
-            topcard => $game->{top_card},
+            myhand      => $game->{my_hand},
+            players     => \@players_data,
+            topcard     => $game->{top_card},
             turn        => $game->{current_turn},
             status      => $game->{status},
             winner      => $game->{winner_id},
             color       => $game->{current_color},
             player_role => $player_role,
-            p1_id       => $game->{player1_id},
-            p2_id       => $game->{player2_id},
-            p1_name     => $game->{p1_name} // 'Player 1',
-            p2_name     => $game->{p2_name} // 'Player 2'
+            direction   => $game->{direction}
         });
     }
 
@@ -137,6 +151,22 @@ sub draw_card {
     
     # UPDATED: Specific method call
     my $success = $c->db->draw_uno_card($game_id, $uid);
+    
+    $c->render(json => { success => $success });
+}
+
+# Processes a player's 'UNO!' declaration.
+# Route: POST /uno/shout
+# Parameters:
+#   id : Unique Game ID
+# Returns:
+#   JSON object { success => 1/0 }
+sub shout_uno {
+    my $c = shift;
+    my $game_id = $c->param('id');
+    my $uid = $c->current_user_id;
+    
+    my $success = $c->db->shout_uno($game_id, $uid);
     
     $c->render(json => { success => $success });
 }
