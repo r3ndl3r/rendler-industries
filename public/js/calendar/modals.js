@@ -213,7 +213,7 @@ function handleEventSubmit(e) {
     const endDateTime = new Date(`${endDate}T${endTime.substring(0, 5)}`);
 
     if (endDateTime < startDateTime) {
-        alert('End date cannot be before start date');
+        showToast('End date cannot be before start date', 'error');
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
         return;
@@ -247,6 +247,7 @@ function handleEventSubmit(e) {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
+            showToast('Event saved!', 'success');
             closeModal();
             if (typeof isManagementPage !== 'undefined' && isManagementPage) {
                 location.reload();
@@ -258,14 +259,14 @@ function handleEventSubmit(e) {
                 }
             }
         } else {
-            alert('Error: ' + (result.error || 'Unknown error'));
+            showToast('Error: ' + (result.error || 'Unknown error'), 'error');
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
         }
     })
     .catch(error => {
         console.error('Error saving event:', error);
-        alert('Failed to save event');
+        showToast('Failed to save event', 'error');
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
     });
@@ -328,6 +329,7 @@ function performDelete(eventId) {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
+            showToast('Event deleted', 'success');
             closeDeleteConfirmModal();
             closeModal();
             if (typeof isManagementPage !== 'undefined' && isManagementPage) {
@@ -340,7 +342,7 @@ function performDelete(eventId) {
                 }
             }
         } else {
-            alert('Error: ' + (result.error || 'Failed to delete event'));
+            showToast('Error: ' + (result.error || 'Failed to delete event'), 'error');
             if (deleteBtn) {
                 deleteBtn.disabled = false;
                 deleteBtn.innerHTML = originalText;
@@ -354,7 +356,7 @@ function performDelete(eventId) {
     })
     .catch(error => {
         console.error('Error deleting event:', error);
-        alert('Failed to delete event');
+        showToast('Failed to delete event', 'error');
         if (deleteBtn) {
             deleteBtn.disabled = false;
             deleteBtn.innerHTML = originalText;
