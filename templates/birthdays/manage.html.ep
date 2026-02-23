@@ -10,9 +10,9 @@
 
 <div class="birthday-container manage-container">
     <div class="header-bar">
-        <h1>🎂 <span>Manage Birthdays</span></h1>
+        <h1><%= icon('birthdays') %> <span>Manage Birthdays</span></h1>
         <div class="manage-actions">
-            <a href="/birthdays" class="btn-back">← Back</a>
+            <a href="/birthdays" class="btn-back"><%= icon('back') %> Back</a>
         </div>
     </div>
 
@@ -26,7 +26,7 @@
             <input type="date" name="birth_date" class="game-input" required>
             
             <label>Emoji</label>
-            <input type="text" name="emoji" class="game-input" placeholder="🎂" maxlength="10">
+            <input type="text" name="emoji" class="game-input" placeholder="<%= icon('birthdays') %>" maxlength="10">
             
             <button type="submit" class="game-btn btn-blue">Add Birthday</button>
         </form>
@@ -50,8 +50,8 @@
                         </div>
                     </div>
                     <div class="manage-actions">
-                        <button onclick="editBirthday(<%= $b->{id} %>, '<%= $b->{name} %>', '<%= $b->{birth_date} %>', '<%= $b->{emoji} %>')" class="btn-edit">EDIT</button>
-                        <button type="button" class="btn-delete" onclick="confirmDeleteBirthday(<%= $b->{id} %>, '<%= $b->{name} %>')">DELETE</button>
+                        <button onclick="editBirthday(<%= $b->{id} %>, '<%= $b->{name} %>', '<%= $b->{birth_date} %>', '<%= $b->{emoji} %>')" class="btn-icon-edit"><%= icon('edit') %></button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteBirthday(<%= $b->{id} %>, '<%= $b->{name} %>')"><%= icon('delete') %></button>
                     </div>
                 </div>
             <% } %>

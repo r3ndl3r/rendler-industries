@@ -16,9 +16,9 @@
     </div>
     
     <div class="manage-header">
-        <h1>🤬 Swear Jar</h1>
+        <h1><%= icon('swear') %> Swear Jar</h1>
         <div class="manage-actions">
-            <a href="/swear/manage" class="action-btn">Manage Members</a>
+            <a href="/swear/manage" class="action-btn"><%= icon('settings') %> Manage Members</a>
         </div>
     </div>
 
