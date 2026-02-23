@@ -9,7 +9,7 @@
 
 <div class="error-container">
     <div class="header-bar">
-        <h1>⚠️ <span>System Error</span></h1>
+        <h1><%= icon('warning') %> <span>System Error</span></h1>
     </div>
 
     <div class="glass-panel message-card">

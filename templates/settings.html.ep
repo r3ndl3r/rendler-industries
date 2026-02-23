@@ -9,7 +9,7 @@
 
 <div class="settings-container">
     <div class="header-bar">
-        <h1>⚙️ <span>Application Settings</span></h1>
+        <h1><%= icon('settings') %> <span>Application Settings</span></h1>
     </div>
     
     <% if (flash('message')) { %>
@@ -154,7 +154,7 @@
                 </div>
                 
                 <div class="form-warning">
-                    ⚠️ Changing this will invalidate all existing sessions. Restart required.
+                    <%= icon('warning') %> Changing this will invalidate all existing sessions. Restart required.
                 </div>
                 
                 <button type="submit" class="btn-primary">Save App Secret</button>
