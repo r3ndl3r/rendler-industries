@@ -217,7 +217,7 @@
 
 <div class="container">
     <div class="header">
-        <h1>🏖️ Chelsea Forecast</h1>
+        <h1><%= icon('chelsea') %> Chelsea Forecast</h1>
         <a href="/chelsea" style="background:var(--accent); color:#0f172a; padding:8px 16px; border-radius:8px; font-weight:700; text-decoration:none; font-size:0.85rem;">REFRESH</a>
     </div>
 
@@ -273,7 +273,7 @@
 
     <% } else { %>
         <div style="text-align:center; padding: 60px 20px;">
-            <h2 style="color: #ef4444;">⚠️ Scraper Error</h2>
+            <h2 style="color: #ef4444;"><%= icon('warning') %> Scraper Error</h2>
             <p style="color: var(--dim);">The forecast data could not be retrieved from the source. Please check the server logs.</p>
         </div>
     <% } %>

@@ -10,7 +10,7 @@
 
 <div class="lobby-container">
     <div class="lobby-header">
-        <h1 class="lobby-title">♟️ Chess Lobby</h1>
+        <h1 class="lobby-title"><%= icon('chess') %> Chess Lobby</h1>
         <p style="color: #94a3b8;">Master the art of strategy in a game of Chess!</p>
     </div>
 

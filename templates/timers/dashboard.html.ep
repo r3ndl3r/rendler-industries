@@ -73,7 +73,7 @@
                         </div>
                         % if ($timer->{bonus_seconds} && $timer->{bonus_seconds} > 0) {
                             <div class="stat-row bonus-indicator">
-                                <span class="stat-label">🎁 Bonus Time:</span>
+                                <span class="stat-label"><%= icon('bonus') %> Bonus Time:</span>
                                 <span class="stat-value">
                                     +<%= int($timer->{bonus_seconds} / 60) %> minutes
                                 </span>
@@ -83,14 +83,14 @@
 
                     <div class="timer-controls">
                         % if ($timer->{is_running}) {
-                            <button class="btn btn-pause" data-timer-id="<%= $timer->{id} %>">⏸️ Pause</button>
+                            <button class="btn btn-pause" data-timer-id="<%= $timer->{id} %>"><%= icon('paused') %> Pause</button>
                         % } elsif ($timer->{is_paused}) {
-                            <button class="btn btn-pause paused" data-timer-id="<%= $timer->{id} %>">▶️ Resume</button>
+                            <button class="btn btn-pause paused" data-timer-id="<%= $timer->{id} %>"><%= icon('running') %> Resume</button>
                         % } else {
                             % if ($timer->{remaining_seconds} > 0) {
-                                <button class="btn btn-start" data-timer-id="<%= $timer->{id} %>">▶️ Start</button>
+                                <button class="btn btn-start" data-timer-id="<%= $timer->{id} %>"><%= icon('running') %> Start</button>
                             % } else {
-                                <button class="btn btn-start" data-timer-id="<%= $timer->{id} %>" disabled>▶️ Start</button>
+                                <button class="btn btn-start" data-timer-id="<%= $timer->{id} %>" disabled><%= icon('running') %> Start</button>
                             % }
                         % }
                     </div>

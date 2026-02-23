@@ -10,9 +10,9 @@
 
 <div class="reminders-container">
     <div class="header-bar">
-        <h1>🔔 <span>Manage Reminders</span></h1>
+        <h1><%= icon('files') %> <span>Manage Reminders</span></h1>
         <div class="manage-actions">
-            <button class="btn-primary" onclick="openAddModal()">+ New Reminder</button>
+            <button class="btn-primary" onclick="openAddModal()"><%= icon('add') %> New Reminder</button>
         </div>
     </div>
 
@@ -35,13 +35,13 @@
                                 <input type="checkbox" onchange="toggleReminder(<%= $r->{id} %>, this.checked)" <%= $r->{is_active} ? 'checked' : '' %>>
                                 <span class="slider"></span>
                             </label>
-                            <button class="btn-icon-edit" onclick='openEditModal(<%== Mojo::JSON::to_json($r) %>)' title="Edit Reminder">✎</button>
-                            <button class="btn-icon-delete" onclick="confirmDeleteReminder(<%= $r->{id} %>, '<%= $r->{title} %>')">🗑️</button>
+                            <button class="btn-icon-edit" onclick='openEditModal(<%== Mojo::JSON::to_json($r) %>)' title="Edit Reminder"><%= icon('edit') %></button>
+                            <button class="btn-icon-delete" onclick="confirmDeleteReminder(<%= $r->{id} %>, '<%= $r->{title} %>')"><%= icon('delete') %></button>
                         </div>
                     </div>
                     
                     <div class="reminder-time">
-                        <span class="clock-icon">🕒</span> 
+                        <span class="clock-icon"><%= icon('clock') %></span> 
                         <% 
                             my $raw_time = substr($r->{reminder_time}, 0, 5); 
                             my ($h, $m) = split(':', $raw_time);

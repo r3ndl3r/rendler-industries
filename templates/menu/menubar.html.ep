@@ -2,7 +2,7 @@
 
 <div class="navbar">   
     <div class="navbar-brand">
-        <button class="menu-btn" onclick="toggleMenu()">☰</button>
+        <button class="menu-btn" onclick="toggleMenu()"><%= icon('menu') %></button>
         <div class="navbar-title">
             <%= title %>
         </div>
@@ -55,20 +55,20 @@
 
         <div class="menu-spacer"></div>
         <% if (is_admin()) { %>
-            <button class="menu-action text-red" onclick="startRestartSequence(event)">⚠️ Restart Server</button>
+            <button class="menu-action text-red" onclick="startRestartSequence(event)"><%= icon('warning') %> Restart Server</button>
         <% } %>
-        <a href="/logout" class="text-red">🚪 Logout</a>
+        <a href="/logout" class="text-red"><%= icon('logout') %> Logout</a>
     <% } else { %>
         <div class="menu-spacer"></div>
-        <a href="/login" class="text-green">🔑 Login</a>
-        <a href="/register">📝 Register</a>
+        <a href="/login" class="text-green"><%= icon('user') %> Login</a>
+        <a href="/register"><%= icon('edit') %> Register</a>
     <% } %>
 </div>
 
 <div id="restart-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>🔄 Server Restart</h3>
+            <h3><%= icon('warning') %> Server Restart</h3>
             <span class="close-modal" onclick="closeRestartModal()">&times;</span>
         </div>
         <div class="modal-body">

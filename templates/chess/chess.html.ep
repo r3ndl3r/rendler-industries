@@ -12,7 +12,7 @@
 
 <div class="chess-container">
     <div class="header-bar">
-        <h1>♟️ Chess - Game #<%= $game->{id} %></h1>
+        <h1><%= icon('chess') %> <span>Chess - Game #<%= $game->{id} %></span></h1>
     </div>
 
     <div class="game-wrapper">
@@ -68,14 +68,14 @@
     <div class="status-panel">
         <h3 id="game-status-text">
             <% if ($game->{status} eq 'waiting') { %>
-                ⏳ Waiting for an opponent to join...
+                <%= icon('idle') %> Waiting for an opponent to join...
             <% } elsif ($game->{status} eq 'finished') { %>
                 🏆 Game Over!
             <% } else { %>
                 <% if ($game->{current_turn} == current_user_id()) { %>
-                    🟢 Your Turn
+                    <%= icon('running') %> Your Turn
                 <% } else { %>
-                    🔴 Opponent's Turn
+                    <%= icon('error') %> Opponent's Turn
                 <% } %>
             <% } %>
         </h3>
@@ -86,7 +86,7 @@
                 <button id="resignBtn" class="btn-control danger" style="<%= $game->{status} eq 'active' ? '' : 'display: none;' %>">Resign</button>
             <% } %>
             <a href="/chess/lobby" class="btn-control lobby">
-                <span class="icon">🚪</span> Exit to Lobby
+                <span class="icon"><%= icon('logout') %></span> Exit to Lobby
             </a>
         </div>
 

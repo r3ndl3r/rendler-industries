@@ -12,12 +12,12 @@
   <div class="header-bar">
     <div class="header-title">
       <h1>
-        <span>📚 Study Guide</span>
+        <span><%= icon('files') %> Study Guide</span>
       </h1>
       <p class="thai-subtitle">คู่มือการศึกษา - คำถามและคำตอบทั้งหมด</p>
     </div>
     <div style="margin-top: 1rem;">
-      <a href="/quiz" style="color: var(--aus-gold); text-decoration: none; margin-right: 1rem;">← Back to Quiz</a>
+      <a href="/quiz" style="color: var(--aus-gold); text-decoration: none; margin-right: 1rem;"><%= icon('back') %> Back to Quiz</a>
       <span id="total-questions" style="color: var(--text-secondary);"></span>
     </div>
   </div>
@@ -35,7 +35,7 @@
 
   <div id="pagination-controls" class="controls-area" style="display: none; text-align: center; margin-top: 2rem; gap: 1rem; justify-content: center; align-items: center;">
       <button id="prev-btn" class="btn-next" style="background: #334155; display: none;">
-          ← Previous
+          <%= icon('back') %> Previous
       </button>
       
       <span id="page-indicator" style="color: var(--text-secondary); font-weight: 600;"></span>

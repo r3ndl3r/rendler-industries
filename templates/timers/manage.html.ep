@@ -14,7 +14,7 @@
 <div class="timers-manage-container">
     <div class="header-bar">
         <h1>⏱️ <span>Timer Management</span></h1>
-        <button class="btn btn-primary" id="btn-create-timer">➕ Create New Timer</button>
+        <button class="btn btn-primary" id="btn-create-timer"><%= icon('add') %> Create New Timer</button>
     </div>
 
     <% if (my $msg = flash('message')) { %>
@@ -24,7 +24,7 @@
             });
         </script>
     <% } %>
-    
+
     <% if (my $error = flash('error')) { %>
         <script>
             document.addEventListener('DOMContentLoaded', () => {
@@ -98,18 +98,18 @@
                         </td>
                         <td class="status-cell" data-label="Status">
                             % if ($timer->{is_running}) {
-                                <span class="status-badge running">▶️ Running</span>
+                                <span class="status-badge running"><%= icon('running') %> Running</span>
                             % } elsif ($timer->{is_paused}) {
-                                <span class="status-badge paused">⏸️ Paused</span>
+                                <span class="status-badge paused"><%= icon('paused') %> Paused</span>
                             % } else {
-                                <span class="status-badge idle">⏺️ Idle</span>
+                                <span class="status-badge idle"><%= icon('idle') %> Idle</span>
                             % }
                         </td>
                         <td class="actions-cell" data-label="Actions">
                             <button class="btn-icon-bonus" 
                                     data-timer-id="<%= $timer->{id} %>"
                                     title="Grant Bonus Time">
-                                🎁
+                                <%= icon('bonus') %>
                             </button>
                             <button class="btn-icon-edit" 
                                     data-timer-id="<%= $timer->{id} %>"
@@ -118,13 +118,13 @@
                                     data-weekday="<%= $timer->{weekday_minutes} %>"
                                     data-weekend="<%= $timer->{weekend_minutes} %>"
                                     title="Edit Timer">
-                                ✎
+                                <%= icon('edit') %>
                             </button>
                             <button class="btn-icon-delete" 
                                     data-timer-id="<%= $timer->{id} %>"
                                     data-name="<%= $timer->{name} %>"
                                     title="Delete Timer">
-                                🗑️
+                                <%= icon('delete') %>
                             </button>
                         </td>
                     </tr>

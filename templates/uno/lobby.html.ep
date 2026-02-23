@@ -10,7 +10,7 @@
 <div class="lobby-container">
     <div class="lobby-header">
         <h1 class="lobby-title" style="background: linear-gradient(to right, #ef4444, #eab308); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-            🃏 UNO Lobby
+            <%= icon('uno') %> UNO Lobby
         </h1>
         <p style="color: #94a3b8;">Draw 4, Skip, and Reverse your friends!</p>
     </div>
