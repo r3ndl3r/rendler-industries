@@ -11,35 +11,42 @@
 <% if ($game->{status} eq 'waiting') { %>
     <div class="waiting-room">
         <h1>Waiting Lobby</h1>
-        <p class="text-muted">Both players must click Ready to start.</p>
+        <p class="text-muted">At least 2 players required. All joined players must be Ready.</p>
         
-        <div class="player-card">
-            <span class="player-name"><%= $game->{p1_name} %> (Host)</span>
-            <span class="status-badge <%= $game->{p1_ready} ? 'status-ready' : 'status-waiting' %>">
-                <%= $game->{p1_ready} ? 'READY' : 'NOT READY' %>
-            </span>
-        </div>
-        
-        <div class="player-card">
-            <span class="player-name"><%= $game->{p2_name} %></span>
-            <% if ($game->{player2_id}) { %>
-                <span class="status-badge <%= $game->{p2_ready} ? 'status-ready' : 'status-waiting' %>">
-                    <%= $game->{p2_ready} ? 'READY' : 'NOT READY' %>
-                </span>
-            <% } else { %>
-                <span class="status-badge status-waiting">WAITING FOR JOIN...</span>
+        <div class="players-grid">
+            <% for my $i (1..4) { %>
+                <% my $id_key = "player${i}_id"; %>
+                <% my $name_key = "p${i}_name"; %>
+                <% my $ready_key = "p${i}_ready"; %>
+                
+                <div class="player-card">
+                    <% if ($game->{$id_key}) { %>
+                        <span class="player-name"><%= $game->{$name_key} %> <%= $i == 1 ? '(Host)' : '' %></span>
+                        <span class="status-badge <%= $game->{$ready_key} ? 'status-ready' : 'status-waiting' %>">
+                            <%= $game->{$ready_key} ? 'READY' : 'NOT READY' %>
+                        </span>
+                    <% } else { %>
+                        <span class="player-name text-muted">Empty Slot</span>
+                        <span class="status-badge status-empty">WAITING...</span>
+                    <% } %>
+                </div>
             <% } %>
         </div>
         
-        <% if ($game->{player2_id}) { %>
-            <% my $am_i_ready = ($my_id == $game->{player1_id}) ? $game->{p1_ready} : $game->{p2_ready}; %>
-            <button id="btn-toggle-ready" class="btn-ready <%= $am_i_ready ? 'is-ready' : 'not-ready' %>" onclick="toggleReady()">
-                <%= $am_i_ready ? 'CANCEL READY' : 'I AM READY!' %>
+        <% 
+            my $my_slot;
+            if    ($game->{player1_id} == $my_id) { $my_slot = 'p1'; }
+            elsif ($game->{player2_id} && $game->{player2_id} == $my_id) { $my_slot = 'p2'; }
+            elsif ($game->{player3_id} && $game->{player3_id} == $my_id) { $my_slot = 'p3'; }
+            elsif ($game->{player4_id} && $game->{player4_id} == $my_id) { $my_slot = 'p4'; }
+        %>
+
+        <% if ($my_slot) { %>
+            <% my $ready_col = "${my_slot}_ready"; %>
+            <% my $is_ready = $game->{$ready_col}; %>
+            <button id="btn-toggle-ready" class="btn-ready <%= $is_ready ? 'is-ready' : 'not-ready' %>" onclick="toggleReady()">
+                <%= $is_ready ? 'CANCEL READY' : 'I AM READY!' %>
             </button>
-        <% } else { %>
-            <div style="margin-top: 2rem; color: #94a3b8; font-style: italic;">
-                Waiting for an opponent to join...
-            </div>
         <% } %>
     </div>
     
@@ -70,13 +77,41 @@
     <div id="game-config" data-game-id="<%= $game->{id} %>" data-my-id="<%= $my_id %>" data-my-role="<%= $player_role %>"></div>
     
     <div class="game-container">
-        <!-- Top Player Panel -->
-        <div class="player-panel opponent-panel" id="opponent-panel">
+        <!-- Opponent Panels -->
+        <div class="player-panel opponent-panel opp-top" id="opp-slot-top">
             <div class="panel-content">
                 <div class="player-avatar"><%= icon('user') %></div>
                 <div class="player-details">
-                    <div class="player-name" id="opp-name"><%= $my_id == $game->{player1_id} ? $game->{p2_name} : $game->{p1_name} %></div>
-                    <div class="card-count" id="opp-card-count">0 Cards</div>
+                    <div class="player-name">Waiting...</div>
+                    <div class="card-count">0 Cards</div>
+                </div>
+            </div>
+            <div class="turn-indicator">
+                <span class="turn-dot"></span>
+                <span class="turn-text">Their Turn</span>
+            </div>
+        </div>
+
+        <div class="player-panel opponent-panel opp-left" id="opp-slot-left">
+            <div class="panel-content">
+                <div class="player-avatar"><%= icon('user') %></div>
+                <div class="player-details">
+                    <div class="player-name">Waiting...</div>
+                    <div class="card-count">0 Cards</div>
+                </div>
+            </div>
+            <div class="turn-indicator">
+                <span class="turn-dot"></span>
+                <span class="turn-text">Their Turn</span>
+            </div>
+        </div>
+
+        <div class="player-panel opponent-panel opp-right" id="opp-slot-right">
+            <div class="panel-content">
+                <div class="player-avatar"><%= icon('user') %></div>
+                <div class="player-details">
+                    <div class="player-name">Waiting...</div>
+                    <div class="card-count">0 Cards</div>
                 </div>
             </div>
             <div class="turn-indicator">
@@ -87,14 +122,10 @@
         
         <!-- Game Board -->
         <div class="game-board">
-            <div id="opp-hand" class="opponent-hand"></div>
-            
             <div class="table-area">
                 <div class="deck-area">
                     <div id="draw-deck" class="deck-pile">
-                        <div class="deck-card">
-                            <span class="deck-text">DRAW</span>
-                        </div>
+                        <div class="uno-card card-back"></div>
                     </div>
                     <div class="deck-label">Draw Pile</div>
                 </div>
@@ -107,12 +138,17 @@
                     </div>
                 </div>
             </div>
-            
+        </div>
+
+        <div class="my-hand-container">
             <div id="my-hand" class="my-hand"></div>
+            <div id="uno-shout-container" class="uno-shout-container">
+                <button class="uno-btn btn-uno-shout" onclick="shoutUno()">UNO!</button>
+            </div>
         </div>
         
         <!-- Bottom Player Panel (You) -->
-        <div class="player-panel my-panel active" id="my-panel">
+        <div class="player-panel my-panel" id="my-panel">
             <div class="panel-content">
                 <div class="player-avatar">⭐</div>
                 <div class="player-details">
@@ -134,10 +170,10 @@
     <div id="color-modal" class="color-modal">
         <h2 style="color: white; margin-bottom: 20px;">Choose a Color</h2>
         <div class="color-options">
-            <button class="color-btn" style="background: var(--uno-red);" onclick="pickColor('red')"></button>
-            <button class="color-btn" style="background: var(--uno-blue);" onclick="pickColor('blue')"></button>
-            <button class="color-btn" style="background: var(--uno-green);" onclick="pickColor('green')"></button>
-            <button class="color-btn" style="background: var(--uno-yellow);" onclick="pickColor('yellow')"></button>
+            <button class="color-btn red" onclick="pickColor('red')"></button>
+            <button class="color-btn blue" onclick="pickColor('blue')"></button>
+            <button class="color-btn green" onclick="pickColor('green')"></button>
+            <button class="color-btn yellow" onclick="pickColor('yellow')"></button>
         </div>
     </div>
 <% } %>
