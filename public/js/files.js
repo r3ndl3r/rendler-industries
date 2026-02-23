@@ -63,11 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const file = files[0];
             const maxSize = 1024 * 1024 * 1024;
             if (file.size > maxSize) {
-                if (typeof showToast === 'function') {
-                    showToast('File too large! Maximum size is 1GB.', 'error');
-                } else {
-                    alert('File too large! Maximum size is 1GB.');
-                }
+                showToast('File too large! Maximum size is 1GB.', 'error');
                 fileInput.value = '';
                 if (fileNameDisplay) {
                     fileNameDisplay.textContent = '';
@@ -151,11 +147,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const fileInput = document.getElementById('file');
         if (!fileInput.files.length) {
             e.preventDefault();
-            if (typeof showToast === 'function') {
-                showToast('Please select a file', 'error');
-            } else {
-                alert('Please select a file');
-            }
+            showToast('Please select a file', 'error');
             return false;
         }
     });
