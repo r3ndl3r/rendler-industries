@@ -10,7 +10,7 @@
 
 <div class="go-container">
     <div class="header-bar">
-        <h1>🔗 <span>Go Links</span></h1>
+        <h1><%= icon('link') %> <span>Go Links</span></h1>
     </div>
 
     <% if (my $msg = flash('message')) { %>
