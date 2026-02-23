@@ -21,10 +21,12 @@
         <% } %>
     </div>
 
-    <% if (flash('message')) { %>
-        <div class="alert alert-success">
-            <%= flash('message') %>
-        </div>
+    <% if (my $msg = flash('message')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $msg %>", 'success');
+            });
+        </script>
     <% } %>
 
     <div class="files-list">
