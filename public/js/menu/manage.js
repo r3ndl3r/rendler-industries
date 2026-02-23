@@ -117,14 +117,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
             
             if (result.success) {
-                if (typeof showToast === 'function') showToast(id ? 'Link updated!' : 'Link added!', 'success');
-                location.reload();
+                showToast(result.message, 'success');
+                setTimeout(() => location.reload(), 500);
             } else {
-                if (typeof showToast === 'function') showToast('Error: ' + result.error, 'error');
+                showToast('Error: ' + result.error, 'error');
             }
         } catch (error) {
             console.error('Submission error:', error);
-            if (typeof showToast === 'function') showToast('Request failed', 'error');
+            showToast('Request failed', 'error');
         }
     });
 
@@ -151,15 +151,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
             
             if (result.success) {
-                if (typeof showToast === 'function') showToast('Link deleted', 'success');
-                location.reload();
+                showToast(result.message, 'success');
+                setTimeout(() => location.reload(), 500);
             } else {
-                if (typeof showToast === 'function') showToast('Error: ' + result.error, 'error');
+                showToast('Error: ' + result.error, 'error');
                 closeDeleteConfirmModal();
             }
         } catch (error) {
             console.error('Delete error:', error);
             closeDeleteConfirmModal();
+            showToast('Request failed', 'error');
         }
     });
 
@@ -192,14 +193,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
             
             if (result.success) {
-                if (typeof showToast === 'function') showToast('Order saved!', 'success');
+                showToast(result.message, 'success');
                 saveOrderBtn.style.display = 'none';
                 setTimeout(() => location.reload(), 500);
             } else {
-                if (typeof showToast === 'function') showToast('Reorder failed', 'error');
+                showToast('Reorder failed', 'error');
             }
         } catch (error) {
             console.error('Reorder error:', error);
+            showToast('Request failed', 'error');
         }
     });
 });

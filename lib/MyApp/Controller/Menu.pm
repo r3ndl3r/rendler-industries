@@ -62,7 +62,7 @@ sub add {
 
     eval {
         $c->db->add_menu_link($data);
-        $c->render(json => { success => 1 });
+        $c->render(json => { success => 1, message => 'Menu link created successfully' });
     };
 
     if ($@) {
@@ -77,7 +77,7 @@ sub add {
 #   label            : Display text
 #   ... (other attributes same as add)
 # Returns:
-#   JSON: { success => 1 } or { success => 0, error => $msg }
+#   JSON: { success => 1, message => "..." } or { success => 0, error => $msg }
 sub update {
     my $c = shift;
     my $id = $c->param('id');
@@ -100,7 +100,7 @@ sub update {
 
     eval {
         $c->db->update_menu_link($id, $data);
-        $c->render(json => { success => 1 });
+        $c->render(json => { success => 1, message => 'Menu link updated successfully' });
     };
 
     if ($@) {
@@ -113,7 +113,7 @@ sub update {
 # Parameters (POST):
 #   id : Link ID (Required)
 # Returns:
-#   JSON: { success => 1 } or { success => 0, error => $msg }
+#   JSON: { success => 1, message => "..." } or { success => 0, error => $msg }
 sub delete {
     my $c = shift;
     my $id = $c->param('id');
@@ -123,7 +123,7 @@ sub delete {
 
     eval {
         $c->db->delete_menu_link($id);
-        $c->render(json => { success => 1 });
+        $c->render(json => { success => 1, message => 'Menu link deleted successfully' });
     };
 
     if ($@) {
@@ -136,7 +136,7 @@ sub delete {
 # Parameters (JSON POST):
 #   orders : HashRef of { id => order }
 # Returns:
-#   JSON: { success => 1 } or { success => 0, error => $msg }
+#   JSON: { success => 1, message => "..." } or { success => 0, error => $msg }
 sub reorder {
     my $c = shift;
     my $orders = $c->req->json->{orders};
@@ -145,7 +145,7 @@ sub reorder {
         foreach my $id (keys %$orders) {
             $c->db->update_menu_order($id, $orders->{$id});
         }
-        $c->render(json => { success => 1 });
+        $c->render(json => { success => 1, message => 'Menu reordered successfully' });
     };
 
     if ($@) {
