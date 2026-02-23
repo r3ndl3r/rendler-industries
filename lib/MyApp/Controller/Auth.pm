@@ -152,7 +152,7 @@ sub register {
         }
 
         if (@admin_emails) {
-            my $subject = "New User Registration / ลงทะเบียนผู้ใช้ใหม่: $username";
+            my $subject = "New User Registration: $username";
             my $body = qq{A new user has registered and is awaiting approval:
             
 Username: $username
@@ -160,9 +160,8 @@ Email: $email
 IP Address: } . $c->tx->remote_address . qq{
 
 Please log in to the admin panel to approve or reject this account.
-กรุณาเข้าสู่ระบบในส่วนการดูแลระบบเพื่ออนุมัติหรือปฏิเสธบัญชีนี้
 
-- Family Dashboard System};
+- Rendler Industries};
 
             $c->send_email_via_gmail(\@admin_emails, $subject, $body);
         }
