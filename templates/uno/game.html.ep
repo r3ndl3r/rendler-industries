@@ -135,10 +135,6 @@
                     <div class="card-count">0 Cards</div>
                 </div>
             </div>
-            <div class="turn-indicator">
-                <span class="turn-dot"></span>
-                <span class="turn-text">Their Turn</span>
-            </div>
         </div>
 
         <div class="player-panel opponent-panel opp-left" id="opp-slot-left">
@@ -149,10 +145,6 @@
                     <div class="card-count">0 Cards</div>
                 </div>
             </div>
-            <div class="turn-indicator">
-                <span class="turn-dot"></span>
-                <span class="turn-text">Their Turn</span>
-            </div>
         </div>
 
         <div class="player-panel opponent-panel opp-right" id="opp-slot-right">
@@ -162,10 +154,6 @@
                     <div class="player-name">Waiting...</div>
                     <div class="card-count">0 Cards</div>
                 </div>
-            </div>
-            <div class="turn-indicator">
-                <span class="turn-dot"></span>
-                <span class="turn-text">Their Turn</span>
             </div>
         </div>
         
@@ -204,10 +192,6 @@
                     <div class="player-name">You</div>
                     <div class="card-count" id="my-card-count">0 Cards</div>
                 </div>
-            </div>
-            <div class="turn-indicator">
-                <span class="turn-dot"></span>
-                <span class="turn-text">Your Turn</span>
             </div>
         </div>
         

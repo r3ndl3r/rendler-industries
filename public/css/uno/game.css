@@ -31,73 +31,108 @@ body {
 }
 
 .player-panel {
-    background: rgba(30, 41, 59, 0.8);
+    background: rgba(30, 41, 59, 0.9);
     backdrop-filter: blur(10px);
     border: 2px solid rgba(255, 255, 255, 0.1);
     border-radius: 1rem;
-    padding: 0.75rem 1.25rem;
+    padding: 0.75rem 1rem;
     display: flex;
-    flex-direction: column;
+    flex-direction: row; /* Horizontal layout for panels */
     align-items: center;
-    gap: 0.5rem;
+    gap: 1rem;
     transition: all 0.3s ease;
-    width: 180px;
-    text-align: center;
+    width: auto;
+    min-width: 180px;
 }
 
-/* Opponent Slot Positioning */
+.player-panel.active {
+    border-color: var(--uno-yellow);
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.4);
+    transform: scale(1.05);
+}
+
+/* Turn Arrow Indicator */
+.player-panel.active::after {
+    content: '▼';
+    position: absolute;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--uno-yellow);
+    font-size: 1.5rem;
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translate(-50%, 0); }
+    50% { transform: translate(-50%, -10px); }
+}
+
+/* Opponent Slot Positioning - Move them out of the way */
 .opp-top {
     position: absolute;
-    top: 60px;
+    top: 20px;
     left: 50%;
     transform: translateX(-50%);
 }
 
 .opp-left {
     position: absolute;
-    top: 50%;
-    left: 20px;
+    top: 40%;
+    left: 40px;
     transform: translateY(-50%);
 }
 
 .opp-right {
     position: absolute;
-    top: 50%;
-    right: 20px;
+    top: 40%;
+    right: 40px;
     transform: translateY(-50%);
 }
 
 .my-panel {
     position: absolute;
     bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 220px;
+    left: 20px; /* Move to bottom left instead of center */
+    transform: none;
+    width: auto;
     z-index: 50;
 }
 
 .player-panel .panel-content {
-    flex-direction: column;
-    gap: 0.5rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 .player-avatar {
     font-size: 1.5rem;
     width: 2.5rem;
     height: 2.5rem;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .player-panel .player-name {
-    font-size: 1rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.card-count {
+    font-size: 0.9rem;
+    color: var(--uno-yellow);
+    font-weight: bold;
 }
 
 .turn-indicator {
-    padding: 0.25rem 0.75rem;
+    display: none; /* Hide the old box */
 }
+
 
 .game-board {
     position: absolute;
@@ -276,21 +311,28 @@ body {
     justify-content: center;
     position: relative;
     user-select: none;
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease, opacity 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     cursor: pointer;
     background-color: white;
+    border: 3px solid transparent;
 }
 
 .uno-card:hover {
-    transform: translateY(-20px) scale(1.05);
-    box-shadow: 0 15px 30px rgba(0,0,0,0.6);
+    transform: translateY(-20px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.6);
     z-index: 100;
 }
 
+.uno-card.selected {
+    transform: translateY(-40px);
+    border-color: var(--uno-yellow);
+    box-shadow: 0 15px 30px rgba(234, 179, 8, 0.5);
+    z-index: 110;
+}
+
 .uno-card.uno-disabled {
-    opacity: 0.6;
+    filter: grayscale(80%) brightness(0.7);
     cursor: not-allowed;
-    filter: grayscale(40%) brightness(0.8);
 }
 
 .uno-card.uno-disabled:hover {
@@ -346,19 +388,20 @@ body {
 
 .uno-shout-container {
     position: absolute;
-    right: -120px;
-    bottom: 50px;
+    right: 40px;
+    bottom: 20px;
     display: none;
+    z-index: 100;
 }
 
 .uno-shout-container.visible {
     display: block;
-    animation: slide-in-right 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: slide-in-bottom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-@keyframes slide-in-right {
-    from { transform: translateX(50px); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
+@keyframes slide-in-bottom {
+    from { transform: translateY(100px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
 
 .my-turn .deck-card {

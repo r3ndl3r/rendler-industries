@@ -33,7 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
         turn: null,
         direction: null,
         isDrawing: false,
-        isPlaying: false
+        isPlaying: false,
+        selectedCardIdx: null
     };
 
     const animations = {
@@ -185,6 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gameState.isPlaying = true;
 
         gameState.isMyTurn = false;
+        gameState.selectedCardIdx = null; // Reset selection
         updateTurnIndicators();
         
         animations.animatePlay(cardElement, () => {
@@ -212,16 +214,29 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const div = document.createElement('div');
         div.className = `uno-card`;
+        if (gameState.selectedCardIdx === index) {
+            div.classList.add('selected');
+        }
         
         // Calculate background position based on sprite sheet
-        // 14 columns, 8 rows. 90x135px cards (scaled from 240x360).
-        // Account for the 1px offset seen in original project.
         const posX = card.col * 90 + (card.col * 0.375); 
         const posY = card.row * 135 + (card.row * 0.375);
         div.style.backgroundPosition = `-${posX}px -${posY}px`;
 
         if (isPlayable) {
-            div.onclick = () => window.playCard(index);
+            div.onclick = (e) => {
+                e.stopPropagation();
+                if (gameState.selectedCardIdx === index) {
+                    gameState.selectedCardIdx = null;
+                } else {
+                    gameState.selectedCardIdx = index;
+                }
+                syncGame();
+            };
+            div.ondblclick = (e) => {
+                e.stopPropagation();
+                window.playCard(index);
+            };
         } else if (index !== -1) {
             div.classList.add('uno-disabled');
         }
@@ -302,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Feedback for Turn Change
             if (oldTurn !== data.turn && gameState.isMyTurn) {
-                showToast('Your Turn!');
+                // Not showing toast anymore, visual glow is enough
             }
 
             // Feedback for Direction Change
@@ -421,6 +436,13 @@ document.addEventListener('DOMContentLoaded', () => {
             els.statusToast.classList.remove('show');
         }, duration);
     }
+
+    document.addEventListener('click', () => {
+        if (gameState.selectedCardIdx !== null) {
+            gameState.selectedCardIdx = null;
+            syncGame();
+        }
+    });
 
     syncGame();
     setInterval(syncGame, 2000);
