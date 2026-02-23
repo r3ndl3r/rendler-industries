@@ -31,10 +31,11 @@
                     <div class="reminder-header">
                         <h2 class="reminder-title"><%= $r->{title} %></h2>
                         <div class="reminder-actions">
-                            <label class="switch">
-                                <input type="checkbox" onchange="toggleReminder(<%= $r->{id} %>, this.checked)" <%= $r->{is_active} ? 'checked' : '' %>>
-                                <span class="slider"></span>
-                            </label>
+                            <button class="btn-icon-<%= $r->{is_active} ? 'view' : 'copy' %> btn-status-toggle" 
+                                    onclick="toggleReminder(<%= $r->{id} %>, <%= $r->{is_active} ? 0 : 1 %>, this)" 
+                                    title="<%= $r->{is_active} ? 'Pause Reminder' : 'Resume Reminder' %>">
+                                <%= icon($r->{is_active} ? 'running' : 'paused') %>
+                            </button>
                             <button class="btn-icon-edit" data-reminder='<%== Mojo::JSON::to_json($r) %>' onclick='openEditModal(this)' title="Edit Reminder"><%= icon('edit') %></button>
                             <button class="btn-icon-delete" onclick="confirmDeleteReminder(<%= $r->{id} %>, '<%= $r->{title} %>')"><%= icon('delete') %></button>
                         </div>
