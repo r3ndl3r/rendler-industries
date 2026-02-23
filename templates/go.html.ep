@@ -12,6 +12,22 @@
     <div class="header-bar">
         <h1>🔗 <span>Go Links</span></h1>
     </div>
+
+    <% if (my $msg = flash('message')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $msg %>", 'success');
+            });
+        </script>
+    <% } %>
+    
+    <% if (my $error = flash('error')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $error %>", 'error');
+            });
+        </script>
+    <% } %>
     
     <div class="glass-panel add-item-panel">
         <form action="/go/add" method="POST" class="add-item-form">
