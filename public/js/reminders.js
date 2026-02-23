@@ -69,7 +69,7 @@ function closeDeleteModal() {
     document.body.style.overflow = 'auto';
 }
 
-async function toggleReminder(id, active) {
+async function toggleReminder(id, active, btn) {
     const card = document.querySelector(`.reminder-card[data-id="${id}"]`);
     const status = active ? 1 : 0;
     
@@ -82,7 +82,23 @@ async function toggleReminder(id, active) {
         const result = await response.json();
         
         if (result.success) {
-            // Update the data-reminder state if edit button exists
+            // 1. Update the button visuals
+            if (btn) {
+                if (active) {
+                    btn.className = 'btn-icon-view btn-status-toggle';
+                    btn.innerHTML = '▶️'; 
+                    btn.title = 'Pause Reminder';
+                    // Need to use setAttribute for the next call to work correctly with existing logic
+                    btn.setAttribute('onclick', `toggleReminder(${id}, 0, this)`);
+                } else {
+                    btn.className = 'btn-icon-copy btn-status-toggle';
+                    btn.innerHTML = '⏸️'; 
+                    btn.title = 'Resume Reminder';
+                    btn.setAttribute('onclick', `toggleReminder(${id}, 1, this)`);
+                }
+            }
+
+            // 2. Update the data-reminder state if edit button exists
             const editBtn = card.querySelector('.btn-icon-edit');
             if (editBtn) {
                 const data = JSON.parse(editBtn.dataset.reminder);
