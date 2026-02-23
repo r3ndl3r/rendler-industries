@@ -80,14 +80,39 @@ sub approve_user {
         return $c->render_error('Invalid user ID');
     }
 
+    # Fetch user details before approval to get email
+    my $user = $c->db->get_user_by_id($id);
+    unless ($user) {
+        return $c->render_error('User not found', 404);
+    }
+
     # Perform approval status update
     $c->db->approve_user($id);
 
-    if ($c->req->is_xhr) {
-        return $c->render(json => { success => 1, message => "User ID $id approved successfully." });
+    # Send notification email to the user
+    if ($user->{email}) {
+        eval {
+            my $subject = "Account Approved: $user->{username}";
+            my $body = qq{Hello $user->{username},
+
+Your account has been approved and is now active! 
+
+You can now log in to the dashboard at: https://rendler.org/login
+
+- Rendler Industries®};
+
+            $c->send_email_via_gmail($user->{email}, $subject, $body);
+        };
+        if ($@) {
+            $c->app->log->error("Failed to send approval email to $user->{username}: $@");
+        }
     }
 
-    $c->flash(message => "User ID $id approved successfully.");
+    if ($c->req->is_xhr) {
+        return $c->render(json => { success => 1, message => "User '$user->{username}' approved successfully." });
+    }
+
+    $c->flash(message => "User '$user->{username}' approved successfully.");
     return $c->redirect_to('/users');
 }
 
