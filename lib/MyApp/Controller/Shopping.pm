@@ -126,6 +126,7 @@ sub edit {
 sub clear_checked {
     my $c = shift;
     $c->db->clear_checked_items();
+    $c->flash(message => "Cleared all checked items.");
     $c->redirect_to('/shopping');
 }
 

@@ -105,6 +105,8 @@ async function toggleItem(id) {
             const metaText = item.querySelector('.item-meta').textContent;
             const addedBy = metaText.replace('Added by ', '');
             
+            showToast(isNowChecked ? 'Item checked!' : 'Item unchecked!', 'success');
+
             item.style.opacity = '0';
             item.style.transform = 'translateY(10px)';
             

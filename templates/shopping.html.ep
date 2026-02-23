@@ -12,6 +12,14 @@
     <div class="header-bar">
         <h1>🛒 <span>Shopping List</span></h1>
     </div>
+
+    <% if (my $msg = flash('message')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $msg %>", 'success');
+            });
+        </script>
+    <% } %>
     
     <!-- Add Item Form -->
     <div class="glass-panel add-item-panel">
