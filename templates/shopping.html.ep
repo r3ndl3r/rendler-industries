@@ -24,15 +24,17 @@
     <!-- Add Item Form -->
     <div class="glass-panel add-item-panel">
         <form id="addShoppingForm" class="add-item-form">
-            <input 
-                type="text" 
-                name="item_name" 
-                class="game-input" 
-                placeholder="Add item to shopping list..." 
-                autocomplete="off"
-                required
-                maxlength="255"
-            >
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <input 
+                    type="text" 
+                    name="item_name" 
+                    class="game-input" 
+                    placeholder="Add item to shopping list..." 
+                    autocomplete="off"
+                    required
+                    maxlength="255"
+                >
+            </div>
             <button type="submit" class="btn-blue-add">Add Item</button>
         </form>
     </div>
