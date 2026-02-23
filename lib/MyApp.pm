@@ -315,6 +315,7 @@ sub startup {
     $family->post('/reminders/update/:id')->to('reminders#update');
     $family->post('/reminders/delete/:id')->to('reminders#delete');
     $family->post('/reminders/toggle/:id')->to('reminders#toggle');
+    $family->post('/reminders/toggle_day')->to('reminders#toggle_day');
     
     # --- Imposter Game Routes ---
     $family->get('/imposter')->to('imposter#index');

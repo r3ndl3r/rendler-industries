@@ -176,4 +176,20 @@ sub toggle {
     return $c->render(json => { success => 0, error => 'Invalid parameters' });
 }
 
+# Toggles a specific day for a reminder rule via AJAX.
+# Route: POST /reminders/toggle_day
+sub toggle_day {
+    my $c = shift;
+    my $id = $c->param('id');
+    my $day = $c->param('day');
+    my $active = $c->param('active') ? 1 : 0;
+    
+    if ($id && $id =~ /^\d+$/ && $day && $day =~ /^[1-7]$/) {
+        $c->db->toggle_reminder_day($id, $day, $active);
+        return $c->render(json => { success => 1 });
+    }
+    
+    return $c->render(json => { success => 0, error => 'Invalid parameters' });
+}
+
 1;

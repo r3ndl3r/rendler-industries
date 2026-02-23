@@ -10,7 +10,8 @@ function closeAddModal() {
     document.body.style.overflow = 'auto';
 }
 
-function openEditModal(reminder) {
+function openEditModal(btn) {
+    const reminder = JSON.parse(btn.dataset.reminder);
     const modal = document.getElementById('editReminderModal');
     const form = document.getElementById('editReminderForm');
     
@@ -36,7 +37,8 @@ function openEditModal(reminder) {
     
     // Set recipients
     if (reminder.recipient_ids) {
-        reminder.recipient_ids.split(',').forEach(uid => {
+        const ids = String(reminder.recipient_ids).split(',');
+        ids.forEach(uid => {
             const cb = document.getElementById(`editRecipient${uid}`);
             if (cb) cb.checked = true;
         });
@@ -80,6 +82,14 @@ async function toggleReminder(id, active) {
         const result = await response.json();
         
         if (result.success) {
+            // Update the data-reminder state if edit button exists
+            const editBtn = card.querySelector('.btn-icon-edit');
+            if (editBtn) {
+                const data = JSON.parse(editBtn.dataset.reminder);
+                data.is_active = status;
+                editBtn.dataset.reminder = JSON.stringify(data);
+            }
+
             if (active) {
                 card.classList.remove('paused');
                 showToast('Reminder resumed', 'success');
@@ -89,6 +99,54 @@ async function toggleReminder(id, active) {
             }
         } else {
             showToast('Failed to update status', 'error');
+        }
+    } catch (err) {
+        showToast('Request failed', 'error');
+    }
+}
+
+async function toggleDay(reminderId, day, active) {
+    try {
+        const response = await fetch('/reminders/toggle_day', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ id: reminderId, day: day, active: active })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            // 1. Update visual dot state
+            const card = document.querySelector(`.reminder-card[data-id="${reminderId}"]`);
+            const dots = card.querySelectorAll('.day-dot');
+            const dot = dots[day - 1]; // 1-indexed days
+            
+            if (active) {
+                dot.classList.add('active');
+                dot.setAttribute('onclick', `toggleDay(${reminderId}, ${day}, 0)`);
+            } else {
+                dot.classList.remove('active');
+                dot.setAttribute('onclick', `toggleDay(${reminderId}, ${day}, 1)`);
+            }
+
+            // 2. Sync data-reminder attribute on the Edit button
+            const editBtn = card.querySelector('.btn-icon-edit');
+            if (editBtn) {
+                const data = JSON.parse(editBtn.dataset.reminder);
+                let days = data.days_of_week ? String(data.days_of_week).split(',') : [];
+                
+                if (active) {
+                    days.push(String(day));
+                } else {
+                    days = days.filter(d => d != String(day));
+                }
+                
+                data.days_of_week = days.sort((a, b) => a - b).join(',');
+                editBtn.dataset.reminder = JSON.stringify(data);
+            }
+
+            showToast('Schedule updated', 'success');
+        } else {
+            showToast('Failed to update schedule', 'error');
         }
     } catch (err) {
         showToast('Request failed', 'error');
