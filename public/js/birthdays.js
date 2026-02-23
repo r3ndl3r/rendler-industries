@@ -42,11 +42,11 @@ function calculateAllBirthdays() {
     });
 }
 
-function editBirthday(id, name, date, emoji) {
+function editBirthday(id, name, date) {
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_name').value = name;
     document.getElementById('edit_date').value = date;
-    document.getElementById('edit_emoji').value = emoji;
+    
     document.getElementById('editModal').style.display = 'flex';
 }
 

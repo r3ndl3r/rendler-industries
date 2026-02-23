@@ -53,20 +53,19 @@ sub DB::get_all_birthdays {
 # Parameters:
 #   name       : Name of the person (String)
 #   birth_date : Date string (YYYY-MM-DD)
-#   emoji      : Associated emoji character (String)
 # Returns:
 #   Result of execute() (true on success)
 sub DB::add_birthday {
-    my ($self, $name, $birth_date, $emoji) = @_;
+    my ($self, $name, $birth_date) = @_;
     
     # Verify database connectivity
     $self->ensure_connection;
     
     # Insert new record
     my $sth = $self->{dbh}->prepare(
-        "INSERT INTO birthdays (name, birth_date, emoji) VALUES (?, ?, ?)"
+        "INSERT INTO birthdays (name, birth_date) VALUES (?, ?)"
     );
-    $sth->execute($name, $birth_date, $emoji);
+    $sth->execute($name, $birth_date);
 }
 
 # Updates an existing birthday record.
@@ -74,20 +73,19 @@ sub DB::add_birthday {
 #   id         : Unique ID of the record to update (Int)
 #   name       : New name (String)
 #   birth_date : New date string (YYYY-MM-DD)
-#   emoji      : New emoji character (String)
 # Returns:
 #   Result of execute() (true on success)
 sub DB::update_birthday {
-    my ($self, $id, $name, $birth_date, $emoji) = @_;
+    my ($self, $id, $name, $birth_date) = @_;
     
     # Verify database connectivity
     $self->ensure_connection;
     
     # Update fields for specific ID
     my $sth = $self->{dbh}->prepare(
-        "UPDATE birthdays SET name = ?, birth_date = ?, emoji = ? WHERE id = ?"
+        "UPDATE birthdays SET name = ?, birth_date = ? WHERE id = ?"
     );
-    $sth->execute($name, $birth_date, $emoji, $id);
+    $sth->execute($name, $birth_date, $id);
 }
 
 # Removes a birthday record from the database.
