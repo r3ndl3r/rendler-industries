@@ -147,6 +147,7 @@ sub clear_completed {
     
     eval {
         $c->db->clear_completed_todos($user_id);
+        $c->flash(message => "Cleared all completed tasks.");
         $c->redirect_to('/todo');
     };
     if ($@) {
