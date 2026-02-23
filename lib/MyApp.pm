@@ -42,6 +42,9 @@ sub startup {
     # Load configuration plugin
     my $config = $self->plugin('Config');
     
+    # Load standardized icons
+    $self->plugin('MyApp::Plugin::Icons');
+    
     # Initialize DB connection to retrieve application secrets
     my $db = DB->new();
     my $secret = $db->get_app_secret();
