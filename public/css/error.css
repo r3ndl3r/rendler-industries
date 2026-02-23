@@ -27,10 +27,10 @@
 
 .error-icon {
     display: block;
-    width: 5rem;
-    height: 5rem;
+    font-size: 5rem;
+    line-height: 1;
     margin: 0 auto 1.5rem;
-    color: #ef4444;
+    text-align: center;
 }
 
 .error-title {
