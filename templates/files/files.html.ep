@@ -11,7 +11,7 @@
 
 <div class="admin-container">
     <div class="header-bar">
-        <h1>📁 <span>Files</span></h1>
+        <h1><%= icon('files') %> <span>Files</span></h1>
         <% if (stash('is_admin')) { %>
             <div class="manage-actions">
                 <a href="/files/upload" class="btn-primary">
@@ -74,11 +74,11 @@
                             </td>
                             <td class="col-actions">
                                 <div class="action-buttons">
-                                    <a href="/files/serve/<%= $file->{id} %>" target="_blank" class="btn-icon-view" title="View">👁️</a>
-                                    <button type="button" class="btn-icon-copy" onclick="copyLink('<%= $file->{id} %>')" title="Copy Link">📋</button>
+                                    <a href="/files/serve/<%= $file->{id} %>" target="_blank" class="btn-icon-view" title="View"><%= icon('view') %></a>
+                                    <button type="button" class="btn-icon-copy" onclick="copyLink('<%= $file->{id} %>')" title="Copy Link"><%= icon('copy') %></button>
                                     <% if (stash('is_admin')) { %>
-                                        <button type="button" class="btn-icon-edit" onclick='openPermissions(<%== Mojo::JSON::to_json($file) %>)' title="Permissions">⚙️</button>
-                                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteFile(<%= $file->{id} %>, '<%= $file->{original_filename} %>')" title="Delete">🗑️</button>
+                                        <button type="button" class="btn-icon-edit" onclick='openPermissions(<%== Mojo::JSON::to_json($file) %>)' title="Permissions"><%= icon('settings') %></button>
+                                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteFile(<%= $file->{id} %>, '<%= $file->{original_filename} %>')" title="Delete"><%= icon('delete') %></button>
                                     <% } %>
                                 </div>
                             </td>
@@ -141,7 +141,7 @@
                     </div>
                     
                     <div class="modal-actions">
-                        <button type="submit" class="btn-upload">💾 Save Changes</button>
+                        <button type="submit" class="btn-upload"><%= icon('save') %> Save Changes</button>
                     </div>
                 </form>
             </div>
