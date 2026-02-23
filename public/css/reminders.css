@@ -46,6 +46,7 @@
     position: relative;
     overflow: hidden;
     background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+    border-radius: 1.5rem; /* Increased for more rounded look */
 }
 
 .reminder-card::before {
