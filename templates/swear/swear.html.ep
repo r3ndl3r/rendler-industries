@@ -60,7 +60,7 @@
                         
                         <form action="/swear/pay" method="POST" style="margin: 0; display: flex; gap: 5px;">
                             <input type="hidden" name="perpetrator" value="<%= $row->{perpetrator} %>">
-                            <input type="number" name="amount" value="<%= sprintf("%.2f", $row->{total}) %>" step="0.01" min="0.01" class="game-input" style="width: 80px; padding: 8px; font-size: 0.9rem; margin: 0;">
+                            <input type="number" name="amount" value="<%= sprintf("%.2f", $row->{total}) %>" step="0.50" min="0" class="game-input" style="width: 80px; padding: 8px; font-size: 0.9rem; margin: 0;">
                             <button type="submit" class="game-btn btn-green btn-small">DEPOSIT</button>
                         </form>
                     </div>
@@ -83,7 +83,7 @@
                     % }
                 </select>
                 <div style="display: flex; gap: 10px;">
-                    <input type="number" name="amount" class="game-input" placeholder="Amount to Deposit" step="0.50" required min="0.01">
+                    <input type="number" name="amount" class="game-input" placeholder="Amount to Deposit" step="0.50" required min="0">
                     <button type="submit" class="game-btn btn-green">Deposit Cash</button>
                 </div>
             </form>
