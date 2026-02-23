@@ -10,7 +10,7 @@
 
 <div class="admin-container">
     <div class="header-bar">
-        <h1>👥 <span>Users Admin</span></h1>
+        <h1><%= icon('user') %> <span>Users Admin</span></h1>
     </div>
     
     <table class="data-table users-table">
@@ -67,11 +67,11 @@
                         <div class="action-btns">
                             <% if (defined $user->{status} && $user->{status} eq 'pending') { %>
                                 <form action="/users/approve/<%= $user->{id} %>" method="POST" style="display:inline;">
-                                    <button type="submit" class="btn-icon-view" title="Approve">✅</button>
+                                    <button type="submit" class="btn-icon-view" title="Approve"><%= icon('check') %></button>
                                 </form>
                             <% } %>
-                            <button type="button" class="btn-icon-edit" onclick='openEditUserModal(<%== Mojo::JSON::to_json($user) %>)' title="Edit">✎</button>
-                            <button type="button" class="btn-icon-delete" onclick="confirmDeleteUser(<%= $user->{id} %>, '<%= $user->{username} %>')" title="Delete">🗑️</button>
+                            <button type="button" class="btn-icon-edit" onclick='openEditUserModal(<%== Mojo::JSON::to_json($user) %>)' title="Edit"><%= icon('edit') %></button>
+                            <button type="button" class="btn-icon-delete" onclick="confirmDeleteUser(<%= $user->{id} %>, '<%= $user->{username} %>')" title="Delete"><%= icon('delete') %></button>
                         </div>
                     </td>
                 </tr>
