@@ -54,7 +54,7 @@ function editEventFromTable(eventId) {
         })
         .catch(error => {
             console.error('Error loading event:', error);
-            alert('Failed to load event details');
+            showToast('Failed to load event details', 'error');
         });
 }
 
