@@ -10,9 +10,9 @@
 
 <div class="manage-container">
     <div class="header-bar">
-        <h1>🗓️ <span>Manage Events</span></h1>
+        <h1><%= icon('calendar') %> <span>Manage Events</span></h1>
         <div class="manage-actions">
-            <a href="/calendar" class="btn-back">← Back</a>
+            <a href="/calendar" class="btn-back"><%= icon('back') %> Back</a>
         </div>
     </div>
 

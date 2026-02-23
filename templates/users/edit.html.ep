@@ -9,7 +9,7 @@
 
 <div class="edit-container">
     <div class="header-bar">
-        <h1>👤 <span>Edit User</span></h1>
+        <h1><%= icon('user') %> <span>Edit User</span></h1>
     </div>
     
     <form action="/users/update/<%= $user->{id} %>" method="POST" class="edit-form">

@@ -73,7 +73,7 @@
         <!-- Top Player Panel -->
         <div class="player-panel opponent-panel" id="opponent-panel">
             <div class="panel-content">
-                <div class="player-avatar">👤</div>
+                <div class="player-avatar"><%= icon('user') %></div>
                 <div class="player-details">
                     <div class="player-name" id="opp-name"><%= $my_id == $game->{player1_id} ? $game->{p2_name} : $game->{p1_name} %></div>
                     <div class="card-count" id="opp-card-count">0 Cards</div>

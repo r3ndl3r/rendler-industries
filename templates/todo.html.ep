@@ -10,7 +10,7 @@
 
 <div class="todo-container">
     <div class="header-bar">
-        <h1>✅ <span>Todo List</span></h1>
+        <h1><%= icon('todo') %> <span>Todo List</span></h1>
     </div>
 
     <% if (my $msg = flash('message')) { %>
@@ -46,10 +46,10 @@
                     </div>
                     <div class="action-buttons">
                         <button class="btn-icon-edit" onclick="openEditModal(<%= $todo->{id} %>, `<%= $todo->{task_name} %>`)" title="Edit">
-                            ✎
+                            <%= icon('edit') %>
                         </button>
                         <button class="btn-icon-delete" onclick="deleteTodo(<%= $todo->{id} %>)" title="Delete">
-                            🗑️
+                            <%= icon('delete') %>
                         </button>
                     </div>
                 </div>
@@ -74,7 +74,7 @@
                         </div>
                         <div class="action-buttons">
                             <button class="btn-icon-delete" onclick="deleteTodo(<%= $todo->{id} %>)" title="Delete">
-                                🗑️
+                                <%= icon('delete') %>
                             </button>
                         </div>
                     </div>

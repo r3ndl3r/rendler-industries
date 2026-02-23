@@ -10,7 +10,7 @@
 
 <div class="admin-container">
     <div class="header-bar">
-        <h1>📋 <span>Clipboard</span></h1>
+        <h1><%= icon('copy') %> <span>Clipboard</span></h1>
         <div class="manage-actions">
             <button class="action-btn" onclick="openModal()">+ Add Content</button>
         </div>
@@ -31,9 +31,9 @@
             <% for my $message ( @messages ) { %>
                 <div class="message-item">
                     <div class="item-actions">
-                        <button class="btn-icon-copy" data-text="<%= $message->{raw} %>" onclick="copyToClipboard(this)" title="Copy to Clipboard">📋</button>
-                        <button class="btn-icon-edit" data-text="<%= $message->{raw} %>" onclick="editMessage(<%= $message->{id} %>, this)" title="Edit">✎</button>
-                        <button class="btn-icon-delete" onclick="removeMessage(<%= $message->{id} %>)" title="Delete">🗑️</button>
+                        <button class="btn-icon-copy" data-text="<%= $message->{raw} %>" onclick="copyToClipboard(this)" title="Copy to Clipboard"><%= icon('copy') %></button>
+                        <button class="btn-icon-edit" data-text="<%= $message->{raw} %>" onclick="editMessage(<%= $message->{id} %>, this)" title="Edit"><%= icon('edit') %></button>
+                        <button class="btn-icon-delete" onclick="removeMessage(<%= $message->{id} %>)" title="Delete"><%= icon('delete') %></button>
                     </div>
                     <span class="message-text"><%== $message->{text} %></span>
                 </div>
@@ -57,7 +57,7 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn-save" id="submitBtn">💾 Submit Content</button>
+                    <button type="submit" class="btn-save" id="submitBtn"><%= icon('save') %> Submit Content</button>
                 </div>
             </form>
         </div>

@@ -11,9 +11,9 @@
 
 <div class="manage-container">
     <div class="header-bar">
-        <h1>🛠️ <span>Manage Menu Links</span></h1>
+        <h1><%= icon('settings') %> <span>Manage Menu Links</span></h1>
         <div class="manage-actions">
-            <button id="addLinkBtn" class="btn-primary">+ Add Link</button>
+            <button id="addLinkBtn" class="btn-primary"><%= icon('add') %> Add Link</button>
         </div>
     </div>
 
@@ -34,7 +34,7 @@
                 % if (@$links) {
                     % for my $link (@$links) {
                     <tr data-id="<%= $link->{id} %>" class="<%= $link->{parent_id} ? 'child-row' : 'parent-row' %>">
-                        <td class="drag-handle">☰</td>
+                        <td class="drag-handle"><%= icon('menu') %></td>
                         <td data-label="Label">
                             % if ($link->{is_separator}) {
                                 <span class="separator-label">───── SEPARATOR ─────</span>
@@ -51,7 +51,7 @@
                             </span>
                         </td>
                         <td class="actions-cell">
-                            <button class="btn-secondary btn-edit" 
+                            <button class="btn-icon-edit btn-edit" 
                                 data-id="<%= $link->{id} %>"
                                 data-label="<%= $link->{label} %>"
                                 data-url="<%= $link->{url} %>"
@@ -61,7 +61,7 @@
                                 data-target="<%= $link->{target} %>"
                                 data-active="<%= $link->{is_active} %>"
                                 data-sort="<%= $link->{sort_order} %>"
-                                data-separator="<%= $link->{is_separator} %>">Edit</button>
+                                data-separator="<%= $link->{is_separator} %>"><%= icon('edit') %></button>
                         </td>
                     </tr>
                     % }
@@ -73,8 +73,8 @@
     </div>
     
     <div class="manage-footer">
-        <p class="hint-text">💡 Tip: Drag and drop rows to reorder the menu items.</p>
-        <button id="saveOrderBtn" class="btn-success" style="display: none;">Save New Order</button>
+        <p class="hint-text"><%= icon('info') %> Tip: Drag and drop rows to reorder the menu items.</p>
+        <button id="saveOrderBtn" class="btn-success" style="display: none;"><%= icon('save') %> Save New Order</button>
     </div>
 </div>
 
@@ -92,7 +92,7 @@
             <div class="modal-body delete-modal-body">
                 <div class="form-group">
                     <label>Label *</label>
-                    <input type="text" id="linkLabel" name="label" placeholder="e.g. 📅 Calendar" class="game-input" required>
+                    <input type="text" id="linkLabel" name="label" placeholder="e.g. <%= icon('calendar') %> Calendar" class="game-input" required>
                 </div>
                 
                 <div class="form-group">
@@ -152,7 +152,7 @@
 
             <div class="modal-actions delete-modal-actions">
                 <button type="button" class="btn-danger" id="modalDeleteBtn" style="display: none; margin-right: auto;">Delete Link</button>
-                <button type="submit" class="btn-success">Save Link</button>
+                <button type="submit" class="btn-success"><%= icon('save') %> Save Link</button>
             </div>
         </form>
     </div>
@@ -167,7 +167,7 @@
         </div>
         <div class="delete-modal-body">
             <p>Are you sure you want to delete menu link "<strong id="deleteLinkLabel"></strong>"?</p>
-            <p style="color: #ef4444; font-size: 0.85rem; margin-top: 5px;">⚠️ Warning: All sub-menu items will also be deleted.</p>
+            <p style="color: #ef4444; font-size: 0.85rem; margin-top: 5px;"><%= icon('warning') %> Warning: All sub-menu items will also be deleted.</p>
         </div>
         <div class="delete-modal-actions">
             <button type="button" class="btn-danger-confirm" id="finalDeleteBtn">Delete Everything</button>

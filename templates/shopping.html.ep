@@ -10,7 +10,7 @@
 
 <div class="shopping-container">
     <div class="header-bar">
-        <h1>🛒 <span>Shopping List</span></h1>
+        <h1><%= icon('shopping') %> <span>Shopping List</span></h1>
     </div>
 
     <% if (my $msg = flash('message')) { %>
@@ -59,8 +59,8 @@
                             </div>
                         </div>
                         <div class="action-buttons">
-                            <button type="button" class="btn-icon-edit" onclick="editItem(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Edit">✎</button>
-                            <button type="button" class="btn-icon-delete" onclick="openDeleteModal(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Delete">🗑️</button>
+                            <button type="button" class="btn-icon-edit" onclick="editItem(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Edit"><%= icon('edit') %></button>
+                            <button type="button" class="btn-icon-delete" onclick="openDeleteModal(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Delete"><%= icon('delete') %></button>
                         </div>
                     </div>
                 <% } %>
@@ -86,7 +86,7 @@
                                 </div>
                             </div>
                             <div class="action-buttons">
-                                <button type="button" class="btn-icon-delete" onclick="openDeleteModal(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Delete">🗑️</button>
+                                <button type="button" class="btn-icon-delete" onclick="openDeleteModal(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Delete"><%= icon('delete') %></button>
                             </div>
                         </div>
                     <% } %>
