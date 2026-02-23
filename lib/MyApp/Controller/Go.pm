@@ -101,6 +101,7 @@ sub add {
     
     # Execute insertion
     $c->db->add_go_link($keyword, $url, $description, $added_by);
+    $c->flash(message => "Go link '$keyword' created successfully.");
     $c->redirect_to('/go');
 }
 
@@ -140,6 +141,7 @@ sub edit {
     
     # Execute update
     $c->db->update_go_link($id, $keyword, $url, $description);
+    $c->flash(message => "Go link '$keyword' updated successfully.");
     $c->redirect_to('/go');
 }
 
@@ -161,6 +163,7 @@ sub delete {
     
     # Execute deletion
     $c->db->delete_go_link($id);
+    $c->flash(message => "Go link deleted successfully.");
     $c->redirect_to('/go');
 }
 
