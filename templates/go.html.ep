@@ -84,9 +84,9 @@
                     </div>
                     
                     <div class="item-actions">
-                        <button type="button" class="btn-icon-copy" data-url="<%= url_for('/g/' . $link->{keyword})->to_abs %>" title="Copy Link">📋</button>
-                        <button type="button" class="btn-icon-edit" onclick="editLink(<%= $link->{id} %>, '<%= $link->{keyword} %>', '<%= $link->{url} %>', '<%= $link->{description} // '' %>')" title="Edit">✎</button>
-                        <button type="button" class="btn-icon-delete" onclick="openDeleteModal(<%= $link->{id} %>, '<%= $link->{keyword} %>')" title="Delete">🗑️</button>
+                        <button type="button" class="btn-icon-copy" data-url="<%= url_for('/g/' . $link->{keyword})->to_abs %>" title="Copy Link"><%= icon('copy') %></button>
+                        <button type="button" class="btn-icon-edit" onclick="editLink(<%= $link->{id} %>, '<%= $link->{keyword} %>', '<%= $link->{url} %>', '<%= $link->{description} // '' %>')" title="Edit"><%= icon('edit') %></button>
+                        <button type="button" class="btn-icon-delete" onclick="openDeleteModal(<%= $link->{id} %>, '<%= $link->{keyword} %>')" title="Delete"><%= icon('delete') %></button>
                     </div>
                 </div>
             <% } %>
