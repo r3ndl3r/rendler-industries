@@ -389,6 +389,7 @@ sub startup {
     $auth->post('/uno/join')->to('uno#join');
     $auth->get('/uno/play/:id')->to('uno#play');
     $auth->post('/uno/ready')->to('uno#toggle_ready');
+    $auth->post('/uno/start')->to('uno#start');
     $auth->post('/uno/play_card')->to('uno#play_card');
     $auth->post('/uno/draw_card')->to('uno#draw_card');
     $auth->post('/uno/shout')->to('uno#shout_uno');

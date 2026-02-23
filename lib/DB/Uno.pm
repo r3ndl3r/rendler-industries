@@ -402,6 +402,11 @@ sub DB::play_uno_card {
         my $fresh_hand = $self->{dbh}->selectrow_hashref("SELECT $hand_col FROM uno_sessions WHERE id = ?", undef, $game_id);
         $game->{my_hand} = decode_json($fresh_hand->{$hand_col});
     }
+    
+    # Reset said_uno status after play, regardless of hand size.
+    # If they have 1 card, they've passed the check. 
+    # If they have > 1, they shouldn't have a stored shout for later.
+    $self->{dbh}->do("UPDATE uno_sessions SET $said_uno_col = 0 WHERE id = ?", undef, $game_id);
 
     # Check Win Condition
     my $status = (scalar @{$game->{my_hand}} == 0) ? 'finished' : 'active';
@@ -509,52 +514,73 @@ sub DB::toggle_ready {
         undef, $game_id
     );
 
-    # Refresh state to check if game should start
-    my $fresh = $self->{dbh}->selectrow_hashref("SELECT * FROM uno_sessions WHERE id = ?", undef, $game_id);
-    
+    return 'waiting';
+}
+
+# Manually starts the game. Only the host (player 1) can call this.
+# Requirements: At least 2 players, and all joined players must be ready.
+sub DB::start_uno_game {
+    my ($self, $game_id, $user_id) = @_;
+
+    $self->ensure_connection;
+
+    # Retrieve current state
+    my $game = $self->{dbh}->selectrow_hashref(
+        'SELECT * FROM uno_sessions WHERE id = ?',
+        undef, $game_id
+    );
+
+    return (0, "Game not found") unless $game;
+    return (0, "Only the host can start the game") unless $game->{player1_id} == $user_id;
+    return (0, "Game is already active") unless $game->{status} eq 'waiting';
+
     my @joined_slots;
-    push @joined_slots, 'p1' if $fresh->{player1_id};
-    push @joined_slots, 'p2' if $fresh->{player2_id};
-    push @joined_slots, 'p3' if $fresh->{player3_id};
-    push @joined_slots, 'p4' if $fresh->{player4_id};
+    push @joined_slots, 'p1' if $game->{player1_id};
+    push @joined_slots, 'p2' if $game->{player2_id};
+    push @joined_slots, 'p3' if $game->{player3_id};
+    push @joined_slots, 'p4' if $game->{player4_id};
+
+    if (scalar @joined_slots < 2) {
+        return (0, "At least 2 players are required to start");
+    }
 
     my $all_ready = 1;
     foreach my $s (@joined_slots) {
-        $all_ready = 0 unless $fresh->{"${s}_ready"};
+        $all_ready = 0 unless $game->{"${s}_ready"};
     }
 
-    if (scalar @joined_slots >= 2 && $all_ready) {
-        # START GAME: Deal hands
-        my $deck = decode_json($fresh->{draw_pile} // '[]');
-        
-        # If deck was never generated, generate now (safety)
-        if (!@$deck) { $deck = _generate_deck(); }
-
-        my %updates;
-        foreach my $s (@joined_slots) {
-            my @hand = splice(@$deck, 0, 7);
-            $updates{"${s}_hand"} = encode_json(\@hand);
-        }
-
-        # Update SQL
-        my @fields = ("status = 'active'", "draw_pile = ?", "current_turn = ?");
-        my @values = (encode_json($deck), $fresh->{player1_id});
-        
-        foreach my $col (keys %updates) {
-            push @fields, "$col = ?";
-            push @values, $updates{$col};
-        }
-        
-        my $sql = "UPDATE uno_sessions SET " . join(", ", @fields) . " WHERE id = ?";
-        push @values, $game_id;
-        
-        my $sth = $self->{dbh}->prepare($sql);
-        $sth->execute(@values);
-        
-        return 'active';
+    if (!$all_ready) {
+        return (0, "All players must be ready to start");
     }
 
-    return 'waiting';
+    # START GAME: Deal hands
+    my $deck = decode_json($game->{draw_pile} // '[]');
+    
+    # If deck was never generated, generate now (safety)
+    if (!@$deck) { $deck = _generate_deck(); }
+
+    my %updates;
+    foreach my $s (@joined_slots) {
+        my @hand = splice(@$deck, 0, 7);
+        $updates{"${s}_hand"} = encode_json(\@hand);
+    }
+
+    # Update SQL
+    my @fields = ("status = 'active'", "draw_pile = ?", "current_turn = ?");
+    my @values = (encode_json($deck), $game->{player1_id});
+    
+    foreach my $col (keys %updates) {
+        push @fields, "$col = ?";
+        push @values, $updates{$col};
+    }
+    
+    my $sql = "UPDATE uno_sessions SET " . join(", ", @fields) . " WHERE id = ?";
+    push @values, $game_id;
+    
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute(@values);
+    
+    return (1, "Game started");
 }
 
 # Marks a player as having declared 'UNO!'.
