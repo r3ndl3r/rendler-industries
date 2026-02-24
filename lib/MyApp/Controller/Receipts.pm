@@ -104,6 +104,12 @@ sub upload {
         $raw_text = $ocr_data->{raw_text};
     }
 
+    # If date is still not found (neither manually entered nor via OCR), use current date
+    unless ($receipt_date) {
+        require DateTime;
+        $receipt_date = DateTime->now(time_zone => 'Australia/Melbourne')->strftime('%Y-%m-%d');
+    }
+
     # Persist receipt to database
     my $id;
     eval {
