@@ -130,7 +130,7 @@
                 <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" name="is_one_off" value="1">
-                        One-off (Self-delete after sending)
+                        One-off (self-delete after sending)
                     </label>
                     <small style="display: block; color: rgba(255,255,255,0.4); margin-top: 5px; font-style: italic; padding-left: 2rem;">
                         Note: This event will be permanently removed once triggered.
@@ -197,7 +197,7 @@
                 <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" name="is_one_off" id="editReminderOneOff" value="1">
-                        One-off (Self-delete after sending)
+                        One-off (self-delete after sending)
                     </label>
                     <small style="display: block; color: rgba(255,255,255,0.4); margin-top: 5px; font-style: italic; padding-left: 2rem;">
                         Note: This event will be permanently removed once triggered.
