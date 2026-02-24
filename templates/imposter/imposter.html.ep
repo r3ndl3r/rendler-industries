@@ -1,7 +1,7 @@
 %# /templates/imposter/imposter.html.ep
 
 % layout 'default';
-% title 'Imposter Game';
+% title icon('imposter') . ' Imposter Game';
 
 <% content_for head => begin %>
     <script src="https://cdn.tailwindcss.com"></script>

@@ -1,7 +1,7 @@
 %# /templates/p.html.ep
 
 % layout 'default';
-% title 'Phone Numbers';
+% title icon('phonebook') . ' Phone Numbers';
 
 <% content_for head => begin %>
     <style>

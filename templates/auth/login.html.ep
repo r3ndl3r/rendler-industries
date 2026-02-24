@@ -1,6 +1,6 @@
 <%# /templates/auth/login.html.ep %>
 % layout 'default';
-% title 'Login';
+% title icon('login') . ' Login';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/auth.css">

@@ -1,6 +1,6 @@
 %# /templates/swear/manage.html.ep
 % layout 'default';
-% title 'Manage Swear Jar';
+% title icon('swear') . ' Manage Swear Jar';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/swear.css">

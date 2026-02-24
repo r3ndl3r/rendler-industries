@@ -1,7 +1,7 @@
 <%# /templates/auth/register.html.ep %>
 
 % layout 'default';
-% title 'Register';
+% title icon('register') . ' Register';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/auth.css">

@@ -1,7 +1,7 @@
 % # /templates/menu/manage.html.ep
 
 % layout 'default';
-% title 'Manage Menu Links';
+% title icon('link') . ' Manage Menu Links';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/menu/manage.css">
@@ -11,9 +11,9 @@
 
 <div class="manage-container">
     <div class="header-bar">
-        <h1><%= icon('settings') %> <span>Manage Menu Links</span></h1>
+        <h1><%= icon('link') %> <span>Manage Menu Links</span></h1>
         <div class="manage-actions">
-            <button id="addLinkBtn" class="btn-primary"><%= icon('add') %> Add Link</button>
+            <button id="addLinkBtn" class="btn-primary"><%= icon('add') %> Add</button>
         </div>
     </div>
 

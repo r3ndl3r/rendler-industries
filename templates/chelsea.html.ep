@@ -1,7 +1,7 @@
 %# /templates/chelsea.html.ep
 
 % layout 'default';
-% title 'Chelsea Weather Dashboard';
+% title icon('chelsea') . ' Chelsea Weather Dashboard';
 
 <% content_for 'head' => begin %>
 <style>

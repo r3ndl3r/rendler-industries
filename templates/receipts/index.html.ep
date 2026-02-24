@@ -33,7 +33,7 @@
     <div class="header-bar">
         <h1><%= icon('receipts') %> <span>Receipt Ledger</span></h1>
         <div class="manage-actions">
-            <a href="/receipts/upload" class="action-btn"><%= icon('upload') %> Upload Receipt</a>
+            <a href="/receipts/upload" class="action-btn"><%= icon('upload') %> Upload</a>
         </div>
     </div>
 

@@ -1,7 +1,7 @@
 <%# /templates/auth/registration_success.html.ep %>
 
 % layout 'default';
-% title 'Registration Successful';
+% title icon('success') . ' Registration Successful';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/auth.css">

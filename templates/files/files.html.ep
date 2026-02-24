@@ -15,7 +15,7 @@
         <% if (stash('is_admin')) { %>
             <div class="manage-actions">
                 <a href="/files/upload" class="btn-primary">
-                    + Upload New File
+                    + Upload
                 </a>
             </div>
         <% } %>

@@ -1,7 +1,7 @@
 <%# /templates/error.html.ep %>
 
 % layout 'default';
-% title 'Error';
+% title icon('error') . ' Error';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/error.css">
