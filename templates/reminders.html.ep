@@ -66,8 +66,8 @@
                             my $display_time = sprintf("%d:%02d %s", $h, $m, $ampm);
                         %>
                         <%= $display_time %>
+                        <span class="reminder-countdown" id="countdown-<%= $r->{id} %>"></span>
                     </div>
-                    <div class="reminder-countdown" id="countdown-<%= $r->{id} %>"></div>
 
                     <div class="reminder-days">
                         <% my %active_days = map { $_ => 1 } split(',', $r->{days_of_week}); %>
