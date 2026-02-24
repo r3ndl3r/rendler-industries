@@ -114,6 +114,7 @@ async function toggleReminder(id, active, btn) {
                 card.classList.add('paused');
                 showToast('Reminder paused', 'info');
             }
+            updateCountdowns();
         } else {
             showToast('Failed to update status', 'error');
         }
@@ -159,8 +160,10 @@ async function toggleDay(reminderId, day, active) {
                 
                 data.days_of_week = days.sort((a, b) => a - b).join(',');
                 editBtn.dataset.reminder = JSON.stringify(data);
+                card.dataset.days = data.days_of_week;
             }
 
+            updateCountdowns();
             showToast('Schedule updated', 'success');
         } else {
             showToast('Failed to update schedule', 'error');
@@ -180,3 +183,62 @@ window.onclick = function(event) {
     if (event.target == editModal) closeEditModal();
     if (event.target == deleteModal) closeDeleteModal();
 }
+
+function getNextOccurrence(timeStr, daysStr) {
+    if (!daysStr) return null;
+    const [h, m] = timeStr.split(':').map(Number);
+    const days = daysStr.split(',').map(Number); // 1=Mon, 7=Sun
+
+    const now = new Date();
+    const jsDay = now.getDay();                        // 0=Sun...6=Sat
+    const isoToday = jsDay === 0 ? 7 : jsDay;         // remap to 1=Mon, 7=Sun
+    const nowMins  = now.getHours() * 60 + now.getMinutes();
+    const targetMins = h * 60 + m;
+
+    for (let offset = 0; offset <= 7; offset++) {
+        const checkDay = ((isoToday - 1 + offset) % 7) + 1;
+        if (days.includes(checkDay)) {
+            // FIX A: Keep "Due now" active for the duration of the current minute
+            if (offset === 0 && targetMins < nowMins) continue; 
+            const next = new Date(now);
+            next.setDate(now.getDate() + offset);
+            next.setHours(h, m, 0, 0);
+            return next;
+        }
+    }
+    return null;
+}
+
+function formatCountdown(ms) {
+    if (ms <= 0) return 'Due now';
+    const totalMins = Math.floor(ms / 60000);
+    const days  = Math.floor(totalMins / 1440);
+    const hours = Math.floor((totalMins % 1440) / 60);
+    const mins  = totalMins % 60;
+    
+    if (days  > 0) return `in ${days}d ${hours}h`;
+    if (hours > 0) return `in ${hours}h ${mins}m`;
+    if (mins  > 0) return `in ${mins}m`;
+    return 'Due now';
+}
+
+function updateCountdowns() {
+    document.querySelectorAll('.reminder-card').forEach(card => {
+        const el = document.getElementById(`countdown-${card.dataset.id}`);
+        if (!el) return;
+
+        // FIX C: Hide countdown if card is paused OR if one-off has already run
+        if (card.classList.contains('paused') || (card.dataset.oneOff == 1 && card.dataset.lastRun)) { 
+            el.textContent = ''; 
+            return; 
+        }
+
+        const next = getNextOccurrence(card.dataset.time, card.dataset.days);
+        el.textContent = next ? formatCountdown(next - new Date()) : '';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    updateCountdowns();
+    setInterval(updateCountdowns, 60000);
+});
