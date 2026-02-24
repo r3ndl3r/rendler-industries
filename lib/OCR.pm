@@ -72,8 +72,7 @@ sub process_receipt {
 #   HashRef with store_name, receipt_date, and total_amount
 sub parse_text {
     my ($class, $text) = @_;
-    my @lines = grep { trim($_) ne '' } split(/
-/, $text);
+    my @lines = grep { trim($_) ne '' } split(/\n/, $text);
 
     my $data = {
         store_name   => undef,
@@ -81,48 +80,65 @@ sub parse_text {
         total_amount => undef,
     };
 
-    # Store Name Heuristic: Usually the first non-empty line
-    if (@lines) {
-        # Common store keywords to look for
-        my $keywords = qr/ALDI|COLES|WOOLWORTHS|COSTCO|KMART|TARGET|BUNNINGS|IGA|7-ELEVEN/i;
+    return $data unless @lines;
 
-        for my $line (@lines[0..5]) {
+    # 1. Store Name Heuristic: Priority Search
+    # Map common partial/mangled strings to clean names
+    my %store_map = (
+        'ALDI'       => 'ALDI',
+        'COLES'      => 'Coles',
+        'WOOLWORTHS' => 'Woolworths',
+        'worths'     => 'Woolworths',
+        'COSTCO'     => 'Costco',
+        'KMART'      => 'Kmart',
+        'TARGET'     => 'Target',
+        'BUNNINGS'   => 'Bunnings',
+        'IGA'        => 'IGA',
+        '7-ELEVEN'   => '7-Eleven',
+        'BURWOOD EAST' => 'ALDI',
+        'FOREST HILL'  => 'ALDI',
+    );
+
+    # Search ALL lines for any prioritized keyword
+    STORE_SEARCH: for my $line (@lines) {
+        for my $key (keys %store_map) {
+            if ($line =~ /\b$key\b/i) {
+                $data->{store_name} = $store_map{$key};
+                last STORE_SEARCH;
+            }
+        }
+    }
+    # Fallback: First valid-looking word in top 5 lines
+    unless ($data->{store_name}) {
+        for my $line (@lines[0..4]) {
             my $cleaned = trim($line);
-            next if $cleaned =~ /Invoice|Tax|Receipt|\$\$|^ABN|^[^\w\s]+$/i;
-            
-            # Skip noise like "os, aan" (too short or mostly symbols)
-            my $alnum_count = () = $cleaned =~ /[a-zA-Z0-9]/g;
-            next if length($cleaned) < 3 || $alnum_count < (length($cleaned) / 2);
-
-            # If it matches a known store, we're very confident
-            if ($cleaned =~ $keywords) {
-                # Extract only the first word (e.g. "ALDI" from "ALDI STORES")
-                my ($first_word) = $cleaned =~ /^(\w+)/;
-                $data->{store_name} = $first_word || $cleaned;
+            next if $cleaned =~ /Invoice|Tax|Receipt|\$\$|^ABN|^[^\w\s]+$|^\d+$/i;
+            if (my ($word) = $cleaned =~ /^([A-Za-z]+)/) {
+                $data->{store_name} = $word;
                 last;
             }
-
-            # Otherwise, take the first valid-looking line if we haven't found one yet
-            my ($first_word) = $cleaned =~ /^(\w+)/;
-            $data->{store_name} ||= $first_word || $cleaned;
         }
     }
 
-    # Total Amount Heuristic
-    # Look for keywords like TOTAL or AMOUNT followed by a decimal price
-    if ($text =~ /(?:TOTAL|AMOUNT|BAL|DUE|AUD)\s*[:\$]*\s*(\d+[\.,]\d{2})/i) {
-        $data->{total_amount} = $1;
-        $data->{total_amount} =~ s/,/./; # Standardize decimal point
+    # 2. Total Amount Heuristic: Bottom-Up Search
+    # Improved regex to handle $ symbols, spaces, and varied labels
+    my @amounts;
+    while ($text =~ /(?:TOTAL|AMOUNT|BAL|DUE|AUD|Card Sales|EFT)\s*[:\$]*\s*([0-9]{1,4}[\.,][0-9]{2})/gi) {
+        push @amounts, $1;
+    }
+    if (@amounts) {
+        # Take the last one found, as Grand Total is usually the final figure
+        $data->{total_amount} = $amounts[-1];
+        $data->{total_amount} =~ s/,/./;
     }
 
-    # Date Heuristic
-    # Support DD/MM/YY, DD/MM/YYYY, DD.MM.YY, DD-MM-YY
+    # 3. Date Heuristic: Standard Formats
+    # We take the FIRST valid date found
     if ($text =~ m|(\d{1,2})[/\.-](\d{1,2})[/\.-](\d{2,4})|) {
         my ($d, $m, $y) = ($1, $2, $3);
-        $y = "20$y" if length($y) == 2; # Heuristic: Assume 21st century
+        $y = "20$y" if length($y) == 2;
         $data->{receipt_date} = sprintf("%04d-%02d-%02d", $y, $m, $d);
     } 
-    # Support 22FEB26 style found in the test run
     elsif ($text =~ /(\d{1,2})\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s*(\d{2,4})/i) {
         my ($d, $mon, $y) = ($1, uc($2), $3);
         my %months = (JAN=>1,FEB=>2,MAR=>3,APR=>4,MAY=>5,JUN=>6,JUL=>7,AUG=>8,SEP=>9,OCT=>10,NOV=>11,DEC=>12);
