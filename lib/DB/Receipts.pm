@@ -133,4 +133,58 @@ sub DB::delete_receipt_record {
     $sth->execute($id);
 }
 
+# Calculates spending aggregates for the dashboard tiles.
+# Returns: HashRef with week, month, year totals
+sub DB::get_spending_summary {
+    my ($self) = @_;
+    $self->ensure_connection;
+
+    # Weekly: Sum since most recent Monday
+    # Monthly: Sum since 1st of current month
+    # Yearly: Sum since Jan 1st of current year
+    my $sql = <<'SQL';
+        SELECT 
+            SUM(CASE WHEN receipt_date >= DATE_SUB(CURDATE(), INTERVAL (WEEKDAY(CURDATE())) DAY) THEN total_amount ELSE 0 END) as week_total,
+            SUM(CASE WHEN receipt_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN total_amount ELSE 0 END) as month_total,
+            SUM(CASE WHEN receipt_date >= DATE_FORMAT(CURDATE(), '%Y-01-01') THEN total_amount ELSE 0 END) as year_total
+        FROM receipts
+SQL
+
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute();
+    return $sth->fetchrow_hashref() // { week_total => 0, month_total => 0, year_total => 0 };
+}
+
+# Retrieves top stores by spending for each period.
+# Parameters:
+#   limit : Max number of stores to return per period (Default: 5)
+# Returns: HashRef with arrays for week, month, year
+sub DB::get_store_spending_breakdown {
+    my ($self, $limit) = @_;
+    $limit //= 5;
+    $self->ensure_connection;
+
+    my %breakdown = ( week => [], month => [], year => [] );
+
+    my $queries = {
+        week  => "receipt_date >= DATE_SUB(CURDATE(), INTERVAL (WEEKDAY(CURDATE())) DAY)",
+        month => "receipt_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')",
+        year  => "receipt_date >= DATE_FORMAT(CURDATE(), '%Y-01-01')"
+    };
+
+    for my $period (keys %$queries) {
+        my $sql = "SELECT store_name, SUM(total_amount) as total 
+                   FROM receipts 
+                   WHERE $queries->{$period} AND store_name IS NOT NULL AND store_name != ''
+                   GROUP BY store_name 
+                   ORDER BY total DESC 
+                   LIMIT ?";
+        my $sth = $self->{dbh}->prepare($sql);
+        $sth->execute($limit);
+        $breakdown{$period} = $sth->fetchall_arrayref({});
+    }
+
+    return \%breakdown;
+}
+
 1;
