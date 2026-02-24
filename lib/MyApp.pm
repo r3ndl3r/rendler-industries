@@ -437,6 +437,7 @@ sub startup {
     $family->post('/receipts/update/:id')->to('receipts#update');
     $family->post('/receipts/delete/:id')->to('receipts#delete');
     $family->get('/receipts/serve/:id')->to('receipts#serve');
+    $family->post('/receipts/crop/:id')->to('receipts#crop');
     $family->post('/receipts/ocr/:id')->to('receipts#trigger_ocr');
 
         # --- Chess Routes ---
