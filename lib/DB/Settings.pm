@@ -24,6 +24,7 @@ use warnings;
 #     - gotify: { token => '...' }
 #     - app_secret: String
 #     - unsplash_key: String
+#     - gemini_key: String
 # Behavior:
 #   - Uses eval blocks to safely return defaults if tables/keys are missing
 sub DB::get_all_settings {
@@ -68,6 +69,14 @@ sub DB::get_all_settings {
     eval {
         my $email_settings = $self->get_email_settings();
         $settings->{email} = $email_settings;
+    };
+
+    # Safely fetch Google Gemini API key
+    eval {
+        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'gemini_api_key'");
+        $sth->execute();
+        my ($key) = $sth->fetchrow_array();
+        $settings->{gemini_key} = $key || '';
     };
 
     return $settings;
@@ -294,6 +303,41 @@ sub DB::set_timer_reset_hour {
         return $self->{dbh}->do("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'timer_reset_hour'", undef, $hour) > 0;
     } else {
         return $self->{dbh}->do("INSERT INTO app_secrets (key_name, secret_value) VALUES ('timer_reset_hour', ?)", undef, $hour) > 0;
+    }
+}
+
+# Retrieves the Google Gemini API key.
+# Parameters: None
+# Returns:
+# String (API Key) or empty string if not found
+sub DB::get_gemini_key {
+    my ($self) = @_;
+    $self->ensure_connection;
+    my $key = '';
+    eval {
+        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'gemini_api_key'");
+        $sth->execute();
+        ($key) = $sth->fetchrow_array();
+    };
+    return $key || '';
+}
+
+# Updates the Google Gemini API key.
+# Parameters:
+# api_key : New API Key string
+# Returns: Void
+sub DB::update_gemini_key {
+    my ($self, $api_key) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'gemini_api_key'");
+    $sth->execute();
+    my ($count) = $sth->fetchrow_array();
+    if ($count > 0) {
+        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'gemini_api_key'");
+        $sth->execute($api_key);
+    } else {
+        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('gemini_api_key', ?)");
+        $sth->execute($api_key);
     }
 }
 
