@@ -21,11 +21,13 @@ sub index {
     my $settings = $c->db->get_all_settings();
     my $email_settings = $c->db->get_email_settings();
     my $timer_reset_hour = $c->db->get_timer_reset_hour();
+    my $gemini_key = $c->db->get_gemini_key();
     
     $c->stash(
         settings => $settings,
         email_settings => $email_settings,
-        timer_reset_hour => $timer_reset_hour
+        timer_reset_hour => $timer_reset_hour,
+        gemini_key       => $gemini_key
     );
     
     $c->render('settings');
@@ -43,6 +45,7 @@ sub index {
 #   gmail_app_password : (If section=email) Gmail app-specific password
 #   gmail_from_name    : (If section=email) Display name for From header (optional)
 #   timer_reset_hour   : (If section=timers) Hour of day (0-23) when timers reset
+#   gemini_api_key     : (If section=unsplash) API Access Key
 # Returns:
 #   Redirects to settings page with flash message (Success/Error)
 sub update {
@@ -125,8 +128,16 @@ sub update {
                          : sprintf("%d:00 PM", $reset_hour - 12);
         
         $c->flash(message => "Timer reset time set to $display_hour (Australia/Melbourne timezone)");
+    } elsif ($section eq 'gemini') {
+        my $api_key = trim($c->param('gemini_key') // '');
+        $c->db->update_gemini_key($api_key);
+        if ($api_key) {
+            $c->flash(message => 'Gemini API key updated successfully');
+        } else {
+            $c->flash(message => 'Gemini API key cleared');
+        }
     }
-    
+
     return $c->redirect_to('/settings');
 }
 
