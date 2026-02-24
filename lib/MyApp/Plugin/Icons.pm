@@ -59,6 +59,7 @@ sub register {
         'connect4'  => '🔴',
         'chess'     => '♟️',
         'files'     => '📁',
+        'receipts'  => '🧾',
         
         # Status
         'warning'   => '⚠️',
