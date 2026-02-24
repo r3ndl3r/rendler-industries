@@ -84,10 +84,10 @@ sub upload {
     my $filename = $original_filename;
     
     # Metadata tagging (Normalize empty strings to undef for DB NULL)
-    my $store_name   = trim($c->param('store_name') // '') || undef;
+    my $store_name   = $c->param('store_name') ? trim($c->param('store_name')) : undef;
     my $receipt_date = $c->param('receipt_date') || undef;
     my $total_amount = $c->param('total_amount') || undef;
-    my $description  = trim($c->param('description') // '') || undef;
+    my $description  = $c->param('description') ? trim($c->param('description')) : undef;
     
     my $username = $c->session('user');
 
@@ -149,10 +149,10 @@ sub update {
     }
     
     # Process metadata updates (Normalize for DB NULL)
-    my $store_name   = trim($c->param('store_name') // '') || undef;
+    my $store_name   = $c->param('store_name') ? trim($c->param('store_name')) : undef;
     my $receipt_date = $c->param('receipt_date') || undef;
     my $total_amount = $c->param('total_amount') || undef;
-    my $description  = trim($c->param('description') // '') || undef;
+    my $description  = $c->param('description') ? trim($c->param('description')) : undef;
     
     # Execute database update
     eval {
