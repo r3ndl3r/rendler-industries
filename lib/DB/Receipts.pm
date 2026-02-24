@@ -80,8 +80,9 @@ sub DB::get_all_receipts_metadata {
     $self->ensure_connection;
     
     my $sth = $self->{dbh}->prepare(
-        "SELECT id, filename, original_filename, mime_type, file_size, uploaded_by, uploaded_at, store_name, receipt_date, total_amount, description
-        FROM receipts ORDER BY uploaded_at DESC"
+        "SELECT id, filename, original_filename, mime_type, file_size, uploaded_by, uploaded_at, store_name, receipt_date, 
+        DATE_FORMAT(receipt_date, '%d-%m-%Y') as formatted_date, total_amount, description
+        FROM receipts ORDER BY receipt_date DESC, uploaded_at DESC"
     );
     
     $sth->execute();
