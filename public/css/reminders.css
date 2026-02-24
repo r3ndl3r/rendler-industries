@@ -173,6 +173,21 @@
     border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
+.one-off-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    width: fit-content;
+}
+
 /* Modal Enhancements */
 .days-selector, .recipients-selector {
     display: flex;

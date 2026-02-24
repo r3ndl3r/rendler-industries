@@ -77,9 +77,10 @@ sub add {
     
     my $days_str = join(',', @days);
     my $user_id = $c->current_user_id;
+    my $is_one_off = $c->param('is_one_off') ? 1 : 0;
     
     eval {
-        $c->db->create_reminder($title, $desc, $days_str, $time, $user_id, \@uids);
+        $c->db->create_reminder($title, $desc, $days_str, $time, $user_id, \@uids, $is_one_off);
     };
     
     if ($@) {
@@ -124,9 +125,10 @@ sub update {
     $time .= ":00" if $time =~ /^\d{2}:\d{2}$/;
     
     my $days_str = join(',', @days);
+    my $is_one_off = $c->param('is_one_off') ? 1 : 0;
     
     eval {
-        $c->db->update_reminder($id, $title, $desc, $days_str, $time, \@uids);
+        $c->db->update_reminder($id, $title, $desc, $days_str, $time, \@uids, $is_one_off);
     };
     
     if ($@) {

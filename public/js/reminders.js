@@ -20,6 +20,7 @@ function openEditModal(btn) {
     document.getElementById('editReminderTitle').value = reminder.title;
     document.getElementById('editReminderDescription').value = reminder.description || '';
     document.getElementById('editReminderTime').value = reminder.reminder_time.substring(0, 5);
+    document.getElementById('editReminderOneOff').checked = reminder.is_one_off == 1;
     
     // Set form action
     form.action = `/reminders/update/${reminder.id}`;
