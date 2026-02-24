@@ -26,6 +26,7 @@ sub register {
         'download'  => '📥',
         'settings'  => '⚙️',
         'bonus'     => '🎁',
+        'crop'      => '✂️',
         
         # Navigation / UI
         'home'      => '🏠',
