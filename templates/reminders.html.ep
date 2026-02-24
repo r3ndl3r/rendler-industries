@@ -31,7 +31,12 @@
                 my $today = strftime('%Y-%m-%d', localtime);
                 for my $r (@$reminders) { 
             %>
-                <div class="glass-panel reminder-card <%= $r->{is_active} ? '' : 'paused' %>" data-id="<%= $r->{id} %>">
+                <div class="glass-panel reminder-card <%= $r->{is_active} ? '' : 'paused' %>" 
+                     data-id="<%= $r->{id} %>"
+                     data-time="<%= substr($r->{reminder_time}, 0, 5) %>"
+                     data-days="<%= $r->{days_of_week} // '' %>"
+                     data-one-off="<%= $r->{is_one_off} // 0 %>"
+                     data-last-run="<%= $r->{last_run_at} // '' %>">
                     <div class="reminder-header">
                         <div style="display: flex; flex-direction: column; gap: 5px;">
                             <h2 class="reminder-title"><%= $r->{title} %></h2>
@@ -62,6 +67,7 @@
                         %>
                         <%= $display_time %>
                     </div>
+                    <div class="reminder-countdown" id="countdown-<%= $r->{id} %>"></div>
 
                     <div class="reminder-days">
                         <% my %active_days = map { $_ => 1 } split(',', $r->{days_of_week}); %>
