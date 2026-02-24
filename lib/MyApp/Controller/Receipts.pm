@@ -167,6 +167,46 @@ sub update {
     return $c->redirect_to('/receipts');
 }
 
+# Processes a client-side cropped image update.
+# Route: POST /receipts/crop/:id
+# Parameters:
+#   id            : Unique Receipt ID
+#   cropped_image : Multipart binary Blob from Cropper.js
+# Returns:
+#   JSON: { success => 1/0, error => "..." }
+sub crop {
+    my $c = shift;
+    my $id = $c->param('id');
+    
+    # Validation
+    my $receipt = $c->db->get_receipt_by_id($id);
+    return $c->render(json => { success => 0, error => "Receipt not found" }, status => 404) unless $receipt;
+    
+    # PERMISSION: Only uploader or admin can edit
+    unless ($c->session('user') eq $receipt->{uploaded_by} || $c->is_admin) {
+        return $c->render(json => { success => 0, error => "Access Denied" }, status => 403);
+    }
+
+    # Get the cropped blob from the request
+    my $upload = $c->param('cropped_image');
+    return $c->render(json => { success => 0, error => "No image data received" }, status => 400) unless $upload;
+
+    my $file_data = $upload->asset->slurp;
+    my $file_size = $upload->size;
+
+    eval {
+        $c->db->update_receipt_binary($id, $file_data, $file_size);
+    };
+
+    if ($@) {
+        $c->app->log->error("Failed to update receipt binary for ID $id: $@");
+        return $c->render(json => { success => 0, error => "Database failure" }, status => 500);
+    }
+
+    $c->flash(message => "Receipt image successfully cropped.");
+    return $c->render(json => { success => 1 });
+}
+
 # Permanently deletes a receipt.
 # Route: POST /receipts/delete/:id
 # Parameters:
