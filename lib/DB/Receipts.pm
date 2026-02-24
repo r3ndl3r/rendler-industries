@@ -120,6 +120,22 @@ sub DB::update_receipt_data {
     $sth->execute($store_name, $receipt_date, $total_amount, $raw_text, $id);
 }
 
+# Updates the raw binary data for a receipt (Used by Cropper).
+# Parameters:
+#   id        : Unique ID of the receipt
+#   file_data : New binary content
+#   file_size : Size in bytes
+sub DB::update_receipt_binary {
+    my ($self, $id, $file_data, $file_size) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("UPDATE receipts SET file_data = ?, file_size = ? WHERE id = ?");
+    $sth->bind_param(1, $file_data, SQL_BLOB);
+    $sth->bind_param(2, $file_size);
+    $sth->bind_param(3, $id);
+    $sth->execute();
+}
+
 # Permanently removes a receipt record.
 # Parameters:
 #   id : Unique ID of the receipt
