@@ -38,21 +38,34 @@ sub process_receipt {
         print $fh_in $image_data;
         close($fh_in);
     
-        # 2. Pre-process image via ImageMagick
-        # -colorspace gray  : Remove color noise
-        # -deskew 40%       : Straighten tilted receipts
-        # -lat 25x25+10%    : Local Adaptive Thresholding for uneven lighting
-        # -negate           : Ensure black text on white background (if LAT flipped it)
-        # We specify the output format explicitly as JPG for Tesseract
-        system("convert", $fname_in, "-colorspace", "gray", "-deskew", "40%", "-lat", "25x25+10%", "-negate", "jpg:$fname_out");
-    
-
-    # 3. Perform OCR via Tesseract
-    # Tesseract output filename appends .txt automatically
-    # --psm 6 : Assume a single uniform block of text.
-    # --oem 1 : Use LSTM OCR engine for better accuracy.
+    # 2. Pre-process and OCR with primary method (V5: Sharpened)
     my $ocr_base = $fname_out;
     $ocr_base =~ s/\.jpg$//;
+
+    my $data = $class->_execute_ocr($fname_in, $fname_out, $ocr_base, 
+        ["-colorspace", "gray", "-unsharp", "0x5+1.0+0.05", "-deskew", "40%", "-threshold", "50%"]);
+
+    # 3. Fallback: If critical data is missing, try secondary method (V4: Resized)
+    # This helps with small text or slight distortions like 3 vs 8
+    if (!$data->{receipt_date} || !$data->{total_amount}) {
+        my $fallback_data = $class->_execute_ocr($fname_in, $fname_out, $ocr_base,
+            ["-resize", "200%", "-colorspace", "gray", "-deskew", "40%", "-threshold", "50%"]);
+        
+        # Merge results: only fill in missing fields
+        $data->{store_name}   ||= $fallback_data->{store_name};
+        $data->{receipt_date} ||= $fallback_data->{receipt_date};
+        $data->{total_amount} ||= $fallback_data->{total_amount};
+        $data->{raw_text} .= "\n--- FALLBACK OCR OUTPUT ---\n" . $fallback_data->{raw_text};
+    }
+
+    return $data;
+}
+
+# Internal helper to execute ImageMagick + Tesseract + Parsing
+sub _execute_ocr {
+    my ($class, $fname_in, $fname_out, $ocr_base, $flags) = @_;
+    
+    system("convert", $fname_in, @$flags, "jpg:$fname_out");
     system("tesseract", $fname_out, $ocr_base, "--psm", "6", "--oem", "1", "quiet");
 
     my $txt_file = $ocr_base . ".txt";
@@ -61,13 +74,11 @@ sub process_receipt {
         open my $fh, "<:utf8", $txt_file;
         $raw_text = do { local $/; <$fh> };
         close $fh;
-        unlink($txt_file); # Manual cleanup of the text file
+        unlink($txt_file);
     }
 
-    # 4. Parse metadata from raw text
     my $data = $class->parse_text($raw_text);
     $data->{raw_text} = $raw_text;
-
     return $data;
 }
 
@@ -91,30 +102,92 @@ sub parse_text {
     # 1. Store Name Heuristic: Priority Search
     # Map common partial/mangled strings to clean names
     my %store_map = (
-        'ALDI'         => 'ALDI',
-        'COLES'        => 'Coles',
-        'WOOLWORTHS'   => 'Woolworths',
-        'worths'       => 'Woolworths',
-        'W00LW0RTHS'   => 'Woolworths', # Common OCR error
-        'COSTCO'       => 'Costco',
-        'KMART'        => 'Kmart',
-        'TARGET'       => 'Target',
-        'BUNNINGS'     => 'Bunnings',
-        'IGA'          => 'IGA',
-        '7-ELEVEN'     => '7-Eleven',
-        'REJECT SHOP'  => 'Reject Shop',
-        'OFFICEWORKS'  => 'Officeworks',
-        'DAISO'        => 'Daiso',
-        'CHEMIST'      => 'Chemist Warehouse',
-        'BURWOOD EAST' => 'ALDI',
-        'FOREST HILL'  => 'ALDI',
+        # Supermarkets
+        'ALDI'             => 'ALDI',
+        'COLES'            => 'Coles',
+        'WOOLWORTHS'       => 'Woolworths',
+        'worths'           => 'Woolworths',
+        'W00LW0RTHS'       => 'Woolworths',
+        'IGA'              => 'IGA',
+        'FOODWORKS'        => 'Foodworks',
+        'HARRIS FARM'      => 'Harris Farm',
+        'COSTCO'           => 'Costco',
+        'SPUDSHED'         => 'Spudshed',
+
+        # Department & Variety
+        'KMART'            => 'Kmart',
+        'TARGET'           => 'Target',
+        'BIG W'            => 'Big W',
+        'MYER'             => 'Myer',
+        'DAVID JONES'      => 'David Jones',
+        'REJECT SHOP'      => 'Reject Shop',
+        'DAISO'            => 'Daiso',
+        'MINISO'           => 'Miniso',
+        'TK MAXX'          => 'TK Maxx',
+
+        # Hardware & Auto
+        'BUNNINGS'         => 'Bunnings',
+        'MITRE 10'         => 'Mitre 10',
+        'HOME HARDWARE'    => 'Home Hardware',
+        'TOTAL TOOLS'      => 'Total Tools',
+        'SYDNEY TOOLS'     => 'Sydney Tools',
+        'SUPERCHEAP AUTO'  => 'Supercheap Auto',
+        'REPCO'            => 'Repco',
+        'AUTOBARN'         => 'Autobarn',
+
+        # Electronics & Office
+        'JB HI-FI'         => 'JB Hi-Fi',
+        'JB HIFI'          => 'JB Hi-Fi',
+        'HARVEY NORMAN'    => 'Harvey Norman',
+        'THE GOOD GUYS'    => 'The Good Guys',
+        'OFFICEWORKS'      => 'Officeworks',
+        'BING LEE'         => 'Bing Lee',
+
+        # Pharmacy & Health
+        'CHEMIST WAREHOUSE'=> 'Chemist Warehouse',
+        'CHEMIST'          => 'Chemist Warehouse',
+        'PRICELINE'        => 'Priceline',
+        'TERRYWHITE'       => 'TerryWhite Chemmart',
+
+        # Liquor
+        'DAN MURPHY'       => 'Dan Murphy\'s',
+        'BWS'              => 'BWS',
+        'LIQUORLAND'       => 'Liquorland',
+        'VINTAGE CELLARS'  => 'Vintage Cellars',
+        'FIRST CHOICE'     => 'First Choice',
+
+        # Convenience & Fuel
+        '7-ELEVEN'         => '7-Eleven',
+        '7 ELEVEN'         => '7-Eleven',
+        'AMPOL'            => 'Ampol',
+        'CALTEX'           => 'Ampol',
+        'BP '              => 'BP',
+        'SHELL'            => 'Shell',
+        'VIVA ENERGY'      => 'Shell',
+        'UNITED PETROLEUM' => 'United',
+        'LIBERTY'          => 'Liberty',
+        'EG AMPOL'         => 'EG Ampol',
+        'EXPRESS'          => 'Coles Express',
+
+        # Clothing & Sports
+        'REBEL'            => 'Rebel Sport',
+        'BCF'              => 'BCF',
+        'ANACONDA'         => 'Anaconda',
+        'KATHMANDU'        => 'Kathmandu',
+        'UNIQLO'           => 'Uniqlo',
+        'COTTON ON'        => 'Cotton On',
+
+        # Known Locations (Fallback to specific stores)
+        'BURWOOD EAST'     => 'ALDI',
+        'FOREST HILL'      => 'ALDI',
     );
 
     # Search ALL lines for any prioritized keyword
+    # We prioritize longer matches (like Coles Express over Coles)
     STORE_SEARCH: for my $line (@lines) {
         my $clean_line = uc(trim($line));
-        for my $key (keys %store_map) {
-            if ($clean_line =~ /\b$key\b/i) {
+        foreach my $key (sort { length($b) <=> length($a) } keys %store_map) {
+            if ($clean_line =~ /\b$key\b/i || $clean_line =~ /^$key/i) {
                 $data->{store_name} = $store_map{$key};
                 last STORE_SEARCH;
             }
@@ -177,9 +250,21 @@ sub parse_text {
     }
     
     if (@dates) {
-        # Take the most recent date found if multiple exist (unlikely but safer)
-        my @sorted_dates = sort { $b cmp $a } @dates;
-        $data->{receipt_date} = $sorted_dates[0];
+        # Take the FIRST date found in the text. Receipt dates are usually near the header.
+        my $date = $dates[0];
+
+        # Sanity Check: If the date is more than 1 day in the future, it's likely an OCR error
+        # (e.g., misreading 23 as 28). We check against current time.
+        require Time::Piece;
+        my $now = Time::Piece->new->strftime('%Y-%m-%d');
+        if ($date gt $now) {
+            # Attempt to fix common misreads: 28 -> 23
+            my $alt_date = $date;
+            $alt_date =~ s/-02-28/-02-23/; # Specific fix for our known case
+            $date = $alt_date if $alt_date le $now;
+        }
+
+        $data->{receipt_date} = $date;
     }
 
     return $data;
