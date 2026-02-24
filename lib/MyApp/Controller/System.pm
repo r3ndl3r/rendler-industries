@@ -102,7 +102,11 @@ sub _run_reminder_maintenance {
             
             # Mark as sent for today if not already done
             unless ($processed_reminder_ids{$r->{id}}) {
-                $c->db->mark_reminder_sent($r->{id});
+                if ($r->{is_one_off}) {
+                    $c->db->delete_reminder($r->{id});
+                } else {
+                    $c->db->mark_reminder_sent($r->{id});
+                }
                 $processed_reminder_ids{$r->{id}} = 1;
             }
         } else {

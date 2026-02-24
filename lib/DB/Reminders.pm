@@ -49,15 +49,15 @@ sub DB::get_all_reminders {
 # Returns:
 #   Integer ID of the new reminder
 sub DB::create_reminder {
-    my ($self, $title, $desc, $days, $time, $user_id, $recipient_ids) = @_;
+    my ($self, $title, $desc, $days, $time, $user_id, $recipient_ids, $is_one_off) = @_;
     $self->ensure_connection;
     
     # Ensure days is a scalar string (flattens accidental array refs from controller)
     my $clean_days = ref($days) eq 'ARRAY' ? join(',', @$days) : $days;
     
     # 1. Insert main reminder rule
-    my $sth = $self->{dbh}->prepare("INSERT INTO reminders (title, description, days_of_week, reminder_time, created_by) VALUES (?, ?, ?, ?, ?)");
-    $sth->execute($title, $desc, $clean_days, $time, $user_id);
+    my $sth = $self->{dbh}->prepare("INSERT INTO reminders (title, description, days_of_week, reminder_time, created_by, is_one_off) VALUES (?, ?, ?, ?, ?, ?)");
+    $sth->execute($title, $desc, $clean_days, $time, $user_id, $is_one_off // 0);
     my $reminder_id = $self->{dbh}->last_insert_id();
     
     # 2. Map recipients
@@ -76,15 +76,15 @@ sub DB::create_reminder {
 
 # Updates an existing reminder and its recipient list.
 sub DB::update_reminder {
-    my ($self, $id, $title, $desc, $days, $time, $recipient_ids) = @_;
+    my ($self, $id, $title, $desc, $days, $time, $recipient_ids, $is_one_off) = @_;
     $self->ensure_connection;
     
     # Ensure days is a scalar string
     my $clean_days = ref($days) eq 'ARRAY' ? join(',', @$days) : $days;
     
     # 1. Update main attributes
-    my $sth = $self->{dbh}->prepare("UPDATE reminders SET title = ?, description = ?, days_of_week = ?, reminder_time = ? WHERE id = ?");
-    $sth->execute($title, $desc, $clean_days, $time, $id);
+    my $sth = $self->{dbh}->prepare("UPDATE reminders SET title = ?, description = ?, days_of_week = ?, reminder_time = ?, is_one_off = ? WHERE id = ?");
+    $sth->execute($title, $desc, $clean_days, $time, $is_one_off // 0, $id);
     
     # 2. Refresh recipients (Delete and Re-insert)
     $self->{dbh}->do("DELETE FROM reminder_recipients WHERE reminder_id = ?", undef, $id);
