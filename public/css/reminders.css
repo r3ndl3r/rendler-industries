@@ -100,12 +100,14 @@
 }
 
 .reminder-countdown {
-    font-size: 0.8rem;
-    color: rgba(144, 202, 249, 0.5);
+    font-size: 1.1rem;
+    color: rgba(144, 202, 249, 0.7);
     font-weight: 500;
+    font-style: italic;
     letter-spacing: 0.5px;
-    margin-top: -0.75rem;
-    min-height: 1rem;
+    margin-left: 0.5rem;
+    text-shadow: 0 0 10px rgba(144, 202, 249, 0.4);
+    opacity: 0.8;
 }
 
 .clock-icon {
