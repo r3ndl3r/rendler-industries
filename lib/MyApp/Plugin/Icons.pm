@@ -39,9 +39,16 @@ sub register {
         'calendar'  => '📅',
         'link'      => '🔗',
         'kangaroo'  => '🦘',
+        'quick'     => '🚀',
         'uno'       => '🃏',
         'chess'     => '♟️',
         'chelsea'   => '🏖️',
+        'phonebook' => '📞',
+        'clipboard' => '📋',
+        'login'     => '🔑',
+        'register'  => '📝',
+        'quiz'      => '❓',
+        'admin'     => '🛡️',
         
         # Permissions
         'perm_admin'  => '🛡️',
@@ -61,6 +68,7 @@ sub register {
         'chess'     => '♟️',
         'files'     => '📁',
         'receipts'  => '🧾',
+        'reminders' => '🔔',
         
         # Status
         'warning'   => '⚠️',
