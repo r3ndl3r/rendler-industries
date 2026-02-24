@@ -7,9 +7,10 @@
     <link rel="stylesheet" href="/css/files.css">
     <link rel="stylesheet" href="/css/receipts.css">
     <script defer src="/js/receipts.js"></script>
-    <!-- Cropper.js -->
+    <!-- Cropper.js & HEIC Support -->
     <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 % end
 
 <div class="admin-container">

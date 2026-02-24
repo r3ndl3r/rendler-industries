@@ -28,21 +28,24 @@ use Mojo::Util qw(trim);
 sub process_receipt {
     my ($class, $image_data) = @_;
 
-    # 1. Create temporary files for processing
-    # Use UNLINK => 1 to ensure cleanup on script exit/crash
-    my ($fh_in, $fname_in)   = tempfile(SUFFIX => '.jpg', UNLINK => 1);
-    my ($fh_out, $fname_out) = tempfile(SUFFIX => '.jpg', UNLINK => 1);
+        # 1. Create temporary files for processing
+        # Use UNLINK => 1 to ensure cleanup on script exit/crash
+        # Note: We remove specific SUFFIX from input to let ImageMagick detect format via magic bytes
+        my ($fh_in, $fname_in)   = tempfile(UNLINK => 1);
+        my ($fh_out, $fname_out) = tempfile(SUFFIX => '.jpg', UNLINK => 1);
+        
+        binmode($fh_in);
+        print $fh_in $image_data;
+        close($fh_in);
     
-    binmode($fh_in);
-    print $fh_in $image_data;
-    close($fh_in);
-
-    # 2. Pre-process image via ImageMagick
-    # -colorspace gray  : Remove color noise
-    # -deskew 40%       : Straighten tilted receipts
-    # -lat 25x25+10%    : Local Adaptive Thresholding for uneven lighting
-    # -negate           : Ensure black text on white background (if LAT flipped it)
-    system("convert", $fname_in, "-colorspace", "gray", "-deskew", "40%", "-lat", "25x25+10%", "-negate", $fname_out);
+        # 2. Pre-process image via ImageMagick
+        # -colorspace gray  : Remove color noise
+        # -deskew 40%       : Straighten tilted receipts
+        # -lat 25x25+10%    : Local Adaptive Thresholding for uneven lighting
+        # -negate           : Ensure black text on white background (if LAT flipped it)
+        # We specify the output format explicitly as JPG for Tesseract
+        system("convert", $fname_in, "-colorspace", "gray", "-deskew", "40%", "-lat", "25x25+10%", "-negate", "jpg:$fname_out");
+    
 
     # 3. Perform OCR via Tesseract
     # Tesseract output filename appends .txt automatically
