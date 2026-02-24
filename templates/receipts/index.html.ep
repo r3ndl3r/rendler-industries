@@ -1,0 +1,152 @@
+<%# /templates/receipts/index.html.ep %>
+
+% layout 'default';
+% title icon('receipts') . ' Receipts';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/files.css">
+    <link rel="stylesheet" href="/css/receipts.css">
+    <script defer src="/js/receipts.js"></script>
+% end
+
+<div class="admin-container">
+    <div class="header-bar">
+        <h1><%= icon('receipts') %> <span>Receipt Ledger</span></h1>
+        <div class="manage-actions">
+            <a href="/receipts/upload" class="action-btn"><%= icon('upload') %> Upload Receipt</a>
+        </div>
+    </div>
+
+    <% if (my $msg = flash('message')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $msg %>", 'success');
+            });
+        </script>
+    <% } %>
+    
+    <% if (my $error = flash('error')) { %>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                showToast("<%= $error %>", 'error');
+            });
+        </script>
+    <% } %>
+
+    <div class="files-list">
+        <table class="data-table files-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;">Preview</th>
+                                    <th>Filename</th>
+                                    <th>Store</th>
+                                    <th>Date</th>
+                                    <th>Total</th>
+                                    <th>Uploaded By</th>
+                                    <th style="width: 100px; text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                % if (@$receipts) {
+                                    % for my $r (@$receipts) {
+                                        <tr>
+                                            <td class="col-icon" data-label="Preview" style="text-align: center;">
+                                                % if ($r->{mime_type} =~ /^image/) {
+                                                    <div class="receipt-thumbnail-wrapper" onclick="openReceiptModal('<%= $r->{id} %>')">
+                                                        <img src="/receipts/serve/<%= $r->{id} %>" class="receipt-thumb">
+                                                    </div>
+                                                % } else {
+                                                    <span style="font-size: 1.5rem;"><%= icon('receipts') %></span>
+                                                % }
+                                            </td>
+                                            <td data-label="Filename">
+                                                <small><%= $r->{original_filename} %></small>
+                                            </td>
+                                            <td data-label="Store">
+                                                <strong><%= $r->{store_name} || 'Unknown' %></strong>
+                                                % if ($r->{description}) {
+                                                    <br><small style="color: rgba(255,255,255,0.4);"><%= $r->{description} %></small>
+                                                % }
+                                            </td>                                <td data-label="Date"><%= $r->{receipt_date} || '-' %></td>
+                                <td data-label="Total" style="color: #69f0ae; font-weight: bold;">$<%= sprintf("%.2f", $r->{total_amount} // 0) %></td>
+                                <td data-label="Uploaded By"><small><%= $r->{uploaded_by} %></small></td>
+                                <td class="col-actions">
+                                    <div class="action-buttons">
+                                        <a href="/receipts/serve/<%= $r->{id} %>" target="_blank" class="btn-icon-view" title="View Full Image">
+                                            <%= icon('view') %>
+                                        </a>
+                                        % if ($r->{uploaded_by} eq session('user') || is_admin) {
+                                            <button type="button" class="btn-icon-bonus" onclick="triggerOCR('<%= $r->{id} %>')" title="Scan with OCR" id="ocr-btn-<%= $r->{id} %>">
+                                                <%= icon('search') %>
+                                            </button>
+                                            <button type="button" class="btn-icon-edit" onclick='openEditModal(<%== Mojo::JSON::to_json($r) %>)' title="Edit Details">
+                                                <%= icon('edit') %>
+                                            </button>
+                                            <form action="/receipts/delete/<%= $r->{id} %>" method="POST" onsubmit="return confirm('Permanently delete this receipt?');" style="display:inline;">
+                                                <button type="submit" class="btn-icon-delete">
+                                                    <%= icon('delete') %>
+                                                </button>
+                                            </form>
+                                        % }
+                                    </div>
+                                </td>
+                            </tr>
+                        % }
+                    % } else {
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: rgba(255,255,255,0.4);">
+                                📭 No receipts found. Upload one to get started.
+                            </td>
+                        </tr>
+                    % }
+                </tbody>
+            </table>
+        </div>
+</div>
+
+<!-- Edit Receipt Modal -->
+<div id="editModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><%= icon('edit') %> Edit Receipt</h3>
+            <span class="close-btn" onclick="closeEditModal()">&times;</span>
+        </div>
+        <form id="editForm" method="POST" action="">
+            <div class="form-group">
+                <label>Store Name</label>
+                <input type="text" name="store_name" id="editStoreName" class="form-control" list="edit_store_list" autocomplete="on">
+                <datalist id="edit_store_list">
+                    <% for my $name (@{stash('store_names') // []}) { %>
+                        <option value="<%= $name %>"><%= $name %></option>
+                    <% } %>
+                </datalist>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" name="receipt_date" id="editDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Total ($)</label>
+                    <input type="number" name="total_amount" id="editAmount" class="form-control" step="0.01" min="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <input type="text" name="description" id="editDescription" class="form-control">
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-save"><%= icon('save') %> Save Changes</button>
+                <button type="button" class="btn btn-cancel" onclick="closeEditModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Receipt Modal -->
+<div id="receiptModal" class="modal-overlay" style="display: none;" onclick="closeReceiptModal()">
+    <div class="image-modal-content" onclick="event.stopPropagation()">
+        <span class="close-btn" onclick="closeReceiptModal()"><%= icon('close') %></span>
+        <img id="modalImg" src="" style="max-width: 100%; border-radius: 8px;">
+    </div>
+</div>

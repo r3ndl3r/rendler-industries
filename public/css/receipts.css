@@ -1,0 +1,64 @@
+/* /public/css/receipts.css */
+
+/* Specialized Thumbnail styling for the Ledger */
+.receipt-thumb {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #0f172a;
+    transition: transform 0.2s;
+    cursor: zoom-in;
+}
+
+.receipt-thumb:hover {
+    transform: scale(1.1);
+    border-color: #3b82f6;
+}
+
+.receipt-thumbnail-wrapper {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Image Viewer Modal Specifics */
+.image-modal-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: inline-block;
+}
+
+/* Mobile Responsiveness for Receipts Table (Gold Standard from files.css) */
+@media (max-width: 768px) {
+    .files-table thead { display: none; }
+    .files-table, .files-table tbody { display: block; background: transparent; box-shadow: none; border: none; }
+    .files-table tr {
+        display: block; background: #1e293b; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.75rem; border: 1px solid #334155; position: relative; padding-left: 4.5rem;
+    }
+    .files-table td { display: block; padding: 0.25rem 0; border: none; width: 100% !important; text-align: left !important; }
+    .files-table td::before {
+        content: attr(data-label); font-weight: 600; color: #94a3b8; text-transform: uppercase; font-size: 0.7rem; margin-right: 0.5rem; min-width: 80px; display: inline-block;
+    }
+    .col-icon { position: absolute; left: 0.75rem; top: 1.5rem; width: 3rem !important; display: flex; justify-content: center; font-size: 2rem; padding: 0 !important; }
+    .col-icon::before { content: none !important; }
+    
+    /* Action Button Container Aligned with Files standard */
+    .action-buttons { 
+        display: flex; 
+        justify-content: center; 
+        gap: 0.5rem; 
+        margin-top: 0.5rem; 
+        padding-top: 0.75rem; 
+        border-top: 1px solid #334155;
+        margin-left: -3.5rem; /* Counteract parent padding to center globally */
+    }
+    .col-actions::before { content: none !important; }
+
+    /* Fix column wrapping in upload form */
+    .admin-container .edit-form > div[style*="grid"] {
+        grid-template-columns: 1fr !important;
+        gap: 0 !important;
+    }
+}
