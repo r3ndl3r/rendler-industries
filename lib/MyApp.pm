@@ -192,21 +192,22 @@ sub startup {
         my $ua = Mojo::UserAgent->new;
         my $url = "http://127.0.0.1:3000/message/dm/$discord_id";
         
+        my $success = 0;
         eval {
             my $tx = $ua->post($url => json => { text => $text });
             if (my $res = $tx->success) {
                 $c->app->log->info("Discord DM sent to $discord_id");
-                return 1;
+                $success = 1;
             } else {
                 my $err = $tx->error;
                 $c->app->log->error("Discord API error ($discord_id): " . $err->{message});
-                return 0;
             }
         };
         if ($@) {
             $c->app->log->error("Discord DM failed ($discord_id): $@");
             return 0;
         }
+        return $success;
     });
 
     # Helper: Unified notification dispatcher (Discord priority with Email fallback)
@@ -224,7 +225,9 @@ sub startup {
 
         # 1. Try Discord if ID is set
         if ($user->{discord_id}) {
-            return $c->send_discord_dm($user->{discord_id}, $message);
+            my $discord_ok = $c->send_discord_dm($user->{discord_id}, $message);
+            return 1 if $discord_ok;
+            # Fall through if Discord failed
         }
 
         # 2. Fallback to Email
