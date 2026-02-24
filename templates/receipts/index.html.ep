@@ -33,6 +33,45 @@
         </script>
     <% } %>
 
+    <div class="spending-stats">
+        <div class="stat-tile">
+            <span class="stat-label">Weekly Spend</span>
+            <span class="stat-value">$<%= sprintf("%.2f", $summary->{week_total} // 0) %></span>
+            <div class="stat-breakdown">
+                % for my $s (@{$breakdown->{week}}) {
+                    <div class="breakdown-row">
+                        <span class="breakdown-store"><%= $s->{store_name} %></span>
+                        <span class="breakdown-total">$<%= sprintf("%.2f", $s->{total}) %></span>
+                    </div>
+                % }
+            </div>
+        </div>
+        <div class="stat-tile">
+            <span class="stat-label">Monthly Spend</span>
+            <span class="stat-value">$<%= sprintf("%.2f", $summary->{month_total} // 0) %></span>
+            <div class="stat-breakdown">
+                % for my $s (@{$breakdown->{month}}) {
+                    <div class="breakdown-row">
+                        <span class="breakdown-store"><%= $s->{store_name} %></span>
+                        <span class="breakdown-total">$<%= sprintf("%.2f", $s->{total}) %></span>
+                    </div>
+                % }
+            </div>
+        </div>
+        <div class="stat-tile">
+            <span class="stat-label">Yearly Spend</span>
+            <span class="stat-value">$<%= sprintf("%.2f", $summary->{year_total} // 0) %></span>
+            <div class="stat-breakdown">
+                % for my $s (@{$breakdown->{year}}) {
+                    <div class="breakdown-row">
+                        <span class="breakdown-store"><%= $s->{store_name} %></span>
+                        <span class="breakdown-total">$<%= sprintf("%.2f", $s->{total}) %></span>
+                    </div>
+                % }
+            </div>
+        </div>
+    </div>
+
     <div class="files-list">
         <table class="data-table files-table">
                             <thead>

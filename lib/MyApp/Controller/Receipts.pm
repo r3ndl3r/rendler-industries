@@ -25,7 +25,16 @@ sub index {
     my $receipts = $c->db->get_all_receipts_metadata();
     my $store_names = $c->db->get_unique_store_names();
     
-    $c->render('receipts/index', receipts => $receipts, store_names => $store_names);
+    # Fetch spending summaries for dashboard tiles
+    my $summary   = $c->db->get_spending_summary();
+    my $breakdown = $c->db->get_store_spending_breakdown(3); # Limit to top 3 per tile
+    
+    $c->render('receipts/index', 
+        receipts    => $receipts, 
+        store_names => $store_names,
+        summary     => $summary,
+        breakdown   => $breakdown
+    );
 }
 
 # Renders the receipt upload form.
