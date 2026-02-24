@@ -36,6 +36,10 @@ use URI;
 sub startup {
     my $self = shift;
 
+    # Configure Logging: Ensure logs are written to a file instead of just STDERR
+    my $log_path = $self->home->child('ignore', 'mojo.log');
+    $self->log(Mojo::Log->new(path => $log_path, level => 'info'));
+
     # Set maximum request size limit (1GB) to support large file uploads
     $self->max_request_size(1024 * 1024 * 1024);
     
