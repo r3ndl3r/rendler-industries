@@ -160,6 +160,16 @@ document.addEventListener('DOMContentLoaded', function() {
             cropper = null;
         }
         document.getElementById('cropModal').style.display = 'none';
+        
+        // If we were in pre-upload and cancelled without applying, 
+        // the file is still selected but maybe user wants to re-select.
+        // We ensure the filename display is still accurate.
+        if (fileInput && fileInput.files.length > 0) {
+            updateFileName(fileInput.files[0].name);
+        } else if (fileNameDisplay) {
+            fileNameDisplay.textContent = '';
+            fileNameDisplay.style.display = 'none';
+        }
     };
 
     window.saveCrop = async function() {
