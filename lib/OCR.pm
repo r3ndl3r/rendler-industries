@@ -38,16 +38,19 @@ sub process_receipt {
     close($fh_in);
 
     # 2. Pre-process image via ImageMagick
-    # -colorspace gray : Remove color noise
-    # -deskew 40%      : Straighten tilted receipts
-    # -threshold 50%   : Convert to high-contrast B&W for Tesseract
-    system("convert", $fname_in, "-colorspace", "gray", "-deskew", "40%", "-threshold", "50%", $fname_out);
+    # -colorspace gray  : Remove color noise
+    # -deskew 40%       : Straighten tilted receipts
+    # -lat 25x25+10%    : Local Adaptive Thresholding for uneven lighting
+    # -negate           : Ensure black text on white background (if LAT flipped it)
+    system("convert", $fname_in, "-colorspace", "gray", "-deskew", "40%", "-lat", "25x25+10%", "-negate", $fname_out);
 
     # 3. Perform OCR via Tesseract
     # Tesseract output filename appends .txt automatically
+    # --psm 6 : Assume a single uniform block of text.
+    # --oem 1 : Use LSTM OCR engine for better accuracy.
     my $ocr_base = $fname_out;
     $ocr_base =~ s/\.jpg$//;
-    system("tesseract", $fname_out, $ocr_base, "--psm", "6", "quiet");
+    system("tesseract", $fname_out, $ocr_base, "--psm", "6", "--oem", "1", "quiet");
 
     my $txt_file = $ocr_base . ".txt";
     my $raw_text = "";
@@ -85,36 +88,45 @@ sub parse_text {
     # 1. Store Name Heuristic: Priority Search
     # Map common partial/mangled strings to clean names
     my %store_map = (
-        'ALDI'       => 'ALDI',
-        'COLES'      => 'Coles',
-        'WOOLWORTHS' => 'Woolworths',
-        'worths'     => 'Woolworths',
-        'COSTCO'     => 'Costco',
-        'KMART'      => 'Kmart',
-        'TARGET'     => 'Target',
-        'BUNNINGS'   => 'Bunnings',
-        'IGA'        => 'IGA',
-        '7-ELEVEN'   => '7-Eleven',
+        'ALDI'         => 'ALDI',
+        'COLES'        => 'Coles',
+        'WOOLWORTHS'   => 'Woolworths',
+        'worths'       => 'Woolworths',
+        'W00LW0RTHS'   => 'Woolworths', # Common OCR error
+        'COSTCO'       => 'Costco',
+        'KMART'        => 'Kmart',
+        'TARGET'       => 'Target',
+        'BUNNINGS'     => 'Bunnings',
+        'IGA'          => 'IGA',
+        '7-ELEVEN'     => '7-Eleven',
+        'REJECT SHOP'  => 'Reject Shop',
+        'OFFICEWORKS'  => 'Officeworks',
+        'DAISO'        => 'Daiso',
+        'CHEMIST'      => 'Chemist Warehouse',
         'BURWOOD EAST' => 'ALDI',
         'FOREST HILL'  => 'ALDI',
     );
 
     # Search ALL lines for any prioritized keyword
     STORE_SEARCH: for my $line (@lines) {
+        my $clean_line = uc(trim($line));
         for my $key (keys %store_map) {
-            if ($line =~ /\b$key\b/i) {
+            if ($clean_line =~ /\b$key\b/i) {
                 $data->{store_name} = $store_map{$key};
                 last STORE_SEARCH;
             }
         }
     }
+
     # Fallback: First valid-looking word in top 5 lines
     unless ($data->{store_name}) {
         for my $line (@lines[0..4]) {
             my $cleaned = trim($line);
+            # Filter out common non-store headers
             next if $cleaned =~ /Invoice|Tax|Receipt|\$\$|^ABN|^[^\w\s]+$|^\d+$/i;
-            if (my ($word) = $cleaned =~ /^([A-Za-z]+)/) {
-                $data->{store_name} = $word;
+            next if length($cleaned) < 3;
+            if (my ($word) = $cleaned =~ /^([A-Za-z\&\'\s]{3,20})/ ) {
+                $data->{store_name} = trim($word);
                 last;
             }
         }
@@ -122,28 +134,49 @@ sub parse_text {
 
     # 2. Total Amount Heuristic: Bottom-Up Search
     # Improved regex to handle $ symbols, spaces, and varied labels
+    # Look for patterns like "TOTAL $ 12.34" or "AMOUNT: 12.34"
     my @amounts;
-    while ($text =~ /(?:TOTAL|AMOUNT|BAL|DUE|AUD|Card Sales|EFT)\s*[:\$]*\s*([0-9]{1,4}[\.,][0-9]{2})/gi) {
+    while ($text =~ /(?:TOTAL|AMOUNT|BAL|DUE|AUD|Card Sales|EFT|SUBTOTAL|PAYABLE|PAID)\s*[:\$]*\s*([0-9]{1,4}[\.,][0-9]{2})/gi) {
         push @amounts, $1;
     }
+    
+    # Also look for standalone numbers at the end of the text if no keywords matched
+    if (!@amounts) {
+        while ($text =~ /\s*([0-9]{1,4}[\.,][0-9]{2})\s*$/gm) {
+            push @amounts, $1;
+        }
+    }
+
     if (@amounts) {
-        # Take the last one found, as Grand Total is usually the final figure
-        $data->{total_amount} = $amounts[-1];
-        $data->{total_amount} =~ s/,/./;
+        # Take the largest amount found, as the total is usually the maximum value on the receipt
+        my @sorted_amounts = sort { $b <=> $a } map { s/,/./; $_ } @amounts;
+        $data->{total_amount} = $sorted_amounts[0];
     }
 
     # 3. Date Heuristic: Standard Formats
-    # We take the FIRST valid date found
-    if ($text =~ m|(\d{1,2})[/\.-](\d{1,2})[/\.-](\d{2,4})|) {
+    # Support DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, and YYYY-MM-DD
+    my @dates;
+    
+    # Standard formats: DD/MM/YYYY or DD-MM-YYYY
+    while ($text =~ m|\b(\d{1,2})[/\.-](\d{1,2})[/\.-](\d{2,4})\b|g) {
         my ($d, $m, $y) = ($1, $2, $3);
+        next if $m > 12 || $d > 31;
         $y = "20$y" if length($y) == 2;
-        $data->{receipt_date} = sprintf("%04d-%02d-%02d", $y, $m, $d);
-    } 
-    elsif ($text =~ /(\d{1,2})\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s*(\d{2,4})/i) {
-        my ($d, $mon, $y) = ($1, uc($2), $3);
+        push @dates, sprintf("%04d-%02d-%02d", $y, $m, $d);
+    }
+    
+    # Named months: 12 Jan 2024
+    while ($text =~ /\b(\d{1,2})\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s*(\d{2,4})\b/gi) {
+        my ($d, $mon, $y) = ($1, uc(substr($2, 0, 3)), $3);
         my %months = (JAN=>1,FEB=>2,MAR=>3,APR=>4,MAY=>5,JUN=>6,JUL=>7,AUG=>8,SEP=>9,OCT=>10,NOV=>11,DEC=>12);
         $y = "20$y" if length($y) == 2;
-        $data->{receipt_date} = sprintf("%04d-%02d-%02d", $y, $months{$mon}, $d);
+        push @dates, sprintf("%04d-%02d-%02d", $y, $months{$mon}, $d);
+    }
+    
+    if (@dates) {
+        # Take the most recent date found if multiple exist (unlikely but safer)
+        my @sorted_dates = sort { $b cmp $a } @dates;
+        $data->{receipt_date} = $sorted_dates[0];
     }
 
     return $data;
