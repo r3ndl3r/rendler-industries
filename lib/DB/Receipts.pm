@@ -161,9 +161,9 @@ sub DB::get_spending_summary {
     # Yearly: Sum since Jan 1st of current year
     my $sql = <<'SQL';
         SELECT 
-            SUM(CASE WHEN receipt_date >= DATE_SUB(CURDATE(), INTERVAL (WEEKDAY(CURDATE())) DAY) THEN total_amount ELSE 0 END) as week_total,
-            SUM(CASE WHEN receipt_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN total_amount ELSE 0 END) as month_total,
-            SUM(CASE WHEN receipt_date >= DATE_FORMAT(CURDATE(), '%Y-01-01') THEN total_amount ELSE 0 END) as year_total
+            COALESCE(SUM(CASE WHEN receipt_date >= DATE_SUB(CURDATE(), INTERVAL (WEEKDAY(CURDATE())) DAY) THEN total_amount ELSE 0 END), 0) as week_total,
+            COALESCE(SUM(CASE WHEN receipt_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN total_amount ELSE 0 END), 0) as month_total,
+            COALESCE(SUM(CASE WHEN receipt_date >= DATE_FORMAT(CURDATE(), '%Y-01-01') THEN total_amount ELSE 0 END), 0) as year_total
         FROM receipts
 SQL
 
@@ -190,10 +190,11 @@ sub DB::get_store_spending_breakdown {
     };
 
     for my $period (keys %$queries) {
+        # Normalize store names (lowercase + trimmed) for grouping
         my $sql = "SELECT store_name, SUM(total_amount) as total 
                    FROM receipts 
                    WHERE $queries->{$period} AND store_name IS NOT NULL AND store_name != ''
-                   GROUP BY store_name 
+                   GROUP BY TRIM(LOWER(store_name)) 
                    ORDER BY total DESC 
                    LIMIT ?";
         my $sth = $self->{dbh}->prepare($sql);
