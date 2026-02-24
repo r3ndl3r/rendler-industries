@@ -427,6 +427,13 @@ sub startup {
     $admin->post('/go/edit')->to('go#edit');
     $admin->post('/go/delete')->to('go#delete');
 
+    # --- Receipts Management Routes ---
+    $family->get('/receipts')->to('receipts#index');
+    $family->get('/receipts/upload')->to('receipts#upload_form');
+    $family->post('/receipts')->to('receipts#upload');
+    $family->post('/receipts/delete/:id')->to('receipts#delete');
+    $family->get('/receipts/serve/:id')->to('receipts#serve');
+
         # --- Chess Routes ---
     $auth->get('/chess/lobby')->to('chess#lobby');
     $auth->get('/chess/lobby_status')->to('chess#lobby_status');
