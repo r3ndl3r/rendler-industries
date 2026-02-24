@@ -1,91 +1,230 @@
 /* /public/css/settings.css */
 
-* {
-    box-sizing: border-box;
-}
-
 .settings-container {
-    max-width: 900px;
+    max-width: 1100px;
     margin: 0 auto;
     padding: 20px;
 }
 
-.settings-group {
-    margin-bottom: 1rem;
+/* Two-column grid: fixed-width sidebar + fluid content area */
+.settings-layout {
+    display: grid;
+    grid-template-columns: 210px 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+/* --- Sidebar Tab Navigation --- */
+
+/* Sticky so the nav remains accessible while scrolling a tall card panel */
+.settings-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: sticky;
+    top: 20px;
+}
+
+.settings-tab {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 0.875rem 1.125rem;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0.625rem;
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-weight: 500;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.settings-tab:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+    border-color: #334155;
+}
+
+.settings-tab.active {
+    background: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.tab-icon  { font-size: 1.1rem; flex-shrink: 0; }
+.tab-label { font-size: 0.9rem; }
+
+/* --- Content Panels --- */
+
+/* Prevent the panel column from overflowing the grid container */
+.settings-panels { min-width: 0; }
+
+.settings-panel {
+    display: none;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.settings-panel.active { display: flex; }
+
+/* --- Settings Card --- */
+
+.settings-card {
+    background: #1e293b;
+    border: 1px solid #334155;
     border-radius: 0.75rem;
     overflow: hidden;
-    border: 1px solid #334155;
-    background: #1e293b;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
-.settings-header {
-    padding: 1.25rem 1.5rem;
-    cursor: pointer;
-    display: flex !important; /* Force flex for mobile browsers */
+/* Clickable card header row */
+.settings-card-header {
+    display: flex;
     justify-content: space-between;
     align-items: center;
-    list-style: none !important; /* Hide default list marker */
-    background: rgba(255, 255, 255, 0.03);
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    cursor: pointer;
+    user-select: none;
     transition: background 0.2s;
 }
 
-/* More robust hiding of summary markers */
-.settings-header::-webkit-details-marker,
-.settings-header::marker {
-    display: none !important;
+.settings-card-header:hover {
+    background: rgba(255, 255, 255, 0.04);
 }
 
-.settings-header:hover {
-    background: rgba(255, 255, 255, 0.07);
+.settings-card-header:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
 }
 
-.group-title {
-    font-size: 1.15rem;
+.card-header-meta { flex: 1; min-width: 0; }
+
+.settings-card-title {
+    font-size: 1rem;
     font-weight: 600;
     color: #ffffff;
+    margin: 0 0 0.25rem;
 }
 
-.chevron {
-    width: 12px;
-    height: 12px;
-    border-right: 2px solid #94a3b8;
-    border-bottom: 2px solid #94a3b8;
+.settings-card-desc {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Badge + chevron grouped on the right side of the header */
+.card-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    flex-shrink: 0;
+}
+
+/* Configuration status pill — class set server-side */
+.settings-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.badge-active {
+    background: rgba(16, 185, 129, 0.12);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-inactive {
+    background: rgba(100, 116, 139, 0.12);
+    color: #64748b;
+    border: 1px solid rgba(100, 116, 139, 0.25);
+}
+
+/* Chevron arrow — CSS-only, rotates on open */
+.card-chevron {
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid #64748b;
+    border-bottom: 2px solid #64748b;
     transform: rotate(45deg);
-    transition: transform 0.3s ease;
-    margin-right: 5px;
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
 }
 
-details[open] .chevron {
+.settings-card--open .card-chevron {
     transform: rotate(-135deg);
 }
 
-.settings-section {
-    padding: 2rem;
-    background: #0f172a;
+/* --- Collapsible Card Body ---                                              */
+/* Uses the CSS grid row trick: animating grid-template-rows from 0fr to 1fr */
+/* gives a true height transition without needing a fixed max-height value.  */
+.settings-card-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s ease;
+}
+
+.settings-card--open .settings-card-body {
+    grid-template-rows: 1fr;
+}
+
+/* The inner wrapper is required — overflow:hidden on it clips content when  */
+/* the row height is 0 without clipping during the open animation.           */
+.settings-card-body-inner {
+    overflow: hidden;
+    padding: 0 1.5rem;
+}
+
+/* Add top padding inside the body once open so content has breathing room   */
+/* above the border; bottom padding pads the save button from the card edge. */
+.settings-card--open .settings-card-body-inner {
+    padding: 1.5rem;
     border-top: 1px solid #334155;
 }
 
-.section-description {
-    font-size: 0.9rem;
-    color: #94a3b8;
-    margin-bottom: 2rem;
+/* --- Form Layout --- */
+
+/* Two-column field grid within a card */
+.settings-fields {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* A lone field or one explicitly marked full-width spans both columns */
+.settings-fields .form-group:only-child,
+.settings-fields .form-group.full-width {
+    grid-column: 1 / -1;
 }
 
 .form-group {
-    margin-bottom: 1.5rem;
     display: flex;
     flex-direction: column;
+    gap: 0.4rem;
 }
 
 .form-group label {
-    display: block;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     color: #94a3b8;
-    margin-bottom: 0.5rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+}
+
+/* Dimmed qualifier text appended to optional field labels */
+.label-optional {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #475569;
 }
 
 .input-wrapper {
@@ -102,10 +241,13 @@ details[open] .chevron {
     border: 1px solid #334155;
     color: #e2e8f0;
     border-radius: 0.5rem;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-family: 'Courier New', monospace;
     transition: all 0.2s;
 }
+
+/* Numeric inputs have no Show/Hide button so don't need the right padding offset */
+.form-input.no-pad-right { padding-right: 0.75rem; }
 
 .form-input:focus {
     outline: none;
@@ -133,12 +275,18 @@ details[open] .chevron {
     color: #ffffff;
 }
 
+/* Save button pinned to the right edge of each card body */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
 .form-info {
     background: rgba(59, 130, 246, 0.1);
     border-left: 4px solid #3b82f6;
     padding: 1rem;
     border-radius: 0.5rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
     font-size: 0.875rem;
     color: #93c5fd;
 }
@@ -148,7 +296,7 @@ details[open] .chevron {
     border-left: 4px solid #f59e0b;
     padding: 1rem;
     border-radius: 0.5rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
     font-size: 0.875rem;
     color: #fbbf24;
 }
@@ -156,7 +304,7 @@ details[open] .chevron {
 .alert {
     padding: 1rem 1.5rem;
     border-radius: 0.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     font-weight: 600;
     text-align: center;
 }
@@ -173,20 +321,41 @@ details[open] .chevron {
     color: #ef4444;
 }
 
+/* --- Responsive: ≤768px --- */
 @media (max-width: 768px) {
-    .settings-container {
-        padding: 1rem;
-    }
-    
-    .settings-section {
-        padding: 1.5rem;
+    .settings-container { padding: 1rem; }
+
+    /* Sidebar collapses to a horizontally scrollable tab strip above the panels */
+    .settings-layout {
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
 
-    .group-title {
-        font-size: 1rem;
+    .settings-nav {
+        flex-direction: row;
+        overflow-x: auto;
+        position: static;
+        gap: 6px;
+        padding-bottom: 4px;
+        scrollbar-width: none;
     }
 
-    .settings-header {
-        padding: 1rem;
+    .settings-nav::-webkit-scrollbar { display: none; }
+
+    .settings-tab {
+        flex-shrink: 0;
+        padding: 0.625rem 1rem;
+        white-space: nowrap;
     }
+
+    .tab-label { font-size: 0.85rem; }
+
+    .settings-card-header { padding: 1rem 1.25rem; }
+
+    .settings-card--open .settings-card-body-inner { padding: 1.25rem; }
+
+    /* Collapse field grid to a single column on narrow screens */
+    .settings-fields { grid-template-columns: 1fr; }
+
+    .settings-fields .form-group.full-width { grid-column: 1; }
 }
