@@ -36,14 +36,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 const file = this.files[0];
                 updateFileName(file.name);
                 
-                // If it's an image, offer cropping
-                if (file.type.startsWith('image/')) {
+                const lowerName = file.name.toLowerCase();
+                // If it's an image (including HEIC/HEIF which browser might not flag as image/), offer cropping
+                if (file.type.startsWith('image/') || lowerName.endsWith('.heic') || lowerName.endsWith('.heif')) {
                     initPreUploadCrop(file);
                 }
             }
         });
 
-        function initPreUploadCrop(file) {
+        async function initPreUploadCrop(file) {
+            let displayFile = file;
+
+            // Handle HEIC/HEIF conversion for browser display
+            const lowerName = file.name.toLowerCase();
+            if (lowerName.endsWith('.heic') || lowerName.endsWith('.heif')) {
+                showToast('Converting HEIC for preview...', 'info');
+                try {
+                    const blob = await heic2any({
+                        blob: file,
+                        toType: 'image/jpeg',
+                        quality: 0.8
+                    });
+                    // If multiple images in HEIC, it returns array. Take first.
+                    displayFile = Array.isArray(blob) ? blob[0] : blob;
+                } catch (err) {
+                    console.error('HEIC conversion failed:', err);
+                    showToast('Could not convert HEIC for preview.', 'error');
+                    return;
+                }
+            }
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 const modal = document.getElementById('cropModal');
@@ -63,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }, 100);
                 }
             };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(displayFile);
         }
 
         window.applyPreUploadCrop = function() {
@@ -133,24 +155,53 @@ document.addEventListener('DOMContentLoaded', function() {
     let cropper = null;
     let currentCropId = null;
 
-    window.openCropModal = function(id) {
+    window.openCropModal = async function(id) {
         currentCropId = id;
         const modal = document.getElementById('cropModal');
         const img = document.getElementById('cropImg');
         
         if (modal && img) {
-            img.src = '/receipts/serve/' + id;
             modal.style.display = 'flex';
-            
-            // Wait for image to load before initializing cropper
-            img.onload = function() {
-                if (cropper) cropper.destroy();
-                cropper = new Cropper(img, {
-                    viewMode: 1,
-                    autoCropArea: 1,
-                    responsive: true
-                });
-            };
+            showToast('Loading image...', 'info');
+
+            try {
+                const response = await fetch('/receipts/serve/' + id);
+                const blob = await response.blob();
+                let displayBlob = blob;
+
+                // Check for HEIC/HEIF MIME types or file extension
+                if (blob.type === 'image/heic' || blob.type === 'image/heif') {
+                    showToast('Converting HEIC for preview...', 'info');
+                    const convertedBlob = await heic2any({
+                        blob: blob,
+                        toType: 'image/jpeg',
+                        quality: 0.8
+                    });
+                    displayBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                    
+                    // Wait for image to load before initializing cropper
+                    img.onload = function() {
+                        if (cropper) cropper.destroy();
+                        cropper = new Cropper(img, {
+                            viewMode: 1,
+                            autoCropArea: 1,
+                            responsive: true
+                        });
+                        showToast('Ready to crop.', 'success');
+                    };
+                };
+                reader.readAsDataURL(displayBlob);
+
+            } catch (err) {
+                console.error('Failed to load image for cropping:', err);
+                showToast('Error loading image.', 'error');
+                closeCropModal();
+            }
         }
     };
 
