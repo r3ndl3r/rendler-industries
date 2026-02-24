@@ -1,7 +1,7 @@
 %# /templates/birthdays/birthdays.html.ep
 
 % layout 'default';
-% title 'Birthdays';
+% title icon('birthdays') . ' Birthdays';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/birthdays.css">

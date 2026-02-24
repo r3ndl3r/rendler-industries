@@ -1,7 +1,7 @@
 %# /templates/clipboard.html.ep
 
 % layout 'default';
-% title 'Clipboard';
+% title icon('clipboard') . ' Clipboard';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/clipboard.css">
@@ -12,7 +12,7 @@
     <div class="header-bar">
         <h1><%= icon('copy') %> <span>Clipboard</span></h1>
         <div class="manage-actions">
-            <button class="action-btn" onclick="openModal()">+ Add Content</button>
+            <button class="action-btn" onclick="openModal()">+ Add</button>
         </div>
     </div>
 

@@ -1,7 +1,7 @@
 %# /templates/users/edit.html.ep
 
 % layout 'default';
-% title 'Edit User';
+% title icon('user') . ' Edit User';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/users.css">

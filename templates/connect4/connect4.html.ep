@@ -1,7 +1,7 @@
 %# /templates/connect4/connect4.html.ep
 
 % layout 'default';
-% title 'Connect 4 Online';
+% title icon('connect4') . ' Connect 4 Online';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/connect4.css">

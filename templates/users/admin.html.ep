@@ -1,7 +1,7 @@
 %# /templates/users/admin.html.ep
 
 % layout 'default';
-% title 'Users Admin';
+% title icon('admin') . ' Users Admin';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/users.css">

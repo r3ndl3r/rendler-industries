@@ -1,7 +1,7 @@
 %# /templates/uno/game.html.ep
 
 % layout 'default';
-% title 'UNO Online';
+% title icon('uno') . ' UNO Online';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/uno/game.css?v=<%= time %>">

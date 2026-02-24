@@ -1,7 +1,7 @@
 %# /templates/reminders.html.ep
 
 % layout 'default';
-% title 'Manage Reminders';
+% title icon('reminders') . ' Manage Reminders';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/reminders.css">
@@ -10,9 +10,9 @@
 
 <div class="reminders-container">
     <div class="header-bar">
-        <h1><%= icon('files') %> <span>Manage Reminders</span></h1>
+        <h1><%= icon('reminders') %> <span>Reminders</span></h1>
         <div class="manage-actions">
-            <button class="btn-primary" onclick="openAddModal()"><%= icon('add') %> New Reminder</button>
+            <button class="btn-primary" onclick="openAddModal()"><%= icon('add') %> New</button>
         </div>
     </div>
 

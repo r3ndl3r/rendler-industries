@@ -1,7 +1,7 @@
 <%# /templates/todo.html.ep %>
 
 % layout 'default';
-% title 'Todo List';
+% title icon('todo') . ' Todo List';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/todo.css">

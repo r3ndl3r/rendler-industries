@@ -1,7 +1,7 @@
 %# /templates/quiz/study.html.ep
 
 % layout 'default';
-% title 'Quiz Study Guide - All Questions & Answers';
+% title icon('kangaroo') . ' Quiz Study Guide - All Questions & Answers';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/quiz/questions.css">
@@ -12,7 +12,7 @@
   <div class="header-bar">
     <div class="header-title">
       <h1>
-        <span><%= icon('files') %> Study Guide</span>
+        <%= icon('files') %> <span>Study Guide</span>
       </h1>
       <p class="thai-subtitle">คู่มือการศึกษา - คำถามและคำตอบทั้งหมด</p>
     </div>

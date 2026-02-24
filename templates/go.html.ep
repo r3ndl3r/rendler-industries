@@ -1,7 +1,7 @@
 <%# /templates/go.html.ep %>
 
 <% layout 'default'; %>
-<% title 'Go Links'; %>
+<% title icon('link') . ' Go Links'; %>
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/go.css">
@@ -58,7 +58,7 @@
                     maxlength="255"
                 >
             </div>
-            <button type="submit" class="game-btn btn-blue">Add Link</button>
+            <button type="submit" class="game-btn btn-blue">Add</button>
         </form>
     </div>
 

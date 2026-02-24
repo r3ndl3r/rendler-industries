@@ -1,7 +1,7 @@
 %# /templates/index.html.ep
 
 % layout 'default';
-% title 'Welcome!';
+% title icon('home') . ' Welcome!';
 
 <% content_for head => begin %>
     <script src="/js/moment.js"></script>

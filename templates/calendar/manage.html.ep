@@ -1,7 +1,7 @@
 % # /templates/calendar/manage.html.ep
 
 % layout 'default';
-% title 'Manage Calendar Events';
+% title icon('calendar') . ' Manage Calendar Events';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/calendar/calendar.css">

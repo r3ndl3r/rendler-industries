@@ -1,7 +1,7 @@
 %# /templates/quick.html.ep
 
 % layout 'default';
-% title 'Quick Access';
+% title icon('quick') . ' Quick Access';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/quick.css">
@@ -9,7 +9,7 @@
 
 <div class="quick-container">
     <div class="header-bar">
-        <h1>🚀 Quick Access</h1>
+        <h1><%= icon('quick') %> Quick Access</h1>
     </div>
 
     <div class="tile-grid">

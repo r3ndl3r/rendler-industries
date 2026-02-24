@@ -1,7 +1,7 @@
 %# /templates/quiz/questions.html.ep
 
 % layout 'default';
-% title 'Australian Citizenship Quiz';
+% title icon('kangaroo') . ' Australian Citizenship Quiz';
 
 <% content_for head => begin %>
     <link rel="stylesheet" href="/css/quiz/questions.css">
@@ -54,7 +54,7 @@
             <div id="question-text-th" class="q-text-th thai-text"></div>
                 
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-                <button id="hint-btn" class="btn-hint" aria-label="Show Hint" style="display: none;"><%= icon('info') %></button>
+                <button id="hint-btn" class="btn-hint" aria-label="Show Hint" style="display: none;"><%= icon('view') %></button>
                 <button id="tts-btn" class="btn-tts" aria-label="Read Question">🔊</button>
             </div>
 
