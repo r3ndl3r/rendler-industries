@@ -106,7 +106,7 @@
                                                 % if ($r->{description}) {
                                                     <br><small style="color: rgba(255,255,255,0.4);"><%= $r->{description} %></small>
                                                 % }
-                                            </td>                                <td data-label="Date"><%= $r->{receipt_date} || '-' %></td>
+                                            </td>                                <td data-label="Date"><%= $r->{formatted_date} || '-' %></td>
                                 <td data-label="Total" style="color: #69f0ae; font-weight: bold;">$<%= sprintf("%.2f", $r->{total_amount} // 0) %></td>
                                 <td data-label="Uploaded By"><small><%= $r->{uploaded_by} %></small></td>
                                 <td class="col-actions">
