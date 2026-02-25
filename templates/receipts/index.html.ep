@@ -127,7 +127,7 @@
                                 % if (@$receipts) {
                                     % for my $r (@$receipts) {
                                         <tr>
-                                            <td class="col-icon" data-label="Preview" style="text-align: center;">
+                                            <td class="col-icon receipt-col-preview" data-label="Preview">
                                                 % if ($r->{mime_type} =~ /^image/) {
                                                     <div class="receipt-thumbnail-wrapper" onclick="openReceiptModal('<%= $r->{id} %>')">
                                                         <img src="/receipts/serve/<%= $r->{id} %>" class="receipt-thumb">
@@ -140,23 +140,35 @@
                                                 <small><%= $r->{original_filename} %></small>
                                             </td>
                                             <td data-label="Store">
-                                                <div class="store-icon-wrapper">
+                                                <div class="store-icon-wrapper" id="store-wrapper-<%= $r->{id} %>">
                                                     <% if (my $icon = $get_store_icon->($r->{store_name})) { %>
                                                         <img src="<%= $icon %>" class="store-logo" alt="">
                                                     <% } %>
                                                     <strong><%= $r->{store_name} || 'Unknown' %></strong>
+                                                    % if ($r->{ai_json} && $r->{ai_json} =~ /^\s*\{/) {
+                                                        <span class="ai-badge" title="AI Analyzed">🧠</span>
+                                                    % }
                                                 </div>
                                                 % if ($r->{description}) {
-                                                    <br><small style="color: rgba(255,255,255,0.4);"><%= $r->{description} %></small>
+                                                    <br><small class="receipt-description"><%= $r->{description} %></small>
                                                 % }
                                             </td>                                <td data-label="Date"><%= $r->{formatted_date} || '-' %></td>
-                                <td data-label="Total" style="color: #69f0ae; font-weight: bold;">$<%= sprintf("%.2f", $r->{total_amount} // 0) %></td>
+                                <td data-label="Total" class="receipt-total-value">$<%= sprintf("%.2f", $r->{total_amount} // 0) %></td>
                                 <td data-label="Uploaded By"><small><%= $r->{uploaded_by} %></small></td>
                                 <td class="col-actions">
                                     <div class="action-buttons">
                                         <a href="/receipts/serve/<%= $r->{id} %>" target="_blank" class="btn-icon-view" title="View Full Image">
                                             <%= icon('view') %>
                                         </a>
+                                        <button type="button" 
+                                                class="btn-icon-ai" 
+                                                data-receipt-id="<%= $r->{id} %>"
+                                                data-ai-json="<%= $r->{ai_json} // '' %>"
+                                                data-store-icon="<%= $get_store_icon->($r->{store_name}) // '' %>"
+                                                onclick="viewElectronicReceipt(this.dataset.receiptId, 0, this.dataset.aiJson, this.dataset.storeIcon)" 
+                                                title="Electronic Receipt">
+                                            <%= icon('ai') %>
+                                        </button>
                                         % if ($r->{uploaded_by} eq session('user') || is_admin) {
                                             <button type="button" class="btn-icon-crop" onclick="openCropModal('<%= $r->{id} %>')" title="Crop Image">
                                                 <%= icon('crop') %>
@@ -167,11 +179,9 @@
                                             <button type="button" class="btn-icon-edit" onclick='openEditModal(<%== Mojo::JSON::to_json($r) %>)' title="Edit Details">
                                                 <%= icon('edit') %>
                                             </button>
-                                            <form action="/receipts/delete/<%= $r->{id} %>" method="POST" onsubmit="return confirm('Permanently delete this receipt?');" style="display:inline;">
-                                                <button type="submit" class="btn-icon-delete">
-                                                    <%= icon('delete') %>
-                                                </button>
-                                            </form>
+                                            <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('<%= $r->{id} %>', '<%= $r->{store_name} || $r->{original_filename} %>')" title="Delete">
+                                                <%= icon('delete') %>
+                                            </button>
                                         % }
                                     </div>
                                 </td>
@@ -179,7 +189,7 @@
                         % }
                     % } else {
                         <tr>
-                            <td colspan="6" style="text-align: center; padding: 40px; color: rgba(255,255,255,0.4);">
+                            <td colspan="7" class="receipt-empty-ledger">
                                 📭 No receipts found. Upload one to get started.
                             </td>
                         </tr>
@@ -187,6 +197,23 @@
                 </tbody>
             </table>
         </div>
+</div>
+
+<!-- Flexible Confirmation Modal -->
+<div id="confirmActionModal" class="delete-modal-overlay" style="display: none;">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
+            <h3 id="confirmModalTitle">Confirm Action</h3>
+            <span class="delete-modal-close" onclick="closeConfirmModal()">&times;</span>
+        </div>
+        <div class="delete-modal-body">
+            <p id="confirmModalText"></p>
+        </div>
+        <div class="modal-actions ereceipt-actions">
+            <button type="button" id="confirmModalBtn" class="btn-danger-confirm">Confirm</button>
+            <button type="button" class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+        </div>
+    </div>
 </div>
 
 <!-- Edit Receipt Modal -->
@@ -206,7 +233,7 @@
                     <% } %>
                 </datalist>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="receipt-edit-grid">
                 <div class="form-group">
                     <label>Date</label>
                     <input type="date" name="receipt_date" id="editDate" class="form-control">
@@ -235,11 +262,11 @@
             <h3><%= icon('edit') %> Crop Receipt</h3>
             <span class="close-btn" onclick="closeCropModal()">&times;</span>
         </div>
-        <div class="modal-body" style="text-align: center;">
-            <div style="max-height: 60vh; overflow: hidden; background: #000; border-radius: 8px;">
-                <img id="cropImg" style="max-width: 100%; display: block;">
+        <div class="modal-body crop-preview-container">
+            <div class="crop-img-wrapper">
+                <img id="cropImg" class="crop-img-el">
             </div>
-            <p style="margin-top: 15px; color: #94a3b8; font-size: 0.85rem;">Drag the corners to crop the receipt. Only the selected area will be saved.</p>
+            <p class="crop-help-text">Drag the corners to crop the receipt. Only the selected area will be saved.</p>
         </div>
         <div class="modal-actions">
             <button type="button" class="btn btn-save" onclick="saveCrop()"><%= icon('save') %> Save Crop</button>
@@ -248,10 +275,35 @@
     </div>
 </div>
 
+<!-- Electronic Receipt Modal -->
+<div id="eReceiptModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content ereceipt-modal-content">
+        <div class="modal-header ereceipt-header">
+            <h3><%= icon('ai') %> Electronic Receipt</h3>
+            <span class="close-btn" onclick="closeEReceiptModal()">&times;</span>
+        </div>
+        <div class="modal-body ereceipt-body" id="eReceiptContent">
+            <!-- Content populated by JS -->
+            <div class="ereceipt-loading">
+                <div class="ereceipt-scan-line"></div>
+                <span class="ereceipt-loading-icon">🧠</span>
+                <p class="ereceipt-loading-text">Digitizing with AI...</p>
+                <p class="ereceipt-loading-sub">Analyzing items and structured data</p>
+            </div>
+        </div>
+        <div class="modal-actions ereceipt-actions">
+            <button type="button" class="btn-icon-delete btn-ereceipt-rescan" onclick="reScanReceipt()">
+                <%= icon('search') %> Full Rescan
+            </button>
+            <button type="button" class="btn-secondary" onclick="closeEReceiptModal()">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- Receipt Modal -->
 <div id="receiptModal" class="modal-overlay" style="display: none;" onclick="closeReceiptModal()">
     <div class="image-modal-content" onclick="event.stopPropagation()">
         <span class="close-btn" onclick="closeReceiptModal()"><%= icon('close') %></span>
-        <img id="modalImg" src="" style="max-width: 100%; border-radius: 8px;">
+        <img id="modalImg" src="" class="receipt-modal-img">
     </div>
 </div>
