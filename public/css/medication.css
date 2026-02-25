@@ -171,6 +171,12 @@
 }
 
 @media (max-width: 768px) {
+    .manage-actions .btn-primary,
+    .manage-actions .action-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+    }
+
     .medication-grid {
         grid-template-columns: 1fr;
     }
