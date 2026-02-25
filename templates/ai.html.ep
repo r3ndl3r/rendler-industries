@@ -1,0 +1,57 @@
+%# /templates/ai.html.ep
+
+% layout 'default';
+% title icon('imposter') . ' Family Pulse AI';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/ai.css">
+    <script src="/js/ai.js"></script>
+% end
+
+<div class="ai-container">
+    <div class="header-bar">
+        <h1><%= icon('imposter') %> <span>Family Pulse AI</span></h1>
+        <div class="manage-actions">
+            <button class="btn-secondary" onclick="clearChat()"><%= icon('delete') %> Clear History</button>
+        </div>
+    </div>
+
+    <div class="chat-wrapper glass-panel">
+        <div id="chat-messages" class="chat-messages">
+            % for my $msg (@$history) {
+                <div class="message <%= $msg->{role} %>">
+                    <div class="message-bubble">
+                        <span class="role-icon"><%= $msg->{role} eq 'user' ? icon(session('user')) : '🧠' %></span>
+                        <div class="text-content"><script>document.write(formatMarkdown(`<%== $msg->{content} %>`))</script></div>
+                    </div>
+                </div>
+            % }
+            % unless (@$history) {
+                <div class="welcome-hint">
+                    <p>🧠 I'm your dashboard assistant. Ask me anything about your medications, shopping, or calendar.</p>
+                </div>
+            % }
+        </div>
+
+        <div class="chat-input-area">
+            <div id="file-indicator" class="file-pill" style="display:none;">
+                <span id="file-label"></span>
+                <span class="close-btn" onclick="clearFile()">&times;</span>
+            </div>
+            
+            <form id="chatForm" onsubmit="sendPrompt(event)">
+                <input type="text" id="prompt-input" class="game-input" placeholder="Ask me about the house..." autocomplete="off">
+                <input type="hidden" id="file-id">
+                <input type="hidden" id="file-type">
+                <button type="submit" id="send-btn" class="btn-primary"><%= icon('add') %></button>
+            </form>
+        </div>
+    </div>
+
+    <div class="quick-chips">
+        <button class="chip" onclick="quickPrompt('What are my medications today?')">💊 Today's Meds</button>
+        <button class="chip" onclick="quickPrompt('What is on the shopping list?')">🛒 Shopping</button>
+        <button class="chip" onclick="quickPrompt('Any birthdays coming up?')">🎂 Birthdays</button>
+        <button class="chip" onclick="quickPrompt('How is the swear jar looking?')">🤬 Swear Jar</button>
+    </div>
+</div>
