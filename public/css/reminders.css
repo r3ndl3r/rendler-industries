@@ -8,28 +8,6 @@
     min-height: 100vh;
 }
 
-.empty-state {
-    text-align: center;
-    padding: 80px 20px;
-    color: rgba(255, 255, 255, 0.4);
-    background: rgba(30, 30, 30, 0.3);
-    border-radius: 16px;
-    border: 2px dashed rgba(255, 255, 255, 0.1);
-    width: 100%;
-}
-
-.empty-state p {
-    font-size: 1.3rem;
-    margin: 12px 0;
-    font-weight: 300;
-}
-
-.empty-hint {
-    font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.25);
-    font-weight: 400;
-}
-
 .reminders-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
@@ -46,7 +24,7 @@
     position: relative;
     overflow: hidden;
     background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
-    border-radius: 1.5rem; /* Pronounced rounding for tile aesthetics */
+    border-radius: 1.5rem; 
 }
 
 .reminder-card::before {
@@ -133,7 +111,7 @@
     font-weight: 700;
     color: rgba(255, 255, 255, 0.2);
     transition: all 0.2s;
-    cursor: pointer; /* Indicates interactive day-toggle functionality */
+    cursor: pointer;
 }
 
 .day-dot.active {
@@ -199,22 +177,22 @@
     width: fit-content;
 }
 
-/* Modal Enhancements */
+/* Modal Selector Overrides */
 .days-selector, .recipients-selector {
     display: flex;
-    flex-direction: column; /* Stack vertically by default */
+    flex-direction: column;
     gap: 0.75rem;
     background: #0f172a;
     padding: 1.25rem;
     border-radius: 0.75rem;
     border: 1px solid #334155;
     margin-top: 0.5rem;
-    align-items: flex-start; /* Ensure left alignment on desktop */
+    align-items: flex-start;
     text-align: left;
 }
 
 .days-selector {
-    flex-direction: row; /* Days remain horizontal */
+    flex-direction: row;
     flex-wrap: wrap;
 }
 
@@ -230,28 +208,11 @@
     transition: all 0.2s;
 }
 
-.day-checkbox {
-    flex-direction: row;
-    justify-content: flex-start;
-}
-
-.recipient-checkbox {
-    flex-direction: row;
-    justify-content: flex-start;
-    width: 100%;
-}
-
-.day-checkbox span {
+.day-checkbox span, .recipient-checkbox span {
     font-size: 0.8rem;
     font-weight: 600;
     color: #94a3b8;
-}
-
-.recipient-checkbox span {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #94a3b8;
-    text-transform: none; /* Ensure no uppercase transformation globally */
+    text-transform: none;
 }
 
 .day-checkbox:has(input:checked), .recipient-checkbox:has(input:checked) {
@@ -264,14 +225,6 @@
     color: #ffffff;
 }
 
-.day-checkbox input, .recipient-checkbox input {
-    margin: 0;
-    width: 1.2rem;
-    height: 1.2rem;
-}
-
 @media (max-width: 768px) {
-    .reminders-grid {
-        grid-template-columns: 1fr;
-    }
+    .reminders-grid { grid-template-columns: 1fr; }
 }

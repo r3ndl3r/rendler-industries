@@ -580,3 +580,138 @@ a:hover {
     from { transform: translateX(0); opacity: 1; }
     to { transform: translateX(100%); opacity: 0; }
 }
+
+/* --- Consolidated Global Components --- */
+
+/* Glass Panel Tiles */
+.glass-panel {
+    background: rgba(30, 30, 30, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel:hover {
+    border-color: rgba(144, 202, 249, 0.3);
+}
+
+/* Empty State Placeholders */
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: rgba(255, 255, 255, 0.4);
+    background: rgba(30, 30, 30, 0.3);
+    border-radius: 16px;
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+    width: 100%;
+}
+
+.empty-state p {
+    font-size: 1.3rem;
+    margin: 12px 0;
+    font-weight: 300;
+}
+
+.empty-hint {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.25);
+    font-weight: 400;
+}
+
+/* Section Sub-headers */
+.section-title {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 700;
+    margin: 30px 0 15px 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: linear-gradient(180deg, #64b5f6, transparent);
+    border-radius: 2px;
+}
+
+/* Standardized Checkbox Buttons (Shopping/Todo) */
+.checkbox-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.checkbox-btn:hover {
+    border-color: #64b5f6;
+    background: rgba(100, 181, 246, 0.15);
+    transform: scale(1.1);
+}
+
+.checkbox-btn.checked, .checkbox-btn.completed {
+    background: linear-gradient(135deg, #66bb6a, #43a047);
+    border-color: #66bb6a;
+}
+
+.checkmark {
+    color: white;
+    font-size: 1.3rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+/* Badges, Pills & Labels */
+.badge, .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+}
+
+.badge-blue, .pill-blue {
+    background: rgba(59, 130, 246, 0.1);
+    color: #93c5fd;
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.badge-orange, .pill-orange {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.badge-green, .pill-green {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+/* Flex Action Containers */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
