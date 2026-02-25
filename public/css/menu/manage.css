@@ -248,6 +248,17 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+    .delete-modal-overlay {
+        align-items: flex-start !important;
+        padding: 2rem 1rem !important;
+        overflow-y: auto !important;
+    }
+
+    .delete-modal-content {
+        margin-top: 0 !important;
+        max-height: none !important;
+    }
+
     .manage-container {
         padding: 0.5rem;
         padding-top: 0;
