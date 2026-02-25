@@ -68,6 +68,7 @@
 .breakdown-row {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.6);
 }
@@ -78,6 +79,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     margin-right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .breakdown-total {
@@ -103,6 +107,7 @@
 .stat-breakdown .store-logo {
     width: 18px;
     height: 18px;
+    margin: 0;
 }
 
 /* Image Viewer Modal Specifics */
