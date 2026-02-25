@@ -161,9 +161,6 @@ The system features a redundant, priority-weighted alert engine:
   <img src="public/images/screenshots/clipboard.png" width="48%" />
 </p>
 
-### 📞 Phone Book (`/p`)
-*   **Digital Directory:** Centralized contact management for family and business connections.
-
 ---
 
 *Engineered for the modern digital home.*
