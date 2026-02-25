@@ -30,7 +30,8 @@
 
             <% if ($has_children) { %>
                 <a href="javascript:void(0)" onclick="toggleSubmenu('<%= $item->{id} %>')" class="submenu-toggle">
-                    <span class="<%= $item->{css_class} %>"><%= $item->{label} %><% if ($perm_icon) { %><small class="perm-indicator">(<%= $perm_icon %>)</small><% } %></span>
+                    <span class="<%= $item->{css_class} %>"><%= $item->{label} %></span>
+                    <% if ($perm_icon) { %><small class="perm-indicator">(<%= $perm_icon %>)</small><% } %>
                     <span id="arrow-<%= $item->{id} %>" class="submenu-arrow">▼</span>
                 </a>
                 <div id="submenu-<%= $item->{id} %>" class="submenu-container">
@@ -42,7 +43,8 @@
                 <a href="<%= $item->{url} %>" 
                    class="<%= $item->{css_class} %> <%= (stash('current') // '') eq ($item->{url} =~ s/^\///r) ? 'active' : '' %> <%= $item->{parent_id} ? 'menu-item-child' : '' %>" 
                    target="<%= $item->{target} %>">
-                   <%= $item->{label} %><% if ($perm_icon) { %><small class="perm-indicator">(<%= $perm_icon %>)</small><% } %>
+                   <span><%= $item->{label} %></span>
+                   <% if ($perm_icon) { %><small class="perm-indicator">(<%= $perm_icon %>)</small><% } %>
                 </a>
             <% } %>
         <% end %>

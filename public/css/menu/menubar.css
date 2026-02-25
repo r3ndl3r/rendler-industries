@@ -56,6 +56,9 @@ body {
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
+    font-weight: bold;
+    color: #90caf9 !important; /* Distinct light blue */
+    text-shadow: 0 0 12px rgba(33, 150, 243, 0.6);
 }
 
 .submenu-container {
@@ -140,7 +143,8 @@ body {
 }
 
 .side-menu a, .side-menu button.menu-action {
-    display: block;
+    display: flex;
+    align-items: center;
     padding: 12px 25px;
     color: #e0e0e0;
     text-decoration: none;
@@ -152,6 +156,7 @@ body {
     width: 100%;
     text-align: left;
     cursor: pointer;
+    box-sizing: border-box;
 }
 
 .text-red { color: #ff5252 !important; }
@@ -182,13 +187,15 @@ body {
 .perm-indicator {
     opacity: 0.5;
     font-size: 0.65em;
-    margin-left: 4px;
-    vertical-align: text-top;
+    margin-left: auto; /* Push to the right */
+    padding-left: 10px;
+    vertical-align: middle;
 }
 
 /* Submenu Arrow */
 .submenu-arrow {
     font-size: 0.8em;
+    margin-left: 10px;
 }
 
 .submenu-container {
