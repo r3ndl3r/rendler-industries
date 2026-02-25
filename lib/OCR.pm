@@ -250,21 +250,54 @@ sub parse_text {
     }
     
     if (@dates) {
-        # Take the FIRST date found in the text. Receipt dates are usually near the header.
-        my $date = $dates[0];
-
-        # Sanity Check: If the date is more than 1 day in the future, it's likely an OCR error
-        # (e.g., misreading 23 as 28). We check against current time.
         require Time::Piece;
-        my $now = Time::Piece->new->strftime('%Y-%m-%d');
-        if ($date gt $now) {
-            # Attempt to fix common misreads: 28 -> 23
-            my $alt_date = $date;
-            $alt_date =~ s/-02-28/-02-23/; # Specific fix for our known case
-            $date = $alt_date if $alt_date le $now;
+
+        my $now   = Time::Piece->new;
+        my $today = $now->strftime('%Y-%m-%d');
+
+        # Receipts older than 10 years are almost certainly parse errors.
+        # Combined with the future check this defines the plausibility window.
+        my $oldest = sprintf('%04d-%02d-%02d', $now->year - 10, $now->mon, $now->mday);
+
+        # Validates against the calendar (catches impossible dates like Feb 30 or
+        # Apr 31 via strptime dying on them) and the plausibility window.
+        my $is_plausible = sub {
+            my $str = shift;
+            return 0 if $str gt $today || $str lt $oldest;
+            eval { Time::Piece->strptime($str, '%Y-%m-%d') };
+            return $@ ? 0 : 1;
+        };
+
+        # 1. Walk all parsed candidates in document order — receipt dates appear
+        #    near the top so the first plausible hit is almost always correct.
+        my ($date) = grep { $is_plausible->($_) } @dates;
+
+        # 2. No valid candidate found — apply systematic OCR digit correction to
+        #    each future-dated candidate. Pairs map commonly misread digits to their
+        #    most likely true value. Only the day component is corrected; month and
+        #    year misreads are rarer and carry a higher risk of a wrong correction.
+        #    Candidates are tried nearest-to-today first to maximise accuracy.
+        unless ($date) {
+            my @ocr_pairs = (['8','3'], ['7','1'], ['6','0'], ['9','4'], ['1','7'], ['0','6']);
+
+            CANDIDATE: for my $raw (sort { $a cmp $b } grep { $_ gt $today } @dates) {
+                my ($y, $m, $d) = split(/-/, $raw);
+                for my $pair (@ocr_pairs) {
+                    my ($wrong, $right) = @$pair;
+                    (my $fixed_d = $d) =~ s/$wrong/$right/g;
+                    next if $fixed_d eq $d;
+                    my $fixed = sprintf('%04d-%02d-%02d', $y, $m, $fixed_d);
+                    if ($is_plausible->($fixed)) {
+                        $date = $fixed;
+                        last CANDIDATE;
+                    }
+                }
+            }
         }
 
-        $data->{receipt_date} = $date;
+        # Only assign if we ended up with something trustworthy — leaving it undef
+        # is safer than storing a date we have low confidence in.
+        $data->{receipt_date} = $date if $date;
     }
 
     return $data;
