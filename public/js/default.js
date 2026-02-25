@@ -97,3 +97,108 @@ async function apiPost(url, data = {}) {
         return null;
     }
 }
+
+/**
+ * --- Global Flip Clock Engine ---
+ */
+
+const FlipClockManager = {
+    prevStates: {},
+
+    /**
+     * Renders or updates a 3D flip clock inside a container.
+     * @param {HTMLElement} el - The container.
+     * @param {Object} vals - { dd, hh, mm, ss } strings.
+     * @param {string} id - Unique identifier for state tracking.
+     */
+    update: function(el, vals, id) {
+        // Initialize state tracking
+        if (!this.prevStates[id]) {
+            this.prevStates[id] = vals;
+            el.innerHTML = this._renderHTML(vals);
+            return;
+        }
+
+        // Check each unit and trigger flip if changed
+        Object.keys(vals).forEach(unit => {
+            if (vals[unit] !== this.prevStates[id][unit]) {
+                // For day hiding logic (Reminders specific)
+                if (unit === 'dd' && ((vals.dd === 0 && this.prevStates[id].dd !== 0) || (vals.dd !== 0 && this.prevStates[id].dd === 0))) {
+                    el.innerHTML = this._renderHTML(vals);
+                } else {
+                    this._triggerFlip(el, unit, vals[unit], this.prevStates[id][unit]);
+                }
+            }
+        });
+
+        this.prevStates[id] = vals;
+    },
+
+    _renderHTML: function(vals) {
+        let html = '';
+        if (vals.dd !== undefined && vals.dd > 0) html += this._renderUnit('dd', vals.dd, 'DD');
+        if (vals.hh !== undefined) html += this._renderUnit('hh', vals.hh, 'HH');
+        if (vals.mm !== undefined) html += this._renderUnit('mm', vals.mm, 'MM');
+        if (vals.ss !== undefined) html += this._renderUnit('ss', vals.ss, 'SS');
+        if (vals.ampm !== undefined) html += `<div class="flip-unit"><div class="flip-card ampm">${vals.ampm}</div><div class="flip-label">AM/PM</div></div>`;
+        return html;
+    },
+
+    _renderUnit: function(unit, val, label) {
+        return `
+            <div class="flip-unit" data-unit="${unit}">
+                <div class="flip-card">
+                    <div class="flip-card-top">${val}</div>
+                    <div class="flip-card-bottom">${val}</div>
+                    <div class="flip-card-flap-front">${val}</div>
+                    <div class="flip-card-flap-back">${val}</div>
+                </div>
+                <div class="flip-label">${label}</div>
+            </div>
+        `;
+    },
+
+    _triggerFlip: function(container, unit, newVal, oldVal) {
+        const flipCard = container.querySelector(`.flip-unit[data-unit="${unit}"] .flip-card`);
+        if (!flipCard) return;
+
+        flipCard.classList.remove('flipping');
+        void flipCard.offsetWidth;
+
+        flipCard.querySelector('.flip-card-top').textContent = newVal;
+        flipCard.querySelector('.flip-card-bottom').textContent = oldVal;
+        flipCard.querySelector('.flip-card-flap-front').textContent = oldVal;
+        flipCard.querySelector('.flip-card-flap-back').textContent = newVal;
+
+        flipCard.classList.add('flipping');
+
+        setTimeout(() => {
+            flipCard.querySelector('.flip-card-bottom').textContent = newVal;
+            flipCard.querySelector('.flip-card-flap-front').textContent = newVal;
+            flipCard.classList.remove('flipping');
+        }, 400);
+    },
+
+    /**
+     * Starts a real-time normal clock (HH:MM:SS AM/PM) inside a container.
+     */
+    startRealTimeClock: function(el, id) {
+        const tick = () => {
+            const now = new Date();
+            let h = now.getHours();
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12 || 12;
+            
+            this.update(el, { 
+                hh: String(h).padStart(2, '0'), 
+                mm: m, 
+                ss: s, 
+                ampm: ampm 
+            }, id);
+        };
+        tick();
+        setInterval(tick, 1000);
+    }
+};
