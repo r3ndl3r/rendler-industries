@@ -4,6 +4,7 @@ package DB::Settings;
 
 use strict;
 use warnings;
+use Mojo::JSON qw(encode_json decode_json);
 
 # Database helper for application configuration and external API keys.
 # Features:
@@ -338,6 +339,71 @@ sub DB::update_gemini_key {
     } else {
         $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('gemini_api_key', ?)");
         $sth->execute($api_key);
+    }
+}
+
+# Retrieves the list of available Gemini models.
+sub DB::get_gemini_models {
+    my ($self) = @_;
+    $self->ensure_connection;
+    my $sql = "SELECT secret_value FROM app_secrets WHERE key_name = 'gemini_models'";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute();
+    my ($val) = $sth->fetchrow_array();
+    
+    # Default list if not set
+    if (!$val) {
+        return ['gemini-3.1-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+    }
+    
+    eval { return decode_json($val); } || return [];
+}
+
+# Updates the list of available Gemini models.
+sub DB::update_gemini_models {
+    my ($self, $models_ref) = @_;
+    $self->ensure_connection;
+    my $models_json = encode_json($models_ref);
+    
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'gemini_models'");
+    $sth->execute();
+    my ($count) = $sth->fetchrow_array();
+    
+    if ($count > 0) {
+        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'gemini_models'");
+        $sth->execute($models_json);
+    } else {
+        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('gemini_models', ?)");
+        $sth->execute($models_json);
+    }
+}
+
+# Retrieves the active Gemini model.
+sub DB::get_gemini_active_model {
+    my ($self) = @_;
+    $self->ensure_connection;
+    my $sql = "SELECT secret_value FROM app_secrets WHERE key_name = 'gemini_active_model'";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute();
+    my ($val) = $sth->fetchrow_array();
+    return $val // 'gemini-2.5-flash-lite';
+}
+
+# Updates the active Gemini model.
+sub DB::update_gemini_active_model {
+    my ($self, $model) = @_;
+    $self->ensure_connection;
+    
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'gemini_active_model'");
+    $sth->execute();
+    my ($count) = $sth->fetchrow_array();
+    
+    if ($count > 0) {
+        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'gemini_active_model'");
+        $sth->execute($model);
+    } else {
+        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('gemini_active_model', ?)");
+        $sth->execute($model);
     }
 }
 

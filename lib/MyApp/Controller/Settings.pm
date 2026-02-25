@@ -22,12 +22,16 @@ sub index {
     my $email_settings = $c->db->get_email_settings();
     my $timer_reset_hour = $c->db->get_timer_reset_hour();
     my $gemini_key = $c->db->get_gemini_key();
+    my $gemini_models = $c->db->get_gemini_models();
+    my $gemini_active = $c->db->get_gemini_active_model();
     
     $c->stash(
         settings => $settings,
         email_settings => $email_settings,
         timer_reset_hour => $timer_reset_hour,
-        gemini_key       => $gemini_key
+        gemini_key       => $gemini_key,
+        gemini_models    => $gemini_models,
+        gemini_active    => $gemini_active
     );
     
     $c->render('settings');
@@ -131,10 +135,29 @@ sub update {
     } elsif ($section eq 'gemini') {
         my $api_key = trim($c->param('gemini_key') // '');
         $c->db->update_gemini_key($api_key);
-        if ($api_key) {
-            $c->flash(message => 'Gemini API key updated successfully');
-        } else {
-            $c->flash(message => 'Gemini API key cleared');
+        
+        my $active_model = $c->param('gemini_active_model');
+        $c->db->update_gemini_active_model($active_model) if $active_model;
+
+        $c->flash(message => 'Gemini settings updated successfully');
+    }
+    elsif ($section eq 'gemini_models') {
+        my $action = $c->param('action') // 'update';
+        my $models = $c->db->get_gemini_models();
+
+        if ($action eq 'add') {
+            my $new_model = trim($c->param('new_model') // '');
+            if ($new_model && !grep { $_ eq $new_model } @$models) {
+                push @$models, $new_model;
+                $c->db->update_gemini_models($models);
+                $c->flash(message => "Added model: $new_model");
+            }
+        }
+        elsif ($action eq 'delete') {
+            my $to_delete = $c->param('model_name');
+            my @filtered = grep { $_ ne $to_delete } @$models;
+            $c->db->update_gemini_models(\@filtered);
+            $c->flash(message => "Removed model: $to_delete");
         }
     }
 

@@ -17,11 +17,6 @@ use Mojo::JSON qw(encode_json decode_json);
 #   - Depends on DB::AI for state aggregation and history
 #   - Uses global gemini_api_key from app_secrets
 
-# my $GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent";
-# my $GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
-# my $GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
-my $GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
-
 # Renders the primary AI chat interface.
 # Route: GET /ai
 sub index {
@@ -74,8 +69,11 @@ sub chat {
 
     # 3. Dispatch to Gemini
     my $api_key = $c->db->get_gemini_key();
+    my $active_model = $c->db->get_gemini_active_model();
+    my $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$active_model:generateContent";
+
     my $ua = Mojo::UserAgent->new;
-    my $tx = $ua->post("$GEMINI_URL?key=$api_key" => json => {
+    my $tx = $ua->post("$endpoint?key=$api_key" => json => {
         contents => \@contents,
         system_instruction => { parts => [{ text => $system_instructions }] },
         tools => [{ google_search => {} }], # Enable web search
