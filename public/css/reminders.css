@@ -113,32 +113,84 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    perspective: 400px;
 }
 
 .flip-card {
-    background: linear-gradient(180deg, #1e293b 50%, #0f172a 50%);
-    color: #f1f5f9;
-    padding: 2px 4px;
+    position: relative;
+    width: 32px;
+    height: 36px;
+    background: #1e293b;
     border-radius: 4px;
     font-family: 'Courier New', Courier, monospace;
     font-size: 1.1rem;
     font-weight: 700;
-    position: relative;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-    border: 1px solid rgba(255,255,255,0.05);
-    min-width: 32px;
+    line-height: 36px;
     text-align: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
 }
 
-.flip-card::after {
-    content: '';
+.flip-card-top, 
+.flip-card-bottom,
+.flip-card-flap-front,
+.flip-card-flap-back {
     position: absolute;
-    top: 50%;
     left: 0;
-    right: 0;
-    height: 1px;
-    background: rgba(0,0,0,0.6);
-    box-shadow: 0 1px 0 rgba(255,255,255,0.05);
+    width: 100%;
+    height: 50%;
+    overflow: hidden;
+    background: #1e293b;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+.flip-card-top,
+.flip-card-flap-front {
+    top: 0;
+    border-radius: 4px 4px 0 0;
+    border-bottom: 1px solid rgba(0,0,0,0.3);
+    line-height: 36px;
+}
+
+.flip-card-bottom,
+.flip-card-flap-back {
+    bottom: 0;
+    border-radius: 0 0 4px 4px;
+    line-height: 0;
+}
+
+.flip-card-flap-front {
+    transform-origin: bottom;
+    z-index: 3;
+    background: #1e293b;
+}
+
+.flip-card-flap-back {
+    transform-origin: top;
+    transform: rotateX(-180deg);
+    z-index: 2;
+    background: #0f172a;
+}
+
+.flip-card-top { z-index: 1; background: #0f172a; }
+.flip-card-bottom { z-index: 0; }
+
+.flip-card.flipping .flip-card-flap-front {
+    animation: flip-down-front 0.4s ease-in forwards;
+}
+
+.flip-card.flipping .flip-card-flap-back {
+    animation: flip-down-back 0.4s ease-in forwards;
+}
+
+@keyframes flip-down-front {
+    0% { transform: rotateX(0deg); }
+    100% { transform: rotateX(-180deg); }
+}
+
+@keyframes flip-down-back {
+    0% { transform: rotateX(180deg); }
+    100% { transform: rotateX(0deg); }
 }
 
 .flip-label {
@@ -320,16 +372,14 @@
 
 @media (min-width: 769px) {
     .flip-card {
-        min-width: 40px;
+        width: 40px;
+        height: 44px;
+        line-height: 44px;
         font-size: 1.3rem;
-        padding: 4px 6px;
     }
-    .flip-label {
-        font-size: 0.6rem;
-    }
-    .flip-clock {
-        gap: 8px;
-    }
+    .flip-card-top, .flip-card-flap-front { line-height: 44px; }
+    .flip-label { font-size: 0.6rem; }
+    .flip-clock { gap: 8px; }
 }
 
 @media (max-width: 768px) {
