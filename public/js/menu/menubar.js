@@ -27,7 +27,9 @@ function updateModal(status, isSpinning = true) {
 function toggleSubmenu(id) {
     var submenu = document.getElementById('submenu-' + id);
     var arrow = document.getElementById('arrow-' + id);
-    if (submenu.style.display === 'none') {
+    
+    // Check computed style to handle CSS-defined 'none' correctly on first click
+    if (submenu.style.display !== 'block') {
         submenu.style.display = 'block';
         arrow.innerHTML = '▲';
     } else {
