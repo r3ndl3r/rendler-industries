@@ -255,6 +255,24 @@
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div id="modal-delete-confirm" class="modal delete-modal-overlay">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
+            <h3><%= icon('warning') %> Confirm Deletion</h3>
+            <span class="modal-close close-btn">&times;</span>
+        </div>
+        <div class="delete-modal-body">
+            <p>Are you sure you want to delete timer "<strong id="delete-timer-name"></strong>"?</p>
+            <p style="color: #64748b; font-size: 0.8rem; margin-top: 8px; font-style: italic;">This action cannot be undone.</p>
+        </div>
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary close-btn">Cancel</button>
+            <button type="button" class="btn btn-danger-confirm" id="btn-confirm-delete">Delete Timer</button>
+        </div>
+    </div>
+</div>
+
 <!-- Hidden delete form -->
 <form id="delete-timer-form" method="POST" action="" style="display: none;">
 </form>

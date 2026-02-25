@@ -32,6 +32,11 @@ const TimerManagement = {
         if (bonusForm) {
             bonusForm.addEventListener('submit', (e) => this.handleBonusSubmit(e));
         }
+
+        const btnConfirmDelete = document.getElementById('btn-confirm-delete');
+        if (btnConfirmDelete) {
+            btnConfirmDelete.addEventListener('click', () => this.performDelete());
+        }
     },
 
     handleFilterChange: function(e) {
@@ -83,12 +88,20 @@ const TimerManagement = {
         const timerId = button.dataset.timerId;
         const name = button.dataset.name;
 
-        if (!confirm(`Delete timer "${name}"?\n\nThis action cannot be undone.`)) {
-            return;
+        document.getElementById('delete-timer-name').textContent = name;
+        this.timerIdToDelete = timerId;
+
+        const modal = document.getElementById('modal-delete-confirm');
+        if (modal) {
+            modal.classList.add('active');
         }
+    },
+
+    performDelete: function() {
+        if (!this.timerIdToDelete) return;
 
         const form = document.getElementById('delete-timer-form');
-        form.action = `/timers/delete/${timerId}`;
+        form.action = `/timers/delete/${this.timerIdToDelete}`;
         form.submit();
     },
 

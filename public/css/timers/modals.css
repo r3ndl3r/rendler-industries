@@ -17,7 +17,7 @@
     justify-content: center;
 }
 
-.modal.active {
+.modal.active, .delete-modal-overlay.active {
     display: flex !important;
 }
 
@@ -63,6 +63,10 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
+}
+
+.modal-actions {
+    justify-content: center !important;
 }
 
 @media (max-width: 768px) {
