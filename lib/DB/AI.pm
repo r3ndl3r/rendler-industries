@@ -116,7 +116,7 @@ sub DB::get_ai_attachment {
     $self->ensure_connection;
     
     my $sql = $type eq 'receipt' 
-        ? "SELECT receipt_image as data, 'image/jpeg' as mime FROM receipts WHERE id = ?"
+        ? "SELECT file_data as data, 'image/jpeg' as mime FROM receipts WHERE id = ?"
         : "SELECT file_data as data, mime_type as mime FROM files WHERE id = ?";
         
     my $sth = $self->{dbh}->prepare($sql);
