@@ -62,6 +62,9 @@
                                 data-active="<%= $link->{is_active} %>"
                                 data-sort="<%= $link->{sort_order} %>"
                                 data-separator="<%= $link->{is_separator} %>"><%= icon('edit') %></button>
+                            <button class="btn-icon-delete btn-delete" 
+                                data-id="<%= $link->{id} %>"
+                                data-label="<%= $link->{label} %>"><%= icon('delete') %></button>
                         </td>
                     </tr>
                     % }
@@ -151,7 +154,6 @@
             </div>
 
             <div class="modal-actions delete-modal-actions">
-                <button type="button" class="btn-danger" id="modalDeleteBtn" style="display: none; margin-right: auto;">Delete Link</button>
                 <button type="submit" class="btn-success"><%= icon('save') %> Save Link</button>
             </div>
         </form>
