@@ -226,7 +226,7 @@
             <div class="settings-card-header" role="button" tabindex="0" aria-expanded="false">
                 <div class="card-header-meta">
                 <h3 class="settings-card-title">Google Gemini</h3>
-                <p class="settings-card-desc">Gemini API key for AI-powered features.</p>
+                <p class="settings-card-desc">Gemini API key and model configuration.</p>
                 </div>
                 <div class="card-header-right">
                 <span class="settings-badge <%= $gemini_key ? 'badge-active' : 'badge-inactive' %>">
@@ -240,22 +240,64 @@
                 <form method="POST" action="/settings/update">
                     <input type="hidden" name="section" value="gemini">
                     <div class="settings-fields">
-                    <div class="form-group full-width">
-                        <label>API Key</label>
-                        <div class="input-wrapper">
-                        <input type="password" name="gemini_key" class="form-input"
-                            value="<%= $gemini_key // '' %>" autocomplete="off">
-                        <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
+                        <div class="form-group full-width">
+                            <label>API Key</label>
+                            <div class="input-wrapper">
+                            <input type="password" name="gemini_key" class="form-input"
+                                value="<%= $gemini_key // '' %>" autocomplete="off">
+                            <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
+                            </div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Active Model</label>
+                            <div class="input-wrapper">
+                                <select name="gemini_active_model" class="form-input" style="background: #0f172a; border: 1px solid #334155; color: white;">
+                                    % for my $model (@$gemini_models) {
+                                        <option value="<%= $model %>" <%= $model eq $gemini_active ? 'selected' : '' %>><%= $model %></option>
+                                    % }
+                                </select>
+                            </div>
                         </div>
                     </div>
-                    </div>
                     <div class="form-actions">
-                    <button type="submit" class="btn-primary btn-small">Save Gemini</button>
+                        <button type="submit" class="btn-primary btn-small">Save Gemini Settings</button>
                     </div>
                 </form>
+
+                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+
+                <div class="settings-fields">
+                    <div class="form-group full-width">
+                        <label>Available Models</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
+                            % for my $model (@$gemini_models) {
+                                <div class="pill-badge" style="background: rgba(144, 202, 249, 0.1); border: 1px solid rgba(144, 202, 249, 0.2); padding: 4px 12px; border-radius: 20px; display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 0.85rem; color: #90caf9;"><%= $model %></span>
+                                    <form method="POST" action="/settings/update" style="display: inline;">
+                                        <input type="hidden" name="section" value="gemini_models">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="model_name" value="<%= $model %>">
+                                        <button type="submit" style="background: none; border: 0; color: #ff5252; cursor: pointer; padding: 0; font-weight: bold;" title="Remove Model" onclick="return confirm('Remove this model from list?')">&times;</button>
+                                    </form>
+                                </div>
+                            % }
+                        </div>
+                    </div>
+                    <form method="POST" action="/settings/update" style="width: 100%;">
+                        <input type="hidden" name="section" value="gemini_models">
+                        <input type="hidden" name="action" value="add">
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label>Add New Model Name</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" name="new_model" class="form-input" placeholder="e.g. gemini-3.1-pro-preview">
+                                <button type="submit" class="btn-primary btn-small" style="white-space: nowrap;">Add Model</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
                 </div>
             </div>
-            </div>
+        </div>
 
       </div>
 
