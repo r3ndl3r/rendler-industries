@@ -6,17 +6,6 @@
     padding: 20px;
 }
 
-.glass-panel {
-    background: rgba(30, 30, 30, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 25px;
-    margin-bottom: 25px;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-}
-
 .add-item-panel {
     padding: 24px;
     background: linear-gradient(135deg, rgba(30, 30, 30, 0.8), rgba(40, 40, 40, 0.6));
@@ -28,9 +17,7 @@
 .add-item-panel::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 0; left: 0; right: 0;
     height: 2px;
     background: linear-gradient(90deg, transparent, #64b5f6, transparent);
     opacity: 0.5;
@@ -50,59 +37,6 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-}
-
-.section-title {
-    padding: 16px 32px;
-    border: none;
-    border-radius: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    text-transform: uppercase;
-    color: white;
-    letter-spacing: 0.8px;
-    transition: all 0.3s ease;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    font-family: inherit;
-    white-space: nowrap;
-    font-size: 0.95rem;
-}
-
-.game-btn:active {
-    transform: scale(0.97);
-}
-
-.game-btn:hover {
-    box-shadow: 0 0 20px rgba(100, 181, 246, 0.6);
-    transform: translateY(-1px);
-}
-
-.btn-blue {
-    background: linear-gradient(135deg, #2196f3, #1565c0);
-}
-
-.items-container {
-    margin-top: 20px;
-}
-
-.section-title {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    font-weight: 700;
-    margin: 30px 0 15px 5px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.section-title::before {
-    content: '';
-    width: 4px;
-    height: 16px;
-    background: linear-gradient(180deg, #64b5f6, transparent);
-    border-radius: 2px;
 }
 
 .todo-item {
@@ -126,9 +60,7 @@
 .todo-item::before {
     content: '';
     position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
+    left: 0; top: 0; bottom: 0;
     width: 4px;
     background: linear-gradient(180deg, #64b5f6, #42a5f5);
     opacity: 0;
@@ -168,37 +100,6 @@
     flex: 1;
 }
 
-.checkbox-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    background: rgba(0, 0, 0, 0.4);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    padding: 0;
-}
-
-.checkbox-btn:hover {
-    border-color: #64b5f6;
-    background: rgba(100, 181, 246, 0.15);
-    transform: scale(1.1);
-}
-
-.checkbox-btn.completed {
-    background: linear-gradient(135deg, #66bb6a, #43a047);
-    border-color: #66bb6a;
-}
-
-.checkmark {
-    color: white;
-    font-size: 1.3rem;
-    font-weight: bold;
-}
-
 .item-name {
     font-size: 1.15rem;
     font-weight: 500;
@@ -210,12 +111,6 @@
 .todo-item.completed .item-name {
     text-decoration: line-through;
     color: rgba(255, 255, 255, 0.4);
-}
-
-.action-buttons {
-    display: flex;
-    gap: 8px;
-    align-items: center;
 }
 
 .icon-small {
@@ -254,29 +149,6 @@
     color: #fff;
 }
 
-.empty-state {
-    text-align: center;
-    padding: 80px 20px;
-    color: rgba(255, 255, 255, 0.4);
-    background: rgba(30, 30, 30, 0.3);
-    border-radius: 16px;
-    border: 2px dashed rgba(255, 255, 255, 0.1);
-}
-
-.empty-state p {
-    font-size: 1.3rem;
-    margin: 12px 0;
-    font-weight: 300;
-}
-
-.empty-hint {
-    font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.25);
-    font-weight: 400;
-}
-
 @media (max-width: 768px) {
-    .header-bar h1 { font-size: 2.2rem; }
     .add-item-form { flex-direction: column; }
-    .game-btn { width: 100%; }
 }
