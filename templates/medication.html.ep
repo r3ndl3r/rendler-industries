@@ -5,6 +5,7 @@
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/medication.css">
+    <script defer src="/js/toast.js"></script>
     <script defer src="/js/medication.js"></script>
 % end
 
@@ -13,90 +14,22 @@
         <h1><%= icon('medication') %> <span>Family Medication</span></h1>
         <div class="manage-actions">
             % if (is_admin) {
-                <a href="/medication/manage" class="action-btn" style="background:#64748b;"><%= icon('settings') %> Registry</a>
+                <button class="action-btn" style="background:#64748b;" onclick="openRegistryModal()"><%= icon('settings') %> Registry</button>
             % }
             <button class="btn-primary" onclick="openDoseModal()"><%= icon('add') %> Log</button>
         </div>
     </div>
 
     <% if (my $msg = flash('message')) { %>
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                showToast("<%= $msg %>", 'success');
-            });
-        </script>
+        <script>document.addEventListener('DOMContentLoaded', () => showToast("<%= $msg %>", 'success'));</script>
     <% } %>
-    
-    <% if (my $error = flash('error')) { %>
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                showToast("<%= $error %>", 'error');
-            });
-        </script>
+    <% if (my $err = flash('error')) { %>
+        <script>document.addEventListener('DOMContentLoaded', () => showToast("<%= $err %>", 'error'));</script>
     <% } %>
 
-    <div class="medication-grid">
-        % if (%$logs) {
-            % for my $member (sort keys %$logs) {
-                <div class="medication-card glass-panel">
-                    <div class="user-header">
-                        <h2 class="user-name">
-                            <span class="user-icon" style="-webkit-text-fill-color: initial;"><%= icon($member) %></span>
-                            <span class="user-label"><%= $member %></span>
-                        </h2>
-                    </div>
-                    
-                    <div class="user-med-list">
-                        % if (@{$logs->{$member}}) {
-                            % for my $l (@{$logs->{$member}}) {
-                                <div class="med-item" data-id="<%= $l->{id} %>" onclick="toggleMedExpand(this)">
-                                    <div class="med-item-main">
-                                        <div class="med-item-info">
-                                            <span class="med-name"><%= $l->{medication_name} %></span>
-                                            <span class="med-dosage-pill"><%= $l->{dosage} %> mg</span>
-                                        </div>
-                                        <div class="med-item-right">
-                                            <div class="med-item-timer">
-                                                <span class="interval-update" data-unix="<%= $l->{taken_at_unix} %>">...</span>
-                                            </div>
-                                            <span class="expand-icon"><%= icon('expand') %></span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="med-item-details">
-                                        <div class="med-item-footer">
-                                            <% 
-                                                my $raw_dt = $l->{taken_at}; 
-                                                my ($date, $time) = split(' ', $raw_dt);
-                                                my $display_dt = substr($time, 0, 5) . ' ' . $date;
-                                            %>
-                                            <span class="taken-at-label"><%= icon('clock') %> <%= $display_dt %></span>
-                                            <div class="med-item-actions" onclick="event.stopPropagation()">
-                                                <button class="btn-icon-edit" title="Edit" 
-                                                        onclick='openEditModal(<%== Mojo::JSON::to_json($l) %>)'>
-                                                    <%= icon('edit') %>
-                                                </button>
-                                                <button type="button" class="btn-icon-delete" title="Delete" 
-                                                        onclick="confirmDeleteMedication(<%= $l->{id} %>, '<%= $l->{medication_name} %> for <%= $l->{family_member} %>')">
-                                                    <%= icon('delete') %>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            % }
-                        % } else {
-                            <p class="empty-hint" style="text-align:center; padding: 20px;">No history yet.</p>
-                        % }
-                    </div>
-                </div>
-            % }
-        % } else {
-            <div class="empty-state">
-                <p>📭 No family members found.</p>
-                <p class="empty-hint">Ensure users are marked as "Family" to see them here.</p>
-            </div>
-        % }
+    <!-- Main Dynamic Container -->
+    <div id="medication-grid" class="medication-grid">
+        <p class="loading">Loading family data...</p>
     </div>
 </div>
 
@@ -107,7 +40,7 @@
             <h3><%= icon('add') %> Log Medication Dose</h3>
             <span class="close-btn" onclick="closeDoseModal()">&times;</span>
         </div>
-        <form id="doseForm" method="POST" action="/medication/add">
+        <form id="doseForm" onsubmit="submitForm(event, '/medication/add')">
             <div class="modal-body">
                 <div class="form-group">
                     <label>Who took it?</label>
@@ -121,11 +54,9 @@
 
                 <div class="form-group">
                     <label>Quick Select Medication</label>
-                    <select class="game-input" onchange="fillForm('add', this.value, this.options[this.selectedIndex].dataset.dosage)">
+                    <select id="add_quick_select" class="game-input" onchange="fillForm('add', this.value, this.options[this.selectedIndex].dataset.dosage)">
                         <option value="" selected>-- Select existing --</option>
-                        % for my $med (@$registry) {
-                            <option value="<%= $med->{name} %>" data-dosage="<%= $med->{default_dosage} %>"><%= $med->{name} %></option>
-                        % }
+                        <!-- Populated via AJAX -->
                     </select>
                 </div>
 
@@ -141,7 +72,10 @@
 
                 <div class="form-group">
                     <label>Time Taken</label>
-                    <input type="datetime-local" name="taken_at" id="add_taken_at" class="game-input">
+                    <div style="display: flex; gap: 10px;">
+                        <input type="time" name="taken_at_time" id="add_taken_at_time" class="game-input" required>
+                        <input type="date" name="taken_at_date" id="add_taken_at_date" class="game-input" required>
+                    </div>
                 </div>
             </div>
             <div class="modal-actions">
@@ -159,7 +93,7 @@
             <h3><%= icon('edit') %> Edit Medication Log</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
-        <form id="editForm" method="POST" action="">
+        <form id="editForm" onsubmit="submitForm(event, this.action)">
             <div class="modal-body">
                 <div class="form-group">
                     <label>Who took it?</label>
@@ -172,11 +106,9 @@
 
                 <div class="form-group">
                     <label>Quick Select Medication</label>
-                    <select class="game-input" onchange="fillForm('edit', this.value, this.options[this.selectedIndex].dataset.dosage)">
+                    <select id="edit_quick_select" class="game-input" onchange="fillForm('edit', this.value, this.options[this.selectedIndex].dataset.dosage)">
                         <option value="" selected>-- Select existing --</option>
-                        % for my $med (@$registry) {
-                            <option value="<%= $med->{name} %>" data-dosage="<%= $med->{default_dosage} %>"><%= $med->{name} %></option>
-                        % }
+                        <!-- Populated via AJAX -->
                     </select>
                 </div>
 
@@ -192,12 +124,72 @@
 
                 <div class="form-group">
                     <label>Time Taken</label>
-                    <input type="datetime-local" name="taken_at" id="edit_taken_at" class="game-input" required>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="time" name="taken_at_time" id="edit_taken_at_time" class="game-input" required>
+                        <input type="date" name="taken_at_date" id="edit_taken_at_date" class="game-input" required>
+                    </div>
                 </div>
             </div>
             <div class="modal-actions">
                 <button type="submit" class="btn-primary"><%= icon('save') %> Save Changes</button>
                 <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Registry Management Modal -->
+<div id="registryModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3><%= icon('settings') %> Manage Medication Registry</h3>
+            <span class="close-btn" onclick="closeRegistryModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="data-table-container glass-panel" style="background: rgba(0,0,0,0.3);">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Default (mg)</th>
+                            <th>Usage</th>
+                            <th style="width: 80px; text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="registry-table-body">
+                        <!-- Populated via AJAX -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn-secondary" onclick="closeRegistryModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Registry Item Modal (Sub-modal) -->
+<div id="manageEditModal" class="modal-overlay" style="display: none; z-index: 11000;">
+    <div class="modal-content" style="max-width: 400px; margin-top: 5rem;">
+        <div class="modal-header">
+            <h3><%= icon('edit') %> Edit Registry Item</h3>
+            <span class="close-btn" onclick="closeManageModal()">&times;</span>
+        </div>
+        <form id="manageEditForm" onsubmit="submitForm(event, this.action, true)">
+            <div class="modal-body">
+                <input type="hidden" name="id" id="manage_id">
+                <div class="form-group">
+                    <label>Medication Name</label>
+                    <input type="text" name="name" id="manage_name" class="game-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Default Dosage (mg)</label>
+                    <input type="number" name="default_dosage" id="manage_dosage" class="game-input" required min="1">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn-primary"><%= icon('save') %> Save</button>
+                <button type="button" class="btn-secondary" onclick="closeManageModal()">Cancel</button>
             </div>
         </form>
     </div>
@@ -214,10 +206,16 @@
             <p>Are you sure you want to delete <strong id="deleteMedName"></strong>?</p>
         </div>
         <div class="delete-modal-actions">
-            <form id="deleteForm" method="POST" action="">
+            <form id="deleteForm" onsubmit="submitForm(event, this.action)">
                 <button type="submit" class="btn-danger-confirm">Delete Log</button>
                 <button type="button" class="btn-secondary" onclick="closeDeleteModal()" style="margin-left: 10px; height: 38px;">Cancel</button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
+
+<script>
+    // Pass session user to JS for default selection logic
+    const CURRENT_USER = "<%= session('user') %>";
+    const IS_ADMIN = <%= is_admin ? 'true' : 'false' %>;
+</script>

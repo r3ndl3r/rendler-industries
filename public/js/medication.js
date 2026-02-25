@@ -1,64 +1,195 @@
 // /public/js/medication.js
 
 /**
- * Enhanced Medication Tracker Logic
- * - User-centric layout management
- * - Dropdown-driven medication selector
- * - Custom datetime handling
- * - Live interval updates
+ * Full AJAX Medication Tracker
  */
 
+let appData = { logs: {}, registry: [], members: [] };
+
 document.addEventListener('DOMContentLoaded', () => {
-    updateAllIntervals();
+    refreshData();
     setInterval(updateAllIntervals, 60000);
-    
-    // Auto-prefill "taken_at" with current time for new logs
-    const addTakenAt = document.getElementById('add_taken_at');
-    if (addTakenAt) {
-        addTakenAt.value = getLocalISOString();
-    }
 });
 
 /**
- * Formats current date for datetime-local input (YYYY-MM-DDTHH:MM)
+ * Core Data Management
  */
-function getLocalISOString() {
-    const now = new Date();
-    const tzoffset = now.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(now - tzoffset)).toISOString().slice(0, 16);
-    return localISOTime;
+function refreshData() {
+    fetch('/medication/api/data')
+        .then(res => res.json())
+        .then(data => {
+            appData = data;
+            renderUI();
+        })
+        .catch(err => showToast("Failed to load data", "error"));
+}
+
+function submitForm(event, url, isRegistry = false) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+
+    // Merge split time/date for medication logs (non-registry forms)
+    if (!isRegistry && form.id !== 'deleteForm') {
+        const mode = form.id === 'doseForm' ? 'add' : 'edit';
+        const time = document.getElementById(`${mode}_taken_at_time`).value;
+        const date = document.getElementById(`${mode}_taken_at_date`).value;
+        if (time && date) {
+            formData.set('taken_at', `${date} ${time}`);
+        }
+    }
+
+    fetch(url, {
+        method: 'POST',
+        body: new URLSearchParams(formData)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || "Success", "success");
+            closeDoseModal();
+            closeEditModal();
+            closeDeleteModal();
+            if (isRegistry) closeManageModal();
+            refreshData();
+        } else {
+            showToast(data.error || "Action failed", "error");
+        }
+    })
+    .catch(err => showToast("Network error", "error"));
 }
 
 /**
- * Fills the medication name and dosage in the active form
- * Called when the "Quick Select" dropdown changes
+ * UI Rendering
  */
+function renderUI() {
+    renderGrid();
+    renderDropdowns();
+    renderRegistryTable();
+    updateAllIntervals();
+}
+
+function renderGrid() {
+    const grid = document.getElementById('medication-grid');
+    grid.innerHTML = '';
+
+    const members = Object.keys(appData.logs).sort();
+    
+    // Filter out members who have NO logs to hide empty tiles
+    const activeMembers = members.filter(m => appData.logs[m].length > 0);
+
+    if (activeMembers.length === 0) {
+        grid.innerHTML = `<div class="empty-state"><p>📭 No active medication logs found.</p></div>`;
+        return;
+    }
+
+    activeMembers.forEach(member => {
+        const logs = appData.logs[member];
+        const card = document.createElement('div');
+        card.className = 'medication-card glass-panel';
+        
+        let logsHtml = '';
+        logs.forEach(l => {
+            // DB format: YYYY-MM-DD HH:MM:SS
+            const parts = l.taken_at.split(' ');
+            let displayDt = l.taken_at;
+            if (parts.length === 2) {
+                const dateParts = parts[0].split('-'); // [2026, 02, 25]
+                const timeStr = parts[1].substring(0, 5); // 16:20
+                displayDt = `${timeStr} ${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            }
+            
+            logsHtml += `
+                <div class="med-item" data-id="${l.id}" onclick="toggleMedExpand(this)">
+                    <div class="med-item-main">
+                        <div class="med-item-info">
+                            <span class="med-name">${l.medication_name}</span>
+                            <span class="med-dosage-pill">${l.dosage} mg</span>
+                        </div>
+                        <div class="med-item-right">
+                            <div class="med-item-timer">
+                                <span class="interval-update" data-unix="${l.taken_at_unix}">...</span>
+                            </div>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                    </div>
+                    <div class="med-item-details">
+                        <div class="med-item-footer">
+                            <span class="taken-at-label">🕒 ${displayDt}</span>
+                            <div class="med-item-actions" onclick="event.stopPropagation()">
+                                <button type="button" class="btn-icon-edit" onclick='openEditModal(${JSON.stringify(l)})'>✎</button>
+                                <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, '${l.medication_name} for ${l.family_member}')">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        });
+
+        card.innerHTML = `
+            <div class="user-header">
+                <h2 class="user-name">
+                    <span class="user-icon">${getFamilyIcon(member)}</span>
+                    <span class="user-label">${member}</span>
+                </h2>
+            </div>
+            <div class="user-med-list">${logsHtml}</div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function renderDropdowns() {
+    const options = appData.registry.map(m => 
+        `<option value="${m.name}" data-dosage="${m.default_dosage}">${m.name}</option>`
+    ).join('');
+    
+    const placeholder = '<option value="" selected>-- Select existing --</option>';
+    document.getElementById('add_quick_select').innerHTML = placeholder + options;
+    document.getElementById('edit_quick_select').innerHTML = placeholder + options;
+}
+
+function renderRegistryTable() {
+    const body = document.getElementById('registry-table-body');
+    if (!body) return;
+
+    body.innerHTML = appData.registry.map(m => `
+        <tr>
+            <td><strong>${m.name}</strong></td>
+            <td>${m.default_dosage} mg</td>
+            <td>${m.usage_count}</td>
+            <td class="col-actions">
+                <div class="action-buttons">
+                    <button type="button" class="btn-icon-edit" onclick="openManageModal('${m.id}', '${m.name}', '${m.default_dosage}')">✎</button>
+                    <button type="button" class="btn-icon-delete" onclick="confirmDeleteRegistry(${m.id}, '${m.name}')" 
+                            ${m.usage_count > 0 ? 'disabled style="opacity:0.3; cursor:not-allowed"' : ''}>🗑️</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+/**
+ * Helpers & Event Handlers
+ */
+function getFamilyIcon(member) {
+    const icons = { andrea: '🐀', nick: '🐉', nicky: '🐉', thararat: '🐎', rendler: '🐓' };
+    return icons[member.toLowerCase()] || '👤';
+}
+
 function fillForm(mode, name, dosage) {
     if (!name) return;
     document.getElementById(`${mode}_med_name`).value = name;
-    if (dosage && dosage > 0) {
-        document.getElementById(`${mode}_dosage`).value = dosage;
-    }
+    if (dosage && dosage > 0) document.getElementById(`${mode}_dosage`).value = dosage;
 }
 
-/**
- * Calculates human-readable time elapsed
- */
-function getTimeSince(unix) {
-    const now = Math.floor(Date.now() / 1000);
-    const diff = now - unix;
-
-    if (diff < -10) return "Scheduled (Future)";
-    if (diff < 60) return "Just now";
-    
-    const minutes = Math.floor(diff / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    const remainingMins = minutes % 60;
-    if (hours < 24) return `${hours}h ${remainingMins}m ago`;
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-    return `${days}d ${remainingHours}h ago`;
+function toggleMedExpand(el) {
+    if (el.classList.contains('expanded')) {
+        el.classList.remove('expanded');
+    } else {
+        const list = el.closest('.user-med-list');
+        list.querySelectorAll('.med-item.expanded').forEach(item => item !== el && item.classList.remove('expanded'));
+        el.classList.add('expanded');
+    }
 }
 
 function updateAllIntervals() {
@@ -68,100 +199,80 @@ function updateAllIntervals() {
     });
 }
 
-/**
- * Toggles expanded state of a medication item
- */
-function toggleMedExpand(el) {
-    // If user clicked a button inside, stopPropagation should have handled it, 
-    // but we can double check if we clicked a button
-    if (el.classList.contains('expanded')) {
-        el.classList.remove('expanded');
-    } else {
-        // Optional: collapse others in the same list
-        const list = el.closest('.user-med-list');
-        list.querySelectorAll('.med-item.expanded').forEach(item => {
-            if (item !== el) item.classList.remove('expanded');
-        });
-        el.classList.add('expanded');
-    }
+function getTimeSince(unix) {
+    const diff = Math.floor(Date.now() / 1000) - unix;
+    if (diff < -10) return "Scheduled";
+    if (diff < 60) return "Just now";
+    const minutes = Math.floor(diff / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    const rm = minutes % 60;
+    if (hours < 24) return `${hours}h ${rm}m ago`;
+    return `${Math.floor(hours / 24)}d ${hours % 24}h ago`;
+}
+
+function setNow(mode) {
+    const now = new Date();
+    const time = now.toTimeString().substring(0, 5);
+    const date = now.toISOString().substring(0, 10);
+    document.getElementById(`${mode}_taken_at_time`).value = time;
+    document.getElementById(`${mode}_taken_at_date`).value = date;
 }
 
 /**
- * Registry Management Modals
- */
-function openManageModal(id, name, dosage) {
-    const modal = document.getElementById('manageEditModal');
-    const form = document.getElementById('manageEditForm');
-    
-    form.action = `/medication/manage/update/${id}`;
-    document.getElementById('manage_id').value = id;
-    document.getElementById('manage_name').value = name;
-    document.getElementById('manage_dosage').value = dosage;
-    
-    modal.style.display = 'block';
-}
-
-function closeManageModal() {
-    document.getElementById('manageEditModal').style.display = 'none';
-}
-
-/**
- * Modal Handling
+ * Modal Controls
  */
 function openDoseModal() {
     document.getElementById('doseModal').style.display = 'block';
-    // Refresh time on open
-    const addTakenAt = document.getElementById('add_taken_at');
-    if (addTakenAt) {
-        addTakenAt.value = getLocalISOString();
-    }
+    setNow('add');
 }
-
-function closeDoseModal() {
-    document.getElementById('doseModal').style.display = 'none';
-}
+function closeDoseModal() { document.getElementById('doseModal').style.display = 'none'; }
 
 function openEditModal(data) {
-    const modal = document.getElementById('editModal');
     const form = document.getElementById('editForm');
-    
-    // Set form action dynamically
     form.action = `/medication/edit/${data.id}`;
-    
-    // Fill fields
     document.getElementById('edit_member_select').value = data.family_member_id;
     document.getElementById('edit_med_name').value = data.medication_name;
     document.getElementById('edit_dosage').value = data.dosage;
     
-    // Format timestamp for datetime-local (YYYY-MM-DDTHH:MM)
-    const dt = data.taken_at.replace(' ', 'T').substring(0, 16);
-    document.getElementById('edit_taken_at').value = dt;
+    // Split combined string YYYY-MM-DD HH:MM:SS for inputs
+    const parts = data.taken_at.split(' ');
+    document.getElementById('edit_taken_at_date').value = parts[0];
+    document.getElementById('edit_taken_at_time').value = parts[1].substring(0, 5);
     
-    modal.style.display = 'block';
+    document.getElementById('editModal').style.display = 'block';
 }
-
-function closeEditModal() {
-    document.getElementById('editModal').style.display = 'none';
-}
+function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
 
 function confirmDeleteMedication(id, name) {
-    const modal = document.getElementById('deleteConfirmModal');
-    const nameEl = document.getElementById('deleteMedName');
-    const form = document.getElementById('deleteForm');
-    
-    nameEl.textContent = name;
-    form.action = `/medication/delete/${id}`;
-    modal.style.display = 'flex';
+    document.getElementById('deleteMedName').textContent = name;
+    document.getElementById('deleteForm').action = `/medication/delete/${id}`;
+    document.getElementById('deleteConfirmModal').style.display = 'flex';
 }
+function closeDeleteModal() { document.getElementById('deleteConfirmModal').style.display = 'none'; }
 
-function closeDeleteModal() {
-    document.getElementById('deleteConfirmModal').style.display = 'none';
+function openRegistryModal() { document.getElementById('registryModal').style.display = 'block'; }
+function closeRegistryModal() { document.getElementById('registryModal').style.display = 'none'; }
+
+function openManageModal(id, name, dosage) {
+    document.getElementById('manageEditForm').action = `/medication/manage/update/${id}`;
+    document.getElementById('manage_id').value = id;
+    document.getElementById('manage_name').value = name;
+    document.getElementById('manage_dosage').value = dosage;
+    document.getElementById('manageEditModal').style.display = 'block';
+}
+function closeManageModal() { document.getElementById('manageEditModal').style.display = 'none'; }
+
+function confirmDeleteRegistry(id, name) {
+    if (confirm(`Remove ${name} from registry?`)) {
+        const fakeEvent = { preventDefault: () => {} };
+        const fakeForm = { id: 'deleteForm' };
+        submitForm(fakeEvent, `/medication/manage/delete/${id}`, true);
+    }
 }
 
 window.onclick = (event) => {
     if (event.target.classList.contains('modal-overlay') || event.target.classList.contains('delete-modal-overlay')) {
-        closeDoseModal();
-        closeEditModal();
-        closeDeleteModal();
+        closeDoseModal(); closeEditModal(); closeDeleteModal(); closeRegistryModal(); closeManageModal();
     }
 };

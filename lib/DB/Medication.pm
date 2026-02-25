@@ -144,19 +144,6 @@ sub DB::delete_registry_item {
     return ($sth->execute($id), "");
 }
 
-# Retrieves unique medications from the registry for autocomplete.
-# Returns:
-#   ArrayRef of HashRefs (id, name, default_dosage)
-sub DB::get_medication_registry {
-    my ($self) = @_;
-    $self->ensure_connection;
-    
-    my $sth = $self->{dbh}->prepare("SELECT id, name, default_dosage FROM medication_registry ORDER BY name ASC");
-    $sth->execute();
-    
-    return $sth->fetchall_arrayref({});
-}
-
 # Retrieves list of family members (all approved users).
 # Returns:
 #   ArrayRef of HashRefs (id, username)
