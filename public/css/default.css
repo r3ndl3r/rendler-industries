@@ -252,8 +252,8 @@ body {
 .btn-icon-crop { background: #8b5cf6; }
 .btn-icon-crop:hover { background: #7c3aed; }
 
-.btn-icon-reset { background: #64748b; }
-.btn-icon-reset:hover { background: #475569; }
+.btn-icon-reset { background: #06b6d4; }
+.btn-icon-reset:hover { background: #0891b2; }
 
 /* Disabled states */
 .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled, .btn-success:disabled {
