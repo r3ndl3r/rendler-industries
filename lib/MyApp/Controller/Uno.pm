@@ -4,19 +4,23 @@ package MyApp::Controller::Uno;
 use Mojo::Base 'Mojolicious::Controller';
 
 # Controller for the UNO Online multiplayer game.
+# Handles lobby orchestration, secure state distribution, and move processing.
+#
 # Features:
-#   - Lobby management (List, Create, Join)
-#   - Game interface rendering with secure state masking
-#   - AJAX-based move processing (Play Card, Draw Card)
-# Integration points:
-#   - Uses DB::Uno helper for game logic and state persistence
-#   - Restricted to authenticated users via router bridge
+#   - Real-time lobby management (List, Create, Join).
+#   - Secure game state masking (Opponent cards hidden).
+#   - AJAX-driven move processing (Play, Draw, Shout UNO).
+#   - Automatic turn rotation and win condition detection.
+#
+# Integration Points:
+#   - DB::Uno for game logic, deck management, and persistence.
+#   - Router: Restricted to authenticated users via bridge.
 
 # Renders the lobby list showing waiting games.
 # Route: GET /uno/lobby
 # Parameters: None
 # Returns:
-#   Rendered HTML template 'uno/lobby' with list of open games
+#   Rendered HTML template 'uno/lobby' with waiting lobbies.
 sub lobby {
     my $c = shift;
     # UPDATED: Specific method call
@@ -28,7 +32,7 @@ sub lobby {
 # Route: GET /uno/create
 # Parameters: None
 # Returns:
-#   Redirects to the play screen for the new game ID
+#   Redirects to the play screen for the new game ID.
 sub create {
     my $c = shift;
     my $uid = $c->current_user_id;
@@ -40,10 +44,10 @@ sub create {
 # Adds the current user to an existing lobby as player 2.
 # Route: POST /uno/join
 # Parameters:
-#   id : Unique Game ID to join
+#   - id : Unique Game ID to join.
 # Returns:
-#   Redirects to play screen on success
-#   Redirects to lobby with error flash on failure
+#   Redirects to play screen on success.
+#   Redirects to lobby with error flash on failure.
 sub join {
     my $c = shift;
     my $uid = $c->current_user_id;
@@ -62,10 +66,10 @@ sub join {
 # Note: State is sanitized by DB layer to hide opponent's cards.
 # Route: GET /uno/play/:id
 # Parameters:
-#   id : Unique Game ID
+#   - id : Unique Game ID.
 # Returns:
-#   Rendered HTML template 'uno/game' (Standard request)
-#   JSON object { my_hand, top_card, turn, status, etc } (AJAX request)
+#   Rendered HTML template 'uno/game' (Standard request).
+#   JSON object { myhand, players, topcard, turn, status, etc } (AJAX request).
 sub play {
     my $c = shift;
     my $game_id = $c->param('id');
@@ -121,11 +125,11 @@ sub play {
 # Processes a player's attempt to play a card from their hand.
 # Route: POST /uno/play_card
 # Parameters:
-#   id    : Unique Game ID
-#   idx   : Index of the card in the hand array
-#   color : (Optional) Declared color for Wild cards
+#   - id    : Unique Game ID.
+#   - idx   : Index of the card in the hand array.
+#   - color : (Optional) Declared color for Wild cards.
 # Returns:
-#   JSON object { success => 1/0 }
+#   JSON: { success => 1/0 }
 sub play_card {
     my $c = shift;
     my $game_id = $c->param('id');
@@ -142,9 +146,9 @@ sub play_card {
 # Processes a player's attempt to draw a card from the deck.
 # Route: POST /uno/draw_card
 # Parameters:
-#   id : Unique Game ID
+#   - id : Unique Game ID.
 # Returns:
-#   JSON object { success => 1/0, playable => 1/0 }
+#   JSON: { success => 1/0, playable => 1/0 }
 sub draw_card {
     my $c = shift;
     my $game_id = $c->param('id');
@@ -156,12 +160,12 @@ sub draw_card {
     $c->render(json => $result);
 }
 
-# Processes a player's 'UNO!' declaration.
+# Handles the "UNO!" shout action.
 # Route: POST /uno/shout
 # Parameters:
-#   id : Unique Game ID
+#   - id : Unique Game ID.
 # Returns:
-#   JSON object { success => 1/0 }
+#   JSON: { success => 1/0 }
 sub shout_uno {
     my $c = shift;
     my $game_id = $c->param('id');
@@ -172,12 +176,12 @@ sub shout_uno {
     $c->render(json => { success => $success });
 }
 
-# Toggles the ready status of the current user for a specific game.
+# Toggles player 'Ready' status in the lobby.
 # Route: POST /uno/ready
 # Parameters:
-#   id : Unique Game ID
+#   - id : Unique Game ID.
 # Returns:
-#   JSON object { status => 'waiting'/'active' }
+#   JSON: { status => 'waiting'/'active' }
 sub toggle_ready {
     my $c = shift;
     my $game_id = $c->param('id');
@@ -189,12 +193,12 @@ sub toggle_ready {
     $c->render(json => { status => $status });
 }
 
-# Manually starts the game. Only the host (player 1) can call this.
+# Manually starts the game session. Only the host (player 1) can call this.
 # Route: POST /uno/start
 # Parameters:
-#   id : Unique Game ID
+#   - id : Unique Game ID.
 # Returns:
-#   JSON object { success => 1/0, message => '...' }
+#   JSON: { success => 1/0, message => '...' }
 sub start {
     my $c = shift;
     my $game_id = $c->param('id');
