@@ -1,7 +1,7 @@
 // /public/js/reminders.js
 
 /**
- * Reminders Management - Refactored to use default.js
+ * Reminders Management - Refactored to use global FlipClockManager
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -29,7 +29,6 @@ function openEditModal(btn) {
     const modal = document.getElementById('editReminderModal');
     const form = document.getElementById('editReminderForm');
     
-    // Clear all checkboxes first
     document.querySelectorAll('#editReminderModal input[type="checkbox"]').forEach(cb => cb.checked = false);
 
     document.getElementById('editReminderId').value = reminder.id;
@@ -37,9 +36,8 @@ function openEditModal(btn) {
     document.getElementById('editReminderDescription').value = reminder.description || '';
     document.getElementById('editReminderTime').value = reminder.reminder_time.substring(0, 5);
     
-    const oneOffCheckbox = document.getElementById('editReminderOneOff');
-    if (oneOffCheckbox) {
-        oneOffCheckbox.checked = (reminder.is_one_off == 1);
+    if (document.getElementById('editReminderOneOff')) {
+        document.getElementById('editReminderOneOff').checked = (reminder.is_one_off == 1);
     }
     
     form.action = `/reminders/update/${reminder.id}`;
@@ -91,17 +89,8 @@ async function toggleReminder(id, active, btn) {
     const result = await apiPost(`/reminders/toggle/${id}`, { active: status });
     if (result) {
         if (btn) {
-            if (active) {
-                btn.className = 'btn-icon-view btn-status-toggle';
-                btn.innerHTML = '▶️'; 
-                btn.title = 'Pause Reminder';
-                btn.setAttribute('onclick', `toggleReminder(${id}, 0, this)`);
-            } else {
-                btn.className = 'btn-icon-copy btn-status-toggle';
-                btn.innerHTML = '⏸️'; 
-                btn.title = 'Resume Reminder';
-                btn.setAttribute('onclick', `toggleReminder(${id}, 1, this)`);
-            }
+            btn.innerHTML = active ? '▶️' : '⏸️'; 
+            btn.setAttribute('onclick', `toggleReminder(${id}, ${active ? 0 : 1}, this)`);
         }
 
         const editBtn = card.querySelector('.btn-icon-edit');
@@ -111,11 +100,8 @@ async function toggleReminder(id, active, btn) {
             editBtn.dataset.reminder = JSON.stringify(data);
         }
 
-        if (active) {
-            card.classList.remove('paused');
-        } else {
-            card.classList.add('paused');
-        }
+        if (active) card.classList.remove('paused');
+        else card.classList.add('paused');
         updateCountdowns();
     }
 }
@@ -174,23 +160,23 @@ function getNextOccurrence(timeStr, daysStr) {
 
 function updateCountdowns() {
     document.querySelectorAll('.reminder-card').forEach(card => {
-        const el = document.getElementById(`countdown-${card.dataset.id}`);
+        const reminderId = card.dataset.id;
+        const el = document.getElementById(`countdown-${reminderId}`);
         if (!el) return;
 
         if (card.classList.contains('paused')) { 
             el.innerHTML = ''; 
+            delete FlipClockManager.prevStates[reminderId];
             return; 
         }
 
         const next = getNextOccurrence(card.dataset.time, card.dataset.days);
-        if (!next) {
-            el.innerHTML = '';
-            return;
-        }
+        if (!next) { el.innerHTML = ''; delete FlipClockManager.prevStates[reminderId]; return; }
 
         const diff = next - new Date();
         if (diff <= 0) {
-            el.innerHTML = '<span class="flip-card" style="width: 100%;">DUE NOW</span>';
+            el.innerHTML = '<div class="flip-card" style="width: 100%; min-width: 80px;">DUE NOW</div>';
+            delete FlipClockManager.prevStates[reminderId];
             return;
         }
 
@@ -200,29 +186,11 @@ function updateCountdowns() {
         const m = Math.floor((totalSeconds % 3600) / 60);
         const s = totalSeconds % 60;
 
-        let clockHtml = '';
-        if (d > 0) {
-            clockHtml += `
-                <div class="flip-unit">
-                    <div class="flip-card">${d}</div>
-                    <div class="flip-label">DD</div>
-                </div>`;
-        }
-
-        clockHtml += `
-            <div class="flip-unit">
-                <div class="flip-card">${String(h).padStart(2, '0')}</div>
-                <div class="flip-label">HH</div>
-            </div>
-            <div class="flip-unit">
-                <div class="flip-card">${String(m).padStart(2, '0')}</div>
-                <div class="flip-label">MM</div>
-            </div>
-            <div class="flip-unit">
-                <div class="flip-card">${String(s).padStart(2, '0')}</div>
-                <div class="flip-label">SS</div>
-            </div>
-        `;
-        el.innerHTML = clockHtml;
+        FlipClockManager.update(el, { 
+            dd: d, 
+            hh: String(h).padStart(2, '0'), 
+            mm: String(m).padStart(2, '0'), 
+            ss: String(s).padStart(2, '0') 
+        }, reminderId);
     });
 }
