@@ -56,7 +56,7 @@ sub add {
         my $sth = $c->db->{dbh}->prepare("INSERT INTO shopping_list (item_name, added_by, is_checked) VALUES (?, ?, 0)");
         $sth->execute($item_name, $added_by);
         my $id = $c->db->{dbh}->last_insert_id();
-        $c->render(json => { success => 1, id => $id, item_name => $item_name, added_by => $added_by });
+        $c->render(json => { success => 1, id => $id, item_name => $item_name, added_by => $added_by, message => "Item added!" });
     };
     if ($@) {
         $c->render(json => { success => 0, error => 'Database error' });
@@ -75,7 +75,7 @@ sub toggle {
     
     eval {
         $c->db->toggle_shopping_item($id);
-        $c->render(json => { success => 1 });
+        $c->render(json => { success => 1, message => "Item updated" });
     };
     if ($@) {
         $c->render(json => { success => 0, error => 'Database error' });
@@ -94,7 +94,7 @@ sub delete {
     
     eval {
         $c->db->delete_shopping_item($id);
-        $c->render(json => { success => 1 });
+        $c->render(json => { success => 1, message => "Item removed" });
     };
     if ($@) {
         $c->render(json => { success => 0, error => 'Database error' });
@@ -114,7 +114,7 @@ sub edit {
     
     eval {
         $c->db->update_shopping_item($id, $item_name);
-        $c->render(json => { success => 1 });
+        $c->render(json => { success => 1, message => "Item updated" });
     };
     if ($@) {
         $c->render(json => { success => 0, error => 'Database error' });
