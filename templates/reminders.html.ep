@@ -38,35 +38,28 @@
                      data-one-off="<%= $r->{is_one_off} // 0 %>"
                      data-last-run="<%= $r->{last_run_at} // '' %>">
                     <div class="reminder-header">
-                        <div style="display: flex; flex-direction: column; gap: 5px;">
-                            <h2 class="reminder-title"><%= $r->{title} %></h2>
+                        <div class="title-stack">
                             % if ($r->{is_one_off}) {
                                 <span class="one-off-badge"><%= icon('clock') %> One-off</span>
                             % }
-                        </div>
-                        <div class="reminder-actions">
-                            <button class="btn-icon-<%= $r->{is_active} ? 'view' : 'copy' %> btn-status-toggle" 
-                                    onclick="toggleReminder(<%= $r->{id} %>, <%= $r->{is_active} ? 0 : 1 %>, this)" 
-                                    title="<%= $r->{is_active} ? 'Pause Reminder' : 'Resume Reminder' %>">
-                                <%= icon($r->{is_active} ? 'running' : 'paused') %>
-                            </button>
-                            <button class="btn-icon-edit" data-reminder='<%== Mojo::JSON::to_json($r) %>' onclick='openEditModal(this)' title="Edit Reminder"><%= icon('edit') %></button>
-                            <button class="btn-icon-delete" onclick="confirmDeleteReminder(<%= $r->{id} %>, '<%= $r->{title} %>')"><%= icon('delete') %></button>
+                            <h2 class="reminder-title"><%= $r->{title} %></h2>
                         </div>
                     </div>
                     
                     <div class="reminder-time">
-                        <span class="clock-icon"><%= icon('clock') %></span> 
-                        <% 
-                            my $raw_time = substr($r->{reminder_time}, 0, 5); 
-                            my ($h, $m) = split(':', $raw_time);
-                            my $ampm = $h >= 12 ? 'PM' : 'AM';
-                            $h = $h % 12;
-                            $h = 12 if $h == 0;
-                            my $display_time = sprintf("%d:%02d %s", $h, $m, $ampm);
-                        %>
-                        <%= $display_time %>
-                        <span class="reminder-countdown" id="countdown-<%= $r->{id} %>"></span>
+                        <div class="reminder-time-main">
+                            <span class="clock-icon"><%= icon('clock') %></span> 
+                            <% 
+                                my $raw_time = substr($r->{reminder_time}, 0, 5); 
+                                my ($h, $m) = split(':', $raw_time);
+                                my $ampm = $h >= 12 ? 'PM' : 'AM';
+                                $h = $h % 12; $h = 12 if $h == 0;
+                                my $display_time_val = sprintf("%d:%02d", $h, $m);
+                            %>
+                            <span class="time-text"><%= $display_time_val %></span>
+                            <span class="time-ampm"><%= $ampm %></span>
+                        </div>
+                        <div class="flip-clock" id="countdown-<%= $r->{id} %>"></div>
                     </div>
 
                     <div class="reminder-days">
@@ -83,7 +76,7 @@
                     <% if ($r->{description}) { %>
                         <p class="reminder-desc"><%= $r->{description} %></p>
                     <% } else { %>
-                        <p class="reminder-desc" style="font-style: italic; opacity: 0.5;">No description provided.</p>
+                        <p class="reminder-desc reminder-desc-empty">No description provided.</p>
                     <% } %>
 
                     <div class="reminder-recipients">
@@ -94,17 +87,17 @@
                                     <span class="recipient-badge"><%= $name %></span>
                                 % }
                             % }
-                            
-                            <% if ($r->{last_run_at} && substr($r->{last_run_at}, 0, 10) eq $today) { %>
-                                <span class="recipient-badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2);">
-                                    ✓ Sent Today
-                                </span>
-                            <% } elsif ($r->{last_run_at}) { %>
-                                <span class="recipient-badge" style="background: rgba(100,116,139,0.1); color: #94a3b8; border-color: rgba(100,116,139,0.2);">
-                                    Last: <%= substr($r->{last_run_at}, 0, 10) %>
-                                </span>
-                            <% } %>
                         </div>
+                    </div>
+
+                    <div class="reminder-footer-actions">
+                        <button class="btn-icon-<%= $r->{is_active} ? 'view' : 'copy' %> btn-status-toggle" 
+                                onclick="toggleReminder(<%= $r->{id} %>, <%= $r->{is_active} ? 0 : 1 %>, this)" 
+                                title="<%= $r->{is_active} ? 'Pause Reminder' : 'Resume Reminder' %>">
+                            <%= icon($r->{is_active} ? 'running' : 'paused') %>
+                        </button>
+                        <button class="btn-icon-edit" data-reminder='<%== Mojo::JSON::to_json($r) %>' onclick='openEditModal(this)' title="Edit Reminder"><%= icon('edit') %></button>
+                        <button class="btn-icon-delete" onclick="confirmDeleteReminder(<%= $r->{id} %>, '<%= $r->{title} %>')"><%= icon('delete') %></button>
                     </div>
                 </div>
             <% } %>

@@ -18,13 +18,14 @@
 .reminder-card {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1rem;
     padding: 2rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
     background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
     border-radius: 1.5rem; 
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .reminder-card::before {
@@ -49,8 +50,16 @@
 
 .reminder-header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.title-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
 }
 
 .reminder-title {
@@ -62,30 +71,83 @@
 }
 
 .reminder-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+    display: none;
 }
 
 .reminder-time {
-    font-size: 2rem;
+    font-size: 2.2rem;
     font-weight: 700;
     color: #90caf9;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    justify-content: space-between;
+    gap: 1rem;
     text-shadow: 0 0 20px rgba(144, 202, 249, 0.3);
 }
 
-.reminder-countdown {
+.reminder-time-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.2rem;
+}
+
+.time-text {
+    font-size: 2.2rem;
+    line-height: 1;
+}
+
+.time-ampm {
+    font-size: 0.9rem;
+    font-weight: 600;
+    opacity: 0.7;
+    margin-top: 0.3rem;
+}
+
+.flip-clock {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.flip-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.flip-card {
+    background: linear-gradient(180deg, #1e293b 50%, #0f172a 50%);
+    color: #f1f5f9;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: 'Courier New', Courier, monospace;
     font-size: 1.1rem;
-    color: rgba(144, 202, 249, 0.7);
-    font-weight: 500;
-    font-style: italic;
+    font-weight: 700;
+    position: relative;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.05);
+    min-width: 32px;
+    text-align: center;
+}
+
+.flip-card::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(0,0,0,0.6);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.flip-label {
+    font-size: 0.5rem;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-top: 4px;
+    font-weight: 800;
     letter-spacing: 0.5px;
-    margin-left: 0.5rem;
-    text-shadow: 0 0 10px rgba(144, 202, 249, 0.4);
-    opacity: 0.8;
 }
 
 .clock-icon {
@@ -96,6 +158,7 @@
 .reminder-days {
     display: flex;
     gap: 0.5rem;
+    justify-content: center;
 }
 
 .day-dot {
@@ -126,16 +189,37 @@
     color: #94a3b8;
     margin: 0;
     line-height: 1.5;
-    min-height: 2.8rem;
+    text-align: left;
+}
+
+.reminder-desc-empty {
+    font-style: italic; 
+    opacity: 0.5;
+}
+
+.checkbox-group small {
+    display: block; 
+    color: rgba(255,255,255,0.4); 
+    margin-top: 5px; 
+    font-style: italic; 
+    padding-left: 2rem;
+}
+
+.modal-content-small {
+    max-width: 600px;
+}
+
+.form-group-time {
+    max-width: 200px;
 }
 
 .reminder-recipients {
     margin-top: auto;
-    padding-top: 1.25rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.5rem;
 }
 
 .reminder-recipients .label {
@@ -175,6 +259,7 @@
     text-transform: uppercase;
     border: 1px solid rgba(245, 158, 11, 0.2);
     width: fit-content;
+    margin-bottom: 5px;
 }
 
 /* Modal Selector Overrides */
@@ -223,6 +308,28 @@
 
 .day-checkbox:has(input:checked) span, .recipient-checkbox:has(input:checked) span {
     color: #ffffff;
+}
+
+.reminder-footer-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 0;
+    padding-top: 0.75rem;
+}
+
+@media (min-width: 769px) {
+    .flip-card {
+        min-width: 40px;
+        font-size: 1.3rem;
+        padding: 4px 6px;
+    }
+    .flip-label {
+        font-size: 0.6rem;
+    }
+    .flip-clock {
+        gap: 8px;
+    }
 }
 
 @media (max-width: 768px) {

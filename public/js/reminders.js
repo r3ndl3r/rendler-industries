@@ -6,7 +6,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     updateCountdowns();
-    setInterval(updateCountdowns, 60000);
+    setInterval(updateCountdowns, 1000);
 
     // Use global modal closing helper
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
@@ -29,14 +29,20 @@ function openEditModal(btn) {
     const modal = document.getElementById('editReminderModal');
     const form = document.getElementById('editReminderForm');
     
+    // Clear all checkboxes first
+    document.querySelectorAll('#editReminderModal input[type="checkbox"]').forEach(cb => cb.checked = false);
+
     document.getElementById('editReminderId').value = reminder.id;
     document.getElementById('editReminderTitle').value = reminder.title;
     document.getElementById('editReminderDescription').value = reminder.description || '';
     document.getElementById('editReminderTime').value = reminder.reminder_time.substring(0, 5);
-    document.getElementById('editReminderOneOff').checked = reminder.is_one_off == 1;
+    
+    const oneOffCheckbox = document.getElementById('editReminderOneOff');
+    if (oneOffCheckbox) {
+        oneOffCheckbox.checked = (reminder.is_one_off == 1);
+    }
     
     form.action = `/reminders/update/${reminder.id}`;
-    document.querySelectorAll('#editReminderModal input[type="checkbox"]').forEach(cb => cb.checked = false);
     
     if (reminder.days_of_week) {
         reminder.days_of_week.split(',').forEach(day => {
@@ -171,13 +177,52 @@ function updateCountdowns() {
         const el = document.getElementById(`countdown-${card.dataset.id}`);
         if (!el) return;
 
-        if (card.classList.contains('paused') || (card.dataset.oneOff == 1 && card.dataset.lastRun)) { 
-            el.textContent = ''; 
+        if (card.classList.contains('paused')) { 
+            el.innerHTML = ''; 
             return; 
         }
 
         const next = getNextOccurrence(card.dataset.time, card.dataset.days);
-        // Uses global formatCountdown from default.js
-        el.textContent = next ? formatCountdown(next - new Date()) : '';
+        if (!next) {
+            el.innerHTML = '';
+            return;
+        }
+
+        const diff = next - new Date();
+        if (diff <= 0) {
+            el.innerHTML = '<span class="flip-card" style="width: 100%;">DUE NOW</span>';
+            return;
+        }
+
+        const totalSeconds = Math.floor(diff / 1000);
+        const d = Math.floor(totalSeconds / 86400);
+        const h = Math.floor((totalSeconds % 86400) / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        const s = totalSeconds % 60;
+
+        let clockHtml = '';
+        if (d > 0) {
+            clockHtml += `
+                <div class="flip-unit">
+                    <div class="flip-card">${d}</div>
+                    <div class="flip-label">DD</div>
+                </div>`;
+        }
+
+        clockHtml += `
+            <div class="flip-unit">
+                <div class="flip-card">${String(h).padStart(2, '0')}</div>
+                <div class="flip-label">HH</div>
+            </div>
+            <div class="flip-unit">
+                <div class="flip-card">${String(m).padStart(2, '0')}</div>
+                <div class="flip-label">MM</div>
+            </div>
+            <div class="flip-unit">
+                <div class="flip-card">${String(s).padStart(2, '0')}</div>
+                <div class="flip-label">SS</div>
+            </div>
+        `;
+        el.innerHTML = clockHtml;
     });
 }
