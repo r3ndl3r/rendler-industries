@@ -27,6 +27,7 @@ sub register {
         'settings'  => '⚙️',
         'bonus'     => '🎁',
         'crop'      => '✂️',
+        'reset'     => '🔄',
         
         # Navigation / UI
         'home'      => '🏠',
