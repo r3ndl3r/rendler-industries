@@ -4,24 +4,28 @@ package MyApp::Controller::System;
 use Mojo::Base 'Mojolicious::Controller';
 
 # Controller for System-level operations and maintenance.
+# Handles high-privilege tasks related to server health and automation triggers.
+#
 # Features:
-#   - Service lifecycle management (Hot Restart)
-# Integration points:
-#   - Interacts directly with the operating system shell
-#   - Controls the Hypnotoad application server process
+#   - Service lifecycle management (Non-blocking Hot Restart).
+#   - Centralized maintenance hook for automated jobs (Timers, Reminders).
+#
+# Integration Points:
+#   - Linux Shell: Direct interaction with Hypnotoad and background forking.
+#   - External: Triggered via system cron for /api/maintenance.
+#   - Restricted to 'admin' bridge via router.
 
 use DateTime;
 
 # Initiates a hot restart of the application server.
-# Route: POST /system/restart (or GET depending on router config)
+# Route: GET /restart
 # Parameters: None
 # Returns:
-#   Text confirmation if command initiated successfully
-#   HTTP 500 if the system process fork fails
+#   Text confirmation if command initiated successfully.
+#   HTTP 500 if the system process fork fails.
 # Behavior:
-#   - Forks a background process to avoid blocking the HTTP response
-#   - Executes 'hypnotoad -s' (hot deployment) followed by a start command
-#   - Changes working directory to app home to ensure relative paths resolve
+#   - Forks a background process to avoid blocking the HTTP response.
+#   - Executes 'hypnotoad -s' followed by a fresh start.
 sub restart {
     my $c = shift;
     
@@ -46,9 +50,12 @@ sub restart {
     }
 }
 
-# Run automated system maintenance tasks (Timers, Reminders, etc.)
-# Route: GET /api/maintenance (Called by cron)
-# Security: Restricted to Localhost
+# API Endpoint: Run automated system maintenance tasks.
+# Route: GET /api/maintenance
+# Parameters: None
+# Returns:
+#   JSON object summarizing task outcomes (Timers, Reminders).
+# Security: Restricted to Localhost (127.0.0.1 / ::1).
 sub maintenance {
     my $c = shift;
 
@@ -62,7 +69,7 @@ sub maintenance {
     my $result = {
         timestamp => $now->strftime('%Y-%m-%d %H:%M:%S'),
         timers    => {},
-        reminders => {}, # Placeholder for future reminders logic
+        reminders => {},
     };
 
     # 1. Run Timer Maintenance
@@ -75,6 +82,10 @@ sub maintenance {
 }
 
 # Internal helper to handle recurring reminders.
+# Parameters:
+#   - now : DateTime object representing the current execution minute.
+# Returns:
+#   Stats HashRef { checked_minute, due_found, notified, errors }
 sub _run_reminder_maintenance {
     my ($c, $now) = @_;
     
@@ -118,6 +129,9 @@ sub _run_reminder_maintenance {
 }
 
 # Internal helper to handle timer-specific maintenance tasks.
+# Parameters: None
+# Returns:
+#   Stats HashRef { cleaned_sessions, updated_timers, warnings_sent, expiry_sent }
 sub _run_timer_maintenance {
     my $c = shift;
     
