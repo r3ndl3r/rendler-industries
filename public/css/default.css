@@ -219,7 +219,7 @@ body {
     background: #059669; 
 }
 
-.btn-icon-view, .btn-icon-copy, .btn-icon-edit, .btn-icon-delete, .btn-icon-bonus, .btn-icon-crop, .btn-icon-ai {
+.btn-icon-view, .btn-icon-copy, .btn-icon-edit, .btn-icon-delete, .btn-icon-bonus, .btn-icon-crop, .btn-icon-ai, .btn-icon-reset {
     width: 32px;
     height: 32px;
     padding: 0;
@@ -251,6 +251,9 @@ body {
 
 .btn-icon-crop { background: #8b5cf6; }
 .btn-icon-crop:hover { background: #7c3aed; }
+
+.btn-icon-reset { background: #64748b; }
+.btn-icon-reset:hover { background: #475569; }
 
 /* Disabled states */
 .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled, .btn-success:disabled {
