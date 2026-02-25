@@ -70,6 +70,7 @@ sub register {
         'receipts'  => '🧾',
         'reminders' => '🔔',
         'medication' => '💊',
+        'ai'         => '🧠',
         'expand'    => '▼',
         'collapse'  => '▲',
 
