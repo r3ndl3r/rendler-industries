@@ -1,7 +1,7 @@
 // /public/js/medication.js
 
 /**
- * Full AJAX Medication Tracker
+ * Full AJAX Medication Tracker - Refactored to use default.js
  */
 
 let appData = { logs: {}, registry: [], members: [] };
@@ -9,6 +9,11 @@ let appData = { logs: {}, registry: [], members: [] };
 document.addEventListener('DOMContentLoaded', () => {
     refreshData();
     setInterval(updateAllIntervals, 60000);
+    
+    // Use global modal closing helper
+    setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
+        closeDoseModal, closeEditModal, closeDeleteModal, closeRegistryModal, closeManageModal
+    ]);
 });
 
 /**
@@ -39,24 +44,16 @@ function submitForm(event, url, isRegistry = false) {
         }
     }
 
-    fetch(url, {
-        method: 'POST',
-        body: new URLSearchParams(formData)
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message || "Success", "success");
+    // Refactored to use standard apiPost from default.js
+    apiPost(url, Object.fromEntries(formData)).then(data => {
+        if (data) {
             closeDoseModal();
             closeEditModal();
             closeDeleteModal();
             if (isRegistry) closeManageModal();
             refreshData();
-        } else {
-            showToast(data.error || "Action failed", "error");
         }
-    })
-    .catch(err => showToast("Network error", "error"));
+    });
 }
 
 /**
@@ -74,8 +71,6 @@ function renderGrid() {
     grid.innerHTML = '';
 
     const members = Object.keys(appData.logs).sort();
-    
-    // Filter out members who have NO logs to hide empty tiles
     const activeMembers = members.filter(m => appData.logs[m].length > 0);
 
     if (activeMembers.length === 0) {
@@ -90,12 +85,11 @@ function renderGrid() {
         
         let logsHtml = '';
         logs.forEach(l => {
-            // DB format: YYYY-MM-DD HH:MM:SS
             const parts = l.taken_at.split(' ');
             let displayDt = l.taken_at;
             if (parts.length === 2) {
-                const dateParts = parts[0].split('-'); // [2026, 02, 25]
-                const timeStr = parts[1].substring(0, 5); // 16:20
+                const dateParts = parts[0].split('-');
+                const timeStr = parts[1].substring(0, 5);
                 displayDt = `${timeStr} ${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
             }
             
@@ -195,20 +189,9 @@ function toggleMedExpand(el) {
 function updateAllIntervals() {
     document.querySelectorAll('.interval-update').forEach(el => {
         const unix = parseInt(el.getAttribute('data-unix'));
+        // Uses global getTimeSince from default.js
         if (unix) el.textContent = getTimeSince(unix);
     });
-}
-
-function getTimeSince(unix) {
-    const diff = Math.floor(Date.now() / 1000) - unix;
-    if (diff < -10) return "Scheduled";
-    if (diff < 60) return "Just now";
-    const minutes = Math.floor(diff / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    const rm = minutes % 60;
-    if (hours < 24) return `${hours}h ${rm}m ago`;
-    return `${Math.floor(hours / 24)}d ${hours % 24}h ago`;
 }
 
 function setNow(mode) {
@@ -235,7 +218,6 @@ function openEditModal(data) {
     document.getElementById('edit_med_name').value = data.medication_name;
     document.getElementById('edit_dosage').value = data.dosage;
     
-    // Split combined string YYYY-MM-DD HH:MM:SS for inputs
     const parts = data.taken_at.split(' ');
     document.getElementById('edit_taken_at_date').value = parts[0];
     document.getElementById('edit_taken_at_time').value = parts[1].substring(0, 5);
@@ -265,14 +247,6 @@ function closeManageModal() { document.getElementById('manageEditModal').style.d
 
 function confirmDeleteRegistry(id, name) {
     if (confirm(`Remove ${name} from registry?`)) {
-        const fakeEvent = { preventDefault: () => {} };
-        const fakeForm = { id: 'deleteForm' };
-        submitForm(fakeEvent, `/medication/manage/delete/${id}`, true);
+        submitForm({ preventDefault: () => {}, target: { id: 'deleteForm' } }, `/medication/manage/delete/${id}`, true);
     }
 }
-
-window.onclick = (event) => {
-    if (event.target.classList.contains('modal-overlay') || event.target.classList.contains('delete-modal-overlay')) {
-        closeDoseModal(); closeEditModal(); closeDeleteModal(); closeRegistryModal(); closeManageModal();
-    }
-};
