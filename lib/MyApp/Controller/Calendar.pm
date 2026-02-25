@@ -5,19 +5,27 @@ use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 use utf8;
 
-# Calendar Controller
-# Handles the display, management, and API endpoints for the Family Calendar.
+# Controller for the Family Calendar.
+# Manages event scheduling, invitations, and chronological data visualization.
+#
 # Features:
-#   - Main calendar view (Month/Week/Day)
-#   - Admin management interface
-#   - Event CRUD operations with Email Notifications
+#   - Multi-view calendar interface (Month, Week, Day).
+#   - Administrative event management with upcoming/past filtering.
+#   - Automated email notifications for new/updated events.
+#   - Attendee tracking and category color-coding.
+#
+# Integration Points:
+#   - DB::Calendar for all persistence and category management.
+#   - MyApp::Plugin::Email for automated notification delivery.
+#   - FullCalendar.js (frontend) integration via JSON API.
 
 # Renders the main calendar interface.
+# Route: GET /calendar
 # Parameters:
-#   view : (Optional) Calendar view mode ('month', 'week', 'day'). Defaults to 'month'.
-#   date : (Optional) Initial focus date.
+#   - view : (Optional) Calendar view mode ('month', 'week', 'day'). Defaults to 'month'.
+#   - date : (Optional) Initial focus date (ISO string).
 # Returns:
-#   Renders 'calendar/calendar' template with categories and users stash.
+#   Rendered HTML template 'calendar/calendar'.
 sub index {
     my $c = shift;
     
@@ -41,11 +49,12 @@ sub index {
 }
 
 # API Endpoint: Retrieves events for the frontend calendar widget.
+# Route: GET /calendar/events
 # Parameters:
-#   start : ISO date string (YYYY-MM-DD) for the start of the range.
-#   end   : ISO date string (YYYY-MM-DD) for the end of the range.
+#   - start : ISO date string (YYYY-MM-DD) for range start.
+#   - end   : ISO date string (YYYY-MM-DD) for range end.
 # Returns:
-#   JSON response containing an array of event hash refs.
+#   JSON array of event objects.
 sub get_events {
     my $c = shift;
     
@@ -60,10 +69,10 @@ sub get_events {
 }
 
 # Renders the administrative management list for all events.
-# Separates events into 'Upcoming' and 'Past' lists.
+# Route: GET /calendar/manage
 # Parameters: None
 # Returns:
-#   Renders 'calendar/manage' template or redirects to '/noperm'.
+#   Rendered HTML template 'calendar/manage'.
 sub manage {
     my $c = shift;
     
@@ -111,8 +120,8 @@ sub manage {
 
 # Helper: Formats a SQL datetime string into a user-friendly display string.
 # Parameters:
-#   dt      : SQL datetime string (YYYY-MM-DD HH:MM:SS)
-#   all_day : Boolean flag (1 = All Day, 0 = Timed)
+#   - dt      : SQL datetime string (YYYY-MM-DD HH:MM:SS)
+#   - all_day : Boolean flag (1 = All Day, 0 = Timed)
 # Returns:
 #   Formatted string (e.g., "DD/MM/YYYY (All day)" or "DD/MM/YYYY - HH:MM AM")
 sub _format_datetime {
@@ -136,16 +145,17 @@ sub _format_datetime {
 }
 
 # API Endpoint: Validates and creates a new calendar event.
-# Sends email notifications to all users upon success.
+# Sends email notifications to all family users upon success.
+# Route: POST /calendar/add
 # Parameters (POST):
-#   title       : Event title (Required)
-#   description : Event details
-#   start_date  : Start date (Required)
-#   end_date    : End date (Required)
-#   all_day     : Boolean
-#   category    : Event category
-#   color       : Hex color code
-#   attendees[] : List of user IDs
+#   - title       : Event title (Required)
+#   - description : Event details
+#   - start_date  : Start date (Required)
+#   - end_date    : End date (Required)
+#   - all_day     : Boolean (1 if all day)
+#   - category    : Event category label
+#   - color       : Hex color code
+#   - attendees[] : List of user IDs
 # Returns:
 #   JSON: { success => 1, id => $id } or { success => 0, error => $msg }
 sub add {
@@ -264,16 +274,17 @@ This notification was sent to family members.
 }
 
 # API Endpoint: Updates an existing calendar event.
+# Route: POST /calendar/edit
 # Parameters (POST):
-#   id          : Event ID (Required)
-#   title       : Event title (Required)
-#   description : Event details
-#   start_date  : Start date
-#   end_date    : End date
-#   all_day     : Boolean
-#   category    : Event category
-#   color       : Hex color code
-#   attendees[] : List of user IDs
+#   - id          : Event ID (Required)
+#   - title       : Event title (Required)
+#   - description : Event details
+#   - start_date  : Start date
+#   - end_date    : End date
+#   - all_day     : Boolean
+#   - category    : Event category
+#   - color       : Hex color code
+#   - attendees[] : List of user IDs
 # Returns:
 #   JSON: { success => 1 } or { success => 0, error => $msg }
 sub edit {
@@ -319,8 +330,9 @@ sub edit {
 }
 
 # API Endpoint: Deletes a calendar event.
+# Route: POST /calendar/delete
 # Parameters (POST):
-#   id : Event ID (Required)
+#   - id : Event ID (Required)
 # Returns:
 #   JSON: { success => 1 } or { success => 0, error => $msg }
 sub delete {
