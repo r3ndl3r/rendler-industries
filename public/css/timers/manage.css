@@ -115,6 +115,8 @@
     .timers-table tbody {
         display: block;
         width: 100%;
+        background: transparent !important;
+        box-shadow: none !important;
     }
 
     /* Hide limit cells completely in mobile */
