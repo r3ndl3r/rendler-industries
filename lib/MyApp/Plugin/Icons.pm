@@ -52,11 +52,12 @@ sub register {
         
         # Permissions
         'perm_admin'  => '🛡️',
-        'perm_family' => '🏠',
+        'perm_family' => '👨‍👩‍👧‍👦',
         'perm_user'   => '👤',
         'perm_guest'  => '🌍',
         
         # Modules
+        'family'    => '👨‍👩‍👧‍👦',
         'shopping'  => '🛒',
         'todo'      => '✅',
         'timers'    => '⏱️',
