@@ -3,17 +3,25 @@
 package MyApp::Controller::Menu;
 use Mojo::Base 'Mojolicious::Controller';
 
-# Menu Controller
-# Handles the administrative interface and API for dynamic menu management.
+# Controller for Dynamic Menu Management and Navigation.
+# Handles the administrative interface and API for real-time menu configuration.
+#
 # Features:
-#   - Hierarchical menu management (Drag & Drop)
-#   - Link CRUD operations
-#   - AJAX-based visibility and reordering
+#   - Hierarchical menu management (Drag & Drop nesting).
+#   - Real-time link CRUD operations.
+#   - AJAX-based visibility and reordering.
+#   - Permission-based navigation rendering.
+#
+# Integration Points:
+#   - DB.pm (get_menu_tree) for global helper rendering.
+#   - MyApp::Plugin::Icons for semantic navigation icons.
+#   - Restricted to 'admin' bridge via router.
 
 # Renders the main menu management interface.
+# Route: GET /menu
 # Parameters: None
 # Returns:
-#   Renders 'menu/manage' template with links and potential parents.
+#   Rendered HTML template 'menu/manage' with active links.
 sub manage {
     my $c = shift;
     
@@ -32,18 +40,20 @@ sub manage {
 }
 
 # API Endpoint: Adds a new menu link.
+# Route: POST /menu/add
 # Parameters (POST):
-#   label            : Display text
-#   url              : Destination URL
-#   icon             : Icon class/key
-#   parent_id        : Parent item ID (if nested)
-#   sort_order       : Display position
-#   permission_level : Visibility role (guest/user/admin)
-#   css_class        : Custom styling class
-#   target           : Link target (_self/_blank)
-#   is_active        : Boolean
+#   - label            : Display text.
+#   - is_separator     : Boolean (1 for horizontal line).
+#   - url              : Destination URL (Defaults to '#').
+#   - icon             : Semantic icon key.
+#   - parent_id        : (Optional) ID of parent link for nesting.
+#   - sort_order       : Integer for display position.
+#   - permission_level : Role (guest/user/family/admin).
+#   - css_class        : (Optional) Custom styling classes.
+#   - target           : Link target ('_self' or '_blank').
+#   - is_active        : Boolean (Defaults to 1).
 # Returns:
-#   JSON: { success => 1 } or { success => 0, error => $msg }
+#   JSON success/error status with message.
 sub add {
     my $c = shift;
     
@@ -72,12 +82,12 @@ sub add {
 }
 
 # API Endpoint: Updates an existing menu link.
+# Route: POST /menu/update
 # Parameters (POST):
-#   id               : Link ID (Required)
-#   label            : Display text
-#   ... (other attributes same as add)
+#   - id : Unique link ID (Required).
+#   - (Other parameters matching 'add').
 # Returns:
-#   JSON: { success => 1, message => "..." } or { success => 0, error => $msg }
+#   JSON success/error status with message.
 sub update {
     my $c = shift;
     my $id = $c->param('id');
@@ -109,11 +119,12 @@ sub update {
     }
 }
 
-# API Endpoint: Deletes a menu link.
-# Parameters (POST):
-#   id : Link ID (Required)
+# API Endpoint: Deletes a menu link and its children.
+# Route: POST /menu/delete
+# Parameters:
+#   - id : Unique link ID (Required).
 # Returns:
-#   JSON: { success => 1, message => "..." } or { success => 0, error => $msg }
+#   JSON success/error status with message.
 sub delete {
     my $c = shift;
     my $id = $c->param('id');
@@ -132,11 +143,12 @@ sub delete {
     }
 }
 
-# API Endpoint: Bulk updates sort order for drag-and-drop.
+# API Endpoint: Bulk updates sort order for drag-and-drop management.
+# Route: POST /menu/reorder
 # Parameters (JSON POST):
-#   orders : HashRef of { id => order }
+#   - orders : HashRef of { id => sort_order_integer }
 # Returns:
-#   JSON: { success => 1, message => "..." } or { success => 0, error => $msg }
+#   JSON success/error status with message.
 sub reorder {
     my $c = shift;
     my $orders = $c->req->json->{orders};
