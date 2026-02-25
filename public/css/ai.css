@@ -1,0 +1,146 @@
+/* /public/css/ai.css */
+
+.ai-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    padding-top: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    height: 65vh;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.message {
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+}
+
+.message.user {
+    align-self: flex-end;
+}
+
+.message.model {
+    align-self: flex-start;
+}
+
+.message-bubble {
+    padding: 1rem 1.25rem;
+    border-radius: 1.25rem;
+    position: relative;
+    line-height: 1.6;
+    display: flex;
+    gap: 12px;
+}
+
+.user .message-bubble {
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-bottom-right-radius: 4px;
+}
+
+.model .message-bubble {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom-left-radius: 4px;
+}
+
+.role-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.text-content {
+    font-size: 0.95rem;
+}
+
+.text-content p { margin: 0 0 1rem 0; }
+.text-content p:last-child { margin-bottom: 0; }
+
+.chat-input-area {
+    padding: 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#chatForm {
+    display: flex;
+    gap: 1rem;
+}
+
+#prompt-input {
+    background: #0f172a;
+}
+
+.quick-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.chip {
+    background: rgba(144, 202, 249, 0.1);
+    border: 1px solid rgba(144, 202, 249, 0.2);
+    color: #90caf9;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.chip:hover {
+    background: rgba(144, 202, 249, 0.2);
+    transform: translateY(-2px);
+}
+
+.welcome-hint {
+    text-align: center;
+    color: #64748b;
+    padding: 4rem 2rem;
+    font-style: italic;
+}
+
+.file-pill {
+    background: #8b5cf6;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.typing-indicator {
+    padding: 10px;
+    font-size: 0.8rem;
+    color: #64748b;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { opacity: 0.4; }
+}
