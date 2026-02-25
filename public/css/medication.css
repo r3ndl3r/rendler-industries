@@ -8,6 +8,10 @@
     min-height: 100vh;
 }
 
+.modal-actions {
+    justify-content: center !important;
+}
+
 .medication-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
@@ -172,6 +176,10 @@
 
 .modal-registry {
     max-width: 800px;
+}
+
+.modal-registry .modal-actions {
+    display: none;
 }
 
 .table-wrapper {

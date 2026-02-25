@@ -79,7 +79,6 @@
             </div>
             <div class="modal-actions">
                 <button type="submit" class="btn-primary"><%= icon('save') %> Save Log</button>
-                <button type="button" class="btn-secondary" onclick="closeDoseModal()">Cancel</button>
             </div>
         </form>
     </div>
@@ -131,7 +130,6 @@
             </div>
             <div class="modal-actions">
                 <button type="submit" class="btn-primary"><%= icon('save') %> Save Changes</button>
-                <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
             </div>
         </form>
     </div>
@@ -161,8 +159,7 @@
                 </table>
             </div>
         </div>
-        <div class="modal-actions">
-            <button type="button" class="btn-secondary" onclick="closeRegistryModal()">Close</button>
+        <div class="modal-actions" style="display: none;">
         </div>
     </div>
 </div>
