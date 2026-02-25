@@ -197,6 +197,12 @@
                 </tbody>
             </table>
         </div>
+        
+        <div id="pagination-container" style="text-align: center; margin-top: 20px;">
+            <button id="loadMoreBtn" class="btn-primary" style="background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); min-width: 200px;">
+                <%= icon('expand') %> Load More
+            </button>
+        </div>
 </div>
 
 <!-- Flexible Confirmation Modal -->
