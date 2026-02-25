@@ -1,5 +1,42 @@
 // /public/js/receipts.js
 
+/**
+ * Receipt Management and AI Analysis Logic
+ */
+
+// Define functions first to ensure they are available for hoisting/reference
+function closeReceiptModal() {
+    const modal = document.getElementById('receiptModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function closeEditModal() {
+    const modal = document.getElementById('editModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function closeCropModal() {
+    const modal = document.getElementById('cropModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function closeEReceiptModal() {
+    const modal = document.getElementById('eReceiptModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function closeConfirmModal() {
+    const modal = document.getElementById('confirmActionModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Global Exports
+window.closeReceiptModal = closeReceiptModal;
+window.closeEditModal = closeEditModal;
+window.closeCropModal = closeCropModal;
+window.closeEReceiptModal = closeEReceiptModal;
+window.closeConfirmModal = closeConfirmModal;
+
 document.addEventListener('DOMContentLoaded', function() {
     const dropZone        = document.getElementById('dropZone');
     const fileInput       = document.getElementById('file');
@@ -31,18 +68,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const file = this.files[0];
                 updateFileName(file.name);
                 const lowerName = file.name.toLowerCase();
-                // Offer cropping for images, including HEIC/HEIF which browsers may not
-                // flag with an image/ MIME type
                 if (file.type.startsWith('image/') || lowerName.endsWith('.heic') || lowerName.endsWith('.heif')) {
                     initPreUploadCrop(file);
                 }
             }
         });
 
-        // Intercept form submission to show a blocking progress overlay.
-        // Without this, the user sees nothing for 5-20s while the server runs
-        // the ImageMagick pre-processing and Tesseract OCR pipeline (OCR.pm).
-        // We locate the form via the file input rather than requiring a fixed ID.
         const uploadForm = fileInput.closest('form');
         if (uploadForm) {
             uploadForm.addEventListener('submit', function() {
@@ -56,10 +87,50 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Standardize modal closing using global helper from default.js
+    if (typeof setupGlobalModalClosing === 'function') {
+        setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay', 'image-modal-overlay'], [
+            closeReceiptModal, closeEditModal, closeCropModal, closeEReceiptModal, closeConfirmModal
+        ]);
+    }
+
+    // --- Confirmation Modal Functions ---
+
+    window.openConfirmModal = function(title, text, confirmClass, confirmLabel, onConfirm) {
+        const modal = document.getElementById('confirmActionModal');
+        const btn = document.getElementById('confirmModalBtn');
+        
+        document.getElementById('confirmModalTitle').textContent = title;
+        document.getElementById('confirmModalText').textContent = text;
+        
+        btn.className = `btn ${confirmClass}`;
+        btn.textContent = confirmLabel;
+        btn.onclick = () => {
+            onConfirm();
+            closeConfirmModal();
+        };
+        
+        modal.style.display = 'flex';
+    };
+
+    window.confirmDeleteReceipt = function(id, label) {
+        window.openConfirmModal(
+            'Delete Receipt',
+            `Are you sure you want to permanently delete the receipt for "${label}"?`,
+            'btn-danger-confirm',
+            'Delete Receipt',
+            () => {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/receipts/delete/${id}`;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        );
+    };
+
     // --- Upload Page Functions ---
 
-    // Converts HEIC/HEIF to JPEG for browser display, then opens the crop
-    // modal so the user can refine the image before it is uploaded.
     async function initPreUploadCrop(file) {
         let displayFile    = file;
         const lowerName    = file.name.toLowerCase();
@@ -67,7 +138,6 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Converting HEIC for preview...', 'info');
             try {
                 const blob  = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 });
-                // heic2any returns an array when the HEIC contains multiple frames
                 displayFile = Array.isArray(blob) ? blob[0] : blob;
             } catch (err) {
                 console.error('HEIC conversion failed:', err);
@@ -82,7 +152,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (modal && img) {
                 img.src                 = e.target.result;
                 modal.style.display     = 'flex';
-                // Delay Cropper.js init to ensure the image is rendered and has dimensions
                 setTimeout(() => {
                     if (cropper) cropper.destroy();
                     cropper = new Cropper(img, { viewMode: 1, autoCropArea: 1, responsive: true });
@@ -92,8 +161,6 @@ document.addEventListener('DOMContentLoaded', function() {
         reader.readAsDataURL(displayFile);
     }
 
-    // Reads the cropped canvas back into the file input via DataTransfer so
-    // the cropped version — not the original — is sent with the form POST.
     window.applyPreUploadCrop = function() {
         if (!cropper) return;
         const canvas = cropper.getCroppedCanvas();
@@ -110,8 +177,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 'image/png');
     };
 
-    // Updates the filename label beneath the drop zone after a file is selected
-    // or a pre-upload crop is applied.
     function updateFileName(name) {
         if (fileNameDisplay) {
             fileNameDisplay.textContent = name;
@@ -119,14 +184,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Builds and injects a full-page loading overlay with a spinner and cycling
-    // status messages. Message timings are tuned to the OCR.pm pipeline:
-    //   0s  — multipart upload transmitting to server
-    //   3s  — ImageMagick: grayscale / unsharp / deskew / threshold
-    //   6s  — Tesseract: primary pass (psm 6 / oem 1)
-    //  11s  — Tesseract: fallback pass (200% resize, triggered when date or total absent)
-    //  16s  — DB write and redirect
-    // The overlay stays alive until the browser navigates away on server response.
     function showUploadProgress() {
         const overlay       = document.createElement('div');
         overlay.className   = 'upload-progress-overlay';
@@ -165,11 +222,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    window.closeReceiptModal = function() {
-        const modal = document.getElementById('receiptModal');
-        if (modal) modal.style.display = 'none';
-    };
-
     // --- Edit Modal ---
 
     window.openEditModal = function(receipt) {
@@ -180,17 +232,12 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('editStoreName').value   = receipt.store_name   || '';
             document.getElementById('editDate').value        = receipt.receipt_date || '';
             document.getElementById('editAmount').value      = receipt.total_amount || '';
-            document.getElementById('editDescription').value = receipt.description  || '';
+            document.getElementById('editDescription').value = receipt.notes || receipt.description || '';
             modal.style.display = 'flex';
         }
     };
 
-    window.closeEditModal = function() {
-        const modal = document.getElementById('editModal');
-        if (modal) modal.style.display = 'none';
-    };
-
-    // --- Crop Modal (post-upload, applied to existing records) ---
+    // --- Crop Modal ---
 
     let cropper      = null;
     let currentCropId = null;
@@ -206,7 +253,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await fetch('/receipts/serve/' + id);
             const blob     = await response.blob();
             let displayBlob = blob;
-            // Server may store HEIC originals; convert before passing to Cropper.js
             if (blob.type === 'image/heic' || blob.type === 'image/heif') {
                 showToast('Converting HEIC for preview...', 'info');
                 const convertedBlob = await heic2any({ blob: blob, toType: 'image/jpeg', quality: 0.8 });
@@ -215,7 +261,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const reader = new FileReader();
             reader.onload = function(e) {
                 img.src = e.target.result;
-                // Defer Cropper.js init until the img element has painted and has dimensions
                 img.onload = function() {
                     if (cropper) cropper.destroy();
                     cropper = new Cropper(img, { viewMode: 1, autoCropArea: 1, responsive: true });
@@ -230,25 +275,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    window.closeCropModal = function() {
-        if (cropper) {
-            cropper.destroy();
-            cropper = null;
-        }
-        const cropModal = document.getElementById('cropModal');
-        if (cropModal) cropModal.style.display = 'none';
-        // Restore the filename label if we were in pre-upload crop mode and the
-        // user cancelled; the original file selection is still intact
-        if (fileInput && fileInput.files.length > 0) {
-            updateFileName(fileInput.files[0].name);
-        } else if (fileNameDisplay) {
-            fileNameDisplay.textContent  = '';
-            fileNameDisplay.style.display = 'none';
-        }
-    };
-
-    // POSTs the cropped canvas blob to the server to replace the stored binary.
-    // Uses fetch so the page does not reload mid-crop.
     window.saveCrop = async function() {
         if (!cropper || !currentCropId) return;
         const canvas = cropper.getCroppedCanvas();
@@ -274,10 +300,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 'image/png');
     };
 
-    // --- OCR Trigger ---
-
-    // Sends an AJAX request to re-run OCR on an already-stored image, then
-    // pre-fills the edit modal with extracted data for user review before saving.
     window.triggerOCR = function(id) {
         const btn             = document.getElementById('ocr-btn-' + id);
         const originalContent = btn.innerHTML;
@@ -296,7 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         store_name:   data.store_name,
                         receipt_date: data.receipt_date,
                         total_amount: data.total_amount,
-                        description:  data.raw_text
+                        notes:        data.raw_text
                     });
                 } else {
                     showToast('OCR failed: ' + (data.error || 'Unknown error'), 'error');
@@ -309,13 +331,153 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     };
 
-    // Close any open modal when the user clicks the darkened overlay behind it
-    window.addEventListener('click', function(e) {
-        const receiptModal = document.getElementById('receiptModal');
-        const editModal    = document.getElementById('editModal');
-        const cropModal    = document.getElementById('cropModal');
-        if (e.target === receiptModal) closeReceiptModal();
-        if (e.target === editModal)    closeEditModal();
-        if (e.target === cropModal)    closeCropModal();
-    });
+    // --- Electronic Receipt Functions ---
+
+    let currentEReceiptId = null;
+    let currentStoreIcon = null;
+
+    window.viewElectronicReceipt = function(id, force = 0, preLoadedData = null, initialIcon = null) {
+        currentEReceiptId = id;
+        currentStoreIcon = initialIcon;
+        const modal = document.getElementById('eReceiptModal');
+        const content = document.getElementById('eReceiptContent');
+        
+        modal.style.display = 'flex';
+
+        if (preLoadedData && preLoadedData.trim() !== '' && !force) {
+            try {
+                const data = JSON.parse(preLoadedData);
+                if (data && data.store_name) {
+                    renderEReceipt(data, initialIcon);
+                    return;
+                }
+            } catch(e) { 
+                console.warn("Pre-loaded JSON invalid, falling back to API", e); 
+            }
+        }
+
+        content.innerHTML = `
+            <div class="ereceipt-loading">
+                <div class="ereceipt-scan-line"></div>
+                <span class="ereceipt-loading-icon">🧠</span>
+                <p class="ereceipt-loading-text">${force ? 'Re-digitizing...' : 'Digitizing...'} with AI</p>
+                <p class="ereceipt-loading-sub">Analyzing items and structured data</p>
+            </div>
+        `;
+
+        const params = new URLSearchParams({ force: force });
+        fetch(`/receipts/ai_analyze/${id}`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                // Update ledger UI dynamically
+                updateLedgerWithAIStatus(id, res.data);
+                renderEReceipt(res.data, initialIcon);
+            } else {
+                content.innerHTML = `<div class="alert alert-error">${res.error || 'AI analysis failed'}</div>`;
+            }
+        })
+        .catch(err => {
+            content.innerHTML = `<div class="alert alert-error">Network error during AI scan.</div>`;
+        });
+    };
+
+    /**
+     * Dynamically updates the ledger row with the AI icon and cached JSON
+     */
+    function updateLedgerWithAIStatus(id, data) {
+        const wrapper = document.getElementById(`store-wrapper-${id}`);
+        if (wrapper && !wrapper.querySelector('.ai-badge')) {
+            const badge = document.createElement('span');
+            badge.className = 'ai-badge';
+            badge.title = 'AI Analyzed';
+            badge.style.fontSize = '0.8rem';
+            badge.style.marginLeft = '5px';
+            badge.textContent = '🧠';
+            wrapper.appendChild(badge);
+        }
+
+        // Update the button's data attribute so next click is instant
+        const btn = document.querySelector(`.btn-ai-scan[data-receipt-id="${id}"]`);
+        if (btn) {
+            btn.dataset.aiJson = JSON.stringify(data);
+        }
+    }
+
+    window.reScanReceipt = function() {
+        window.openConfirmModal(
+            'Confirm Full Rescan',
+            'This will perform a completely fresh AI analysis. Current electronic receipt data will be overwritten.',
+            'btn-danger-confirm',
+            'Full Rescan',
+            () => {
+                viewElectronicReceipt(currentEReceiptId, 1);
+            }
+        );
+    };
+
+    function renderEReceipt(data, iconUrl = null) {
+        const content = document.getElementById('eReceiptContent');
+        
+        // Format date from YYYY-MM-DD to DD-MM-YYYY
+        let displayDate = data.date || '';
+        if (displayDate && displayDate.includes('-')) {
+            const [y, m, d] = displayDate.split('-');
+            if (y && m && d && y.length === 4) displayDate = `${d}-${m}-${y}`;
+        }
+
+        // If no iconUrl passed (e.g. from a rescan where name changed), try to generate one
+        if (!iconUrl && data.store_name) {
+            const slug = data.store_name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+            iconUrl = `/images/shops/${slug}.png`;
+        }
+
+        let itemsHtml = '';
+        if (data.items && Array.isArray(data.items)) {
+            itemsHtml = data.items.map(item => {
+                const linePrice = parseFloat(item.line_total || item.price || 0).toFixed(2);
+                const unitPrice = item.unit_price ? parseFloat(item.unit_price).toFixed(2) : null;
+                return `
+                    <div class="ereceipt-item">
+                        <div class="ereceipt-item-content">
+                            <div class="ereceipt-item-desc">${item.desc || 'Item'}</div>
+                            ${item.qty ? `<small class="ereceipt-item-qty">Qty: ${item.qty} ${unitPrice ? `@ $${unitPrice}` : ''}</small>` : ''}
+                        </div>
+                        <div class="ereceipt-item-price">$${linePrice}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        content.innerHTML = `
+            <div class="ereceipt-body">
+                <div class="ereceipt-summary">
+                    ${iconUrl ? `<img src="${iconUrl}" class="ereceipt-store-logo" onerror="this.style.display='none'">` : ''}
+                    <h2 class="ereceipt-store-name">${data.store_name || 'Store'}</h2>
+                    ${data.location ? `<p class="ereceipt-location">${data.location}</p>` : ''}
+                    <p class="ereceipt-datetime">${displayDate} ${data.time || ''}</p>
+                </div>
+
+                <div class="ereceipt-items-list">
+                    ${itemsHtml || '<p class="ereceipt-empty-items">No item details available</p>'}
+                </div>
+
+                <div class="ereceipt-total-container">
+                    <div class="ereceipt-total-row">
+                        <span>TOTAL</span>
+                        <span>$${parseFloat(data.total_amount || 0).toFixed(2)} ${data.currency || ''}</span>
+                    </div>
+                    ${data.payment_method ? `
+                        <div class="ereceipt-payment">
+                            Paid via: ${data.payment_method}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
 });
