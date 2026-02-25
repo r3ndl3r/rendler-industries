@@ -138,7 +138,7 @@
 <div id="modal-create-timer" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Create New Timer</h2>
+            <h2><%= icon('add') %> Create New Timer</h2>
             <button class="modal-close">&times;</button>
         </div>
         <form method="POST" action="/timers/create" class="timer-form">
@@ -183,7 +183,7 @@
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Create Timer</button>
+                <button type="submit" class="btn btn-primary"><%= icon('save') %> Create Timer</button>
             </div>
         </form>
     </div>
@@ -193,7 +193,7 @@
 <div id="modal-edit-timer" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Edit Timer</h2>
+            <h2><%= icon('edit') %> Edit Timer</h2>
             <button class="modal-close">&times;</button>
         </div>
         <form method="POST" action="" id="edit-timer-form" class="timer-form">
@@ -226,7 +226,7 @@
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Update Timer</button>
+                <button type="submit" class="btn btn-primary"><%= icon('save') %> Update Timer</button>
             </div>
         </form>
     </div>
@@ -236,7 +236,7 @@
 <div id="modal-bonus-time" class="modal">
     <div class="modal-content modal-small">
         <div class="modal-header">
-            <h2>Grant Bonus Time</h2>
+            <h2><%= icon('bonus') %> Grant Bonus Time</h2>
             <button class="modal-close">&times;</button>
         </div>
         <form id="bonus-form" class="timer-form">
@@ -249,7 +249,7 @@
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Grant Time</button>
+                <button type="submit" class="btn btn-primary"><%= icon('save') %> Grant Time</button>
             </div>
         </form>
     </div>
