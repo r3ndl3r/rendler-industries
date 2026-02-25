@@ -6,19 +6,25 @@ use Mojo::UserAgent;
 use Mojo::JSON qw(decode_json);
 use Time::Piece;
 
-# Chelsea Weather Controller
+# Controller for the Chelsea Weather Dashboard.
 # Handles scraping, interpolation, and formatting of Chelsea forecast data.
+#
 # Features:
-#   - Real-time scraping of Windfinder GFS data
-#   - Row-based data synchronization (Temp, Rain, Icons)
-#   - Linear interpolation for 2-hour granular viewing
-#   - Color-coded wind and temperature thresholds
+#   - Real-time scraping of Windfinder GFS data.
+#   - Row-based data synchronization (Temp, Rain, Icons).
+#   - Linear interpolation for 2-hour granular viewing.
+#   - Color-coded wind and temperature thresholds.
+#
+# Integration Points:
+#   - External: Windfinder.com (GFS Forecast).
+#   - Local: Mojo::UserAgent for asynchronous scraping.
 
 # Main entry point for the Chelsea weather dashboard.
 # Fetches external data and prepares a 96-hour interpolated forecast.
+# Route: GET /chelsea
 # Parameters: None
 # Returns: 
-#   Renders 'chelsea' template with an array ref of daily-grouped forecast rows.
+#   Rendered HTML template 'chelsea' with grouped forecast rows.
 sub index {
     my $self = shift;
 
