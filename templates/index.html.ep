@@ -11,6 +11,20 @@
     <link rel="stylesheet" href="/css/index.css">
 <% end %>
 
+% if ($logged_in) {
+<div class="redirect-splash" id="redirectSplash">
+    <div class="redirect-splash-card">
+        <div class="redirect-splash-icon">⚡</div>
+        <h2>Quick Access</h2>
+        <p>Redirecting to <strong>/quick</strong> in <span id="redirectCountdown">2</span>s&hellip;</p>
+        <div class="redirect-progress-track">
+            <div class="redirect-progress-fill" id="redirectProgress"></div>
+        </div>
+        <button class="btn-cancel-redirect" onclick="cancelRedirect()">Stay on this page</button>
+    </div>
+</div>
+% }
+
 <div class="main" id="box">
     <img src="/files/serve/58" class="banner-logo" alt="Banner">
     <div class="info-card">
