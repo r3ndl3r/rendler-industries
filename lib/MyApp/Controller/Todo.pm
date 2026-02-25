@@ -53,7 +53,7 @@ sub add {
     
     eval {
         my $id = $c->db->add_todo($user_id, $task_name);
-        $c->render(json => { success => 1, id => $id, task_name => $task_name });
+        $c->render(json => { success => 1, id => $id, task_name => $task_name, message => "Task added!" });
     };
     if ($@) {
         $c->app->log->error("Failed to add todo: $@");
@@ -74,7 +74,7 @@ sub toggle {
     
     eval {
         if ($c->db->toggle_todo($id, $user_id)) {
-            $c->render(json => { success => 1 });
+            $c->render(json => { success => 1, message => "Task updated" });
         } else {
             $c->render(json => { success => 0, error => 'Not found or unauthorized' });
         }
@@ -97,7 +97,7 @@ sub delete {
     
     eval {
         if ($c->db->delete_todo($id, $user_id)) {
-            $c->render(json => { success => 1 });
+            $c->render(json => { success => 1, message => "Task deleted" });
         } else {
             $c->render(json => { success => 0, error => 'Not found or unauthorized' });
         }
@@ -126,7 +126,7 @@ sub edit {
     
     eval {
         if ($c->db->update_todo($id, $user_id, $task_name)) {
-            $c->render(json => { success => 1 });
+            $c->render(json => { success => 1, message => "Task updated" });
         } else {
             $c->render(json => { success => 0, error => 'Not found or unauthorized' });
         }
