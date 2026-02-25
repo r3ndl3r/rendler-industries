@@ -465,6 +465,11 @@ sub startup {
     $family->post('/medication/edit/:id')->to('medication#edit');
     $family->post('/medication/delete/:id')->to('medication#delete');
 
+    # --- Family Pulse AI Routes ---
+    $family->get('/ai')->to('AI#index');
+    $family->post('/ai/chat')->to('AI#chat');
+    $family->post('/ai/clear')->to('AI#clear');
+
     # --- Medication Registry Management (Admin Only) ---
     my $med_admin = $family->under(sub { shift->is_admin || 0 });
     $med_admin->post('/medication/manage/update/:id')->to('medication#update_registry');
