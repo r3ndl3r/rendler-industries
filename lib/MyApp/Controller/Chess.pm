@@ -1,25 +1,33 @@
 # /lib/MyApp/Controller/Chess.pm
 
 package MyApp::Controller::Chess;
-use Mojo::Base 'Mojolicious::Controller', -signatures;
+use Mojo::Base 'Mojolicious::Controller';
 
-# Controller for Chess game routing and request handling.
-# Delegates database operations to DB::Chess and renders appropriate templates.
-# The approach separates lobby management from active gameplay to mirror the Connect 4 architecture.
+# Controller for the Chess Online multiplayer game.
+# Handles game routing, lobby management, and move processing.
+#
+# Features:
+#   - Lobby management (Waiting games list).
+#   - Active game tracking and state polling.
+#   - Move processing with validation delegation.
+#   - Draw offer and response logic.
+#
+# Integration Points:
+#   - DB::Chess for persistence and move validation.
+#   - Router: Restricted to authenticated users via bridge.
 
 # Renders the chess lobby showing available games to join.
-# Fetches all games currently in 'waiting' status and the user's active games.
-# Parameters:
-#   $c : Mojolicious::Controller object
+# Route: GET /chess/lobby
+# Parameters: None
 # Returns:
-#   Renders 'chess/lobby' template with 'lobbies' and 'user_games' arrays
-sub lobby ($c) {
+#   Rendered HTML template 'chess/lobby' with waiting and active games.
+sub lobby {
+    my $c = shift;
     my $user_id = $c->current_user_id;
     my $lobbies = $c->db->get_open_chess_lobbies();
     my $user_games = $c->db->get_user_chess_games($user_id);
     
     # Filter out user's own games from the general "Open Games" list
-    # to avoid duplication and encourage joining other people's games.
     my @filtered_lobbies = grep { $_->{player1_id} != $user_id } @$lobbies;
     
     $c->render('chess/lobby', 
@@ -28,8 +36,13 @@ sub lobby ($c) {
     );
 }
 
-# API Endpoint: Returns lobby status (open games and user games) as JSON.
-sub lobby_status ($c) {
+# API Endpoint: Returns current lobby status as JSON.
+# Route: GET /chess/lobby_status
+# Parameters: None
+# Returns:
+#   JSON object { open_games, user_games }
+sub lobby_status {
+    my $c = shift;
     my $user_id = $c->current_user_id;
     my $lobbies = $c->db->get_open_chess_lobbies();
     my $user_games = $c->db->get_user_chess_games($user_id);
@@ -42,145 +55,124 @@ sub lobby_status ($c) {
     });
 }
 
-# Creates a new chess game and redirects the host to the play screen.
-# Uses the active session to identify the host player.
-# Parameters:
-#   $c : Mojolicious::Controller object
+# Creates a new chess game session.
+# Route: POST /chess/create
+# Parameters: None
 # Returns:
-#   Redirects to /chess/play/:id
-sub create ($c) {
-    my $user_id = $c->current_user_id;
-    my $game_id = $c->db->create_chess_lobby($user_id);
+#   Redirects to the play screen for the new game ID.
+sub create {
+    my $c = shift;
+    my $uid = $c->current_user_id;
+    my $game_id = $c->db->create_chess_lobby($uid);
     $c->redirect_to("/chess/play/$game_id");
 }
 
-# Handles a user joining an existing waiting game.
-# Validates the join attempt against the database to prevent a host joining their own game.
+# Joins an existing chess lobby as player 2.
+# Route: POST /chess/join
 # Parameters:
-#   $c : Mojolicious::Controller object (expects 'id' in POST body)
+#   - game_id : Unique ID of the lobby.
 # Returns:
-#   Redirects to /chess/play/:id on success, or back to lobby on failure
-sub join_game ($c) {
-    my $game_id = $c->param('id');
-    my $user_id = $c->current_user_id;
+#   Redirects to play screen on success.
+sub join_game {
+    my $c = shift;
+    my $uid = $c->current_user_id;
+    my $game_id = $c->param('game_id');
     
-    if ($c->db->join_chess_lobby($game_id, $user_id)) {
+    if ($c->db->join_chess_lobby($game_id, $uid)) {
         $c->redirect_to("/chess/play/$game_id");
     } else {
+        $c->flash(error => 'Could not join game.');
         $c->redirect_to('/chess/lobby');
     }
 }
 
-# Renders the active game board for a specific game ID.
-# Verifies the game exists and passes the full game state (including FEN) to the frontend.
+# Renders the chess board and game interface.
+# Route: GET /chess/play/:id
 # Parameters:
-#   $c : Mojolicious::Controller object (expects 'id' in stash via route)
+#   - id : Game session ID.
 # Returns:
-#   Renders 'chess/chess' template with 'game' HashRef, or 404 if not found
-sub play ($c) {
+#   Rendered template 'chess/chess'.
+sub play {
+    my $c = shift;
     my $game_id = $c->param('id');
-    my $game = $c->db->get_chess_game_state($game_id);
+    my $user_id = $c->current_user_id;
     
-    return $c->reply->not_found unless $game;
+    my $game = $c->db->get_chess_game($game_id);
+    return $c->render_error('Game not found', 404) unless $game;
     
-    $c->render('chess/chess', game => $game);
+    # Verify participation
+    return $c->render('noperm') unless $game->{player1_id} == $user_id || $game->{player2_id} == $user_id;
+    
+    $c->render('chess/chess', game => $game, game_id => $game_id);
 }
 
-# Processes an AJAX request for a chess move.
-# Because chess move validation (en passant, castling) is highly complex,
-# the frontend logic generates the new FEN string, which is then persisted here.
+# Processes a player move.
+# Route: POST /chess/move
 # Parameters:
-#   $c : Mojolicious::Controller object (expects JSON payload with game_id, fen, next_turn_id, status, winner_id)
+#   - game_id : Session ID.
+#   - move    : SAN or LAN move string.
 # Returns:
-#   JSON response with boolean success status
-sub move ($c) {
-    my $json = $c->req->json;
-    my $game_id = $json->{game_id};
+#   JSON success/error status.
+sub move {
+    my $c = shift;
+    my $game_id = $c->param('game_id');
+    my $move = $c->param('move');
     my $user_id = $c->current_user_id;
     
-    # Verify game exists and user is a player
-    my $game = $c->db->get_chess_game_state($game_id);
-    return $c->render(json => { success => \0, error => 'Unauthorized' })
-        unless $game && ($game->{player1_id} == $user_id || $game->{player2_id} == $user_id);
-
-    my $status = $json->{status} || 'active';
-
-    # Verify it is actually the user's turn (ONLY if they are NOT resigning)
-    if ($status ne 'finished') {
-        return $c->render(json => { success => \0, error => 'Not your turn' })
-            unless $game->{current_turn} == $user_id;
+    my ($success, $error) = $c->db->process_chess_move($game_id, $user_id, $move);
+    
+    if ($success) {
+        $c->render(json => { success => 1 });
+    } else {
+        $c->render(json => { success => 0, error => $error });
     }
+}
 
-    my $new_fen = $json->{fen};
-    my $next_turn_id = int($json->{next_turn_id} // 0);
-    my $winner_id = $json->{winner_id}; # Can be null
-    my $last_move = $json->{last_move} // '';
+# API Endpoint: Returns the latest game state for long-polling.
+# Route: GET /chess/status/:id
+# Parameters:
+#   - id : Game session ID.
+# Returns:
+#   JSON object with full game state.
+sub poll_status {
+    my $c = shift;
+    my $game_id = $c->param('id');
+    my $game = $c->db->get_chess_game($game_id);
+    $c->render(json => $game);
+}
+
+# Issues a draw offer to the opponent.
+# Route: POST /chess/offer_draw/:id
+# Parameters:
+#   - id : Game session ID.
+sub offer_draw {
+    my $c = shift;
+    my $game_id = $c->param('id');
+    my $user_id = $c->current_user_id;
     
-    my $success = 0;
-    eval {
-        $success = $c->db->update_chess_game_state(
-            $game_id, $next_turn_id, $new_fen, $status, $winner_id, $last_move
-        );
-    };
-    if ($@) {
-        $c->app->log->error("Chess move failed for game $game_id: $@");
-        return $c->render(json => { success => \0, error => 'Database update failed' });
+    if ($c->db->offer_chess_draw($game_id, $user_id)) {
+        $c->render(json => { success => 1 });
+    } else {
+        $c->render(json => { success => 0 });
     }
-    
-    $c->render(json => { success => $success ? \1 : \0 });
 }
 
-# API Endpoint: Returns current game status for frontend polling.
-# Returns JSON: { fen, turn, status, winner_id, draw_offered_by, last_move }
-sub poll_status ($c) {
+# Responds to a pending draw offer.
+# Route: POST /chess/respond_draw/:id
+# Parameters:
+#   - id     : Game session ID.
+#   - accept : Boolean (1 to accept).
+sub respond_draw {
+    my $c = shift;
     my $game_id = $c->param('id');
-    my $game = $c->db->get_chess_game_state($game_id);
-    
-    return $c->render(json => { error => 'Game not found' }, status => 404) unless $game;
-    
-    $c->render(json => {
-        fen => $game->{fen_state},
-        turn => $game->{current_turn},
-        status => $game->{status},
-        winner_id => $game->{winner_id},
-        draw_offered_by => $game->{draw_offered_by},
-        last_move => $game->{last_move},
-        p1_id => $game->{player1_id},
-        p2_id => $game->{player2_id}
-    });
-}
-
-# API Endpoint: Initiates a draw offer.
-sub offer_draw ($c) {
-    my $game_id = $c->param('id');
+    my $accept = $c->param('accept');
     my $user_id = $c->current_user_id;
     
-    # Verify user is a player in this game
-    my $game = $c->db->get_chess_game_state($game_id);
-    return $c->render(json => { success => \0, error => 'Unauthorized' })
-        unless $game && ($game->{player1_id} == $user_id || $game->{player2_id} == $user_id);
-
-    my $success = $c->db->offer_chess_draw($game_id, $user_id);
-    $c->render(json => { success => $success ? \1 : \0 });
-}
-
-# API Endpoint: Responds to a draw offer (accept or refuse).
-sub respond_draw ($c) {
-    my $game_id = $c->param('id');
-    my $user_id = $c->current_user_id;
-    my $accepted = $c->param('accept') ? 1 : 0;
-    
-    # Verify user is a player in this game
-    my $game = $c->db->get_chess_game_state($game_id);
-    return $c->render(json => { success => \0, error => 'Unauthorized' })
-        unless $game && ($game->{player1_id} == $user_id || $game->{player2_id} == $user_id);
-
-    # Verify a draw was offered and NOT by the current user
-    return $c->render(json => { success => \0, error => 'No pending offer for you' })
-        unless $game->{draw_offered_by} && $game->{draw_offered_by} != $user_id;
-
-    my $success = $c->db->respond_chess_draw($game_id, $accepted);
-    $c->render(json => { success => $success ? \1 : \0 });
+    if ($c->db->respond_chess_draw($game_id, $user_id, $accept)) {
+        $c->render(json => { success => 1 });
+    } else {
+        $c->render(json => { success => 0 });
+    }
 }
 
 1;
