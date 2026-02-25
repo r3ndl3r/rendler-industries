@@ -275,7 +275,7 @@
         background: #1e293b;
         border-radius: 0.75rem;
         margin-bottom: 0.75rem;
-        padding: 1rem;
+        padding: 0.6rem 0.8rem;
         border: 1px solid #334155;
         position: relative;
     }
@@ -284,7 +284,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 0.5rem 0;
+        padding: 0.25rem 0;
         border: none;
         font-size: 0.875rem;
     }
@@ -298,22 +298,31 @@
     }
 
     .drag-handle {
-        display: flex !important;
-        width: 100% !important;
-        justify-content: flex-end !important;
-        position: static !important;
-        padding: 0.25rem 0.75rem !important;
-        margin-bottom: 0.25rem !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        position: absolute !important;
+        right: 0.8rem !important;
+        top: 0.6rem !important;
+        width: auto !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
         color: #64748b !important;
-        font-size: 1rem !important;
+        font-size: 1.1rem !important;
+    }
+
+    /* Prevent label text from hitting the absolute handle */
+    .menu-table td[data-label="Label"] {
+        padding-right: 2rem;
+    }
+
+    .empty-parent, .empty-url {
+        display: none !important;
     }
 
     .actions-cell {
         margin-top: 0.5rem;
         padding-top: 0.75rem !important;
         border-top: 1px solid #334155 !important;
-        justify-content: flex-end !important;
+        justify-content: center !important;
     }
 
     .child-row {
