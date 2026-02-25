@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const splash = document.getElementById('redirectSplash');
     if (!splash) return;
 
-    const DURATION = 10000;
+    const DURATION = 3000;
     const TICK     = 50;
     let elapsed    = 0;
     let timer, interval;
