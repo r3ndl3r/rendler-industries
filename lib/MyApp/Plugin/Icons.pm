@@ -69,6 +69,16 @@ sub register {
         'files'     => '📁',
         'receipts'  => '🧾',
         'reminders' => '🔔',
+        'medication' => '💊',
+        'expand'    => '▼',
+        'collapse'  => '▲',
+
+        # Zodiac / Family Icons
+        'andrea'    => '🐀',
+        'nick'      => '🐉',
+        'nicky'     => '🐉',
+        'thararat'  => '🐎',
+        'rendler'   => '🐓',
         
         # Status
         'warning'   => '⚠️',
