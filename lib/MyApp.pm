@@ -460,13 +460,13 @@ sub startup {
 
     # --- Medication Tracker Routes ---
     $family->get('/medication')->to('medication#index');
+    $family->get('/medication/api/data')->to('medication#get_data');
     $family->post('/medication/add')->to('medication#add');
     $family->post('/medication/edit/:id')->to('medication#edit');
     $family->post('/medication/delete/:id')->to('medication#delete');
 
     # --- Medication Registry Management (Admin Only) ---
     my $med_admin = $family->under(sub { shift->is_admin || 0 });
-    $med_admin->get('/medication/manage')->to('medication#manage');
     $med_admin->post('/medication/manage/update/:id')->to('medication#update_registry');
     $med_admin->post('/medication/manage/delete/:id')->to('medication#delete_registry');
 
