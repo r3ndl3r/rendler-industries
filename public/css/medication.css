@@ -170,6 +170,13 @@
     height: 28px;
 }
 
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+}
+
 @media (max-width: 768px) {
     .medication-grid {
         grid-template-columns: 1fr;
