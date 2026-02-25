@@ -363,10 +363,10 @@ sub startup {
     
     # --- Birthday Calendar Routes ---
     $family->get('/birthdays')->to('birthdays#index');
-    $admin->get('/birthdays/manage')->to('birthdays#manage');
+    $family->get('/birthdays/api/data')->to('birthdays#api_data');
     $admin->post('/birthdays/add')->to('birthdays#add');
-    $admin->post('/birthdays/edit')->to('birthdays#edit');
-    $admin->post('/birthdays/delete')->to('birthdays#delete');
+    $admin->post('/birthdays/edit/:id')->to('birthdays#edit');
+    $admin->post('/birthdays/delete/:id')->to('birthdays#delete');
 
     # --- System Settings Routes ---
     $admin->get('/settings')->to('settings#index');
