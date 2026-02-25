@@ -457,6 +457,7 @@ sub startup {
     $family->get('/receipts/serve/:id')->to('receipts#serve');
     $family->post('/receipts/crop/:id')->to('receipts#crop');
     $family->post('/receipts/ocr/:id')->to('receipts#trigger_ocr');
+    $family->post('/receipts/ai_analyze/:id')->to('receipts#ai_analyze');
 
     # --- Medication Tracker Routes ---
     $family->get('/medication')->to('medication#index');
