@@ -458,6 +458,18 @@ sub startup {
     $family->post('/receipts/crop/:id')->to('receipts#crop');
     $family->post('/receipts/ocr/:id')->to('receipts#trigger_ocr');
 
+    # --- Medication Tracker Routes ---
+    $family->get('/medication')->to('medication#index');
+    $family->post('/medication/add')->to('medication#add');
+    $family->post('/medication/edit/:id')->to('medication#edit');
+    $family->post('/medication/delete/:id')->to('medication#delete');
+
+    # --- Medication Registry Management (Admin Only) ---
+    my $med_admin = $family->under(sub { shift->is_admin || 0 });
+    $med_admin->get('/medication/manage')->to('medication#manage');
+    $med_admin->post('/medication/manage/update/:id')->to('medication#update_registry');
+    $med_admin->post('/medication/manage/delete/:id')->to('medication#delete_registry');
+
         # --- Chess Routes ---
     $auth->get('/chess/lobby')->to('chess#lobby');
     $auth->get('/chess/lobby_status')->to('chess#lobby_status');
