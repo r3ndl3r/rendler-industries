@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Use global modal closing helper
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeDoseModal, closeEditModal, closeDeleteModal, closeRegistryModal, closeManageModal
+        closeDoseModal, closeEditModal, closeDeleteModal, closeResetModal, closeRegistryModal, closeManageModal
     ]);
 });
 
@@ -50,6 +50,7 @@ function submitForm(event, url, isRegistry = false) {
             closeDoseModal();
             closeEditModal();
             closeDeleteModal();
+            closeResetModal();
             if (isRegistry) closeManageModal();
             refreshData();
         }
@@ -111,6 +112,7 @@ function renderGrid() {
                         <div class="med-item-footer">
                             <span class="taken-at-label">🕒 ${displayDt}</span>
                             <div class="med-item-actions" onclick="event.stopPropagation()">
+                                <button type="button" class="btn-icon-reset" onclick="confirmResetMedication(${l.id}, '${l.medication_name} for ${l.family_member}')">🔄</button>
                                 <button type="button" class="btn-icon-edit" onclick='openEditModal(${JSON.stringify(l)})'>✎</button>
                                 <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, '${l.medication_name} for ${l.family_member}')">🗑️</button>
                             </div>
@@ -232,6 +234,13 @@ function confirmDeleteMedication(id, name) {
     document.getElementById('deleteConfirmModal').style.display = 'flex';
 }
 function closeDeleteModal() { document.getElementById('deleteConfirmModal').style.display = 'none'; }
+
+function confirmResetMedication(id, name) {
+    document.getElementById('resetMedName').textContent = name;
+    document.getElementById('resetForm').action = `/medication/reset/${id}`;
+    document.getElementById('resetConfirmModal').style.display = 'flex';
+}
+function closeResetModal() { document.getElementById('resetConfirmModal').style.display = 'none'; }
 
 function openRegistryModal() { document.getElementById('registryModal').style.display = 'block'; }
 function closeRegistryModal() { document.getElementById('registryModal').style.display = 'none'; }

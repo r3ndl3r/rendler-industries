@@ -210,6 +210,25 @@
     </div>
 </div>
 
+<!-- Reset Confirmation Modal -->
+<div id="resetConfirmModal" class="delete-modal-overlay">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
+            <h3>Confirm Reset</h3>
+            <span class="delete-modal-close" onclick="closeResetModal()">&times;</span>
+        </div>
+        <div class="delete-modal-body">
+            <p>Reset timestamp for <strong id="resetMedName"></strong> to <strong>NOW</strong>?</p>
+        </div>
+        <div class="delete-modal-actions">
+            <form id="resetForm" onsubmit="submitForm(event, this.action)">
+                <button type="submit" class="btn-primary" style="background:#64748b !important;"><%= icon('reset') %> Reset to Now</button>
+                <button type="button" class="btn-secondary" onclick="closeResetModal()" style="margin-left: 10px; height: 38px;">Cancel</button>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
     // Pass session user to JS for default selection logic
     const CURRENT_USER = "<%= session('user') %>";
