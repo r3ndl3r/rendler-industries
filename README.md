@@ -43,6 +43,8 @@ The system features a redundant, priority-weighted alert engine:
 ### ⚙️ Global Settings (`/settings`)
 *   **System Variables:** Centralized management of application constants, such as **Timer Reset Hours** and **Quiet Hour** configurations.
 
+![Global Settings](public/images/screenshots/global_settings.png)
+
 ---
 
 ## 📅 Productivity Suite
@@ -55,20 +57,37 @@ The system features a redundant, priority-weighted alert engine:
     *   **Automated Emailing:** System-wide broadcast to all family members when high-priority events are added.
     *   **Color Coding:** Categorize events (Doctor, School, Social) with dynamic hex-code styling.
 
+![Calendar Main View](public/images/screenshots/calendar_main.png)
+
+<p align="center">
+  <img src="public/images/screenshots/calendar_event_details.png" width="32%" />
+  <img src="public/images/screenshots/calendar_edit_event.png" width="32%" />
+  <img src="public/images/screenshots/calendar_manage.png" width="32%" />
+</p>
+
 ### 💊 Medication Tracker (`/medication`)
 *   **Full AJAX Suite:** Single-page interface for adding, editing, and deleting doses with zero page refreshes.
 *   **Interval Logic:** Dynamic timers showing exactly how long ago a dose was taken (e.g., "Taken 4h 20m ago").
 *   **Split Input UX:** Custom modal logic that forces Time before Date for intuitive logging.
 *   **Smart Registry:** Shared database of medications with default dosages (mg) for lightning-fast entry.
 
+![Medication Tracker](public/images/screenshots/medication_tracker.png)
+
 ### 🔔 Smart Reminders (`/reminders`)
 *   **Recurring Engine:** Rule-based scheduling by day of the week and specific time.
 *   **Multi-User Mapping:** Link multiple recipients to a single reminder.
 *   **Self-Cleaning:** "One-off" flag for reminders that delete themselves after successful delivery.
 
+![Reminders](public/images/screenshots/reminders.png)
+
 ### 🛒 Collaborative Shopping & Todo (`/shopping`, `/todo`)
 *   **Live Sync:** AJAX-driven status toggles for real-time synchronization across the household.
 *   **User Scoping:** Todo lists are private and segregated, while Shopping lists are shared family-wide.
+
+<p align="center">
+  <img src="public/images/screenshots/shopping_list.png" width="48%" />
+  <img src="public/images/screenshots/todo_list.png" width="48%" />
+</p>
 
 ---
 
@@ -79,6 +98,8 @@ The system features a redundant, priority-weighted alert engine:
 *   **Image Pre-processing:** Automated grayscale conversion, sharpening, and 40% threshold deskewing.
 *   **Heuristic Extraction:** Custom Perl Regex engine parses store names, dates, and currency totals from raw text.
 
+![Receipt Ledger](public/images/screenshots/receipt_ledger.png)
+
 ### 🤬 The Swear Jar Ledger (`/swear`)
 *   **Polymorphic Ledger:** A single `swear_ledger` table tracking Fines, Payments, and Expenditures.
 *   **Debt Reconciliation:** Smart logic that automatically settles oldest fines first upon jar deposit.
@@ -87,6 +108,8 @@ The system features a redundant, priority-weighted alert engine:
 ### 📁 Secure File Manager (`/files`)
 *   **BLOB Storage:** Secure database-backed storage for arbitrary binaries.
 *   **Permission Control:** Granular access management (Admin-only vs. Specific User whitelists).
+
+![File Manager](public/images/screenshots/file_manager.png)
 
 ---
 
@@ -117,10 +140,14 @@ The system features a redundant, priority-weighted alert engine:
 *   **Linear Interpolation Engine:** Scrapes 3-hour source data from Windfinder and interpolates it into granular **2-hour blocks**.
 *   **Threshold Styling:** Color-coded temperature and wind intensity classes for fast visual analysis.
 
+![Chelsea Forecast](public/images/screenshots/chelsea_forecast.png)
+
 ### ⏱ Household Timers (`/timers`)
 *   **Limit Enforcement:** Weekday vs. Weekend daily minute limits per device category.
 *   **Quiet Hours:** Automatic start-blocking during configured quiet periods (e.g., 9PM - 7AM).
 *   **Bonus Time:** Administrative interface for granting extra time to specific user sessions.
+
+![Timer Management](public/images/screenshots/timer_management.png)
 
 ### 🎂 Birthday Tracker (`/birthdays`)
 *   **Cyclical Sort:** Specialized SQL engine that ranks birthdays by nearest upcoming date, regardless of the current year.
@@ -128,6 +155,11 @@ The system features a redundant, priority-weighted alert engine:
 ### 🔗 Go Links & 📋 Clipboard (`/go`, `/clipboard`)
 *   **Go Links:** Internal URL shortener with visit analytics.
 *   **Clipboard:** Cross-device pastebin with instant notifications for user `rendler`.
+
+<p align="center">
+  <img src="public/images/screenshots/go_links.png" width="48%" />
+  <img src="public/images/screenshots/clipboard.png" width="48%" />
+</p>
 
 ### 📞 Phone Book (`/p`)
 *   **Digital Directory:** Centralized contact management for family and business connections.
