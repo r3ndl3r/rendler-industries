@@ -263,8 +263,8 @@
     .timers-table tbody tr .actions-cell {
         grid-area: actions;
         display: flex;
-        justify-content: flex-end; /* Align buttons to the right */
-        gap: 8px;
+        justify-content: center; /* Center buttons horizontally */
+        gap: 12px;
         margin-top: 6px;
         padding-top: 12px !important;
         border-top: 1px solid rgba(255,255,255,0.1);
