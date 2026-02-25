@@ -33,7 +33,8 @@ sub index {
     
     $c->stash(
         client_ip  => $client_ip,
-        last_visit => $last_visit
+        last_visit => $last_visit,
+        logged_in  => $c->is_logged_in ? 1 : 0
     );
     $c->render('index');
 }
