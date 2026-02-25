@@ -180,6 +180,63 @@ img:hover {
     list-style: none;
 }
 
+
+.redirect-splash {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+}
+
+.redirect-splash-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 1.5rem;
+    padding: 2.5rem 3rem;
+    text-align: center;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+}
+
+.redirect-splash-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+
+.redirect-splash-card h2 {
+    font-size: 1.3rem; font-weight: 300;
+    color: #fff; margin: 0 0 0.5rem;
+}
+
+.redirect-splash-card p {
+    color: #94a3b8; font-size: 0.95rem; margin: 0 0 1.5rem;
+}
+
+.redirect-splash-card p strong { color: #90caf9; }
+
+.redirect-progress-track {
+    background: rgba(255,255,255,0.08);
+    border-radius: 9999px; height: 4px;
+    overflow: hidden; margin-bottom: 1.5rem;
+}
+
+.redirect-progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #3b82f6, #90caf9);
+    border-radius: 9999px;
+    transition: width 0.05s linear;
+}
+
+.btn-cancel-redirect {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #94a3b8; font-size: 0.85rem;
+    padding: 0.5rem 1.25rem; border-radius: 0.5rem;
+    cursor: pointer; transition: all 0.2s;
+}
+
+.btn-cancel-redirect:hover {
+    border-color: rgba(255,255,255,0.3); color: #fff;
+}
+
 @media (min-width: 1024px) {
     div.main {
         width: 100%;
