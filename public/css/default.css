@@ -219,7 +219,7 @@ body {
     background: #059669; 
 }
 
-.btn-icon-view, .btn-icon-copy, .btn-icon-edit, .btn-icon-delete, .btn-icon-bonus, .btn-icon-crop {
+.btn-icon-view, .btn-icon-copy, .btn-icon-edit, .btn-icon-delete, .btn-icon-bonus, .btn-icon-crop, .btn-icon-ai {
     width: 32px;
     height: 32px;
     padding: 0;
@@ -246,6 +246,9 @@ body {
 .btn-icon-delete { background: #ef4444; }
 .btn-icon-delete:hover { background: #dc2626; }
 
+.btn-icon-ai { background: #4338ca; }
+.btn-icon-ai:hover { background: #3730a3; }
+
 .btn-icon-crop { background: #8b5cf6; }
 .btn-icon-crop:hover { background: #7c3aed; }
 
@@ -270,7 +273,7 @@ body {
     display: none;
     justify-content: center;
     align-items: center;
-    z-index: 10001;
+    z-index: 11000;
 }
 
 /* Maintain centering for delete modals */
