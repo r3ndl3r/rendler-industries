@@ -21,11 +21,12 @@ const TimerManagement = {
                         this.openEditModal(e.target.closest('.btn-icon-edit'));
                     } else if (e.target.closest('.btn-icon-delete')) {
                         this.handleDelete(e.target.closest('.btn-icon-delete'));
-                    } else if (e.target.closest('.btn-icon-bonus')) {                this.openBonusModal(e.target.closest('.btn-icon-bonus'));
-            } else if (e.target.classList.contains('modal-close') || e.target.classList.contains('modal')) {
-                this.closeModals();
-            }
-        });
+                                } else if (e.target.closest('.btn-icon-bonus')) {
+                                    this.openBonusModal(e.target.closest('.btn-icon-bonus'));
+                                } else if (e.target.classList.contains('close-btn') || e.target.classList.contains('modal')) {
+                                    this.closeModals();
+                                }
+                            });
 
         const bonusForm = document.getElementById('bonus-form');
         if (bonusForm) {
