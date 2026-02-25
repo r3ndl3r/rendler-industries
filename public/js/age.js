@@ -21,7 +21,10 @@ function upValues() {
 function upPage() {
     upIndex();
     setInterval(function() {
-        document.getElementById('time').innerHTML = moment(new Date).tz("Australia/Melbourne").format('dddd MMMM h:mm:ss a');
+        const timeEl = document.getElementById('time');
+        if (timeEl) {
+            timeEl.innerHTML = moment(new Date).tz("Australia/Melbourne").format('dddd MMMM h:mm:ss a');
+        }
         upValues();
     }, 1000);
 }
