@@ -298,9 +298,15 @@
     }
 
     .drag-handle {
-        position: absolute;
-        right: 1rem;
-        top: 1rem;
+        display: flex !important;
+        width: 100% !important;
+        justify-content: flex-end !important;
+        position: static !important;
+        padding: 0.25rem 0.75rem !important;
+        margin-bottom: 0.25rem !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        color: #64748b !important;
+        font-size: 1rem !important;
     }
 
     .actions-cell {
