@@ -75,7 +75,7 @@
                         </td>
                         <td><%= $event->{creator_name} || 'Unknown' %></td>
                         <td class="actions-cell">
-                            <button class="btn-edit btn-small" data-id="<%= $event->{id} %>">Edit</button>
+                            <button class="btn-edit btn-small" data-id="<%= $event->{id} %>"><%= icon('edit') %> Edit</button>
                         </td>
                     </tr>
                     % }
@@ -135,7 +135,7 @@
                         </td>
                         <td><%= $event->{creator_name} || 'Unknown' %></td>
                         <td class="actions-cell">
-                            <button class="btn-edit btn-small" data-id="<%= $event->{id} %>">Edit</button>
+                            <button class="btn-edit btn-small" data-id="<%= $event->{id} %>"><%= icon('edit') %> Edit</button>
                         </td>
                     </tr>
                     % }
