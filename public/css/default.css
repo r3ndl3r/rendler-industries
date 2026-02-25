@@ -718,3 +718,116 @@ a:hover {
     align-items: center;
     justify-content: center;
 }
+
+/* --- Global 3D Flip Clock --- */
+.flip-clock {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.flip-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    perspective: 400px;
+}
+
+.flip-card {
+    position: relative;
+    width: 32px;
+    height: 36px;
+    background: #1e293b;
+    border-radius: 4px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 36px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+}
+
+.flip-card-top, 
+.flip-card-bottom,
+.flip-card-flap-front,
+.flip-card-flap-back {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    overflow: hidden;
+    background: #1e293b;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+.flip-card-top,
+.flip-card-flap-front {
+    top: 0;
+    border-radius: 4px 4px 0 0;
+    border-bottom: 1px solid rgba(0,0,0,0.3);
+    line-height: 36px;
+}
+
+.flip-card-bottom,
+.flip-card-flap-back {
+    bottom: 0;
+    border-radius: 0 0 4px 4px;
+    line-height: 0;
+}
+
+.flip-card-flap-front {
+    transform-origin: bottom;
+    z-index: 3;
+    background: #1e293b;
+}
+
+.flip-card-flap-back {
+    transform-origin: top;
+    transform: rotateX(-180deg);
+    z-index: 2;
+    background: #0f172a;
+}
+
+.flip-card-top { z-index: 1; background: #0f172a; }
+.flip-card-bottom { z-index: 0; }
+
+.flip-card.flipping .flip-card-flap-front {
+    animation: flip-down-front 0.4s ease-in forwards;
+}
+
+.flip-card.flipping .flip-card-flap-back {
+    animation: flip-down-back 0.4s ease-in forwards;
+}
+
+@keyframes flip-down-front {
+    0% { transform: rotateX(0deg); }
+    100% { transform: rotateX(-180deg); }
+}
+
+@keyframes flip-down-back {
+    0% { transform: rotateX(180deg); }
+    100% { transform: rotateX(0deg); }
+}
+
+.flip-label {
+    font-size: 0.5rem;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-top: 4px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+/* Desktop Scaling for Flip Clock */
+@media (min-width: 769px) {
+    .flip-card {
+        width: 40px;
+        height: 44px;
+        line-height: 44px;
+        font-size: 1.3rem;
+    }
+    .flip-card-top, .flip-card-flap-front { line-height: 44px; }
+    .flip-label { font-size: 0.6rem; }
+    .flip-clock { gap: 8px; }
+}
