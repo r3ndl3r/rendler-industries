@@ -465,6 +465,7 @@ sub startup {
     $family->get('/medication/api/data')->to('medication#get_data');
     $family->post('/medication/add')->to('medication#add');
     $family->post('/medication/edit/:id')->to('medication#edit');
+    $family->post('/medication/reset/:id')->to('medication#reset');
     $family->post('/medication/delete/:id')->to('medication#delete');
 
     # --- Family Pulse AI Routes ---
