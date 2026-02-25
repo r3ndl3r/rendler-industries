@@ -17,8 +17,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('modalTitle').textContent = title;
         form.reset();
         
-        const deleteBtn = document.getElementById('modalDeleteBtn');
-        
         if (data) {
             document.getElementById('linkId').value = data.id;
             document.getElementById('linkSort').value = data.sort || "0";
@@ -30,15 +28,11 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('linkTarget').value = data.target;
             document.getElementById('linkActive').checked = data.active == "1";
             document.getElementById('linkSeparator').checked = data.separator == "1";
-            deleteBtn.style.display = 'inline-flex';
-            deleteBtn.dataset.id = data.id;
-            deleteBtn.dataset.label = data.label;
         } else {
             document.getElementById('linkId').value = "";
             document.getElementById('linkSort').value = "0";
             document.getElementById('linkActive').checked = true;
             document.getElementById('linkSeparator').checked = false;
-            deleteBtn.style.display = 'none';
         }
         
         modal.style.display = 'flex';
@@ -88,6 +82,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Delete Button Click
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const label = this.dataset.label;
+            openDeleteConfirmModal(id, label);
+        });
+    });
+
     // Form Submission (Add/Update)
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -126,13 +129,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Submission error:', error);
             showToast('Request failed', 'error');
         }
-    });
-
-    // Intermediate Delete Button Click (Inside Edit Modal)
-    document.getElementById('modalDeleteBtn').addEventListener('click', function() {
-        const id = this.dataset.id;
-        const label = this.dataset.label;
-        openDeleteConfirmModal(id, label);
     });
 
     // Final Delete Confirmation Click

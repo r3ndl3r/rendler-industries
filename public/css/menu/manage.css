@@ -224,6 +224,10 @@
     border-top: 1px solid #334155;
 }
 
+.delete-modal-actions {
+    justify-content: center !important;
+}
+
 .hint-text {
     font-size: 0.875rem;
     color: #94a3b8;
@@ -323,6 +327,7 @@
         padding-top: 0.75rem !important;
         border-top: 1px solid #334155 !important;
         justify-content: center !important;
+        gap: 0.75rem !important;
     }
 
     .child-row {
