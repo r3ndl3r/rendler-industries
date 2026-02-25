@@ -170,7 +170,61 @@
     height: 28px;
 }
 
+.modal-registry {
+    max-width: 800px;
+}
+
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 0.75rem;
+}
+
+.data-table {
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.col-actions-header {
+    width: 100px;
+    text-align: center !important;
+}
+
 @media (max-width: 768px) {
+    .medication-container {
+        padding: 1rem;
+    }
+
+    .modal-registry {
+        padding: 1.5rem 1rem;
+    }
+
+    .data-table {
+        background: rgba(0, 0, 0, 0.12);
+    }
+
+    .data-table th {
+        font-size: 0.65rem;
+        padding: 0.6rem 0.25rem;
+    }
+
+    .data-table td {
+        padding: 0.75rem 0.25rem;
+        font-size: 0.85rem;
+    }
+
+    .col-actions .btn-icon-edit,
+    .col-actions .btn-icon-delete {
+        width: 28px;
+        height: 28px;
+        font-size: 0.9rem;
+    }
+
+    .data-table th:first-child,
+    .data-table td:first-child {
+        padding-left: 1rem;
+    }
+
     .manage-actions .btn-primary,
     .manage-actions .action-btn {
         padding: 0.4rem 0.8rem;

@@ -139,25 +139,27 @@
 
 <!-- Registry Management Modal -->
 <div id="registryModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="max-width: 800px;">
+    <div class="modal-content modal-registry">
         <div class="modal-header">
             <h3><%= icon('settings') %> Manage Medication Registry</h3>
             <span class="close-btn" onclick="closeRegistryModal()">&times;</span>
         </div>
         <div class="modal-body">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Default (mg)</th>
-                        <th>Usage</th>
-                        <th style="width: 80px; text-align: center;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="registry-table-body">
-                    <!-- Populated via AJAX -->
-                </tbody>
-            </table>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Default (mg)</th>
+                            <th>Usage</th>
+                            <th class="col-actions-header">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="registry-table-body">
+                        <!-- Populated via AJAX -->
+                    </tbody>
+                </table>
+            </div>
         </div>
         <div class="modal-actions">
             <button type="button" class="btn-secondary" onclick="closeRegistryModal()">Close</button>
