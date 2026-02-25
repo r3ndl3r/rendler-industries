@@ -450,6 +450,7 @@ sub startup {
 
     # --- Receipts Management Routes ---
     $family->get('/receipts')->to('receipts#index');
+    $family->get('/api/receipts/list')->to('receipts#api_list');
     $family->get('/receipts/upload')->to('receipts#upload_form');
     $family->post('/receipts')->to('receipts#upload');
     $family->post('/receipts/update/:id')->to('receipts#update');
