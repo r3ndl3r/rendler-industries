@@ -4,19 +4,23 @@ package MyApp::Controller::Connect4;
 use Mojo::Base 'Mojolicious::Controller';
 
 # Controller for the Connect 4 Online multiplayer game.
+# Handles lobby orchestration, board state management, and move processing.
+#
 # Features:
-#   - Lobby management (List, Create, Join)
-#   - Game interface rendering with state synchronization
-#   - AJAX-based move processing
-# Integration points:
-#   - Uses DB::Connect4 helper for game logic and state persistence
-#   - Restricted to authenticated users via router bridge
+#   - Lobby management (List, Create, Join).
+#   - Game interface rendering with real-time state synchronization.
+#   - AJAX-based move processing and win detection.
+#   - Game restart and session cleanup logic.
+#
+# Integration Points:
+#   - DB::Connect4 for game logic, board persistence, and state retrieval.
+#   - Router: Restricted to authenticated users via bridge.
 
 # Renders the lobby list showing waiting games.
 # Route: GET /connect4/lobby
 # Parameters: None
 # Returns:
-#   Rendered HTML template 'connect4/lobby' with list of open games
+#   Rendered HTML template 'connect4/lobby' with list of open games.
 sub lobby {
     my $c = shift;
     my $lobbies = $c->db->get_open_connect4_lobbies();
@@ -27,7 +31,7 @@ sub lobby {
 # Route: GET /connect4/create
 # Parameters: None
 # Returns:
-#   Redirects to the play screen for the new game ID
+#   Redirects to the play screen for the new game ID.
 sub create {
     my $c = shift;
     my $uid = $c->current_user_id;
@@ -38,10 +42,10 @@ sub create {
 # Adds the current user to an existing lobby as player 2.
 # Route: POST /connect4/join
 # Parameters:
-#   id : Unique Game ID to join
+#   - id : Unique Game ID to join.
 # Returns:
-#   Redirects to play screen on success
-#   Redirects to lobby with error flash on failure
+#   Redirects to play screen on success.
+#   Redirects to lobby with error flash on failure.
 sub join {
     my $c = shift;
     my $uid = $c->current_user_id;
@@ -58,10 +62,10 @@ sub join {
 # Renders the main game board or returns JSON state for polling.
 # Route: GET /connect4/play/:id
 # Parameters:
-#   id : Unique Game ID
+#   - id : Unique Game ID.
 # Returns:
-#   Rendered HTML template 'connect4/connect4' (Standard request)
-#   JSON object { board, turn, status, winner, player_role, ... } (AJAX request)
+#   Rendered HTML template 'connect4/connect4' (Standard request).
+#   JSON object { board, turn, status, winner, player_role, ... } (AJAX request).
 sub play {
     my $c = shift;
     my $game_id = $c->param('id');
@@ -97,10 +101,10 @@ sub play {
 # Processes a player's attempt to drop a disc into a column.
 # Route: POST /connect4/move
 # Parameters:
-#   id  : Unique Game ID
-#   col : Column index (0-6)
+#   - id  : Unique Game ID.
+#   - col : Column index (0-6).
 # Returns:
-#   JSON object { success => 1/0 }
+#   JSON object { success => 1/0 }.
 sub move {
     my $c = shift;
     my $game_id = $c->param('id');
@@ -112,12 +116,12 @@ sub move {
     $c->render(json => { success => $success });
 }
 
-# Resets the game to start over.
+# Resets the game board to start a new round.
 # Route: POST /connect4/restart
 # Parameters:
-#   id : Unique Game ID
+#   - id : Unique Game ID.
 # Returns:
-#   JSON success status
+#   JSON success status.
 sub restart {
     my $c = shift;
     my $game_id = $c->param('id');
