@@ -5,8 +5,7 @@
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/medication.css">
-    <script defer src="/js/toast.js"></script>
-    <script defer src="/js/medication.js"></script>
+    <script src="/js/medication.js"></script>
 % end
 
 <div class="medication-container">
