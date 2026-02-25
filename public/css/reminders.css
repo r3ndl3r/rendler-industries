@@ -370,6 +370,10 @@
     padding-top: 0.75rem;
 }
 
+.modal-actions, .delete-modal-actions {
+    justify-content: center !important;
+}
+
 @media (min-width: 769px) {
     .flip-card {
         width: 40px;
