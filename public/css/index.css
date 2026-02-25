@@ -237,6 +237,39 @@ img:hover {
     border-color: rgba(255,255,255,0.3); color: #fff;
 }
 
+/* --- Dashboard Flip Clock Customization --- */
+.dashboard-clock-container {
+    display: flex;
+    flex-direction: column; /* Stack Day/Month on top of Clock */
+    align-items: center;
+    justify-content: center;
+    gap: 15px; /* Add space between text and clock */
+    font-size: 1.6rem; /* Bigger prefix text */
+}
+
+#clock-prefix {
+    color: red;
+    font-weight: 300;
+}
+
+#main-clock.flip-clock {
+    display: flex;
+    justify-content: center;
+    margin: 0 !important;
+}
+
+#main-clock .flip-label {
+    display: none; /* Hide labels */
+}
+
+/* Remove card-shrinking overrides to restore original big size from default.css */
+#main-clock .flip-card.ampm {
+    width: 40px; /* Match default.css big card width */
+    min-width: 40px;
+    padding: 0;
+    font-size: 1.1rem;
+}
+
 @media (min-width: 1024px) {
     div.main {
         width: 100%;
@@ -244,6 +277,11 @@ img:hover {
 }
 
 @media (max-width: 768px) {
+    .dashboard-clock-container {
+        font-size: 1.3rem;
+        gap: 10px;
+    }
+
     body {
         align-items: flex-start !important;
         padding-top: 60px !important;

@@ -30,8 +30,27 @@
     <div class="info-card">
         <span class="label">LOCAL TIME (AEST)</span>
         <div class="data-text">
-            <span id="time">Loading...</span>
+            <div class="dashboard-clock-container">
+                <span id="clock-prefix"></span>
+                <div id="main-clock" class="flip-clock"></div>
+            </div>
         </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const prefixEl = document.getElementById('clock-prefix');
+                const clockEl = document.getElementById('main-clock');
+                
+                if (prefixEl) {
+                    const updatePrefix = () => {
+                        prefixEl.textContent = moment().tz("Australia/Melbourne").format('dddd, D MMMM YYYY');
+                    };
+                    updatePrefix();
+                    setInterval(updatePrefix, 60000); // Update day/month once a minute
+                }
+                
+                if (clockEl) FlipClockManager.startRealTimeClock(clockEl, 'main-dashboard-clock');
+            });
+        </script>
         <div style="border-top: 1px solid #333; margin: 15px 0;"></div>
         <span class="label">SERVER UPTIME [KUMA]</span>
         <div class="age-text">
