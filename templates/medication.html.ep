@@ -146,21 +146,19 @@
             <span class="close-btn" onclick="closeRegistryModal()">&times;</span>
         </div>
         <div class="modal-body">
-            <div class="data-table-container glass-panel" style="background: rgba(0,0,0,0.3);">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Default (mg)</th>
-                            <th>Usage</th>
-                            <th style="width: 80px; text-align: center;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="registry-table-body">
-                        <!-- Populated via AJAX -->
-                    </tbody>
-                </table>
-            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Default (mg)</th>
+                        <th>Usage</th>
+                        <th style="width: 80px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="registry-table-body">
+                    <!-- Populated via AJAX -->
+                </tbody>
+            </table>
         </div>
         <div class="modal-actions">
             <button type="button" class="btn-secondary" onclick="closeRegistryModal()">Close</button>
