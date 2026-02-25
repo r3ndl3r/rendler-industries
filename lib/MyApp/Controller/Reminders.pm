@@ -172,7 +172,10 @@ sub toggle {
     
     if ($id && $id =~ /^\d+$/) {
         $c->db->toggle_reminder_status($id, $active);
-        return $c->render(json => { success => 1 });
+        return $c->render(json => { 
+            success => 1, 
+            message => ($active ? "Reminder resumed" : "Reminder paused") 
+        });
     }
     
     return $c->render(json => { success => 0, error => 'Invalid parameters' });
@@ -188,7 +191,7 @@ sub toggle_day {
     
     if ($id && $id =~ /^\d+$/ && $day && $day =~ /^[1-7]$/) {
         $c->db->toggle_reminder_day($id, $day, $active);
-        return $c->render(json => { success => 1 });
+        return $c->render(json => { success => 1, message => "Schedule updated" });
     }
     
     return $c->render(json => { success => 0, error => 'Invalid parameters' });
