@@ -166,4 +166,53 @@ sub reorder {
     }
 }
 
+# API Endpoint: Retrieves the hierarchical menu tree for the current user.
+# Route: GET /api/menu/state
+# Parameters: None (Uses session for permissions).
+# Returns:
+#   JSON object containing 'menu' tree, 'is_logged_in', and 'is_admin' flags.
+sub get_state {
+    my $c = shift;
+    
+    my $permission = 'guest';
+    if ($c->is_admin) {
+        $permission = 'admin';
+    } elsif ($c->is_family) {
+        $permission = 'family';
+    } elsif ($c->is_logged_in) {
+        $permission = 'user';
+    }
+    
+    my $menu_tree = $c->db->get_menu_tree($permission);
+    
+    # Map permission levels to icons for the frontend
+    foreach my $item (@$menu_tree) {
+        _enrich_menu_item($item);
+    }
+
+    $c->render(json => {
+        success      => 1,
+        menu         => $menu_tree,
+        is_logged_in => $c->is_logged_in,
+        is_admin     => $c->is_admin,
+        current_path => $c->url_for->path->to_string
+    });
+}
+
+# Recursively enrich menu items with icons and metadata for frontend rendering.
+sub _enrich_menu_item {
+    my $item = shift;
+    
+    # Map database permission levels to semantic icon keys
+    $item->{perm_icon} = ($item->{url} && $item->{url} ne '#') 
+        ? 'perm_' . ($item->{permission_level} // 'user') 
+        : '';
+        
+    if ($item->{children} && @{$item->{children}}) {
+        foreach my $child (@{$item->{children}}) {
+            _enrich_menu_item($child);
+        }
+    }
+}
+
 1;
