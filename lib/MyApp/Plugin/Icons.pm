@@ -75,6 +75,14 @@ sub register {
         'ai'         => '🧠',
         'expand'    => '▼',
         'collapse'  => '▲',
+        'audio'     => '🔊',
+        'shout'     => '📢',
+        'idea'      => '💡',
+        'draw'      => '🤝',
+        'waiting'   => '⌛',
+        'victory'   => '🎉',
+        'loss'      => '💀',
+        'trophy'    => '🏆',
 
         # Zodiac / Family Icons
         'andrea'    => '🐀',
