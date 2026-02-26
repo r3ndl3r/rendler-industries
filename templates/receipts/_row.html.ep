@@ -38,7 +38,7 @@
             <% } %>
             <strong><%= $r->{store_name} || 'Unknown' %></strong>
             % if ($r->{ai_json} && $r->{ai_json} =~ /^\s*\{/) {
-                <span class="ai-badge" title="AI Analyzed">🧠</span>
+                <span class="ai-badge" title="AI Analyzed"><%= icon('ai') %></span>
             % }
         </div>
         % if ($r->{description}) {
