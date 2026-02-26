@@ -183,6 +183,28 @@ body {
     height: 0;
 }
 
+.menu-loading {
+    padding: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #64b5f6;
+}
+
+.spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(100, 181, 246, 0.1);
+    border-top: 3px solid #64b5f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 /* Permission Indicators */
 .perm-indicator {
     opacity: 0.5;
