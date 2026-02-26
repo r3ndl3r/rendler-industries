@@ -278,7 +278,7 @@
             <!-- Content populated by JS -->
             <div class="ereceipt-loading">
                 <div class="ereceipt-scan-line"></div>
-                <span class="ereceipt-loading-icon">🧠</span>
+                <span class="ereceipt-loading-icon"><%= icon('ai') %></span>
                 <p class="ereceipt-loading-text">Digitizing with AI...</p>
                 <p class="ereceipt-loading-sub">Analyzing items and structured data</p>
             </div>
