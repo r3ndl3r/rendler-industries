@@ -33,7 +33,7 @@
     <div class="header-bar">
         <h1><%= icon('receipts') %> <span>Receipt Ledger</span></h1>
         <div class="manage-actions">
-            <a href="/receipts/upload" class="action-btn"><%= icon('upload') %> Upload</a>
+            <button type="button" class="action-btn" onclick="openUploadModal()"><%= icon('upload') %> Upload</button>
         </div>
     </div>
 
@@ -248,7 +248,7 @@
     </div>
 </div>
 
-<!-- Crop Receipt Modal -->
+<!-- Post-Upload Crop Modal (Existing Receipts) -->
 <div id="cropModal" class="modal-overlay" style="display: none;">
     <div class="modal-content" style="max-width: 800px; width: 95%;">
         <div class="modal-header">
@@ -263,6 +263,26 @@
         </div>
         <div class="modal-actions crop-modal-actions">
             <button type="button" class="btn-primary" onclick="saveCrop()"><%= icon('save') %> Save Crop</button>
+        </div>
+    </div>
+</div>
+
+<!-- Pre-Upload Crop Modal (New Uploads) -->
+<div id="preUploadCropModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 800px; width: 95%;">
+        <div class="modal-header">
+            <h3><%= icon('edit') %> Refine Receipt Image</h3>
+            <span class="close-btn" onclick="closePreUploadCropModal()">&times;</span>
+        </div>
+        <div class="modal-body" style="text-align: center;">
+            <div style="max-height: 60vh; overflow: hidden; background: #000; border-radius: 8px;">
+                <img id="preUploadCropImg" style="max-width: 100%; display: block;">
+            </div>
+            <p style="margin-top: 15px; color: #94a3b8; font-size: 0.85rem;">Drag to select the receipt area. This will be the final image uploaded.</p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn-primary" onclick="applyPreUploadCrop()"><%= icon('check') %> Apply Crop</button>
+            <button type="button" class="btn-secondary" onclick="closePreUploadCropModal()">Skip Cropping</button>
         </div>
     </div>
 </div>
@@ -296,5 +316,28 @@
     <div class="image-modal-content" onclick="event.stopPropagation()">
         <span class="close-btn" onclick="closeReceiptModal()"><%= icon('close') %></span>
         <img id="modalImg" src="" class="receipt-modal-img">
+    </div>
+</div>
+
+<!-- Upload Receipt Modal -->
+<div id="uploadModal" class="modal-overlay receipt-upload-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><%= icon('upload') %> Upload Receipt</h3>
+            <span class="close-btn" onclick="closeUploadModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form method="POST" action="/receipts" enctype="multipart/form-data" id="uploadForm">
+                <div class="file-drop-area" id="dropZone" onclick="document.getElementById('file').click()">
+                    <input type="file" id="file" name="file" required accept="image/*,application/pdf" style="display: none;">
+                    <p class="drop-hint"><%= icon('receipts') %><br>Drag & drop receipt here<br>or click to browse</p>
+                    <p class="file-name upload-file-name" id="fileName" style="display: none;"></p>
+                </div>
+
+                <div class="form-actions upload-actions">
+                    <button type="submit" class="btn-primary"><%= icon('upload') %> Upload</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
