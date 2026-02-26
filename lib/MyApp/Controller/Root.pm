@@ -2,7 +2,6 @@
 
 package MyApp::Controller::Root;
 use Mojo::Base 'Mojolicious::Controller';
-use Tools;
 use Cwd qw(abs_path getcwd);
 use Mojo::File 'path';
 use HTML::Entities qw(encode_entities);
@@ -107,9 +106,9 @@ sub age {
     # Fetch DOB configuration
     my $dob = $c->db->dob();
     
-    # Calculate ages using Tools.pm helper
-    my @andrea = howOld($dob->{andrea}->{dob});
-    my @nicky  = howOld($dob->{nicky}->{dob});
+    # Calculate ages using Tools plugin helpers
+    my @andrea = $c->how_old($dob->{andrea}->{dob});
+    my @nicky  = $c->how_old($dob->{nicky}->{dob});
     
     # Calculate server uptime
     my ($uptime_str, $uptime_seconds) = (0, 0);
