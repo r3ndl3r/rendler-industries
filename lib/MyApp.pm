@@ -379,14 +379,15 @@ sub startup {
 
     # --- Receipts Management Routes ---
     $family->get('/receipts')->to('receipts#index');
+    $family->get('/receipts/api/state')->to('receipts#api_state');
     $family->get('/api/receipts/list')->to('receipts#api_list');
-    $family->post('/receipts')->to('receipts#upload');
-    $family->post('/receipts/update/:id')->to('receipts#update');
-    $family->post('/receipts/delete/:id')->to('receipts#delete');
+    $family->post('/receipts/api/upload')->to('receipts#upload');
+    $family->post('/receipts/api/update/:id')->to('receipts#update');
+    $family->post('/receipts/api/delete/:id')->to('receipts#delete');
     $family->get('/receipts/serve/:id')->to('receipts#serve');
-    $family->post('/receipts/crop/:id')->to('receipts#crop');
-    $family->post('/receipts/ocr/:id')->to('receipts#trigger_ocr');
-    $family->post('/receipts/ai_analyze/:id')->to('receipts#ai_analyze');
+    $family->post('/receipts/api/crop/:id')->to('receipts#crop');
+    $family->post('/receipts/api/ocr/:id')->to('receipts#trigger_ocr');
+    $family->post('/receipts/api/ai_analyze/:id')->to('receipts#ai_analyze');
 
     # --- Medication Tracker Routes ---
     $family->get('/medication')->to('medication#index');
