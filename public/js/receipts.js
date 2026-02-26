@@ -345,15 +345,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 const response = await fetch(`/api/receipts/list?offset=${currentOffset}`);
                 const data = await response.json();
 
-                if (data.success && data.receipts.length > 0) {
+                if (data.success && data.html) {
                     const tbody = document.querySelector('.files-table tbody');
-                    data.receipts.forEach(r => {
-                        const row = createReceiptRow(r, data.current_user, data.is_admin);
-                        tbody.appendChild(row);
-                    });
-                    currentOffset += data.receipts.length;
+                    tbody.insertAdjacentHTML('beforeend', data.html);
                     
-                    if (data.receipts.length < 10) {
+                    // Count rows added by searching for <tr> in the new HTML
+                    const rowsAdded = (data.html.match(/<tr/g) || []).length;
+                    currentOffset += rowsAdded;
+                    
+                    if (!data.has_more) {
                         loadMoreBtn.style.display = 'none';
                     }
                 } else {
@@ -369,46 +369,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         };
-    }
-
-    function createReceiptRow(r, currentUser, isAdmin) {
-        const tr = document.createElement('tr');
-        
-        const previewHtml = r.mime_type.startsWith('image') 
-            ? `<div class="receipt-thumbnail-wrapper" onclick="openReceiptModal('${r.id}')">
-                 <img src="/receipts/serve/${r.id}" class="receipt-thumb">
-               </div>`
-            : `<span style="font-size: 1.5rem;">🧾</span>`;
-
-        const canEdit = (r.uploaded_by === currentUser || isAdmin);
-        
-        tr.innerHTML = `
-            <td class="col-icon" data-label="Preview" style="text-align: center;">${previewHtml}</td>
-            <td data-label="Filename"><small>${r.original_filename}</small></td>
-            <td data-label="Store">
-                <div class="store-icon-wrapper">
-                    <strong>${r.store_name || 'Unknown'}</strong>
-                    ${(r.ai_json && r.ai_json.trim().startsWith('{')) ? '<span title="AI Analyzed" style="font-size: 0.8rem; margin-left: 5px;">🧠</span>' : ''}
-                </div>
-                ${r.description ? `<br><small style="color: rgba(255,255,255,0.4);">${r.description}</small>` : ''}
-            </td>
-            <td data-label="Date">${r.formatted_date || '-'}</td>
-            <td data-label="Total" style="color: #69f0ae; font-weight: bold;">$${parseFloat(r.total_amount || 0).toFixed(2)}</td>
-            <td data-label="Uploaded By"><small>${r.uploaded_by}</small></td>
-            <td class="col-actions">
-                <div class="action-buttons">
-                    <a href="/receipts/serve/${r.id}" target="_blank" class="btn-icon-view" title="View Full Image">👁️</a>
-                    <button type="button" class="btn-icon-copy btn-ai-scan" onclick="viewElectronicReceipt('${r.id}', 0, \`${r.ai_json || ''}\`)" title="Electronic Receipt">🧠</button>
-                    ${canEdit ? `
-                        <button type="button" class="btn-icon-crop" onclick="openCropModal('${r.id}')" title="Crop Image">✂️</button>
-                        <button type="button" class="btn-icon-bonus" onclick="triggerOCR('${r.id}')" title="Scan with OCR" id="ocr-btn-${r.id}">🔍</button>
-                        <button type="button" class="btn-icon-edit" onclick='openEditModal(${JSON.stringify(r)})' title="Edit Details">✎</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('${r.id}', '${r.store_name || r.original_filename}')" title="Delete">🗑️</button>
-                    ` : ''}
-                </div>
-            </td>
-        `;
-        return tr;
     }
 
     // --- Electronic Receipt Functions ---

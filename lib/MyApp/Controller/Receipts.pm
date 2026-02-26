@@ -51,7 +51,7 @@ sub index {
 # Parameters:
 #   offset: Number of records to skip
 # Returns:
-#   JSON: { success, receipts, current_user, is_admin }
+#   JSON: { success, html, has_more }
 sub api_list {
     my $c = shift;
     my $offset = int($c->param('offset') // 0);
@@ -59,11 +59,16 @@ sub api_list {
     
     my $receipts = $c->db->get_all_receipts_metadata($limit, $offset);
     
+    # Render each row to a string using the shared partial
+    my $html = '';
+    for my $r (@$receipts) {
+        $html .= $c->render_to_string('receipts/_row', r => $r);
+    }
+    
     $c->render(json => {
         success  => 1,
-        receipts => $receipts,
-        current_user => $c->session('user'),
-        is_admin     => $c->is_admin
+        html     => $html,
+        has_more => (scalar @$receipts == $limit) ? 1 : 0
     });
 }
 
