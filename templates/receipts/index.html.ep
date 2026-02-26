@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="/css/files.css">
     <link rel="stylesheet" href="/css/receipts.css">
     <script defer src="/js/receipts.js"></script>
-    <!-- Cropper.js & HEIC Support -->
     <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
@@ -22,7 +21,6 @@
     </div>
 
     <div id="spendingSummaryContainer" class="spending-stats">
-        <!-- Summaries will be rendered here via AJAX -->
     </div>
 
     <div class="ledger-filters">
@@ -77,7 +75,6 @@
                                 </tr>
                             </thead>
                             <tbody id="receiptsTableBody">
-                                <!-- Rows will be rendered here via AJAX -->
                             </tbody>
             </table>
         </div>
@@ -194,7 +191,6 @@
             <span class="close-btn" onclick="closeEReceiptModal()">&times;</span>
         </div>
         <div class="modal-body ereceipt-body" id="eReceiptContent">
-            <!-- Content populated by JS -->
             <div class="ereceipt-loading">
                 <div class="ereceipt-scan-line"></div>
                 <span class="ereceipt-loading-icon"><%= icon('ai') %></span>
