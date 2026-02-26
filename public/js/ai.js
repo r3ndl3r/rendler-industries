@@ -70,7 +70,7 @@ function appendMessage(role, content) {
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${role}`;
     
-    const icon = role === 'user' ? '👤' : '🧠';
+    const icon = getIcon(role === 'user' ? 'user' : 'ai');
     
     msgDiv.innerHTML = `
         <div class="message-bubble">

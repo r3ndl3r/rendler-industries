@@ -19,10 +19,8 @@ function showToast(message, type = 'info', duration = 3000) {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     
-    // Add icon based on type
-    let icon = 'ℹ️';
-    if (type === 'success') icon = '✅';
-    if (type === 'error') icon = '❌';
+    // Add icon based on type (success, error, or info)
+    const icon = getIcon(type);
     
     toast.innerHTML = `
         <span>${icon} ${message}</span>
