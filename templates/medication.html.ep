@@ -195,7 +195,7 @@
 <div id="deleteConfirmModal" class="delete-modal-overlay">
     <div class="delete-modal-content">
         <div class="delete-modal-header">
-            <h3>Confirm Deletion</h3>
+            <h3><%= icon('delete') %> Confirm Deletion</h3>
             <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
         </div>
         <div class="delete-modal-body">
@@ -214,7 +214,7 @@
 <div id="resetConfirmModal" class="delete-modal-overlay">
     <div class="delete-modal-content">
         <div class="delete-modal-header">
-            <h3>Confirm Reset</h3>
+            <h3><%= icon('reset') %> Confirm Reset</h3>
             <span class="delete-modal-close" onclick="closeResetModal()">&times;</span>
         </div>
         <div class="delete-modal-body">

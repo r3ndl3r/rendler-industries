@@ -105,16 +105,16 @@ function renderGrid() {
                             <div class="med-item-timer">
                                 <span class="interval-update" data-unix="${l.taken_at_unix}">...</span>
                             </div>
-                            <span class="expand-icon">▼</span>
+                            <span class="expand-icon">${getIcon('expand')}</span>
                         </div>
                     </div>
                     <div class="med-item-details">
                         <div class="med-item-footer">
-                            <span class="taken-at-label">🕒 ${displayDt}</span>
+                            <span class="taken-at-label">${getIcon('clock')} ${displayDt}</span>
                             <div class="med-item-actions" onclick="event.stopPropagation()">
-                                <button type="button" class="btn-icon-reset" onclick="confirmResetMedication(${l.id}, '${l.medication_name} for ${l.family_member}')">🔄</button>
-                                <button type="button" class="btn-icon-edit" onclick='openEditModal(${JSON.stringify(l)})'>✎</button>
-                                <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, '${l.medication_name} for ${l.family_member}')">🗑️</button>
+                                <button type="button" class="btn-icon-reset" onclick="confirmResetMedication(${l.id}, '${l.medication_name} for ${l.family_member}')">${getIcon('reset')}</button>
+                                <button type="button" class="btn-icon-edit" onclick='openEditModal(${JSON.stringify(l)})'>${getIcon('edit')}</button>
+                                <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, '${l.medication_name} for ${l.family_member}')">${getIcon('delete')}</button>
                             </div>
                         </div>
                     </div>
@@ -155,9 +155,9 @@ function renderRegistryTable() {
             <td>${m.usage_count}</td>
             <td class="col-actions">
                 <div class="action-buttons">
-                    <button type="button" class="btn-icon-edit" onclick="openManageModal('${m.id}', '${m.name}', '${m.default_dosage}')">✎</button>
+                    <button type="button" class="btn-icon-edit" onclick="openManageModal('${m.id}', '${m.name}', '${m.default_dosage}')">${getIcon('edit')}</button>
                     <button type="button" class="btn-icon-delete" onclick="confirmDeleteRegistry(${m.id}, '${m.name}')" 
-                            ${m.usage_count > 0 ? 'disabled style="opacity:0.3; cursor:not-allowed"' : ''}>🗑️</button>
+                            ${m.usage_count > 0 ? 'disabled style="opacity:0.3; cursor:not-allowed"' : ''}>${getIcon('delete')}</button>
                 </div>
             </td>
         </tr>
@@ -168,8 +168,7 @@ function renderRegistryTable() {
  * Helpers & Event Handlers
  */
 function getFamilyIcon(member) {
-    const icons = { andrea: '🐀', nick: '🐉', nicky: '🐉', thararat: '🐎', rendler: '🐓' };
-    return icons[member.toLowerCase()] || '👤';
+    return getIcon(member);
 }
 
 function fillForm(mode, name, dosage) {
