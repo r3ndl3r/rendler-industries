@@ -64,7 +64,7 @@ function openAddEventModal(dateParam) {
     const modalTitle = document.getElementById('modalTitle');
     const form = document.getElementById('eventForm');
     
-    modalTitle.textContent = '➕ Add New Event';
+    modalTitle.innerHTML = `${getIcon('add')} Add New Event`;
     form.reset();
     document.getElementById('eventId').value = '';
     document.getElementById('eventColor').value = '#3788d8';
@@ -100,7 +100,7 @@ function openEditModal(event) {
     const modal = document.getElementById('eventModal');
     const modalTitle = document.getElementById('modalTitle');
     
-    modalTitle.textContent = '✎ Edit Event';
+    modalTitle.innerHTML = `${getIcon('edit')} Edit Event`;
     document.getElementById('eventId').value = event.id;
     document.getElementById('eventTitle').value = event.title;
     document.getElementById('eventDescription').value = event.description;
@@ -376,7 +376,7 @@ function cloneEventFromModal(event) {
         const modal = document.getElementById('eventModal');
         const modalTitle = document.getElementById('modalTitle');
         
-        modalTitle.textContent = '📋 Clone Event';
+        modalTitle.innerHTML = `${getIcon('copy')} Clone Event`;
         document.getElementById('eventId').value = ''; 
         
         document.getElementById('eventTitle').value = event.title;
