@@ -70,7 +70,7 @@
             <% if ($game->{status} eq 'waiting') { %>
                 <%= icon('idle') %> Waiting for an opponent to join...
             <% } elsif ($game->{status} eq 'finished') { %>
-                🏆 Game Over!
+                <%= icon('trophy') %> Game Over!
             <% } else { %>
                 <% if ($game->{current_turn} == current_user_id()) { %>
                     <%= icon('running') %> Your Turn
