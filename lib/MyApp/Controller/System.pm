@@ -78,7 +78,87 @@ sub maintenance {
     # 2. Run Reminders Maintenance
     $result->{reminders} = $c->_run_reminder_maintenance($now);
 
+    # 3. Run Meals Maintenance (Meal Planner)
+    $result->{meals} = $c->_run_meals_maintenance($now);
+
     $c->render(json => $result);
+}
+
+# Internal helper to handle meal planner automation (Lock-in at 2PM, Reminders at 8AM/12PM).
+sub _run_meals_maintenance {
+    my ($c, $now) = @_;
+    my $hour = $now->hour;
+    my $minute = $now->minute;
+    
+    my $stats = {
+        checked_time => $now->strftime('%H:%M'),
+        actions => []
+    };
+
+    # 1. Reminders (8 AM and 12 PM)
+    if ($minute == 0 && ($hour == 8 || $hour == 12)) {
+        # Check if today has any suggestions
+        my $today_plan = $c->db->get_active_plan(0)->[0]; # Today is index 0; user_id=0 (system context)
+        if ($today_plan && $today_plan->{status} eq 'open' && scalar @{$today_plan->{suggestions}} == 0) {
+            my $msg = "🍳 MEAL PLANNER: No suggestions have been made for today yet! Get your ideas in before 2PM lock-in.";
+            
+            # Find all family members with Discord IDs
+            my $users = $c->db->get_all_users();
+            foreach my $u (@$users) {
+                if ($u->{discord_id} && ($u->{is_family} || $u->{is_admin})) {
+                    $c->send_discord_dm($u->{discord_id}, $msg);
+                }
+            }
+            push @{$stats->{actions}}, "Sent $hour:00 reminders";
+        }
+    }
+
+    # 2. Lock-in (2 PM and after)
+    if ($hour >= 14) {
+        my $today_plan = $c->db->get_active_plan(0)->[0]; # user_id=0 (system context)
+        if ($today_plan && $today_plan->{status} eq 'open') {
+            my $suggestions = $today_plan->{suggestions};
+            
+            if (scalar @$suggestions > 0) {
+                # Find winner (get_suggestions_for_day returns sorted by vote count)
+                my $winner = $suggestions->[0];
+                
+                # Check for ties
+                if (scalar @$suggestions > 1 && $suggestions->[0]{vote_count} == $suggestions->[1]{vote_count}) {
+                    # Notify admin to decide
+                    my $admin_msg = "⚖️ MEAL PLANNER TIE: Today's meal plan is TIED. Please go to /meals and pick a winner!";
+                    my $admins = $c->db->get_all_users();
+                    foreach my $a (grep { $_->{is_admin} } @$admins) {
+                        $c->send_discord_dm($a->{discord_id}, $admin_msg) if $a->{discord_id};
+                    }
+                    push @{$stats->{actions}}, "Notified admins of tie";
+                } else {
+                    # Auto-lock winner
+                    $c->db->lock_suggestion($today_plan->{id}, $winner->{id});
+                    
+                    # Notify everyone of the final choice
+                    my $announcement = "🍽️ TODAY'S MENU LOCKED: $winner->{meal_name} wins with $winner->{vote_count} votes! (Suggested by $winner->{suggested_by_name})";
+                    my $users = $c->db->get_all_users();
+                    foreach my $u (@$users) {
+                        if ($u->{discord_id} && ($u->{is_family} || $u->{is_admin})) {
+                            $c->send_discord_dm($u->{discord_id}, $announcement);
+                        }
+                    }
+                    push @{$stats->{actions}}, "Locked in: $winner->{meal_name}";
+                }
+            } else {
+                # No suggestions at 2PM? Notify admin to blackout or decide
+                my $admin_msg = "⚠️ MEAL PLANNER EMPTY: No suggestions made by 2PM. Please set a blackout or manual meal.";
+                my $admins = $c->db->get_all_users();
+                foreach my $a (grep { $_->{is_admin} } @$admins) {
+                    $c->send_discord_dm($a->{discord_id}, $admin_msg) if $a->{discord_id};
+                }
+                push @{$stats->{actions}}, "Notified admins of empty plan";
+            }
+        }
+    }
+
+    return $stats;
 }
 
 # Internal helper to handle recurring reminders.
