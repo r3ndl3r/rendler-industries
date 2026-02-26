@@ -7,13 +7,26 @@ use warnings;
 use DBI qw(:sql_types);
 
 # Database helper for binary receipt storage and management.
+#
 # Features:
-#   - BLOB storage for receipt images/PDFs
-#   - Metadata management (Store, Date, Total)
-#   - Structured AI JSON storage
-#   - Integration with family-level access control
+#   - Binary BLOB storage for receipt images and PDFs.
+#   - Metadata indexing (Store, Date, Total, Description).
+#   - Structured AI analysis storage (JSON schema).
+#   - Integrated pagination and metadata-only retrieval.
+#
+# Integration Points:
+#   - Extends DB package via package injection.
+#   - Used by Receipts controller for ledger management.
+#   - Provides data source for Spending Summaries and AI Analysis.
 
 # Stores a new receipt and its metadata in the database.
+# Parameters:
+#   filename, original_filename, mime_type, file_size : Basic file attributes.
+#   file_data    : Binary content (BLOB).
+#   uploaded_by  : Username of uploader.
+#   store_name, receipt_date, total_amount, description : Metadata fields.
+# Returns:
+#   Integer : ID of the newly created receipt record.
 sub DB::store_receipt {
     my ($self, $filename, $original_filename, $mime_type, $file_size, $file_data, $uploaded_by, $store_name, $receipt_date, $total_amount, $description) = @_;
     
@@ -41,6 +54,10 @@ sub DB::store_receipt {
 }
 
 # Retrieves full receipt record by ID.
+# Parameters:
+#   id : Unique identifier for the receipt.
+# Returns:
+#   HashRef of the complete record (including BLOB) or undef.
 sub DB::get_receipt_by_id {
     my ($self, $id) = @_;
     $self->ensure_connection;
@@ -50,6 +67,11 @@ sub DB::get_receipt_by_id {
 }
 
 # Retrieves metadata for all receipts with optional pagination.
+# Parameters:
+#   limit  : (Optional) Max records.
+#   offset : (Optional) Start index.
+# Returns:
+#   ArrayRef of HashRefs (Excludes BLOB data).
 sub DB::get_all_receipts_metadata {
     my ($self, $limit, $offset) = @_;
     $self->ensure_connection;
@@ -71,6 +93,9 @@ sub DB::get_all_receipts_metadata {
 }
 
 # Retrieves a unique list of all previously entered store names.
+# Parameters: None
+# Returns:
+#   ArrayRef of Strings.
 sub DB::get_unique_store_names {
     my ($self) = @_;
     $self->ensure_connection;
@@ -80,6 +105,9 @@ sub DB::get_unique_store_names {
 }
 
 # Updates the metadata for a receipt.
+# Parameters:
+#   id, store_name, receipt_date, total_amount, notes, ai_json : Attributes.
+# Returns: Void.
 sub DB::update_receipt_data {
     my ($self, $id, $store_name, $receipt_date, $total_amount, $notes, $ai_json) = @_;
     $self->ensure_connection;
@@ -89,6 +117,10 @@ sub DB::update_receipt_data {
 }
 
 # Updates structured AI JSON only.
+# Parameters:
+#   id   : Receipt ID.
+#   json : Stringified JSON.
+# Returns: Void.
 sub DB::update_receipt_ai_json {
     my ($self, $id, $json) = @_;
     $self->ensure_connection;
@@ -97,10 +129,15 @@ sub DB::update_receipt_ai_json {
 }
 
 # Updates the raw binary data for a receipt (Used by Cropper).
+# Parameters:
+#   id        : Receipt ID.
+#   file_data : Binary BLOB.
+#   file_size : Integer bytes.
+# Returns: Void.
 sub DB::update_receipt_binary {
     my ($self, $id, $file_data, $file_size) = @_;
     $self->ensure_connection;
-    my $sth = $self->{dbh}->prepare("UPDATE receipts SET file_data = ?, file_size = ? WHERE id = ?");
+    my $sth = $self->{dbh}->prepare("UPDATE UPDATE receipts SET file_data = ?, file_size = ? WHERE id = ?");
     $sth->bind_param(1, $file_data, SQL_BLOB);
     $sth->bind_param(2, $file_size);
     $sth->bind_param(3, $id);
@@ -108,6 +145,9 @@ sub DB::update_receipt_binary {
 }
 
 # Permanently removes a receipt record.
+# Parameters:
+#   id : Receipt ID.
+# Returns: Void.
 sub DB::delete_receipt_record {
     my ($self, $id) = @_;
     $self->ensure_connection;
@@ -116,6 +156,9 @@ sub DB::delete_receipt_record {
 }
 
 # Calculates spending aggregates for the dashboard tiles.
+# Parameters: None
+# Returns:
+#   HashRef { week_total, month_total, year_total }.
 sub DB::get_spending_summary {
     my ($self) = @_;
     $self->ensure_connection;
@@ -132,6 +175,10 @@ SQL
 }
 
 # Retrieves top stores by spending for each period.
+# Parameters:
+#   limit : Max results per period.
+# Returns:
+#   HashRef { week => [], month => [], year => [] }.
 sub DB::get_store_spending_breakdown {
     my ($self, $limit) = @_;
     $limit //= 5;
