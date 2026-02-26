@@ -18,18 +18,17 @@ use Mojo::JSON qw(decode_json encode_json);
 #   - Depends on DB::Receipts for binary and structured storage
 #   - Leverages global Gemini API configuration from Settings
 
-# Renders the main receipt ledger with spending summaries.
+# Renders the main receipt ledger (Skeleton for SPA).
 # Route: GET /receipts
-# Parameters: None
-# Returns:
-#   Rendered HTML template 'receipts/index' with:
-#     - receipts: Initial 10 metadata records
-#     - summary: Weekly/Monthly/Yearly spend totals
-#     - breakdown: Top store spending lists
 sub index {
+    shift->render('receipts/index');
+}
+
+# API: Returns full SPA state (Receipts + Summaries + Config)
+# Route: GET /receipts/api/state
+sub api_state {
     my $c = shift;
     
-    # Extract filters for initial load
     my $f = {
         store      => $c->param('store'),
         days       => $c->param('days'),
@@ -39,37 +38,27 @@ sub index {
         uploader   => $c->param('uploader')
     };
 
-    # Fetch initial 10 receipts for instant load
-    my $receipts = $c->db->get_all_receipts_metadata(10, 0, $f);
-    my $store_names = $c->db->get_unique_store_names();
-    my $uploaders   = $c->db->get_medication_members(); # Reuse family member list
-    
-    # Fetch spending summaries for dashboard tiles
-    my $summary   = $c->db->get_spending_summary();
-    my $breakdown = $c->db->get_store_spending_breakdown(3);
-    
-    $c->render('receipts/index', 
-        receipts    => $receipts, 
-        store_names => $store_names,
-        uploaders   => $uploaders,
-        summary     => $summary,
-        breakdown   => $breakdown
-    );
+    my $state = {
+        receipts    => $c->db->get_all_receipts_metadata(10, 0, $f),
+        store_names => $c->db->get_unique_store_names(),
+        uploaders   => $c->db->get_medication_members(),
+        summary     => $c->db->get_spending_summary(),
+        breakdown   => $c->db->get_store_spending_breakdown(3),
+        is_admin    => $c->is_admin ? 1 : 0,
+        current_user => $c->session('user'),
+        success     => 1
+    };
+
+    $c->render(json => $state);
 }
 
 # API endpoint for lazy-loading receipt metadata via AJAX.
 # Route: GET /api/receipts/list
-# Parameters:
-#   offset: Number of records to skip
-#   filters: store, days, search, etc.
-# Returns:
-#   JSON: { success, html, has_more }
 sub api_list {
     my $c = shift;
     my $offset = int($c->param('offset') // 0);
     my $limit  = 10;
     
-    # Extract filters
     my $f = {
         store      => $c->param('store'),
         days       => $c->param('days'),
@@ -81,15 +70,9 @@ sub api_list {
 
     my $receipts = $c->db->get_all_receipts_metadata($limit, $offset, $f);
     
-    # Render each row to a string using the shared partial
-    my $html = '';
-    for my $r (@$receipts) {
-        $html .= $c->render_to_string('receipts/_row', r => $r);
-    }
-    
     $c->render(json => {
         success  => 1,
-        html     => $html,
+        receipts => $receipts,
         has_more => (scalar @$receipts == $limit) ? 1 : 0
     });
 }
@@ -136,18 +119,27 @@ sub upload {
     }
 
     eval {
-        $c->db->store_receipt(
+        my $id = $c->db->store_receipt(
             $original_filename, $original_filename, $mime_type, $file_size, $file_data,
             $username, $store_name, $receipt_date, $total_amount, $description
         );
+        
+        # Fetch the newly created row for instant client UI update
+        my $new_row = $c->db->get_all_receipts_metadata(1, 0, { id => $id })->[0];
+        
+        $c->render(json => { 
+            success => 1, 
+            message => "Receipt successfully uploaded.",
+            receipt => $new_row,
+            summary => $c->db->get_spending_summary(),
+            breakdown => $c->db->get_store_spending_breakdown(3)
+        });
     };
     
     if ($@) {
-        return $c->render_error("Database failure: $@", 500);
+        $c->app->log->error("Receipt Upload Failed: $@");
+        return $c->render(json => { success => 0, error => "Database failure" });
     }
-    
-    $c->flash(message => "Receipt successfully uploaded.");
-    return $c->redirect_to('/receipts');
 }
 
 # Updates metadata for an existing receipt.
@@ -175,20 +167,14 @@ sub update {
         return $c->render(json => { success => 0, error => "Database failure: $@" });
     }
     
-    # AJAX: Fetch METADATA ONLY (excludes binary BLOB) for the updated row
-    my $results = $c->db->get_all_receipts_metadata(1, 0, { id => $id });
-    my $updated = $results->[0];
-    
-    unless ($updated) {
-        return $c->render(json => { success => 0, error => "Failed to retrieve updated row." });
-    }
-    
-    my $html = $c->render_to_string('receipts/_row', r => $updated);
+    my $updated = $c->db->get_all_receipts_metadata(1, 0, { id => $id })->[0];
     
     return $c->render(json => {
         success => 1,
         message => "Receipt details updated.",
-        html    => $html
+        receipt => $updated,
+        summary => $c->db->get_spending_summary(),
+        breakdown => $c->db->get_store_spending_breakdown(3)
     });
 }
 
@@ -229,9 +215,17 @@ sub delete {
         return $c->render_error("Access Denied", 403);
     }
     
-    $c->db->delete_receipt_record($id);
-    $c->flash(message => "Receipt permanently deleted.");
-    return $c->redirect_to('/receipts');
+    eval {
+        $c->db->delete_receipt_record($id);
+    };
+    if ($@) { return $c->render(json => { success => 0, error => "Delete failed" }); }
+
+    return $c->render(json => { 
+        success => 1, 
+        message => "Receipt permanently deleted.",
+        summary => $c->db->get_spending_summary(),
+        breakdown => $c->db->get_store_spending_breakdown(3)
+    });
 }
 
 # Serves raw binary content with correct MIME headers.
@@ -285,7 +279,7 @@ sub trigger_ocr {
             store_name   => $ocr_data->{store_name},
             receipt_date => $ocr_data->{receipt_date},
             total_amount => $ocr_data->{total_amount},
-            notes        => $receipt->{description},
+            description  => $receipt->{description},
             raw_text     => $ocr_data->{raw_text}
         });
     };
