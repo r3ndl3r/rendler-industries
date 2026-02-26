@@ -5,7 +5,6 @@ package MyApp::Controller::Receipts;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(b64_encode trim);
 use Mojo::JSON qw(decode_json encode_json);
-use OCR;
 
 # Controller for Receipt management and AI-powered digitization.
 # Features:
@@ -132,7 +131,7 @@ sub upload {
     # Attempt OCR for metadata suggestion ONLY if fields are blank
     if (!$store_name || !$receipt_date || !$total_amount) {
         if ($mime_type =~ /^image/) {
-            my $ocr_data = OCR->process_receipt($file_data);
+            my $ocr_data = $c->ocr_process($file_data);
             $store_name   ||= $ocr_data->{store_name};
             $receipt_date ||= $ocr_data->{receipt_date};
             $total_amount ||= $ocr_data->{total_amount};
@@ -273,7 +272,7 @@ sub trigger_ocr {
     }
 
     eval {
-        my $ocr_data = OCR->process_receipt($receipt->{file_data});
+        my $ocr_data = $c->ocr_process($receipt->{file_data});
         # Only update if we found something useful
         if ($ocr_data->{store_name} || $ocr_data->{total_amount}) {
             $c->db->update_receipt_data(
