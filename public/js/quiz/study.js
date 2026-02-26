@@ -121,7 +121,7 @@ function renderPage() {
 
                     <div style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 0.75rem;">
                         <div class="q-text-en" style="flex: 1;">${q.question}</div>
-                        <button class="btn-tts tts-q-btn" aria-label="Read Question">🔊</button>
+                        <button class="btn-tts tts-q-btn" aria-label="Read Question">${getIcon('audio')}</button>
                     </div>
 
                     <div class="q-text-ph">${q.question_ph}</div>
@@ -131,7 +131,7 @@ function renderPage() {
             
             <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--glass-border);">
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
-                    <span style="font-size: 1.5rem;">✅</span>
+                    <span style="font-size: 1.5rem;">${getIcon('success')}</span>
                     <strong style="color: var(--aus-green);">Correct Answer:</strong>
                 </div>
                 
@@ -140,7 +140,7 @@ function renderPage() {
                         <div style="font-size: 1.1rem; font-weight: 600; flex: 1;">
                             ${correctAnswer.text}
                         </div>
-                        <button class="btn-tts tts-a-btn" aria-label="Read Answer">🔊</button>
+                        <button class="btn-tts tts-a-btn" aria-label="Read Answer">${getIcon('audio')}</button>
                     </div>
 
                     <div style="color: var(--aus-gold); font-size: 0.95rem; font-style: italic; margin-top: 0.5rem;">
@@ -153,7 +153,7 @@ function renderPage() {
                 
                 ${correctAnswer.explanation ? `
                     <div style="margin-top: 1rem; padding: 1rem; background: var(--glass-bg); border-radius: 12px; border-left: 3px solid var(--aus-gold);">
-                        <div style="color: var(--aus-gold); font-weight: 600; margin-bottom: 0.5rem;">💡 Explanation:</div>
+                        <div style="color: var(--aus-gold); font-weight: 600; margin-bottom: 0.5rem;">${getIcon('idea')} Explanation:</div>
                         <div style="line-height: 1.6;">${correctAnswer.explanation}</div>
                         ${correctAnswer.explanation_th ? `
                             <div class="thai-text" style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.9rem;">

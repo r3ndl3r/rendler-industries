@@ -207,7 +207,7 @@ function handleAnswer(selectedBtn, answerObj) {
         score++;
         selectedBtn.classList.add('btn-success');
         feedbackContainer.className = 'feedback-box alert-success';
-        feedbackIcon.textContent = '✅';
+        feedbackIcon.textContent = getIcon('success');
         feedbackEn.textContent = 'Correct!';
         feedbackTh.textContent = 'ถูกต้อง';
     } else {
@@ -218,7 +218,7 @@ function handleAnswer(selectedBtn, answerObj) {
             correctBtn.classList.add('btn-success');
         }
         feedbackContainer.className = 'feedback-box alert-danger';
-        feedbackIcon.textContent = '❌';
+        feedbackIcon.textContent = getIcon('error');
         feedbackEn.textContent = 'Incorrect';
         feedbackTh.textContent = 'ไม่ถูกต้อง';
     }

@@ -204,14 +204,14 @@ const TimerDashboard = {
         // Show ONE button based on current state
         if (timer.is_running) {
             // Timer is running → Show Pause button
-            html += `<button class="btn btn-pause" data-timer-id="${timer.id}">⏸️ Pause</button>`;
+            html += `<button class="btn btn-pause" data-timer-id="${timer.id}">${getIcon('paused')} Pause</button>`;
         } else if (timer.is_paused) {
             // Timer is paused → Show Resume button (clicking unpauses)
-            html += `<button class="btn btn-pause paused" data-timer-id="${timer.id}">▶️ Resume</button>`;
+            html += `<button class="btn btn-pause paused" data-timer-id="${timer.id}">${getIcon('running')} Resume</button>`;
         } else {
             // Timer is idle → Show Start button
             const disabled = timer.remaining_seconds <= 0 ? 'disabled' : '';
-            html += `<button class="btn btn-start" data-timer-id="${timer.id}" ${disabled}>▶️ Start</button>`;
+            html += `<button class="btn btn-start" data-timer-id="${timer.id}" ${disabled}>${getIcon('running')} Start</button>`;
         }
         
         controlsDiv.innerHTML = html;
@@ -235,7 +235,7 @@ const TimerDashboard = {
         overlay.className = 'expired-overlay';
         overlay.innerHTML = `
             <div class="expired-message">
-                <span class="expired-icon">⏰</span>
+                <span class="expired-icon">${getIcon('clock')}</span>
                 <p>Time's Up!</p>
                 <small>Ask an admin for more time</small>
             </div>

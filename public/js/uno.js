@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                showToast('📢 You shouted UNO!', 2000);
+                showToast(`${getIcon('shout')} You shouted UNO!`, 2000);
                 syncGame();
             }
         });
@@ -307,15 +307,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Feedback for Direction Change
             if (oldDirection !== undefined && oldDirection !== data.direction) {
-                showToast(data.direction === 1 ? 'Direction: Clockwise ➡️' : 'Direction: Counter-Clockwise ⬅️');
+                showToast(`Direction: ${data.direction === 1 ? 'Clockwise ' + getIcon('back') : 'Counter-Clockwise ' + getIcon('back')}`);
             }
 
             if (data.status === 'finished') {
                 if (data.winner === config.myId) {
-                    showToast('🎉 You Win! 🎉', 3000);
+                    showToast(`${getIcon('victory')} You Win! ${getIcon('victory')}`, 3000);
                 } else {
                     const winnerName = data.players.find(p => p.id === data.winner)?.name || 'Someone';
-                    showToast(`💔 ${winnerName} Wins!`, 3000);
+                    showToast(`${getIcon('loss')} ${winnerName} Wins!`, 3000);
                 }
                 updateTurnIndicators(null); // Clear all
                 return;
@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!panel) return;
 
                 panel.style.visibility = 'visible';
-                panel.querySelector('.player-name').textContent = (opp.said_uno ? '📢 ' : '') + opp.name;
+                panel.querySelector('.player-name').textContent = (opp.said_uno ? getIcon('shout') + ' ' : '') + opp.name;
                 // panel.querySelector('.card-count').textContent = `${opp.card_count} cards`; // Hide text count
 
                 // Add visual card backs
