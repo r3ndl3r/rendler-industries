@@ -468,6 +468,18 @@ sub startup {
     $family->post('/medication/reset/:id')->to('medication#reset');
     $family->post('/medication/delete/:id')->to('medication#delete');
 
+    # --- Family Meal Planner Routes ---
+    $family->get('/meals')->to('meals#index');
+    $family->post('/meals/suggest')->to('meals#suggest');
+    $family->post('/meals/vote')->to('meals#vote');
+    $family->post('/meals/edit_suggestion')->to('meals#edit_suggestion');
+    $family->post('/meals/delete_suggestion')->to('meals#delete_suggestion');
+    $admin->post('/meals/admin/lock')->to('meals#admin_lock');
+    $admin->get('/meals/api/vault')->to('meals#get_vault_data');
+    $admin->post('/meals/api/vault/add')->to('meals#add_meal_to_vault');
+    $admin->post('/meals/api/vault/update')->to('meals#update_meal_in_vault');
+    $admin->post('/meals/api/vault/delete')->to('meals#delete_meal_from_vault');
+
     # --- Family Pulse AI Routes ---
     $family->get('/ai')->to('AI#index');
     $family->post('/ai/chat')->to('AI#chat');
@@ -489,6 +501,5 @@ sub startup {
     $auth->post('/chess/offer_draw/:id')->to('chess#offer_draw');
     $auth->post('/chess/respond_draw/:id')->to('chess#respond_draw');
 }
-
 
 1;
