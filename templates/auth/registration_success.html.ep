@@ -9,7 +9,7 @@
 
 <div class="auth-container">
     <div class="header-bar">
-        <h1>📝 <span>Registration</span></h1>
+        <h1><%= icon('register') %> <span>Registration</span></h1>
     </div>
 
     <div class="glass-panel message-card" style="text-align: center; padding: 2rem;">
