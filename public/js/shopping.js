@@ -42,9 +42,9 @@ function createItemElement(id, itemName, addedBy, isChecked = false) {
         </div>
         <div class="action-buttons">
             ${!isChecked ? `
-                <button type="button" class="btn-icon-edit" onclick="editItem(${id}, \`${itemName}\`)" title="Edit">✎</button>
+                <button type="button" class="btn-icon-edit" onclick="editItem(${id}, \`${itemName}\`)" title="Edit">${getIcon('edit')}</button>
             ` : ''}
-            <button type="button" class="btn-icon-delete" onclick="openDeleteModal(${id}, \`${itemName}\`)" title="Delete">🗑️</button>
+            <button type="button" class="btn-icon-delete" onclick="openDeleteModal(${id}, \`${itemName}\`)" title="Delete">${getIcon('delete')}</button>
         </div>
     `;
     return div;

@@ -49,9 +49,9 @@ function createTaskElement(id, taskName, isCompleted = false) {
         </div>
         <div class="action-buttons">
             ${!isCompleted ? `
-                <button class="btn-icon-edit" onclick="openEditModal(${id}, \`${taskName}\`)" title="Edit">✎</button>
+                <button class="btn-icon-edit" onclick="openEditModal(${id}, \`${taskName}\`)" title="Edit">${getIcon('edit')}</button>
             ` : ''}
-            <button class="btn-icon-delete" onclick="deleteTodo(${id})" title="Delete">🗑️</button>
+            <button class="btn-icon-delete" onclick="deleteTodo(${id})" title="Delete">${getIcon('delete')}</button>
         </div>
     `;
     return div;
