@@ -8,11 +8,11 @@ function toggleMenu() {
     if (menu.classList.contains('open')) {
         menu.classList.remove('open');
         overlay.classList.remove('open');
-        btn.innerHTML = '☰';
+        btn.innerHTML = getIcon('menu');
     } else {
         menu.classList.add('open');
         overlay.classList.add('open');
-        btn.innerHTML = '✕';
+        btn.innerHTML = getIcon('close');
     }
 }
 
@@ -31,10 +31,10 @@ function toggleSubmenu(id) {
     // Check computed style to handle CSS-defined 'none' correctly on first click
     if (submenu.style.display !== 'block') {
         submenu.style.display = 'block';
-        arrow.innerHTML = '▲';
+        arrow.innerHTML = getIcon('collapse');
     } else {
         submenu.style.display = 'none';
-        arrow.innerHTML = '▼';
+        arrow.innerHTML = getIcon('expand');
     }
 }
 
@@ -76,6 +76,6 @@ document.addEventListener('click', function(event) {
         const overlay = document.getElementById('menuOverlay');
         menu.classList.remove('open');
         overlay.classList.remove('open');
-        btn.innerHTML = '☰';
+        btn.innerHTML = getIcon('menu');
     }
 });

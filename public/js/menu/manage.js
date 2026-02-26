@@ -13,8 +13,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Modal Logic ---
     
-    function openModal(title, data = null) {
-        document.getElementById('modalTitle').textContent = title;
+    function openModal(title, iconName, data = null) {
+        document.getElementById('modalTitle').innerHTML = `${getIcon(iconName)} ${title}`;
         form.reset();
         
         if (data) {
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
         deleteConfirmModal.style.display = 'none';
     }
 
-    if (addBtn) addBtn.addEventListener('click', () => openModal('➕ Add Menu Link'));
+    if (addBtn) addBtn.addEventListener('click', () => openModal('Add Menu Link', 'add'));
     if (closeBtn) closeBtn.addEventListener('click', closeModal);
     
     window.addEventListener('click', (e) => {
@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 sort: this.dataset.sort,
                 separator: this.dataset.separator
             };
-            openModal('✎ Edit Menu Link', data);
+            openModal('Edit Menu Link', 'edit', data);
         });
     });
 
