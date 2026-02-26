@@ -10,7 +10,7 @@
 
 <div class="auth-container">
     <div class="header-bar">
-        <h1>📝 <span>Register</span></h1>
+        <h1><%= icon('register') %> <span>Register</span></h1>
     </div>
     
     <form method="POST" action="/register">
