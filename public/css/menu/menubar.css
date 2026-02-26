@@ -120,13 +120,17 @@ body {
     height: 45px; 
     display: flex;
     align-items: center;
-    padding-left: 20px;
+    padding-left: 15px;
     border-bottom: 1px solid #333;
     background: #111;
-    font-weight: bold;
-    color: #fff;
-    font-size: 1.1rem;
     z-index: 10002;
+}
+
+.menu-home-icon {
+    height: 32px;
+    width: 32px;
+    border-radius: 4px;
+    opacity: 0.9;
 }
 
 .modal-overlay {
