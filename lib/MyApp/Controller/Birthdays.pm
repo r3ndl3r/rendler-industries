@@ -40,8 +40,8 @@ sub api_data {
     foreach my $b (@birthdays) {
         my ($year, $month, $day) = split('-', $b->{birth_date});
         $b->{formatted_date} = sprintf("%02d/%02d/%04d", $day, $month, $year);
-        $b->{zodiac} = Tools::get_zodiac_emoji($month, $day);
-        $b->{chinese_zodiac} = Tools::get_chinese_zodiac_emoji($year);
+        $b->{zodiac} = $c->zodiac_emoji($month, $day);
+        $b->{chinese_zodiac} = $c->chinese_zodiac_emoji($year);
     }
     
     $c->render(json => { 
