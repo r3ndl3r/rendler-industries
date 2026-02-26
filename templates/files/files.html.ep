@@ -140,8 +140,8 @@
                         <small>Leave all unchecked for public access (unless Admin Only is set).</small>
                     </div>
                     
-                    <div class="modal-actions">
-                        <button type="submit" class="btn-upload"><%= icon('save') %> Save Changes</button>
+                    <div class="modal-actions" style="justify-content: center !important;">
+                        <button type="submit" class="btn-primary"><%= icon('save') %> Save Changes</button>
                     </div>
                 </form>
             </div>
