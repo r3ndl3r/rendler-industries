@@ -227,12 +227,46 @@ document.addEventListener('DOMContentLoaded', function() {
     window.openEditModal = function(receipt) {
         const modal = document.getElementById('editModal');
         const form  = document.getElementById('editForm');
+        const btnAI = document.getElementById('btnApplyAI');
+
         if (modal && form) {
             form.dataset.receiptId = receipt.id;
             document.getElementById('editStoreName').value   = receipt.store_name   || '';
             document.getElementById('editDate').value        = receipt.receipt_date || '';
             document.getElementById('editAmount').value      = receipt.total_amount || '';
-            document.getElementById('editDescription').value = receipt.notes || receipt.description || '';
+            document.getElementById('editDescription').value = receipt.description || '';
+            
+            // Show/Hide "Apply AI" button
+            if (btnAI) {
+                if (receipt.ai_json && receipt.ai_json.trim().startsWith('{')) {
+                    btnAI.style.display = 'flex';
+                    btnAI.onclick = () => {
+                        try {
+                            const data = JSON.parse(receipt.ai_json);
+                            if (data.store_name) document.getElementById('editStoreName').value = data.store_name;
+                            if (data.total_amount) document.getElementById('editAmount').value = data.total_amount;
+                            
+                            // Handle date formats (AI might return DD/MM/YYYY or YYYY-MM-DD)
+                            if (data.date) {
+                                let dateVal = data.date;
+                                if (dateVal.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+                                    const parts = dateVal.split('/');
+                                    dateVal = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                                }
+                                document.getElementById('editDate').value = dateVal;
+                            }
+                            
+                            showToast("AI data applied to form fields.", "success");
+                        } catch (err) {
+                            console.error("Failed to parse AI JSON:", err);
+                            showToast("Error parsing AI data.", "error");
+                        }
+                    };
+                } else {
+                    btnAI.style.display = 'none';
+                }
+            }
+
             modal.style.display = 'flex';
         }
     };
