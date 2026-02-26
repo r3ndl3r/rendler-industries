@@ -45,7 +45,7 @@ sub DB::get_shopping_items {
 #   item_name : Description of the item (String)
 #   added_by  : Name of the user adding the item (String)
 # Returns:
-#   Result of execute() (true on success)
+#   Integer : The ID of the newly created item
 sub DB::add_shopping_item {
     my ($self, $item_name, $added_by) = @_;
     
@@ -58,6 +58,8 @@ sub DB::add_shopping_item {
         VALUES (?, ?, 0)
     ");
     $sth->execute($item_name, $added_by);
+    
+    return $self->{dbh}->last_insert_id();
 }
 
 # Toggles the completion status of a shopping item.
