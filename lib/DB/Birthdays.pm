@@ -6,14 +6,25 @@ use strict;
 use warnings;
 
 # Database helper for managing user birthdays.
+# Handles chronological sorting and lifecycle management of birthday metadata.
+#
 # Features:
-#   - Retrieve list of birthdays sorted by nearest upcoming date (cyclical)
-#   - CRUD operations (Create, Read, Update, Delete) for birthday records
-# Integration points:
-#   - Extends DB package via package injection
-#   - Direct DBI usage for SQL operations
+#   - Intelligent "Next Upcoming" sorting (Cyclical year-aware ordering).
+#   - Full AJAX-ready CRUD operations.
+#   - Metadata-rich record retrieval (Zodiac calculation support).
+#
+# Integration Points:
+#   - Extends DB package via package injection.
+#   - Used by Birthdays controller for dashboard and management APIs.
+#   - Provides data source for Dashboard upcoming alerts.
 
-# Inject methods into the main DB package
+# Retrieves all birthday records sorted by the nearest upcoming date.
+# Parameters: None.
+# Returns:
+#   Array of HashRefs: [ {id, name, birth_date}, ... ]
+# Behavior:
+#   - Items occurring later this year are ranked first.
+#   - Items already passed this year are ranked second (Next year).
 sub DB::get_all_birthdays {
     my $self = shift;
     
@@ -51,10 +62,10 @@ sub DB::get_all_birthdays {
 
 # Adds a new birthday record to the database.
 # Parameters:
-#   name       : Name of the person (String)
-#   birth_date : Date string (YYYY-MM-DD)
+#   name       : Name of the person (String).
+#   birth_date : Date string (YYYY-MM-DD).
 # Returns:
-#   Result of execute() (true on success)
+#   Result of execute().
 sub DB::add_birthday {
     my ($self, $name, $birth_date) = @_;
     
@@ -65,16 +76,16 @@ sub DB::add_birthday {
     my $sth = $self->{dbh}->prepare(
         "INSERT INTO birthdays (name, birth_date) VALUES (?, ?)"
     );
-    $sth->execute($name, $birth_date);
+    return $sth->execute($name, $birth_date);
 }
 
 # Updates an existing birthday record.
 # Parameters:
-#   id         : Unique ID of the record to update (Int)
-#   name       : New name (String)
-#   birth_date : New date string (YYYY-MM-DD)
+#   id         : Unique ID of the record to update (Int).
+#   name       : New name (String).
+#   birth_date : New date string (YYYY-MM-DD).
 # Returns:
-#   Result of execute() (true on success)
+#   Result of execute().
 sub DB::update_birthday {
     my ($self, $id, $name, $birth_date) = @_;
     
@@ -85,14 +96,14 @@ sub DB::update_birthday {
     my $sth = $self->{dbh}->prepare(
         "UPDATE birthdays SET name = ?, birth_date = ? WHERE id = ?"
     );
-    $sth->execute($name, $birth_date, $id);
+    return $sth->execute($name, $birth_date, $id);
 }
 
 # Removes a birthday record from the database.
 # Parameters:
-#   id : Unique ID of the record to delete (Int)
+#   id : Unique ID of the record to delete (Int).
 # Returns:
-#   Result of execute() (true on success)
+#   Result of execute().
 sub DB::delete_birthday {
     my ($self, $id) = @_;
     
@@ -101,7 +112,7 @@ sub DB::delete_birthday {
     
     # Execute deletion
     my $sth = $self->{dbh}->prepare("DELETE FROM birthdays WHERE id = ?");
-    $sth->execute($id);
+    return $sth->execute($id);
 }
 
 1;
