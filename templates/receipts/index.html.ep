@@ -126,68 +126,9 @@
                             <tbody>
                                 % if (@$receipts) {
                                     % for my $r (@$receipts) {
-                                        <tr>
-                                            <td class="col-icon receipt-col-preview" data-label="Preview">
-                                                % if ($r->{mime_type} =~ /^image/) {
-                                                    <div class="receipt-thumbnail-wrapper" onclick="openReceiptModal('<%= $r->{id} %>')">
-                                                        <img src="/receipts/serve/<%= $r->{id} %>" class="receipt-thumb">
-                                                    </div>
-                                                % } else {
-                                                    <span style="font-size: 1.5rem;"><%= icon('receipts') %></span>
-                                                % }
-                                            </td>
-                                            <td data-label="Filename">
-                                                <small><%= $r->{original_filename} %></small>
-                                            </td>
-                                            <td data-label="Store">
-                                                <div class="store-icon-wrapper" id="store-wrapper-<%= $r->{id} %>">
-                                                    <% if (my $icon = $get_store_icon->($r->{store_name})) { %>
-                                                        <img src="<%= $icon %>" class="store-logo" alt="">
-                                                    <% } %>
-                                                    <strong><%= $r->{store_name} || 'Unknown' %></strong>
-                                                    % if ($r->{ai_json} && $r->{ai_json} =~ /^\s*\{/) {
-                                                        <span class="ai-badge" title="AI Analyzed">🧠</span>
-                                                    % }
-                                                </div>
-                                                % if ($r->{description}) {
-                                                    <br><small class="receipt-description"><%= $r->{description} %></small>
-                                                % }
-                                            </td>                                <td data-label="Date"><%= $r->{formatted_date} || '-' %></td>
-                                <td data-label="Total" class="receipt-total-value">$<%= sprintf("%.2f", $r->{total_amount} // 0) %></td>
-                                <td data-label="Uploaded By"><small><%= $r->{uploaded_by} %></small></td>
-                                <td class="col-actions">
-                                    <div class="action-buttons">
-                                        <a href="/receipts/serve/<%= $r->{id} %>" target="_blank" class="btn-icon-view" title="View Full Image">
-                                            <%= icon('view') %>
-                                        </a>
-                                        <button type="button" 
-                                                class="btn-icon-ai" 
-                                                data-receipt-id="<%= $r->{id} %>"
-                                                data-ai-json="<%= $r->{ai_json} // '' %>"
-                                                data-store-icon="<%= $get_store_icon->($r->{store_name}) // '' %>"
-                                                onclick="viewElectronicReceipt(this.dataset.receiptId, 0, this.dataset.aiJson, this.dataset.storeIcon)" 
-                                                title="Electronic Receipt">
-                                            <%= icon('ai') %>
-                                        </button>
-                                        % if ($r->{uploaded_by} eq session('user') || is_admin) {
-                                            <button type="button" class="btn-icon-crop" onclick="openCropModal('<%= $r->{id} %>')" title="Crop Image">
-                                                <%= icon('crop') %>
-                                            </button>
-                                            <button type="button" class="btn-icon-bonus" onclick="triggerOCR('<%= $r->{id} %>')" title="Scan with OCR" id="ocr-btn-<%= $r->{id} %>">
-                                                <%= icon('search') %>
-                                            </button>
-                                            <button type="button" class="btn-icon-edit" onclick='openEditModal(<%== Mojo::JSON::to_json($r) %>)' title="Edit Details">
-                                                <%= icon('edit') %>
-                                            </button>
-                                            <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('<%= $r->{id} %>', '<%= $r->{store_name} || $r->{original_filename} %>')" title="Delete">
-                                                <%= icon('delete') %>
-                                            </button>
-                                        % }
-                                    </div>
-                                </td>
-                            </tr>
-                        % }
-                    % } else {
+                                        %= include 'receipts/_row', r => $r
+                                    % }
+                                % } else {
                         <tr>
                             <td colspan="7" class="receipt-empty-ledger">
                                 📭 No receipts found. Upload one to get started.
