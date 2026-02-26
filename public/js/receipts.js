@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const modal = document.getElementById('editModal');
         const form  = document.getElementById('editForm');
         if (modal && form) {
-            form.action = '/receipts/update/' + receipt.id;
+            form.dataset.receiptId = receipt.id;
             document.getElementById('editStoreName').value   = receipt.store_name   || '';
             document.getElementById('editDate').value        = receipt.receipt_date || '';
             document.getElementById('editAmount').value      = receipt.total_amount || '';
@@ -236,6 +236,56 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.style.display = 'flex';
         }
     };
+
+    const editForm = document.getElementById('editForm');
+    if (editForm) {
+        editForm.onsubmit = async function(e) {
+            e.preventDefault();
+            if (editForm.dataset.submitting) return;
+            
+            const id = editForm.dataset.receiptId;
+            const formData = new FormData(editForm);
+            editForm.dataset.submitting = "true";
+            
+            try {
+                const response = await fetch(`/receipts/update/${id}`, {
+                    method: 'POST',
+                    body:   formData
+                });
+                
+                if (!response.ok) throw new Error('Network response was not ok');
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    closeEditModal();
+                    
+                    // Replace the specific row in the table
+                    const row = document.getElementById(`receipt-row-${id}`);
+                    if (row && result.html) {
+                        row.outerHTML = result.html;
+                        
+                        // Wait a microtask for the DOM to update before finding new row
+                        setTimeout(() => {
+                            const newRow = document.getElementById(`receipt-row-${id}`);
+                            if (newRow) {
+                                newRow.style.transition = 'background-color 1s';
+                                newRow.style.backgroundColor = 'rgba(59, 130, 246, 0.2)';
+                                setTimeout(() => { newRow.style.backgroundColor = 'transparent'; }, 1000);
+                            }
+                        }, 10);
+                    }
+                } else {
+                    showToast(result.error || 'Failed to update receipt.', 'error');
+                }
+            } catch (err) {
+                console.error('Update failed:', err);
+                showToast('Network error during update.', 'error');
+            } finally {
+                delete editForm.dataset.submitting;
+            }
+        };
+    }
 
     // --- Crop Modal ---
 

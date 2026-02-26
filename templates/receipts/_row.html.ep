@@ -18,7 +18,7 @@
     my $icon_path = $get_store_icon->($r->{store_name});
 %>
 
-<tr>
+<tr id="receipt-row-<%= $r->{id} %>">
     <td class="col-icon receipt-col-preview" data-label="Preview">
         % if ($r->{mime_type} =~ /^image/) {
             <div class="receipt-thumbnail-wrapper" onclick="openReceiptModal('<%= $r->{id} %>')">
