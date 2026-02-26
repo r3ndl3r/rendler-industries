@@ -6,15 +6,22 @@ use strict;
 use warnings;
 
 # Database helper for medication tracking and management.
+#
 # Features:
-#   - Common medication registry (Autocomplete source)
-#   - Dosage logging (taken_at, dosage_mg)
-#   - Family member tracking (who took it, who logged it)
-#   - Historical record retrieval with interval calculations
+#   - Common medication registry (Standardized drug names and dosages).
+#   - Multi-user dosage logging with real-time interval calculation.
+#   - Family member participation tracking.
+#   - Historical record management with "Reset to Now" functionality.
+#
+# Integration Points:
+#   - Extends DB package via package injection.
+#   - Used by Medication controller for all CRUD operations.
+#   - Integrated with Family Pulse AI for health context snapshots.
 
 # Retrieves all medication log entries grouped by family member.
+# Parameters: None
 # Returns:
-#   HashRef: { 'Username' => [ {log1}, {log2} ], ... }
+#   HashRef: { 'Username' => [ {id, medication_name, family_member, logged_by, dosage, taken_at, taken_at_unix}, ... ], ... }
 sub DB::get_medication_logs_by_user {
     my ($self) = @_;
     $self->ensure_connection;
@@ -45,6 +52,14 @@ sub DB::get_medication_logs_by_user {
 }
 
 # Logs a new medication dose with an optional custom timestamp.
+# Parameters:
+#   medication_name  : String (e.g. "Ibuprofen")
+#   family_member_id : Integer ID of the recipient
+#   logged_by_id     : Integer ID of the person recording the entry
+#   dosage           : Numeric value in mg
+#   taken_at         : (Optional) YYYY-MM-DD HH:MM:SS string
+# Returns:
+#   Integer : ID of the newly created log entry
 sub DB::log_medication_dose {
     my ($self, $medication_name, $family_member_id, $logged_by_id, $dosage, $taken_at) = @_;
     $self->ensure_connection;
@@ -70,6 +85,14 @@ sub DB::log_medication_dose {
 }
 
 # Updates an existing medication log entry.
+# Parameters:
+#   id               : Unique ID of the log entry
+#   medication_name  : String name
+#   family_member_id : Integer ID
+#   dosage           : Numeric mg
+#   taken_at         : YYYY-MM-DD HH:MM:SS string
+# Returns:
+#   Boolean : Success status
 sub DB::update_medication_log {
     my ($self, $id, $medication_name, $family_member_id, $dosage, $taken_at) = @_;
     $self->ensure_connection;
@@ -118,6 +141,9 @@ sub DB::delete_medication_log {
 }
 
 # Retrieves the registry with usage counts.
+# Parameters: None
+# Returns:
+#   ArrayRef of HashRefs: [ {id, name, default_dosage, usage_count}, ... ]
 sub DB::get_registry_with_stats {
     my ($self) = @_;
     $self->ensure_connection;
@@ -134,6 +160,12 @@ sub DB::get_registry_with_stats {
 }
 
 # Updates a registry item.
+# Parameters:
+#   id     : Registry ID
+#   name   : New display name
+#   dosage : Default dosage mg
+# Returns:
+#   Boolean : Success status
 sub DB::update_registry_item {
     my ($self, $id, $name, $dosage) = @_;
     $self->ensure_connection;
@@ -142,6 +174,10 @@ sub DB::update_registry_item {
 }
 
 # Deletes a registry item only if not in use.
+# Parameters:
+#   id : Registry ID
+# Returns:
+#   (Boolean, String) : (Success status, Error message if failed)
 sub DB::delete_registry_item {
     my ($self, $id) = @_;
     $self->ensure_connection;
@@ -158,8 +194,9 @@ sub DB::delete_registry_item {
 }
 
 # Retrieves list of family members (all approved users).
+# Parameters: None
 # Returns:
-#   ArrayRef of HashRefs (id, username)
+#   ArrayRef of HashRefs: [ {id, username}, ... ]
 sub DB::get_medication_members {
     my ($self) = @_;
     $self->ensure_connection;
