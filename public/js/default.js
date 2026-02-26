@@ -224,6 +224,7 @@ const GLOBAL_ICONS = {
     'bonus': '🎁',
     'crop': '✂️',
     'reset': '🔄',
+    'vote': '👍',
     
     // Navigation / UI
     'home': '🏠',
@@ -233,6 +234,7 @@ const GLOBAL_ICONS = {
     'search': '🔍',
     'back': '←',
     'clock': '🕒',
+    'lock': '🔒',
     'calendar': '📅',
     'link': '🔗',
     'kangaroo': '🦘',
@@ -263,6 +265,7 @@ const GLOBAL_ICONS = {
     'imposter': '🎭',
     'connect4': '🔴',
     'connect4_blue': '🔵',
+    'meals': '🍽️',
     'files': '📁',
     'receipts': '🧾',
     'reminders': '🔔',
