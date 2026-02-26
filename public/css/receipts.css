@@ -57,12 +57,21 @@
     margin-bottom: 15px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding-bottom: 10px;
+    position: relative;
+}
+
+.tile-toggle-icon {
+    display: none;
 }
 
 .stat-breakdown {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    width: fit-content;
+    margin: 0 auto;
+    align-items: stretch;
+    transition: all 0.3s ease;
 }
 
 .breakdown-row {
@@ -71,14 +80,13 @@
     align-items: center;
     font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.6);
+    gap: 60px;
 }
 
 .breakdown-store {
-    text-align: left;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-right: 10px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -87,6 +95,7 @@
 .breakdown-total {
     font-weight: 600;
     color: #69f0ae;
+    text-align: right;
 }
 
 /* Store Icons */
@@ -123,11 +132,41 @@
     margin-bottom: 25px;
     align-items: center;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    justify-content: flex-start;
 }
 
 .filter-group {
+    flex: 0 0 auto; /* Don't grow by default */
+    min-width: 140px;
+}
+
+/* Make search input soak up all remaining dead space */
+.filter-group:first-child {
     flex: 1;
-    min-width: 150px;
+}
+
+#filterMinAmount {
+    max-width: 120px;
+}
+
+.btn-icon-reset {
+    background: #0ea5e9;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    flex: 0 0 auto;
+}
+
+.btn-icon-reset:hover {
+    background: #0284c7;
+    transform: rotate(-45deg);
 }
 
 .filter-input, .filter-select {
@@ -448,9 +487,71 @@
         gap: 15px;
         margin-bottom: 20px;
     }
+    
+    /* Collapsible Logic for Mobile */
+    .stat-tile {
+        cursor: pointer;
+        padding: 15px;
+    }
     .stat-value {
         font-size: 1.5rem;
+        margin-bottom: 0;
+        border-bottom: none;
+        padding-bottom: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
     }
+    .stat-breakdown {
+        display: none;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .stat-tile.expanded .stat-breakdown {
+        display: flex;
+    }
+    .stat-tile.expanded .stat-value {
+        margin-bottom: 0;
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    .stat-tile.expanded .tile-toggle-icon {
+        transform: rotate(180deg);
+    }
+    .tile-toggle-icon {
+        display: inline-block;
+        font-size: 0.8rem;
+        transition: transform 0.3s ease;
+        opacity: 0.5;
+    }
+
+    .ledger-filters {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .filter-group {
+        min-width: 0;
+        width: 100%;
+    }
+
+    /* Row 1: Search (Full Width) */
+    .filter-group:first-child {
+        grid-column: span 3;
+    }
+
+    /* Row 3: Ensure Reset button is not too wide */
+    .btn-icon-reset {
+        width: 38px !important;
+        height: 38px !important;
+        margin-left: 0;
+        justify-self: center;
+    }
+
     .files-table thead { display: none; }
     .files-table, .files-table tbody { display: block; background: transparent; box-shadow: none; border: none; }
     .files-table tr {
