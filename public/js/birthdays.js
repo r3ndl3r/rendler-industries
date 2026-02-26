@@ -223,7 +223,7 @@ function toggleManageMode() {
 function openAddModal() {
     const modal = document.getElementById('birthdayModal');
     if (!modal) return;
-    document.getElementById('modalTitle').textContent = 'Add Birthday';
+    document.getElementById('modalTitle').innerHTML = `${getIcon('add')} Add Birthday`;
     document.getElementById('field_id').value = '';
     document.getElementById('field_name').value = '';
     document.getElementById('field_date').value = '';
@@ -234,7 +234,7 @@ function openEditModal(btn) {
     const b = JSON.parse(btn.dataset.birthday);
     const modal = document.getElementById('birthdayModal');
     if (!modal) return;
-    document.getElementById('modalTitle').textContent = 'Edit Birthday';
+    document.getElementById('modalTitle').innerHTML = `${getIcon('edit')} Edit Birthday`;
     document.getElementById('field_id').value = b.id;
     document.getElementById('field_name').value = b.name;
     document.getElementById('field_date').value = b.birth_date;

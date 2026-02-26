@@ -89,7 +89,7 @@ async function toggleReminder(id, active, btn) {
     const result = await apiPost(`/reminders/toggle/${id}`, { active: status });
     if (result) {
         if (btn) {
-            btn.innerHTML = active ? '▶️' : '⏸️'; 
+            btn.innerHTML = getIcon(active ? 'running' : 'paused'); 
             btn.setAttribute('onclick', `toggleReminder(${id}, ${active ? 0 : 1}, this)`);
         }
 
