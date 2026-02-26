@@ -94,14 +94,6 @@ sub api_list {
     });
 }
 
-# Renders the receipt upload interface.
-# Route: GET /receipts/upload
-sub upload_form {
-    my $c = shift;
-    my $store_names = $c->db->get_unique_store_names();
-    $c->render('receipts/upload', store_names => $store_names);
-}
-
 # Processes a new receipt upload with automated OCR suggestion.
 # Route: POST /receipts
 # Parameters:
