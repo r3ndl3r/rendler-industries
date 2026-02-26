@@ -13,14 +13,6 @@
         <h1><%= icon('shopping') %> <span>Shopping List</span></h1>
     </div>
 
-    <% if (my $msg = flash('message')) { %>
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                showToast("<%= $msg %>", 'success');
-            });
-        </script>
-    <% } %>
-    
     <!-- Add Item Form -->
     <div class="glass-panel add-item-panel">
         <form id="addShoppingForm" class="add-item-form">
@@ -39,68 +31,11 @@
         </form>
     </div>
 
-    <!-- Shopping List Items -->
-    <div class="items-container">
-        <% if (@$items) { %>
-            <% my @unchecked = grep { !$_->{is_checked} } @$items; %>
-            <% my @checked = grep { $_->{is_checked} } @$items; %>
-            
-            <% if (@unchecked) { %>
-                <h3 class="section-title">To Buy</h3>
-                <% for my $item (@unchecked) { %>
-                    <div class="shopping-item" data-id="<%= $item->{id} %>">
-                        <div class="item-content">
-                            <button type="button" class="checkbox-btn" onclick="toggleItem(<%= $item->{id} %>)" title="Mark as bought">
-                                <span class="checkmark"></span>
-                            </button>
-                            <div class="item-details">
-                                <a href="https://www.google.com/search?q=<%= $item->{item_name} %>" target="_blank" class="item-link">
-                                    <span class="item-name"><%= $item->{item_name} %></span>
-                                </a>
-                                <small class="item-meta">Added by <%= $item->{added_by} %></small>
-                            </div>
-                        </div>
-                        <div class="action-buttons">
-                            <button type="button" class="btn-icon-edit" onclick="editItem(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Edit"><%= icon('edit') %></button>
-                            <button type="button" class="btn-icon-delete" onclick="openDeleteModal(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Delete"><%= icon('delete') %></button>
-                        </div>
-                    </div>
-                <% } %>
-            <% } %>
-            
-            <% if (@checked) { %>
-                <div class="checked-section">
-                    <div class="checked-header">
-                        <h3 class="section-title">Checked Items</h3>
-                        <button type="button" class="btn-clear-all" onclick="openClearAllModal()">
-                            Clear All
-                        </button>
-                    </div>
-                    <% for my $item (@checked) { %>
-                        <div class="shopping-item checked" data-id="<%= $item->{id} %>">
-                            <div class="item-content">
-                                <button type="button" class="checkbox-btn checked" onclick="toggleItem(<%= $item->{id} %>)" title="Uncheck">
-                                    <span class="checkmark">✓</span>
-                                </button>
-                                <div class="item-details">
-                                    <span class="item-name"><%= $item->{item_name} %></span>
-                                    <small class="item-meta">Added by <%= $item->{added_by} %></small>
-                                </div>
-                            </div>
-                            <div class="action-buttons">
-                                <button type="button" class="btn-icon-delete" onclick="openDeleteModal(<%= $item->{id} %>, `<%= $item->{item_name} %>`)" title="Delete"><%= icon('delete') %></button>
-                            </div>
-                        </div>
-                    <% } %>
-                </div>
-            <% } %>
-            
-        <% } else { %>
-            <div class="empty-state">
-                <p>Your shopping list is empty!</p>
-                <p class="empty-hint">Add your first item above to get started.</p>
-            </div>
-        <% } %>
+    <!-- Shopping List Items (Rendered via JS) -->
+    <div id="shoppingListContainer" class="items-container">
+        <div class="loading-state">
+            <p>Loading shopping list...</p>
+        </div>
     </div>
 </div>
 
@@ -126,8 +61,8 @@
                 <input type="hidden" id="editId">
             </div>
         </div>
-        <div class="modal-actions">
-            <button type="button" onclick="submitEdit()" class="btn-primary btn-small">Save Changes</button>
+        <div class="modal-actions" style="justify-content: center !important;">
+            <button type="button" onclick="submitEdit()" class="btn-primary">Save</button>
         </div>
     </div>
 </div>
@@ -142,7 +77,7 @@
         <div class="delete-modal-body">
             <p>Are you sure you want to remove <strong id="deleteItemName"></strong> from the list?</p>
         </div>
-        <div class="modal-actions">
+        <div class="modal-actions" style="justify-content: center !important;">
             <button type="button" id="confirmDeleteBtn" class="btn-danger-confirm">Delete Item</button>
         </div>
     </div>
@@ -158,10 +93,8 @@
         <div class="delete-modal-body">
             <p>Are you sure you want to remove all checked items from the list?</p>
         </div>
-        <div class="modal-actions">
-            <form action="/shopping/clear" method="POST">
-                <button type="submit" class="btn-danger-confirm">Clear All</button>
-            </form>
+        <div class="modal-actions" style="justify-content: center !important;">
+            <button type="button" onclick="clearCheckedItems()" class="btn-danger-confirm">Clear All</button>
         </div>
     </div>
 </div>
