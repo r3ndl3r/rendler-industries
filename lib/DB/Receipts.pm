@@ -70,7 +70,7 @@ sub DB::get_receipt_by_id {
 # Parameters:
 #   limit   : Max records.
 #   offset  : Start index.
-#   filters : HashRef { store, days, search, min_amount, ai_status, uploader }
+#   filters : HashRef { id, store, days, search, min_amount, ai_status, uploader }
 # Returns:
 #   ArrayRef of HashRefs.
 sub DB::get_all_receipts_metadata {
@@ -78,10 +78,16 @@ sub DB::get_all_receipts_metadata {
     $self->ensure_connection;
     
     my $sql = "SELECT id, filename, original_filename, mime_type, file_size, uploaded_by, uploaded_at, store_name, receipt_date, 
-               DATE_FORMAT(receipt_date, '%d-%m-%Y') as formatted_date, total_amount, description, notes, ai_json
+               DATE_FORMAT(receipt_date, '%d-%m-%Y') as formatted_date, total_amount, description, ai_json
                FROM receipts WHERE 1=1";
     
     my @params;
+
+    # Filter: Specific ID (Surgical update)
+    if ($f->{id}) {
+        $sql .= " AND id = ?";
+        push @params, $f->{id};
+    }
 
     # Filter: Store Name
     if ($f->{store}) {
@@ -97,9 +103,9 @@ sub DB::get_all_receipts_metadata {
 
     # Filter: Keyword Search
     if ($f->{search}) {
-        $sql .= " AND (store_name LIKE ? OR original_filename LIKE ? OR notes LIKE ? OR description LIKE ? OR ai_json LIKE ?)";
+        $sql .= " AND (store_name LIKE ? OR original_filename LIKE ? OR description LIKE ? OR ai_json LIKE ?)";
         my $term = "%$f->{search}%";
-        push @params, ($term, $term, $term, $term, $term);
+        push @params, ($term, $term, $term, $term);
     }
 
     # Filter: Min Amount
@@ -151,14 +157,14 @@ sub DB::get_unique_store_names {
 
 # Updates the metadata for a receipt.
 # Parameters:
-#   id, store_name, receipt_date, total_amount, notes, ai_json : Attributes.
+#   id, store_name, receipt_date, total_amount, description, ai_json : Attributes.
 # Returns: Void.
 sub DB::update_receipt_data {
-    my ($self, $id, $store_name, $receipt_date, $total_amount, $notes, $ai_json) = @_;
+    my ($self, $id, $store_name, $receipt_date, $total_amount, $description, $ai_json) = @_;
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("UPDATE receipts SET store_name = ?, receipt_date = ?, total_amount = ?, notes = ?, ai_json = ? WHERE id = ?");
-    $sth->execute($store_name, $receipt_date, $total_amount, $notes, $ai_json, $id);
+    my $sth = $self->{dbh}->prepare("UPDATE receipts SET store_name = ?, receipt_date = ?, total_amount = ?, description = ?, ai_json = ? WHERE id = ?");
+    $sth->execute($store_name, $receipt_date, $total_amount, $description, $ai_json, $id);
 }
 
 # Updates structured AI JSON only.

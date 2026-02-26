@@ -174,16 +174,31 @@ sub update {
     my $store_name   = $c->param('store_name') ? trim($c->param('store_name')) : undef;
     my $receipt_date = $c->param('receipt_date') || undef;
     my $total_amount = $c->param('total_amount') || undef;
-    my $notes        = $c->param('description') ? trim($c->param('description')) : undef;
+    my $description  = $c->param('description') ? trim($c->param('description')) : undef;
     
     eval {
-        $c->db->update_receipt_data($id, $store_name, $receipt_date, $total_amount, $notes, $receipt->{ai_json});
+        $c->db->update_receipt_data($id, $store_name, $receipt_date, $total_amount, $description, $receipt->{ai_json});
     };
     
-    if ($@) { return $c->render_error("Database failure: $@", 500); }
+    if ($@) { 
+        return $c->render(json => { success => 0, error => "Database failure: $@" });
+    }
     
-    $c->flash(message => "Receipt details updated.");
-    return $c->redirect_to('/receipts');
+    # AJAX: Fetch METADATA ONLY (excludes binary BLOB) for the updated row
+    my $results = $c->db->get_all_receipts_metadata(1, 0, { id => $id });
+    my $updated = $results->[0];
+    
+    unless ($updated) {
+        return $c->render(json => { success => 0, error => "Failed to retrieve updated row." });
+    }
+    
+    my $html = $c->render_to_string('receipts/_row', r => $updated);
+    
+    return $c->render(json => {
+        success => 1,
+        message => "Receipt details updated.",
+        html    => $html
+    });
 }
 
 # Processes a client-side cropped image update via AJAX.
@@ -266,17 +281,20 @@ sub trigger_ocr {
                 $ocr_data->{store_name} || $receipt->{store_name}, 
                 $ocr_data->{receipt_date} || $receipt->{receipt_date}, 
                 $ocr_data->{total_amount} || $receipt->{total_amount}, 
-                $receipt->{notes} || $receipt->{description},
+                $receipt->{description},
                 $receipt->{ai_json}
             );
         }
         
+        # Cleanup: Don't return binary in response
+        delete $receipt->{file_data};
+
         $c->render(json => {
             success      => 1,
             store_name   => $ocr_data->{store_name},
             receipt_date => $ocr_data->{receipt_date},
             total_amount => $ocr_data->{total_amount},
-            notes        => $receipt->{notes} || $receipt->{description},
+            notes        => $receipt->{description},
             raw_text     => $ocr_data->{raw_text}
         });
     };
