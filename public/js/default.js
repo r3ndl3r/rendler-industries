@@ -262,6 +262,7 @@ const GLOBAL_ICONS = {
     'swear': '🤬',
     'imposter': '🎭',
     'connect4': '🔴',
+    'connect4_blue': '🔵',
     'files': '📁',
     'receipts': '🧾',
     'reminders': '🔔',
@@ -269,6 +270,14 @@ const GLOBAL_ICONS = {
     'ai': '🧠',
     'expand': '▼',
     'collapse': '▲',
+    'audio': '🔊',
+    'shout': '📢',
+    'idea': '💡',
+    'draw': '🤝',
+    'waiting': '⌛',
+    'victory': '🎉',
+    'loss': '💀',
+    'trophy': '🏆',
 
     // Zodiac / Family
     'andrea': '🐀',
