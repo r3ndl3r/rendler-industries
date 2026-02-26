@@ -32,7 +32,7 @@
                 <a href="javascript:void(0)" onclick="toggleSubmenu('<%= $item->{id} %>')" class="submenu-toggle">
                     <span class="<%= $item->{css_class} %>"><%= $item->{label} %></span>
                     <% if ($perm_icon) { %><small class="perm-indicator">(<%= $perm_icon %>)</small><% } %>
-                    <span id="arrow-<%= $item->{id} %>" class="submenu-arrow">▼</span>
+                    <span id="arrow-<%= $item->{id} %>" class="submenu-arrow"><%= icon('expand') %></span>
                 </a>
                 <div id="submenu-<%= $item->{id} %>" class="submenu-container">
                     <% for my $child (@{$item->{children}}) { %>
