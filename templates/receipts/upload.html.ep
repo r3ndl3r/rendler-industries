@@ -30,8 +30,8 @@
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-save"><%= icon('upload') %> Upload</button>
-                <a href="/receipts" class="btn btn-cancel">Cancel</a>
+                <button type="submit" class="btn-primary"><%= icon('upload') %> Upload</button>
+                <a href="/receipts" class="btn-secondary">Cancel</a>
             </div>
         </form>
     </div>
@@ -51,8 +51,8 @@
             <p style="margin-top: 15px; color: #94a3b8; font-size: 0.85rem;">Drag to select the receipt area. This will be the final image uploaded.</p>
         </div>
         <div class="modal-actions">
-            <button type="button" class="btn btn-save" onclick="applyPreUploadCrop()"><%= icon('check') %> Apply Crop</button>
-            <button type="button" class="btn btn-cancel" onclick="closeCropModal()">Skip Cropping</button>
+            <button type="button" class="btn-primary" onclick="applyPreUploadCrop()"><%= icon('check') %> Apply Crop</button>
+            <button type="button" class="btn-secondary" onclick="closeCropModal()">Skip Cropping</button>
         </div>
     </div>
 </div>
