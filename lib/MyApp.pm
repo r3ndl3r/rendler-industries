@@ -6,7 +6,6 @@ use utf8;
 use Mojolicious::Controller;
 use Mojo::Base 'Mojolicious';
 use DB;
-use Tools;
 use Mojo::File 'path';
 use Cwd 'abs_path';
 use Path::Iterator::Rule;
@@ -55,6 +54,8 @@ sub startup {
     
     # Load Notification systems (Discord, Email, Gotify, Pushover)
     $self->plugin('MyApp::Plugin::Notifications');
+    $self->plugin('MyApp::Plugin::Tools');
+    $self->plugin('MyApp::Plugin::OCR');
 
     # Configure signed cookie secrets
     $self->secrets($config->{secrets} || [$secret]);
