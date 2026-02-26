@@ -30,9 +30,20 @@ use OCR;
 sub index {
     my $c = shift;
     
+    # Extract filters for initial load
+    my $f = {
+        store      => $c->param('store'),
+        days       => $c->param('days'),
+        search     => $c->param('search'),
+        min_amount => $c->param('min_amount'),
+        ai_status  => $c->param('ai_status'),
+        uploader   => $c->param('uploader')
+    };
+
     # Fetch initial 10 receipts for instant load
-    my $receipts = $c->db->get_all_receipts_metadata(10, 0);
+    my $receipts = $c->db->get_all_receipts_metadata(10, 0, $f);
     my $store_names = $c->db->get_unique_store_names();
+    my $uploaders   = $c->db->get_medication_members(); # Reuse family member list
     
     # Fetch spending summaries for dashboard tiles
     my $summary   = $c->db->get_spending_summary();
@@ -41,6 +52,7 @@ sub index {
     $c->render('receipts/index', 
         receipts    => $receipts, 
         store_names => $store_names,
+        uploaders   => $uploaders,
         summary     => $summary,
         breakdown   => $breakdown
     );
@@ -50,6 +62,7 @@ sub index {
 # Route: GET /api/receipts/list
 # Parameters:
 #   offset: Number of records to skip
+#   filters: store, days, search, etc.
 # Returns:
 #   JSON: { success, html, has_more }
 sub api_list {
@@ -57,7 +70,17 @@ sub api_list {
     my $offset = int($c->param('offset') // 0);
     my $limit  = 10;
     
-    my $receipts = $c->db->get_all_receipts_metadata($limit, $offset);
+    # Extract filters
+    my $f = {
+        store      => $c->param('store'),
+        days       => $c->param('days'),
+        search     => $c->param('search'),
+        min_amount => $c->param('min_amount'),
+        ai_status  => $c->param('ai_status'),
+        uploader   => $c->param('uploader')
+    };
+
+    my $receipts = $c->db->get_all_receipts_metadata($limit, $offset, $f);
     
     # Render each row to a string using the shared partial
     my $html = '';

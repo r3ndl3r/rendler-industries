@@ -110,6 +110,49 @@
     margin: 0;
 }
 
+/* Filtering Bar */
+.ledger-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 25px;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.filter-group {
+    flex: 1;
+    min-width: 150px;
+}
+
+.filter-input, .filter-select {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #f1f5f9;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    outline: none;
+}
+
+.filter-input:focus, .filter-select:focus {
+    border-color: #3b82f6;
+    background: rgba(15, 23, 42, 0.8);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.filter-select option {
+    background: #1e293b;
+    color: white;
+}
+
 /* Image Viewer Modal Specifics */
 .image-modal-content {
     position: relative;

@@ -66,19 +66,64 @@ sub DB::get_receipt_by_id {
     return $sth->fetchrow_hashref();
 }
 
-# Retrieves metadata for all receipts with optional pagination.
+# Retrieves metadata for receipts with dynamic filtering and pagination.
 # Parameters:
-#   limit  : (Optional) Max records.
-#   offset : (Optional) Start index.
+#   limit   : Max records.
+#   offset  : Start index.
+#   filters : HashRef { store, days, search, min_amount, ai_status, uploader }
 # Returns:
-#   ArrayRef of HashRefs (Excludes BLOB data).
+#   ArrayRef of HashRefs.
 sub DB::get_all_receipts_metadata {
-    my ($self, $limit, $offset) = @_;
+    my ($self, $limit, $offset, $f) = @_;
     $self->ensure_connection;
     
     my $sql = "SELECT id, filename, original_filename, mime_type, file_size, uploaded_by, uploaded_at, store_name, receipt_date, 
                DATE_FORMAT(receipt_date, '%d-%m-%Y') as formatted_date, total_amount, description, notes, ai_json
-               FROM receipts ORDER BY receipt_date DESC, uploaded_at DESC";
+               FROM receipts WHERE 1=1";
+    
+    my @params;
+
+    # Filter: Store Name
+    if ($f->{store}) {
+        $sql .= " AND store_name = ?";
+        push @params, $f->{store};
+    }
+
+    # Filter: Time Range (Predefined days)
+    if ($f->{days} && $f->{days} =~ /^\d+$/) {
+        $sql .= " AND receipt_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)";
+        push @params, $f->{days};
+    }
+
+    # Filter: Keyword Search
+    if ($f->{search}) {
+        $sql .= " AND (store_name LIKE ? OR original_filename LIKE ? OR notes LIKE ? OR description LIKE ?)";
+        my $term = "%$f->{search}%";
+        push @params, ($term, $term, $term, $term);
+    }
+
+    # Filter: Min Amount
+    if ($f->{min_amount} && $f->{min_amount} =~ /^\d+(\.\d+)?$/) {
+        $sql .= " AND total_amount >= ?";
+        push @params, $f->{min_amount};
+    }
+
+    # Filter: AI Status (1 = Analyzed, 0 = Not Analyzed)
+    if (defined $f->{ai_status} && $f->{ai_status} ne '') {
+        if ($f->{ai_status}) {
+            $sql .= " AND ai_json IS NOT NULL AND ai_json LIKE '{%'";
+        } else {
+            $sql .= " AND (ai_json IS NULL OR ai_json NOT LIKE '{%')";
+        }
+    }
+
+    # Filter: Uploader
+    if ($f->{uploader}) {
+        $sql .= " AND uploaded_by = ?";
+        push @params, $f->{uploader};
+    }
+
+    $sql .= " ORDER BY receipt_date DESC, uploaded_at DESC";
                
     if (defined $limit) {
         $sql .= " LIMIT " . int($limit);
@@ -88,7 +133,7 @@ sub DB::get_all_receipts_metadata {
     }
 
     my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute();
+    $sth->execute(@params);
     return $sth->fetchall_arrayref({});
 }
 

@@ -331,9 +331,73 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     };
 
-    // --- Pagination Logic ---
+    // --- Pagination and Filtering Logic ---
     let currentOffset = 10;
     const loadMoreBtn = document.getElementById('loadMoreBtn');
+    const filterInputs = ['filterSearch', 'filterStore', 'filterTime', 'filterAI', 'filterUploader', 'filterMinAmount'];
+
+    function getActiveFilters() {
+        return {
+            search:     document.getElementById('filterSearch').value,
+            store:      document.getElementById('filterStore').value,
+            days:       document.getElementById('filterTime').value,
+            ai_status:  document.getElementById('filterAI').value,
+            uploader:   document.getElementById('filterUploader').value,
+            min_amount: document.getElementById('filterMinAmount').value
+        };
+    }
+
+    async function refreshLedger() {
+        currentOffset = 0;
+        const filters = getActiveFilters();
+        const params  = new URLSearchParams({ ...filters, offset: 0 });
+        
+        try {
+            const response = await fetch(`/api/receipts/list?${params.toString()}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const tbody = document.querySelector('.files-table tbody');
+                tbody.innerHTML = data.html || `<tr><td colspan="7" class="receipt-empty-ledger">📭 No receipts match your filters.</td></tr>`;
+                
+                const rowsAdded = (data.html?.match(/<tr/g) || []).length;
+                currentOffset = rowsAdded;
+                
+                if (loadMoreBtn) {
+                    loadMoreBtn.style.display = data.has_more ? 'inline-block' : 'none';
+                }
+            }
+        } catch (err) {
+            console.error("Filtering failed:", err);
+            showToast("Failed to filter results", "error");
+        }
+    }
+
+    // Attach listeners to all filter inputs
+    filterInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        
+        const eventType = el.tagName === 'SELECT' ? 'change' : 'input';
+        let debounceTimer;
+        
+        el.addEventListener(eventType, () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(refreshLedger, 300);
+        });
+    });
+
+    // Reset button logic
+    const resetBtn = document.getElementById('resetFilters');
+    if (resetBtn) {
+        resetBtn.onclick = () => {
+            filterInputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            refreshLedger();
+        };
+    }
 
     if (loadMoreBtn) {
         loadMoreBtn.onclick = async function() {
@@ -341,15 +405,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const originalText = loadMoreBtn.innerHTML;
             loadMoreBtn.innerHTML = 'Loading...';
 
+            const filters = getActiveFilters();
+            const params  = new URLSearchParams({ ...filters, offset: currentOffset });
+
             try {
-                const response = await fetch(`/api/receipts/list?offset=${currentOffset}`);
+                const response = await fetch(`/api/receipts/list?${params.toString()}`);
                 const data = await response.json();
 
                 if (data.success && data.html) {
                     const tbody = document.querySelector('.files-table tbody');
                     tbody.insertAdjacentHTML('beforeend', data.html);
                     
-                    // Count rows added by searching for <tr> in the new HTML
                     const rowsAdded = (data.html.match(/<tr/g) || []).length;
                     currentOffset += rowsAdded;
                     

@@ -110,6 +110,50 @@
         </div>
     </div>
 
+    <div class="ledger-filters">
+        <div class="filter-group">
+            <input type="text" id="filterSearch" placeholder="Search stores, files, notes..." class="filter-input">
+        </div>
+        <div class="filter-group">
+            <select id="filterStore" class="filter-select">
+                <option value="">All Stores</option>
+                <% for my $name (@{$store_names // []}) { %>
+                    <option value="<%= $name %>"><%= $name %></option>
+                <% } %>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="filterTime" class="filter-select">
+                <option value="">All Time</option>
+                <option value="7">Last 7 Days</option>
+                <option value="30">Last 30 Days</option>
+                <option value="90">Last 90 Days</option>
+                <option value="365">This Year</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="filterAI" class="filter-select">
+                <option value="">AI Status</option>
+                <option value="1">Digitized (AI)</option>
+                <option value="0">Pending AI</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="filterUploader" class="filter-select">
+                <option value="">All Uploaders</option>
+                <% for my $u (@{$uploaders // []}) { %>
+                    <option value="<%= $u->{username} %>"><%= $u->{username} %></option>
+                <% } %>
+            </select>
+        </div>
+        <div class="filter-group">
+            <input type="number" id="filterMinAmount" placeholder="Min $" class="filter-input" step="0.01" style="max-width: 100px;">
+        </div>
+        <button type="button" id="resetFilters" class="btn-icon-reset" title="Reset Filters" style="width: 38px; height: 38px; border-radius: 8px;">
+            <%= icon('reset') %>
+        </button>
+    </div>
+
     <div class="files-list">
         <table class="data-table files-table">
                             <thead>
