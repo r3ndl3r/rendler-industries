@@ -53,8 +53,8 @@ sub startup {
     my $db = DB->new();
     my $secret = $db->get_app_secret();
     
-    # Load Email plugin for notification delivery
-    $self->plugin('MyApp::Plugin::Email');
+    # Load Notification systems (Discord, Email, Gotify, Pushover)
+    $self->plugin('MyApp::Plugin::Notifications');
 
     # Configure signed cookie secrets
     $self->secrets($config->{secrets} || [$secret]);
@@ -184,79 +184,6 @@ sub startup {
     # Returns: DB object instance
     $self->helper(db => sub { state $db = DB->new; return $db });
 
-    # Helper: Send a Direct Message via local Discord API
-    # Parameters: 
-    #   discord_id : Target user's Discord ID
-    #   text       : Message content
-    # Returns: Boolean success
-    $self->helper(send_discord_dm => sub {
-        my ($c, $discord_id, $text) = @_;
-        return 0 unless $discord_id;
-        
-        my $ua = Mojo::UserAgent->new->request_timeout(15); # Increased to 15s
-        my $url = "http://127.0.0.1:3000/message/dm/$discord_id";
-        
-        my $status = 0; # 0 = Failed, 1 = Success, 2 = Timeout/Queued
-        eval {
-            my $tx = $ua->post($url => json => { text => $text });
-            if (my $res = $tx->result) {
-                if ($res->is_success) {
-                    $c->app->log->info("Discord DM sent to $discord_id");
-                    $status = 1;
-                } else {
-                    my $code = $res->code;
-                    my $body = $res->body // 'no body';
-                    $c->app->log->error("Discord API error ($discord_id): Status $code - $body");
-                    # If it's a 429 (Rate Limit), consider it "Queued" by Bobbot
-                    $status = ($code == 429) ? 2 : 0;
-                }
-            } else {
-                my $err = $tx->error;
-                $c->app->log->error("Discord API transport error ($discord_id): " . $err->{message});
-                # If it's a timeout, consider it "Queued" or likely to be delivered
-                $status = ($err->{message} =~ /timeout/i) ? 2 : 0;
-            }
-        };
-        if ($@) {
-            $c->app->log->error("Discord DM exception ($discord_id): $@");
-            return 0;
-        }
-        return $status;
-    });
-
-    # Helper: Unified notification dispatcher (Discord priority with Email fallback)
-    # Parameters:
-    #   user_id : Internal Database ID of the user
-    #   message : Text content of the notification
-    #   subject : (Optional) Email subject if fallback used
-    # Returns: Boolean success
-    $self->helper(notify_user => sub {
-        my ($c, $user_id, $message, $subject) = @_;
-        $subject //= "System Notification";
-        
-        my $user = $c->db->get_user_by_id($user_id);
-        return 0 unless $user;
-
-        # 1. Try Discord if ID is set
-        if ($user->{discord_id}) {
-            my $status = $c->send_discord_dm($user->{discord_id}, $message);
-            
-            # If success (1) or likely-to-succeed/timeout (2), stop here.
-            # Returning true prevents the Email fallback.
-            return 1 if $status >= 1;
-            
-            # Fall through to email ONLY if status is 0 (Hard Failure)
-        }
-
-        # 2. Fallback to Email
-        if ($user->{email}) {
-            return $c->send_email_via_gmail($user->{email}, $subject, $message);
-        }
-
-        $c->app->log->warn("No notification channels configured for user ID $user_id");
-        return 0;
-    });
-    
     # Define Application Routes
     my $r = $self->routes;
 
