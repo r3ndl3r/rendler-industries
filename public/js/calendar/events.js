@@ -97,30 +97,30 @@ function showEventDetails(eventId) {
         </div>
         <div class="event-details-body">
             <div class="event-detail-row">
-                <strong>📅 Date:</strong>
+                <strong>${getIcon('calendar')} Date:</strong>
                 <span>${dateStr}</span>
             </div>
             <div class="event-detail-row">
-                <strong>🕒 Time:</strong>
+                <strong>${getIcon('clock')} Time:</strong>
                 <span>${timeInfo}</span>
             </div>
             ${event.category ? `
             <div class="event-detail-row">
-                <strong>🏷️ Category:</strong>
+                <strong>${getIcon('info')} Category:</strong>
                 <span>${escapeHtml(event.category)}</span>
             </div>` : ''}
             ${event.description ? `
             <div class="event-detail-row">
-                <strong>📝 Description:</strong>
+                <strong>${getIcon('clipboard')} Description:</strong>
                 <span>${escapeHtml(event.description)}</span>
             </div>` : ''}
             ${attendeePills ? `
             <div class="event-detail-row">
-                <strong>👥 Attendees:</strong>
+                <strong>${getIcon('family')} Attendees:</strong>
                 <span class="event-detail-attendees">${attendeePills}</span>
             </div>` : ''}
             <div class="event-detail-row">
-                <strong>👤 Created By:</strong>
+                <strong>${getIcon('user')} Created By:</strong>
                 <span>${event.creator_name || 'Unknown'}</span>
             </div>
         </div>

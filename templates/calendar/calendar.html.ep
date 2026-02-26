@@ -143,7 +143,7 @@
 <div id="deleteConfirmModal" class="delete-modal-overlay">
     <div class="delete-modal-content">
         <div class="delete-modal-header">
-            <h3>Confirm Deletion</h3>
+            <h3><%= icon('delete') %> Confirm Deletion</h3>
             <span class="delete-modal-close" onclick="closeDeleteConfirmModal()">&times;</span>
         </div>
         <div class="delete-modal-body">
