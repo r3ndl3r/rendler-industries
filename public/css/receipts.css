@@ -406,7 +406,12 @@
     font-size: 0.85rem;
 }
 
-.crop-modal-actions, .btn-ai-apply {
+.crop-modal-actions, .edit-modal-actions {
+    justify-content: center !important;
+    gap: 15px;
+}
+
+.btn-ai-apply {
     background: #4338ca;
     color: white !important;
     border: none;
@@ -417,7 +422,6 @@
     align-items: center;
     gap: 8px;
     font-size: 0.9rem;
-    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -426,11 +430,6 @@
     background: #3730a3;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(67, 56, 202, 0.3);
-}
-
-.edit-modal-actions {
-    justify-content: center !important;
-    gap: 15px;
 }
 
 .receipt-modal-img {
