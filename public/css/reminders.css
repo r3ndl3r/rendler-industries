@@ -317,32 +317,33 @@
 /* Modal Selector Overrides */
 .days-selector, .recipients-selector {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     gap: 0.75rem;
     background: #0f172a;
     padding: 1.25rem;
     border-radius: 0.75rem;
     border: 1px solid #334155;
     margin-top: 0.5rem;
-    align-items: flex-start;
-    text-align: left;
-}
-
-.days-selector {
-    flex-direction: row;
-    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .day-checkbox, .recipient-checkbox {
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    justify-content: center;
     background: #1e293b;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     border: 1px solid #334155;
     transition: all 0.2s;
+    min-width: 80px;
+    text-align: center;
+}
+
+.day-checkbox input, .recipient-checkbox input {
+    display: none;
 }
 
 .day-checkbox span, .recipient-checkbox span {
@@ -350,6 +351,7 @@
     font-weight: 600;
     color: #94a3b8;
     text-transform: none;
+    text-align: center;
 }
 
 .day-checkbox:has(input:checked), .recipient-checkbox:has(input:checked) {
