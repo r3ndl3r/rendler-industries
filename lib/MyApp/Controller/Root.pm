@@ -235,8 +235,8 @@ sub copy_post {
 
     # Legacy external notifications ONLY for rendler
     if ($username eq 'rendler') {
-        $c->db->push_over($text);
-        $c->db->push_gotify($text);
+        $c->push_pushover($text);
+        $c->push_gotify($text);
     }
     
     $c->flash(message => "Content added successfully.");
