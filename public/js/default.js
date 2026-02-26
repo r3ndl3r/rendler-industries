@@ -202,3 +202,96 @@ const FlipClockManager = {
         setInterval(tick, 1000);
     }
 };
+
+/**
+ * --- Global Icon Registry ---
+ * Mirrors the semantic names and symbols defined in lib/MyApp/Plugin/Icons.pm.
+ */
+const GLOBAL_ICONS = {
+    // Actions
+    'edit': '✎',
+    'delete': '🗑️',
+    'add': '➕',
+    'save': '💾',
+    'cancel': '❌',
+    'view': '👁️',
+    'copy': '📋',
+    'check': '✅',
+    'close': '×',
+    'upload': '📤',
+    'download': '📥',
+    'settings': '⚙️',
+    'bonus': '🎁',
+    'crop': '✂️',
+    'reset': '🔄',
+    
+    // Navigation / UI
+    'home': '🏠',
+    'menu': '☰',
+    'user': '👤',
+    'logout': '🚪',
+    'search': '🔍',
+    'back': '←',
+    'clock': '🕒',
+    'calendar': '📅',
+    'link': '🔗',
+    'kangaroo': '🦘',
+    'quick': '🚀',
+    'uno': '🃏',
+    'chess': '♟️',
+    'chelsea': '🏖️',
+    'phonebook': '📞',
+    'clipboard': '📋',
+    'login': '🔑',
+    'register': '📝',
+    'quiz': '❓',
+    'admin': '🛡️',
+    
+    // Permissions
+    'perm_admin': '🛡️',
+    'perm_family': '👨‍👩‍👧‍👦',
+    'perm_user': '👤',
+    'perm_guest': '🌍',
+    
+    // Modules
+    'family': '👨‍👩‍👧‍👦',
+    'shopping': '🛒',
+    'todo': '✅',
+    'timers': '⏱️',
+    'birthdays': '🎂',
+    'swear': '🤬',
+    'imposter': '🎭',
+    'connect4': '🔴',
+    'files': '📁',
+    'receipts': '🧾',
+    'reminders': '🔔',
+    'medication': '💊',
+    'ai': '🧠',
+    'expand': '▼',
+    'collapse': '▲',
+
+    // Zodiac / Family
+    'andrea': '🐀',
+    'nick': '🐉',
+    'nicky': '🐉',
+    'thararat': '🐎',
+    'rendler': '🐓',
+    
+    // Status
+    'warning': '⚠️',
+    'info': 'ℹ️',
+    'success': '✅',
+    'error': '❌',
+    'running': '▶️',
+    'paused': '⏸️',
+    'idle': '⏺️',
+};
+
+/**
+ * Global helper to retrieve an icon by its semantic name.
+ * @param {string} name - Semantic icon name.
+ * @returns {string} - The symbol or name if not found.
+ */
+window.getIcon = function(name) {
+    return GLOBAL_ICONS[name.toLowerCase()] || name;
+};
