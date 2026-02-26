@@ -114,7 +114,7 @@
 <div id="addReminderModal" class="modal-overlay">
     <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
-            <h3>New Recurring Reminder</h3>
+            <h3><%= icon('add') %> New Recurring Reminder</h3>
             <span class="close-btn" onclick="closeAddModal()">&times;</span>
         </div>
         <form action="/reminders/add" method="POST">
@@ -180,7 +180,7 @@
 <div id="editReminderModal" class="modal-overlay">
     <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
-            <h3>Edit Recurring Reminder</h3>
+            <h3><%= icon('edit') %> Edit Recurring Reminder</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
         <form id="editReminderForm" method="POST" action="">
@@ -247,7 +247,7 @@
 <div id="deleteConfirmModal" class="delete-modal-overlay">
     <div class="delete-modal-content">
         <div class="delete-modal-header">
-            <h3>Confirm Deletion</h3>
+            <h3><%= icon('delete') %> Confirm Deletion</h3>
             <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
         </div>
         <div class="delete-modal-body">

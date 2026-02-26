@@ -46,7 +46,7 @@
 <div id="birthdayModal" class="modal-overlay">
     <div class="modal-content modal-content-small">
         <div class="modal-header">
-            <h3 id="modalTitle">Add Birthday</h3>
+            <h3 id="modalTitle"><%= icon('add') %> Add Birthday</h3>
             <span class="close-btn" onclick="closeModal()">&times;</span>
         </div>
         <form id="birthdayForm" onsubmit="submitBirthdayForm(event)">
@@ -73,7 +73,7 @@
 <div id="deleteConfirmModal" class="delete-modal-overlay">
     <div class="delete-modal-content">
         <div class="delete-modal-header">
-            <h3>Confirm Deletion</h3>
+            <h3><%= icon('delete') %> Confirm Deletion</h3>
             <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
         </div>
         <div class="delete-modal-body">
