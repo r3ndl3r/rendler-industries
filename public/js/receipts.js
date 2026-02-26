@@ -96,12 +96,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Confirmation Modal Functions ---
 
-    window.openConfirmModal = function(title, text, confirmClass, confirmLabel, onConfirm) {
+    window.openConfirmModal = function(title, text, confirmClass, confirmLabel, onConfirm, iconName = 'delete') {
         const modal = document.getElementById('confirmActionModal');
         const btn = document.getElementById('confirmModalBtn');
+        const iconEl = document.getElementById('confirmModalIcon');
+        const titleTextEl = document.getElementById('confirmModalTitleText');
         
-        document.getElementById('confirmModalTitle').textContent = title;
+        if (titleTextEl) titleTextEl.textContent = title;
         document.getElementById('confirmModalText').textContent = text;
+        if (iconEl) iconEl.innerHTML = getIcon(iconName);
         
         btn.className = `btn ${confirmClass}`;
         btn.textContent = confirmLabel;
@@ -125,7 +128,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 form.action = `/receipts/delete/${id}`;
                 document.body.appendChild(form);
                 form.submit();
-            }
+            },
+            'delete'
         );
     };
 
@@ -549,7 +553,7 @@ document.addEventListener('DOMContentLoaded', function() {
         content.innerHTML = `
             <div class="ereceipt-loading">
                 <div class="ereceipt-scan-line"></div>
-                <span class="ereceipt-loading-icon">🧠</span>
+                <span class="ereceipt-loading-icon">${getIcon('ai')}</span>
                 <p class="ereceipt-loading-text">${force ? 'Re-digitizing...' : 'Digitizing...'} with AI</p>
                 <p class="ereceipt-loading-sub">Analyzing items and structured data</p>
             </div>
@@ -590,7 +594,7 @@ document.addEventListener('DOMContentLoaded', function() {
             badge.title = 'AI Analyzed';
             badge.style.fontSize = '0.8rem';
             badge.style.marginLeft = '5px';
-            badge.textContent = '🧠';
+            badge.textContent = getIcon('ai');
             wrapper.appendChild(badge);
         }
 

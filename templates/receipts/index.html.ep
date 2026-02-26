@@ -194,7 +194,7 @@
 <div id="confirmActionModal" class="delete-modal-overlay" style="display: none;">
     <div class="delete-modal-content">
         <div class="delete-modal-header">
-            <h3 id="confirmModalTitle">Confirm Action</h3>
+            <h3><span id="confirmModalIcon"><%= icon('delete') %></span> <span id="confirmModalTitleText">Confirm Action</span></h3>
             <span class="delete-modal-close" onclick="closeConfirmModal()">&times;</span>
         </div>
         <div class="delete-modal-body">
@@ -252,7 +252,7 @@
 <div id="cropModal" class="modal-overlay" style="display: none;">
     <div class="modal-content" style="max-width: 800px; width: 95%;">
         <div class="modal-header">
-            <h3><%= icon('edit') %> Crop Receipt</h3>
+            <h3><%= icon('crop') %> Crop Receipt</h3>
             <span class="close-btn" onclick="closeCropModal()">&times;</span>
         </div>
         <div class="modal-body crop-preview-container">
