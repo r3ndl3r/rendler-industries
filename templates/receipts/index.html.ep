@@ -265,8 +265,8 @@
 </div>
 
 <!-- Electronic Receipt Modal -->
-<div id="eReceiptModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content ereceipt-modal-content">
+<div id="eReceiptModal" class="modal-overlay" style="display: none;" onclick="closeEReceiptModal()">
+    <div class="modal-content ereceipt-modal-content" onclick="event.stopPropagation()">
         <div class="modal-header ereceipt-header">
             <h3><%= icon('ai') %> Electronic Receipt</h3>
             <span class="close-btn" onclick="closeEReceiptModal()">&times;</span>
@@ -284,7 +284,6 @@
             <button type="button" class="btn-icon-delete btn-ereceipt-rescan" onclick="reScanReceipt()">
                 <%= icon('search') %> Full Rescan
             </button>
-            <button type="button" class="btn-secondary" onclick="closeEReceiptModal()">Close</button>
         </div>
     </div>
 </div>
