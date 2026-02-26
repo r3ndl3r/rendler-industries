@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (state.isMyTurn) {
                 statusMsg.innerText = "YOUR TURN";
                 statusMsg.style.color = "#4ade80";
-                turnMsg.innerText = `You are ${config.myRole === 1 ? 'Red 🔴' : 'Blue 🔵'}`;
+                turnMsg.innerText = `You are ${config.myRole === 1 ? 'Red ' + getIcon('connect4') : 'Blue ' + getIcon('connect4_blue')}`;
             } else {
                 // Determine whose turn it is
                 const currentTurnName = (data.turn == data.p1_id) ? p1Name : p2Name;

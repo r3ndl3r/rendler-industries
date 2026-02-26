@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const winnerId = parseInt(data.winner_id, 10);
                 if (winnerId === 0) {
                     if (drawOfferByMe) { customAlert('Your draw offer was accepted.'); drawOfferByMe = false; }
-                    statusText.textContent = "🤝 Game Over - Draw";
+                    statusText.textContent = `${getIcon('draw')} Game Over - Draw`;
                 } else {
                     const isMeWinner = (winnerId === currentUserId);
                     if (statusText.textContent.indexOf("Game Over") === -1) {
@@ -376,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                     if (isMeWinner) {
-                        statusText.textContent = `🏆 Game Over - You Win!`;
+                        statusText.textContent = `${getIcon('trophy')} Game Over - You Win!`;
                     } else {
                         if (game.in_checkmate()) {
                             statusText.textContent = `Game Over - Checkmate (You Lost)`;
@@ -390,9 +390,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (offerBtn) offerBtn.style.display = 'none';
                 if (resignBtn) resignBtn.style.display = 'none';
             } else if (gameStatus === 'waiting') {
-                document.getElementById('game-status-text').textContent = "⏳ Waiting for opponent...";
+                document.getElementById('game-status-text').textContent = `${getIcon('waiting')} Waiting for opponent...`;
             } else {
-                document.getElementById('game-status-text').textContent = currentTurnId === currentUserId ? "🟢 Your Turn" : "🔴 Opponent's Turn";
+                document.getElementById('game-status-text').textContent = currentTurnId === currentUserId ? `${getIcon('success')} Your Turn` : `${getIcon('error')} Opponent's Turn`;
             }
 
             document.getElementById('fen-display').textContent = `Current FEN: ${currentFen}`;
