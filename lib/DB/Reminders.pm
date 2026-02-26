@@ -6,18 +6,22 @@ use strict;
 use warnings;
 
 # Database helper for Recurring Reminders and Notifications.
+#
 # Features:
-#   - Manage weekly recurring reminders (rule-based)
-#   - Multi-user recipient mapping for individual reminders
-#   - Support for Discord and Email notification triggers
-#   - Integration with global maintenance system for scheduled dispatch
-
-# Inject methods into the main DB package
+#   - Rule-based management of weekly recurring reminders.
+#   - Dynamic multi-user recipient mapping.
+#   - One-off vs Recurring reminder lifecycle logic.
+#   - Support for Discord and Email notification triggers.
+#
+# Integration Points:
+#   - Extends DB package via package injection.
+#   - Used by Reminders controller for dashboard and management.
+#   - Coordinates with System::maintenance for automated dispatch.
 
 # Retrieves all reminders with their associated recipient data.
 # Parameters: None
 # Returns:
-#   ArrayRef of HashRefs containing reminder rules and comma-separated recipient user_ids
+#   ArrayRef of HashRefs containing reminder rules and comma-separated recipient metadata.
 sub DB::get_all_reminders {
     my ($self) = @_;
     $self->ensure_connection;
@@ -46,6 +50,7 @@ sub DB::get_all_reminders {
 #   time         : HH:MM:SS trigger time
 #   user_id      : Creator ID
 #   recipient_ids: ArrayRef of user IDs to notify
+#   is_one_off   : Boolean flag
 # Returns:
 #   Integer ID of the new reminder
 sub DB::create_reminder {
@@ -75,6 +80,10 @@ sub DB::create_reminder {
 }
 
 # Updates an existing reminder and its recipient list.
+# Parameters:
+#   id, title, desc, days, time, recipient_ids, is_one_off : Attributes.
+# Returns:
+#   Integer: 1 on success.
 sub DB::update_reminder {
     my ($self, $id, $title, $desc, $days, $time, $recipient_ids, $is_one_off) = @_;
     $self->ensure_connection;
@@ -102,7 +111,11 @@ sub DB::update_reminder {
     return 1;
 }
 
-# Permanently deletes a reminder and its recipient mappings.
+# Permanently deletes a reminder.
+# Parameters:
+#   id : Reminder ID.
+# Returns:
+#   Boolean : Success status.
 sub DB::delete_reminder {
     my ($self, $id) = @_;
     $self->ensure_connection;
@@ -112,6 +125,10 @@ sub DB::delete_reminder {
 }
 
 # Toggles the active status of a reminder.
+# Parameters:
+#   id, active : Reminder ID and status flag.
+# Returns:
+#   Boolean : Success status.
 sub DB::toggle_reminder_status {
     my ($self, $id, $active) = @_;
     $self->ensure_connection;
@@ -120,6 +137,10 @@ sub DB::toggle_reminder_status {
 }
 
 # Toggles a specific day within the days_of_week string.
+# Parameters:
+#   id, day, active : Reminder ID, Day number (1-7), and status flag.
+# Returns:
+#   Boolean : Success status.
 sub DB::toggle_reminder_day {
     my ($self, $id, $day, $active) = @_;
     $self->ensure_connection;
@@ -147,7 +168,7 @@ sub DB::toggle_reminder_day {
 #   day_num : Integer (1=Mon, 7=Sun)
 #   current_time : HH:MM
 # Returns:
-#   ArrayRef of due reminders with full recipient user details
+#   ArrayRef of HashRefs containing due reminder details and recipient metadata.
 sub DB::get_due_reminders {
     my ($self, $day_num, $current_time) = @_;
     $self->ensure_connection;
@@ -172,6 +193,10 @@ sub DB::get_due_reminders {
 }
 
 # Marks a reminder as having fired today.
+# Parameters:
+#   id : Unique reminder ID.
+# Returns:
+#   Boolean : Success status.
 sub DB::mark_reminder_sent {
     my ($self, $id) = @_;
     $self->ensure_connection;
