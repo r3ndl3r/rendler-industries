@@ -525,7 +525,7 @@ const EmojiPicker = {
 
     attachTrigger: function(input) {
         const parent = input.parentElement;
-        if (parent && (parent.classList.contains('form-group') || parent.classList.contains('modal-group') || parent.classList.contains('checkbox-group'))) {
+        if (parent && (parent.classList.contains('form-group') || parent.classList.contains('modal-group') || parent.classList.contains('checkbox-group') || parent.classList.contains('meal-input-wrapper'))) {
             if (!parent.contains(this.triggerBtn)) {
                 parent.appendChild(this.triggerBtn);
             }
