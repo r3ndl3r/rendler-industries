@@ -239,6 +239,9 @@
                 <input type="text" name="description" id="editDescription" class="form-control">
             </div>
             <div class="modal-actions edit-modal-actions">
+                <button type="button" id="btnApplyAI" class="btn-ai-apply" style="display: none;" title="Apply AI-digitized data to these fields">
+                    <%= icon('ai') %> Use AI Data
+                </button>
                 <button type="submit" class="btn-primary"><%= icon('save') %> Save Changes</button>
             </div>
         </form>
