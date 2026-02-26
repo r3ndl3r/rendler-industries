@@ -7,25 +7,26 @@ use warnings;
 use Crypt::Eksblowfish::Bcrypt qw(bcrypt en_base64);
 
 # Database helper for User Authentication and Management.
+# Handles the full user lifecycle from registration to administrative audit.
+#
 # Features:
-#   - Secure user authentication via Bcrypt
-#   - User lifecycle management (Create, Update, Delete)
-#   - Role-based access control (Admin flags)
-#   - Account approval workflow (Pending vs Approved status)
-# Integration points:
-#   - Extends DB package via package injection
-#   - Depends on Crypt::Eksblowfish::Bcrypt for password hashing
-
-# Inject methods into the main DB package
+#   - Secure user authentication via Bcrypt hashing.
+#   - User lifecycle management (Create, Update, Delete).
+#   - Role-based access control (Admin, Family, User, Guest).
+#   - Account approval workflow (Pending vs Approved status).
+#
+# Integration Points:
+#   - Extends DB package via package injection.
+#   - Used by Auth controller for login/registration.
+#   - Used by Admin controller for user auditing and role toggles.
+#   - Coordinates with Email and Discord plugins for notifications.
 
 # Authenticates a user against stored credentials.
 # Parameters:
-#   username : Unique username
-#   password : Plain text password
+#   username : String identifier.
+#   password : Plain text string.
 # Returns:
-#   1 : Authentication successful
-#   0 : Invalid credentials or user not found
-#   2 : Account exists but is pending approval
+#   Integer: 1 (Success), 0 (Invalid), 2 (Pending Approval).
 sub DB::authenticate_user {
     my ($self, $username, $password) = @_;
     
@@ -49,11 +50,11 @@ sub DB::authenticate_user {
 
 # Registers a new user with secure password hashing.
 # Parameters:
-#   username : Unique username
-#   password : Plain text password
-#   email    : User email address
+#   username : String.
+#   password : Plain text string.
+#   email    : User email address.
 # Returns:
-#   1 on success, dies on error
+#   Integer: 1 on success.
 sub DB::create_user {
     my ($self, $username, $password, $email) = @_;
     
@@ -87,9 +88,9 @@ sub DB::create_user {
 
 # Checks if a username is already taken.
 # Parameters:
-#   username : Username to check
+#   username : String to check.
 # Returns:
-#   Boolean (True if exists, False otherwise)
+#   Boolean : True if exists.
 sub DB::user_exists {
     my ($self, $username) = @_;
     
@@ -105,7 +106,7 @@ sub DB::user_exists {
 # Retrieves list of all registered users.
 # Parameters: None
 # Returns:
-#   ArrayRef of HashRefs containing user details (excluding passwords)
+#   ArrayRef of HashRefs containing user details (excluding passwords).
 sub DB::get_all_users {
     my ($self) = @_;
     
@@ -119,9 +120,9 @@ sub DB::get_all_users {
 
 # Retrieves specific user details by ID.
 # Parameters:
-#   id : Unique User ID
+#   id : Unique User ID.
 # Returns:
-#   HashRef with user details (excluding password), or undef
+#   HashRef with user details (excluding password), or undef.
 sub DB::get_user_by_id {
     my ($self, $id) = @_;
     $self->ensure_connection;
@@ -134,14 +135,8 @@ sub DB::get_user_by_id {
 
 # Updates user profile information.
 # Parameters:
-#   id         : User ID to update
-#   username   : New username
-#   email      : New email
-#   discord_id : Discord user ID
-#   is_admin   : Admin flag (1/0)
-#   is_family  : Family flag (1/0)
-#   status     : Account status (e.g., 'approved', 'pending')
-# Returns: Void
+#   id, username, email, discord_id, is_admin, is_family, status : Attributes.
+# Returns: Void.
 sub DB::update_user {
     my ($self, $id, $username, $email, $discord_id, $is_admin, $is_family, $status) = @_;
     $self->ensure_connection;
@@ -152,9 +147,9 @@ sub DB::update_user {
 
 # Resets a user's password.
 # Parameters:
-#   id       : User ID
-#   password : New plain text password
-# Returns: Void
+#   id       : User ID.
+#   password : New plain text string.
+# Returns: Void.
 sub DB::update_user_password {
     my ($self, $id, $password) = @_;
     
@@ -179,8 +174,8 @@ sub DB::update_user_password {
 
 # Permanently deletes a user account.
 # Parameters:
-#   id : User ID
-# Returns: Void
+#   id : Unique User ID.
+# Returns: Void.
 sub DB::delete_user {
     my ($self, $id) = @_;
     
@@ -192,8 +187,8 @@ sub DB::delete_user {
 
 # Activates a pending user account.
 # Parameters:
-#   id : User ID
-# Returns: Void
+#   id : Unique User ID.
+# Returns: Void.
 sub DB::approve_user {
     my ($self, $id) = @_;
     
@@ -205,9 +200,9 @@ sub DB::approve_user {
 
 # Checks if a user has administrative privileges.
 # Parameters:
-#   username : Username to check
+#   username : String identifier.
 # Returns:
-#   1 if admin, 0 otherwise
+#   Integer : 1 if Admin, 0 otherwise.
 sub DB::is_admin {
     my ($self, $username) = @_;
     
@@ -222,9 +217,9 @@ sub DB::is_admin {
 
 # Checks if a user has family member status.
 # Parameters:
-#   username : Username to check
+#   username : String identifier.
 # Returns:
-#   1 if family, 0 otherwise
+#   Integer : 1 if Family, 0 otherwise.
 sub DB::is_family {
     my ($self, $username) = @_;
     
@@ -239,10 +234,10 @@ sub DB::is_family {
 
 # Granularly toggles a specific user role (is_admin or is_family).
 # Parameters:
-#   id    : User ID
-#   role  : Column name ('admin' -> is_admin, 'family' -> is_family)
-#   value : 1 or 0
-# Returns: Void
+#   id    : User ID.
+#   role  : Column name ('admin' -> is_admin, 'family' -> is_family).
+#   value : Boolean (1/0).
+# Returns: Void.
 sub DB::toggle_user_role {
     my ($self, $id, $role, $value) = @_;
     $self->ensure_connection;
@@ -254,9 +249,9 @@ sub DB::toggle_user_role {
 
 # Helper to resolve username to internal ID.
 # Parameters:
-#   username : Username
+#   username : String name.
 # Returns:
-#   Integer ID or undef
+#   Integer : User ID or undef.
 sub DB::get_user_id {
     my ($self, $username) = @_;
     
@@ -269,11 +264,10 @@ sub DB::get_user_id {
     return $id;
 }
 
-# Retrieves the application secret key.
-# Parameters: None
+# Retrieves the application secret key for session signing.
+# Parameters: None.
 # Returns:
-#   String containing the secret value
-# Note: Typically handled by DB::Settings, but retained here for legacy access.
+#   String : The primary application secret.
 sub DB::get_app_secret {
     my ($self) = @_;
     
@@ -287,9 +281,9 @@ sub DB::get_app_secret {
 }
 
 # Retrieves Date of Birth records.
-# Parameters: None
+# Parameters: None.
 # Returns:
-#   HashRef of DOB records keyed by name
+#   HashRef of DOB records keyed by name.
 sub DB::dob {
     my ($self) = @_;
     
