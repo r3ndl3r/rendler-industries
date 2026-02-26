@@ -310,11 +310,12 @@ sub startup {
 
     # --- Shopping List Routes ---
     $family->get('/shopping')->to('shopping#index');
-    $family->post('/shopping/add')->to('shopping#add');
-    $family->post('/shopping/toggle/:id')->to('shopping#toggle');
-    $family->post('/shopping/delete/:id')->to('shopping#delete');
-    $family->post('/shopping/clear')->to('shopping#clear_checked');
-    $family->post('/shopping/edit/:id')->to('shopping#edit');
+    $family->get('/shopping/api/data')->to('shopping#api_data');
+    $family->post('/shopping/api/add')->to('shopping#add');
+    $family->post('/shopping/api/toggle/:id')->to('shopping#toggle');
+    $family->post('/shopping/api/delete/:id')->to('shopping#delete');
+    $family->post('/shopping/api/clear')->to('shopping#clear_checked');
+    $family->post('/shopping/api/edit/:id')->to('shopping#edit');
 
     # --- Todo List Routes ---
     $auth->get('/todo')->to('todo#index');
