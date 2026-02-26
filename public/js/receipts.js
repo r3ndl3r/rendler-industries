@@ -318,7 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         store_name:   data.store_name,
                         receipt_date: data.receipt_date,
                         total_amount: data.total_amount,
-                        notes:        data.raw_text
+                        notes:        data.notes
                     });
                 } else {
                     showToast('OCR failed: ' + (data.error || 'Unknown error'), 'error');

@@ -137,7 +137,7 @@ sub DB::update_receipt_ai_json {
 sub DB::update_receipt_binary {
     my ($self, $id, $file_data, $file_size) = @_;
     $self->ensure_connection;
-    my $sth = $self->{dbh}->prepare("UPDATE UPDATE receipts SET file_data = ?, file_size = ? WHERE id = ?");
+    my $sth = $self->{dbh}->prepare("UPDATE receipts SET file_data = ?, file_size = ? WHERE id = ?");
     $sth->bind_param(1, $file_data, SQL_BLOB);
     $sth->bind_param(2, $file_size);
     $sth->bind_param(3, $id);

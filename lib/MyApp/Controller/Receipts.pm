@@ -212,6 +212,53 @@ sub serve {
     return $c->render(data => $receipt->{file_data});
 }
 
+# API Endpoint: Manual OCR Scan - Extracts basic metadata from an existing image.
+# Route: POST /receipts/ocr/:id
+# Parameters:
+#   - id: Unique receipt ID.
+# Returns:
+#   JSON: { success, store_name, receipt_date, total_amount, raw_text }
+sub trigger_ocr {
+    my $c = shift;
+    my $id = $c->param('id');
+    
+    my $receipt = $c->db->get_receipt_by_id($id);
+    return $c->render(json => { success => 0, error => "Receipt not found" }, status => 404) unless $receipt;
+    
+    if ($receipt->{mime_type} !~ /^image/) {
+        return $c->render(json => { success => 0, error => "Only images supported for OCR" });
+    }
+
+    eval {
+        my $ocr_data = OCR->process_receipt($receipt->{file_data});
+        # Only update if we found something useful
+        if ($ocr_data->{store_name} || $ocr_data->{total_amount}) {
+            $c->db->update_receipt_data(
+                $id, 
+                $ocr_data->{store_name} || $receipt->{store_name}, 
+                $ocr_data->{receipt_date} || $receipt->{receipt_date}, 
+                $ocr_data->{total_amount} || $receipt->{total_amount}, 
+                $receipt->{notes} || $receipt->{description},
+                $receipt->{ai_json}
+            );
+        }
+        
+        $c->render(json => {
+            success      => 1,
+            store_name   => $ocr_data->{store_name},
+            receipt_date => $ocr_data->{receipt_date},
+            total_amount => $ocr_data->{total_amount},
+            notes        => $receipt->{notes} || $receipt->{description},
+            raw_text     => $ocr_data->{raw_text}
+        });
+    };
+    
+    if ($@) {
+        $c->app->log->error("OCR Trigger Failed for receipt $id: $@");
+        $c->render(json => { success => 0, error => "OCR engine failed." });
+    }
+}
+
 # AJAX: AI-powered structured receipt extraction and electronic generation.
 # Route: POST /receipts/ai_analyze/:id
 # Returns: JSON object with cached or fresh deep analysis data
