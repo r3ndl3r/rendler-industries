@@ -116,7 +116,7 @@ function renderManageList() {
         // Use a temporary button to store the JSON safely without attribute-breaking issues
         const btn = document.createElement('button');
         btn.className = 'btn-icon-edit';
-        btn.innerHTML = '✎';
+        btn.innerHTML = getIcon('edit');
         btn.dataset.birthday = JSON.stringify(b);
         btn.onclick = function() { openEditModal(this); };
 
@@ -131,7 +131,7 @@ function renderManageList() {
             </div>
             <div class="manage-actions">
                 <!-- Button injected below -->
-                <button onclick="confirmDelete(${b.id}, '${escapeHtml(b.name).replace(/'/g, "\\'")}')" class="btn-icon-delete">🗑️</button>
+                <button onclick="confirmDelete(${b.id}, '${escapeHtml(b.name).replace(/'/g, "\\'")}')" class="btn-icon-delete">${getIcon('delete')}</button>
             </div>
         `;
         row.querySelector('.manage-actions').prepend(btn);
@@ -175,7 +175,7 @@ function updateCountdowns() {
         card.classList.remove('today');
         
         if (daysUntil === 0) {
-            daysSpan.textContent = '🎉 TODAY!';
+            daysSpan.textContent = `${getIcon('victory')} TODAY!`;
             textSpan.textContent = '';
             card.classList.add('today');
         } else {
