@@ -85,7 +85,7 @@
 <div id="linkModal" class="delete-modal-overlay">
     <div class="delete-modal-content" style="max-width: 600px;">
         <div class="delete-modal-header">
-            <h3 id="modalTitle">Add Menu Link</h3>
+            <h3 id="modalTitle"><%= icon('add') %> Add Menu Link</h3>
             <span class="delete-modal-close" id="closeModalBtn">&times;</span>
         </div>
         <form id="linkForm">
@@ -164,7 +164,7 @@
 <div id="deleteConfirmModal" class="delete-modal-overlay">
     <div class="delete-modal-content">
         <div class="delete-modal-header">
-            <h3>Confirm Deletion</h3>
+            <h3><%= icon('delete') %> Confirm Deletion</h3>
             <span class="delete-modal-close" onclick="closeDeleteConfirmModal()">&times;</span>
         </div>
         <div class="delete-modal-body">
