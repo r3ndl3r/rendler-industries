@@ -6,22 +6,25 @@ use strict;
 use warnings;
 
 # Database helper for the "Copy/Paste" clipboard history feature.
+# Manages transient snippets and persistent shared notes.
+#
 # Features:
-#   - Store text snippets or URLs (Write)
-#   - Retrieve history with basic formatting/auto-linking (Read)
-#   - Remove specific entries (Delete)
-# Integration points:
-#   - Extends DB package via package injection
-#   - Direct DBI usage for SQL operations
-
-# Inject methods into the main DB package
+#   - User-scoped text storage (Write).
+#   - History retrieval with auto-link conversion (Read).
+#   - Secure entry removal (Delete).
+#   - Real-time notification integration for new clips.
+#
+# Integration Points:
+#   - Extends DB package via package injection.
+#   - Used by Root controller for the /clipboard SPA.
+#   - Coordinates with Notifications helper for clip alerts.
 
 # Saves a text snippet to the database.
 # Parameters:
-#   user_id : Unique user ID
-#   paste   : Text content to store (String)
+#   user_id : Unique user ID.
+#   paste   : Text content to store (String).
 # Returns:
-#   Result of execute() (true on success)
+#   Result of execute().
 sub DB::paste {
     my ($self, $user_id, $paste) = @_;
     
@@ -30,18 +33,18 @@ sub DB::paste {
     
     # Insert new record
     my $sth = $self->{dbh}->prepare("INSERT INTO copy (user_id, text) VALUES(?, ?)");
-    $sth->execute($user_id, $paste);
+    return $sth->execute($user_id, $paste);
 }
 
 # Retrieves paste history for a specific user formatted for display.
 # Parameters:
-#   user_id : Unique user ID
+#   user_id : Unique user ID.
 # Returns:
 #   Array of HashRefs: [{ id => Int, text => String, raw => String }, ...]
 # Behavior:
-#   - Sorts by newest first (DESC)
-#   - Auto-converts text starting with 'http' into HTML links
-#   - Strips newlines from URL-only entries for cleaner display
+#   - Sorts by newest first (DESC).
+#   - Auto-converts text starting with 'http' into HTML links.
+#   - Strips newlines from URL-only entries for cleaner display.
 sub DB::get_pasted {
     my ($self, $user_id) = @_;
     
@@ -73,10 +76,10 @@ sub DB::get_pasted {
 
 # Removes a paste entry from the database.
 # Parameters:
-#   id      : Unique ID of the message to delete
-#   user_id : Verification user ID
+#   id      : Unique ID of the message to delete.
+#   user_id : Verification user ID.
 # Returns:
-#   Result of execute() (true on success)
+#   Result of execute().
 sub DB::delete_message {
     my ($self, $id, $user_id) = @_;
     
@@ -85,20 +88,21 @@ sub DB::delete_message {
     
     # Execute deletion
     my $sth = $self->{dbh}->prepare("DELETE FROM copy WHERE id = ? AND user_id = ?");
-    $sth->execute($id, $user_id);
+    return $sth->execute($id, $user_id);
 }
 
 # Updates an existing paste entry.
 # Parameters:
-#   id      : Record ID
-#   user_id : Verification user ID
-#   text    : New content
-# Returns: Void
+#   id      : Record ID.
+#   user_id : Verification user ID.
+#   text    : New content (String).
+# Returns:
+#   Result of execute().
 sub DB::update_message {
     my ($self, $id, $user_id, $text) = @_;
     $self->ensure_connection;
     my $sth = $self->{dbh}->prepare("UPDATE copy SET text = ? WHERE id = ? AND user_id = ?");
-    $sth->execute($text, $id, $user_id);
+    return $sth->execute($text, $id, $user_id);
 }
 
 1;
