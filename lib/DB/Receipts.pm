@@ -97,9 +97,9 @@ sub DB::get_all_receipts_metadata {
 
     # Filter: Keyword Search
     if ($f->{search}) {
-        $sql .= " AND (store_name LIKE ? OR original_filename LIKE ? OR notes LIKE ? OR description LIKE ?)";
+        $sql .= " AND (store_name LIKE ? OR original_filename LIKE ? OR notes LIKE ? OR description LIKE ? OR ai_json LIKE ?)";
         my $term = "%$f->{search}%";
-        push @params, ($term, $term, $term, $term);
+        push @params, ($term, $term, $term, $term, $term);
     }
 
     # Filter: Min Amount
