@@ -24,19 +24,19 @@
 
     <nav class="settings-nav">
       <button class="settings-tab active" data-tab="notifications">
-        <span class="tab-icon">🔔</span>
+        <span class="tab-icon"><%= icon('reminders') %></span>
         <span class="tab-label">Notifications</span>
       </button>
       <button class="settings-tab" data-tab="email">
-        <span class="tab-icon">📧</span>
+        <span class="tab-icon"><%= icon('register') %></span>
         <span class="tab-label">Email</span>
       </button>
       <button class="settings-tab" data-tab="integrations">
-        <span class="tab-icon">🔗</span>
+        <span class="tab-icon"><%= icon('link') %></span>
         <span class="tab-label">Integrations</span>
       </button>
       <button class="settings-tab" data-tab="application">
-        <span class="tab-icon">⚙️</span>
+        <span class="tab-icon"><%= icon('settings') %></span>
         <span class="tab-label">Application</span>
       </button>
     </nav>
@@ -351,7 +351,7 @@
               <form method="POST" action="/settings/update">
                 <input type="hidden" name="section" value="app_secret">
                 <div class="form-warning">
-                  ⚠ Changing this invalidates all active sessions. An app restart is required for the new key to take effect.
+                  <%= icon('warning') %> Changing this invalidates all active sessions. An app restart is required for the new key to take effect.
                 </div>
                 <div class="settings-fields">
                   <div class="form-group full-width">
