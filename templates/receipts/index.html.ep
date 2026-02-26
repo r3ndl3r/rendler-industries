@@ -253,9 +253,8 @@
                 <label>Notes</label>
                 <input type="text" name="description" id="editDescription" class="form-control">
             </div>
-            <div class="modal-actions">
-                <button type="submit" class="btn btn-save"><%= icon('save') %> Save Changes</button>
-                <button type="button" class="btn btn-cancel" onclick="closeEditModal()">Cancel</button>
+            <div class="modal-actions edit-modal-actions">
+                <button type="submit" class="btn-primary"><%= icon('save') %> Save Changes</button>
             </div>
         </form>
     </div>
@@ -274,9 +273,8 @@
             </div>
             <p class="crop-help-text">Drag the corners to crop the receipt. Only the selected area will be saved.</p>
         </div>
-        <div class="modal-actions">
-            <button type="button" class="btn btn-save" onclick="saveCrop()"><%= icon('save') %> Save Crop</button>
-            <button type="button" class="btn btn-cancel" onclick="closeCropModal()">Cancel</button>
+        <div class="modal-actions crop-modal-actions">
+            <button type="button" class="btn-primary" onclick="saveCrop()"><%= icon('save') %> Save Crop</button>
         </div>
     </div>
 </div>

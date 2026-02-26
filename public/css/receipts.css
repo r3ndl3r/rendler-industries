@@ -363,6 +363,10 @@
     font-size: 0.85rem;
 }
 
+.crop-modal-actions, .edit-modal-actions {
+    justify-content: center !important;
+}
+
 .receipt-modal-img {
     max-width: 100%; 
     border-radius: 8px;
