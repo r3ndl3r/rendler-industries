@@ -481,3 +481,46 @@
         gap: 0 !important;
     }
 }
+
+/* Receipt Upload Modal specific styles */
+.receipt-upload-modal .modal-content {
+    max-width: 500px;
+    width: 95%;
+    border: none;
+}
+
+.file-drop-area {
+    cursor: pointer;
+    height: 250px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.file-drop-area:hover, .file-drop-area.dragover {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.drop-hint {
+    text-align: center;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.upload-file-name {
+    margin-top: 10px;
+    font-weight: 600;
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.upload-actions {
+    justify-content: center !important;
+    margin-top: 20px;
+}
