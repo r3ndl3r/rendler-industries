@@ -4,6 +4,8 @@
  * Receipt Management and AI Analysis Logic
  */
 
+let cropper = null;
+
 // Define functions first to ensure they are available for hoisting/reference
 function closeReceiptModal() {
     const modal = document.getElementById('receiptModal');
@@ -30,12 +32,31 @@ function closeConfirmModal() {
     if (modal) modal.style.display = 'none';
 }
 
+function closePreUploadCropModal() {
+    const modal = document.getElementById('preUploadCropModal');
+    if (modal) modal.style.display = 'none';
+    openUploadModal();
+}
+
+function openUploadModal() {
+    const modal = document.getElementById('uploadModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeUploadModal() {
+    const modal = document.getElementById('uploadModal');
+    if (modal) modal.style.display = 'none';
+}
+
 // Global Exports
 window.closeReceiptModal = closeReceiptModal;
 window.closeEditModal = closeEditModal;
 window.closeCropModal = closeCropModal;
+window.closePreUploadCropModal = closePreUploadCropModal;
 window.closeEReceiptModal = closeEReceiptModal;
 window.closeConfirmModal = closeConfirmModal;
+window.openUploadModal = openUploadModal;
+window.closeUploadModal = closeUploadModal;
 
 document.addEventListener('DOMContentLoaded', function() {
     const dropZone        = document.getElementById('dropZone');
@@ -69,6 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateFileName(file.name);
                 const lowerName = file.name.toLowerCase();
                 if (file.type.startsWith('image/') || lowerName.endsWith('.heic') || lowerName.endsWith('.heif')) {
+                    closeUploadModal();
                     initPreUploadCrop(file);
                 }
             }
@@ -90,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Standardize modal closing using global helper from default.js
     if (typeof setupGlobalModalClosing === 'function') {
         setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay', 'image-modal-overlay'], [
-            closeReceiptModal, closeEditModal, closeCropModal, closeEReceiptModal, closeConfirmModal
+            closeReceiptModal, closeEditModal, closeCropModal, closePreUploadCropModal, closeEReceiptModal, closeConfirmModal
         ]);
     }
 
@@ -151,8 +173,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         const reader = new FileReader();
         reader.onload = function(e) {
-            const modal = document.getElementById('cropModal');
-            const img   = document.getElementById('cropImg');
+            const modal = document.getElementById('preUploadCropModal');
+            const img   = document.getElementById('preUploadCropImg');
             if (modal && img) {
                 img.src                 = e.target.result;
                 modal.style.display     = 'flex';
@@ -177,11 +199,13 @@ document.addEventListener('DOMContentLoaded', function() {
             dt.items.add(croppedFile);
             fileInput.files = dt.files;
             showToast('Image refined successfully!', 'success');
-            closeCropModal();
+            closePreUploadCropModal();
+            openUploadModal();
         }, 'image/png');
     };
 
     function updateFileName(name) {
+        const fileNameDisplay = document.getElementById('fileName');
         if (fileNameDisplay) {
             fileNameDisplay.textContent = name;
             fileNameDisplay.style.display = 'block';
@@ -327,7 +351,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Crop Modal ---
 
-    let cropper      = null;
     let currentCropId = null;
 
     window.openCropModal = async function(id) {
