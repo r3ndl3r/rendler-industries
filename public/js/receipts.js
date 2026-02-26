@@ -47,7 +47,6 @@ function closeUploadModal() {
     const modal = document.getElementById('uploadModal');
     if (modal) {
         modal.style.display = 'none';
-        // Removed form.reset() as it clears the file input during modal switching (e.g. to Crop)
     }
 }
 
@@ -289,9 +288,12 @@ function renderStats() {
         const periodBreakdown = breakdown[period] || [];
         
         html += `
-            <div class="stat-tile">
+            <div class="stat-tile" onclick="toggleStatTile(this)">
                 <span class="stat-label">${labels[period]}</span>
-                <span class="stat-value">$${parseFloat(total).toFixed(2)}</span>
+                <span class="stat-value">
+                    $${parseFloat(total).toFixed(2)}
+                    <span class="tile-toggle-icon">${getIcon('expand')}</span>
+                </span>
                 <div class="stat-breakdown">
                     ${periodBreakdown.map(s => {
                         const iconPath = getStoreIcon(s.store_name);
@@ -312,6 +314,19 @@ function renderStats() {
 
     container.innerHTML = html;
 }
+
+/**
+ * Toggles expanded state for stat tiles on mobile.
+ */
+function toggleStatTile(el) {
+    // Only toggle if we are in mobile view (detected by presence of toggle icon visibility)
+    const icon = el.querySelector('.tile-toggle-icon');
+    if (icon && getComputedStyle(icon).display !== 'none') {
+        el.classList.toggle('expanded');
+    }
+}
+
+window.toggleStatTile = toggleStatTile;
 
 function renderReceipts(append = false, itemsToAppend = null) {
     const tbody = document.getElementById('receiptsTableBody');
@@ -414,7 +429,6 @@ async function handleUpload(e) {
         if (result.success) {
             showToast(result.message, 'success');
             
-            // Success-only cleanup
             if (form) form.reset();
             const fileName = document.getElementById('fileName');
             if (fileName) fileName.style.display = 'none';
