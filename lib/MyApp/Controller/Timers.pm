@@ -76,16 +76,15 @@ sub api_status {
 # Parameters:
 #   timer_id : Unique timer ID
 # Returns:
-#   JSON object { success => 1/0, message => "..." }
+#   JSON response
 sub start_timer {
     my $c = shift;
     
-    my $json = $c->req->json || {};
-    my $timer_id = $json->{timer_id};
+    my $timer_id = $c->param('timer_id');
     my $user_id = $c->current_user_id;
     
     unless ($timer_id && $timer_id =~ /^\d+$/) {
-        return $c->render(json => { success => 0, message => 'Invalid timer ID' });
+        return $c->render(json => { success => 0, error => 'Invalid timer ID' });
     }
     
     my $success = $c->db->start_timer($timer_id, $user_id);
@@ -93,7 +92,7 @@ sub start_timer {
     if ($success) {
         $c->render(json => { success => 1, message => 'Timer started' });
     } else {
-        $c->render(json => { success => 0, message => 'Cannot start timer (expired or paused)' });
+        $c->render(json => { success => 0, error => 'Cannot start timer (expired or paused)' });
     }
 }
 
@@ -102,16 +101,15 @@ sub start_timer {
 # Parameters:
 #   timer_id : Unique timer ID
 # Returns:
-#   JSON object { success => 1/0, message => "..." }
+#   JSON response
 sub stop_timer {
     my $c = shift;
     
-    my $json = $c->req->json || {};
-    my $timer_id = $json->{timer_id};
+    my $timer_id = $c->param('timer_id');
     my $user_id = $c->current_user_id;
     
     unless ($timer_id && $timer_id =~ /^\d+$/) {
-        return $c->render(json => { success => 0, message => 'Invalid timer ID' });
+        return $c->render(json => { success => 0, error => 'Invalid timer ID' });
     }
     
     my $success = $c->db->stop_timer($timer_id, $user_id);
@@ -119,7 +117,7 @@ sub stop_timer {
     if ($success) {
         $c->render(json => { success => 1, message => 'Timer stopped' });
     } else {
-        $c->render(json => { success => 0, message => 'Failed to stop timer' });
+        $c->render(json => { success => 0, error => 'Failed to stop timer' });
     }
 }
 
@@ -128,16 +126,15 @@ sub stop_timer {
 # Parameters:
 #   timer_id : Unique timer ID
 # Returns:
-#   JSON object { success => 1/0, paused => 1/0, message => "..." }
+#   JSON response
 sub toggle_pause {
     my $c = shift;
     
-    my $json = $c->req->json || {};
-    my $timer_id = $json->{timer_id};
+    my $timer_id = $c->param('timer_id');
     my $user_id = $c->current_user_id;
     
     unless ($timer_id && $timer_id =~ /^\d+$/) {
-        return $c->render(json => { success => 0, message => 'Invalid timer ID' });
+        return $c->render(json => { success => 0, error => 'Invalid timer ID' });
     }
     
     my $success = $c->db->toggle_pause($timer_id, $user_id);
@@ -148,11 +145,11 @@ sub toggle_pause {
         my ($timer) = grep { $_->{id} == $timer_id } @$timers;
         
         my $paused = $timer ? $timer->{is_paused} : 0;
-        my $message = $paused ? 'Timer paused' : 'Timer unpaused';
+        my $message = $paused ? 'Timer paused' : 'Timer resumed';
         
         $c->render(json => { success => 1, paused => $paused, message => $message });
     } else {
-        $c->render(json => { success => 0, message => 'Failed to toggle pause' });
+        $c->render(json => { success => 0, error => 'Failed to toggle pause' });
     }
 }
 
@@ -189,12 +186,10 @@ sub create {
     
     if (my $error = $@) {
         $c->app->log->error("Failed to create timer: $error");
-        $c->flash(error => "Error creating timer: $error");
-        return $c->redirect_to('/timers/manage');
+        return $c->render(json => { success => 0, error => "Error creating timer: $error" });
     }
     
-    $c->flash(message => "Timer '$name' created successfully");
-    $c->redirect_to('/timers/manage');
+    return $c->render(json => { success => 1, message => "Timer '$name' created successfully" });
 }
 
 # Update an existing timer (Admin only).
@@ -206,7 +201,7 @@ sub create {
 #   weekday_minutes  : New weekday limit
 #   weekend_minutes  : New weekend limit
 # Returns:
-#   Redirects to manage page on success, renders error on failure
+#   JSON response
 sub update {
     my $c = shift;
     
@@ -218,19 +213,20 @@ sub update {
     
     # Validation
     unless ($timer_id && $timer_id =~ /^\d+$/) {
-        $c->flash(error => 'Invalid timer ID');
-        return $c->redirect_to('/timers/manage');
+        return $c->render(json => { success => 0, error => 'Invalid timer ID' });
     }
     
-    my $admin_id = $c->current_user_id;
-    my $success = $c->db->update_timer($timer_id, $name, $category, $weekday_minutes, $weekend_minutes, $admin_id);
+    eval {
+        my $admin_id = $c->current_user_id;
+        my $success = $c->db->update_timer($timer_id, $name, $category, $weekday_minutes, $weekend_minutes, $admin_id);
+        die "Failed to update timer" unless $success;
+    };
     
-    if ($success) {
-        $c->flash(message => "Timer updated successfully");
-    } else {
-        $c->flash(error => 'Failed to update timer');
+    if (my $error = $@) {
+        return $c->render(json => { success => 0, error => $error });
     }
-    $c->redirect_to('/timers/manage');
+
+    return $c->render(json => { success => 1, message => "Timer updated successfully" });
 }
 
 # Delete a timer (Admin only).
@@ -238,26 +234,27 @@ sub update {
 # Parameters:
 #   id : Timer ID (from route)
 # Returns:
-#   Redirects to manage page on success, renders error on failure
+#   JSON response
 sub delete {
     my $c = shift;
     
     my $timer_id = $c->param('id');
     
     unless ($timer_id && $timer_id =~ /^\d+$/) {
-        $c->flash(error => 'Invalid timer ID');
-        return $c->redirect_to('/timers/manage');
+        return $c->render(json => { success => 0, error => 'Invalid timer ID' });
     }
     
-    my $admin_id = $c->current_user_id;
-    my $success = $c->db->delete_timer($timer_id, $admin_id);
+    eval {
+        my $admin_id = $c->current_user_id;
+        my $success = $c->db->delete_timer($timer_id, $admin_id);
+        die "Failed to delete timer" unless $success;
+    };
     
-    if ($success) {
-        $c->flash(message => "Timer deleted successfully");
-    } else {
-        $c->flash(error => 'Failed to delete timer');
+    if (my $error = $@) {
+        return $c->render(json => { success => 0, error => $error });
     }
-    $c->redirect_to('/timers/manage');
+
+    return $c->render(json => { success => 1, message => "Timer deleted successfully" });
 }
 
 # Grant bonus time to a timer (Admin only).
@@ -266,16 +263,15 @@ sub delete {
 #   timer_id       : Unique timer ID
 #   bonus_minutes  : Additional minutes to grant
 # Returns:
-#   JSON object { success => 1/0, message => "..." }
+#   JSON response
 sub grant_bonus {
     my $c = shift;
     
-    my $json = $c->req->json || {};
-    my $timer_id = $json->{timer_id};
-    my $bonus_minutes = $json->{bonus_minutes};
+    my $timer_id = $c->param('timer_id');
+    my $bonus_minutes = $c->param('bonus_minutes');
     
     unless ($timer_id && $timer_id =~ /^\d+$/ && defined $bonus_minutes && $bonus_minutes =~ /^\d+$/) {
-        return $c->render(json => { success => 0, message => 'Invalid parameters' });
+        return $c->render(json => { success => 0, error => 'Invalid parameters' });
     }
     
     my $admin_id = $c->current_user_id;
@@ -284,7 +280,7 @@ sub grant_bonus {
     if ($success) {
         $c->render(json => { success => 1, message => "$bonus_minutes minutes added" });
     } else {
-        $c->render(json => { success => 0, message => 'Failed to grant bonus time' });
+        $c->render(json => { success => 0, error => 'Failed to grant bonus time' });
     }
 }
 
