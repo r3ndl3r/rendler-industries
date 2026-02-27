@@ -79,11 +79,20 @@ function setupGlobalModalClosing(modalClasses = ['modal-overlay', 'delete-modal-
  */
 async function apiPost(url, data = {}) {
     try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams(data)
-        });
+        const options = {
+            method: 'POST'
+        };
+
+        if (data instanceof FormData) {
+            options.body = data;
+            // Note: Do NOT set Content-Type header when sending FormData; 
+            // the browser will set it automatically with the correct boundary.
+        } else {
+            options.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+            options.body = new URLSearchParams(data);
+        }
+
+        const response = await fetch(url, options);
         
         const text = await response.text();
         let result;
