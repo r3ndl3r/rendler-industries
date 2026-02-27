@@ -92,31 +92,13 @@
     </div>
 
     <% if (stash('is_admin')) { %>
-        <!-- Delete Confirmation Modal -->
-        <div id="deleteConfirmModal" class="delete-modal-overlay">
-            <div class="delete-modal-content">
-                <div class="delete-modal-header">
-                    <h3>Confirm Deletion</h3>
-                    <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
-                </div>
-                <div class="delete-modal-body">
-                    <p>Are you sure you want to delete file "<strong id="deleteFileName"></strong>"?</p>
-                </div>
-                <div class="delete-modal-actions">
-                    <form id="deleteFileForm" method="POST" action="">
-                        <button type="submit" class="btn-danger-confirm">Delete File</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
         <div id="permissionModal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true">
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>Edit File Permissions</h3>
                     <span class="close-btn" onclick="document.getElementById('permissionModal').style.display='none'">&times;</span>
                 </div>
-                <form method="POST" action="/files/permissions" id="permissionForm">
+                <form id="permissionForm">
                     <input type="hidden" id="permissionFileId" name="id">
                     
                     <div class="checkbox-group">
