@@ -332,7 +332,6 @@ sub startup {
     $family->post('/swear/add')->to('swear#add_fine');
     $family->post('/swear/pay')->to('swear#pay_debt');
     $family->post('/swear/spend')->to('swear#spend');
-    $family->get('/swear/manage')->to('swear#manage');
     $family->post('/swear/member/add')->to('swear#add_member');
     $family->post('/swear/member/delete')->to('swear#delete_member');
     

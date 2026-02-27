@@ -51,8 +51,7 @@ sub index {
 #   amount      : Monetary value (Decimal, e.g., 1.50)
 #   reason      : Context for the fine
 # Returns:
-#   Redirects to dashboard on success
-#   Renders error on validation failure
+#   JSON response
 sub add_fine {
     my $c = shift;
 
@@ -60,16 +59,12 @@ sub add_fine {
     my $amount = trim($c->param('amount') // '');
     my $reason = trim($c->param('reason') // '');
 
-    # Validate amount format (currency)
     unless ($name && $amount =~ /^\d+(\.\d{1,2})?$/) {
-        $c->flash(error => 'Invalid Name or Amount');
-        return $c->redirect_to('/swear');
+        return $c->render(json => { success => 0, error => 'Invalid Name or Amount' });
     }
 
-    # Persist fine to ledger (status: Unpaid)
     $c->db->add_swear($name, $amount, $reason);
-    $c->flash(message => "Fine added: $name (\$$amount)");
-    $c->redirect_to('/swear');
+    return $c->render(json => { success => 1, message => "Fine added for $name (\$$amount)" });
 }
 
 # Records a payment/deposit made by a user.
@@ -78,7 +73,7 @@ sub add_fine {
 #   perpetrator : Name of the user clearing their debt
 #   amount      : Amount deposited
 # Returns:
-#   Redirects to dashboard
+#   JSON response
 sub pay_debt {
     my $c = shift;
     
@@ -86,13 +81,11 @@ sub pay_debt {
     my $amount = trim($c->param('amount') // '');
 
     if ($name && $amount =~ /^\d+(\.\d{1,2})?$/) {
-        # Record the explicit payment amount
         $c->db->mark_user_paid($name, $amount);
-        $c->flash(message => "Payment recorded: $name (\$$amount)");
+        return $c->render(json => { success => 1, message => "Payment recorded for $name (\$$amount)" });
     } else {
-        $c->flash(error => 'Invalid payment details');
+        return $c->render(json => { success => 0, error => 'Invalid payment details' });
     }
-    $c->redirect_to('/swear');
 }
 
 # Records a withdrawal from the jar balance.
@@ -101,33 +94,19 @@ sub pay_debt {
 #   amount : Monetary value to withdraw
 #   reason : Description of expenditure
 # Returns:
-#   Redirects to dashboard
+#   JSON response
 sub spend {
     my $c = shift;
     
     my $amount = trim($c->param('amount') // '');
     my $reason = trim($c->param('reason') // '');
 
-    # Validate amount and process withdrawal
     if ($amount =~ /^\d+(\.\d{1,2})?$/) {
         $c->db->withdraw_from_jar($amount, $reason);
-        $c->flash(message => "Spent \$$amount from jar");
+        return $c->render(json => { success => 1, message => "Spent \$$amount from jar" });
     } else {
-        $c->flash(error => 'Invalid amount');
+        return $c->render(json => { success => 0, error => 'Invalid amount' });
     }
-    $c->redirect_to('/swear');
-}
-
-# Renders the family member management interface.
-# Route: GET /swear/manage
-# Parameters: None
-# Returns:
-#   Rendered HTML template 'swear/manage' with current roster
-sub manage {
-    my $c = shift;
-    
-    my $members = $c->db->get_family_members();
-    $c->render('swear/manage', members => $members);
 }
 
 # Registers a new family member to the roster.
@@ -136,26 +115,24 @@ sub manage {
 #   name         : Display name
 #   default_fine : Default fine amount (defaults to 2.00)
 # Returns:
-#   Redirects to management page
+#   JSON response
 sub add_member {
     my $c = shift;
     
     my $name = trim($c->param('name') // '');
     my $def  = trim($c->param('default_fine') // '2.00');
     
-    # Validate currency format before insertion
     if ($name && $def =~ /^\d+(\.\d{1,2})?$/) {
         eval { 
             $c->db->add_family_member($name, $def);
-            $c->flash(message => "Member '$name' added successfully");
         };
         if ($@) {
-            $c->flash(error => "Failed to add member");
+            return $c->render(json => { success => 0, error => "Failed to add member" });
         }
+        return $c->render(json => { success => 1, message => "Member '$name' added successfully" });
     } else {
-        $c->flash(error => "Invalid member details");
+        return $c->render(json => { success => 0, error => "Invalid member details" });
     }
-    $c->redirect_to('/swear/manage');
 }
 
 # Removes a family member from the roster.
@@ -163,16 +140,14 @@ sub add_member {
 # Parameters:
 #   id : Unique Member ID
 # Returns:
-#   Redirects to management page
+#   JSON response
 sub delete_member {
     my $c = shift;
     
     my $id = $c->param('id');
     
-    # Perform soft delete via DB helper
     $c->db->remove_family_member($id);
-    $c->flash(message => "Member removed successfully");
-    $c->redirect_to('/swear/manage');
+    return $c->render(json => { success => 1, message => "Member removed successfully" });
 }
 
 1;
