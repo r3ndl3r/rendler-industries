@@ -7,6 +7,7 @@ use DateTime;
 use strict;
 use warnings;
 use utf8;
+use Mojo::JSON qw(to_json);
 
 # General Utility Plugin.
 # Features:
@@ -103,6 +104,21 @@ sub register {
         my $text = do { local $/; <$fh> };
         close $fh;
         return $text;
+    });
+
+    # --- Reminder Edit Data Serializer ---
+    $app->helper(reminder_json => sub {
+        my ($c, $r) = @_;
+        return Mojo::JSON::to_json({
+            id            => $r->{id},
+            title         => $r->{title},
+            description   => $r->{description} // '',
+            reminder_time => $r->{reminder_time},
+            days_of_week  => $r->{days_of_week} // '',
+            recipient_ids => $r->{recipient_ids} // '',
+            is_one_off    => $r->{is_one_off}    // 0,
+            is_active     => $r->{is_active}     // 1,
+        });
     });
 }
 
