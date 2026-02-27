@@ -3,9 +3,9 @@
 % layout 'default';
 % title icon('error') . ' Error';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/error.css">
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/error.css?<%= time %>">
+% end
 
 <div class="error-container">
     <div class="header-bar">

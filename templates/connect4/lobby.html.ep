@@ -1,11 +1,11 @@
-%# /templates/connect4/lobby.html.ep
+<%# /templates/connect4/lobby.html.ep %>
 
 % layout 'default';
 % title icon('connect4') . ' Connect 4 Lobby';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/lobby.css">
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/lobby.css?<%= time %>">
+% end
 
 <div class="lobby-container">
     <div class="lobby-header">

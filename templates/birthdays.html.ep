@@ -1,12 +1,12 @@
-%# /templates/birthdays.html.ep
+<%# /templates/birthdays.html.ep %>
 
 % layout 'default';
 % title icon('birthdays') . ' Birthdays';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/birthdays.css">
-    <script src="/js/birthdays.js"></script>
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/birthdays.css?<%= time %>">
+    <script src="/js/birthdays.js?<%= time %>"></script>
+% end
 
 <div class="birthday-container">
     <div class="header-bar">

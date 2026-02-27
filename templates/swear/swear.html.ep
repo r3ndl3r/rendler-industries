@@ -1,14 +1,14 @@
-%# /templates/swear/swear.html.ep
+<%# /templates/swear/swear.html.ep %>
+
 % layout 'default';
 % title icon('swear') . ' Swear Jar';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/swear.css">
-    <script src="/js/swear.js"></script>
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/swear.css?<%= time %>">
+    <script src="/js/swear.js?<%= time %>"></script>
+% end
 
 <div class="swear-container">
-
     <div class="harmony-jar-header">
         <a href="javascript:void(0)" onclick="openImageModal('https://rendler.org/files/serve/6')" class="harmony-jar-link">
             <img src="https://rendler.org/files/serve/6" alt="Family Harmony Jar Rules" class="harmony-jar-img">

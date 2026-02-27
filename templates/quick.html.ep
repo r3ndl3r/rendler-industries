@@ -1,11 +1,11 @@
-%# /templates/quick.html.ep
+<%# /templates/quick.html.ep %>
 
 % layout 'default';
 % title icon('quick') . ' Quick Access';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/quick.css">
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/quick.css?<%= time %>">
+% end
 
 <div class="quick-container">
     <div class="header-bar">

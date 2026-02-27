@@ -4,8 +4,8 @@
 <% title icon('link') . ' Go Links'; %>
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/go.css">
-    <script src="/js/go.js"></script>
+    <link rel="stylesheet" href="/css/go.css?<%= time %>">
+    <script src="/js/go.js?<%= time %>"></script>
 % end
 
 <div class="go-container">

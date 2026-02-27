@@ -1,12 +1,12 @@
-%# /templates/connect4/connect4.html.ep
+<%# /templates/connect4/connect4.html.ep %>
 
 % layout 'default';
 % title icon('connect4') . ' Connect 4 Online';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/connect4.css">
-    <script src="/js/connect4.js"></script>
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/connect4.css?<%= time %>">
+    <script src="/js/connect4.js?<%= time %>"></script>
+% end
 
 <div id="game-config" 
      class="game-wrapper"

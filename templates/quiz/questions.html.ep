@@ -1,12 +1,12 @@
-%# /templates/quiz/questions.html.ep
+<%# /templates/quiz/questions.html.ep %>
 
 % layout 'default';
 % title icon('kangaroo') . ' Australian Citizenship Quiz';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/quiz/questions.css">
-    <script src="/js/quiz/questions.js" defer></script>
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/quiz/questions.css?<%= time %>">
+    <script src="/js/quiz/questions.js?<%= time %>"></script>
+% end
 
 <div class="quiz-container">
     <div class="header-bar">

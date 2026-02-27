@@ -3,10 +3,10 @@
 % layout 'default';
 % title icon('register') . ' Register';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/auth.css">
-    <script src="/js/auth.js"></script>
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/auth.css?<%= time %>">
+    <script src="/js/auth.js?<%= time %>"></script>
+% end
 
 <div class="auth-container">
     <div class="header-bar">

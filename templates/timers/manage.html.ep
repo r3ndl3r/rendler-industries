@@ -1,15 +1,16 @@
 <%# /templates/timers/manage.html.ep %>
+
 % layout 'default';
 % title icon('timers') . ' Manage Timers';
 
-<% content_for 'head' => begin %>
-    <link rel="stylesheet" href="/css/timers/base.css">
-    <link rel="stylesheet" href="/css/timers/modals.css">
-    <link rel="stylesheet" href="/css/timers/responsive.css">
-    <link rel="stylesheet" href="/css/timers/manage.css">
-    <script src="/js/timers/utils.js"></script>
-    <script src="/js/timers/manage.js"></script>
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/timers/base.css?<%= time %>">
+    <link rel="stylesheet" href="/css/timers/modals.css?<%= time %>">
+    <link rel="stylesheet" href="/css/timers/responsive.css?<%= time %>">
+    <link rel="stylesheet" href="/css/timers/manage.css?<%= time %>">
+    <script src="/js/timers/utils.js?<%= time %>"></script>
+    <script src="/js/timers/manage.js?<%= time %>"></script>
+% end
 
 <div class="timers-manage-container">
     <div class="header-bar">

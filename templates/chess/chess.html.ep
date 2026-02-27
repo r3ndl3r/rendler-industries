@@ -3,12 +3,11 @@
 % layout 'default';
 % title icon('chess') . ' Chess - Game ' . $game->{id};
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/chess/chess.css">
-    <%# Using chess.js for complex move validation (castling, en passant, checkmate) on the frontend %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/chess/chess.css?<%= time %>">
+    <script src="/js/chess/chess.js?<%= time %>"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-    <script src="/js/chess/chess.js" defer></script>
-<% end %>
+% end
 
 <div class="chess-container">
     <div class="header-bar">

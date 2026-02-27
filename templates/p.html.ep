@@ -1,9 +1,9 @@
-%# /templates/p.html.ep
+<%# /templates/p.html.ep %>
 
 % layout 'default';
 % title icon('phonebook') . ' Phone Numbers';
 
-<% content_for head => begin %>
+% content_for 'head' => begin
     <style>
         body {
             background-color: #121212;
@@ -85,7 +85,7 @@
             }
         }
     </style>
-<% end %>
+% end
 
 <div class="phone-container">
     <h1>📱 Phone Numbers</h1>

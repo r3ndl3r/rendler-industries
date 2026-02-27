@@ -1,11 +1,12 @@
-%# templates/contact.html.ep
+<%# templates/contact.html.ep %>
+
 % layout 'default';
 % title icon('phonebook') . ' Contacts';
 
-<% content_for 'head' => begin %>
-    <link rel="stylesheet" href="/css/contact.css">
-    <script src="/js/contact.js"></script>
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/contact.css?<%= time %>">
+    <script src="/js/contact.js?<%= time %>"></script>
+% end
 
 <div class="contact-container">
     <div class="grid">

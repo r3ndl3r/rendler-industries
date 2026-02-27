@@ -1,12 +1,12 @@
-%# /templates/clipboard.html.ep
+<%# /templates/clipboard.html.ep %>
 
 % layout 'default';
 % title icon('clipboard') . ' Clipboard';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/clipboard.css">
-    <script src="/js/clipboard.js"></script>
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/clipboard.css?<%= time %>">
+    <script src="/js/clipboard.js?<%= time %>"></script>
+% end
 
 <div class="admin-container">
     <div class="header-bar">

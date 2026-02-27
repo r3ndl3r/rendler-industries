@@ -1,12 +1,12 @@
-%# /templates/uno/game.html.ep
+<%# /templates/uno/game.html.ep %>
 
 % layout 'default';
 % title icon('uno') . ' UNO Online';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/uno/game.css?v=<%= time %>">
-    <script src="/js/uno.js"></script>
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/uno/game.css?<%= time %>">
+    <script src="/js/uno.js?<%= time %>"></script>
+% end
 
 <% if ($game->{status} eq 'waiting') { %>
     <div class="waiting-room">
