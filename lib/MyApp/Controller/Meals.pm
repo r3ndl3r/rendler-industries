@@ -57,6 +57,22 @@ sub suggest {
     }
 
     my $result = $c->db->add_suggestion($plan_id, $meal_name, $uid);
+    
+    # Notify other family members immediately on successful suggestion
+    if ($result->{success}) {
+        my $user = $c->db->get_user_by_id($uid);
+        my $username = $user ? $user->{username} : 'Someone';
+        my $msg = "🍳 NEW MEAL SUGGESTION: $username suggested '$meal_name' for today!";
+        
+        my $all_users = $c->db->get_all_users();
+        foreach my $u (@$all_users) {
+            # Notify only family/admins with Discord IDs, excluding the suggester
+            if ($u->{discord_id} && $u->{id} != $uid && ($u->{is_family} || $u->{is_admin})) {
+                $c->send_discord_dm($u->{discord_id}, $msg);
+            }
+        }
+    }
+
     $c->render(json => $result);
 }
 
@@ -130,8 +146,11 @@ sub admin_lock {
     my $plan_id       = $c->param('plan_id');
     my $suggestion_id = $c->param('suggestion_id');
     my $blackout      = trim($c->param('blackout') // '');
+    my $unlock        = $c->param('unlock') // 0;
 
-    if ($blackout) {
+    if ($unlock) {
+        $c->db->unlock_day($plan_id);
+    } elsif ($blackout) {
         $c->db->set_blackout($plan_id, $blackout);
     } else {
         $c->db->lock_suggestion($plan_id, $suggestion_id);
