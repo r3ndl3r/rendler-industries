@@ -64,6 +64,9 @@ function renderReminders() {
     const container = document.getElementById('remindersListContainer');
     if (!container) return;
 
+    // Reset FlipClock state tracker to force fresh rendering into new DOM elements
+    FlipClockManager.prevStates = {};
+
     if (appState.reminders.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
