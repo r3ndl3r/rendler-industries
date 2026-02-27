@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeSuggestModal, closeBlackoutModal, closeEditSuggestionModal, closeDeleteSuggestionModal,
+        closeSuggestModal, closeBlackoutModal, closeEditSuggestionModal, closeConfirmModal,
         closeManageVaultModal, closeAddEditMealModal, closeManageDeleteModal
     ]);
     
@@ -22,12 +22,51 @@ document.addEventListener('DOMContentLoaded', () => {
     setupMealAutocomplete('manageMealName', 'manageMealDropdown');
 });
 
+/**
+ * Themed Confirmation Modal Helper
+ */
+function showConfirmModal(options) {
+    const modal = document.getElementById('confirmActionModal');
+    const title = document.getElementById('confirmModalTitle');
+    const icon = document.getElementById('confirmModalIcon');
+    const text = document.getElementById('confirmModalText');
+    const btn = document.getElementById('confirmModalBtn');
+
+    title.textContent = options.title || 'Confirm Action';
+    icon.innerHTML = getIcon(options.icon || 'delete');
+    text.innerHTML = options.message || 'Are you sure?';
+    
+    // Set button style and text
+    btn.textContent = options.confirmText || 'Confirm';
+    btn.className = options.danger ? 'btn-danger-confirm' : 'btn-primary';
+
+    // Clone button to remove previous listeners
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+
+    newBtn.addEventListener('click', () => {
+        options.onConfirm();
+        closeConfirmModal();
+    });
+
+    modal.style.display = 'flex';
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmActionModal').style.display = 'none';
+}
+
 let vaultData = [];
 
 /**
  * Core Data Fetching
  */
 async function loadPlan() {
+    const container = document.getElementById('meals-timeline');
+    if (container && !container.querySelector('.component-loading')) {
+        container.innerHTML = getLoadingHtml('Syncing meal plan...');
+    }
+
     try {
         const response = await fetch('/meals', {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -70,10 +109,13 @@ function renderVaultTable() {
             <td><strong>${escapeHtml(m.name)}</strong></td>
             <td class="col-actions">
                 <div class="action-buttons">
-                    <button class="btn-icon-edit" onclick="openAddEditMealModal(${m.id})">
+                    <button class="btn-icon-edit" onclick="openAddEditMealModal(${m.id})" title="Edit Name">
                         ${getIcon('edit')}
                     </button>
-                    <button class="btn-icon-delete" onclick="openManageDeleteModal(${m.id}, '${escapeHtml(m.name).replace(/'/g, "\\'")}')">
+                    <button class="btn-icon-delete ${m.is_used ? 'disabled' : ''}" 
+                            ${m.is_used ? 'disabled' : ''} 
+                            onclick="openManageDeleteModal(${m.id}, '${escapeHtml(m.name).replace(/'/g, "\\'")}')"
+                            title="${m.is_used ? 'Cannot delete: Meal is part of a plan' : 'Remove from Vault'}">
                         ${getIcon('delete')}
                     </button>
                 </div>
@@ -168,9 +210,9 @@ function renderDayColumn(day, index) {
     
     // Check if it's past 2PM for the first day (Today)
     let lockPill = '';
-    if (index === 0) {
+    if (index === 0 && !blackout && !day.final_suggestion_id) {
         const icon = isPast2PM ? getIcon('lock') : getIcon('clock');
-        const text = isPast2PM ? 'Locked' : 'Locked @ 2PM';
+        const text = isPast2PM ? 'Locked' : 'Will Lock @ 2PM';
         lockPill = `<span class="lock-info inline">${icon} ${text}</span>`;
     }
 
@@ -181,6 +223,12 @@ function renderDayColumn(day, index) {
             <div class="blackout-state">
                 <span class="blackout-icon">${getIcon('cancel')}</span>
                 <p>${escapeHtml(blackout)}</p>
+                ${isAdmin ? `
+                    <div class="day-actions mt-4">
+                        <button class="btn-secondary btn-small" onclick="adminUnlock(${day.id})">
+                            ${getIcon('lock')} Unlock Day
+                        </button>
+                    </div>` : ''}
             </div>`;
     } else if (isLocked && day.final_suggestion_id) {
         const winner = day.suggestions.find(s => s.id == day.final_suggestion_id);
@@ -189,6 +237,12 @@ function renderDayColumn(day, index) {
                 <div class="winner-badge">CHOSEN</div>
                 <span class="meal-name">${escapeHtml(winner.meal_name)}</span>
                 <small>Suggested by ${escapeHtml(winner.suggested_by_name)}</small>
+                ${isAdmin ? `
+                    <div class="mt-4">
+                        <button class="btn-secondary btn-small" onclick="adminUnlock(${day.id})">
+                            ${getIcon('lock')} Unlock Day
+                        </button>
+                    </div>` : ''}
             </div>` : '<p>Locked but no winner found.</p>';
     } else {
         // Current Leader banner (if votes exist)
@@ -274,26 +328,38 @@ function renderVoterPills(voters) {
 }
 
 /**
- * Autocomplete Component
+ * Smart Positioning for Autocomplete
  */
+function positionDropdown(input, dropdown) {
+    const rect = input.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownHeight = 200; // Matches CSS max-height
+
+    if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+        dropdown.classList.add('drop-up');
+    } else {
+        dropdown.classList.remove('drop-up');
+    }
+}
+
+// Update setupMealAutocomplete to use positioning
 function setupMealAutocomplete(inputId, dropdownId) {
     const input    = document.getElementById(inputId);
     const dropdown = document.getElementById(dropdownId);
 
-    input.addEventListener('input', () => {
+    const updateMatches = () => {
         const query   = input.value.toLowerCase().trim();
         const matches = query
             ? mealVault.filter(m => m.toLowerCase().includes(query))
             : mealVault;
         renderDropdown(input, dropdown, matches);
-    });
+        if (dropdown.style.display === 'block') {
+            positionDropdown(input, dropdown);
+        }
+    };
 
-    input.addEventListener('focus', () => {
-        const matches = input.value.trim()
-            ? mealVault.filter(m => m.toLowerCase().includes(input.value.toLowerCase()))
-            : mealVault;
-        renderDropdown(input, dropdown, matches);
-    });
+    input.addEventListener('input', updateMatches);
+    input.addEventListener('focus', updateMatches);
 
     document.addEventListener('click', (e) => {
         if (!input.contains(e.target) && !dropdown.contains(e.target)) {
@@ -303,17 +369,34 @@ function setupMealAutocomplete(inputId, dropdownId) {
 }
 
 function renderDropdown(input, dropdown, items) {
-    if (!items.length) {
+    const query = input.value.trim();
+    if (!items.length && !query) {
         dropdown.style.display = 'none';
         return;
     }
-    dropdown.innerHTML = items.map(m =>
+
+    let html = items.map(m =>
         `<div class="meal-option" onmousedown="selectMeal('${input.id}', '${m.replace(/'/g, "\\'")}')">
             ${m}
         </div>`
     ).join('');
+
+    // If typing something new, show a special 'New Meal' option
+    if (query && !items.find(m => m.toLowerCase() === query.toLowerCase())) {
+        html += `
+            <div class="meal-option meal-option-new" onmousedown="selectMeal('${input.id}', '${query.replace(/'/g, "\\'")}')">
+                <span class="new-badge">NEW</span> ${escapeHtml(query)}
+            </div>`;
+    }
+
+    if (!html) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    dropdown.innerHTML = html;
     dropdown.style.display = 'block';
-    // Ensure the emoji picker trigger stays on top if it exists
+    
     if (window.EmojiPicker && EmojiPicker.triggerBtn) {
         EmojiPicker.triggerBtn.style.zIndex = '1001';
     }
@@ -357,7 +440,14 @@ async function castVote(suggestionId) {
     const result = await apiPost('/meals/vote', { suggestion_id: suggestionId });
 
     if (result.success) {
-        showToast(result.voted ? 'Vote cast!' : 'Vote removed', 'success');
+        if (result.voted) {
+            const msg = result.removed_meal_name 
+                ? `Vote moved from ${result.removed_meal_name} to new meal!`
+                : 'Vote cast!';
+            showToast(msg, 'success');
+        } else {
+            showToast('Vote removed', 'success');
+        }
         // Small delay to let animation finish before sync
         setTimeout(loadPlan, 300);
     } else {
@@ -386,45 +476,79 @@ async function submitEditSuggestion() {
     }
 }
 
-async function confirmDeleteSuggestion() {
-    const suggestionId = document.getElementById('deleteSuggestionId').value;
-    const result = await apiPost('/meals/delete_suggestion', { suggestion_id: suggestionId });
-
-    if (result.success) {
-        showToast('Suggestion removed', 'success');
-        closeDeleteSuggestionModal();
-        loadPlan();
-    } else {
-        showToast(result.error || 'Failed to remove suggestion', 'error');
-    }
+async function deleteSuggestion(suggestionId, mealName) {
+    showConfirmModal({
+        title: 'Remove Suggestion',
+        message: `Are you sure you want to remove "<strong>${escapeHtml(mealName)}</strong>"?`,
+        danger: true,
+        confirmText: 'Remove',
+        onConfirm: async () => {
+            const result = await apiPost('/meals/delete_suggestion', { suggestion_id: suggestionId });
+            if (result.success) {
+                showToast('Suggestion removed', 'success');
+                loadPlan();
+            } else {
+                showToast(result.error || 'Failed to remove suggestion', 'error');
+            }
+        }
+    });
 }
 
 async function submitBlackout() {
     const planId = document.getElementById('blackoutPlanId').value;
     const reason = document.getElementById('blackoutReason').value;
 
-    const result = await apiPost('/meals/admin/lock', { plan_id: planId, blackout: reason });
-
-    if (result.success) {
-        showToast('Blackout set', 'success');
-        closeBlackoutModal();
-        loadPlan();
-    } else {
-        showToast(result.error || 'Failed to set blackout', 'error');
-    }
+    showConfirmModal({
+        title: 'Blackout Day',
+        icon: 'cancel',
+        message: `Are you sure you want to blackout this day for "<strong>${escapeHtml(reason)}</strong>"? This will disable all suggestions.`,
+        danger: true,
+        confirmText: 'Blackout',
+        onConfirm: async () => {
+            const result = await apiPost('/meals/admin/lock', { plan_id: planId, blackout: reason });
+            if (result.success) {
+                showToast('Blackout set', 'success');
+                closeBlackoutModal();
+                loadPlan();
+            } else {
+                showToast(result.error || 'Failed to set blackout', 'error');
+            }
+        }
+    });
 }
 
 async function adminLock(planId, suggestionId) {
-    if (!confirm('Manually lock in this meal as the winner?')) return;
+    showConfirmModal({
+        title: 'Lock Winner',
+        icon: 'check',
+        message: 'Manually lock in this meal as the winner? This will close voting for this day.',
+        onConfirm: async () => {
+            const result = await apiPost('/meals/admin/lock', { plan_id: planId, suggestion_id: suggestionId });
+            if (result.success) {
+                showToast('Meal locked in!', 'success');
+                loadPlan();
+            } else {
+                showToast(result.error || 'Failed to lock meal', 'error');
+            }
+        }
+    });
+}
 
-    const result = await apiPost('/meals/admin/lock', { plan_id: planId, suggestion_id: suggestionId });
-
-    if (result.success) {
-        showToast('Meal locked in!', 'success');
-        loadPlan();
-    } else {
-        showToast(result.error || 'Failed to lock meal', 'error');
-    }
+async function adminUnlock(planId) {
+    showConfirmModal({
+        title: 'Unlock Day',
+        icon: 'lock',
+        message: 'Unlock this day? This will clear any blackout or winner selection and allow new suggestions/votes.',
+        onConfirm: async () => {
+            const result = await apiPost('/meals/admin/lock', { plan_id: planId, unlock: 1 });
+            if (result.success) {
+                showToast('Day unlocked', 'success');
+                loadPlan();
+            } else {
+                showToast(result.error || 'Failed to unlock day', 'error');
+            }
+        }
+    });
 }
 
 /**
@@ -434,7 +558,9 @@ function openSuggestModal(planId, dateLabel) {
     document.getElementById('activePlanId').value = planId;
     document.getElementById('suggestDateLabel').textContent = dateLabel;
     document.getElementById('mealInput').value = '';
-    document.getElementById('mealDropdown').style.display = 'none';
+    const dropdown = document.getElementById('mealDropdown');
+    dropdown.style.display = 'none';
+    dropdown.classList.remove('drop-up'); // Reset position
     document.getElementById('suggestModal').style.display = 'flex';
 }
 
@@ -446,7 +572,9 @@ function closeSuggestModal() {
 function openEditSuggestionModal(suggestionId, mealName) {
     document.getElementById('editSuggestionId').value = suggestionId;
     document.getElementById('editMealInput').value = mealName;
-    document.getElementById('editMealDropdown').style.display = 'none';
+    const dropdown = document.getElementById('editMealDropdown');
+    dropdown.style.display = 'none';
+    dropdown.classList.remove('drop-up'); // Reset position
     document.getElementById('editSuggestionModal').style.display = 'flex';
     document.getElementById('editMealInput').focus();
 }
@@ -454,16 +582,6 @@ function openEditSuggestionModal(suggestionId, mealName) {
 function closeEditSuggestionModal() {
     document.getElementById('editSuggestionModal').style.display = 'none';
     document.getElementById('editMealDropdown').style.display = 'none';
-}
-
-function deleteSuggestion(suggestionId, mealName) {
-    document.getElementById('deleteSuggestionId').value = suggestionId;
-    document.getElementById('deleteSuggestionName').textContent = mealName;
-    document.getElementById('deleteConfirmModal').style.display = 'flex';
-}
-
-function closeDeleteSuggestionModal() {
-    document.getElementById('deleteConfirmModal').style.display = 'none';
 }
 
 function openBlackoutModal(planId) {
