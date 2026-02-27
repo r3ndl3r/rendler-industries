@@ -15,7 +15,7 @@
     </div>
 
     <div class="edit-container">
-        <form method="POST" action="/files" enctype="multipart/form-data" id="uploadForm" class="edit-form">
+        <form id="uploadForm" class="edit-form" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="file">Choose File (Max 1GB)</label>
                 <div class="file-drop-zone" id="dropZone">
