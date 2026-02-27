@@ -54,6 +54,29 @@
     font-family: inherit;
 }
 
+.action-btns form {
+    display: inline;
+}
+
+.modal-actions {
+    justify-content: center !important;
+}
+
+.user-discord-active {
+    color: #7289da !important;
+    opacity: 1 !important;
+}
+
+.user-discord-empty {
+    opacity: 0.3 !important;
+}
+
+.user-row-fade-out {
+    transition: all 0.5s ease;
+    opacity: 0;
+    transform: translateX(20px);
+}
+
 .text-small {
     font-size: 0.8125rem;
 }
@@ -106,6 +129,7 @@
     color: #e2e8f0;
     font-size: 1rem;
     font-family: inherit;
+    appearance: auto;
 }
 
 .form-group input:focus,
