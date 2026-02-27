@@ -191,11 +191,11 @@
             <span class="close-btn" onclick="closeEReceiptModal()">&times;</span>
         </div>
         <div class="modal-body ereceipt-body" id="eReceiptContent">
-            <div class="ereceipt-loading">
-                <div class="ereceipt-scan-line"></div>
-                <span class="ereceipt-loading-icon"><%= icon('ai') %></span>
-                <p class="ereceipt-loading-text">Digitizing with AI...</p>
-                <p class="ereceipt-loading-sub">Analyzing items and structured data</p>
+            <div class="component-loading">
+                <div class="loading-scan-line"></div>
+                <span class="loading-icon-pulse"><%= icon('ai') %></span>
+                <p class="loading-label">Digitizing with AI...</p>
+                <p class="loading-sub">Analyzing items and structured data</p>
             </div>
         </div>
         <div class="modal-actions ereceipt-actions">

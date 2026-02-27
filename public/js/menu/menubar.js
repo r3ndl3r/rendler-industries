@@ -147,7 +147,19 @@ async function loadMenu() {
  */
 function renderMenuItem(item, currentPath) {
     const hasChildren = item.children && item.children.length > 0;
-    const permIcon = item.perm_icon ? `<small class="perm-indicator">(${getIcon(item.perm_icon)})</small>` : '';
+    
+    // Map permission keys to human-readable alt text
+    const permAltMap = {
+        'perm_admin': 'Admin',
+        'perm_family': 'Family',
+        'perm_user': 'Users',
+        'perm_guest': 'Public'
+    };
+    
+    const altText = permAltMap[item.perm_icon] || '';
+    const permIcon = item.perm_icon 
+        ? `<small class="perm-indicator" title="${altText}">(${getIcon(item.perm_icon)})</small>` 
+        : '';
     
     if (hasChildren) {
         return `

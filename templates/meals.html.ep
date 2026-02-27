@@ -28,9 +28,9 @@
 
     <%# --- ROLLING TIMELINE (Populated by JS) --- %>
     <div id="meals-timeline" class="meals-timeline">
-        <div class="ereceipt-loading">
-            <span class="ereceipt-loading-icon"><%= icon('ai') %></span>
-            <p>Loading meal plan...</p>
+        <div class="component-loading">
+            <span class="loading-icon-pulse"><%= icon('ai') %></span>
+            <p class="loading-label">Loading meal plan...</p>
         </div>
     </div>
 </div>
@@ -82,19 +82,19 @@
     </div>
 </div>
 
-<%# --- MODAL: DELETE SUGGESTION CONFIRMATION --- %>
-<div id="deleteConfirmModal" class="delete-modal-overlay" style="display: none;">
+<%# --- MODAL: GENERIC CONFIRMATION --- %>
+<div id="confirmActionModal" class="delete-modal-overlay" style="display: none;">
     <div class="delete-modal-content">
         <div class="delete-modal-header">
-            <h3><%= icon('delete') %> Remove Suggestion</h3>
-            <span class="delete-modal-close" onclick="closeDeleteSuggestionModal()">&times;</span>
+            <h3><span id="confirmModalIcon"><%= icon('delete') %></span> <span id="confirmModalTitle">Confirm Action</span></h3>
+            <span class="delete-modal-close" onclick="closeConfirmModal()">&times;</span>
         </div>
         <div class="delete-modal-body">
-            <p>Are you sure you want to remove "<strong id="deleteSuggestionName"></strong>"?</p>
+            <p id="confirmModalText"></p>
         </div>
         <div class="delete-modal-actions" style="justify-content: center !important;">
-            <input type="hidden" id="deleteSuggestionId">
-            <button class="btn-danger-confirm" onclick="confirmDeleteSuggestion()"><%= icon('delete') %> Remove</button>
+            <button id="confirmModalBtn" class="btn-danger-confirm">Confirm</button>
+            <button class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
         </div>
     </div>
 </div>
@@ -107,6 +107,7 @@
             <span class="close-btn" onclick="closeBlackoutModal()">&times;</span>
         </div>
         <div class="modal-body">
+            <input type="hidden" id="blackoutPlanId">
             <div class="form-group">
                 <label>Reason</label>
                 <select id="blackoutReason" class="game-input">
@@ -116,6 +117,9 @@
                     <option value="Leftovers">🍲 Leftovers</option>
                 </select>
             </div>
+        </div>
+        <div class="modal-actions" style="justify-content: center !important;">
+            <button class="btn-primary" onclick="submitBlackout()"><%= icon('save') %> Save</button>
         </div>
     </div>
 </div>
