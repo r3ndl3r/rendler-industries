@@ -101,7 +101,7 @@ sub DB::get_suggestions_for_day {
 # Parameters:
 #   - suggestion_id: Target suggestion.
 #   - user_id: Voting user.
-# Returns: HashRef { success, voted (boolean state) }.
+# Returns: HashRef { success, voted (boolean state), removed_meal_name (optional) }.
 sub DB::cast_vote {
     my ($self, $suggestion_id, $user_id) = @_;
     $self->ensure_connection;
@@ -116,32 +116,60 @@ sub DB::cast_vote {
     );
     return { error => "Day is locked" } if $status eq 'locked';
 
-    my ($already_voted) = $self->{dbh}->selectrow_array(
-        "SELECT COUNT(*) FROM meal_votes WHERE suggestion_id = ? AND user_id = ?",
-        undef, $suggestion_id, $user_id
-    );
+    # Start Transaction for atomicity
+    $self->{dbh}->begin_work;
 
-    if ($already_voted) {
-        $self->{dbh}->do(
-            "DELETE FROM meal_votes WHERE suggestion_id = ? AND user_id = ?",
+    my $result;
+    eval {
+        my ($already_voted) = $self->{dbh}->selectrow_array(
+            "SELECT COUNT(*) FROM meal_votes WHERE suggestion_id = ? AND user_id = ?",
             undef, $suggestion_id, $user_id
         );
-        return { success => 1, voted => 0 };
+
+        if ($already_voted) {
+            $self->{dbh}->do(
+                "DELETE FROM meal_votes WHERE suggestion_id = ? AND user_id = ?",
+                undef, $suggestion_id, $user_id
+            );
+            $result = { success => 1, voted => 0 };
+        } else {
+            # Find previous vote for this day to return its name
+            my ($prev_meal_name) = $self->{dbh}->selectrow_array(
+                q{SELECT m.name FROM meal_votes v 
+                  JOIN meal_suggestions s ON v.suggestion_id = s.id 
+                  JOIN meals m ON s.meal_id = m.id 
+                  WHERE s.plan_id = ? AND v.user_id = ?},
+                undef, $plan_id, $user_id
+            );
+
+            my $delete_sql = q{
+                DELETE v FROM meal_votes v
+                JOIN meal_suggestions s ON v.suggestion_id = s.id
+                WHERE s.plan_id = ? AND v.user_id = ?
+            };
+            $self->{dbh}->do($delete_sql, undef, $plan_id, $user_id);
+
+            # INSERT IGNORE to handle race condition/button mash gracefully
+            $self->{dbh}->do(
+                "INSERT IGNORE INTO meal_votes (suggestion_id, user_id) VALUES (?, ?)",
+                undef, $suggestion_id, $user_id
+            );
+
+            $result = { 
+                success => 1, 
+                voted => 1, 
+                removed_meal_name => $prev_meal_name 
+            };
+        }
+        $self->{dbh}->commit;
+    };
+
+    if ($@) {
+        $self->{dbh}->rollback;
+        die "Vote transaction failed: $@";
     }
 
-    my $delete_sql = q{
-        DELETE v FROM meal_votes v
-        JOIN meal_suggestions s ON v.suggestion_id = s.id
-        WHERE s.plan_id = ? AND v.user_id = ?
-    };
-    $self->{dbh}->do($delete_sql, undef, $plan_id, $user_id);
-
-    $self->{dbh}->do(
-        "INSERT INTO meal_votes (suggestion_id, user_id) VALUES (?, ?)",
-        undef, $suggestion_id, $user_id
-    );
-
-    return { success => 1, voted => 1 };
+    return $result;
 }
 
 # Adds a meal suggestion for a plan day, upserting the meal into the vault.
@@ -153,6 +181,9 @@ sub DB::cast_vote {
 sub DB::add_suggestion {
     my ($self, $plan_id, $meal_name, $user_id) = @_;
     $self->ensure_connection;
+    
+    # Enforce Title Case
+    $meal_name = join ' ', map { ucfirst lc } split /\s+/, $meal_name;
 
     my ($status) = $self->{dbh}->selectrow_array(
         "SELECT status FROM meal_plan WHERE id = ?", undef, $plan_id
@@ -169,6 +200,12 @@ sub DB::add_suggestion {
             "INSERT INTO meal_suggestions (plan_id, meal_id, suggested_by) VALUES (?, ?, ?)",
             undef, $plan_id, $meal_id, $user_id
         );
+        
+        my ($new_suggestion_id) = $self->{dbh}->selectrow_array(
+            "SELECT id FROM meal_suggestions WHERE plan_id = ? AND meal_id = ? AND suggested_by = ?",
+            undef, $plan_id, $meal_id, $user_id
+        );
+        $self->cast_vote($new_suggestion_id, $user_id) if $new_suggestion_id;
     };
 
     if ($@) {
@@ -200,8 +237,20 @@ sub DB::set_blackout {
     my ($self, $plan_id, $reason) = @_;
     $self->ensure_connection;
 
-    my $sql = "UPDATE meal_plan SET status = 'locked', blackout_reason = ?, final_suggestion_id = NULL WHERE id = ?";
+    my $sql = "UPDATE meal_plan SET status = 'locked', blackout_reason = ?, final_suggestion_id = NULL, locked_at = NOW() WHERE id = ?";
     return $self->{dbh}->do($sql, undef, $reason, $plan_id);
+}
+
+# Admin: Resets a plan day to 'open' status and clears selections/blackouts.
+# Parameters:
+#   - plan_id: Target day ID.
+# Returns: Boolean DBI execution result.
+sub DB::unlock_day {
+    my ($self, $plan_id) = @_;
+    $self->ensure_connection;
+
+    my $sql = "UPDATE meal_plan SET status = 'open', final_suggestion_id = NULL, blackout_reason = NULL, locked_at = NULL WHERE id = ?";
+    return $self->{dbh}->do($sql, undef, $plan_id);
 }
 
 # Updates the meal name on an existing suggestion. Verified for ownership or admin.
@@ -214,6 +263,9 @@ sub DB::set_blackout {
 sub DB::update_suggestion {
     my ($self, $suggestion_id, $meal_name, $user_id, $is_admin) = @_;
     $self->ensure_connection;
+    
+    # Enforce Title Case
+    $meal_name = join ' ', map { ucfirst lc } split /\s+/, $meal_name;
 
     my ($plan_id, $suggester_id) = $self->{dbh}->selectrow_array(
         "SELECT plan_id, suggested_by FROM meal_suggestions WHERE id = ?",
@@ -283,11 +335,19 @@ sub DB::get_meal_vault {
 
 # Retrieves all meal vault records for the management interface.
 # Parameters: None
-# Returns: ArrayRef of HashRefs { id, name }.
+# Returns: ArrayRef of HashRefs { id, name, is_used }.
 sub DB::get_full_meal_vault {
     my $self = shift;
     $self->ensure_connection;
-    return $self->{dbh}->selectall_arrayref("SELECT id, name FROM meals ORDER BY name ASC", { Slice => {} });
+    
+    my $sql = q{
+        SELECT m.id, m.name,
+               (SELECT COUNT(*) FROM meal_suggestions s WHERE s.meal_id = m.id) as is_used
+        FROM meals m 
+        ORDER BY m.name ASC
+    };
+    
+    return $self->{dbh}->selectall_arrayref($sql, { Slice => {} });
 }
 
 # Admin: Directly inserts a new meal into the global vault.
@@ -297,6 +357,8 @@ sub DB::get_full_meal_vault {
 sub DB::add_meal_to_vault {
     my ($self, $name) = @_;
     $self->ensure_connection;
+    # Enforce Title Case
+    $name = join ' ', map { ucfirst lc } split /\s+/, $name;
     my $sql = "INSERT INTO meals (name) VALUES (?)";
     return $self->{dbh}->do($sql, undef, $name);
 }
@@ -309,6 +371,8 @@ sub DB::add_meal_to_vault {
 sub DB::update_meal_in_vault {
     my ($self, $id, $name) = @_;
     $self->ensure_connection;
+    # Enforce Title Case
+    $name = join ' ', map { ucfirst lc } split /\s+/, $name;
     my $sql = "UPDATE meals SET name = ? WHERE id = ?";
     return $self->{dbh}->do($sql, undef, $name, $id);
 }
@@ -320,8 +384,45 @@ sub DB::update_meal_in_vault {
 sub DB::delete_meal_from_vault {
     my ($self, $id) = @_;
     $self->ensure_connection;
+
+    # Check if meal is currently used in any suggestions
+    my ($count) = $self->{dbh}->selectrow_array(
+        "SELECT COUNT(*) FROM meal_suggestions WHERE meal_id = ?",
+        undef, $id
+    );
+    
+    return { success => 0, error => "Cannot delete: This meal is currently part of a meal plan." }
+        if $count > 0;
+
     my $sql = "DELETE FROM meals WHERE id = ?";
-    return $self->{dbh}->do($sql, undef, $id);
+    my $success = $self->{dbh}->do($sql, undef, $id);
+    return { success => $success ? 1 : 0 };
+}
+
+# Retrieves lists of user IDs who have suggested or voted for a specific plan day.
+# Parameters:
+#   - plan_id: Target day ID.
+# Returns: HashRef { suggested_ids => [], voted_ids => [] }.
+sub DB::get_plan_participation {
+    my ($self, $plan_id) = @_;
+    $self->ensure_connection;
+
+    my $suggested = $self->{dbh}->selectcol_arrayref(
+        "SELECT DISTINCT suggested_by FROM meal_suggestions WHERE plan_id = ?",
+        undef, $plan_id
+    ) // [];
+
+    my $voted = $self->{dbh}->selectcol_arrayref(
+        "SELECT DISTINCT v.user_id FROM meal_votes v 
+         JOIN meal_suggestions s ON v.suggestion_id = s.id 
+         WHERE s.plan_id = ?",
+        undef, $plan_id
+    ) // [];
+
+    return {
+        suggested_ids => $suggested,
+        voted_ids     => $voted
+    };
 }
 
 1;
