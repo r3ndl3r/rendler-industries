@@ -213,17 +213,30 @@ function renderDayColumn(day, index) {
                     </div>` : ''}
             </div>` : '<p>Locked but no winner found.</p>';
     } else {
-        // Current Leader banner (if votes exist)
-        const leader = day.suggestions[0];
+        // Tie detection for the leader banner
+        const maxVotes = day.suggestions.length ? day.suggestions[0].vote_count : 0;
+        const leaders  = day.suggestions.filter(s => s.vote_count === maxVotes && maxVotes > 0);
+        
         const now = new Date();
         const isPast2PM = now.getHours() >= 14;
-        const leaderLabel = (index === 0 && isPast2PM) ? "Today's Winner" : "Current Leader";
+        const isToday = index === 0;
 
-        const leaderBanner = (leader && leader.vote_count > 0) ? `
-            <div class="leader-banner">
-                <span class="leader-label">${getIcon('trophy')} ${leaderLabel}</span>
-                <span class="leader-meal">${escapeHtml(leader.meal_name)}</span>
-            </div>` : '';
+        let leaderBanner = '';
+        if (leaders.length > 1) {
+            const label = (isToday && isPast2PM) ? "Today's Tie" : "Current Tie";
+            leaderBanner = `
+                <div class="leader-banner is-tie">
+                    <span class="leader-label">${getIcon('vote')} ${label}</span>
+                    <span class="leader-meal">${leaders.map(l => escapeHtml(l.meal_name)).join(' / ')}</span>
+                </div>`;
+        } else if (leaders.length === 1) {
+            const label = (isToday && isPast2PM) ? "Today's Winner" : "Current Leader";
+            leaderBanner = `
+                <div class="leader-banner">
+                    <span class="leader-label">${getIcon('trophy')} ${label}</span>
+                    <span class="leader-meal">${escapeHtml(leaders[0].meal_name)}</span>
+                </div>`;
+        }
 
         // Suggestions List
         const suggestionsHtml = day.suggestions.map(s => `
@@ -291,7 +304,7 @@ function renderVoterPills(voters) {
     if (!voters || !voters.length) return '';
     return `
         <div class="voter-pills">
-            ${voters.map(v => `<span class="voter-badge">${escapeHtml(v)}</span>`).join('')}
+            ${voters.map(v => `<span class="voter-badge">${getIcon('vote')} ${escapeHtml(v)}</span>`).join('')}
         </div>`;
 }
 
