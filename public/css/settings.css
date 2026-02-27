@@ -359,3 +359,71 @@
 
     .settings-fields .form-group.full-width { grid-column: 1; }
 }
+
+/* Gemini Model Display */
+.model-list-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.pill-badge {
+    background: rgba(144, 202, 249, 0.1);
+    border: 1px solid rgba(144, 202, 249, 0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.model-name-text {
+    font-size: 0.85rem;
+    color: #90caf9;
+}
+
+.btn-remove-model {
+    background: none;
+    border: 0;
+    color: #ff5252;
+    cursor: pointer;
+    padding: 0;
+    font-weight: bold;
+}
+
+.settings-separator {
+    border: 0;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin: 20px 0;
+}
+
+.form-inline {
+    display: inline;
+}
+
+.nowrap {
+    white-space: nowrap;
+}
+
+.mt-15 {
+    margin-top: 15px;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.gap-10 {
+    gap: 10px;
+}
+
+.w-100 {
+    width: 100%;
+}
+
+.gemini-select {
+    background: #0f172a;
+    border: 1px solid #334155;
+    color: white;
+}
