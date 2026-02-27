@@ -43,6 +43,7 @@ sub index {
 # Returns: JSON object { logs, registry, members }
 sub get_data {
     my $c = shift;
+
     my $logs     = $c->db->get_medication_logs_by_user();
     my $registry = $c->db->get_registry_with_stats();
     my $members  = $c->db->get_medication_members();
@@ -109,17 +110,21 @@ sub edit {
     }
 }
 
-# API: Reset Dose Time to Now - Quickly updates a previous dose time to the current second.
+# API: Reset Dose Time to Now or Custom - Updates a previous dose time.
 # Route: POST /medication/reset/:id
 # Parameters:
-#   - id: Unique entry ID.
+#   - id       : Unique entry ID.
+#   - taken_at : (Optional) Full YYYY-MM-DD HH:MM timestamp.
 sub reset {
     my $c = shift;
     my $id = $c->param('id');
+    my $taken_at = trim($c->param('taken_at') // '');
     
+    $taken_at =~ s/T/ / if $taken_at;
+
     eval {
-        if ($c->db->reset_medication_log($id)) {
-            $c->render(json => { success => 1, message => "Time reset to now." });
+        if ($c->db->reset_medication_log($id, $taken_at || undef)) {
+            $c->render(json => { success => 1, message => "Dose time updated." });
         } else {
             $c->render(json => { success => 0, error => "Entry not found." });
         }
