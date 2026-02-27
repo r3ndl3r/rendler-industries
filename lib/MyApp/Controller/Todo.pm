@@ -140,19 +140,16 @@ sub edit {
 # Route: POST /todo/clear
 # Parameters: None
 # Returns:
-#   Redirects back to index page
+#   JSON response
 sub clear_completed {
     my $c = shift;
     my $user_id = $c->current_user_id;
     
     eval {
         $c->db->clear_completed_todos($user_id);
-        $c->flash(message => "Cleared all completed tasks.");
-        $c->redirect_to('/todo');
+        return $c->render(json => { success => 1, message => "Cleared all completed tasks." });
     };
-    if ($@) {
-        $c->render_error('Failed to clear tasks');
-    }
+    return $c->render(json => { success => 0, error => 'Failed to clear tasks' });
 }
 
 1;
