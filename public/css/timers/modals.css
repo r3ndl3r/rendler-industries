@@ -17,10 +17,6 @@
     justify-content: center;
 }
 
-.modal.active, .delete-modal-overlay.active {
-    display: flex !important;
-}
-
 .modal-content {
     /* Inherits global modal-content background (#1e293b) and border */
     max-width: 600px;

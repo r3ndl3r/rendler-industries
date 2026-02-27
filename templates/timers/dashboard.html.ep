@@ -60,7 +60,7 @@
                                 <% if ($timer->{remaining_seconds} > 0) { %>
                                     <%= sprintf('%02d:%02d:%02d', int($timer->{remaining_seconds} / 3600), int(($timer->{remaining_seconds} % 3600) / 60), $timer->{remaining_seconds} % 60) %>
                                 <% } elsif ($timer->{remaining_seconds} < 0) { %>
-                                    <span style="color: #ef4444;">-<%= sprintf('%02d:%02d', int(abs($timer->{remaining_seconds}) / 3600), int((abs($timer->{remaining_seconds}) % 3600) / 60)) %> OVER</span>
+                                    <span class="over-time">-<%= sprintf('%02d:%02d', int(abs($timer->{remaining_seconds}) / 3600), int((abs($timer->{remaining_seconds}) % 3600) / 60)) %> OVER</span>
                                 <% } else { %>
                                     EXPIRED
                                 <% } %>
