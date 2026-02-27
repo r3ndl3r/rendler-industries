@@ -125,12 +125,11 @@ sub upload {
     };
     if (my $err = $@) {
         $c->app->log->error("Failed to store file: $err");
-        return $c->render_error('Error uploading file', 500);
+        return $c->render(json => { success => 0, error => 'Error uploading file' });
     }
     
     $c->app->log->info("File uploaded: $original_filename ($file_size bytes) by $username");
-    $c->flash(message => "File '$original_filename' uploaded successfully");
-    return $c->redirect_to('/files');
+    return $c->render(json => { success => 1, message => "File '$original_filename' uploaded successfully" });
 }
 
 # Serves the file content to the user.
@@ -210,30 +209,34 @@ sub serve {
 # Parameters:
 #   id : Unique File ID
 # Returns:
-#   Redirects to file list on success
+#   JSON response
 sub delete_file {
     my $c = shift;
 
     # Validate ID
     my $id = $c->param('id');
     unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render_error('Invalid file ID');
+        return $c->render(json => { success => 0, error => 'Invalid file ID' });
     }
 
     # Verify existence
     my $file = $c->db->get_file_by_id($id);
     unless ($file) {
-        return $c->render_error('File not found', 404);
+        return $c->render(json => { success => 0, error => 'File not found' });
     }
 
     # Execute deletion
-    $c->db->delete_file_record($id);
+    eval {
+        $c->db->delete_file_record($id);
+    };
+    if ($@) {
+        return $c->render(json => { success => 0, error => 'Failed to delete file' });
+    }
 
     my $username = $c->session('user') // '';
     $c->app->log->info("File deleted: $file->{original_filename} (id=$id) by $username");
 
-    $c->flash(message => 'File deleted successfully');
-    return $c->redirect_to('/files');
+    return $c->render(json => { success => 1, message => 'File deleted successfully' });
 }
 
 # Updates access permissions for an existing file.
@@ -243,20 +246,20 @@ sub delete_file {
 #   admin_only    : Flag to restrict access (1/0)
 #   allowed_users : List of allowed usernames
 # Returns:
-#   Redirects to file list on success
+#   JSON response
 sub edit_permissions {
     my $c = shift;
 
     # Validate ID
     my $id = $c->param('id');
     unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render_error('Invalid file ID');
+        return $c->render(json => { success => 0, error => 'Invalid file ID' });
     }
 
     # Verify existence
     my $file = $c->db->get_file_by_id($id);
     unless ($file) {
-        return $c->render_error('File not found', 404);
+        return $c->render(json => { success => 0, error => 'File not found' });
     }
 
     # Process permissions
@@ -269,10 +272,14 @@ sub edit_permissions {
     my $allowed_users_str = @allowed_users ? join(',', @allowed_users) : undef;
 
     # Update record
-    $c->db->update_file_permissions($id, $admin_only, $allowed_users_str);
+    eval {
+        $c->db->update_file_permissions($id, $admin_only, $allowed_users_str);
+    };
+    if ($@) {
+        return $c->render(json => { success => 0, error => 'Failed to update permissions' });
+    }
 
-    $c->flash(message => 'Permissions updated successfully');
-    return $c->redirect_to('/files');
+    return $c->render(json => { success => 1, message => 'Permissions updated successfully' });
 }
 
 1;
