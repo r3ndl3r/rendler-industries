@@ -62,29 +62,10 @@
                     <input type="date" name="birth_date" id="field_date" class="game-input" required>
                 </div>
             </div>
-            <div class="modal-actions">
+            <div class="modal-actions" style="justify-content: center !important;">
                 <button type="submit" class="btn-primary" id="submitBtn">Save Birthday</button>
             </div>
         </form>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div id="deleteConfirmModal" class="delete-modal-overlay">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('delete') %> Confirm Deletion</h3>
-            <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <p>Are you sure you want to remove "<strong id="deleteName"></strong>"?</p>
-        </div>
-        <div class="delete-modal-actions">
-            <form id="deleteForm" onsubmit="submitDeleteForm(event)">
-                <input type="hidden" name="id" id="deleteId">
-                <button type="submit" class="btn-danger-confirm">Delete Birthday</button>
-            </form>
-        </div>
     </div>
 </div>
 <% } %>
