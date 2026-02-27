@@ -45,7 +45,7 @@ sub api_state {
         summary     => $c->db->get_spending_summary(),
         breakdown   => $c->db->get_store_spending_breakdown(3),
         is_admin    => $c->is_admin ? 1 : 0,
-        current_user => $c->session('user'),
+        current_user => $c->session('user') // '',
         success     => 1
     };
 
