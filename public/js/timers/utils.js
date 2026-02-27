@@ -18,38 +18,6 @@ const TimerUtils = {
         return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     },
 
-    // Make API call with error handling
-    apiCall: async function(url, method = 'GET', data = null) {
-        try {
-            const options = {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            };
-            
-            if (data && method !== 'GET') {
-                options.body = JSON.stringify(data);
-            }
-            
-            const response = await fetch(url, options);
-            return await response.json();
-        } catch (error) {
-            console.error('API call failed:', error);
-            return { success: false, message: 'Network error' };
-        }
-    },
-
-    // Show toast notification
-    showToast: function(message, type = 'info') {
-        if (typeof showToast === 'function') {
-            showToast(message, type);
-        } else {
-            console.warn('Global showToast not found, falling back to alert');
-            alert(message);
-        }
-    },
-
     // Calculate status color based on usage percentage
     getStatusColor: function(elapsed, limit) {
         if (limit === 0) return 'gray';

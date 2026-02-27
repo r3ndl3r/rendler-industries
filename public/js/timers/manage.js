@@ -3,6 +3,12 @@
 const TimerManagement = {
     init: function() {
         this.attachEventListeners();
+        
+        // Use global modal closing helper
+        setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
+            () => this.closeModals(),
+            closeConfirmModal
+        ]);
     },
 
     attachEventListeners: function() {
@@ -16,26 +22,32 @@ const TimerManagement = {
             userFilter.addEventListener('change', (e) => this.handleFilterChange(e));
         }
 
-                document.addEventListener('click', (e) => {
-                    if (e.target.closest('.btn-icon-edit')) {
-                        this.openEditModal(e.target.closest('.btn-icon-edit'));
-                    } else if (e.target.closest('.btn-icon-delete')) {
-                        this.handleDelete(e.target.closest('.btn-icon-delete'));
-                                } else if (e.target.closest('.btn-icon-bonus')) {
-                                    this.openBonusModal(e.target.closest('.btn-icon-bonus'));
-                                } else if (e.target.classList.contains('close-btn') || e.target.classList.contains('modal')) {
-                                    this.closeModals();
-                                }
-                            });
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-icon-edit')) {
+                this.openEditModal(e.target.closest('.btn-icon-edit'));
+            } else if (e.target.closest('.btn-icon-delete')) {
+                this.handleDelete(e.target.closest('.btn-icon-delete'));
+            } else if (e.target.closest('.btn-icon-bonus')) {
+                this.openBonusModal(e.target.closest('.btn-icon-bonus'));
+            }
+        });
+
+        const createForm = document.getElementById('create-timer-form');
+        if (createForm) {
+            createForm.addEventListener('submit', (e) => this.handleSubmit(e, '/timers/create'));
+        }
+
+        const editForm = document.getElementById('edit-timer-form');
+        if (editForm) {
+            editForm.addEventListener('submit', (e) => {
+                const id = document.getElementById('edit-timer-id').value;
+                this.handleSubmit(e, `/timers/update/${id}`);
+            });
+        }
 
         const bonusForm = document.getElementById('bonus-form');
         if (bonusForm) {
             bonusForm.addEventListener('submit', (e) => this.handleBonusSubmit(e));
-        }
-
-        const btnConfirmDelete = document.getElementById('btn-confirm-delete');
-        if (btnConfirmDelete) {
-            btnConfirmDelete.addEventListener('click', () => this.performDelete());
         }
     },
 
@@ -48,7 +60,10 @@ const TimerManagement = {
     openCreateModal: function() {
         const modal = document.getElementById('modal-create-timer');
         if (modal) {
-            modal.classList.add('active');
+            const form = document.getElementById('create-timer-form');
+            if (form) form.reset();
+            modal.style.display = 'flex';
+            document.body.classList.add('modal-open');
         }
     },
 
@@ -62,15 +77,14 @@ const TimerManagement = {
         const weekday = button.dataset.weekday;
         const weekend = button.dataset.weekend;
 
+        document.getElementById('edit-timer-id').value = timerId;
         document.getElementById('edit-name').value = name;
         document.getElementById('edit-category').value = category;
         document.getElementById('edit-weekday').value = weekday;
         document.getElementById('edit-weekend').value = weekend;
 
-        const form = document.getElementById('edit-timer-form');
-        form.action = `/timers/update/${timerId}`;
-
-        modal.classList.add('active');
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
     },
 
     openBonusModal: function(button) {
@@ -81,53 +95,81 @@ const TimerManagement = {
         document.getElementById('bonus-timer-id').value = timerId;
         document.getElementById('bonus-minutes').value = 15;
 
-        modal.classList.add('active');
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
     },
 
     handleDelete: function(button) {
         const timerId = button.dataset.timerId;
         const name = button.dataset.name;
 
-        document.getElementById('delete-timer-name').textContent = name;
-        this.timerIdToDelete = timerId;
-
-        const modal = document.getElementById('modal-delete-confirm');
-        if (modal) {
-            modal.classList.add('active');
-        }
+        showConfirmModal({
+            title: 'Delete Timer',
+            message: `Are you sure you want to delete timer "<strong>${name}</strong>"?<br><small style="color: #64748b; font-style: italic;">This action cannot be undone.</small>`,
+            danger: true,
+            confirmText: 'Delete Timer',
+            loadingText: 'Deleting...',
+            onConfirm: async () => {
+                const result = await apiPost(`/timers/delete/${timerId}`);
+                if (result && result.success) {
+                    const row = document.querySelector(`tr[data-timer-id="${timerId}"]`);
+                    if (row) {
+                        row.classList.add('row-fade-out');
+                        setTimeout(() => row.remove(), 500);
+                    } else {
+                        window.location.reload();
+                    }
+                }
+            }
+        });
     },
 
-    performDelete: function() {
-        if (!this.timerIdToDelete) return;
+    handleSubmit: async function(e, url) {
+        e.preventDefault();
+        const form = e.target;
+        const btn = form.querySelector('button[type="submit"]');
+        const originalHtml = btn.innerHTML;
 
-        const form = document.getElementById('delete-timer-form');
-        form.action = `/timers/delete/${this.timerIdToDelete}`;
-        form.submit();
+        btn.disabled = true;
+        btn.innerHTML = `${getIcon('waiting')} Processing...`;
+
+        const formData = new FormData(form);
+        const result = await apiPost(url, formData);
+
+        if (result && result.success) {
+            this.closeModals();
+            window.location.reload();
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
     },
 
     handleBonusSubmit: async function(e) {
         e.preventDefault();
+        const form = e.target;
+        const btn = form.querySelector('button[type="submit"]');
+        const originalHtml = btn.innerHTML;
 
-        const timerId = document.getElementById('bonus-timer-id').value;
-        const minutes = document.getElementById('bonus-minutes').value;
+        btn.disabled = true;
+        btn.innerHTML = `${getIcon('waiting')} Processing...`;
 
-        const result = await TimerUtils.apiCall('/timers/bonus', 'POST', {
-            timer_id: timerId,
-            bonus_minutes: minutes
-        });
+        const formData = new FormData(form);
+        const result = await apiPost('/timers/bonus', Object.fromEntries(formData));
 
-        if (result.success) {
-            TimerUtils.showToast(result.message, 'success');
+        if (result && result.success) {
             this.closeModals();
-            setTimeout(() => window.location.reload(), 1000);
+            window.location.reload();
         } else {
-            TimerUtils.showToast(result.message || 'Failed to grant bonus time', 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
         }
     },
 
     closeModals: function() {
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.classList.remove('active');
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.style.display = 'none';
         });
+        document.body.classList.remove('modal-open');
     }
 };
