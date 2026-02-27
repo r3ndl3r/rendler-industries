@@ -39,22 +39,12 @@ sub index {
 # Processes updates for a specific configuration section.
 # Route: POST /settings/update
 # Parameters:
-#   section            : The configuration block to update ('pushover', 'gotify', 'app_secret', 'unsplash', 'email', 'timers')
-#   pushover_token     : (If section=pushover) API Token
-#   pushover_user      : (If section=pushover) User Key
-#   gotify_token       : (If section=gotify) App Token
-#   app_secret         : (If section=app_secret) New session signature key (min 32 chars)
-#   unsplash_key       : (If section=unsplash) API Access Key
-#   gmail_email        : (If section=email) Gmail account address
-#   gmail_app_password : (If section=email) Gmail app-specific password
-#   gmail_from_name    : (If section=email) Display name for From header (optional)
-#   timer_reset_hour   : (If section=timers) Hour of day (0-23) when timers reset
-#   gemini_api_key     : (If section=unsplash) API Access Key
+#   section            : The configuration block to update ('pushover', 'gotify', 'app_secret', 'unsplash', 'email', 'timers', 'gemini', 'gemini_models')
 # Returns:
-#   Redirects to settings page with flash message (Success/Error)
+#   JSON response
 sub update {
     my $c = shift;
-    my $section = $c->param('section');
+    my $section = $c->param('section') // '';
     
     if ($section eq 'pushover') {
         my $token = trim($c->param('pushover_token') // '');
@@ -62,9 +52,9 @@ sub update {
         
         if ($token && $user) {
             $c->db->update_pushover($token, $user);
-            $c->flash(message => 'Pushover settings updated successfully');
+            return $c->render(json => { success => 1, message => 'Pushover settings updated successfully' });
         } else {
-            $c->flash(error => 'Pushover token and user are required');
+            return $c->render(json => { success => 0, error => 'Pushover token and user are required' });
         }
     }
     elsif ($section eq 'gotify') {
@@ -72,9 +62,9 @@ sub update {
         
         if ($token) {
             $c->db->update_gotify($token);
-            $c->flash(message => 'Gotify settings updated successfully');
+            return $c->render(json => { success => 1, message => 'Gotify settings updated successfully' });
         } else {
-            $c->flash(error => 'Gotify token is required');
+            return $c->render(json => { success => 0, error => 'Gotify token is required' });
         }
     }
     elsif ($section eq 'app_secret') {
@@ -82,9 +72,9 @@ sub update {
         
         if ($secret && length($secret) >= 32) {
             $c->db->update_app_secret($secret);
-            $c->flash(message => 'App secret updated successfully. Restart required.');
+            return $c->render(json => { success => 1, message => 'App secret updated successfully. Restart required.' });
         } else {
-            $c->flash(error => 'App secret must be at least 32 characters');
+            return $c->render(json => { success => 0, error => 'App secret must be at least 32 characters' });
         }
     }
     elsif ($section eq 'unsplash') {
@@ -92,11 +82,8 @@ sub update {
         
         $c->db->update_unsplash_key($api_key);
         
-        if ($api_key) {
-            $c->flash(message => 'Unsplash API key updated successfully');
-        } else {
-            $c->flash(message => 'Unsplash API key cleared (will use Picsum fallback)');
-        }
+        my $msg = $api_key ? 'Unsplash API key updated successfully' : 'Unsplash API key cleared (will use Picsum fallback)';
+        return $c->render(json => { success => 1, message => $msg });
     }
     elsif ($section eq 'email') {
         my $gmail_email = trim($c->param('gmail_email') // '');
@@ -106,22 +93,20 @@ sub update {
         
         if ($gmail_email && $gmail_password) {
             unless ($gmail_email =~ /^[a-zA-Z0-9._%+-]+\@gmail\.com$/) {
-                $c->flash(error => 'Invalid Gmail address (must be @gmail.com)');
-                return $c->redirect_to('/settings');
+                return $c->render(json => { success => 0, error => 'Invalid Gmail address (must be @gmail.com)' });
             }
             
             $c->db->update_email_settings($gmail_email, $gmail_password, $from_name);
-            $c->flash(message => 'Email settings updated successfully');
+            return $c->render(json => { success => 1, message => 'Email settings updated successfully' });
         } else {
-            $c->flash(error => 'Gmail email and app password are required');
+            return $c->render(json => { success => 0, error => 'Gmail email and app password are required' });
         }
     }
     elsif ($section eq 'timers') {
         my $reset_hour = $c->param('timer_reset_hour');
         
         unless (defined $reset_hour && $reset_hour =~ /^\d+$/ && $reset_hour >= 0 && $reset_hour <= 23) {
-            $c->flash(error => 'Invalid timer reset hour (must be 0-23)');
-            return $c->redirect_to('/settings');
+            return $c->render(json => { success => 0, error => 'Invalid timer reset hour (must be 0-23)' });
         }
         
         $c->db->set_timer_reset_hour($reset_hour);
@@ -131,7 +116,7 @@ sub update {
                          : $reset_hour == 12 ? '12:00 PM'
                          : sprintf("%d:00 PM", $reset_hour - 12);
         
-        $c->flash(message => "Timer reset time set to $display_hour (Australia/Melbourne timezone)");
+        return $c->render(json => { success => 1, message => "Timer reset time set to $display_hour (Australia/Melbourne timezone)" });
     } elsif ($section eq 'gemini') {
         my $api_key = trim($c->param('gemini_key') // '');
         $c->db->update_gemini_key($api_key);
@@ -139,7 +124,7 @@ sub update {
         my $active_model = $c->param('gemini_active_model');
         $c->db->update_gemini_active_model($active_model) if $active_model;
 
-        $c->flash(message => 'Gemini settings updated successfully');
+        return $c->render(json => { success => 1, message => 'Gemini settings updated successfully' });
     }
     elsif ($section eq 'gemini_models') {
         my $action = $c->param('action') // 'update';
@@ -150,18 +135,19 @@ sub update {
             if ($new_model && !grep { $_ eq $new_model } @$models) {
                 push @$models, $new_model;
                 $c->db->update_gemini_models($models);
-                $c->flash(message => "Added model: $new_model");
+                return $c->render(json => { success => 1, message => "Added model: $new_model" });
             }
+            return $c->render(json => { success => 0, error => "Invalid or duplicate model name" });
         }
         elsif ($action eq 'delete') {
             my $to_delete = $c->param('model_name');
             my @filtered = grep { $_ ne $to_delete } @$models;
             $c->db->update_gemini_models(\@filtered);
-            $c->flash(message => "Removed model: $to_delete");
+            return $c->render(json => { success => 1, message => "Removed model: $to_delete" });
         }
     }
 
-    return $c->redirect_to('/settings');
+    return $c->render(json => { success => 0, error => 'Unknown settings section' });
 }
 
 1;
