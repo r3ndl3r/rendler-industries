@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Use global modal closing helper
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeModal, closeDeleteModal
+        closeModal, closeConfirmModal
     ]);
 });
 
@@ -38,6 +38,11 @@ async function submitBirthdayForm(event) {
     const id = document.getElementById('field_id').value;
     const url = id ? `/birthdays/edit/${id}` : '/birthdays/add';
     
+    const btn = document.getElementById('submitBtn');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
     const result = await apiPost(url, {
         name: document.getElementById('field_name').value,
         birth_date: document.getElementById('field_date').value
@@ -46,18 +51,26 @@ async function submitBirthdayForm(event) {
     if (result) {
         closeModal();
         refreshBirthdays();
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     }
 }
 
-async function submitDeleteForm(event) {
-    event.preventDefault();
-    const id = document.getElementById('deleteId').value;
-    const result = await apiPost(`/birthdays/delete/${id}`);
-
-    if (result) {
-        closeDeleteModal();
-        refreshBirthdays();
-    }
+function confirmDelete(id, name) {
+    showConfirmModal({
+        title: 'Delete Birthday',
+        message: `Are you sure you want to remove "<strong>${name}</strong>" from the records?`,
+        danger: true,
+        confirmText: 'Delete',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
+            const result = await apiPost(`/birthdays/delete/${id}`);
+            if (result) {
+                refreshBirthdays();
+            }
+        }
+    });
 }
 
 /**
@@ -243,18 +256,5 @@ function openEditModal(btn) {
 
 function closeModal() {
     const modal = document.getElementById('birthdayModal');
-    if (modal) modal.style.display = 'none';
-}
-
-function confirmDelete(id, name) {
-    const modal = document.getElementById('deleteConfirmModal');
-    if (!modal) return;
-    document.getElementById('deleteId').value = id;
-    document.getElementById('deleteName').textContent = name;
-    modal.style.display = 'flex';
-}
-
-function closeDeleteModal() {
-    const modal = document.getElementById('deleteConfirmModal');
     if (modal) modal.style.display = 'none';
 }
