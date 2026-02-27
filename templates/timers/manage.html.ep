@@ -136,54 +136,56 @@
 </div>
 
 <!-- Create Timer Modal -->
-<div id="modal-create-timer" class="modal modal-overlay">
+<div id="modal-create-timer" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
             <h2><%= icon('add') %> Create New Timer</h2>
-            <span class="modal-close close-btn">&times;</span>
+            <span class="close-btn" onclick="TimerManagement.closeModals()">&times;</span>
         </div>
-        <form method="POST" action="/timers/create" class="timer-form">
-            <div class="form-group">
-                <label for="create-user-id">User *</label>
-                <select id="create-user-id" name="user_id" class="game-input" required>
-                    <option value="">Select User...</option>
-                    % for my $user (@$users) {
-                        % next if $user->{is_admin};
-                        <option value="<%= $user->{id} %>"><%= $user->{username} %></option>
-                    % }
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="create-name">Timer Name *</label>
-                <input type="text" id="create-name" name="name" class="game-input" required placeholder="e.g., iPad Usage">
-            </div>
-
-            <div class="form-group">
-                <label for="create-category">Category *</label>
-                <select id="create-category" name="category" class="game-input" required>
-                    <option value="">Select Category...</option>
-                    <option value="Computer">💻 Computer</option>
-                    <option value="Phone">📱 Phone</option>
-                    <option value="Tablet">📱 Tablet</option>
-                    <option value="Gaming Console">🎮 Gaming Console</option>
-                    <option value="TV">📺 TV</option>
-                </select>
-            </div>
-
-            <div class="form-row">
+        <form id="create-timer-form" class="timer-form">
+            <div class="modal-body">
                 <div class="form-group">
-                    <label for="create-weekday">Weekday Limit (minutes) *</label>
-                    <input type="number" id="create-weekday" name="weekday_minutes" class="game-input" min="0" required value="60">
+                    <label for="create-user-id">User *</label>
+                    <select id="create-user-id" name="user_id" class="game-input" required>
+                        <option value="">Select User...</option>
+                        % for my $user (@$users) {
+                            % next if $user->{is_admin};
+                            <option value="<%= $user->{id} %>"><%= $user->{username} %></option>
+                        % }
+                    </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="create-weekend">Weekend Limit (minutes) *</label>
-                    <input type="number" id="create-weekend" name="weekend_minutes" class="game-input" min="0" required value="120">
+                    <label for="create-name">Timer Name *</label>
+                    <input type="text" id="create-name" name="name" class="game-input" required placeholder="e.g., iPad Usage">
+                </div>
+
+                <div class="form-group">
+                    <label for="create-category">Category *</label>
+                    <select id="create-category" name="category" class="game-input" required>
+                        <option value="">Select Category...</option>
+                        <option value="Computer">💻 Computer</option>
+                        <option value="Phone">📱 Phone</option>
+                        <option value="Tablet">📱 Tablet</option>
+                        <option value="Gaming Console">🎮 Gaming Console</option>
+                        <option value="TV">📺 TV</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="create-weekday">Weekday Limit (minutes) *</label>
+                        <input type="number" id="create-weekday" name="weekday_minutes" class="game-input" min="0" required value="60">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="create-weekend">Weekend Limit (minutes) *</label>
+                        <input type="number" id="create-weekend" name="weekend_minutes" class="game-input" min="0" required value="120">
+                    </div>
                 </div>
             </div>
 
-            <div class="modal-actions">
+            <div class="modal-actions modal-actions-center">
                 <button type="submit" class="btn btn-primary"><%= icon('save') %> Create Timer</button>
             </div>
         </form>
@@ -191,42 +193,45 @@
 </div>
 
 <!-- Edit Timer Modal -->
-<div id="modal-edit-timer" class="modal modal-overlay">
+<div id="modal-edit-timer" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
             <h2><%= icon('edit') %> Edit Timer</h2>
-            <span class="modal-close close-btn">&times;</span>
+            <span class="close-btn" onclick="TimerManagement.closeModals()">&times;</span>
         </div>
-        <form method="POST" action="" id="edit-timer-form" class="timer-form">
-            <div class="form-group">
-                <label for="edit-name">Timer Name *</label>
-                <input type="text" id="edit-name" name="name" class="game-input" required>
-            </div>
-
-            <div class="form-group">
-                <label for="edit-category">Category *</label>
-                <select id="edit-category" name="category" class="game-input" required>
-                    <option value="Computer">💻 Computer</option>
-                    <option value="Phone">📱 Phone</option>
-                    <option value="Tablet">📱 Tablet</option>
-                    <option value="Gaming Console">🎮 Gaming Console</option>
-                    <option value="TV">📺 TV</option>
-                </select>
-            </div>
-
-            <div class="form-row">
+        <form id="edit-timer-form" class="timer-form">
+            <input type="hidden" id="edit-timer-id" name="id">
+            <div class="modal-body">
                 <div class="form-group">
-                    <label for="edit-weekday">Weekday Limit (minutes) *</label>
-                    <input type="number" id="edit-weekday" name="weekday_minutes" class="game-input" min="0" required>
+                    <label for="edit-name">Timer Name *</label>
+                    <input type="text" id="edit-name" name="name" class="game-input" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="edit-weekend">Weekend Limit (minutes) *</label>
-                    <input type="number" id="edit-weekend" name="weekend_minutes" class="game-input" min="0" required>
+                    <label for="edit-category">Category *</label>
+                    <select id="edit-category" name="category" class="game-input" required>
+                        <option value="Computer">💻 Computer</option>
+                        <option value="Phone">📱 Phone</option>
+                        <option value="Tablet">📱 Tablet</option>
+                        <option value="Gaming Console">🎮 Gaming Console</option>
+                        <option value="TV">📺 TV</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-weekday">Weekday Limit (minutes) *</label>
+                        <input type="number" id="edit-weekday" name="weekday_minutes" class="game-input" min="0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-weekend">Weekend Limit (minutes) *</label>
+                        <input type="number" id="edit-weekend" name="weekend_minutes" class="game-input" min="0" required>
+                    </div>
                 </div>
             </div>
 
-            <div class="modal-actions">
+            <div class="modal-actions modal-actions-center">
                 <button type="submit" class="btn btn-primary"><%= icon('save') %> Update Timer</button>
             </div>
         </form>
@@ -234,49 +239,29 @@
 </div>
 
 <!-- Bonus Time Modal -->
-<div id="modal-bonus-time" class="modal modal-overlay">
+<div id="modal-bonus-time" class="modal-overlay">
     <div class="modal-content modal-small">
         <div class="modal-header">
             <h2><%= icon('bonus') %> Grant Bonus Time</h2>
-            <span class="modal-close close-btn">&times;</span>
+            <span class="close-btn" onclick="TimerManagement.closeModals()">&times;</span>
         </div>
         <form id="bonus-form" class="timer-form">
-            <input type="hidden" id="bonus-timer-id" name="timer_id">
-            
-            <div class="form-group">
-                <label for="bonus-minutes">Additional Minutes *</label>
-                <input type="number" id="bonus-minutes" name="bonus_minutes" class="game-input" min="1" max="180" required value="15">
-                <small>Max 180 minutes (3 hours) per grant</small>
+            <div class="modal-body">
+                <input type="hidden" id="bonus-timer-id" name="timer_id">
+                
+                <div class="form-group">
+                    <label for="bonus-minutes">Additional Minutes *</label>
+                    <input type="number" id="bonus-minutes" name="bonus_minutes" class="game-input" min="1" max="180" required value="15">
+                    <small>Max 180 minutes (3 hours) per grant</small>
+                </div>
             </div>
 
-            <div class="modal-actions">
-                <button type="submit" class="btn btn-primary"><%= icon('save') %> Grant Time</button>
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" class="btn-primary"><%= icon('save') %> Grant Time</button>
             </div>
         </form>
     </div>
 </div>
-
-<!-- Delete Confirmation Modal -->
-<div id="modal-delete-confirm" class="modal delete-modal-overlay">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('warning') %> Confirm Deletion</h3>
-            <span class="modal-close close-btn">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <p>Are you sure you want to delete timer "<strong id="delete-timer-name"></strong>"?</p>
-            <p style="color: #64748b; font-size: 0.8rem; margin-top: 8px; font-style: italic;">This action cannot be undone.</p>
-        </div>
-        <div class="delete-modal-actions">
-            <button type="button" class="btn btn-secondary close-btn">Cancel</button>
-            <button type="button" class="btn btn-danger-confirm" id="btn-confirm-delete">Delete Timer</button>
-        </div>
-    </div>
-</div>
-
-<!-- Hidden delete form -->
-<form id="delete-timer-form" method="POST" action="" style="display: none;">
-</form>
 
 <script>
     TimerManagement.init();
