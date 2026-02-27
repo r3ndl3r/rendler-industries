@@ -48,13 +48,13 @@ function setupAllDayToggle() {
     
     allDayCheckbox.addEventListener('change', function() {
         if (this.checked) {
-            startTimeGroup.style.display = 'none';
-            endTimeGroup.style.display = 'none';
+            startTimeGroup.classList.add('hidden');
+            endTimeGroup.classList.add('hidden');
             document.getElementById('eventStartTime').value = '00:00';
             document.getElementById('eventEndTime').value = '23:59';
         } else {
-            startTimeGroup.style.display = 'block';
-            endTimeGroup.style.display = 'block';
+            startTimeGroup.classList.remove('hidden');
+            endTimeGroup.classList.remove('hidden');
         }
     });
 }
@@ -90,10 +90,10 @@ function openAddEventModal(dateParam) {
     const deleteBtn = document.getElementById('deleteEventBtn');
     const cloneBtn = document.getElementById('cloneEventBtn');
     
-    if (deleteBtn) deleteBtn.style.display = 'none';
-    if (cloneBtn) cloneBtn.style.display = 'none';
+    if (deleteBtn) deleteBtn.classList.add('hidden');
+    if (cloneBtn) cloneBtn.classList.add('hidden');
     
-    modal.style.display = 'block';
+    modal.classList.add('show');
 }
 
 function openEditModal(event) {
@@ -148,33 +148,33 @@ function openEditModal(event) {
 
     // Toggle time fields
     if (event.all_day == 1 || event.allday == 1) {
-        document.getElementById('startTimeGroup').style.display = 'none';
-        document.getElementById('endTimeGroup').style.display = 'none';
+        document.getElementById('startTimeGroup').classList.add('hidden');
+        document.getElementById('endTimeGroup').classList.add('hidden');
     } else {
         // Ensure they are visible for standard events
-        document.getElementById('startTimeGroup').style.display = 'block';
-        document.getElementById('endTimeGroup').style.display = 'block';
+        document.getElementById('startTimeGroup').classList.remove('hidden');
+        document.getElementById('endTimeGroup').classList.remove('hidden');
     }
 
     // Show delete and clone buttons
     const deleteBtn = document.getElementById('deleteEventBtn');
     const cloneBtn = document.getElementById('cloneEventBtn');
     if (deleteBtn) {
-        deleteBtn.style.display = 'inline-block';
+        deleteBtn.classList.remove('hidden');
         deleteBtn.onclick = () => deleteEventFromModal(event.id, event.title);
     }
     if (cloneBtn) {
-        cloneBtn.style.display = 'inline-block';
+        cloneBtn.classList.remove('hidden');
         cloneBtn.onclick = () => cloneEventFromModal(event);
     }
 
-    modal.style.display = 'block';
+    modal.classList.add('show');
 }
 
 function closeModal() {
     const modal = document.getElementById('eventModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('show');
         
         const form = document.getElementById('eventForm');
         if (form) {
@@ -189,7 +189,7 @@ function closeModal() {
 
 function closeEventDetailsModal() {
     const modal = document.getElementById('eventDetailsModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('show');
 }
 
 function handleEventSubmit(e) {
@@ -198,7 +198,7 @@ function handleEventSubmit(e) {
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = 'Saving...';
+    submitBtn.innerHTML = `${getIcon('waiting')} Saving...`;
     
     const formData = new FormData(e.target);
     const eventId = formData.get('id');
@@ -219,35 +219,15 @@ function handleEventSubmit(e) {
         return;
     }
 
-    const body = new URLSearchParams();
-    
-    if (eventId) {
-        body.append('id', eventId);
-    }
-    
-    body.append('title', formData.get('title'));
-    body.append('description', formData.get('description') || '');
-    body.append('start_date', `${startDate} ${startTime}`);
-    body.append('end_date', `${endDate} ${endTime}`);
-    body.append('all_day', allDay);
-    body.append('category', formData.get('category') || '');
-    body.append('color', formData.get('color'));
-    
-    document.querySelectorAll('.attendee-checkbox-input:checked').forEach(checkbox => {
-        body.append('attendees[]', checkbox.value);
-    });
+    // Prepare combined datetime for backend
+    formData.set('start_date', `${startDate} ${startTime}`);
+    formData.set('end_date', `${endDate} ${endTime}`);
+    formData.set('all_day', allDay);
     
     const url = eventId ? '/calendar/edit' : '/calendar/add';
     
-    fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            showToast('Event saved!', 'success');
+    apiPost(url, formData).then(result => {
+        if (result && result.success) {
             closeModal();
             if (typeof isManagementPage !== 'undefined' && isManagementPage) {
                 location.reload();
@@ -259,114 +239,45 @@ function handleEventSubmit(e) {
                 }
             }
         } else {
-            showToast('Error: ' + (result.error || 'Unknown error'), 'error');
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
         }
-    })
-    .catch(error => {
-        console.error('Error saving event:', error);
-        showToast('Failed to save event', 'error');
+    }).catch(error => {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
     });
 }
 
 function deleteEventFromModal(eventId, title) {
-    const modal = document.getElementById('deleteConfirmModal');
-    if (!modal) {
-        // Fallback if modal doesn't exist in template
-        if (!confirm(`Are you sure you want to delete "${title || 'this event'}"?`)) {
-            return;
-        }
-        performDelete(eventId);
-        return;
-    }
-    
-    // Set up the final delete button
-    const finalDeleteBtn = document.getElementById('finalDeleteBtn');
-    if (finalDeleteBtn) {
-        finalDeleteBtn.onclick = () => performDelete(eventId);
-    }
-    
-    // Set title if element exists
-    const titleEl = document.getElementById('deleteEventTitle');
-    if (titleEl) {
-        titleEl.textContent = title || 'this event';
-    }
-    
-    modal.style.display = 'flex';
-}
-
-function closeDeleteConfirmModal() {
-    const modal = document.getElementById('deleteConfirmModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
-
-function performDelete(eventId) {
-    const deleteBtn = document.getElementById('deleteEventBtn');
-    const finalDeleteBtn = document.getElementById('finalDeleteBtn');
-    
-    const originalText = deleteBtn ? deleteBtn.innerHTML : 'Delete';
-    if (deleteBtn) {
-        deleteBtn.disabled = true;
-        deleteBtn.innerHTML = 'Deleting...';
-    }
-    if (finalDeleteBtn) {
-        finalDeleteBtn.disabled = true;
-        finalDeleteBtn.innerHTML = 'Deleting...';
-    }
-    
-    fetch('/calendar/delete', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({ id: eventId })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            showToast('Event deleted', 'success');
-            closeDeleteConfirmModal();
-            closeModal();
-            if (typeof isManagementPage !== 'undefined' && isManagementPage) {
-                location.reload();
-            } else {
-                if (typeof loadEvents === 'function') {
-                    loadEvents();
-                } else {
+    showConfirmModal({
+        title: 'Delete Event',
+        message: `Are you sure you want to delete "<strong>${title || 'this event'}</strong>"?`,
+        danger: true,
+        confirmText: 'Delete',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
+            const result = await apiPost('/calendar/delete', { id: eventId });
+            if (result && result.success) {
+                closeModal();
+                if (typeof isManagementPage !== 'undefined' && isManagementPage) {
                     location.reload();
+                } else {
+                    if (typeof loadEvents === 'function') {
+                        loadEvents();
+                    } else {
+                        location.reload();
+                    }
                 }
             }
-        } else {
-            showToast('Error: ' + (result.error || 'Failed to delete event'), 'error');
-            if (deleteBtn) {
-                deleteBtn.disabled = false;
-                deleteBtn.innerHTML = originalText;
-            }
-            if (finalDeleteBtn) {
-                finalDeleteBtn.disabled = false;
-                finalDeleteBtn.innerHTML = 'Delete';
-            }
-            closeDeleteConfirmModal();
         }
-    })
-    .catch(error => {
-        console.error('Error deleting event:', error);
-        showToast('Failed to delete event', 'error');
-        if (deleteBtn) {
-            deleteBtn.disabled = false;
-            deleteBtn.innerHTML = originalText;
-        }
-        if (finalDeleteBtn) {
-            finalDeleteBtn.disabled = false;
-            finalDeleteBtn.innerHTML = 'Delete';
-        }
-        closeDeleteConfirmModal();
     });
+}
+
+window.closeDeleteConfirmModal = function() {
+    if (typeof window.closeConfirmModal === 'function') window.closeConfirmModal();
+};
+
+function performDelete(eventId) {
 }
 
 function cloneEventFromModal(event) {
@@ -423,20 +334,20 @@ function cloneEventFromModal(event) {
         }
 
         if (event.all_day == 1 || event.allday == 1) {
-            document.getElementById('startTimeGroup').style.display = 'none';
-            document.getElementById('endTimeGroup').style.display = 'none';
+            document.getElementById('startTimeGroup').classList.add('hidden');
+            document.getElementById('endTimeGroup').classList.add('hidden');
         } else {
             // Ensure visibility for cloned event if not all-day
-            document.getElementById('startTimeGroup').style.display = 'block';
-            document.getElementById('endTimeGroup').style.display = 'block';
+            document.getElementById('startTimeGroup').classList.remove('hidden');
+            document.getElementById('endTimeGroup').classList.remove('hidden');
         }
 
         const deleteBtn = document.getElementById('deleteEventBtn');
         const cloneBtn = document.getElementById('cloneEventBtn');
-        if (deleteBtn) deleteBtn.style.display = 'none';
-        if (cloneBtn) cloneBtn.style.display = 'none';
+        if (deleteBtn) deleteBtn.classList.add('hidden');
+        if (cloneBtn) cloneBtn.classList.add('hidden');
 
-        modal.style.display = 'block';
+        modal.classList.add('show');
     }, 100);
 }
 
@@ -444,16 +355,12 @@ function cloneEventFromModal(event) {
 document.addEventListener('click', function(e) {
     const eventModal = document.getElementById('eventModal');
     const detailsModal = document.getElementById('eventDetailsModal');
-    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
     
     if (e.target === eventModal) {
         closeModal();
     }
     if (e.target === detailsModal) {
         closeEventDetailsModal();
-    }
-    if (e.target === deleteConfirmModal) {
-        closeDeleteConfirmModal();
     }
 });
 
@@ -462,6 +369,5 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeModal();
         closeEventDetailsModal();
-        closeDeleteConfirmModal();
     }
 });

@@ -18,9 +18,9 @@ function filterManagementTable() {
     rows.forEach(row => {
         const rowCategory = row.dataset.category || '';
         if (!category || rowCategory === category) {
-            row.style.display = '';
+            row.classList.remove('hidden');
         } else {
-            row.style.display = 'none';
+            row.classList.add('hidden');
         }
     });
 }

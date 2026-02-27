@@ -93,7 +93,7 @@ function showEventDetails(eventId) {
     
     content.innerHTML = `
         <div class="event-details-header">
-            <h2 style="color: ${event.color}">${escapeHtml(event.title)}</h2>
+            <h2 style="--event-color: ${event.color}; color: var(--event-color);">${escapeHtml(event.title)}</h2>
         </div>
         <div class="event-details-body">
             <div class="event-detail-row">
@@ -129,7 +129,7 @@ function showEventDetails(eventId) {
         </div>
     `;
     
-    modal.style.display = 'block';
+    modal.classList.add('show');
 }
 
 function editEventFromDetails(eventId) {

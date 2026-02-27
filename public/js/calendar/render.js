@@ -20,13 +20,6 @@ function renderMonthView() {
     
     const calendarGrid = document.createElement('div');
     calendarGrid.className = 'calendar-grid';
-    
-    calendarGrid.style.display = 'grid';
-    calendarGrid.style.gridTemplateColumns = 'repeat(7, 1fr)';
-    calendarGrid.style.borderCollapse = 'collapse';
-    calendarGrid.style.width = '100%';
-    calendarGrid.style.height = '100%';
-    
     container.appendChild(calendarGrid);
     
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -58,17 +51,9 @@ function renderMonthView() {
         
         const dayCell = document.createElement('div');
         dayCell.className = 'calendar-day';
-        dayCell.style.height = 'calc((100vh - 240px) / 6)';
-        dayCell.style.minHeight = '100px';
-        dayCell.style.display = 'flex';
-        dayCell.style.flexDirection = 'column';
-        dayCell.style.overflow = 'hidden';
-        dayCell.style.padding = '0';
-        dayCell.style.border = '1px solid #ddd';
         
         // Add click listener for quick add, passing the specific date of this cell
         dayCell.setAttribute('onclick', `openAddEventModal('${dateStr}')`);
-        dayCell.style.cursor = 'pointer'; // Visual cue
         
         const isToday = date.getTime() === today.getTime();
         const isOtherMonth = date.getMonth() !== currentDate.getMonth();
@@ -85,9 +70,6 @@ function renderMonthView() {
         const dayNumber = document.createElement('div');
         dayNumber.className = 'day-number';
         dayNumber.textContent = date.getDate();
-        dayNumber.style.padding = '4px';
-        dayNumber.style.fontWeight = 'bold';
-        dayNumber.style.flexShrink = '0';
         dayCell.appendChild(dayNumber);
         
         const dayEvents = filteredEvents
@@ -105,14 +87,6 @@ function renderMonthView() {
         if (dayEvents.length > 0) {
             const eventsContainer = document.createElement('div');
             eventsContainer.className = 'day-events';
-            eventsContainer.style.flex = '1';
-            eventsContainer.style.minHeight = '0';
-            eventsContainer.style.overflowY = 'auto';
-            eventsContainer.style.overflowX = 'hidden';
-            eventsContainer.style.display = 'flex';
-            eventsContainer.style.flexDirection = 'column';
-            eventsContainer.style.gap = '2px';
-            eventsContainer.style.padding = '2px';
             
             const eventItems = dayEvents.map(event => {
                 const isAllDay = event.all_day || event.allday;
@@ -130,13 +104,12 @@ function renderMonthView() {
                     }).join('');
                 }
                 
-                // Added event.stopPropagation() to prevent triggering the cell's quick-add click
                 return `
                     <div class="event-item ${isAllDay ? 'all-day' : ''}" 
-                         style="background-color: ${event.color}; padding: 2px 4px; border-radius: 2px; color: white; cursor: pointer; font-size: 0.75em;"
+                         style="--event-color: ${event.color};"
                          onclick="event.stopPropagation(); showEventDetails(${event.id})">
                          <div class="event-item-content">
-                             <span class="event-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${escapeHtml(event.title)}${eventTime}</span>
+                             <span class="event-title">${escapeHtml(event.title)}${eventTime}</span>
                              ${attendeePills ? `<div class="event-attendees">${attendeePills}</div>` : ''}
                          </div>
                     </div>
@@ -158,12 +131,7 @@ function renderWeekView() {
     container.innerHTML = '';
     
     const calendarGrid = document.createElement('div');
-    calendarGrid.className = 'calendar-grid';
-    calendarGrid.style.display = 'grid';
-    calendarGrid.style.gridTemplateColumns = 'repeat(7, 1fr)';
-    calendarGrid.style.borderCollapse = 'collapse';
-    calendarGrid.style.width = '100%';
-    calendarGrid.style.height = '100%';
+    calendarGrid.className = 'calendar-grid calendar-view-week';
     container.appendChild(calendarGrid);
     
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -190,17 +158,9 @@ function renderWeekView() {
         
         const dayCell = document.createElement('div');
         dayCell.className = 'calendar-day';
-        dayCell.style.height = 'calc((100vh - 180px))';
-        dayCell.style.display = 'flex';
-        dayCell.style.flexDirection = 'column';
-        dayCell.style.overflow = 'hidden';
-        dayCell.style.padding = '0';
-        dayCell.style.border = '1px solid #ddd';
-        dayCell.style.backgroundColor = 'white';
         
         // Add click listener for quick add
         dayCell.setAttribute('onclick', `openAddEventModal('${dateStr}')`);
-        dayCell.style.cursor = 'pointer';
 
         if (date.getTime() === today.getTime()) {
             dayCell.classList.add('today');
@@ -209,10 +169,6 @@ function renderWeekView() {
         const dayNumber = document.createElement('div');
         dayNumber.className = 'day-number';
         dayNumber.textContent = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        dayNumber.style.padding = '8px';
-        dayNumber.style.fontWeight = 'bold';
-        dayNumber.style.borderBottom = '1px solid #eee';
-        dayNumber.style.backgroundColor = '#f9fafb';
         dayCell.appendChild(dayNumber);
         
         const dayEvents = filteredEvents.filter(event => {
@@ -227,25 +183,19 @@ function renderWeekView() {
         
         if (dayEvents.length > 0) {
             const eventsContainer = document.createElement('div');
-            eventsContainer.style.flex = '1';
-            eventsContainer.style.overflowY = 'auto';
-            eventsContainer.style.padding = '4px';
-            eventsContainer.style.display = 'flex';
-            eventsContainer.style.flexDirection = 'column';
-            eventsContainer.style.gap = '4px';
+            eventsContainer.className = 'day-events';
             
             const eventItems = dayEvents.map(event => {
                 const isAllDay = event.all_day || event.allday;
                 const startDate = event.start_date || event.startdate || '';
                 const eventTime = isAllDay ? 'All Day' : formatTime(startDate);
                 
-                // Add stopPropagation
                 return `
                     <div class="event-item" 
-                         style="background-color: ${event.color}; padding: 6px; border-radius: 4px; color: white; cursor: pointer; font-size: 0.85em;" 
+                         style="--event-color: ${event.color};" 
                          onclick="event.stopPropagation(); showEventDetails(${event.id})">
-                        <div style="font-weight: bold; margin-bottom: 2px;">${escapeHtml(event.title)}</div>
-                        <div style="font-size: 0.8em; opacity: 0.9;">${eventTime}</div>
+                        <div class="event-title">${escapeHtml(event.title)}</div>
+                        <div class="event-time">${eventTime}</div>
                     </div>
                 `;
             });
@@ -265,43 +215,26 @@ function renderDayView() {
     container.innerHTML = '';
     
     const dayContainer = document.createElement('div');
-    dayContainer.style.height = 'calc(100vh - 150px)';
-    dayContainer.style.overflowY = 'auto';
-    dayContainer.style.borderRadius = '8px';
-    dayContainer.style.border = '1px solid #ddd';
-    dayContainer.style.display = 'flex';
-    dayContainer.style.flexDirection = 'column';
-
+    dayContainer.className = 'calendar-day-view-container';
     container.appendChild(dayContainer);
 
     const dateStr = formatDate(currentDate);
 
     for (let hour = 0; hour < 24; hour++) {
         const hourRow = document.createElement('div');
-        hourRow.style.display = 'flex';
-        hourRow.style.borderBottom = '1px solid #f0f0f0';
-        hourRow.style.minHeight = '60px';
+        hourRow.className = 'calendar-hour-row';
 
         const timeLabel = document.createElement('div');
-        timeLabel.style.width = '80px';
-        timeLabel.style.padding = '10px';
-        timeLabel.style.textAlign = 'right';
-        timeLabel.style.color = '#666';
-        timeLabel.style.fontSize = '0.85em';
-        timeLabel.style.borderRight = '1px solid #f0f0f0';
-        timeLabel.style.fontWeight = 'bold';
+        timeLabel.className = 'calendar-hour-label';
         
         const displayHour = hour === 0 ? '12 AM' : (hour > 12 ? `${hour - 12} PM` : (hour === 12 ? '12 PM' : `${hour} AM`));
         timeLabel.textContent = displayHour;
         
         const eventsCell = document.createElement('div');
-        eventsCell.style.flex = '1';
-        eventsCell.style.padding = '4px';
-        eventsCell.style.position = 'relative';
+        eventsCell.className = 'calendar-hour-events';
         
         // Enable clicking on the empty time slot to add event
         eventsCell.setAttribute('onclick', `openAddEventModal('${dateStr}')`);
-        eventsCell.style.cursor = 'pointer';
 
         const hourEvents = filteredEvents.filter(event => {
             const eventStart = (event.start_date || event.startdate || '').split(' ')[0];
@@ -322,9 +255,10 @@ function renderDayView() {
         if (hourEvents.length > 0) {
             eventsCell.innerHTML = hourEvents.map(event => {
                 const isAllDay = event.all_day || event.allday;
-                // Add stopPropagation
+                
                 return `
-                    <div style="background-color: ${event.color}; color: white; padding: 4px 8px; border-radius: 4px; margin-bottom: 2px; cursor: pointer; font-size: 0.9em;"
+                    <div class="event-item" 
+                         style="--event-color: ${event.color};"
                          onclick="event.stopPropagation(); showEventDetails(${event.id})">
                         <strong>${escapeHtml(event.title)}</strong> 
                         ${isAllDay ? '(All Day)' : ''}
