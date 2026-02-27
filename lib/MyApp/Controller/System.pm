@@ -50,42 +50,8 @@ sub restart {
     }
 }
 
-# API Endpoint: Run automated system maintenance tasks.
-# Route: GET /api/maintenance
-# Parameters: None
-# Returns:
-#   JSON object summarizing task outcomes (Timers, Reminders).
-# Security: Restricted to Localhost (127.0.0.1 / ::1).
-sub maintenance {
-    my $c = shift;
-
-    # Security: Only allow from localhost
-    my $remote_addr = $c->tx->remote_address;
-    unless ($remote_addr eq '127.0.0.1' || $remote_addr eq '::1') {
-        return $c->render(json => { error => 'Access denied' }, status => 403);
-    }
-
-    my $now = DateTime->now(time_zone => 'Australia/Melbourne');
-    my $result = {
-        timestamp => $now->strftime('%Y-%m-%d %H:%M:%S'),
-        timers    => {},
-        reminders => {},
-    };
-
-    # 1. Run Timer Maintenance
-    $result->{timers} = $c->_run_timer_maintenance();
-
-    # 2. Run Reminders Maintenance
-    $result->{reminders} = $c->_run_reminder_maintenance($now);
-
-    # 3. Run Meals Maintenance (Meal Planner)
-    $result->{meals} = $c->_run_meals_maintenance($now);
-
-    $c->render(json => $result);
-}
-
 # Internal helper to handle meal planner automation (Lock-in at 2PM, Reminders at 8AM/12PM).
-sub _run_meals_maintenance {
+sub run_meals_maintenance {
     my ($c, $now) = @_;
     my $hour = $now->hour;
     my $minute = $now->minute;
@@ -97,24 +63,30 @@ sub _run_meals_maintenance {
 
     # 1. Reminders (8 AM and 12 PM)
     if ($minute == 0 && ($hour == 8 || $hour == 12)) {
-        # Check if today has any suggestions
-        my $today_plan = $c->db->get_active_plan(0)->[0]; # Today is index 0; user_id=0 (system context)
-        if ($today_plan && $today_plan->{status} eq 'open' && scalar @{$today_plan->{suggestions}} == 0) {
-            my $msg = "🍳 MEAL PLANNER: No suggestions have been made for today yet! Get your ideas in before 2PM lock-in.";
+        # Check if today's plan is still open
+        my $today_plan = $c->db->get_active_plan(0)->[0]; # user_id=0 (system context)
+        if ($today_plan && $today_plan->{status} eq 'open') {
+            my $participation = $c->db->get_plan_participation($today_plan->{id});
+            my %has_suggested = map { $_ => 1 } @{$participation->{suggested_ids}};
+            my %has_voted     = map { $_ => 1 } @{$participation->{voted_ids}};
             
             # Find all family members with Discord IDs
             my $users = $c->db->get_all_users();
             foreach my $u (@$users) {
+                # Target family/admins with Discord who have NOT suggested AND have NOT voted
                 if ($u->{discord_id} && ($u->{is_family} || $u->{is_admin})) {
-                    $c->send_discord_dm($u->{discord_id}, $msg);
+                    if (!$has_suggested{$u->{id}} && !$has_voted{$u->{id}}) {
+                        my $msg = "🍳 MEAL PLANNER REMINDER: You haven't added a suggestion or voted for today's meal yet! Lock-in is at 2PM.";
+                        $c->send_discord_dm($u->{discord_id}, $msg);
+                    }
                 }
             }
-            push @{$stats->{actions}}, "Sent $hour:00 reminders";
+            push @{$stats->{actions}}, "Sent $hour:00 targeted reminders";
         }
     }
 
-    # 2. Lock-in (2 PM and after)
-    if ($hour >= 14) {
+    # 2. Lock-in (Exactly 2 PM)
+    if ($hour == 14 && $minute == 0) {
         my $today_plan = $c->db->get_active_plan(0)->[0]; # user_id=0 (system context)
         if ($today_plan && $today_plan->{status} eq 'open') {
             my $suggestions = $today_plan->{suggestions};
@@ -166,7 +138,7 @@ sub _run_meals_maintenance {
 #   - now : DateTime object representing the current execution minute.
 # Returns:
 #   Stats HashRef { checked_minute, due_found, notified, errors }
-sub _run_reminder_maintenance {
+sub run_reminder_maintenance {
     my ($c, $now) = @_;
     
     my $stats = {
@@ -212,7 +184,7 @@ sub _run_reminder_maintenance {
 # Parameters: None
 # Returns:
 #   Stats HashRef { cleaned_sessions, updated_timers, warnings_sent, expiry_sent }
-sub _run_timer_maintenance {
+sub run_timer_maintenance {
     my $c = shift;
     
     my $stats = {
