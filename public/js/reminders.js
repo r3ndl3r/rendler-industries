@@ -125,7 +125,8 @@ function renderReminderCard(r) {
         <div class="glass-panel reminder-card ${isActive ? '' : 'paused'}"
              data-id="${r.id}"
              data-time="${reminderTime}"
-             data-days="${r.days_of_week || ''}">
+             data-days="${r.days_of_week || ''}"
+             data-one-off="${isOneOff ? '1' : '0'}">
             <div class="reminder-header">
                 <div class="title-stack">
                     ${isOneOff ? `<span class="one-off-badge">${getIcon('clock')} One-off</span>` : ''}
@@ -339,7 +340,7 @@ function getNextOccurrence(timeStr, daysStr) {
     for (let offset = 0; offset <= 7; offset++) {
         const checkDay = ((isoToday - 1 + offset) % 7) + 1;
         if (days.includes(checkDay)) {
-            if (offset === 0 && targetMins <= nowMins) continue; 
+            if (offset === 0 && targetMins < nowMins) continue; 
             const next = new Date(now);
             next.setDate(now.getDate() + offset);
             next.setHours(h, m, 0, 0);
@@ -372,6 +373,17 @@ function updateCountdowns() {
         if (diff <= 0) {
             el.innerHTML = '<div class="flip-card due-badge">DUE NOW</div>';
             delete FlipClockManager.prevStates[reminderId];
+            
+            // Auto-removal for one-off reminders
+            if (card.dataset.oneOff === '1' && !card.classList.contains('row-fade-out')) {
+                setTimeout(() => {
+                    card.classList.add('row-fade-out');
+                    setTimeout(() => {
+                        appState.reminders = appState.reminders.filter(r => r.id != reminderId);
+                        card.remove();
+                    }, 500); // Wait for fade animation
+                }, 2000); // Keep "DUE NOW" visible for 2s before removal
+            }
             return;
         }
 
