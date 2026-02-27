@@ -64,6 +64,15 @@ sub startup {
     # Configure Session Cookie parameters
     $self->sessions->cookie_name('session');
     $self->sessions->default_expiration(3600 * 24 * 30); # 30 Days
+
+    # Global Hook: Disable caching for all responses to bypass Cloudflare/Proxy staleness.
+    # This ensures absolute freshness for SPA state updates across all modules.
+    $self->hook(before_dispatch => sub {
+        my $c = shift;
+        $c->res->headers->cache_control('no-store, no-cache, must-revalidate, max-age=0');
+        $c->res->headers->header('Pragma' => 'no-cache');
+        $c->res->headers->header('Expires' => '0');
+    });
     
     # Helper: CSRF Token Generator
     # Parameters: None (Uses context)
