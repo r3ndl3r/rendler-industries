@@ -147,6 +147,9 @@ async function addItem() {
 }
 
 async function toggleItem(id) {
+    const itemEl = document.querySelector(`.shopping-item[data-id="${id}"]`);
+    if (itemEl) itemEl.classList.add('pending');
+
     const result = await apiPost(`/shopping/api/toggle/${id}`);
     if (result && result.success) {
         const item = shoppingItems.find(i => i.id == id);
@@ -154,6 +157,8 @@ async function toggleItem(id) {
             item.is_checked = !item.is_checked;
             renderShoppingList();
         }
+    } else if (itemEl) {
+        itemEl.classList.remove('pending');
     }
 }
 
@@ -175,14 +180,15 @@ function deleteItem(id, itemName) {
 }
 
 function editItem(id, currentName) {
-    const modal = document.getElementById('editModal');
     document.getElementById('editId').value = id;
     document.getElementById('editName').value = currentName;
-    modal.style.display = 'flex';
+    document.getElementById('editModal').classList.add('show');
     document.getElementById('editName').focus();
 }
 
-function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
+function closeEditModal() { 
+    document.getElementById('editModal').classList.remove('show'); 
+}
 
 async function submitEdit() {
     const id = document.getElementById('editId').value;
