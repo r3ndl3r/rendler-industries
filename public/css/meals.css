@@ -96,6 +96,15 @@
     gap: 0.4rem;
 }
 
+.leader-banner.is-tie {
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.15), rgba(71, 85, 105, 0.08));
+    border-color: rgba(148, 163, 184, 0.25);
+}
+
+.leader-banner.is-tie .leader-label {
+    color: #94a3b8;
+}
+
 .leader-label {
     font-size: 1rem;
     font-weight: 700;
