@@ -8,14 +8,34 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCountdowns();
     setInterval(updateCountdowns, 1000);
 
+    // Attach form handlers
+    const addForm = document.querySelector('#addReminderModal form');
+    if (addForm) {
+        addForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            submitAdd();
+        });
+    }
+
+    const editForm = document.getElementById('editReminderForm');
+    if (editForm) {
+        editForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            submitEdit();
+        });
+    }
+
     // Use global modal closing helper
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeAddModal, closeEditModal, closeDeleteModal
+        closeAddModal, closeEditModal, closeConfirmModal
     ]);
 });
 
 function openAddModal() {
-    document.getElementById('addReminderModal').style.display = 'flex';
+    const modal = document.getElementById('addReminderModal');
+    const form = modal.querySelector('form');
+    if (form) form.reset();
+    modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
 
@@ -24,10 +44,28 @@ function closeAddModal() {
     document.body.style.overflow = 'auto';
 }
 
+async function submitAdd() {
+    const form = document.querySelector('#addReminderModal form');
+    const btn = form.querySelector('button[type="submit"]');
+    const originalHtml = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Creating...`;
+
+    const formData = new FormData(form);
+    const result = await apiPost('/reminders/add', formData);
+
+    if (result && result.success) {
+        window.location.reload(); // Refresh to show new card
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
 function openEditModal(btn) {
     const reminder = JSON.parse(btn.dataset.reminder);
     const modal = document.getElementById('editReminderModal');
-    const form = document.getElementById('editReminderForm');
     
     document.querySelectorAll('#editReminderModal input[type="checkbox"]').forEach(cb => cb.checked = false);
 
@@ -39,8 +77,6 @@ function openEditModal(btn) {
     if (document.getElementById('editReminderOneOff')) {
         document.getElementById('editReminderOneOff').checked = (reminder.is_one_off == 1);
     }
-    
-    form.action = `/reminders/update/${reminder.id}`;
     
     if (reminder.days_of_week) {
         reminder.days_of_week.split(',').forEach(day => {
@@ -66,20 +102,50 @@ function closeEditModal() {
     document.body.style.overflow = 'auto';
 }
 
-function confirmDeleteReminder(id, title) {
-    const modal = document.getElementById('deleteConfirmModal');
-    const titleEl = document.getElementById('deleteReminderTitle');
-    const form = document.getElementById('deleteForm');
-    
-    titleEl.textContent = title;
-    form.action = `/reminders/delete/${id}`;
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+async function submitEdit() {
+    const form = document.getElementById('editReminderForm');
+    const id = document.getElementById('editReminderId').value;
+    const btn = form.querySelector('button[type="submit"]');
+    const originalHtml = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
+    const formData = new FormData(form);
+    const result = await apiPost(`/reminders/update/${id}`, formData);
+
+    if (result && result.success) {
+        window.location.reload();
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
 }
 
-function closeDeleteModal() {
-    document.getElementById('deleteConfirmModal').style.display = 'none';
-    document.body.style.overflow = 'auto';
+function confirmDeleteReminder(id, title) {
+    showConfirmModal({
+        title: 'Delete Reminder',
+        message: `Are you sure you want to delete "<strong>${title}</strong>"?`,
+        danger: true,
+        confirmText: 'Delete',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
+            const result = await apiPost(`/reminders/delete/${id}`);
+            if (result && result.success) {
+                const card = document.querySelector(`.reminder-card[data-id="${id}"]`);
+                if (card) {
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.9)';
+                    setTimeout(() => {
+                        card.remove();
+                        if (!document.querySelector('.reminder-card')) {
+                            window.location.reload();
+                        }
+                    }, 300);
+                }
+            }
+        }
+    });
 }
 
 async function toggleReminder(id, active, btn) {
