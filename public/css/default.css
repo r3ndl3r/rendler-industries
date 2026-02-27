@@ -53,6 +53,12 @@ body.modal-open {
     overflow: hidden !important;
 }
 
+.row-fade-out {
+    transition: all 0.5s ease;
+    opacity: 0;
+    transform: translateX(20px);
+}
+
 .form-group {
     margin-bottom: 1.5rem;
     display: flex;
@@ -364,6 +370,10 @@ body.modal-open {
     margin-top: 1.5rem;
     padding-top: 1rem;
     border-top: 1px solid #334155;
+}
+
+.modal-actions-center {
+    justify-content: center !important;
 }
 
 .delete-modal-close {
