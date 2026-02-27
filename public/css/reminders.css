@@ -372,8 +372,32 @@
     padding-top: 0.75rem;
 }
 
+.due-badge {
+    width: 100% !important;
+    min-width: 100px !important;
+    background: #ef4444 !important;
+    color: white !important;
+    font-size: 0.8rem !important;
+}
+
+.one-off-hint {
+    display: block; 
+    color: rgba(255,255,255,0.4); 
+    margin-top: 5px; 
+    font-style: italic; 
+    padding-left: 2rem;
+}
+
 .modal-actions, .delete-modal-actions {
     justify-content: center !important;
+}
+
+.modal-reminders {
+    max-width: 600px !important;
+}
+
+.form-group-time {
+    max-width: 200px !important;
 }
 
 @media (min-width: 769px) {
