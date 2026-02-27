@@ -144,6 +144,55 @@ function getLoadingHtml(text = 'Loading...', subtext = '', showScanner = false) 
 }
 
 /**
+ * Themed Confirmation Modal Helper (Global)
+ * @param {Object} options - { title, icon, message, danger, confirmText, loadingText, onConfirm }
+ */
+window.showConfirmModal = function(options) {
+    const modal = document.getElementById('globalConfirmActionModal');
+    const title = document.getElementById('globalConfirmModalTitle');
+    const icon = document.getElementById('globalConfirmModalIcon');
+    const text = document.getElementById('globalConfirmModalText');
+    const btn = document.getElementById('globalConfirmModalBtn');
+
+    if (!modal || !btn) return;
+
+    if (title) title.textContent = options.title || 'Confirm Action';
+    if (icon) icon.innerHTML = getIcon(options.icon || 'delete');
+    if (text) text.innerHTML = options.message || 'Are you sure?';
+    
+    btn.textContent = options.confirmText || 'Confirm';
+    btn.className = options.danger ? 'btn-danger-confirm' : 'btn-primary';
+    btn.disabled = false;
+
+    // Clone button to remove previous listeners
+    const newBtn = btn.cloneNode(true);
+    newBtn.disabled = false;
+    btn.parentNode.replaceChild(newBtn, btn);
+
+    newBtn.addEventListener('click', async () => {
+        const originalHtml = newBtn.innerHTML;
+        newBtn.disabled = true;
+        newBtn.innerHTML = `${getIcon('waiting')} ${options.loadingText || 'Processing...'}`;
+        try {
+            await options.onConfirm();
+            closeConfirmModal();
+        } catch (err) {
+            newBtn.disabled = false;
+            newBtn.innerHTML = originalHtml;
+            showToast('Action failed', 'error');
+        }
+    });
+    modal.style.display = 'flex';
+};
+
+window.closeConfirmModal = function() {
+    const modal = document.getElementById('globalConfirmActionModal');
+    const btn = document.getElementById('globalConfirmModalBtn');
+    if (modal) modal.style.display = 'none';
+    if (btn) btn.disabled = false;
+};
+
+/**
  * --- Global Flip Clock Engine ---
  */
 
