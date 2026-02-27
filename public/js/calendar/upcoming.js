@@ -43,8 +43,8 @@ function renderUpcomingEvents() {
                 }
                 
                 return `
-                    <div class="upcoming-event-item" onclick="showEventDetails(${event.id})">
-                        <div class="upcoming-event-color" style="background-color: ${event.color}"></div>
+                    <div class="upcoming-event-item" style="--event-color: ${event.color}" onclick="showEventDetails(${event.id})">
+                        <div class="upcoming-event-color"></div>
                         <div class="upcoming-event-details">
                             <div class="upcoming-event-title">${escapeHtml(event.title)}</div>
                             <div class="upcoming-event-datetime">${dateStr}</div>
