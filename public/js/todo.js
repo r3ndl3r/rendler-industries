@@ -1,54 +1,127 @@
 // /public/js/todo.js
 
 /**
- * Personal Todo List - Refactored to use default.js
+ * Todo List - 100% AJAX SPA Implementation
  */
 
-let todoIdToDelete = null;
+let appState = {
+    todos: []
+};
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
+    loadState();
+
     const taskInput = document.getElementById('taskInput');
     if (taskInput) taskInput.focus();
 
     // Handle Add Form
     const addForm = document.getElementById('addTodoForm');
     if (addForm) {
-        addForm.addEventListener('submit', function(e) {
+        addForm.addEventListener('submit', (e) => {
             e.preventDefault();
             addTodo();
         });
     }
 
-    // Use global modal closing helper
+    // Global modal closing helper
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
         closeEditModal, closeConfirmModal
     ]);
 });
 
-function createTaskElement(id, taskName, isCompleted = false) {
-    const div = document.createElement('div');
-    div.className = `todo-item ${isCompleted ? 'completed' : ''}`;
-    div.dataset.id = id;
-    
-    div.innerHTML = `
-        <div class="item-content">
-            <button class="checkbox-btn ${isCompleted ? 'completed' : ''}" onclick="toggleTodo(${id})" title="${isCompleted ? 'Re-open Task' : 'Complete Task'}">
-                <span class="checkmark">${isCompleted ? '✓' : ''}</span>
-            </button>
-            <div class="item-details">
-                <span class="item-name">${taskName}</span>
-            </div>
-        </div>
-        <div class="action-buttons">
-            ${!isCompleted ? `
-                <button class="btn-icon-edit" onclick="openEditModal(${id}, \`${taskName}\`)" title="Edit">${getIcon('edit')}</button>
-            ` : ''}
-            <button class="btn-icon-delete" onclick="deleteTodo(${id})" title="Delete">${getIcon('delete')}</button>
-        </div>
-    `;
-    return div;
+/**
+ * Core Data Management
+ */
+async function loadState() {
+    const container = document.getElementById('todoListContainer');
+    if (container && !container.querySelector('.loading-state')) {
+        container.innerHTML = getLoadingHtml('Syncing tasks...');
+    }
+
+    try {
+        const response = await fetch('/todo/api/state');
+        const data = await response.json();
+        appState.todos = data.todos;
+        renderTodoItems();
+    } catch (err) {
+        console.error('Failed to load todo state:', err);
+        showToast('Connection error. Failed to sync tasks.', 'error');
+    }
 }
 
+/**
+ * Rendering Engine
+ */
+function renderTodoItems() {
+    const container = document.getElementById('todoListContainer');
+    if (!container) return;
+
+    if (appState.todos.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>📭 Your todo list is empty!</p>
+                <p class="empty-hint">Add your first task above to get started.</p>
+            </div>`;
+        return;
+    }
+
+    const active = appState.todos.filter(t => !t.is_completed);
+    const completed = appState.todos.filter(t => t.is_completed);
+
+    let html = '';
+
+    if (active.length > 0) {
+        html += `<h3 class="section-title">Active Tasks</h3>`;
+        active.forEach(todo => {
+            html += renderTodoItem(todo);
+        });
+    }
+
+    if (completed.length > 0) {
+        html += `
+            <div class="completed-section">
+                <div class="completed-header">
+                    <h3 class="section-title">Completed</h3>
+                    <button type="button" class="btn-clear-all" onclick="openClearCompletedModal()">Clear All</button>
+                </div>`;
+        completed.forEach(todo => {
+            html += renderTodoItem(todo);
+        });
+        html += `</div>`;
+    }
+
+    container.innerHTML = html;
+}
+
+function renderTodoItem(todo) {
+    const isCompleted = !!todo.is_completed;
+    return `
+        <div class="todo-item ${isCompleted ? 'completed' : ''}" data-id="${todo.id}">
+            <div class="item-content">
+                <button class="checkbox-btn ${isCompleted ? 'completed' : ''}" onclick="toggleTodo(${todo.id})" title="${isCompleted ? 'Re-open Task' : 'Complete Task'}">
+                    <span class="checkmark">${isCompleted ? '✓' : ''}</span>
+                </button>
+                <div class="item-details">
+                    <span class="item-name">${escapeHtml(todo.task_name)}</span>
+                </div>
+            </div>
+            <div class="action-buttons">
+                ${!isCompleted ? `
+                    <button class="btn-icon-edit" onclick="openEditModal(${todo.id}, \`${todo.task_name.replace(/`/g, '\\`')}\`)" title="Edit">
+                        ${getIcon('edit')}
+                    </button>
+                ` : ''}
+                <button class="btn-icon-delete" onclick="deleteTodo(${todo.id}, \`${todo.task_name.replace(/`/g, '\\`')}\`)" title="Delete">
+                    ${getIcon('delete')}
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * API Interactions
+ */
 async function addTodo() {
     const input = document.getElementById('taskInput');
     const task_name = input.value.trim();
@@ -60,88 +133,37 @@ async function addTodo() {
     btn.innerHTML = `${getIcon('waiting')} Adding...`;
 
     const result = await apiPost('/todo/add', { task_name: task_name });
-    if (result) {
+    if (result && result.success) {
         input.value = '';
-        document.querySelector('.empty-state')?.remove();
-
-        let activeContainer = document.querySelector('.items-container');
-        let activeHeader = document.querySelector('.items-container .section-title');
-        
-        if (!activeHeader) {
-            activeHeader = document.createElement('h3');
-            activeHeader.className = 'section-title';
-            activeHeader.textContent = 'Active Tasks';
-            activeContainer.prepend(activeHeader);
-        }
-
-        const newEl = createTaskElement(result.id, result.task_name);
-        activeHeader.after(newEl);
+        await loadState();
     }
+    
     btn.disabled = false;
     btn.innerHTML = originalHtml;
 }
 
 async function toggleTodo(id) {
+    const item = document.querySelector(`.todo-item[data-id="${id}"]`);
+    if (item) item.classList.add('pending');
+
     const result = await apiPost(`/todo/toggle/${id}`);
-    if (result) {
-        const item = document.querySelector(`.todo-item[data-id="${id}"]`);
-        const isNowCompleted = !item.classList.contains('completed');
-        const taskName = item.querySelector('.item-name').textContent;
-        
-        item.style.opacity = '0';
-        item.style.transform = 'translateY(10px)';
-        
-        setTimeout(() => {
-            item.remove();
-            if (isNowCompleted) {
-                let completedSection = document.querySelector('.completed-section');
-                if (!completedSection) {
-                    completedSection = document.createElement('div');
-                    completedSection.className = 'completed-section';
-                    completedSection.innerHTML = `
-                        <div class="completed-header">
-                            <h3 class="section-title">Completed</h3>
-                            <button type="button" class="btn-clear-all" onclick="openClearCompletedModal()">Clear All</button>
-                        </div>
-                    `;
-                    document.querySelector('.items-container').appendChild(completedSection);
-                }
-                const newEl = createTaskElement(id, taskName, true);
-                completedSection.appendChild(newEl);
-            } else {
-                let activeHeader = document.querySelector('.items-container .section-title');
-                const newEl = createTaskElement(id, taskName, false);
-                activeHeader.after(newEl);
-            }
-        }, 300);
+    if (result && result.success) {
+        await loadState();
+    } else {
+        if (item) item.classList.remove('pending');
     }
 }
 
-function deleteTodo(id) {
-    const item = document.querySelector(`.todo-item[data-id="${id}"]`);
-    const name = item.querySelector('.item-name').textContent;
-
+async function deleteTodo(id, name) {
     showConfirmModal({
         title: 'Delete Task',
-        message: `Are you sure you want to remove "<strong>${name}</strong>"?`,
+        message: `Are you sure you want to remove "<strong>${escapeHtml(name)}</strong>"?`,
         danger: true,
         confirmText: 'Delete',
-        loadingText: 'Deleting...',
         onConfirm: async () => {
             const result = await apiPost(`/todo/delete/${id}`);
-            if (result) {
-                const itemEl = document.querySelector(`.todo-item[data-id="${id}"]`);
-                if (itemEl) {
-                    itemEl.style.opacity = '0';
-                    itemEl.style.transform = 'translateX(20px)';
-                    setTimeout(() => {
-                        const parent = itemEl.parentNode;
-                        itemEl.remove();
-                        if (parent && parent.classList.contains('completed-section') && !parent.querySelector('.todo-item')) {
-                            parent.remove();
-                        }
-                    }, 300);
-                }
+            if (result && result.success) {
+                await loadState();
             }
         }
     });
@@ -150,11 +172,13 @@ function deleteTodo(id) {
 function openEditModal(id, currentName) {
     document.getElementById('editId').value = id;
     document.getElementById('editName').value = currentName;
-    document.getElementById('editModal').style.display = 'flex';
+    document.getElementById('editModal').classList.add('show');
     document.getElementById('editName').focus();
 }
 
-function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
+function closeEditModal() {
+    document.getElementById('editModal').classList.remove('show');
+}
 
 async function submitEdit() {
     const id = document.getElementById('editId').value;
@@ -167,12 +191,11 @@ async function submitEdit() {
     btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
     const result = await apiPost(`/todo/edit/${id}`, { task_name: name });
-    if (result) {
-        const item = document.querySelector(`.todo-item[data-id="${id}"]`);
-        item.querySelector('.item-name').textContent = name;
-        item.querySelector('.btn-icon-edit')?.setAttribute('onclick', `openEditModal(${id}, \`${name}\`)`);
+    if (result && result.success) {
         closeEditModal();
+        await loadState();
     }
+    
     btn.disabled = false;
     btn.innerHTML = originalHtml;
 }
@@ -183,13 +206,17 @@ function openClearCompletedModal() {
         message: 'Are you sure you want to clear all completed tasks?',
         danger: true,
         confirmText: 'Clear All',
-        loadingText: 'Clearing...',
         onConfirm: async () => {
             const result = await apiPost('/todo/clear');
-            if (result) {
-                const section = document.querySelector('.completed-section');
-                if (section) section.remove();
+            if (result && result.success) {
+                await loadState();
             }
         }
     });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
