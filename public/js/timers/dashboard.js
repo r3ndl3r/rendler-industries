@@ -46,35 +46,34 @@ const TimerDashboard = {
     
     handleStart: async function(button) {
         const timerId = button.dataset.timerId;
+        const originalHtml = button.innerHTML;
         button.disabled = true;
+        button.innerHTML = `${getIcon('waiting')} ...`;
         
-        const result = await TimerUtils.apiCall('/timers/start', 'POST', { timer_id: timerId });
+        const result = await apiPost('/timers/start', { timer_id: timerId });
         
-        if (result.success) {
-            TimerUtils.showToast('Timer started', 'success');
+        if (result && result.success) {
             await this.refreshStatus();
         } else {
-            TimerUtils.showToast(result.message || 'Failed to start timer', 'error');
+            button.disabled = false;
+            button.innerHTML = originalHtml;
         }
-        
-        button.disabled = false;
     },
     
     handlePause: async function(button) {
         const timerId = button.dataset.timerId;
+        const originalHtml = button.innerHTML;
         button.disabled = true;
+        button.innerHTML = `${getIcon('waiting')} ...`;
         
-        const result = await TimerUtils.apiCall('/timers/pause', 'POST', { timer_id: timerId });
+        const result = await apiPost('/timers/pause', { timer_id: timerId });
         
-        if (result.success) {
-            const message = result.paused ? 'Timer paused' : 'Timer resumed';
-            TimerUtils.showToast(message, 'success');
+        if (result && result.success) {
             await this.refreshStatus();
         } else {
-            TimerUtils.showToast(result.message || 'Failed to toggle pause', 'error');
+            button.disabled = false;
+            button.innerHTML = originalHtml;
         }
-        
-        button.disabled = false;
     },
     
     startPolling: function() {
@@ -134,10 +133,17 @@ const TimerDashboard = {
     },
     
     refreshStatus: async function() {
-        const result = await TimerUtils.apiCall(this.config.statusEndpoint);
-        
-        if (result && result.timers) {
-            this.updateTimerCards(result.timers);
+        try {
+            const response = await fetch(this.config.statusEndpoint, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const result = await response.json();
+            
+            if (result && result.timers) {
+                this.updateTimerCards(result.timers);
+            }
+        } catch (e) {
+            console.error('Refresh failed:', e);
         }
     },
     
