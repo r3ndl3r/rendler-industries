@@ -24,5 +24,22 @@
 <body class="bg-gray-900 text-gray-200 font-sans">
     <%= include 'menu/menubar' %>
     <%= content %>
+
+    <%# --- GLOBAL GENERIC CONFIRMATION MODAL --- %>
+    <div id="globalConfirmActionModal" class="delete-modal-overlay" style="display: none;">
+        <div class="delete-modal-content">
+            <div class="delete-modal-header">
+                <h3><span id="globalConfirmModalIcon"><%= icon('delete') %></span> <span id="globalConfirmModalTitle">Confirm Action</span></h3>
+                <span class="delete-modal-close" onclick="closeConfirmModal()">&times;</span>
+            </div>
+            <div class="delete-modal-body">
+                <p id="globalConfirmModalText"></p>
+            </div>
+            <div class="delete-modal-actions" style="justify-content: center !important;">
+                <button id="globalConfirmModalBtn" class="btn-danger-confirm">Confirm</button>
+                <button class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
