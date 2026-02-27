@@ -1,13 +1,13 @@
-<%# /templates/receipts/index.html.ep %>
+<%# /templates/receipts.html.ep %>
 
 % layout 'default';
 % title icon('receipts') . ' Receipts';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/files.css">
-    <link rel="stylesheet" href="/css/receipts.css">
-    <script defer src="/js/receipts.js"></script>
+    <link rel="stylesheet" href="/css/files.css?<%= time %>">
+    <link rel="stylesheet" href="/css/receipts.css?<%= time %>">
     <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+    <script src="/js/receipts.js?<%= time %>"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 % end
