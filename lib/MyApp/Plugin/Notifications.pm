@@ -38,7 +38,7 @@ sub register {
             my $tx = $ua->post($url => json => { text => $text });
             if (my $res = $tx->result) {
                 if ($res->is_success) {
-                    $c->app->log->info("Discord DM sent to $discord_id");
+                    $c->app->log->info("Discord DM sent to $discord_id: $text");
                     $status = 1;
                 } else {
                     $c->app->log->error("Discord API error ($discord_id): Status " . $res->code);
