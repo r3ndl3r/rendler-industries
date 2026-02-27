@@ -42,26 +42,25 @@ sub user_list {
 # Parameters:
 #   id : Unique User ID (Integer)
 # Returns:
-#   Redirects to user list on success
-#   Renders error if ID is invalid
+#   JSON response
 sub delete_user {
     my $c = shift;
     my $id = $c->param('id');
     
     # Validate User ID format
     unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render_error('Invalid user ID');
+        return $c->render(json => { success => 0, error => 'Invalid user ID' });
     }
     
     # Execute deletion
-    $c->db->delete_user($id);
-
-    if ($c->req->is_xhr) {
-        return $c->render(json => { success => 1, message => "User ID $id deleted successfully." });
+    eval {
+        $c->db->delete_user($id);
+    };
+    if ($@) {
+        return $c->render(json => { success => 0, error => 'Database error' });
     }
 
-    $c->flash(message => "User ID $id deleted successfully.");
-    return $c->redirect_to('/users');
+    return $c->render(json => { success => 1, message => "User ID $id deleted successfully." });
 }
 
 # Activates a pending user account.
@@ -69,25 +68,29 @@ sub delete_user {
 # Parameters:
 #   id : Unique User ID (Integer)
 # Returns:
-#   Redirects to user list on success
-#   Renders error if ID is invalid
+#   JSON response
 sub approve_user {
     my $c = shift;
     my $id = $c->param('id');
     
     # Validate User ID format
     unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render_error('Invalid user ID');
+        return $c->render(json => { success => 0, error => 'Invalid user ID' });
     }
 
     # Fetch user details before approval to get email
     my $user = $c->db->get_user_by_id($id);
     unless ($user) {
-        return $c->render_error('User not found', 404);
+        return $c->render(json => { success => 0, error => 'User not found' });
     }
 
     # Perform approval status update
-    $c->db->approve_user($id);
+    eval {
+        $c->db->approve_user($id);
+    };
+    if ($@) {
+        return $c->render(json => { success => 0, error => 'Database error' });
+    }
 
     # Send notification email to the user
     if ($user->{email}) {
@@ -108,12 +111,7 @@ You can now log in to the dashboard at: https://rendler.org/login
         }
     }
 
-    if ($c->req->is_xhr) {
-        return $c->render(json => { success => 1, message => "User '$user->{username}' approved successfully." });
-    }
-
-    $c->flash(message => "User '$user->{username}' approved successfully.");
-    return $c->redirect_to('/users');
+    return $c->render(json => { success => 1, message => "User '$user->{username}' approved successfully." });
 }
 
 # Renders the form for editing an existing user.
@@ -153,17 +151,24 @@ sub edit_user_form {
 #   status   : Account status (e.g., 'pending', 'approved')
 #   password : (Optional) New password to set. Ignored if empty.
 # Returns:
-#   Redirects to user list on success
-#   Renders error on validation failure
+#   JSON response
 sub edit_user {
     my $c = shift;
     my $id = $c->param('id');
     my $username = trim($c->param('username') // '');
     my $email = trim($c->param('email') // '');
     my $discord_id = trim($c->param('discord_id') // '');
+    
+    # Validate User ID format
+    unless (defined $id && $id =~ /^\d+$/) {
+        return $c->render(json => { success => 0, error => 'Invalid user ID' });
+    }
+
     # Retrieve current user data to preserve roles if not in form
     my $current_user = $c->db->get_user_by_id($id);
-    return $c->render_error('User not found', 404) unless $current_user;
+    unless ($current_user) {
+        return $c->render(json => { success => 0, error => 'User not found' });
+    }
 
     my $is_admin = defined $c->param('is_admin') ? ($c->param('is_admin') ? 1 : 0) : $current_user->{is_admin};
     my $is_family = defined $c->param('is_family') ? ($c->param('is_family') ? 1 : 0) : $current_user->{is_family};
@@ -171,31 +176,34 @@ sub edit_user {
     my $status = $c->param('status') // 'pending';
     my $password = $c->param('password');
     
-    # Validate User ID format
-    unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render_error('Invalid user ID');
-    }
-    
     # Validate strict username and email formats
-    return $c->render_error('Invalid username') unless $username =~ /^[a-zA-Z0-9_]{3,20}$/;
-    return $c->render_error('Invalid email')
-        unless $email =~ /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    
-    # Conditionally update password if provided
-    if (defined $password && length $password > 0) {
-        return $c->render_error('Password too short') if length($password) < 8;
-        $c->db->update_user_password($id, $password);
+    unless ($username =~ /^[a-zA-Z0-9_]{3,20}$/) {
+        return $c->render(json => { success => 0, error => 'Invalid username (3-20 chars, alphanumeric/underscore)' });
+    }
+    unless ($email =~ /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/) {
+        return $c->render(json => { success => 0, error => 'Invalid email format' });
     }
     
-    # Update profile details
-    $c->db->update_user($id, $username, $email, $discord_id, $is_admin, $is_family, $status);
+    eval {
+        # Conditionally update password if provided
+        if (defined $password && length $password > 0) {
+            if (length($password) < 8) {
+                die "Password too short (min 8 chars)";
+            }
+            $c->db->update_user_password($id, $password);
+        }
+        
+        # Update profile details
+        $c->db->update_user($id, $username, $email, $discord_id, $is_admin, $is_family, $status);
+    };
     
-    if ($c->req->is_xhr) {
-        return $c->render(json => { success => 1, message => "User profile updated successfully." });
+    if ($@) {
+        my $err = $@;
+        $err =~ s/ at .*//s;
+        return $c->render(json => { success => 0, error => $err });
     }
-
-    $c->flash(message => "User profile updated successfully.");
-    return $c->redirect_to('/users');
+    
+    return $c->render(json => { success => 1, message => "User profile updated successfully." });
 }
 
 # API Endpoint: Granularly toggles a user role (Admin/Family) via AJAX.
