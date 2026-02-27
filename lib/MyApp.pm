@@ -379,6 +379,7 @@ sub startup {
 
     # --- Todo List Routes ---
     $auth->get('/todo')->to('todo#index');
+    $auth->get('/todo/api/state')->to('todo#get_state');
     $auth->post('/todo/add')->to('todo#add');
     $auth->post('/todo/toggle/:id')->to('todo#toggle');
     $auth->post('/todo/delete/:id')->to('todo#delete');
