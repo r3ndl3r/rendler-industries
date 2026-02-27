@@ -21,16 +21,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Use global modal closing helper
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeEditModal, closeDeleteConfirmModal, closeClearCompletedModal
+        closeEditModal, closeConfirmModal
     ]);
-
-    // Setup final delete button
-    const finalDeleteBtn = document.getElementById('finalDeleteBtn');
-    if (finalDeleteBtn) {
-        finalDeleteBtn.onclick = function() {
-            if (todoIdToDelete) performDelete(todoIdToDelete);
-        };
-    }
 });
 
 function createTaskElement(id, taskName, isCompleted = false) {
@@ -62,6 +54,11 @@ async function addTodo() {
     const task_name = input.value.trim();
     if (!task_name) return;
 
+    const btn = document.querySelector('#addTodoForm .btn-blue-add');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Adding...`;
+
     const result = await apiPost('/todo/add', { task_name: task_name });
     if (result) {
         input.value = '';
@@ -80,6 +77,8 @@ async function addTodo() {
         const newEl = createTaskElement(result.id, result.task_name);
         activeHeader.after(newEl);
     }
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
 }
 
 async function toggleTodo(id) {
@@ -119,33 +118,33 @@ async function toggleTodo(id) {
 }
 
 function deleteTodo(id) {
-    todoIdToDelete = id;
     const item = document.querySelector(`.todo-item[data-id="${id}"]`);
     const name = item.querySelector('.item-name').textContent;
-    document.getElementById('deleteTaskName').textContent = name;
-    document.getElementById('deleteConfirmModal').style.display = 'flex';
-}
 
-function closeDeleteConfirmModal() {
-    todoIdToDelete = null;
-    document.getElementById('deleteConfirmModal').style.display = 'none';
-}
-
-async function performDelete(id) {
-    const result = await apiPost(`/todo/delete/${id}`);
-    if (result) {
-        const item = document.querySelector(`.todo-item[data-id="${id}"]`);
-        item.style.opacity = '0';
-        item.style.transform = 'translateX(20px)';
-        setTimeout(() => {
-            const parent = item.parentNode;
-            item.remove();
-            if (parent.classList.contains('completed-section') && !parent.querySelector('.todo-item')) {
-                parent.remove();
+    showConfirmModal({
+        title: 'Delete Task',
+        message: `Are you sure you want to remove "<strong>${name}</strong>"?`,
+        danger: true,
+        confirmText: 'Delete',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
+            const result = await apiPost(`/todo/delete/${id}`);
+            if (result) {
+                const itemEl = document.querySelector(`.todo-item[data-id="${id}"]`);
+                if (itemEl) {
+                    itemEl.style.opacity = '0';
+                    itemEl.style.transform = 'translateX(20px)';
+                    setTimeout(() => {
+                        const parent = itemEl.parentNode;
+                        itemEl.remove();
+                        if (parent && parent.classList.contains('completed-section') && !parent.querySelector('.todo-item')) {
+                            parent.remove();
+                        }
+                    }, 300);
+                }
             }
-        }, 300);
-        closeDeleteConfirmModal();
-    }
+        }
+    });
 }
 
 function openEditModal(id, currentName) {
@@ -162,6 +161,11 @@ async function submitEdit() {
     const name = document.getElementById('editName').value.trim();
     if (!name) return;
 
+    const btn = document.querySelector('#editModal .btn-primary');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
     const result = await apiPost(`/todo/edit/${id}`, { task_name: name });
     if (result) {
         const item = document.querySelector(`.todo-item[data-id="${id}"]`);
@@ -169,7 +173,23 @@ async function submitEdit() {
         item.querySelector('.btn-icon-edit')?.setAttribute('onclick', `openEditModal(${id}, \`${name}\`)`);
         closeEditModal();
     }
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
 }
 
-function openClearCompletedModal() { document.getElementById('clearCompletedModal').style.display = 'flex'; }
-function closeClearCompletedModal() { document.getElementById('clearCompletedModal').style.display = 'none'; }
+function openClearCompletedModal() {
+    showConfirmModal({
+        title: 'Clear Completed',
+        message: 'Are you sure you want to clear all completed tasks?',
+        danger: true,
+        confirmText: 'Clear All',
+        loadingText: 'Clearing...',
+        onConfirm: async () => {
+            const result = await apiPost('/todo/clear');
+            if (result) {
+                const section = document.querySelector('.completed-section');
+                if (section) section.remove();
+            }
+        }
+    });
+}
