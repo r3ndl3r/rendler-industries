@@ -4,7 +4,6 @@
    MODAL OVERLAY & ANIMATIONS
    ========================================= */
 
-/* The background overlay that covers the entire screen */
 .modal {
     display: none; /* Hidden by default */
     position: fixed;
@@ -25,11 +24,8 @@
     animation: fadeIn 0.3s;
 }
 
-/* Updated JS logic usually sets display: block, 
-   but we want display: flex for centering. 
-   We'll use !important to force flex if display is anything but none. */
-.modal[style*="display: block"] {
-    display: flex !important;
+.modal.show {
+    display: flex;
 }
 
 @keyframes fadeIn {
@@ -153,4 +149,16 @@
     margin-top: 20px;
     padding-top: 15px;
     border-top: 1px solid #eee;
+}
+
+/* Global modal footer centering */
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center !important;
+    margin-top: 20px;
+}
+
+.modal-actions button[style*="display: none"] {
+    display: none !important;
 }
