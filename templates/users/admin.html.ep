@@ -35,9 +35,9 @@
                     <td data-label="Email"><span class="text-wrap text-small user-email"><%= $user->{email} %></span></td>
                     <td data-label="Discord ID">
                         <% if ($user->{discord_id}) { %>
-                            <span class="text-wrap text-small user-discord" style="color: #7289da;"><%= $user->{discord_id} %></span>
+                            <span class="text-wrap text-small user-discord user-discord-active"><%= $user->{discord_id} %></span>
                         <% } else { %>
-                            <span class="user-discord" style="opacity: 0.3;">-</span>
+                            <span class="user-discord user-discord-empty">-</span>
                         <% } %>
                     </td>
                     <td data-label="Created"><span class="text-wrap text-small"><%= $user->{created_at} %></span></td>
@@ -67,7 +67,7 @@
                     <td data-label="Actions">
                         <div class="action-btns">
                             <% if (defined $user->{status} && $user->{status} eq 'pending') { %>
-                                <form action="/users/approve/<%= $user->{id} %>" method="POST" style="display:inline;">
+                                <form onsubmit="approveUser(<%= $user->{id} %>, this); return false;">
                                     <button type="submit" class="btn-icon-view" title="Approve"><%= icon('check') %></button>
                                 </form>
                             <% } %>
@@ -108,7 +108,7 @@
             
             <div class="form-group">
                 <label for="editStatus">Status</label>
-                <select id="editStatus" name="status" class="game-input" style="appearance: auto;">
+                <select id="editStatus" name="status" class="game-input">
                     <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
                 </select>
@@ -123,24 +123,6 @@
                 <button type="submit" class="btn-primary">Save Changes</button>
             </div>
         </form>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div id="deleteConfirmModal" class="delete-modal-overlay">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3>Confirm Deletion</h3>
-            <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <p>Are you sure you want to delete user "<strong id="deleteUserName"></strong>"?</p>
-        </div>
-        <div class="delete-modal-actions">
-            <form id="deleteUserForm" method="POST" action="">
-                <button type="submit" class="btn-danger-confirm">Delete User</button>
-            </form>
-        </div>
     </div>
 </div>
 
