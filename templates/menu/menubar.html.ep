@@ -19,7 +19,7 @@
         <img src="/files/serve/53" alt="Home" class="menu-home-icon">
     </div>
     <div id="menuContent" class="menu-content">
-        <div class="menu-loading">
+        <div class="component-loading">
             <div class="spinner"></div>
         </div>
     </div>
