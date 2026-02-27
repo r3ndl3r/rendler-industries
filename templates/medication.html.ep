@@ -77,7 +77,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-actions">
+            <div class="modal-actions" style="justify-content: center !important;">
                 <button type="submit" class="btn-primary"><%= icon('save') %> Save Log</button>
             </div>
         </form>
@@ -128,7 +128,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-actions">
+            <div class="modal-actions" style="justify-content: center !important;">
                 <button type="submit" class="btn-primary"><%= icon('save') %> Save Changes</button>
             </div>
         </form>
@@ -183,49 +183,11 @@
                     <input type="number" name="default_dosage" id="manage_dosage" class="game-input" required min="1">
                 </div>
             </div>
-            <div class="modal-actions">
+            <div class="modal-actions" style="justify-content: center !important;">
                 <button type="submit" class="btn-primary"><%= icon('save') %> Save</button>
                 <button type="button" class="btn-secondary" onclick="closeManageModal()">Cancel</button>
             </div>
         </form>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div id="deleteConfirmModal" class="delete-modal-overlay">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('delete') %> Confirm Deletion</h3>
-            <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <p>Are you sure you want to delete <strong id="deleteMedName"></strong>?</p>
-        </div>
-        <div class="delete-modal-actions">
-            <form id="deleteForm" onsubmit="submitForm(event, this.action)">
-                <button type="submit" class="btn-danger-confirm">Delete Log</button>
-                <button type="button" class="btn-secondary" onclick="closeDeleteModal()" style="margin-left: 10px; height: 38px;">Cancel</button>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Reset Confirmation Modal -->
-<div id="resetConfirmModal" class="delete-modal-overlay">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('reset') %> Confirm Reset</h3>
-            <span class="delete-modal-close" onclick="closeResetModal()">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <p>Reset timestamp for <strong id="resetMedName"></strong> to <strong>NOW</strong>?</p>
-        </div>
-        <div class="delete-modal-actions">
-            <form id="resetForm" onsubmit="submitForm(event, this.action)">
-                <button type="submit" class="btn-primary" style="background:#64748b !important;"><%= icon('reset') %> Reset to Now</button>
-                <button type="button" class="btn-secondary" onclick="closeResetModal()" style="margin-left: 10px; height: 38px;">Cancel</button>
-            </form>
-        </div>
     </div>
 </div>
 
