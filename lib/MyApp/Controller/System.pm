@@ -76,7 +76,7 @@ sub run_meals_maintenance {
                 # Target family/admins with Discord who have NOT suggested AND have NOT voted
                 if ($u->{discord_id} && ($u->{is_family} || $u->{is_admin})) {
                     if (!$has_suggested{$u->{id}} && !$has_voted{$u->{id}}) {
-                        my $msg = "🍳 MEAL PLANNER REMINDER: You haven't added a suggestion or voted for today's meal yet! Lock-in is at 2PM.";
+                        my $msg = "🍳 MEAL PLANNER REMINDER: You haven't added a suggestion or voted for today's meal yet! Lock-in is at 2PM.\n\nhttps://rendler.org/meals";
                         $c->send_discord_dm($u->{discord_id}, $msg);
                     }
                 }
@@ -98,7 +98,7 @@ sub run_meals_maintenance {
                 # Check for ties
                 if (scalar @$suggestions > 1 && $suggestions->[0]{vote_count} == $suggestions->[1]{vote_count}) {
                     # Notify admin to decide
-                    my $admin_msg = "⚖️ MEAL PLANNER TIE: Today's meal plan is TIED. Please go to /meals and pick a winner!";
+                    my $admin_msg = "⚖️ MEAL PLANNER TIE: Today's meal plan is TIED. Please go to /meals and pick a winner!\n\nhttps://rendler.org/meals";
                     my $admins = $c->db->get_all_users();
                     foreach my $a (grep { $_->{is_admin} } @$admins) {
                         $c->send_discord_dm($a->{discord_id}, $admin_msg) if $a->{discord_id};
@@ -109,7 +109,7 @@ sub run_meals_maintenance {
                     $c->db->lock_suggestion($today_plan->{id}, $winner->{id});
                     
                     # Notify everyone of the final choice
-                    my $announcement = "🍽️ TODAY'S MENU LOCKED: $winner->{meal_name} wins with $winner->{vote_count} votes! (Suggested by $winner->{suggested_by_name})";
+                    my $announcement = "🍽️ TODAY'S MENU LOCKED: $winner->{meal_name} wins with $winner->{vote_count} votes! (Suggested by $winner->{suggested_by_name})\n\nhttps://rendler.org/meals";
                     my $users = $c->db->get_all_users();
                     foreach my $u (@$users) {
                         if ($u->{discord_id} && ($u->{is_family} || $u->{is_admin})) {
@@ -120,7 +120,7 @@ sub run_meals_maintenance {
                 }
             } else {
                 # No suggestions at 2PM? Notify admin to blackout or decide
-                my $admin_msg = "⚠️ MEAL PLANNER EMPTY: No suggestions made by 2PM. Please set a blackout or manual meal.";
+                my $admin_msg = "⚠️ MEAL PLANNER EMPTY: No suggestions made by 2PM. Please set a blackout or manual meal.\n\nhttps://rendler.org/meals";
                 my $admins = $c->db->get_all_users();
                 foreach my $a (grep { $_->{is_admin} } @$admins) {
                     $c->send_discord_dm($a->{discord_id}, $admin_msg) if $a->{discord_id};
@@ -157,7 +157,7 @@ sub run_reminder_maintenance {
     my %processed_reminder_ids;
 
     foreach my $r (@$due_reminders) {
-        my $msg = "🔔 REMINDER: $r->{title}\n\n$r->{description}";
+        my $msg = "🔔 REMINDER: $r->{title}\n\n$r->{description}\n\nhttps://rendler.org/";
         
         # Dispatch notification using standardized helper
         if ($c->notify_user($r->{user_id}, $msg, "Reminder: $r->{title}")) {
@@ -217,6 +217,8 @@ Time Remaining: $minutes_remaining minutes
 
 Please wrap up your current activity soon.
 
+https://rendler.org/timers
+
 - Rendler Industries Timer System};
         
         if ($c->send_email_via_gmail([$timer->{email}], $email_subject, $email_body)) {
@@ -237,6 +239,8 @@ Daily Limit: $timer->{limit_minutes} minutes
 Usage Today: } . int($timer->{elapsed_seconds} / 60) . qq{ minutes
 
 Please stop using this device immediately.
+
+https://rendler.org/timers
 
 - Rendler Industries Timer System};
         

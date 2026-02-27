@@ -229,7 +229,7 @@ sub copy_post {
     $c->db->paste($user_id, $encoded_text);
     
     # Notify user via Discord (if configured)
-    my $msg = "📋 NEW CLIPPING:\n\n$text";
+    my $msg = "📋 NEW CLIPPING:\n\n$text\n\nhttps://rendler.org/clipboard";
     $c->notify_user($user_id, $msg, "Clipboard: New Content");
 
     # Legacy external notifications ONLY for rendler
@@ -263,7 +263,7 @@ sub copy_update {
     $c->db->update_message($id, $user_id, $encoded_text);
 
     # Notify user of the update
-    my $msg = "📋 CLIPPING UPDATED:\n\n$text";
+    my $msg = "📋 CLIPPING UPDATED:\n\n$text\n\nhttps://rendler.org/clipboard";
     $c->notify_user($user_id, $msg, "Clipboard: Content Updated");
 
     $c->flash(message => "Content updated successfully.");

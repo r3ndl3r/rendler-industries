@@ -62,7 +62,7 @@ sub suggest {
     if ($result->{success}) {
         my $user = $c->db->get_user_by_id($uid);
         my $username = $user ? $user->{username} : 'Someone';
-        my $msg = "🍳 NEW MEAL SUGGESTION: $username suggested '$meal_name' for today!";
+        my $msg = "🍳 NEW MEAL SUGGESTION: $username suggested '$meal_name' for today!\n\nhttps://rendler.org/meals";
         
         my $all_users = $c->db->get_all_users();
         foreach my $u (@$all_users) {
