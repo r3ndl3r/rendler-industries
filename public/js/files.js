@@ -91,12 +91,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.openPermissions = function(file) {
         const modal = document.getElementById('permissionModal');
-        const form = document.getElementById('permissionForm');
         if (modal) {
             document.getElementById('permissionFileId').value = file.id;
-            
-            // Set dynamic action URL
-            if (form) form.action = '/files/permissions/' + file.id;
             
             // Set Admin Only checkbox
             document.getElementById('permissionAdminOnly').checked = file.admin_only == 1;
@@ -118,37 +114,74 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.confirmDeleteFile = function(id, filename) {
-        const modal = document.getElementById('deleteConfirmModal');
-        const nameEl = document.getElementById('deleteFileName');
-        const form = document.getElementById('deleteFileForm');
-        
-        if (nameEl) nameEl.textContent = filename;
-        if (form) form.action = '/files/delete/' + id;
-        if (modal) modal.style.display = 'flex';
-    };
-
-    window.closeDeleteModal = function() {
-        const modal = document.getElementById('deleteConfirmModal');
-        if (modal) modal.style.display = 'none';
-    };
-
-    document.querySelectorAll('.close-modal, .files-modal-overlay').forEach(el => {
-        el.addEventListener('click', function(e) {
-            if (e.target === this || e.target.classList.contains('close-modal')) {
-                const modal = document.getElementById('permissionModal');
-                if (modal) modal.style.display = 'none';
-                const delModal = document.getElementById('deleteConfirmModal');
-                if (delModal && e.target === delModal) closeDeleteModal();
+        showConfirmModal({
+            title: 'Delete File',
+            message: `Are you sure you want to permanently delete "<strong>${filename}</strong>"?`,
+            danger: true,
+            confirmText: 'Delete',
+            loadingText: 'Deleting...',
+            onConfirm: async () => {
+                const result = await apiPost(`/files/delete/${id}`);
+                if (result && result.success) {
+                    window.location.reload();
+                }
             }
         });
+    };
+
+    // Use global modal closing helper
+    setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
+        () => document.getElementById('permissionModal').style.display = 'none',
+        closeConfirmModal
+    ]);
+
+    // Handle Permissions Form
+    document.getElementById('permissionForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const id = document.getElementById('permissionFileId').value;
+        const btn = this.querySelector('button[type="submit"]');
+        const originalHtml = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
+        const formData = new FormData(this);
+        const result = await apiPost(`/files/permissions/${id}`, formData);
+
+        if (result && result.success) {
+            window.location.reload();
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
     });
 
-    document.getElementById('uploadForm')?.addEventListener('submit', function(e) {
+    // Handle Upload Form
+    document.getElementById('uploadForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
         const fileInput = document.getElementById('file');
         if (!fileInput.files.length) {
-            e.preventDefault();
             showToast('Please select a file', 'error');
-            return false;
+            return;
+        }
+
+        const btn = this.querySelector('button[type="submit"]');
+        const originalHtml = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = `${getIcon('waiting')} Uploading...`;
+
+        const formData = new FormData(this);
+        
+        // Use Fetch directly for upload to handle progress if needed in future, 
+        // but for now apiPost supports FormData
+        const result = await apiPost('/files', formData);
+
+        if (result && result.success) {
+            window.location.href = '/files';
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
         }
     });
 
