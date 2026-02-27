@@ -1,7 +1,7 @@
 // /public/js/todo.js
 
 /**
- * Todo List - 100% AJAX SPA Implementation
+ * Todo List - 100% AJAX SPA Implementation with Optimistic UI
  */
 
 let appState = {
@@ -34,7 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadState() {
     const container = document.getElementById('todoListContainer');
-    if (container && !container.querySelector('.loading-state')) {
+    // Only show loading state if we have no items yet (initial load)
+    if (container && appState.todos.length === 0) {
         container.innerHTML = getLoadingHtml('Syncing tasks...');
     }
 
@@ -65,8 +66,14 @@ function renderTodoItems() {
         return;
     }
 
-    const active = appState.todos.filter(t => !t.is_completed);
-    const completed = appState.todos.filter(t => t.is_completed);
+    // Sort todos: Incomplete first (by created_at DESC), then Complete (by created_at DESC)
+    const sortedTodos = [...appState.todos].sort((a, b) => {
+        if (a.is_completed !== b.is_completed) return a.is_completed - b.is_completed;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+
+    const active = sortedTodos.filter(t => !t.is_completed);
+    const completed = sortedTodos.filter(t => t.is_completed);
 
     let html = '';
 
@@ -135,7 +142,14 @@ async function addTodo() {
     const result = await apiPost('/todo/add', { task_name: task_name });
     if (result && result.success) {
         input.value = '';
-        await loadState();
+        // Optimistic UI update
+        appState.todos.unshift({
+            id: result.id,
+            task_name: result.task_name,
+            is_completed: 0,
+            created_at: new Date().toISOString()
+        });
+        renderTodoItems();
     }
     
     btn.disabled = false;
@@ -143,14 +157,18 @@ async function addTodo() {
 }
 
 async function toggleTodo(id) {
-    const item = document.querySelector(`.todo-item[data-id="${id}"]`);
-    if (item) item.classList.add('pending');
+    const itemEl = document.querySelector(`.todo-item[data-id="${id}"]`);
+    if (itemEl) itemEl.classList.add('pending');
 
     const result = await apiPost(`/todo/toggle/${id}`);
     if (result && result.success) {
-        await loadState();
-    } else {
-        if (item) item.classList.remove('pending');
+        const todo = appState.todos.find(t => t.id == id);
+        if (todo) {
+            todo.is_completed = !todo.is_completed;
+            renderTodoItems();
+        }
+    } else if (itemEl) {
+        itemEl.classList.remove('pending');
     }
 }
 
@@ -163,7 +181,8 @@ async function deleteTodo(id, name) {
         onConfirm: async () => {
             const result = await apiPost(`/todo/delete/${id}`);
             if (result && result.success) {
-                await loadState();
+                appState.todos = appState.todos.filter(t => t.id != id);
+                renderTodoItems();
             }
         }
     });
@@ -192,8 +211,10 @@ async function submitEdit() {
 
     const result = await apiPost(`/todo/edit/${id}`, { task_name: name });
     if (result && result.success) {
+        const todo = appState.todos.find(t => t.id == id);
+        if (todo) todo.task_name = name;
         closeEditModal();
-        await loadState();
+        renderTodoItems();
     }
     
     btn.disabled = false;
@@ -209,7 +230,8 @@ function openClearCompletedModal() {
         onConfirm: async () => {
             const result = await apiPost('/todo/clear');
             if (result && result.success) {
-                await loadState();
+                appState.todos = appState.todos.filter(t => !t.is_completed);
+                renderTodoItems();
             }
         }
     });
