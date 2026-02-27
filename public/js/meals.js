@@ -14,47 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
         closeSuggestModal, closeBlackoutModal, closeEditSuggestionModal, closeConfirmModal,
-        closeManageVaultModal, closeAddEditMealModal, closeManageDeleteModal
+        closeManageVaultModal, closeAddEditMealModal
     ]);
     
     setupMealAutocomplete('mealInput', 'mealDropdown');
     setupMealAutocomplete('editMealInput', 'editMealDropdown');
     setupMealAutocomplete('manageMealName', 'manageMealDropdown');
 });
-
-/**
- * Themed Confirmation Modal Helper
- */
-function showConfirmModal(options) {
-    const modal = document.getElementById('confirmActionModal');
-    const title = document.getElementById('confirmModalTitle');
-    const icon = document.getElementById('confirmModalIcon');
-    const text = document.getElementById('confirmModalText');
-    const btn = document.getElementById('confirmModalBtn');
-
-    title.textContent = options.title || 'Confirm Action';
-    icon.innerHTML = getIcon(options.icon || 'delete');
-    text.innerHTML = options.message || 'Are you sure?';
-    
-    // Set button style and text
-    btn.textContent = options.confirmText || 'Confirm';
-    btn.className = options.danger ? 'btn-danger-confirm' : 'btn-primary';
-
-    // Clone button to remove previous listeners
-    const newBtn = btn.cloneNode(true);
-    btn.parentNode.replaceChild(newBtn, btn);
-
-    newBtn.addEventListener('click', () => {
-        options.onConfirm();
-        closeConfirmModal();
-    });
-
-    modal.style.display = 'flex';
-}
-
-function closeConfirmModal() {
-    document.getElementById('confirmActionModal').style.display = 'none';
-}
 
 let vaultData = [];
 
@@ -114,7 +80,7 @@ function renderVaultTable() {
                     </button>
                     <button class="btn-icon-delete ${m.is_used ? 'disabled' : ''}" 
                             ${m.is_used ? 'disabled' : ''} 
-                            onclick="openManageDeleteModal(${m.id}, '${escapeHtml(m.name).replace(/'/g, "\\'")}')"
+                            onclick="deleteManageMeal(${m.id}, '${escapeHtml(m.name).replace(/'/g, "\\'")}')"
                             title="${m.is_used ? 'Cannot delete: Meal is part of a plan' : 'Remove from Vault'}">
                         ${getIcon('delete')}
                     </button>
@@ -175,28 +141,23 @@ async function submitManageMeal() {
     }
 }
 
-function openManageDeleteModal(id, name) {
-    document.getElementById('manageDeleteMealId').value = id;
-    document.getElementById('manageDeleteMealName').textContent = name;
-    document.getElementById('manageDeleteConfirmModal').style.display = 'flex';
-}
-
-function closeManageDeleteModal() {
-    document.getElementById('manageDeleteConfirmModal').style.display = 'none';
-}
-
-async function confirmManageDelete() {
-    const id = document.getElementById('manageDeleteMealId').value;
-    const result = await apiPost('/meals/api/vault/delete', { id });
-
-    if (result.success) {
-        showToast(result.message, 'success');
-        closeManageDeleteModal();
-        loadVaultData();
-        loadPlan();
-    } else {
-        showToast(result.error || 'Delete failed', 'error');
-    }
+async function deleteManageMeal(id, name) {
+    showConfirmModal({
+        title: 'Remove from Vault',
+        message: `Are you sure you want to permanently remove "<strong>${escapeHtml(name)}</strong>" from the vault?`,
+        danger: true,
+        confirmText: 'Delete',
+        onConfirm: async () => {
+            const result = await apiPost('/meals/api/vault/delete', { id });
+            if (result.success) {
+                showToast(result.message, 'success');
+                loadVaultData();
+                loadPlan();
+            } else {
+                showToast(result.error || 'Delete failed', 'error');
+            }
+        }
+    });
 }
 
 /**
@@ -349,7 +310,7 @@ function positionDropdown(input, dropdown) {
     }
 }
 
-// Update setupMealAutocomplete to use positioning
+// Update setupMealAutocomplete to use positioning and internal click handling
 function setupMealAutocomplete(inputId, dropdownId) {
     const input    = document.getElementById(inputId);
     const dropdown = document.getElementById(dropdownId);
@@ -368,6 +329,24 @@ function setupMealAutocomplete(inputId, dropdownId) {
     input.addEventListener('input', updateMatches);
     input.addEventListener('focus', updateMatches);
 
+    // Prevent focus loss when clicking items
+    dropdown.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.meal-option')) {
+            e.preventDefault();
+        }
+    });
+
+    // Handle selection and stop propagation to prevent "click leakage"
+    dropdown.addEventListener('click', (e) => {
+        const option = e.target.closest('.meal-option');
+        if (option) {
+            e.stopPropagation();
+            input.value = option.dataset.value;
+            dropdown.style.display = 'none';
+            input.focus();
+        }
+    });
+
     document.addEventListener('click', (e) => {
         if (!input.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.style.display = 'none';
@@ -383,15 +362,15 @@ function renderDropdown(input, dropdown, items) {
     }
 
     let html = items.map(m =>
-        `<div class="meal-option" onmousedown="selectMeal('${input.id}', '${m.replace(/'/g, "\\'")}')">
-            ${m}
+        `<div class="meal-option" data-value="${escapeHtml(m)}">
+            ${escapeHtml(m)}
         </div>`
     ).join('');
 
     // If typing something new, show a special 'New Meal' option
     if (query && !items.find(m => m.toLowerCase() === query.toLowerCase())) {
         html += `
-            <div class="meal-option meal-option-new" onmousedown="selectMeal('${input.id}', '${query.replace(/'/g, "\\'")}')">
+            <div class="meal-option meal-option-new" data-value="${escapeHtml(query)}">
                 <span class="new-badge">NEW</span> ${escapeHtml(query)}
             </div>`;
     }
@@ -407,14 +386,6 @@ function renderDropdown(input, dropdown, items) {
     if (window.EmojiPicker && EmojiPicker.triggerBtn) {
         EmojiPicker.triggerBtn.style.zIndex = '1001';
     }
-}
-
-function selectMeal(inputId, value) {
-    document.getElementById(inputId).value = value;
-    let dropdownId = 'mealDropdown';
-    if (inputId === 'editMealInput') dropdownId = 'editMealDropdown';
-    if (inputId === 'manageMealName') dropdownId = 'manageMealDropdown';
-    document.getElementById(dropdownId).style.display = 'none';
 }
 
 /**
