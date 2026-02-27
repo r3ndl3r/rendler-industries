@@ -1,13 +1,13 @@
-% # /templates/menu/manage.html.ep
+<%# /templates/menu/manage.html.ep %>
 
 % layout 'default';
 % title icon('link') . ' Manage Menu Links';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/menu/manage.css">
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/menu/manage.css?<%= time %>">
+    <script src="/js/menu/manage.js?<%= time %>"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <script src="/js/menu/manage.js"></script>
-<% end %>
+% end
 
 <div class="manage-container">
     <div class="header-bar">
@@ -21,7 +21,7 @@
         <table class="menu-table">
             <thead>
                 <tr>
-                    <th style="width: 5%"></th> <!-- For drag handle -->
+                    <th style="width: 5%"></th>
                     <th style="width: 25%">Label</th>
                     <th style="width: 25%">URL</th>
                     <th style="width: 15%">Parent</th>
@@ -33,40 +33,40 @@
             <tbody id="menuTableBody">
                 % if (@$links) {
                     % for my $link (@$links) {
-                    <tr data-id="<%= $link->{id} %>" class="<%= $link->{parent_id} ? 'child-row' : 'parent-row' %>">
-                        <td class="drag-handle"><%= icon('menu') %></td>
-                        <td data-label="Label">
-                            % if ($link->{is_separator}) {
-                                <span class="separator-label">───── SEPARATOR ─────</span>
-                            % } else {
-                                <span class="<%= $link->{css_class} %>"><strong><%= $link->{label} %></strong></span>
-                            % }
-                        </td>
-                        <td data-label="URL" class="<%= $link->{url} eq '#' ? 'empty-url' : '' %>"><code><%= $link->{url} %></code></td>
-                        <td data-label="Parent" class="<%= $link->{parent_label} ? '' : 'empty-parent' %>"><%= $link->{parent_label} || '-' %></td>
-                        <td data-label="Permission"><span class="permission-tag tag-<%= $link->{permission_level} %>"><%= ucfirst($link->{permission_level}) %></span></td>
-                        <td data-label="Status">
-                            <span class="status-pill <%= $link->{is_active} ? 'active' : 'inactive' %>">
-                                <%= $link->{is_active} ? 'Active' : 'Hidden' %>
-                            </span>
-                        </td>
-                        <td class="actions-cell">
-                            <button class="btn-icon-edit btn-edit" 
-                                data-id="<%= $link->{id} %>"
-                                data-label="<%= $link->{label} %>"
-                                data-url="<%= $link->{url} %>"
-                                data-parent="<%= $link->{parent_id} %>"
-                                data-permission="<%= $link->{permission_level} %>"
-                                data-class="<%= $link->{css_class} %>"
-                                data-target="<%= $link->{target} %>"
-                                data-active="<%= $link->{is_active} %>"
-                                data-sort="<%= $link->{sort_order} %>"
-                                data-separator="<%= $link->{is_separator} %>"><%= icon('edit') %></button>
-                            <button class="btn-icon-delete btn-delete" 
-                                data-id="<%= $link->{id} %>"
-                                data-label="<%= $link->{label} %>"><%= icon('delete') %></button>
-                        </td>
-                    </tr>
+                        <tr data-id="<%= $link->{id} %>" class="<%= $link->{parent_id} ? 'child-row' : 'parent-row' %>">
+                            <td class="drag-handle"><%= icon('menu') %></td>
+                            <td data-label="Label">
+                                % if ($link->{is_separator}) {
+                                    <span class="separator-label">───── SEPARATOR ─────</span>
+                                % } else {
+                                    <span class="<%= $link->{css_class} %>"><strong><%= $link->{label} %></strong></span>
+                                % }
+                            </td>
+                            <td data-label="URL" class="<%= $link->{url} eq '#' ? 'empty-url' : '' %>"><code><%= $link->{url} %></code></td>
+                            <td data-label="Parent" class="<%= $link->{parent_label} ? '' : 'empty-parent' %>"><%= $link->{parent_label} || '-' %></td>
+                            <td data-label="Permission"><span class="permission-tag tag-<%= $link->{permission_level} %>"><%= ucfirst($link->{permission_level}) %></span></td>
+                            <td data-label="Status">
+                                <span class="status-pill <%= $link->{is_active} ? 'active' : 'inactive' %>">
+                                    <%= $link->{is_active} ? 'Active' : 'Hidden' %>
+                                </span>
+                            </td>
+                            <td class="actions-cell">
+                                <button class="btn-icon-edit btn-edit"
+                                    data-id="<%= $link->{id} %>"
+                                    data-label="<%= $link->{label} %>"
+                                    data-url="<%= $link->{url} %>"
+                                    data-parent="<%= $link->{parent_id} %>"
+                                    data-permission="<%= $link->{permission_level} %>"
+                                    data-class="<%= $link->{css_class} %>"
+                                    data-target="<%= $link->{target} %>"
+                                    data-active="<%= $link->{is_active} %>"
+                                    data-sort="<%= $link->{sort_order} %>"
+                                    data-separator="<%= $link->{is_separator} %>"><%= icon('edit') %></button>
+                                <button class="btn-icon-delete btn-delete"
+                                    data-id="<%= $link->{id} %>"
+                                    data-label="<%= $link->{label} %>"><%= icon('delete') %></button>
+                            </td>
+                        </tr>
                     % }
                 % } else {
                     <tr><td colspan="7" class="empty-state">No menu links found.</td></tr>
@@ -74,7 +74,7 @@
             </tbody>
         </table>
     </div>
-    
+
     <div class="manage-footer">
         <p class="hint-text"><%= icon('info') %> Tip: Drag and drop rows to reorder the menu items.</p>
         <button id="saveOrderBtn" class="btn-success" style="display: none;"><%= icon('save') %> Save New Order</button>
@@ -91,13 +91,13 @@
         <form id="linkForm">
             <input type="hidden" id="linkId" name="id">
             <input type="hidden" id="linkSort" name="sort_order">
-            
+
             <div class="modal-body delete-modal-body">
                 <div class="form-group">
                     <label>Label *</label>
                     <input type="text" id="linkLabel" name="label" placeholder="e.g. <%= icon('calendar') %> Calendar" class="game-input" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label>URL *</label>
                     <input type="text" id="linkUrl" name="url" placeholder="e.g. /calendar or https://..." class="game-input" required>

@@ -1,10 +1,10 @@
-%# /templates/meals.html.ep
+<%# /templates/meals.html.ep %>
 
 % layout 'default';
 % title icon('meals') . ' Meal Planner';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/meals.css">
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/meals.css?<%= time %>">
     <script>
         // Initial state from server for fast first-paint
         let mealVault = <%== Mojo::JSON::to_json($vault) %>;
@@ -12,8 +12,8 @@
         const currentUserId = <%= current_user_id() %>;
         const isAdmin = <%= is_admin() ? 'true' : 'false' %>;
     </script>
-    <script src="/js/meals.js"></script>
-<% end %>
+    <script src="/js/meals.js?<%= time %>"></script>
+% end
 
 <div class="meals-container">
     <div class="header-bar">

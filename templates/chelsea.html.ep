@@ -1,9 +1,9 @@
-%# /templates/chelsea.html.ep
+<%# /templates/chelsea.html.ep %>
 
 % layout 'default';
 % title icon('chelsea') . ' Chelsea Weather Dashboard';
 
-<% content_for 'head' => begin %>
+% content_for 'head' => begin
 <style>
     /* Weather Dashboard Styling */
     :root {
@@ -213,7 +213,7 @@
         }
     });
 </script>
-<% end %>
+% end
 
 <div class="container">
     <div class="header">

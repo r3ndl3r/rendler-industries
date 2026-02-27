@@ -4,8 +4,8 @@
 % title icon('settings') . ' Settings';
 
 % content_for 'head' => begin
-  <link rel="stylesheet" href="/css/settings.css">
-  <script src="/js/settings.js" defer></script>
+  <link rel="stylesheet" href="/css/settings.css?<%= time %>">
+  <script src="/js/settings.js?<%= time %>"></script>
 % end
 
 <div class="settings-container">

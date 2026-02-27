@@ -1,12 +1,12 @@
-%# templates/files/files.html.ep
+<%# templates/files/files.html.ep %>
 
 % layout 'default';
 % title icon('files') . ' Files';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/files.css">
-    <link rel="stylesheet" href="/css/reminders.css">
-    <script defer src="/js/files.js"></script>
+    <link rel="stylesheet" href="/css/files.css?<%= time %>">
+    <link rel="stylesheet" href="/css/reminders.css?<%= time %>">
+    <script defer src="/js/files.js?<%= time %>"></script>
 % end
 
 <div class="admin-container">

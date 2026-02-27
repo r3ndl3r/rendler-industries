@@ -1,13 +1,13 @@
-%# /templates/imposter/imposter.html.ep
+<%# /templates/imposter/imposter.html.ep %>
 
 % layout 'default';
 % title icon('imposter') . ' Imposter Game';
 
-<% content_for head => begin %>
+% content_for 'head' => begin
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/css/imposter.css">
-    <script src="/js/imposter.js"></script>
-<% end %>
+    <link rel="stylesheet" href="/css/imposter.css?<%= time %>">
+    <script src="/js/imposter.js?<%= time %>"></script>
+% end
 
 <div class="min-h-screen flex flex-col p-8 max-w-6xl mx-auto relative game-container">
 

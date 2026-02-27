@@ -1,11 +1,12 @@
-%# /templates/swear/manage.html.ep
+<%# /templates/swear/manage.html.ep %>
+
 % layout 'default';
 % title icon('swear') . ' Manage Swear Jar';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/swear.css">
-    <script src="/js/swear.js"></script>
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/swear.css?<%= time %>">
+    <script src="/js/swear.js?<%= time %>"></script>
+% end
 
 <div class="swear-container">
     <div class="header-bar">

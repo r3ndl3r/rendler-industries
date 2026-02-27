@@ -1,12 +1,12 @@
-%# /templates/quiz/study.html.ep
+<%# /templates/quiz/study.html.ep %>
 
 % layout 'default';
 % title icon('kangaroo') . ' Quiz Study Guide - All Questions & Answers';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/quiz/questions.css">
-    <script src="/js/quiz/study.js" defer></script>
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/quiz/questions.css?<%= time %>">
+    <script src="/js/quiz/study.js?<%= time %>"></script>
+% end
 
 <div class="quiz-container">
   <div class="header-bar">
