@@ -124,8 +124,8 @@
             </div>
             
             <div class="modal-actions">
-                <button type="button" class="btn-danger btn-small" id="deleteEventBtn" style="display: none;">Delete</button>
-                <button type="button" class="btn-clone btn-small" id="cloneEventBtn" style="display: none;">Clone</button>
+                <button type="button" class="btn-danger btn-small hidden" id="deleteEventBtn">Delete</button>
+                <button type="button" class="btn-clone btn-small hidden" id="cloneEventBtn">Clone</button>
                 <button type="submit" class="btn-primary btn-small">Save</button>
             </div>
         </form>
@@ -136,21 +136,6 @@
     <div class="modal-content">
         <span class="close">&times;</span>
         <div id="eventDetailsContent">
-        </div>
-    </div>
-</div>
-
-<div id="deleteConfirmModal" class="delete-modal-overlay">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('delete') %> Confirm Deletion</h3>
-            <span class="delete-modal-close" onclick="closeDeleteConfirmModal()">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <p>Are you sure you want to delete "<strong id="deleteEventTitle"></strong>"?</p>
-        </div>
-        <div class="delete-modal-actions">
-            <button type="button" class="btn-danger-confirm" id="finalDeleteBtn">Delete</button>
         </div>
     </div>
 </div>
