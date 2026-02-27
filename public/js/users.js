@@ -131,7 +131,7 @@ function confirmDeleteUser(id, username) {
             if (result && result.success) {
                 const row = document.getElementById(`user-row-${id}`);
                 if (row) {
-                    row.classList.add('user-row-fade-out');
+                    row.classList.add('row-fade-out');
                     setTimeout(() => row.remove(), 500);
                 }
             }
