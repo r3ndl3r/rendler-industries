@@ -220,8 +220,8 @@ async function loadState() {
             uploaders = data.uploaders;
             summary = data.summary;
             breakdown = data.breakdown;
-            isAdmin = data.is_admin;
-            currentUser = data.current_user;
+            if (data.is_admin !== undefined) isAdmin = data.is_admin;
+            if (data.current_user !== undefined) currentUser = data.current_user;
             currentOffset = currentReceipts.length;
 
             updateFilterDropdowns();
@@ -397,7 +397,6 @@ function renderReceipts(append = false, itemsToAppend = null) {
                             <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('${r.id}', '${escapeHtml(r.store_name || r.original_filename)}')" title="Delete">
                                 ${getIcon('delete')}
                             </button>
-                            </button>
                         ` : ''}
                     </div>
                 </td>
@@ -417,7 +416,7 @@ async function handleUpload(e) {
     const form = document.getElementById('uploadForm');
     const formData = new FormData(form);
     
-    showUploadProgress();
+    showLoadingOverlay('Uploading receipt...', 'Please wait while we scan and extract details.');
     
     try {
         const response = await fetch('/receipts/api/upload', {
@@ -447,8 +446,7 @@ async function handleUpload(e) {
     } catch (e) {
         console.error("Upload Error:", e);
     } finally {
-        const overlay = document.querySelector('.upload-progress-overlay');
-        if (overlay) overlay.remove();
+        hideLoadingOverlay();
     }
 }
 
@@ -611,33 +609,6 @@ function updateFileName(name) {
     }
 }
 
-function showUploadProgress() {
-    const overlay       = document.createElement('div');
-    overlay.className   = 'upload-progress-overlay';
-    overlay.innerHTML   = `
-        <div class="upload-progress-inner">
-            <div class="upload-spinner"></div>
-            <p id="uploadProgressLabel" class="upload-progress-label">Uploading receipt...</p>
-            <p class="upload-progress-sub">Please wait while we scan and extract details.</p>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-
-    const stages = [
-        [0,     'Uploading receipt...'],
-        [3000,  'Processing image...'],
-        [6000,  'Scanning for text...'],
-        [11000, 'Extracting details...'],
-        [16000, 'Almost done...'],
-    ];
-    stages.forEach(([delay, text]) => {
-        setTimeout(() => {
-            const label = document.getElementById('uploadProgressLabel');
-            if (label) label.textContent = text;
-        }, delay);
-    });
-}
-
 // --- Legacy Actions (kept for compatibility) ---
 
 window.openReceiptModal = function(id) {
@@ -790,7 +761,7 @@ window.viewElectronicReceipt = function(id, force = 0, preLoadedData = null, ini
         } catch(e) {}
     }
 
-    content.innerHTML = `<div class="ereceipt-loading"><div class="ereceipt-scan-line"></div><span class="ereceipt-loading-icon">${getIcon('ai')}</span><p class="ereceipt-loading-text">Digitizing...</p></div>`;
+    content.innerHTML = getLoadingHtml('Digitizing...', 'Analyzing items and structured data', true);
 
     fetch(`/receipts/api/ai_analyze/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ force: force }) })
     .then(r => r.json())
