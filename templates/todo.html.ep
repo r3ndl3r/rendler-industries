@@ -112,37 +112,3 @@
         </div>
     </div>
 </div>
-
-<!-- Delete Confirmation Modal -->
-<div id="deleteConfirmModal" class="delete-modal-overlay">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('delete') %> Confirm Deletion</h3>
-            <span class="delete-modal-close" onclick="closeDeleteConfirmModal()">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <p>Are you sure you want to delete "<strong id="deleteTaskName"></strong>"?</p>
-        </div>
-        <div class="modal-actions delete-modal-actions">
-            <button type="button" class="btn-danger-confirm" id="finalDeleteBtn">Delete Task</button>
-        </div>
-    </div>
-</div>
-
-<!-- Clear Completed Modal -->
-<div id="clearCompletedModal" class="delete-modal-overlay">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header delete-modal-header">
-            <h3><%= icon('delete') %> Clear Completed</h3>
-            <span class="delete-modal-close" onclick="closeClearCompletedModal()">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <p>Are you sure you want to remove all completed tasks?</p>
-        </div>
-        <div class="modal-actions delete-modal-actions">
-            <form action="/todo/clear" method="POST">
-                <button type="submit" class="btn-danger-confirm">Clear All</button>
-            </form>
-        </div>
-    </div>
-</div>
