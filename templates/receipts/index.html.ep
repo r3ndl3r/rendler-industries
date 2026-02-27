@@ -86,23 +86,6 @@
         </div>
 </div>
 
-<!-- Flexible Confirmation Modal -->
-<div id="confirmActionModal" class="delete-modal-overlay" style="display: none;">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><span id="confirmModalIcon"><%= icon('delete') %></span> <span id="confirmModalTitleText">Confirm Action</span></h3>
-            <span class="delete-modal-close" onclick="closeConfirmModal()">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <p id="confirmModalText"></p>
-        </div>
-        <div class="modal-actions ereceipt-actions">
-            <button type="button" id="confirmModalBtn" class="btn-danger-confirm">Confirm</button>
-            <button type="button" class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
-        </div>
-    </div>
-</div>
-
 <!-- Edit Receipt Modal -->
 <div id="editModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
