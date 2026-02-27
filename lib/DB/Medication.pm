@@ -114,17 +114,24 @@ sub DB::update_medication_log {
     return $sth->execute($med_id, $family_member_id, $dosage, $taken_at, $id);
 }
 
-# Resets a medication log entry's timestamp to NOW().
+# Resets a medication log entry's timestamp to NOW() or a custom value.
 # Parameters:
-#   id : Unique ID of the log entry
+#   id       : Unique ID of the log entry
+#   taken_at : (Optional) YYYY-MM-DD HH:MM:SS string
 # Returns:
 #   Boolean : Success status
 sub DB::reset_medication_log {
-    my ($self, $id) = @_;
+    my ($self, $id, $taken_at) = @_;
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("UPDATE medication_logs SET taken_at = NOW() WHERE id = ?");
-    return $sth->execute($id) > 0;
+    my $sql = "UPDATE medication_logs SET taken_at = " . ($taken_at ? "?" : "NOW()") . " WHERE id = ?";
+    my $sth = $self->{dbh}->prepare($sql);
+    
+    my @params;
+    push @params, $taken_at if $taken_at;
+    push @params, $id;
+
+    return $sth->execute(@params) > 0;
 }
 
 # Removes a medication log entry.
