@@ -64,18 +64,12 @@ function closeEReceiptModal() {
     if (modal) modal.style.display = 'none';
 }
 
-function closeConfirmModal() {
-    const modal = document.getElementById('confirmActionModal');
-    if (modal) modal.style.display = 'none';
-}
-
 // Global Exports
 window.closeReceiptModal = closeReceiptModal;
 window.closeEditModal = closeEditModal;
 window.closeCropModal = closeCropModal;
 window.closePreUploadCropModal = closePreUploadCropModal;
 window.closeEReceiptModal = closeEReceiptModal;
-window.closeConfirmModal = closeConfirmModal;
 window.openUploadModal = openUploadModal;
 window.closeUploadModal = closeUploadModal;
 
@@ -170,40 +164,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Confirmation Modal Functions ---
 
-    window.openConfirmModal = function(title, text, confirmClass, confirmLabel, onConfirm, iconName = 'delete') {
-        const modal = document.getElementById('confirmActionModal');
-        const btn = document.getElementById('confirmModalBtn');
-        const iconEl = document.getElementById('confirmModalIcon');
-        const titleTextEl = document.getElementById('confirmModalTitleText');
-        
-        if (titleTextEl) titleTextEl.textContent = title;
-        const textEl = document.getElementById('confirmModalText');
-        if (textEl) textEl.textContent = text;
-        if (iconEl) iconEl.innerHTML = getIcon(iconName);
-        
-        if (btn) {
-            btn.className = `btn ${confirmClass}`;
-            btn.textContent = confirmLabel;
-            btn.onclick = () => {
-                onConfirm();
-                closeConfirmModal();
-            };
-        }
-        
-        modal.style.display = 'flex';
-    };
-
     window.confirmDeleteReceipt = function(id, label) {
-        window.openConfirmModal(
-            'Delete Receipt',
-            `Are you sure you want to permanently delete the receipt for "${label}"?`,
-            'btn-danger-confirm',
-            'Delete Receipt',
-            () => {
-                deleteReceipt(id);
-            },
-            'delete'
-        );
+        showConfirmModal({
+            title: 'Delete Receipt',
+            message: `Are you sure you want to permanently delete the receipt for "<strong>${label}</strong>"?`,
+            danger: true,
+            confirmText: 'Delete Receipt',
+            onConfirm: () => deleteReceipt(id)
+        });
     };
 
     // Standardize modal closing using global helper from default.js
@@ -472,6 +440,11 @@ async function handleEditSubmit(e) {
     const id = form.dataset.receiptId;
     const formData = new FormData(form);
     
+    const btn = form.querySelector('button[type="submit"]');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    
     try {
         const response = await fetch(`/receipts/api/update/${id}`, {
             method: 'POST',
@@ -497,6 +470,9 @@ async function handleEditSubmit(e) {
         }
     } catch (e) {
         console.error("Update Error:", e);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     }
 }
 
@@ -809,7 +785,7 @@ window.triggerOCR = function(id) {
     const btn             = document.getElementById('ocr-btn-' + id);
     const originalContent = btn.innerHTML;
     btn.disabled   = true;
-    btn.innerHTML  = '...';
+    btn.innerHTML  = `${getIcon('waiting')} ...`;
     showToast('Scanning receipt... please wait.', 'info');
     fetch('/receipts/api/ocr/' + id, { method: 'POST' })
         .then(r => r.json())
@@ -836,10 +812,28 @@ window.triggerOCR = function(id) {
         });
 };
 
+window.reScanReceipt = function() {
+    const modal = document.getElementById('eReceiptModal');
+    const content = document.getElementById('eReceiptContent');
+    const receiptId = modal.dataset.receiptId;
+    if (!receiptId) return;
+
+    const btn = document.querySelector('.btn-ereceipt-rescan');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Rescanning...`;
+
+    viewElectronicReceipt(receiptId, 1);
+};
+
 window.viewElectronicReceipt = function(id, force = 0, preLoadedData = null, initialIcon = null) {
     const modal = document.getElementById('eReceiptModal');
     const content = document.getElementById('eReceiptContent');
+    const rescanBtn = document.querySelector('.btn-ereceipt-rescan');
+    const originalRescanHtml = rescanBtn ? rescanBtn.innerHTML : '';
+    
     modal.style.display = 'flex';
+    modal.dataset.receiptId = id;
 
     if (preLoadedData && preLoadedData.trim() !== '' && !force) {
         try {
@@ -856,6 +850,10 @@ window.viewElectronicReceipt = function(id, force = 0, preLoadedData = null, ini
     fetch(`/receipts/api/ai_analyze/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ force: force }) })
     .then(r => r.json())
     .then(res => {
+        if (rescanBtn) {
+            rescanBtn.disabled = false;
+            rescanBtn.innerHTML = originalRescanHtml;
+        }
         if (res.success) {
             showToast("AI Analysis complete", "success");
             loadState(); // Refresh everything to get the AI badge
@@ -863,6 +861,12 @@ window.viewElectronicReceipt = function(id, force = 0, preLoadedData = null, ini
         } else {
             showToast(res.error || "AI analysis failed", "error");
             content.innerHTML = `<div class="alert alert-error">${res.error || 'AI analysis failed'}</div>`;
+        }
+    })
+    .catch(() => {
+        if (rescanBtn) {
+            rescanBtn.disabled = false;
+            rescanBtn.innerHTML = originalRescanHtml;
         }
     });
 };
