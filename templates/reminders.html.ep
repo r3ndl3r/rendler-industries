@@ -26,12 +26,12 @@
 
     <% if (@$reminders) { %>
         <div class="reminders-grid">
-            <% 
+            <%
                 use POSIX qw(strftime);
                 my $today = strftime('%Y-%m-%d', localtime);
-                for my $r (@$reminders) { 
+                for my $r (@$reminders) {
             %>
-                <div class="glass-panel reminder-card <%= $r->{is_active} ? '' : 'paused' %>" 
+                <div class="glass-panel reminder-card <%= $r->{is_active} ? '' : 'paused' %>"
                      data-id="<%= $r->{id} %>"
                      data-time="<%= substr($r->{reminder_time}, 0, 5) %>"
                      data-days="<%= $r->{days_of_week} // '' %>"
@@ -45,12 +45,12 @@
                             <h2 class="reminder-title"><%= $r->{title} %></h2>
                         </div>
                     </div>
-                    
+
                     <div class="reminder-time">
                         <div class="reminder-time-main">
-                            <span class="clock-icon"><%= icon('clock') %></span> 
-                            <% 
-                                my $raw_time = substr($r->{reminder_time}, 0, 5); 
+                            <span class="clock-icon"><%= icon('clock') %></span>
+                            <%
+                                my $raw_time = substr($r->{reminder_time}, 0, 5);
                                 my ($h, $m) = split(':', $raw_time);
                                 my $ampm = $h >= 12 ? 'PM' : 'AM';
                                 $h = $h % 12; $h = 12 if $h == 0;
@@ -91,13 +91,22 @@
                     </div>
 
                     <div class="reminder-footer-actions">
-                        <button class="btn-icon-<%= $r->{is_active} ? 'view' : 'copy' %> btn-status-toggle" 
-                                onclick="toggleReminder(<%= $r->{id} %>, <%= $r->{is_active} ? 0 : 1 %>, this)" 
+                        <button class="btn-icon-<%= $r->{is_active} ? 'view' : 'copy' %> btn-status-toggle"
+                                onclick="toggleReminder(<%= $r->{id} %>, <%= $r->{is_active} ? 0 : 1 %>, this)"
                                 title="<%= $r->{is_active} ? 'Pause Reminder' : 'Resume Reminder' %>">
                             <%= icon($r->{is_active} ? 'running' : 'paused') %>
                         </button>
-                        <button class="btn-icon-edit" data-reminder='<%== Mojo::JSON::to_json($r) %>' onclick='openEditModal(this)' title="Edit Reminder"><%= icon('edit') %></button>
-                        <button class="btn-icon-delete" onclick="confirmDeleteReminder(<%= $r->{id} %>, '<%= $r->{title} %>')"><%= icon('delete') %></button>
+                        <button class="btn-icon-edit"
+                                data-reminder="<%= reminder_json($r) %>"
+                                onclick="openEditModal(this)"
+                                title="Edit Reminder"><%= icon('edit') %>
+                        </button>
+                        <button class="btn-icon-delete"
+                                data-id="<%= $r->{id} %>"
+                                data-title="<%= $r->{title} %>"
+                                onclick="confirmDeleteReminder(this.dataset.id, this.dataset.title)"
+                                title="Delete Reminder"><%= icon('delete') %>
+                        </button>
                     </div>
                 </div>
             <% } %>
@@ -123,7 +132,7 @@
                     <label>Title</label>
                     <input type="text" name="title" class="game-input" required placeholder="e.g. Take out Bins">
                 </div>
-                
+
                 <div class="form-group">
                     <label>Description</label>
                     <input type="text" name="description" class="game-input" placeholder="e.g. Green bin only this week">
@@ -190,7 +199,7 @@
                     <label>Title</label>
                     <input type="text" name="title" id="editReminderTitle" class="game-input" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Description</label>
                     <input type="text" name="description" id="editReminderDescription" class="game-input">
@@ -214,7 +223,7 @@
                 <div class="form-group">
                     <label>Days of the week</label>
                     <div class="days-selector">
-                        <% @day_names = qw(Mon Tue Wed Thu Fri Sat Sun); %>
+                        <% my @day_names = qw(Mon Tue Wed Thu Fri Sat Sun); %>
                         <% for my $i (1..7) { %>
                             <label class="day-checkbox">
                                 <input type="checkbox" name="days[]" value="<%= $i %>" id="editDay<%= $i %>">
