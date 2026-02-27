@@ -13,13 +13,6 @@
     <h1><%= icon('settings') %> <span>Settings</span></h1>
   </div>
 
-  % if (my $msg = flash('message')) {
-    <div class="alert alert-success"><%= $msg %></div>
-  % }
-  % if (my $err = flash('error')) {
-    <div class="alert alert-error"><%= $err %></div>
-  % }
-
   <div class="settings-layout">
 
     <nav class="settings-nav">
@@ -251,7 +244,7 @@
                         <div class="form-group full-width">
                             <label>Active Model</label>
                             <div class="input-wrapper">
-                                <select name="gemini_active_model" class="form-input" style="background: #0f172a; border: 1px solid #334155; color: white;">
+                                <select name="gemini_active_model" class="form-input gemini-select">
                                     % for my $model (@$gemini_models) {
                                         <option value="<%= $model %>" <%= $model eq $gemini_active ? 'selected' : '' %>><%= $model %></option>
                                     % }
@@ -264,33 +257,30 @@
                     </div>
                 </form>
 
-                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+                <hr class="settings-separator">
 
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>Available Models</label>
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
+                        <div class="model-list-container">
                             % for my $model (@$gemini_models) {
-                                <div class="pill-badge" style="background: rgba(144, 202, 249, 0.1); border: 1px solid rgba(144, 202, 249, 0.2); padding: 4px 12px; border-radius: 20px; display: flex; align-items: center; gap: 10px;">
-                                    <span style="font-size: 0.85rem; color: #90caf9;"><%= $model %></span>
-                                    <form method="POST" action="/settings/update" style="display: inline;">
-                                        <input type="hidden" name="section" value="gemini_models">
-                                        <input type="hidden" name="action" value="delete">
-                                        <input type="hidden" name="model_name" value="<%= $model %>">
-                                        <button type="submit" style="background: none; border: 0; color: #ff5252; cursor: pointer; padding: 0; font-weight: bold;" title="Remove Model" onclick="return confirm('Remove this model from list?')">&times;</button>
+                                <div class="pill-badge">
+                                    <span class="model-name-text"><%= $model %></span>
+                                    <form onsubmit="confirmDeleteModel('<%= $model %>'); return false;" class="form-inline">
+                                        <button type="submit" class="btn-remove-model" title="Remove Model">&times;</button>
                                     </form>
                                 </div>
                             % }
                         </div>
                     </div>
-                    <form method="POST" action="/settings/update" style="width: 100%;">
+                    <form id="addModelForm" class="w-100">
                         <input type="hidden" name="section" value="gemini_models">
                         <input type="hidden" name="action" value="add">
-                        <div class="form-group" style="margin-top: 15px;">
+                        <div class="form-group mt-15">
                             <label>Add New Model Name</label>
-                            <div style="display: flex; gap: 10px;">
+                            <div class="d-flex gap-10">
                                 <input type="text" name="new_model" class="form-input" placeholder="e.g. gemini-3.1-pro-preview">
-                                <button type="submit" class="btn-primary btn-small" style="white-space: nowrap;">Add Model</button>
+                                <button type="submit" class="btn-primary btn-small nowrap">Add Model</button>
                             </div>
                         </div>
                     </form>
