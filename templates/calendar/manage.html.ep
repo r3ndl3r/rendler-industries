@@ -31,13 +31,13 @@
         <table class="events-table">
             <thead>
                 <tr>
-                    <th style="width: 25%">Title</th>
-                    <th style="width: 15%">Start</th>
-                    <th style="width: 15%">End</th>
-                    <th style="width: 10%">Category</th>
-                    <th style="width: 15%">Attendees</th>
-                    <th style="width: 10%">Created By</th>
-                    <th style="width: 10%">Actions</th>
+                    <th class="col-title">Title</th>
+                    <th class="col-start">Start</th>
+                    <th class="col-end">End</th>
+                    <th class="col-category">Category</th>
+                    <th class="col-attendees">Attendees</th>
+                    <th class="col-creator">Created By</th>
+                    <th class="col-actions-header">Actions</th>
                 </tr>
             </thead>
             <tbody class="events-table-body">
@@ -45,7 +45,7 @@
                     % for my $event (@$upcoming_events) {
                     <tr data-event-id="<%= $event->{id} %>" data-category="<%= $event->{category} %>">
                         <td>
-                            <span class="event-color-dot" style="background-color: <%= $event->{color} %>"></span>
+                            <span class="event-color-dot" style="--event-color: <%= $event->{color} %>"></span>
                             <strong><%= $event->{title} %></strong>
                             % if ($event->{description}) {
                             <div class="event-desc"><%= $event->{description} %></div>
@@ -87,17 +87,17 @@
     </div>
 
     <h2 class="section-header past">Past Events</h2>
-    <div class="events-list" style="opacity: 0.9;">
+    <div class="events-list past-events-list">
         <table class="events-table">
             <thead>
                 <tr>
-                    <th style="width: 25%">Title</th>
-                    <th style="width: 15%">Start</th>
-                    <th style="width: 15%">End</th>
-                    <th style="width: 10%">Category</th>
-                    <th style="width: 15%">Attendees</th>
-                    <th style="width: 10%">Created By</th>
-                    <th style="width: 10%">Actions</th>
+                    <th class="col-title">Title</th>
+                    <th class="col-start">Start</th>
+                    <th class="col-end">End</th>
+                    <th class="col-category">Category</th>
+                    <th class="col-attendees">Attendees</th>
+                    <th class="col-creator">Created By</th>
+                    <th class="col-actions-header">Actions</th>
                 </tr>
             </thead>
             <tbody class="events-table-body">
@@ -105,7 +105,7 @@
                     % for my $event (@$past_events) {
                     <tr data-event-id="<%= $event->{id} %>" data-category="<%= $event->{category} %>">
                         <td>
-                            <span class="event-color-dot" style="background-color: <%= $event->{color} %>"></span>
+                            <span class="event-color-dot" style="--event-color: <%= $event->{color} %>"></span>
                             <strong><%= $event->{title} %></strong>
                             % if ($event->{description}) {
                             <div class="event-desc"><%= $event->{description} %></div>
@@ -221,8 +221,8 @@
                                 </div>
                             </div>
                             <div class="modal-actions">
-                                <button type="button" class="btn-danger btn-small" id="deleteEventBtn" style="display: none;">Delete</button>
-                                <button type="button" class="btn-clone btn-small" id="cloneEventBtn" style="display: none;">Clone</button>
+                                <button type="button" class="btn-danger btn-small hidden" id="deleteEventBtn">Delete</button>
+                                <button type="button" class="btn-clone btn-small hidden" id="cloneEventBtn">Clone</button>
                                 <button type="submit" class="btn-primary btn-small">Save</button>
                             </div>
                         </form>
@@ -233,21 +233,6 @@
     <div class="modal-content">
         <span class="close">&times;</span>
         <div id="eventDetailsContent">
-        </div>
-    </div>
-</div>
-
-<div id="deleteConfirmModal" class="delete-modal-overlay">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('delete') %> Confirm Deletion</h3>
-            <span class="delete-modal-close" onclick="closeDeleteConfirmModal()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <p>Are you sure you want to delete "<strong id="deleteEventTitle"></strong>"?</p>
-        </div>
-        <div class="modal-actions">
-            <button type="button" class="btn-danger-confirm" id="finalDeleteBtn">Delete Event</button>
         </div>
     </div>
 </div>
