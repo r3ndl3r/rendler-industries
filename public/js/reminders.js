@@ -12,6 +12,9 @@ let appState = {
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
     setInterval(updateCountdowns, 1000);
+    
+    // Background Sync: Refresh state every 60s to stay in sync with server maintenance
+    setInterval(loadState, 60000);
 
     // Attach form handlers
     const addForm = document.getElementById('addReminderForm');
@@ -40,6 +43,10 @@ document.addEventListener('DOMContentLoaded', () => {
  * Core Data Management
  */
 async function loadState() {
+    // Inhibit background polling if user is currently interacting with a modal
+    const anyModalOpen = document.querySelector('.modal-overlay.show');
+    if (anyModalOpen && appState.reminders.length > 0) return;
+
     const container = document.getElementById('remindersListContainer');
     if (container && appState.reminders.length === 0) {
         container.innerHTML = getLoadingHtml('Syncing reminders...');
