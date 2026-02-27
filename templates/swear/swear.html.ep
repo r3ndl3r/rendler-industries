@@ -18,113 +18,154 @@
     <div class="manage-header">
         <h1><%= icon('swear') %> Swear Jar</h1>
         <div class="manage-actions">
-            <a href="/swear/manage" class="action-btn"><%= icon('settings') %> Manage Members</a>
+            <button class="action-btn toggle-view-btn" id="toggleViewBtn" onclick="SwearModule.toggleView()">
+                <span class="view-dashboard-text"><%= icon('settings') %> Manage Members</span>
+                <span class="view-manage-text hidden"><%= icon('back') %> Back to Jar</span>
+            </button>
         </div>
     </div>
 
-    <div class="jar-balance-card">
-        <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9; margin-bottom: 5px;">Real World Jar</div>
-        <div class="jar-amount">$<%= sprintf("%.2f", $jar_balance) %></div>
-    </div>
+    <%# --- VIEW: DASHBOARD --- %>
+    <div id="swearDashboardView">
+        <div class="jar-balance-card">
+            <div class="jar-label">Real World Jar</div>
+            <div class="jar-amount">$<%= sprintf("%.2f", $jar_balance) %></div>
+        </div>
 
-    <div class="glass-panel">
-        <h3 style="margin-top: 0; color: #ff8a80; text-align: center; margin-bottom: 20px; font-weight: 600;">Report Offense</h3>
-        <form action="/swear/add" method="POST">
-            
-            <select name="perpetrator" id="perp_select" class="game-input" required onchange="updateFine()">
-                <option value="" data-fine="0" style="background: #222; color: #aaa;">Select Perpetrator...</option>
-                % for my $m (@$members) {
-                    <option value="<%= $m->{name} %>" data-fine="<%= $m->{default_fine} %>" style="background: #222;">
-                        <%= $m->{name} %>
-                    </option>
-                % }
-            </select>
-
-            <div style="display: flex; gap: 10px;">
-                <input type="number" name="amount" id="fine_amount" class="game-input" placeholder="$ Amount" step="0.50" required>
-                <input type="text" name="reason" class="game-input" placeholder="Reason (Optional)">
-            </div>
-            <button type="submit" class="game-btn btn-red">Add Fine</button>
-        </form>
-    </div>
-
-    <h2 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 20px; font-weight: 300; font-size: 1.5rem; color: rgba(255,255,255,0.9);">Current Debts</h2>
-    
-    <div class="glass-panel" style="padding: 10px 20px;">
-        % if (@$leaderboard) {
-            % for my $row (@$leaderboard) {
-                <div class="jar-row" style="flex-wrap: wrap; gap: 10px;">
-                    <span style="font-size: 1.1rem; font-weight: 600; letter-spacing: 0.5px; flex: 1;"><%= $row->{perpetrator} %></span>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span class="debt-amount">$<%= sprintf("%.2f", $row->{total}) %></span>
-                        
-                        <form action="/swear/pay" method="POST" style="margin: 0; display: flex; gap: 5px;">
-                            <input type="hidden" name="perpetrator" value="<%= $row->{perpetrator} %>">
-                            <input type="number" name="amount" value="<%= sprintf("%.2f", $row->{total}) %>" step="0.50" min="0" class="game-input" style="width: 80px; padding: 8px; font-size: 0.9rem; margin: 0;">
-                            <button type="submit" class="game-btn btn-green btn-small">DEPOSIT</button>
-                        </form>
-                    </div>
-                </div>
-            % }
-        % } else {
-            <p style="text-align: center; color: rgba(255,255,255,0.4); font-style: italic; padding: 20px;">No active debts.</p>
-        % }
-    </div>
-
-    <details style="margin-top: 20px; color: rgba(255,255,255,0.5); cursor: pointer;">
-        <summary>Jar Deposit (Extra Credit)</summary>
-        <div class="glass-panel" style="margin-top: 15px;">
-            <p style="font-size: 0.85rem; margin-top: 0; margin-bottom: 15px; color: rgba(255,255,255,0.6);">Add extra credit to the jar even if you don't have active debts.</p>
-            <form action="/swear/pay" method="POST" style="display: flex; flex-direction: column; gap: 10px;">
-                <select name="perpetrator" class="game-input" required>
-                    <option value="">Select Member...</option>
+        <div class="glass-panel">
+            <h3 class="panel-title-red">Report Offense</h3>
+            <form id="addFineForm">
+                <select name="perpetrator" id="perp_select" class="game-input" required onchange="SwearModule.updateFine()">
+                    <option value="" data-fine="0" class="select-placeholder">Select Perpetrator...</option>
                     % for my $m (@$members) {
-                        <option value="<%= $m->{name} %>"><%= $m->{name} %></option>
+                        <option value="<%= $m->{name} %>" data-fine="<%= $m->{default_fine} %>" class="select-option">
+                            <%= $m->{name} %>
+                        </option>
                     % }
                 </select>
-                <div style="display: flex; gap: 10px;">
-                    <input type="number" name="amount" class="game-input" placeholder="Amount to Deposit" step="0.50" required min="0">
-                    <button type="submit" class="game-btn btn-green">Deposit Cash</button>
+
+                <div class="input-row">
+                    <input type="number" name="amount" id="fine_amount" class="game-input" placeholder="$ Amount" step="0.50" required>
+                    <input type="text" name="reason" class="game-input" placeholder="Reason (Optional)">
                 </div>
+                <button type="submit" class="game-btn btn-red">Add Fine</button>
             </form>
         </div>
-    </details>
 
-    <details style="margin-top: 20px; color: rgba(255,255,255,0.5); cursor: pointer;">
-        <summary>Spend from Jar</summary>
-        <div class="glass-panel" style="margin-top: 15px;">
-            <form action="/swear/spend" method="POST">
-                <input type="number" name="amount" class="game-input" placeholder="Amount to Withdraw" step="0.50" required>
-                <input type="text" name="reason" class="game-input" placeholder="What did we buy? (e.g. Pizza)">
-                <button type="submit" class="game-btn btn-green">Withdraw Money</button>
-            </form>
+        <h2 class="section-header">Current Debts</h2>
+        
+        <div class="glass-panel panel-padding">
+            % if (@$leaderboard) {
+                % for my $row (@$leaderboard) {
+                    <div class="jar-row flex-wrap">
+                        <span class="member-name"><%= $row->{perpetrator} %></span>
+                        <div class="debt-actions">
+                            <span class="debt-amount">$<%= sprintf("%.2f", $row->{total}) %></span>
+                            
+                            <form class="pay-debt-form">
+                                <input type="hidden" name="perpetrator" value="<%= $row->{perpetrator} %>">
+                                <input type="number" name="amount" value="<%= sprintf("%.2f", $row->{total}) %>" step="0.50" min="0" class="game-input small-input">
+                                <button type="submit" class="game-btn btn-green btn-small">DEPOSIT</button>
+                            </form>
+                        </div>
+                    </div>
+                % }
+            % } else {
+                <p class="empty-state">No active debts.</p>
+            % }
         </div>
-    </details>
 
-    <h3 style="margin-top: 40px; color: rgba(255,255,255,0.4); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Recent Activity</h3>
-    <div class="glass-panel" style="padding: 0 20px;">
-        % for my $item (@$history) {
-            <div class="history-item <%= $item->{type} eq 'fine' ? 'type-fine' : 'type-spend' %>">
-                <div style="display: flex; justify-content: space-between;">
-                    <span>
-                        % if ($item->{type} eq 'fine') {
-                            <strong style="color: #fff;"><%= $item->{perpetrator} %></strong> owed
-                        % } elsif ($item->{type} eq 'payment') {
-                            <strong style="color: #69f0ae;"><%= $item->{perpetrator} %></strong> deposited
-                        % } else {
-                            <strong style="color: #66bb6a;">JAR SPEND</strong>
+        <details class="collapsible-details">
+            <summary>Jar Deposit (Extra Credit)</summary>
+            <div class="glass-panel mt-15">
+                <p class="hint-text">Add extra credit to the jar even if you don't have active debts.</p>
+                <form id="extraDepositForm" class="flex-column">
+                    <select name="perpetrator" class="game-input" required>
+                        <option value="">Select Member...</option>
+                        % for my $m (@$members) {
+                            <option value="<%= $m->{name} %>"><%= $m->{name} %></option>
                         % }
-                    </span>
-                    <span style="font-weight: bold; color: <%= $item->{type} eq 'payment' ? '#69f0ae' : '#fff' %>;">
-                        <%= $item->{type} eq 'payment' ? "+" : "" %>$<%= sprintf("%.2f", $item->{amount}) %>
-                    </span>
-                </div>
-                <small style="color: rgba(255,255,255,0.4); display: block; margin-top: 4px;">
-                    <%= $item->{created_at} %> 
-                    <%= $item->{reason} ? "- " . $item->{reason} : "" %>
-                </small>
+                    </select>
+                    <div class="input-row">
+                        <input type="number" name="amount" class="game-input" placeholder="Amount to Deposit" step="0.50" required min="0">
+                        <button type="submit" class="game-btn btn-green">Deposit Cash</button>
+                    </div>
+                </form>
             </div>
-        % }
+        </details>
+
+        <details class="collapsible-details">
+            <summary>Spend from Jar</summary>
+            <div class="glass-panel mt-15">
+                <form id="spendForm">
+                    <input type="number" name="amount" class="game-input" placeholder="Amount to Withdraw" step="0.50" required>
+                    <input type="text" name="reason" class="game-input" placeholder="What did we buy? (e.g. Pizza)">
+                    <button type="submit" class="game-btn btn-green">Withdraw Money</button>
+                </form>
+            </div>
+        </details>
+
+        <h3 class="panel-subtitle">Recent Activity</h3>
+        <div class="glass-panel panel-padding">
+            % for my $item (@$history) {
+                <div class="history-item <%= $item->{type} eq 'fine' ? 'type-fine' : 'type-spend' %>">
+                    <div class="history-meta">
+                        <span>
+                            % if ($item->{type} eq 'fine') {
+                                <strong class="white-text"><%= $item->{perpetrator} %></strong> owed
+                            % } elsif ($item->{type} eq 'payment') {
+                                <strong class="success-text"><%= $item->{perpetrator} %></strong> deposited
+                            % } else {
+                                <strong class="success-text">JAR SPEND</strong>
+                            % }
+                        </span>
+                        <span class="history-amount <%= $item->{type} eq 'payment' ? 'success-text' : 'white-text' %>">
+                            <%= $item->{type} eq 'payment' ? "+" : "" %>$<%= sprintf("%.2f", $item->{amount}) %>
+                        </span>
+                    </div>
+                    <small class="history-date">
+                        <%= $item->{created_at} %> 
+                        <%= $item->{reason} ? "- " . $item->{reason} : "" %>
+                    </small>
+                </div>
+            % }
+        </div>
+    </div>
+
+    <%# --- VIEW: MANAGEMENT --- %>
+    <div id="swearManageView" class="hidden">
+        <div class="glass-panel">
+            <h3 class="panel-title-blue">Add New Member</h3>
+            <form id="addMemberForm">
+                <label>Name</label>
+                <input type="text" name="name" class="game-input" required placeholder="e.g. Mom">
+                
+                <label>Default Fine ($)</label>
+                <input type="number" name="default_fine" class="game-input" required value="2.00" step="0.50">
+                
+                <button type="submit" class="game-btn btn-green">Add Member</button>
+            </form>
+        </div>
+
+        <h3 class="member-list-title">Active Members</h3>
+        <div class="glass-panel panel-padding">
+            % if (@$members) {
+                % for my $m (@$members) {
+                    <div class="member-row" data-id="<%= $m->{id} %>">
+                        <div>
+                            <strong class="member-display-name"><%= $m->{name} %></strong>
+                            <br>
+                            <span class="member-default-fine">Default: $<%= sprintf("%.2f", $m->{default_fine}) %></span>
+                        </div>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteMember(<%= $m->{id} %>, '<%= $m->{name} %>')"><%= icon('delete') %></button>
+                    </div>
+                % }
+            % } else {
+                <div class="empty-state">
+                    <p>📭 No members found.</p>
+                </div>
+            % }
+        </div>
     </div>
 </div>
 
