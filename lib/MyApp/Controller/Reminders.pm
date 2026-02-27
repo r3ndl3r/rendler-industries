@@ -69,7 +69,7 @@ sub add {
     
     # Validate required fields
     unless ($title && $time && @days && @uids) {
-        return $c->render_error("Title, Time, Days, and Recipients are all required.");
+        return $c->render(json => { success => 0, error => "Title, Time, Days, and Recipients are all required." });
     }
     
     # Standardize time format to HH:MM:SS for database compatibility
@@ -85,11 +85,10 @@ sub add {
     
     if ($@) {
         $c->app->log->error("Failed to create reminder: $@");
-        return $c->render_error("Database error while creating reminder.");
+        return $c->render(json => { success => 0, error => "Database error while creating reminder." });
     }
     
-    $c->flash(message => "Reminder '$title' created successfully.");
-    $c->redirect_to('/reminders');
+    return $c->render(json => { success => 1, message => "Reminder '$title' created successfully." });
 }
 
 # Processes updates to an existing reminder.
@@ -102,7 +101,7 @@ sub add {
 #   days[]        : Updated active days
 #   recipients[]  : Updated target users
 # Returns:
-#   Redirects to '/reminders'
+#   JSON response
 sub update {
     my $c = shift;
     
@@ -118,7 +117,7 @@ sub update {
     @uids = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @uids;
     
     unless ($id && $title && $time && @days && @uids) {
-        return $c->render_error("All required fields must be provided.");
+        return $c->render(json => { success => 0, error => "All required fields must be provided." });
     }
     
     # Standardize time format
@@ -133,11 +132,10 @@ sub update {
     
     if ($@) {
         $c->app->log->error("Failed to update reminder $id: $@");
-        return $c->render_error("Database error while updating reminder.");
+        return $c->render(json => { success => 0, error => "Database error while updating reminder." });
     }
     
-    $c->flash(message => "Reminder '$title' updated successfully.");
-    $c->redirect_to('/reminders');
+    return $c->render(json => { success => 1, message => "Reminder '$title' updated successfully." });
 }
 
 # Permanently deletes a reminder rule and its mappings.
@@ -145,17 +143,23 @@ sub update {
 # Parameters:
 #   id : Unique Reminder ID
 # Returns:
-#   Redirects to '/reminders'
+#   JSON response
 sub delete {
     my $c = shift;
     my $id = $c->param('id');
     
     # Validate ID format before processing
     if ($id && $id =~ /^\d+$/) {
-        $c->db->delete_reminder($id);
+        eval {
+            $c->db->delete_reminder($id);
+        };
+        if ($@) {
+            return $c->render(json => { success => 0, error => "Failed to delete reminder." });
+        }
+        return $c->render(json => { success => 1, message => "Reminder deleted." });
     }
     
-    $c->redirect_to('/reminders');
+    return $c->render(json => { success => 0, error => "Invalid ID" });
 }
 
 # Toggles the operational status of a reminder rule via AJAX.
