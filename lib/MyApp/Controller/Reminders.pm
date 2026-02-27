@@ -15,14 +15,19 @@ use Mojo::Util qw(trim);
 #   - Depends on DB::Reminders for data persistence
 #   - Coordinates with global maintenance API for execution triggers
 
-# Renders the main reminders management dashboard.
+# Renders the main reminders management dashboard (SPA skeleton).
 # Route: GET /reminders
 # Parameters: None
-# Returns:
-#   Rendered HTML template 'reminders' with:
-#     - reminders: List of all configured rules
-#     - recipients: List of approved users for assignment
 sub index {
+    my $c = shift;
+    $c->stash(title => 'Manage Reminders');
+    $c->render('reminders');
+}
+
+# Returns all reminders and eligible recipients as JSON for SPA state management.
+# Route: GET /reminders/api/state
+# Returns: JSON object { reminders, recipients }
+sub api_state {
     my $c = shift;
     
     # Retrieve all reminder rules and recipient mapping
@@ -37,10 +42,10 @@ sub index {
         (($_->{is_family} // 0) == 1 || ($_->{is_admin} // 0) == 1)
     } @$users;
 
-    $c->render('reminders', 
+    $c->render(json => {
         reminders  => $reminders,
         recipients => \@eligible_recipients
-    );
+    });
 }
 
 # Processes the creation of a new recurring reminder rule.
