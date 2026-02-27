@@ -12,6 +12,7 @@ use Path::Iterator::Rule;
 use Mojo::JSON qw(decode_json encode_json);
 use Mojo::UserAgent;
 use URI;
+use DateTime;
 
 # Core Application Class and Entry Point.
 # Features:
@@ -185,6 +186,52 @@ sub startup {
     # Returns: DB object instance
     $self->helper(db => sub { state $db = DB->new; return $db });
 
+    # Helper: Native Background Maintenance Runner
+    # Parameters: None
+    # Behavior: 
+    #   Attempts to acquire a MariaDB global lock. If successful, executes 
+    #   Timer, Reminder, and Meal Planner automation tasks.
+    $self->helper(
+        run_maintenance => sub {
+            my $c = shift;
+
+            # Attempt to get a 0-second timeout lock (Return 1 if success, 0 if busy)
+            my ($lock) = $c->db->{dbh}->selectrow_array("SELECT GET_LOCK('mojo_maintenance', 0)");
+            return unless $lock;
+
+            $c->app->log->info("Background maintenance: Lock acquired. Starting tasks...");
+
+            eval {
+                my $now = DateTime->now(time_zone => 'Australia/Melbourne');
+                
+                # Delegate to Controller logic (temporarily using controller as a namespace)
+                # or better yet, we just call the logic directly if we move it to a plugin.
+                # For now, we'll keep the bridge to System.pm.
+                require MyApp::Controller::System;
+                my $sys = MyApp::Controller::System->new(app => $c->app, tx => $c->tx);
+                
+                $sys->run_timer_maintenance();
+                $sys->run_reminder_maintenance($now);
+                $sys->run_meals_maintenance($now);
+            };
+
+            if ($@) {
+                $c->app->log->error("Background maintenance failed: $@");
+            }
+
+            # Release the lock
+            $c->db->{dbh}->do("SELECT RELEASE_LOCK('mojo_maintenance')");
+            $c->app->log->info("Background maintenance: Lock released.");
+        }
+    );
+
+    # Start the Native Background Poller (Every 60 seconds)
+    Mojo::IOLoop->recurring(60 => sub {
+        my $loop = shift;
+        # We use next_tick to ensure we have a fresh controller-like context if needed
+        $self->run_maintenance();
+    });
+
     # Define Application Routes
     my $r = $self->routes;
 
@@ -232,7 +279,6 @@ sub startup {
     $r->get('/this.is.totally.not.sus')->to('root#sus');
     $r->get('/api/v1/dynamic_data')->to('root#api_dynamic_data');
     $r->get('/api/menu/state')->to('menu#get_state');
-    $r->get('/api/maintenance')->to('system#maintenance');
     $r->get('/t')->to(cb => sub { shift->redirect_to('https://stash.rendler.org/stash?n=Movies&u=rendler') });
     $r->get('/quick')->to('root#quick');
     $auth->get('/chelsea')->to('chelsea#index');
