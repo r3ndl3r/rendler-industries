@@ -99,6 +99,51 @@ async function apiPost(url, data = {}) {
 }
 
 /**
+ * Displays a global fullscreen loading overlay with customizable text.
+ * @param {string} text - Primary loading message.
+ * @param {string} subtext - Secondary detail message.
+ */
+function showLoadingOverlay(text = 'Loading...', subtext = 'Please wait while we process your request.') {
+    const overlay = document.createElement('div');
+    overlay.className = 'loading-overlay';
+    overlay.id = 'global-loading-overlay';
+    overlay.innerHTML = `
+        <div class="loading-inner">
+            <div class="loading-spinner-large"></div>
+            <p class="loading-label">${text}</p>
+            <p class="loading-sub">${subtext}</p>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+/**
+ * Removes the global loading overlay.
+ */
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('global-loading-overlay');
+    if (overlay) overlay.remove();
+}
+
+/**
+ * Returns HTML for a localized component loading state.
+ * @param {string} text - Primary text.
+ * @param {string} subtext - Secondary text.
+ * @param {boolean} showScanner - Whether to include the scanning animation line.
+ * @returns {string} - HTML string.
+ */
+function getLoadingHtml(text = 'Loading...', subtext = '', showScanner = false) {
+    return `
+        <div class="component-loading">
+            ${showScanner ? '<div class="loading-scan-line"></div>' : ''}
+            <span class="loading-icon-pulse">${getIcon('ai')}</span>
+            <p class="loading-label">${text}</p>
+            ${subtext ? `<p class="loading-sub">${subtext}</p>` : ''}
+        </div>
+    `;
+}
+
+/**
  * --- Global Flip Clock Engine ---
  */
 
