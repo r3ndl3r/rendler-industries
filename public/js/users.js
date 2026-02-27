@@ -6,206 +6,135 @@
  * @param {string} role - 'admin' or 'family'.
  * @param {boolean} value - True for enabled, false for disabled.
  */
-function toggleRole(userId, role, value) {
+async function toggleRole(userId, role, value) {
     const data = {
         id: userId,
         role: role,
         value: value ? 1 : 0
     };
 
-    $.post('/users/toggle_role', data, function(result) {
-        if (result.success) {
-            showToast(`${role.charAt(0).toUpperCase() + role.slice(1)} role updated`, 'success');
-        } else {
-            showToast('Error: ' + result.error, 'error');
-            location.reload();
-        }
-    }).fail(function() {
-        showToast('Request failed', 'error');
+    const result = await apiPost('/users/toggle_role', data);
+    if (!result || !result.success) {
         location.reload();
-    });
+    }
 }
 
-// Handle Edit Form Submission via AJAX
+// Handle Forms and Listeners
 document.addEventListener('DOMContentLoaded', function() {
     const editForm = document.getElementById('editUserForm');
     if (editForm) {
-        editForm.addEventListener('submit', function(e) {
+        editForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            const formData = new FormData(this);
-            const url = this.action;
+            const btn = this.querySelector('button[type="submit"]');
+            const originalHtml = btn.innerHTML;
             const userId = document.getElementById('editUserId').value;
+            const formData = new FormData(this);
             
-            fetch(url, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: new URLSearchParams(formData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showToast(data.message, 'success');
-                    closeEditModal();
-                    
-                    // Dynamic DOM Update
-                    const row = document.getElementById(`user-row-${userId}`);
-                    if (row) {
-                        // Update basic fields
-                        row.querySelector('.user-username').textContent = formData.get('username');
-                        row.querySelector('.user-email').textContent = formData.get('email');
-                        
-                        const discordEl = row.querySelector('.user-discord');
-                        const discordId = formData.get('discord_id');
-                        if (discordId) {
-                            discordEl.textContent = discordId;
-                            discordEl.style.color = '#7289da';
-                            discordEl.style.opacity = '1';
-                        } else {
-                            discordEl.textContent = '-';
-                            discordEl.style.color = '';
-                            discordEl.style.opacity = '0.3';
-                        }
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
-                        // Update Status Badge
-                        const statusCell = row.querySelector('.user-status-cell');
-                        const status = formData.get('status');
-                        if (status === 'approved') {
-                            statusCell.innerHTML = '<span class="status-badge status-approved">Approved</span>';
-                            // Remove approve button if it exists
-                            const approveBtn = row.querySelector('form[action*="/approve"]');
-                            if (approveBtn) approveBtn.remove();
-                        } else {
-                            statusCell.innerHTML = '<span class="status-badge status-pending">Pending</span>';
-                        }
-                    }
-                } else {
-                    showToast(data.error || 'Update failed', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showToast('Request failed', 'error');
-            });
-        });
-    }
+            const result = await apiPost(`/users/update/${userId}`, Object.fromEntries(formData));
+            
+            // Always reset button state before closing or on error
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
 
-    // Handle Delete Form Submission via AJAX
-    const deleteForm = document.getElementById('deleteUserForm');
-    if (deleteForm) {
-        deleteForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const url = this.action;
-            // Extract ID from action URL (last segment)
-            const userId = url.substring(url.lastIndexOf('/') + 1);
-            
-            fetch(url, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showToast(data.message, 'success');
-                    closeDeleteModal();
+            if (result && result.success) {
+                closeEditModal();
+                
+                // Dynamic DOM Update
+                const row = document.getElementById(`user-row-${userId}`);
+                if (row) {
+                    row.querySelector('.user-username').textContent = formData.get('username');
+                    row.querySelector('.user-email').textContent = formData.get('email');
                     
-                    // Dynamic DOM Update: Fade out and remove row
-                    const row = document.getElementById(`user-row-${userId}`);
-                    if (row) {
-                        row.style.transition = 'all 0.5s ease';
-                        row.style.opacity = '0';
-                        row.style.transform = 'translateX(20px)';
-                        setTimeout(() => row.remove(), 500);
+                    const discordEl = row.querySelector('.user-discord');
+                    const discordId = formData.get('discord_id');
+                    if (discordId) {
+                        discordEl.textContent = discordId;
+                        discordEl.classList.remove('user-discord-empty');
+                        discordEl.classList.add('user-discord-active');
+                    } else {
+                        discordEl.textContent = '-';
+                        discordEl.classList.remove('user-discord-active');
+                        discordEl.classList.add('user-discord-empty');
                     }
-                } else {
-                    showToast(data.error || 'Delete failed', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showToast('Request failed', 'error');
-            });
-        });
-    }
-    
-    // Handle Approve Forms (Inline)
-    document.querySelectorAll('form[action^="/users/approve"]').forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const url = this.action;
-            const userId = url.substring(url.lastIndexOf('/') + 1);
-            
-            fetch(url, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showToast(data.message, 'success');
-                    
-                    // Dynamic DOM Update
-                    const row = document.getElementById(`user-row-${userId}`);
-                    if (row) {
-                        const statusCell = row.querySelector('.user-status-cell');
+
+                    const statusCell = row.querySelector('.user-status-cell');
+                    const status = formData.get('status');
+                    if (status === 'approved') {
                         statusCell.innerHTML = '<span class="status-badge status-approved">Approved</span>';
-                        this.remove(); // Remove the form/button itself
+                        const approveBtn = row.querySelector('.btn-icon-view');
+                        if (approveBtn) approveBtn.closest('form')?.remove();
+                    } else {
+                        statusCell.innerHTML = '<span class="status-badge status-pending">Pending</span>';
                     }
-                } else {
-                    showToast(data.error || 'Approval failed', 'error');
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showToast('Request failed', 'error');
-            });
+            }
         });
-    });
+    }
+
+    // Use global modal closing helper
+    setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
+        closeEditModal, closeConfirmModal
+    ]);
 });
+
+async function approveUser(userId, formEl) {
+    const btn = formEl.querySelector('button');
+    const originalHtml = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')}`;
+
+    const result = await apiPost(`/users/approve/${userId}`);
+    if (result && result.success) {
+        const row = document.getElementById(`user-row-${userId}`);
+        if (row) {
+            const statusCell = row.querySelector('.user-status-cell');
+            statusCell.innerHTML = '<span class="status-badge status-approved">Approved</span>';
+            formEl.remove();
+        }
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
 
 function openEditUserModal(user) {
     const modal = document.getElementById('editUserModal');
-    const form = document.getElementById('editUserForm');
-    
-    // Set form action
-    form.action = `/users/update/${user.id}`;
-    
-    // Populate fields
     document.getElementById('editUserId').value = user.id;
     document.getElementById('editUsername').value = user.username;
     document.getElementById('editEmail').value = user.email;
     document.getElementById('editDiscordId').value = user.discord_id || '';
     document.getElementById('editStatus').value = user.status || 'pending';
-    document.getElementById('editPassword').value = ''; // Always clear password
+    document.getElementById('editPassword').value = ''; 
     
     modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    document.body.classList.add('modal-open');
 }
 
 function closeEditModal() {
     document.getElementById('editUserModal').style.display = 'none';
-    document.body.style.overflow = 'auto';
+    document.body.classList.remove('modal-open');
 }
 
 function confirmDeleteUser(id, username) {
-    const modal = document.getElementById('deleteConfirmModal');
-    const nameEl = document.getElementById('deleteUserName');
-    const form = document.getElementById('deleteUserForm');
-    
-    if (nameEl) nameEl.textContent = username;
-    if (form) form.action = '/users/delete/' + id;
-    if (modal) modal.style.display = 'flex';
-}
-
-function closeDeleteModal() {
-    const modal = document.getElementById('deleteConfirmModal');
-    if (modal) modal.style.display = 'none';
-}
-
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const editModal = document.getElementById('editUserModal');
-    const deleteModal = document.getElementById('deleteConfirmModal');
-    
-    if (event.target == editModal) closeEditModal();
-    if (event.target == deleteModal) closeDeleteModal();
+    showConfirmModal({
+        title: 'Delete User',
+        message: `Are you sure you want to permanently delete user "<strong>${username}</strong>"?`,
+        danger: true,
+        confirmText: 'Delete User',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
+            const result = await apiPost(`/users/delete/${id}`);
+            if (result && result.success) {
+                const row = document.getElementById(`user-row-${id}`);
+                if (row) {
+                    row.classList.add('user-row-fade-out');
+                    setTimeout(() => row.remove(), 500);
+                }
+            }
+        }
+    });
 }
