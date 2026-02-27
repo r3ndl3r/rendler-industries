@@ -84,7 +84,16 @@ async function apiPost(url, data = {}) {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams(data)
         });
-        const result = await response.json();
+        
+        const text = await response.text();
+        let result;
+        try {
+            result = JSON.parse(text);
+        } catch (e) {
+            console.error('JSON Parse Error. Raw response:', text);
+            throw new Error('Invalid JSON response');
+        }
+
         if (result.success) {
             if (result.message) showToast(result.message, 'success');
             return result;
@@ -93,6 +102,7 @@ async function apiPost(url, data = {}) {
             return null;
         }
     } catch (err) {
+        console.error('apiPost Error:', err);
         showToast('Network error', 'error');
         return null;
     }
