@@ -21,7 +21,7 @@ use Mojo::JSON qw(decode_json encode_json);
 # Renders the main receipt ledger (Skeleton for SPA).
 # Route: GET /receipts
 sub index {
-    shift->render('receipts/index');
+    shift->render('receipts');
 }
 
 # API: Returns full SPA state (Receipts + Summaries + Config)
