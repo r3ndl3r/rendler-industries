@@ -321,6 +321,7 @@ sub startup {
 
     # --- Reminders Administration Routes ---
     $family->get('/reminders')->to('reminders#index');
+    $family->get('/reminders/api/state')->to('reminders#api_state');
     $family->post('/reminders/add')->to('reminders#add');
     $family->post('/reminders/update/:id')->to('reminders#update');
     $family->post('/reminders/delete/:id')->to('reminders#delete');
