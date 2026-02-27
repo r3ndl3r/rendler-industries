@@ -4,10 +4,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const TAB_KEY  = 'settings_active_tab';
     const CARD_KEY = 'settings_open_cards';
 
-    // --- Persistence Helpers ---
-
-    // Open card state is stored as a JSON array of data-card values so it
-    // survives form POSTs that redirect back to this page.
     function getOpenCards() {
         try { return JSON.parse(localStorage.getItem(CARD_KEY)) || []; }
         catch (e) { return []; }
@@ -17,10 +13,6 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem(CARD_KEY, JSON.stringify(list));
     }
 
-    // --- Card Accordion ---
-
-    // Opens or closes a single card. Updates aria-expanded, the chevron
-    // rotation, and the persistent open-card list in localStorage.
     function toggleCard(card, forceOpen) {
         var header   = card.querySelector('.settings-card-header');
         var cardKey  = card.dataset.card;
@@ -38,7 +30,6 @@ document.addEventListener('DOMContentLoaded', function () {
         saveOpenCards(openList);
     }
 
-    // Bind click and keyboard (Enter/Space) to each card header
     document.querySelectorAll('.settings-card-header').forEach(function (header) {
         header.addEventListener('click', function () {
             toggleCard(header.closest('.settings-card'));
@@ -51,16 +42,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Restore previously open cards from localStorage on page load
     getOpenCards().forEach(function (cardKey) {
         var card = document.querySelector('.settings-card[data-card="' + cardKey + '"]');
         if (card) toggleCard(card, true);
     });
 
-    // --- Tab Switching ---
-
-    // Activates a tab panel by id suffix and persists the selection so the
-    // user lands on the same section after a form POST redirects back here.
     function activateTab(tabId) {
         document.querySelectorAll('.settings-tab').forEach(function (tab) {
             tab.classList.toggle('active', tab.dataset.tab === tabId);
@@ -77,16 +63,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Restore saved tab; guard against stale values from renamed tabs
     var savedTab = localStorage.getItem(TAB_KEY);
     if (savedTab && document.getElementById('panel-' + savedTab)) {
         activateTab(savedTab);
     }
 
-    // --- Password Visibility Toggle ---
-
-    // Delegated to document so any dynamically added fields are covered.
-    // The button must carry [data-toggle-visibility] and sit inside .input-wrapper.
     document.addEventListener('click', function (e) {
         var btn = e.target.closest('[data-toggle-visibility]');
         if (!btn) return;
@@ -96,4 +77,78 @@ document.addEventListener('DOMContentLoaded', function () {
         input.type      = revealing ? 'text' : 'password';
         btn.textContent = revealing ? 'Hide' : 'Show';
     });
+
+    // Handle AJAX Form Submissions
+    document.querySelectorAll('.settings-card form').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = this.querySelector('button[type="submit"]');
+            const originalHtml = btn.innerHTML;
+            const formData = new FormData(this);
+            const section = formData.get('section');
+
+            // Confirmation for sensitive actions
+            if (section === 'app_secret') {
+                const confirmed = await new Promise(resolve => {
+                    showConfirmModal({
+                        title: 'Update App Secret',
+                        message: 'Changing the App Secret will invalidate all active sessions and require an application restart. Continue?',
+                        danger: true,
+                        confirmText: 'Update Secret',
+                        onConfirm: () => resolve(true)
+                    });
+                    // Need to handle cancel too
+                    document.querySelector('.btn-secondary').onclick = () => {
+                        closeConfirmModal();
+                        resolve(false);
+                    };
+                });
+                if (!confirmed) return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
+            const result = await apiPost('/settings/update', Object.fromEntries(formData));
+            
+            if (result && result.success) {
+                // Update badge if applicable
+                const card = this.closest('.settings-card');
+                const badge = card.querySelector('.settings-badge');
+                if (badge) {
+                    badge.textContent = 'Configured';
+                    badge.className = 'settings-badge badge-active';
+                }
+                
+                // If it was gemini settings, we might need a partial reload or just confirm
+                if (section === 'gemini' || section === 'gemini_models') {
+                    location.reload(); // Hard reload for complex state updates
+                }
+            }
+            
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        });
+    });
+
+    // Handle Gemini Model Deletion (Standardized Confirmation)
+    window.confirmDeleteModel = function(modelName) {
+        showConfirmModal({
+            title: 'Remove Model',
+            message: `Are you sure you want to remove <strong>${modelName}</strong> from available models?`,
+            danger: true,
+            confirmText: 'Remove',
+            loadingText: 'Removing...',
+            onConfirm: async () => {
+                const result = await apiPost('/settings/update', {
+                    section: 'gemini_models',
+                    action: 'delete',
+                    model_name: modelName
+                });
+                if (result && result.success) {
+                    location.reload();
+                }
+            }
+        });
+    };
 });
