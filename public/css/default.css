@@ -49,6 +49,10 @@ body {
     display: none !important;
 }
 
+body.modal-open {
+    overflow: hidden !important;
+}
+
 .form-group {
     margin-bottom: 1.5rem;
     display: flex;
