@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Use global modal closing helper
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeDoseModal, closeEditModal, closeDeleteModal, closeResetModal, closeRegistryModal, closeManageModal
+        closeDoseModal, closeEditModal, closeConfirmModal, closeRegistryModal, closeManageModal
     ]);
 });
 
@@ -32,28 +32,37 @@ function refreshData() {
 function submitForm(event, url, isRegistry = false) {
     event.preventDefault();
     const form = event.target;
+    const btn = form.querySelector('button[type="submit"]');
     const formData = new FormData(form);
 
     // Merge split time/date for medication logs (non-registry forms)
-    if (!isRegistry && form.id !== 'deleteForm') {
+    if (!isRegistry) {
         const mode = form.id === 'doseForm' ? 'add' : 'edit';
-        const time = document.getElementById(`${mode}_taken_at_time`).value;
-        const date = document.getElementById(`${mode}_taken_at_date`).value;
-        if (time && date) {
-            formData.set('taken_at', `${date} ${time}`);
+        const timeEl = document.getElementById(`${mode}_taken_at_time`);
+        const dateEl = document.getElementById(`${mode}_taken_at_date`);
+        if (timeEl && dateEl) {
+            formData.set('taken_at', `${dateEl.value} ${timeEl.value}`);
         }
     }
+
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Processing...`;
 
     // Refactored to use standard apiPost from default.js
     apiPost(url, Object.fromEntries(formData)).then(data => {
         if (data) {
             closeDoseModal();
             closeEditModal();
-            closeDeleteModal();
-            closeResetModal();
             if (isRegistry) closeManageModal();
             refreshData();
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
         }
+    }).catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     });
 }
 
@@ -228,18 +237,30 @@ function openEditModal(data) {
 function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
 
 function confirmDeleteMedication(id, name) {
-    document.getElementById('deleteMedName').textContent = name;
-    document.getElementById('deleteForm').action = `/medication/delete/${id}`;
-    document.getElementById('deleteConfirmModal').style.display = 'flex';
+    showConfirmModal({
+        title: 'Delete Medication Log',
+        message: `Are you sure you want to delete the log for <strong>${name}</strong>?`,
+        danger: true,
+        confirmText: 'Delete Log',
+        onConfirm: async () => {
+            const result = await apiPost(`/medication/delete/${id}`);
+            if (result) refreshData();
+        }
+    });
 }
-function closeDeleteModal() { document.getElementById('deleteConfirmModal').style.display = 'none'; }
 
 function confirmResetMedication(id, name) {
-    document.getElementById('resetMedName').textContent = name;
-    document.getElementById('resetForm').action = `/medication/reset/${id}`;
-    document.getElementById('resetConfirmModal').style.display = 'flex';
+    showConfirmModal({
+        title: 'Reset Dose Time',
+        icon: 'reset',
+        message: `Reset timestamp for <strong>${name}</strong> to <strong>NOW</strong>?`,
+        confirmText: 'Reset to Now',
+        onConfirm: async () => {
+            const result = await apiPost(`/medication/reset/${id}`);
+            if (result) refreshData();
+        }
+    });
 }
-function closeResetModal() { document.getElementById('resetConfirmModal').style.display = 'none'; }
 
 function openRegistryModal() { document.getElementById('registryModal').style.display = 'block'; }
 function closeRegistryModal() { document.getElementById('registryModal').style.display = 'none'; }
@@ -254,7 +275,16 @@ function openManageModal(id, name, dosage) {
 function closeManageModal() { document.getElementById('manageEditModal').style.display = 'none'; }
 
 function confirmDeleteRegistry(id, name) {
-    if (confirm(`Remove ${name} from registry?`)) {
-        submitForm({ preventDefault: () => {}, target: { id: 'deleteForm' } }, `/medication/manage/delete/${id}`, true);
-    }
+    showConfirmModal({
+        title: 'Remove from Registry',
+        message: `Are you sure you want to remove <strong>${name}</strong> from the medication registry?`,
+        danger: true,
+        confirmText: 'Remove',
+        onConfirm: async () => {
+            const result = await apiPost(`/medication/manage/delete/${id}`);
+            if (result) {
+                refreshData();
+            }
+        }
+    });
 }
