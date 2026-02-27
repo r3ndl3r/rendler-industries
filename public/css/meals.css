@@ -207,6 +207,10 @@
     margin-bottom: 0.5rem;
 }
 
+.mt-4 {
+    margin-top: 1rem;
+}
+
 /* Blackout State */
 .blackout-state {
     text-align: center;
@@ -297,6 +301,14 @@
     font-size: 0.9rem;
 }
 
+#manageVaultModal .btn-icon-delete.disabled {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.2) !important;
+    cursor: not-allowed;
+    filter: grayscale(1);
+    opacity: 0.5;
+}
+
 #manageVaultModal .data-table tbody tr:hover {
     background: rgba(255, 255, 255, 0.03);
 }
@@ -337,7 +349,7 @@
 
 .meal-dropdown {
     position: absolute;
-    top: calc(100% + 5px); /* Added offset */
+    top: calc(100% + 5px); 
     left: 0;
     right: 0;
     background: #1e293b;
@@ -349,6 +361,11 @@
     margin-top: 0.25rem;
 }
 
+.meal-dropdown.drop-up {
+    top: auto;
+    bottom: calc(100% + 5px);
+}
+
 .meal-option {
     padding: 0.6rem 0.75rem;
     color: #f1f5f9;
@@ -358,6 +375,22 @@
 
 .meal-option:hover {
     background: rgba(59, 130, 246, 0.2);
+}
+
+.meal-option-new {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    color: #93c5fd;
+    font-weight: 600;
+}
+
+.new-badge {
+    font-size: 0.6rem;
+    background: #3b82f6;
+    color: white;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: middle;
 }
 
 /* Responsive */

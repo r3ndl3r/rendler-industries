@@ -266,55 +266,6 @@
     line-height: 1.4;
 }
 
-.ereceipt-loading {
-    text-align: center;
-    padding: 40px;
-}
-
-.ereceipt-loading-icon {
-    font-size: 3rem;
-    display: block;
-    margin-bottom: 15px;
-    animation: brain-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes brain-pulse {
-    0% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.4)); }
-    50% { transform: scale(1.1); filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.8)); }
-    100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.4)); }
-}
-
-.ereceipt-scan-line {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, #8b5cf6, #c084fc, #8b5cf6, transparent);
-    box-shadow: 0 0 15px #8b5cf6;
-    animation: scanner-move 2s linear infinite;
-    z-index: 10;
-    opacity: 0.6;
-}
-
-@keyframes scanner-move {
-    0% { top: 0; }
-    100% { top: 100%; }
-}
-
-.ereceipt-loading-text {
-    font-size: 1.2rem;
-    color: #ffffff;
-    font-weight: 600;
-    margin: 0;
-    letter-spacing: 0.5px;
-}
-
-.ereceipt-loading-sub {
-    font-size: 0.85rem;
-    color: #94a3b8;
-    margin-top: 5px;
-    font-family: system-ui, sans-serif;
-}
-
 .ereceipt-actions {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     justify-content: center;
