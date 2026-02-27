@@ -13,23 +13,25 @@ use Mojo::Util qw(trim);
 #   - Scoped by current_user_id for strict privacy
 #   - Uses DB::Todo helpers for data persistence
 
-# Renders the personal todo list interface.
+# Initial page load - Renders the SPA container.
 # Route: GET /todo
 # Parameters: None
-# Returns:
-#   Rendered HTML template 'todo' with user's specific tasks
 sub index {
+    my $c = shift;
+    $c->stash(title => 'Todo List');
+    $c->render('todo');
+}
+
+# API: Get current state (Active + Completed tasks).
+# Route: GET /todo/api/state
+# Returns: JSON object { todos }
+sub get_state {
     my $c = shift;
     my $user_id = $c->current_user_id;
     
     my $todos = $c->db->get_user_todos($user_id);
     
-    $c->stash(
-        todos => $todos,
-        title => 'Todo List'
-    );
-    
-    $c->render('todo');
+    $c->render(json => { todos => $todos });
 }
 
 # Adds a new task to the user's private list.
@@ -147,9 +149,12 @@ sub clear_completed {
     
     eval {
         $c->db->clear_completed_todos($user_id);
-        return $c->render(json => { success => 1, message => "Cleared all completed tasks." });
     };
-    return $c->render(json => { success => 0, error => 'Failed to clear tasks' });
+    if ($@) {
+        return $c->render(json => { success => 0, error => 'Failed to clear tasks' });
+    }
+    
+    return $c->render(json => { success => 1, message => "Cleared all completed tasks." });
 }
 
 1;
