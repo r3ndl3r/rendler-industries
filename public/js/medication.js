@@ -249,13 +249,26 @@ function confirmDeleteMedication(id, name) {
 }
 
 function confirmResetMedication(id, name) {
+    const localISO = getLocalISOString();
+    const [date, currentTime] = localISO.split('T');
+    
     showConfirmModal({
         title: 'Reset Dose Time',
         icon: 'reset',
-        message: `Reset timestamp for <strong>${name}</strong> to <strong>NOW</strong>?`,
-        confirmText: 'Reset to Now',
+        message: `
+            <div style="margin-bottom: 1.5rem;">
+                Reset timestamp for <strong>${name}</strong>?
+            </div>
+            <div class="form-group" style="text-align: left; max-width: 200px; margin: 0 auto;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.85rem; text-align: center;">Target Time (Today)</label>
+                <input type="time" id="reset_time_input" class="game-input" value="${currentTime}" style="width: 100%; text-align: center; font-size: 1.1rem; height: 45px;">
+            </div>
+        `,
+        confirmText: 'Reset to Selected Time',
         onConfirm: async () => {
-            const result = await apiPost(`/medication/reset/${id}`);
+            const selectedTime = document.getElementById('reset_time_input').value;
+            // Send full timestamp (Today's Date + Selected Time)
+            const result = await apiPost(`/medication/reset/${id}`, { taken_at: `${date} ${selectedTime}` });
             if (result) refreshData();
         }
     });
