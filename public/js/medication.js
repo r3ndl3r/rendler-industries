@@ -205,11 +205,10 @@ function updateAllIntervals() {
 }
 
 function setNow(mode) {
-    const now = new Date();
-    const time = now.toTimeString().substring(0, 5);
-    const date = now.toISOString().substring(0, 10);
-    document.getElementById(`${mode}_taken_at_time`).value = time;
+    const localISO = getLocalISOString();
+    const [date, time] = localISO.split('T');
     document.getElementById(`${mode}_taken_at_date`).value = date;
+    document.getElementById(`${mode}_taken_at_time`).value = time;
 }
 
 /**
