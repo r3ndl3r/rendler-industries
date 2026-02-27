@@ -157,7 +157,7 @@ sub run_reminder_maintenance {
     my %processed_reminder_ids;
 
     foreach my $r (@$due_reminders) {
-        my $msg = "🔔 REMINDER: $r->{title}\n\n$r->{description}\n\nhttps://rendler.org/";
+        my $msg = "🔔 REMINDER: $r->{title}\n\n$r->{description}\n\nhttps://rendler.org/reminders";
         
         # Dispatch notification using standardized helper
         if ($c->notify_user($r->{user_id}, $msg, "Reminder: $r->{title}")) {
