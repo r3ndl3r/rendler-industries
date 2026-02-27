@@ -13,11 +13,37 @@
     color: white; /* Text is always white on colored background */
     transition: opacity 0.2s;
     line-height: 1.3;
+    background-color: var(--event-color, #3788d8);
 }
 
 /* Visual feedback when hovering over an event */
 .event-item:hover {
     opacity: 0.8;
+}
+
+/* Week View Event Variant */
+.calendar-view-week .event-item {
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.calendar-view-week .event-item .event-title {
+    font-weight: bold;
+    margin-bottom: 2px;
+}
+
+.calendar-view-week .event-item .event-time {
+    font-size: 0.8em;
+    opacity: 0.9;
+}
+
+/* Day View Event Variant */
+.calendar-day-view-container .event-item {
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    font-size: 0.9em;
 }
 
 /* Bold text for All Day events to make them stand out */

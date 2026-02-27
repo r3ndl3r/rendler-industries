@@ -41,7 +41,7 @@
 .calendar-day {
     /* Calculate height to fill the screen (Viewport - Header/Controls) / 6 rows */
     height: calc((100vh - 240px) / 6);
-    min-height: 0;
+    min-height: 100px;
     
     padding: 0;
     border: 1px solid #ddd;
@@ -54,6 +54,45 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+/* Week View Cell Variant */
+.calendar-view-week .calendar-day {
+    height: calc(100vh - 180px);
+    background-color: white;
+}
+
+/* Day View Container */
+.calendar-day-view-container {
+    height: calc(100vh - 150px);
+    overflow-y: auto;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-hour-row {
+    display: flex;
+    border-bottom: 1px solid #f0f0f0;
+    min-height: 60px;
+}
+
+.calendar-hour-label {
+    width: 80px;
+    padding: 10px;
+    text-align: right;
+    color: #666;
+    font-size: 0.85em;
+    border-right: 1px solid #f0f0f0;
+    font-weight: bold;
+}
+
+.calendar-hour-events {
+    flex: 1;
+    padding: 4px;
+    position: relative;
+    cursor: pointer;
 }
 
 .calendar-day:hover {
