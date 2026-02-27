@@ -114,11 +114,9 @@ sub clear_checked {
     my $c = shift;
     eval {
         $c->db->clear_checked_items();
-        $c->render(json => { success => 1, message => "Cleared completed items" });
+        return $c->render(json => { success => 1, message => "Cleared completed items" });
     };
-    if ($@) {
-        $c->render(json => { success => 0, error => 'Database error' });
-    }
+    return $c->render(json => { success => 0, error => 'Database error' });
 }
 
 1;
