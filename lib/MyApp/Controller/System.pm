@@ -253,4 +253,137 @@ Please stop using this device immediately.
     return $stats;
 }
 
+# Internal helper to handle asynchronous emoji prepending across all modules.
+# Parameters: None
+# Returns:
+#   Stats HashRef { processed, ai_calls, dict_hits, fallback_hits }
+# Behavior:
+#   - Iterates supported tables (batch of 5 per table to prevent API rate limits).
+#   - Skips texts that already begin with an Emoji sequence.
+#   - Fallback 1: Isolated AI Dictionary (ai_emoji_dictionary).
+#   - Fallback 2: Standard UI Dictionary (emojis).
+#   - Fallback 3: Google Gemini API generation.
+sub run_emoji_maintenance {
+    my $c = shift;
+    
+    my $stats = { processed => 0, ai_calls => 0, dict_hits => 0, fallback_hits => 0 };
+    
+    # Exact mappings verified against MariaDB schema
+    my @targets = (
+        { table => 'todo_list',       id_col => 'id', text_col => 'task_name' },
+        { table => 'shopping_list',   id_col => 'id', text_col => 'item_name' },
+        { table => 'calendar_events', id_col => 'id', text_col => 'title' },
+        { table => 'reminders',       id_col => 'id', text_col => 'title' },
+        { table => 'meals',           id_col => 'id', text_col => 'name' }
+    );
+
+    # Initialize Gemini API configuration
+    my $ua = Mojo::UserAgent->new;
+    my $api_key = $c->db->get_gemini_key();
+    
+    my $active_model = $c->db->get_gemini_active_model() // 'gemini-2.5-flash'; 
+
+    my $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$active_model:generateContent?key=$api_key";
+
+    # Enforce strictly 1 character
+    my $sys_prompt = "You are a text-to-emoji converter. Respond ONLY with a single emoji character. Do not provide punctuation, quotes, words, or explanations. Just the emoji.";
+
+    # Limit total AI calls per cycle to prevent rate limiting/costs
+    my $max_ai_calls_per_cycle = 10;
+    my $ai_calls_this_cycle = 0;
+
+    foreach my $t (@targets) {
+        my $records = $c->db->get_unprocessed_emojis($t->{table}, $t->{id_col}, $t->{text_col}, 5);
+        
+        foreach my $row (@$records) {
+            my $raw_text = Mojo::Util::trim($row->{text_value} // '');
+            
+            unless ($raw_text) {
+                $c->db->mark_emoji_processed($t->{table}, $t->{id_col}, $row->{id});
+                next;
+            }
+            
+            # Skip strings that already start with typical emoji ranges or Unicode pictographs
+            if ($raw_text =~ /^\p{Extended_Pictographic}/) {
+                $c->db->mark_emoji_processed($t->{table}, $t->{id_col}, $row->{id});
+                $stats->{processed}++;
+                next;
+            }
+
+            my $emoji;
+            my $api_failed = 0;
+
+            # 1. Check Isolated AI Dictionary
+            $emoji = $c->db->check_ai_dictionary($raw_text);
+            
+            if ($emoji) {
+                $stats->{dict_hits}++;
+            } else {
+                # 2. Check Standard UI Dictionary
+                $emoji = $c->db->check_standard_dictionary($raw_text);
+                
+                if ($emoji) {
+                    $stats->{fallback_hits}++;
+                } elsif ($ai_calls_this_cycle < $max_ai_calls_per_cycle) {
+                    # 3. Fallback to AI Generation
+                    $ai_calls_this_cycle++;
+                    
+                    my $tx = $ua->post($endpoint => json => {
+                        contents => [ { role => 'user', parts => [ { text => $raw_text } ] } ],
+                        system_instruction => { parts => [ { text => $sys_prompt } ] },
+                        generationConfig => { temperature => 0.1, maxOutputTokens => 5 }
+                    });
+
+                    if (my $res = $tx->result) {
+                        if ($res->is_success) {
+                            my $data = $res->json;
+                            if ($data->{candidates} && $data->{candidates}[0]{content}{parts}[0]{text}) {
+                                my $ai_response = Mojo::Util::trim($data->{candidates}[0]{content}{parts}[0]{text});
+                                
+                                # Strip accidental quotes or punctuation from AI response
+                                $ai_response =~ s/^['"]+|['"]+$//g;
+                                $ai_response = Mojo::Util::trim($ai_response);
+                                
+                                # If it's a short response and isn't clearly a word/sentence, accept it.
+                                if (length($ai_response) > 0 && $ai_response !~ /[a-zA-Z]{3,}/) {
+                                    $emoji = $ai_response;
+                                    $c->db->save_to_ai_dictionary($raw_text, $emoji);
+                                    $stats->{ai_calls}++;
+                                } else {
+                                    $c->app->log->warn("AI returned invalid emoji for '$raw_text': $ai_response");
+                                    $api_failed = 1; # Determined invalid, don't retry immediately
+                                }
+                            }
+                        } else {
+                            $c->app->log->warn("API Error for '$raw_text': " . $res->message . " | " . $res->body);
+                            $api_failed = 1; # Transient failure
+                        }
+                    } else {
+                        $api_failed = 1; # Connection failure
+                    }
+                }
+            }
+
+            # Apply the update
+            if ($emoji) {
+                my $updated_text = "$emoji $raw_text";
+                $c->db->update_record_emoji($t->{table}, $t->{id_col}, $t->{text_col}, $row->{id}, $updated_text);
+                $stats->{processed}++;
+            } elsif (!$api_failed) {
+                # Only mark as processed if we actually checked it (dictionary hit or non-transient empty)
+                # If the API failed, we LEAVE it has_emoji=0 so it retries next cycle.
+                
+                # If we skipped AI because of rate limit, just continue to next record
+                next if $ai_calls_this_cycle >= $max_ai_calls_per_cycle && !$emoji;
+
+                # If we checked dictionaries and found nothing, and AI was either skipped or returned nothing definitively
+                $c->db->mark_emoji_processed($t->{table}, $t->{id_col}, $row->{id});
+                $stats->{processed}++;
+            }
+        }
+    }
+
+    return $stats;
+}
+
 1;
