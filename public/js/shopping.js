@@ -141,7 +141,6 @@ async function addItem() {
             is_checked: 0
         });
         renderShoppingList();
-        showToast(result.message, 'success');
     }
     btn.disabled = false;
     btn.innerHTML = originalHtml;
@@ -170,7 +169,6 @@ function deleteItem(id, itemName) {
             if (result && result.success) {
                 shoppingItems = shoppingItems.filter(i => i.id != id);
                 renderShoppingList();
-                showToast(result.message, 'success');
             }
         }
     });
@@ -202,7 +200,6 @@ async function submitEdit() {
         if (item) item.item_name = name;
         renderShoppingList();
         closeEditModal();
-        showToast(result.message, 'success');
     }
     btn.disabled = false;
     btn.innerHTML = originalHtml;
