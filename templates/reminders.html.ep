@@ -1,12 +1,12 @@
-%# /templates/reminders.html.ep
+<%# /templates/reminders.html.ep %>
 
 % layout 'default';
 % title icon('reminders') . ' Manage Reminders';
 
-<% content_for head => begin %>
-    <link rel="stylesheet" href="/css/reminders.css">
-    <script src="/js/reminders.js"></script>
-<% end %>
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/reminders.css?<%= time %>">
+    <script src="/js/reminders.js?<%= time %>"></script>
+% end
 
 <div class="reminders-container">
     <div class="header-bar">
@@ -169,7 +169,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-actions">
+            <div class="modal-actions" style="justify-content: center !important;">
                 <button type="submit" class="btn-primary">Create Reminder</button>
             </div>
         </form>
@@ -183,7 +183,7 @@
             <h3><%= icon('edit') %> Edit Recurring Reminder</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
-        <form id="editReminderForm" method="POST" action="">
+        <form id="editReminderForm">
             <div class="modal-body">
                 <input type="hidden" name="id" id="editReminderId">
                 <div class="form-group">
@@ -236,27 +236,9 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-actions">
+            <div class="modal-actions" style="justify-content: center !important;">
                 <button type="submit" class="btn-primary">Save Changes</button>
             </div>
         </form>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div id="deleteConfirmModal" class="delete-modal-overlay">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('delete') %> Confirm Deletion</h3>
-            <span class="delete-modal-close" onclick="closeDeleteModal()">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <p>Are you sure you want to delete "<strong id="deleteReminderTitle"></strong>"?</p>
-        </div>
-        <div class="delete-modal-actions">
-            <form id="deleteForm" method="POST" action="">
-                <button type="submit" class="btn-danger-confirm">Delete Reminder</button>
-            </form>
-        </div>
     </div>
 </div>
