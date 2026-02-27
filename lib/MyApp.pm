@@ -195,7 +195,6 @@ sub startup {
         run_maintenance => sub {
             my $c = shift;
 
-            # Attempt to get a 0-second timeout lock (Return 1 if success, 0 if busy)
             my ($lock) = $c->db->{dbh}->selectrow_array("SELECT GET_LOCK('mojo_maintenance', 0)");
             return unless $lock;
 
@@ -204,22 +203,28 @@ sub startup {
             eval {
                 my $now = DateTime->now(time_zone => 'Australia/Melbourne');
                 
-                # Delegate to Controller logic (temporarily using controller as a namespace)
-                # or better yet, we just call the logic directly if we move it to a plugin.
-                # For now, we'll keep the bridge to System.pm.
                 require MyApp::Controller::System;
                 my $sys = MyApp::Controller::System->new(app => $c->app, tx => $c->tx);
                 
                 $sys->run_timer_maintenance();
                 $sys->run_reminder_maintenance($now);
                 $sys->run_meals_maintenance($now);
+                my $emoji_stats = $sys->run_emoji_maintenance();
+                if ($emoji_stats->{processed} > 0) {
+                    $c->app->log->info(sprintf(
+                        "Emoji Maintenance: Processed %d items (AI: %d, Dict: %d, Fallback: %d)",
+                        $emoji_stats->{processed},
+                        $emoji_stats->{ai_calls},
+                        $emoji_stats->{dict_hits},
+                        $emoji_stats->{fallback_hits}
+                    ));
+                }
             };
 
             if ($@) {
                 $c->app->log->error("Background maintenance failed: $@");
             }
 
-            # Release the lock
             $c->db->{dbh}->do("SELECT RELEASE_LOCK('mojo_maintenance')");
             $c->app->log->info("Background maintenance: Lock released.");
         }
