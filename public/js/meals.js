@@ -149,22 +149,29 @@ function closeAddEditMealModal() {
 async function submitManageMeal() {
     const id = document.getElementById('manageMealId').value;
     const name = document.getElementById('manageMealName').value.trim();
+    const btn = document.querySelector('#addEditMealModal .btn-primary');
 
     if (!name) {
         showToast('Meal name is required', 'error');
         return;
     }
 
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
     const endpoint = id ? '/meals/api/vault/update' : '/meals/api/vault/add';
     const result = await apiPost(endpoint, { id, name });
 
-    if (result.success) {
+    if (result && result.success) {
         showToast(result.message, 'success');
         closeAddEditMealModal();
         loadVaultData();
         loadPlan(); // Sync autocomplete vault
     } else {
-        showToast(result.error || 'Operation failed', 'error');
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        showToast(result?.error || 'Operation failed', 'error');
     }
 }
 
@@ -416,20 +423,27 @@ function selectMeal(inputId, value) {
 async function submitSuggestion() {
     const planId   = document.getElementById('activePlanId').value;
     const mealName = document.getElementById('mealInput').value.trim();
+    const btn      = document.querySelector('#suggestModal .btn-primary');
 
     if (!mealName) {
         showToast('Please enter a meal name', 'error');
         return;
     }
 
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Submitting...`;
+
     const result = await apiPost('/meals/suggest', { plan_id: planId, meal_name: mealName });
 
-    if (result.success) {
+    if (result && result.success) {
         showToast('Suggestion added!', 'success');
         closeSuggestModal();
         loadPlan(); // Sync UI
     } else {
-        showToast(result.error || 'Failed to add suggestion', 'error');
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        showToast(result?.error || 'Failed to add suggestion', 'error');
     }
 }
 
@@ -459,20 +473,27 @@ async function castVote(suggestionId) {
 async function submitEditSuggestion() {
     const suggestionId = document.getElementById('editSuggestionId').value;
     const mealName     = document.getElementById('editMealInput').value.trim();
+    const btn          = document.querySelector('#editSuggestionModal .btn-primary');
 
     if (!mealName) {
         showToast('Please enter a meal name', 'error');
         return;
     }
 
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
     const result = await apiPost('/meals/edit_suggestion', { suggestion_id: suggestionId, meal_name: mealName });
 
-    if (result.success) {
+    if (result && result.success) {
         showToast('Suggestion updated', 'success');
         closeEditSuggestionModal();
         loadPlan();
     } else {
-        showToast(result.error || 'Failed to update suggestion', 'error');
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        showToast(result?.error || 'Failed to update suggestion', 'error');
     }
 }
 
