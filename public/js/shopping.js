@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Use global modal closing helper
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeEditModal, closeDeleteModal, closeClearAllModal
+        closeEditModal, closeConfirmModal
     ]);
 });
 
@@ -115,7 +115,7 @@ function renderItemHtml(item) {
                 ${!isChecked ? `
                     <button type="button" class="btn-icon-edit" onclick="editItem(${item.id}, \`${item.item_name.replace(/'/g, "\\'")}\`)" title="Edit">${getIcon('edit')}</button>
                 ` : ''}
-                <button type="button" class="btn-icon-delete" onclick="openDeleteModal(${item.id}, \`${item.item_name.replace(/'/g, "\\'")}\`)" title="Delete">${getIcon('delete')}</button>
+                <button type="button" class="btn-icon-delete" onclick="deleteItem(${item.id}, \`${item.item_name.replace(/'/g, "\\'")}\`)" title="Delete">${getIcon('delete')}</button>
             </div>
         </div>
     `;
@@ -125,6 +125,11 @@ async function addItem() {
     const input = document.querySelector('input[name="item_name"]');
     const name = input.value.trim();
     if (!name) return;
+
+    const btn = document.querySelector('#addShoppingForm .btn-blue-add');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Adding...`;
 
     const result = await apiPost('/shopping/api/add', { item_name: name });
     if (result && result.success) {
@@ -138,6 +143,8 @@ async function addItem() {
         renderShoppingList();
         showToast(result.message, 'success');
     }
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
 }
 
 async function toggleItem(id) {
@@ -146,31 +153,28 @@ async function toggleItem(id) {
         const item = shoppingItems.find(i => i.id == id);
         if (item) {
             item.is_checked = !item.is_checked;
-            // Re-sort items: unchecked first, then by id desc (or however we want)
-            // But let's keep it simple for now and just re-render
             renderShoppingList();
         }
     }
 }
 
-function openDeleteModal(id, itemName) {
-    const modal = document.getElementById('deleteModal');
-    const confirmBtn = document.getElementById('confirmDeleteBtn');
-    document.getElementById('deleteItemName').textContent = itemName;
-    modal.style.display = 'flex';
-    
-    confirmBtn.onclick = async () => {
-        const result = await apiPost(`/shopping/api/delete/${id}`);
-        if (result && result.success) {
-            shoppingItems = shoppingItems.filter(i => i.id != id);
-            renderShoppingList();
-            closeDeleteModal();
-            showToast(result.message, 'success');
+function deleteItem(id, itemName) {
+    showConfirmModal({
+        title: 'Delete Item',
+        message: `Are you sure you want to remove "<strong>${itemName}</strong>" from the list?`,
+        danger: true,
+        confirmText: 'Delete',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
+            const result = await apiPost(`/shopping/api/delete/${id}`);
+            if (result && result.success) {
+                shoppingItems = shoppingItems.filter(i => i.id != id);
+                renderShoppingList();
+                showToast(result.message, 'success');
+            }
         }
-    };
+    });
 }
-
-function closeDeleteModal() { document.getElementById('deleteModal').style.display = 'none'; }
 
 function editItem(id, currentName) {
     const modal = document.getElementById('editModal');
@@ -185,7 +189,12 @@ function closeEditModal() { document.getElementById('editModal').style.display =
 async function submitEdit() {
     const id = document.getElementById('editId').value;
     const name = document.getElementById('editName').value.trim();
+    const btn = document.querySelector('#editModal .btn-primary');
     if (!name) return;
+
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
     const result = await apiPost(`/shopping/api/edit/${id}`, { item_name: name });
     if (result && result.success) {
@@ -195,19 +204,25 @@ async function submitEdit() {
         closeEditModal();
         showToast(result.message, 'success');
     }
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
 }
 
-function openClearAllModal() { document.getElementById('clearAllModal').style.display = 'flex'; }
-function closeClearAllModal() { document.getElementById('clearAllModal').style.display = 'none'; }
-
-async function clearCheckedItems() {
-    const result = await apiPost('/shopping/api/clear');
-    if (result && result.success) {
-        shoppingItems = shoppingItems.filter(i => !i.is_checked);
-        renderShoppingList();
-        closeClearAllModal();
-        showToast(result.message, 'success');
-    }
+function openClearAllModal() {
+    showConfirmModal({
+        title: 'Clear All',
+        message: 'Are you sure you want to clear all checked items?',
+        danger: true,
+        confirmText: 'Clear All',
+        loadingText: 'Clearing...',
+        onConfirm: async () => {
+            const result = await apiPost('/shopping/api/clear');
+            if (result && result.success) {
+                shoppingItems = shoppingItems.filter(i => !i.is_checked);
+                renderShoppingList();
+            }
+        }
+    });
 }
 
 /**
