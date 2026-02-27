@@ -13,6 +13,8 @@ let breakdown       = {};
 let isAdmin         = false;
 let currentUser     = '';
 let currentOffset   = 0;
+let refinedBlob     = null; // Local store for cropped data
+let refinedName     = '';
 const LIMIT         = 10;
 
 // --- Modal Management Functions ---
@@ -34,8 +36,14 @@ function closeCropModal() {
 
 function closePreUploadCropModal() {
     const modal = document.getElementById('preUploadCropModal');
-    if (modal) modal.style.display = 'none';
-    openUploadModal();
+    if (modal && modal.style.display !== 'none') {
+        modal.style.display = 'none';
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+        openUploadModal();
+    }
 }
 
 function openUploadModal() {
@@ -48,6 +56,7 @@ function closeUploadModal() {
     if (modal) {
         modal.style.display = 'none';
     }
+    refinedBlob = null; // Clear refined state on close
 }
 
 function closeEReceiptModal() {
@@ -139,6 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (this.files.length > 0) {
                 const file = this.files[0];
                 updateFileName(file.name);
+                refinedBlob = null; // New selection, clear refined state
                 const lowerName = file.name.toLowerCase();
                 if (file.type.startsWith('image/') || lowerName.endsWith('.heic') || lowerName.endsWith('.heif')) {
                     closeUploadModal();
@@ -416,6 +426,12 @@ async function handleUpload(e) {
     const form = document.getElementById('uploadForm');
     const formData = new FormData(form);
     
+    // Check if we should override with refined data
+    if (refinedBlob) {
+        formData.delete('file');
+        formData.append('file', refinedBlob, refinedName || 'receipt.png');
+    }
+
     showLoadingOverlay('Uploading receipt...', 'Please wait while we scan and extract details.');
     
     try {
@@ -564,40 +580,101 @@ async function initPreUploadCrop(file) {
             return;
         }
     }
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const modal = document.getElementById('preUploadCropModal');
-        const img   = document.getElementById('preUploadCropImg');
-        if (modal && img) {
-            img.src                 = e.target.result;
-            modal.style.display     = 'flex';
-            setTimeout(() => {
-                if (cropper) cropper.destroy();
-                cropper = new Cropper(img, { viewMode: 1, autoCropArea: 1, responsive: true });
-            }, 100);
+
+    const modal = document.getElementById('preUploadCropModal');
+    const img   = document.getElementById('preUploadCropImg');
+    const applyBtn = document.querySelector('#preUploadCropModal .btn-primary');
+    
+    if (modal && img) {
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
         }
-    };
-    reader.readAsDataURL(displayFile);
+
+        // Disable apply button until cropper is ready
+        if (applyBtn) {
+            applyBtn.disabled = true;
+            applyBtn.innerHTML = 'Initializing...';
+        }
+
+        const objectUrl = URL.createObjectURL(displayFile);
+        
+        img.onload = async function() {
+            try {
+                if (img.decode) await img.decode();
+                
+                modal.style.display = 'flex';
+                
+                cropper = new Cropper(img, { 
+                    viewMode: 1, 
+                    autoCropArea: 1, 
+                    responsive: true,
+                    checkOrientation: true,
+                    ready() {
+                        if (applyBtn) {
+                            applyBtn.disabled = false;
+                            applyBtn.innerHTML = 'Apply Crop';
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error("Cropper init error", err);
+                showToast("Failed to initialize cropping engine", "error");
+            }
+            
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+        };
+        
+        img.onerror = (err) => {
+            showToast("Failed to load image preview", "error");
+        };
+
+        img.src = objectUrl;
+    }
 }
 
 function applyPreUploadCrop() {
     if (!cropper) return;
-    const canvas = cropper.getCroppedCanvas();
-    canvas.toBlob((blob) => {
-        const fileInput = document.getElementById('file');
-        if (!fileInput || !fileInput.files[0]) return;
+    
+    const btn = document.querySelector('#preUploadCropModal .btn-primary');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Refining...';
 
-        const croppedFile = new File([blob], fileInput.files[0].name, {
-            type: 'image/png',
-            lastModified: new Date().getTime()
-        });
-        const dt   = new DataTransfer();
-        dt.items.add(croppedFile);
-        fileInput.files = dt.files;
+    // Capture with white background to avoid blackness/transparency
+    const canvas = cropper.getCroppedCanvas({ fillColor: '#fff' });
+    
+    if (!canvas) {
+        showToast('Error generating refined image', 'error');
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        return;
+    }
+
+    canvas.toBlob((blob) => {
+        if (!blob) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            return;
+        }
+
+        refinedBlob = blob;
+        const fileInput = document.getElementById('file');
+        refinedName = fileInput.files[0].name.replace(/\.[^/.]+$/, "") + ".png";
         
-        showToast('Image refined! You can now upload.', 'success');
+        updateFileName("(Refined) " + refinedName);
+        
+        showToast('Image refined! Ready to upload.', 'success');
+        
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+        
         closePreUploadCropModal();
-        openUploadModal();
+        
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     }, 'image/png');
 }
 
@@ -676,21 +753,30 @@ window.openCropModal = async function(id) {
             const convertedBlob = await heic2any({ blob: blob, toType: 'image/jpeg', quality: 0.8 });
             displayBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
         }
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            img.src = e.target.result;
-            img.onload = function() {
-                if (cropper) cropper.destroy();
-                cropper = new Cropper(img, { viewMode: 1, autoCropArea: 1, responsive: true });
-                showToast('Ready to crop.', 'success');
-            };
+        
+        const objectUrl = URL.createObjectURL(displayBlob);
+        img.onload = function() {
+            if (cropper) cropper.destroy();
+            cropper = new Cropper(img, { 
+                viewMode: 1, 
+                autoCropArea: 1, 
+                responsive: true,
+                checkOrientation: true
+            });
+            showToast('Ready to crop.', 'success');
+            URL.revokeObjectURL(objectUrl);
         };
-        reader.readAsDataURL(displayBlob);
+        img.src = objectUrl;
         
         // Target specific save button logic for post-upload crop
         window.saveCrop = async function() {
             if (!cropper) return;
-            const canvas = cropper.getCroppedCanvas();
+            const btn = document.querySelector('#cropModal .btn-primary');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = 'Saving...';
+
+            const canvas = cropper.getCroppedCanvas({ fillColor: '#fff' });
             canvas.toBlob(async (blob) => {
                 const formData = new FormData();
                 formData.append('cropped_image', blob, 'receipt_cropped.png');
@@ -706,10 +792,14 @@ window.openCropModal = async function(id) {
                     }
                 } catch (err) {
                     showToast('Request failed', 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
                 }
             }, 'image/png');
         };
     } catch (err) {
+        console.error('Failed to load image for cropping:', err);
         showToast('Error loading image.', 'error');
         closeCropModal();
     }
