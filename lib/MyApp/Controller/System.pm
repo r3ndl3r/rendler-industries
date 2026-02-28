@@ -168,7 +168,10 @@ sub run_reminder_maintenance {
                 if ($r->{is_one_off}) {
                     $c->db->delete_reminder($r->{id});
                 } else {
-                    $c->db->mark_reminder_sent($r->{id});
+                    # Record the intended trigger time as the run timestamp (Prevents midnight rollover issues)
+                    my $today_iso = $now->strftime('%Y-%m-%d');
+                    my $intended_at = "$today_iso $r->{reminder_time}";
+                    $c->db->mark_reminder_sent($r->{id}, $intended_at);
                 }
                 $processed_reminder_ids{$r->{id}} = 1;
             }
