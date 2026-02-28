@@ -72,6 +72,14 @@
                     <input type="checkbox" id="eventAllDay" name="all_day"> All-day event
                 </label>
             </div>
+
+            % if (is_admin) {
+                <div class="form-group checkbox-group" id="notificationGroup">
+                    <label>
+                        <input type="checkbox" id="sendNotifications" name="send_notifications" checked> Send email notifications to family
+                    </label>
+                </div>
+            % }
             
             <div class="form-row">
                 <div class="form-group">
