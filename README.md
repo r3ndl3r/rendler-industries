@@ -66,17 +66,18 @@ The system features a redundant, priority-weighted alert engine:
 </p>
 
 ### 💊 Medication Tracker (`/medication`)
-*   **Full AJAX Suite:** Single-page interface for adding, editing, and deleting doses with zero page refreshes.
-*   **Interval Logic:** Dynamic timers showing exactly how long ago a dose was taken (e.g., "Taken 4h 20m ago").
-*   **Split Input UX:** Custom modal logic that forces Time before Date for intuitive logging.
-*   **Smart Registry:** Shared database of medications with default dosages (mg) for lightning-fast entry.
+*   **Integrated Reminders:** Automated follow-up alert scheduling (1-12h) directly from the dose reset modal.
+*   **Full AJAX Suite:** 100% SPA interface with real-time interval calculation (e.g., "Taken 4h 20m ago").
+*   **Modern Selection UI:** Interactive pill-button selectors for delay and recipients to eliminate dropdown friction.
+*   **Smart Registry:** Shared medication database with default dosages for lightning-fast entry.
 
 ![Medication Tracker](public/images/screenshots/medication_tracker.png)
 
 ### 🔔 Smart Reminders (`/reminders`)
-*   **Recurring Engine:** Rule-based scheduling by day of the week and specific time.
-*   **Multi-User Mapping:** Link multiple recipients to a single reminder.
-*   **Self-Cleaning:** "One-off" flag for reminders that delete themselves after successful delivery.
+*   **Real-time Synchronization:** 100% SPA implementation with 60s background polling and live countdowns.
+*   **Recurring Engine:** Rule-based scheduling with **Midnight Rollover Protection** to ensure notifications never skip date boundaries.
+*   **Multi-User Mapping:** Link multiple recipients to a single alert via Discord and Gotify.
+*   **Self-Cleaning:** Automated deletion of "One-off" reminders after successful delivery.
 
 ![Reminders](public/images/screenshots/reminders.png)
 
@@ -101,9 +102,9 @@ The system features a redundant, priority-weighted alert engine:
 ![Receipt Ledger](public/images/screenshots/receipt_ledger.png)
 
 ### 🤬 The Swear Jar Ledger (`/swear`)
-*   **Polymorphic Ledger:** A single `swear_ledger` table tracking Fines, Payments, and Expenditures.
-*   **Debt Reconciliation:** Smart logic that automatically settles oldest fines first upon jar deposit.
-*   **Leaderboard of Shame:** Real-time calculation of family balances and jar totals.
+*   **100% SPA Architecture:** Real-time ledger updates and transaction management without page reloads.
+*   **Polymorphic Ledger:** Unified tracking of fines, payments, and expenditures.
+*   **Smart Reconciliation:** Automated debt settlement logic (FIFO) upon jar deposits.
 
 ### 📁 Secure File Manager (`/files`)
 *   **BLOB Storage:** Secure database-backed storage for arbitrary binaries.
