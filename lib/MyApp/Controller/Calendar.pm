@@ -153,6 +153,7 @@ sub _format_datetime {
 #   - start_date  : Start date (Required)
 #   - end_date    : End date (Required)
 #   - all_day     : Boolean (1 if all day)
+#   - send_notifications : Boolean (1 to send notifications, admin only)
 #   - category    : Event category label
 #   - color       : Hex color code
 #   - attendees[] : List of user IDs
@@ -166,6 +167,10 @@ sub add {
     my $start_date = $c->param('start_date');
     my $end_date = $c->param('end_date');
     my $all_day = $c->param('all_day') ? 1 : 0;
+    my $send_notifications = $c->param('send_notifications');
+    # Explicitly check for '0' string from JS FormData, default to 1 if undef
+    $send_notifications = (defined($send_notifications) && $send_notifications eq '0') ? 0 : 1;
+    
     my $category = trim($c->param('category') // '');
     my $color = trim($c->param('color') // '#3788d8');
     
@@ -248,20 +253,24 @@ View the calendar / ดูปฏิทิน: } . $c->url_for('/calendar')->to_a
 This notification was sent to family members.
 การแจ้งเตือนนี้ถูกส่งถึงสมาชิกครอบครัว};
 
-        my @family_emails;
-        for my $user (@$all_users) {
-            if ($user->{email} && $c->db->is_family($user->{username})) {
-                push @family_emails, $user->{email};
+        if ($send_notifications) {
+            my @family_emails;
+            for my $user (@$all_users) {
+                if ($user->{email} && $c->db->is_family($user->{username})) {
+                    push @family_emails, $user->{email};
+                }
             }
-        }
 
-        if (@family_emails) {
-            if ($c->send_email_via_gmail(\@family_emails, $email_subject, $email_body)) {
-                my $sent_count = scalar(@family_emails);
-                $c->app->log->info("Calendar event '$title' created by $creator_name. Notification sent to $sent_count family members.");
+            if (@family_emails) {
+                if ($c->send_email_via_gmail(\@family_emails, $email_subject, $email_body)) {
+                    my $sent_count = scalar(@family_emails);
+                    $c->app->log->info("Calendar event '$title' created by $creator_name. Notification sent to $sent_count family members.");
+                }
+            } else {
+                $c->app->log->info("Calendar event '$title' created by $creator_name. No family members with email addresses.");
             }
         } else {
-            $c->app->log->info("Calendar event '$title' created by $creator_name. No family members with email addresses.");
+            $c->app->log->info("Calendar event '$title' created by $creator_name. Notifications suppressed by admin choice.");
         }
         
         $c->render(json => { success => 1, id => $event_id });
