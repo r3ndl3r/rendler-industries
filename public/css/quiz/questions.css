@@ -195,17 +195,23 @@ body {
 }
 
 /* Answer States */
-.answer-btn.btn-success {
+.answer-btn.correct-answer {
     background: rgba(0, 200, 83, 0.15) !important;
     border-color: var(--aus-green) !important;
     color: white !important;
     box-shadow: 0 0 15px var(--aus-green-dim);
 }
 
-.answer-btn.btn-danger {
+.answer-btn.incorrect-answer {
     background: rgba(255, 82, 82, 0.15) !important;
     border-color: var(--danger-red) !important;
     color: white !important;
+}
+
+.answer-btn div {
+    display: block !important;
+    width: 100% !important;
+    clear: both !important;
 }
 
 .answer-btn:disabled {
