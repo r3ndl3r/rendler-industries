@@ -88,8 +88,8 @@ function renderReminders() {
         // Paused reminders go to the bottom
         if (a.is_active !== b.is_active) return b.is_active - a.is_active;
 
-        const nextA = getNextOccurrence(a.reminder_time, a.days_of_week);
-        const nextB = getNextOccurrence(b.reminder_time, b.days_of_week);
+        const nextA = getNextOccurrence(a.reminder_time, a.days_of_week, a.last_run_at);
+        const nextB = getNextOccurrence(b.reminder_time, b.days_of_week, b.last_run_at);
 
         if (!nextA) return 1;
         if (!nextB) return -1;
@@ -136,7 +136,8 @@ function renderReminderCard(r) {
              data-id="${r.id}"
              data-time="${reminderTime}"
              data-days="${r.days_of_week || ''}"
-             data-one-off="${isOneOff ? '1' : '0'}">
+             data-one-off="${isOneOff ? '1' : '0'}"
+             data-last-run="${r.last_run_at || ''}">
             <div class="reminder-header">
                 <div class="title-stack">
                     ${isOneOff ? `<span class="one-off-badge">${getIcon('clock')} One-off</span>` : ''}
@@ -337,7 +338,7 @@ async function toggleDay(reminderId, day, active) {
 /**
  * Countdown Engine
  */
-function getNextOccurrence(timeStr, daysStr) {
+function getNextOccurrence(timeStr, daysStr, lastRunAt = '') {
     if (!daysStr) return null;
     const [h, m] = timeStr.split(':').map(Number);
     const days = daysStr.split(',').map(Number);
@@ -347,10 +348,22 @@ function getNextOccurrence(timeStr, daysStr) {
     const nowMins  = now.getHours() * 60 + now.getMinutes();
     const targetMins = h * 60 + m;
 
+    // Check if it already ran today based on server timestamp
+    let hasRunToday = false;
+    if (lastRunAt) {
+        const lastRun = new Date(lastRunAt.replace(' ', 'T'));
+        if (lastRun.toDateString() === now.toDateString()) {
+            hasRunToday = true;
+        }
+    }
+
     for (let offset = 0; offset <= 7; offset++) {
         const checkDay = ((isoToday - 1 + offset) % 7) + 1;
         if (days.includes(checkDay)) {
-            if (offset === 0 && targetMins < nowMins) continue; 
+            // If it's today, it must be either not run yet, or the time must be in the future
+            if (offset === 0) {
+                if (hasRunToday || targetMins < nowMins) continue;
+            }
             const next = new Date(now);
             next.setDate(now.getDate() + offset);
             next.setHours(h, m, 0, 0);
@@ -372,7 +385,7 @@ function updateCountdowns() {
             return; 
         }
 
-        const next = getNextOccurrence(card.dataset.time, card.dataset.days);
+        const next = getNextOccurrence(card.dataset.time, card.dataset.days, card.dataset.lastRun);
         if (!next) { 
             el.innerHTML = ''; 
             delete FlipClockManager.prevStates[reminderId]; 
