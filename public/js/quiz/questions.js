@@ -190,55 +190,25 @@ function handleAnswer(selectedBtn, answerObj) {
     // Stop reading question if user interrupts
     stopSpeaking();
     
-    const allBtns = document.querySelectorAll('.answer-btn');
-    const feedbackContainer = document.getElementById('feedback-container');
-    const feedbackIcon = document.getElementById('feedback-icon');
-    const feedbackEn = document.getElementById('feedback-msg-en');
-    const feedbackTh = document.getElementById('feedback-msg-th');
     const nextBtn = document.getElementById('next-btn');
+    const allBtns = document.querySelectorAll('.answer-btn');
 
     allBtns.forEach(btn => btn.disabled = true);
 
-    // Find the correct answer object from the current question data
-    const currentQ = questions[currentQuestionIndex];
-    const correctAnswerObj = currentQ.answers.find(a => a.is_correct);
-
     if (answerObj.is_correct) {
         score++;
-        selectedBtn.classList.add('btn-success');
-        feedbackContainer.className = 'feedback-box alert-success';
-        feedbackIcon.textContent = getIcon('success');
-        feedbackEn.textContent = 'Correct!';
-        feedbackTh.textContent = 'ถูกต้อง';
+        selectedBtn.classList.add('correct-answer');
     } else {
-        selectedBtn.classList.add('btn-danger'); 
+        selectedBtn.classList.add('incorrect-answer'); 
         // Reveal the correct answer visually if the user was wrong
         const correctBtn = document.querySelector('.answer-btn[data-correct="true"]');
         if (correctBtn) {
-            correctBtn.classList.add('btn-success');
+            correctBtn.classList.add('correct-answer');
         }
-        feedbackContainer.className = 'feedback-box alert-danger';
-        feedbackIcon.textContent = getIcon('error');
-        feedbackEn.textContent = 'Incorrect';
-        feedbackTh.textContent = 'ไม่ถูกต้อง';
     }
 
-    if (correctAnswerObj && correctAnswerObj.audio) {
-        // Small delay to ensure the stopSpeaking() above fully clears the audio buffer
-        setTimeout(() => {
-            playAudio(correctAnswerObj.audio);
-        }, 300);
-    }
-
-    feedbackContainer.style.display = 'flex';
     nextBtn.disabled = false;
     document.getElementById('score-tracker').textContent = `Score: ${score}`;
-
-    // Ensure user sees the feedback and navigation button
-    window.scrollTo({
-        top: document.body.scrollHeight,
-        behavior: 'smooth'
-    });
 }
 
 // Advances the question index and resets the viewport.
