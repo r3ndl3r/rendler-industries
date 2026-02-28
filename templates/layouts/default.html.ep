@@ -33,7 +33,7 @@
                 <span class="delete-modal-close" onclick="closeConfirmModal()">&times;</span>
             </div>
             <div class="delete-modal-body">
-                <p id="globalConfirmModalText"></p>
+                <div id="globalConfirmModalText"></div>
             </div>
             <div class="delete-modal-actions" style="justify-content: center !important;">
                 <button id="globalConfirmModalBtn" class="btn-danger-confirm">Confirm</button>
