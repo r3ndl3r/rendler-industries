@@ -13,7 +13,7 @@
         <h1><%= icon('medication') %> <span>Family Medication</span></h1>
         <div class="manage-actions">
             % if (is_admin) {
-                <button class="action-btn" style="background:#64748b;" onclick="openRegistryModal()"><%= icon('settings') %> Registry</button>
+                <button class="action-btn registry-btn" onclick="openRegistryModal()"><%= icon('settings') %> Registry</button>
             % }
             <button class="btn-primary" onclick="openDoseModal()"><%= icon('add') %> Log</button>
         </div>
@@ -71,13 +71,13 @@
 
                 <div class="form-group">
                     <label>Time Taken</label>
-                    <div style="display: flex; gap: 10px;">
+                    <div class="time-taken-row">
                         <input type="time" name="taken_at_time" id="add_taken_at_time" class="game-input" required>
                         <input type="date" name="taken_at_date" id="add_taken_at_date" class="game-input" required>
                     </div>
                 </div>
             </div>
-            <div class="modal-actions" style="justify-content: center !important;">
+            <div class="modal-actions modal-actions-center">
                 <button type="submit" class="btn-primary"><%= icon('save') %> Save Log</button>
             </div>
         </form>
@@ -122,13 +122,13 @@
 
                 <div class="form-group">
                     <label>Time Taken</label>
-                    <div style="display: flex; gap: 10px;">
+                    <div class="time-taken-row">
                         <input type="time" name="taken_at_time" id="edit_taken_at_time" class="game-input" required>
                         <input type="date" name="taken_at_date" id="edit_taken_at_date" class="game-input" required>
                     </div>
                 </div>
             </div>
-            <div class="modal-actions" style="justify-content: center !important;">
+            <div class="modal-actions modal-actions-center">
                 <button type="submit" class="btn-primary"><%= icon('save') %> Save Changes</button>
             </div>
         </form>
@@ -166,7 +166,7 @@
 
 <!-- Edit Registry Item Modal (Sub-modal) -->
 <div id="manageEditModal" class="modal-overlay" style="display: none; z-index: 11000;">
-    <div class="modal-content" style="max-width: 400px; margin-top: 5rem;">
+    <div class="modal-content modal-content-small">
         <div class="modal-header">
             <h3><%= icon('edit') %> Edit Registry Item</h3>
             <span class="close-btn" onclick="closeManageModal()">&times;</span>
@@ -183,7 +183,7 @@
                     <input type="number" name="default_dosage" id="manage_dosage" class="game-input" required min="1">
                 </div>
             </div>
-            <div class="modal-actions" style="justify-content: center !important;">
+            <div class="modal-actions modal-actions-center">
                 <button type="submit" class="btn-primary"><%= icon('save') %> Save</button>
                 <button type="button" class="btn-secondary" onclick="closeManageModal()">Cancel</button>
             </div>
