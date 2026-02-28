@@ -223,6 +223,12 @@ function handleEventSubmit(e) {
     formData.set('start_date', `${startDate} ${startTime}`);
     formData.set('end_date', `${endDate} ${endTime}`);
     formData.set('all_day', allDay);
+
+    // Explicitly handle send_notifications checkbox (since FormData omits unchecked boxes)
+    const sendNotificationsCb = document.getElementById('sendNotifications');
+    if (sendNotificationsCb) {
+        formData.set('send_notifications', sendNotificationsCb.checked ? '1' : '0');
+    }
     
     const url = eventId ? '/calendar/edit' : '/calendar/add';
     
