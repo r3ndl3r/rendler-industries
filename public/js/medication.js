@@ -268,9 +268,9 @@ function confirmResetMedication(id) {
     
     // Generate recipient checkboxes from appData.members
     const recipientCheckboxes = appData.members.map(m => `
-        <label class="recipient-label">
+        <label class="recipient-checkbox">
             <input type="checkbox" name="reminder_recipients[]" value="${m.id}" ${m.id == memberId ? 'checked' : ''}>
-            ${m.username}
+            <span class="recipient-name">${m.username}</span>
         </label>
     `).join('');
 
@@ -289,15 +289,18 @@ function confirmResetMedication(id) {
             <div class="reminder-box">
                 <label class="reminder-toggle-label">
                     <input type="checkbox" id="enable_reminder" onchange="document.getElementById('reminder_options').style.display = this.checked ? 'block' : 'none'">
-                    ${getIcon('reminders')} Schedule Follow-up Reminder
+                    <span class="reminder-toggle-content">${getIcon('reminders')} Schedule Reminder</span>
                 </label>
                 
                 <div id="reminder_options" class="reminder-options">
-                    <div class="form-group no-margin">
-                        <label class="reminder-delay-label">Delay (Hours)</label>
-                        <select id="reminder_delay" class="game-input">
-                            ${[1,2,3,4,5,6,7,8,9,10,11,12].map(h => `<option value="${h}" ${h==4 ? 'selected' : ''}>${h} hours</option>`).join('')}
-                        </select>
+                    <label class="reminder-delay-label">Delay (Hours)</label>
+                    <div class="reminder-delay-selector">
+                        ${[1,2,3,4,5,6,7,8,9,10,12].map(h => `
+                            <label class="delay-pill">
+                                <input type="radio" name="reminder_delay" value="${h}" ${h==4 ? 'checked' : ''}>
+                                <span>${h}</span>
+                            </label>
+                        `).join('')}
                     </div>
                     
                     <label class="reminder-recipients-label">Send To</label>
@@ -316,7 +319,7 @@ function confirmResetMedication(id) {
             
             if (enableReminder) {
                 payload.create_reminder = 1;
-                payload.reminder_delay = document.getElementById('reminder_delay').value;
+                payload.reminder_delay = document.querySelector('input[name="reminder_delay"]:checked').value;
                 
                 const recipients = Array.from(document.querySelectorAll('input[name="reminder_recipients[]"]:checked')).map(cb => cb.value);
                 payload.reminder_recipients = recipients.join(',');
