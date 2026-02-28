@@ -121,15 +121,14 @@ function renderGrid() {
                         <div class="med-item-footer">
                             <span class="taken-at-label">${getIcon('clock')} ${displayDt}</span>
                             <div class="med-item-actions" onclick="event.stopPropagation()">
-                                <button type="button" class="btn-icon-reset" onclick="confirmResetMedication(${l.id}, '${l.medication_name} for ${l.family_member}')">${getIcon('reset')}</button>
+                                <button type="button" class="btn-icon-reset" onclick="confirmResetMedication(${l.id})">${getIcon('reset')}</button>
                                 <button type="button" class="btn-icon-edit" onclick='openEditModal(${JSON.stringify(l)})'>${getIcon('edit')}</button>
                                 <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, '${l.medication_name} for ${l.family_member}')">${getIcon('delete')}</button>
                             </div>
                         </div>
                     </div>
                 </div>`;
-        });
-
+            });
         card.innerHTML = `
             <div class="user-header">
                 <h2 class="user-name">
@@ -141,6 +140,14 @@ function renderGrid() {
         `;
         grid.appendChild(card);
     });
+}
+
+function findLogById(id) {
+    for (const member in appData.logs) {
+        const found = appData.logs[member].find(l => l.id == id);
+        if (found) return found;
+    }
+    return null;
 }
 
 function renderDropdowns() {
@@ -248,27 +255,77 @@ function confirmDeleteMedication(id, name) {
     });
 }
 
-function confirmResetMedication(id, name) {
+function confirmResetMedication(id) {
+    const l = findLogById(id);
+    if (!l) return;
+
+    const medName = l.medication_name;
+    const memberName = l.family_member;
+    const memberId = l.family_member_id;
+
     const localISO = getLocalISOString();
     const [date, currentTime] = localISO.split('T');
     
+    // Generate recipient checkboxes from appData.members
+    const recipientCheckboxes = appData.members.map(m => `
+        <label class="recipient-label">
+            <input type="checkbox" name="reminder_recipients[]" value="${m.id}" ${m.id == memberId ? 'checked' : ''}>
+            ${m.username}
+        </label>
+    `).join('');
+
     showConfirmModal({
         title: 'Reset Dose Time',
         icon: 'reset',
         message: `
-            <div style="margin-bottom: 1.5rem;">
-                Reset timestamp for <strong>${name}</strong>?
+            <div class="reset-modal-text">
+                Reset timestamp for <strong>${medName}</strong> for <strong>${memberName}</strong>?
             </div>
-            <div class="form-group" style="text-align: left; max-width: 200px; margin: 0 auto;">
-                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.85rem; text-align: center;">Target Time (Today)</label>
-                <input type="time" id="reset_time_input" class="game-input" value="${currentTime}" style="width: 100%; text-align: center; font-size: 1.1rem; height: 45px;">
+            <div class="form-group reset-form-group">
+                <label class="reset-label">Target Time (Today)</label>
+                <input type="time" id="reset_time_input" class="game-input reset-time-input" value="${currentTime}">
+            </div>
+
+            <div class="reminder-box">
+                <label class="reminder-toggle-label">
+                    <input type="checkbox" id="enable_reminder" onchange="document.getElementById('reminder_options').style.display = this.checked ? 'block' : 'none'">
+                    ${getIcon('reminders')} Schedule Follow-up Reminder
+                </label>
+                
+                <div id="reminder_options" class="reminder-options">
+                    <div class="form-group no-margin">
+                        <label class="reminder-delay-label">Delay (Hours)</label>
+                        <select id="reminder_delay" class="game-input">
+                            ${[1,2,3,4,5,6,7,8,9,10,11,12].map(h => `<option value="${h}" ${h==4 ? 'selected' : ''}>${h} hours</option>`).join('')}
+                        </select>
+                    </div>
+                    
+                    <label class="reminder-recipients-label">Send To</label>
+                    <div class="reminder-recipients-list">
+                        ${recipientCheckboxes}
+                    </div>
+                </div>
             </div>
         `,
         confirmText: 'Reset to Selected Time',
         onConfirm: async () => {
             const selectedTime = document.getElementById('reset_time_input').value;
-            // Send full timestamp (Today's Date + Selected Time)
-            const result = await apiPost(`/medication/reset/${id}`, { taken_at: `${date} ${selectedTime}` });
+            const enableReminder = document.getElementById('enable_reminder').checked;
+            
+            const payload = { taken_at: `${date} ${selectedTime}` };
+            
+            if (enableReminder) {
+                payload.create_reminder = 1;
+                payload.reminder_delay = document.getElementById('reminder_delay').value;
+                
+                const recipients = Array.from(document.querySelectorAll('input[name="reminder_recipients[]"]:checked')).map(cb => cb.value);
+                payload.reminder_recipients = recipients.join(',');
+                
+                payload.reminder_title = `💊 Meds: ${medName} for ${memberName}`;
+                payload.reminder_desc = `Follow-up dose reminder created from Medication Tracker. http://rendler.org/medication`;
+            }
+
+            const result = await apiPost(`/medication/reset/${id}`, payload);
             if (result) refreshData();
         }
     });
