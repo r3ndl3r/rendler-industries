@@ -81,6 +81,10 @@ The system features a redundant, priority-weighted alert engine:
 
 ![Reminders](public/images/screenshots/reminders.png)
 
+<p align="center">
+  <img src="public/images/screenshots/reminders_edit.png" width="98%" />
+</p>
+
 ### 🛒 Collaborative Shopping & Todo (`/shopping`, `/todo`)
 *   **Live Sync:** AJAX-driven status toggles for real-time synchronization across the household.
 *   **User Scoping:** Todo lists are private and segregated, while Shopping lists are shared family-wide.
@@ -100,6 +104,11 @@ The system features a redundant, priority-weighted alert engine:
 *   **Heuristic Extraction:** Custom Perl Regex engine parses store names, dates, and currency totals from raw text.
 
 ![Receipt Ledger](public/images/screenshots/receipt_ledger.png)
+
+<p align="center">
+  <img src="public/images/screenshots/receipt_refine.png" width="48%" />
+  <img src="public/images/screenshots/receipt_detail.png" width="48%" />
+</p>
 
 ### 🤬 The Swear Jar Ledger (`/swear`)
 *   **100% SPA Architecture:** Real-time ledger updates and transaction management without page reloads.
