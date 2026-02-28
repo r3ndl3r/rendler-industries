@@ -86,6 +86,12 @@ function openAddEventModal(dateParam) {
     document.getElementById('eventStartDate').value = targetDate;
     document.getElementById('eventEndDate').value = targetDate;
     
+    // Show notification option if it exists (for admins) and reset to checked
+    const notificationGroup = document.getElementById('notificationGroup');
+    const sendNotificationsCb = document.getElementById('sendNotifications');
+    if (notificationGroup) notificationGroup.classList.remove('hidden');
+    if (sendNotificationsCb) sendNotificationsCb.checked = true;
+    
     // Hide delete and clone buttons when adding new event
     const deleteBtn = document.getElementById('deleteEventBtn');
     const cloneBtn = document.getElementById('cloneEventBtn');
@@ -107,6 +113,10 @@ function openEditModal(event) {
     document.getElementById('eventCategory').value = event.category;
     document.getElementById('eventColor').value = event.color || '#3788d8';
     document.getElementById('eventAllDay').checked = (event.all_day == 1 || event.allday == 1);
+
+    // Hide notification option when editing (only for creating new events)
+    const notificationGroup = document.getElementById('notificationGroup');
+    if (notificationGroup) notificationGroup.classList.add('hidden');
 
     const startDateStr = event.start_date || event.startdate;
     const endDateStr = event.end_date || event.enddate;
@@ -352,6 +362,12 @@ function cloneEventFromModal(event) {
         const cloneBtn = document.getElementById('cloneEventBtn');
         if (deleteBtn) deleteBtn.classList.add('hidden');
         if (cloneBtn) cloneBtn.classList.add('hidden');
+
+        // Show notification option when cloning (new event) and reset to checked
+        const notificationGroup = document.getElementById('notificationGroup');
+        const sendNotificationsCb = document.getElementById('sendNotifications');
+        if (notificationGroup) notificationGroup.classList.remove('hidden');
+        if (sendNotificationsCb) sendNotificationsCb.checked = true;
 
         modal.classList.add('show');
     }, 100);
