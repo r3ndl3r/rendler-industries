@@ -198,6 +198,20 @@
     text-align: center !important;
 }
 
+.registry-btn {
+    background: #64748b !important;
+}
+
+.time-taken-row {
+    display: flex;
+    gap: 10px;
+}
+
+.modal-content-small {
+    max-width: 400px !important;
+    margin-top: 5rem !important;
+}
+
 @media (max-width: 768px) {
     .medication-container {
         padding: 1rem;
@@ -242,4 +256,79 @@
     .medication-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Reset Modal Styles */
+.reset-modal-text {
+    margin-bottom: 1.5rem;
+}
+
+.reset-form-group {
+    text-align: left;
+    max-width: 300px;
+    margin: 0 auto 1.5rem auto;
+}
+
+.reset-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.reset-time-input {
+    width: 100%;
+    text-align: center;
+    font-size: 1.1rem;
+    height: 45px;
+}
+
+.reminder-box {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: left;
+}
+
+.reminder-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.reminder-options {
+    display: none;
+    padding-left: 1.5rem;
+    border-left: 2px solid #3b82f6;
+}
+
+.reminder-delay-label, .reminder-recipients-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.reminder-recipients-label {
+    margin-top: 1rem;
+}
+
+.reminder-recipients-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.recipient-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: #94a3b8;
+    font-size: 0.9rem;
 }
