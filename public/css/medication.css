@@ -285,26 +285,61 @@
 }
 
 .reminder-box {
-    background: rgba(255, 255, 255, 0.03);
-    padding: 1rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     text-align: left;
+    margin-bottom: 1rem;
 }
 
-.reminder-toggle-label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    font-weight: 600;
-    margin-bottom: 1rem;
+.modal-body label.reminder-toggle-label,
+.modal-body label.recipient-label,
+.delete-modal-body label.reminder-toggle-label,
+.delete-modal-body label.recipient-label {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 14px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+}
+
+.modal-body .reminder-toggle-label input[type="checkbox"],
+.modal-body .recipient-label input[type="checkbox"],
+.delete-modal-body .reminder-toggle-label input[type="checkbox"],
+.delete-modal-body .recipient-label input[type="checkbox"] {
+    margin: 0 !important;
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px !important;
+    appearance: checkbox !important;
+    -webkit-appearance: checkbox !important;
+    background: white !important;
+    padding: 0 !important;
+    display: inline-block !important;
+    flex-shrink: 0 !important;
+    position: relative;
+    top: 1px;
+}
+
+.reminder-toggle-content {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    white-space: nowrap;
+    color: #fff;
+    font-size: 0.9rem;
 }
 
 .reminder-options {
     display: none;
     padding-left: 1.5rem;
     border-left: 2px solid #3b82f6;
+    margin-bottom: 1.5rem;
+    width: 100%;
 }
 
 .reminder-delay-label, .reminder-recipients-label {
@@ -312,23 +347,109 @@
     margin-bottom: 0.5rem;
     color: #94a3b8;
     font-size: 0.85rem;
+    text-align: center;
+}
+
+.reminder-delay-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 1.25rem;
+    justify-content: center;
+}
+
+.delay-pill {
+    cursor: pointer;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #1e293b !important;
+    padding: 0.4rem 0.8rem !important;
+    border-radius: 0.5rem !important;
+    border: 1px solid #334155 !important;
+    transition: all 0.2s !important;
+    min-width: 45px !important;
+    text-align: center !important;
+    margin: 0 !important;
+}
+
+.delay-pill input {
+    display: none !important;
+}
+
+.delay-pill span {
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    color: #94a3b8 !important;
+    line-height: 1 !important;
+}
+
+.delay-pill:has(input:checked) {
+    background: rgba(16, 185, 129, 0.2) !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2) !important;
+}
+
+.delay-pill:has(input:checked) span {
+    color: #ffffff !important;
+}
+
+.delay-pill:hover {
+    border-color: rgba(16, 185, 129, 0.5) !important;
 }
 
 .reminder-recipients-label {
-    margin-top: 1rem;
+    margin-top: 1.25rem;
 }
 
 .reminder-recipients-list {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+    justify-content: center;
 }
 
-.recipient-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+/* Recipient Pill Style */
+.recipient-checkbox {
     cursor: pointer;
-    color: #94a3b8;
-    font-size: 0.9rem;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #1e293b !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 0.5rem !important;
+    border: 1px solid #334155 !important;
+    transition: all 0.2s !important;
+    min-width: 90px !important;
+    text-align: center !important;
+    margin: 0 !important;
+}
+
+.recipient-checkbox input {
+    display: none !important;
+}
+
+.recipient-checkbox .recipient-name {
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    text-transform: none !important;
+    line-height: 1 !important;
+}
+
+/* Selected State */
+.recipient-checkbox:has(input:checked) {
+    background: rgba(59, 130, 246, 0.2) !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2) !important;
+}
+
+.recipient-checkbox:has(input:checked) .recipient-name {
+    color: #ffffff !important;
+}
+
+.recipient-checkbox:hover {
+    border-color: rgba(59, 130, 246, 0.5) !important;
+    background: rgba(30, 41, 59, 0.8) !important;
 }
