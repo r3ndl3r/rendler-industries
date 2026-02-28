@@ -7,7 +7,7 @@
 
     <title><%= title %> | Rendler Industries®</title>
 
-    <link rel="icon" href="/files/serve/54">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
 
     <link rel="stylesheet" href="/css/default.css?<%= time %>">
     <link rel="stylesheet" href="/css/emoji-picker.css?<%= time %>">
