@@ -113,8 +113,13 @@ sub edit {
 # API: Reset Dose Time to Now or Custom - Updates a previous dose time.
 # Route: POST /medication/reset/:id
 # Parameters:
-#   - id       : Unique entry ID.
-#   - taken_at : (Optional) Full YYYY-MM-DD HH:MM timestamp.
+#   - id: Unique entry ID.
+#   - taken_at: (Optional) Full YYYY-MM-DD HH:MM timestamp.
+#   - create_reminder: (Optional) Boolean to create a follow-up reminder.
+#   - reminder_delay: (Optional) Hours to wait before reminder (1-12).
+#   - reminder_recipients: (Optional) Comma-separated list of User IDs.
+#   - reminder_title: (Optional) Text for the reminder title.
+#   - reminder_desc: (Optional) Text for the reminder description.
 sub reset {
     my $c = shift;
     my $id = $c->param('id');
@@ -124,12 +129,51 @@ sub reset {
 
     eval {
         if ($c->db->reset_medication_log($id, $taken_at || undef)) {
-            $c->render(json => { success => 1, message => "Dose time updated." });
+            
+            # Handle optional follow-up reminder creation
+            if ($c->param('create_reminder')) {
+                my $delay      = $c->param('reminder_delay') || 4;
+                my $recipients = $c->param('reminder_recipients') // '';
+                my $title      = $c->param('reminder_title') // 'Medication Reminder';
+                my $desc       = $c->param('reminder_desc')  // 'Follow-up dose reminder.';
+
+                if ($recipients) {
+                    require DateTime;
+                    
+                    my $dt;
+                    if ($taken_at && $taken_at =~ /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/) {
+                        $dt = DateTime->new(
+                            year => $1, month => $2, day => $3, 
+                            hour => $4, minute => $5, 
+                            time_zone => 'Australia/Melbourne'
+                        );
+                    } else {
+                        $dt = DateTime->now(time_zone => 'Australia/Melbourne');
+                    }
+                    
+                    $dt->add(hours => $delay);
+
+                    my $trigger_time = $dt->strftime('%H:%M:%S');
+                    my $trigger_day  = $dt->day_of_week; # 1=Mon, 7=Sun
+
+                    my @uids = split(',', $recipients);
+                    my $creator_id = $c->current_user_id;
+
+                    # Create a one-off reminder rule
+                    $c->db->create_reminder($title, $desc, $trigger_day, $trigger_time, $creator_id, \@uids, 1);
+                }
+            }
+
+            my $msg = "Dose time updated.";
+            $msg .= " Follow-up reminder scheduled." if $c->param('create_reminder');
+
+            $c->render(json => { success => 1, message => $msg });
         } else {
             $c->render(json => { success => 0, error => "Entry not found." });
         }
     };
     if ($@) {
+        $c->app->log->error("Reset Medication Error: $@");
         $c->render(json => { success => 0, error => "Database error." });
     }
 }
