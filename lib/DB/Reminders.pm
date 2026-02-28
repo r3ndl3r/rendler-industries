@@ -194,14 +194,22 @@ sub DB::get_due_reminders {
 
 # Marks a reminder as having fired today.
 # Parameters:
-#   id : Unique reminder ID.
+#   id          : Unique reminder ID.
+#   target_time : (Optional) The intended trigger time string (YYYY-MM-DD HH:MM:00)
 # Returns:
 #   Boolean : Success status.
 sub DB::mark_reminder_sent {
-    my ($self, $id) = @_;
+    my ($self, $id, $target_time) = @_;
     $self->ensure_connection;
     
-    return $self->{dbh}->do("UPDATE reminders SET last_run_at = NOW() WHERE id = ?", undef, $id);
+    my $sql = "UPDATE reminders SET last_run_at = " . ($target_time ? "?" : "NOW()") . " WHERE id = ?";
+    my $sth = $self->{dbh}->prepare($sql);
+    
+    my @params;
+    push @params, $target_time if $target_time;
+    push @params, $id;
+
+    return $sth->execute(@params) > 0;
 }
 
 1;
