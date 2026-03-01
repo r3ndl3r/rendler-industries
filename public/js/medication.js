@@ -295,7 +295,7 @@ function confirmResetMedication(id) {
                 <div id="reminder_options" class="reminder-options">
                     <label class="reminder-delay-label">Delay (Hours)</label>
                     <div class="reminder-delay-selector">
-                        ${[1,2,3,4,5,6,7,8,9,10,12].map(h => `
+                        ${[1,2,3,4,5,6,7,8,9,10,12,24].map(h => `
                             <label class="delay-pill">
                                 <input type="radio" name="reminder_delay" value="${h}" ${h==4 ? 'checked' : ''}>
                                 <span>${h}</span>
