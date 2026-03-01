@@ -116,7 +116,7 @@ sub edit {
 #   - id: Unique entry ID.
 #   - taken_at: (Optional) Full YYYY-MM-DD HH:MM timestamp.
 #   - create_reminder: (Optional) Boolean to create a follow-up reminder.
-#   - reminder_delay: (Optional) Hours to wait before reminder (1-12).
+#   - reminder_delay: (Optional) Hours to wait before reminder (1-24).
 #   - reminder_recipients: (Optional) Comma-separated list of User IDs.
 #   - reminder_title: (Optional) Text for the reminder title.
 #   - reminder_desc: (Optional) Text for the reminder description.
