@@ -128,7 +128,7 @@ function renderReminderCard(r) {
 
     // Recipients
     const recipientPills = (r.recipient_names || '').split(',').filter(n => n).map(name => 
-        `<span class="recipient-badge">${escapeHtml(name)}</span>`
+        `<span class="recipient-badge">${getIcon('reminders')} ${escapeHtml(name)}</span>`
     ).join('');
 
     return `
