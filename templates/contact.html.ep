@@ -1,4 +1,4 @@
-<%# templates/contact.html.ep %>
+<%# /templates/contact.html.ep %>
 
 % layout 'default';
 % title icon('phonebook') . ' Contacts';
@@ -9,6 +9,7 @@
 % end
 
 <div class="contact-container">
+    <%# QR Code Grid %>
     <div class="grid">
         <% 
             my %services = (

@@ -13,19 +13,19 @@
     </div>
 
     <div class="tile-grid">
-        <% # 1. Regular/Family Tiles %>
+        <%# Regular/Family Tiles %>
         <% for my $item (@$menu_tree) { %>
             <% next if $item->{permission_level} eq 'admin'; %>
             <% next if $item->{is_separator}; %>
             
-            <% # Extract emoji from label %>
+            <%# Extract emoji from label %>
             <% 
                 my $label = $item->{label};
                 my ($icon, $name) = $label =~ /^(\X+?)\s+(.*)$/u;
                 if (!$name) { $name = $label; $icon = $item->{icon} || icon('link'); }
             %>
 
-            <% # Render the item (Category or child) %>
+            <%# Render the item (Category or child) %>
             <% if ($item->{url} && $item->{url} ne '#') { %>
                 <a href="<%= $item->{url} %>" class="tile">
                     <div class="icon"><%= $icon %></div>
@@ -33,7 +33,7 @@
                 </a>
             <% } %>
 
-            <% # Render children %>
+            <%# Render children %>
             <% for my $child (@{$item->{children} || []}) { %>
                 <% 
                     my $c_label = $child->{label};
@@ -47,7 +47,7 @@
             <% } %>
         <% } %>
 
-        <% # 2. Administration Section %>
+        <%# Administration Section (Admin) %>
         <% if (is_admin()) { %>
             <div class="separator" data-label="ADMINISTRATION"></div>
             
@@ -70,7 +70,7 @@
                     </a>
                 <% } %>
 
-                <% # Render children of Admin category %>
+                <%# Render children of Admin category %>
                 <% for my $child (@{$item->{children} || []}) { %>
                     <% 
                         my $c_label = $child->{label};
@@ -85,7 +85,7 @@
                 <% } %>
             <% } %>
 
-            <% # 3. Special Admin/Logout Buttons %>
+            <%# Special Admin/Logout Buttons %>
             <button class="tile admin danger" onclick="startRestartSequence(event)">
                 <div class="icon"><%= icon('warning') %></div>
                 <div class="label">Restart</div>

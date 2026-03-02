@@ -8,12 +8,14 @@
     <script src="/js/connect4.js?<%= time %>"></script>
 % end
 
+<%# Game Configuration Data %>
 <div id="game-config" 
      class="game-wrapper"
      data-game-id="<%= $game->{id} %>"
      data-my-id="<%= $my_id %>"
      data-my-role="<%= $player_role %>">
 
+    <%# Status Card %>
     <div class="status-card">
         <h1 id="status-message" class="status-text">Loading...</h1>
         <div id="turn-indicator" class="sub-text">Connecting...</div>
@@ -21,6 +23,7 @@
         <button id="btn-restart" class="btn-glass btn-restart">🔄 Play Again</button>
     </div>
 
+    <%# Game Board Container %>
     <div class="board-container">
         <div id="board" class="board">
             </div>

@@ -17,6 +17,7 @@
     </div>
 
     <div class="chat-wrapper glass-panel">
+        <%# Chat Messages %>
         <div id="chat-messages" class="chat-messages">
             % for my $msg (@$history) {
                 <div class="message <%= $msg->{role} %>">
@@ -33,6 +34,7 @@
             % }
         </div>
 
+        <%# Chat Input Area %>
         <div class="chat-input-area">
             <div id="file-indicator" class="file-pill" style="display:none;">
                 <span id="file-label"></span>
@@ -48,6 +50,7 @@
         </div>
     </div>
 
+    <%# Quick Action Chips %>
     <div class="quick-chips">
         <button class="chip" onclick="quickPrompt('What are my medications today?')">💊 Today's Meds</button>
         <button class="chip" onclick="quickPrompt('What is on the shopping list?')">🛒 Shopping</button>

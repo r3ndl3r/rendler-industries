@@ -14,6 +14,7 @@
         <h1><%= icon('chess') %> <span>Chess - Game #<%= $game->{id} %></span></h1>
     </div>
 
+    <%# Game Board Area %>
     <div class="game-wrapper">
         <% 
             my $uid = current_user_id();
@@ -29,6 +30,7 @@
                  data-user-id="<%= $uid %>">
                  </div>
             
+            <%# Draw Offer Overlay %>
             <div id="draw-offer-overlay" class="game-overlay" style="display: none;">
                 <div class="overlay-content">
                     <p>Opponent has offered a draw.</p>
@@ -41,6 +43,7 @@
         </div>
     </div>
 
+    <%# System Message Overlay %>
     <div id="game-modal" class="game-overlay" style="display: none;">
         <div class="overlay-content">
             <p id="modal-message"></p>
@@ -52,6 +55,7 @@
         </div>
     </div>
 
+    <%# Pawn Promotion Overlay %>
     <div id="promotion-modal" class="game-overlay" style="display: none;">
         <div class="overlay-content">
             <p>Promote your pawn:</p>
@@ -64,6 +68,7 @@
         </div>
     </div>
 
+    <%# Status & Controls Panel %>
     <div class="status-panel">
         <h3 id="game-status-text">
             <% if ($game->{status} eq 'waiting') { %>

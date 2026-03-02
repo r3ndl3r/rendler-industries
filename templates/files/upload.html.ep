@@ -14,6 +14,7 @@
         <h1><%= icon('upload') %> <span>Upload New File</span></h1>
     </div>
 
+    <%# File Upload Form %>
     <div class="edit-container">
         <form id="uploadForm" class="edit-form" enctype="multipart/form-data">
             <div class="form-group">
@@ -37,6 +38,7 @@
                 </label>
             </div>
 
+            <%# Restricted User Selection %>
             <div class="form-group" id="userAccessGroup">
                 <label>Limit Access to Specific Users (Optional)</label>
                 <div class="recipients-selector">

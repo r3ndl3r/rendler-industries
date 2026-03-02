@@ -81,7 +81,7 @@
     </div>
 </div>
 
-<!-- Add/Edit Modal -->
+<%# Add/Edit Modal (Admin) %>
 <div id="linkModal" class="delete-modal-overlay">
     <div class="delete-modal-content" style="max-width: 600px;">
         <div class="delete-modal-header">
@@ -160,7 +160,7 @@
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
+<%# Delete Confirmation Modal (Admin) %>
 <div id="deleteConfirmModal" class="delete-modal-overlay">
     <div class="delete-modal-content">
         <div class="delete-modal-header">
