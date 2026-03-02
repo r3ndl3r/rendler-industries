@@ -76,6 +76,11 @@ div.main {
     padding-top: 8px;
 }
 
+.card-divider {
+    border-top: 1px solid #333;
+    margin: 15px 0;
+}
+
 #time, #andrea, #nicky, #andreas, #nickys, #server, #servers {
     color: red;
 }
@@ -129,53 +134,52 @@ img:hover {
     color: #000000;
 }
 
-/* --- NEW: File Map Styles --- */
-
 .file-map-container {
+    display: none;
     margin-top: 15px;
-    border: 1px dashed #444;    /* Tech-looking dashed border */
-    padding: 15px 15px 15px 0;  /* Padding, but keep left tight for tree */
-    background: #0d0d0d;        /* Very dark background */
+    border: 1px dashed #444;
+    padding: 15px 15px 15px 0;
+    background: #0d0d0d;
     width: 100%;
-    max-width: 500px;           /* Limit width so it doesn't stretch too far */
-    text-align: left;           /* Align text to left (unlike rest of footer) */
+    max-width: 500px;
+    text-align: left;
     box-sizing: border-box;
     border-radius: 8px;
 }
 
 .file-tree, .file-tree ul {
-    list-style-type: none;      /* Remove bullets */
-    padding-left: 20px;         /* Indent children */
+    list-style-type: none;
+    padding-left: 20px;
     margin: 0;
 }
 
 .file-tree li {
     margin: 2px 0;
     line-height: 1.4;
-    font-family: 'Courier New', monospace; /* Code font */
+    font-family: 'Courier New', monospace;
     font-size: 0.9rem;
 }
 
 .folder-name {
-    color: #f0ad4e;             /* Orange/Gold for folders */
+    color: #f0ad4e;
     font-weight: bold;
 }
 
 .file-link {
-    color: #aaa;                /* Light grey for files */
+    color: #aaa;
     text-decoration: none;
     transition: color 0.2s;
 }
 
 .file-link:hover {
-    color: white;               /* White on hover */
+    color: white;
     text-decoration: underline;
 }
 
 .git-item {
     margin-top: 15px;
     padding-top: 10px;
-    border-top: 1px solid #333; /* Separator line */
+    border-top: 1px solid #333;
     text-align: center;
     list-style: none;
 }
@@ -237,14 +241,13 @@ img:hover {
     border-color: rgba(255,255,255,0.3); color: #fff;
 }
 
-/* --- Dashboard Flip Clock Customization --- */
 .dashboard-clock-container {
     display: flex;
-    flex-direction: column; /* Stack Day/Month on top of Clock */
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 15px; /* Add space between text and clock */
-    font-size: 1.6rem; /* Bigger prefix text */
+    gap: 15px;
+    font-size: 1.6rem;
 }
 
 #clock-prefix {
@@ -259,12 +262,11 @@ img:hover {
 }
 
 #main-clock .flip-label {
-    display: none; /* Hide labels */
+    display: none;
 }
 
-/* Remove card-shrinking overrides to restore original big size from default.css */
 #main-clock .flip-card.ampm {
-    width: 40px; /* Match default.css big card width */
+    width: 40px;
     min-width: 40px;
     padding: 0;
     font-size: 1.1rem;
