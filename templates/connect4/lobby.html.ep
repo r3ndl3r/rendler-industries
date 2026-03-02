@@ -18,6 +18,7 @@
         <a href="/connect4/create" class="btn-create">Create New Game</a>
     </div>
 
+    <%# Open Game Lobbies Section %>
     <h3 style="margin-left: 0.5rem; margin-bottom: 1rem;">Open Games</h3>
     
     <div class="game-list">

@@ -12,6 +12,7 @@
 % end
 
 % if ($logged_in) {
+<%# Quick Access Redirect Overlay %>
 <div class="redirect-splash" id="redirectSplash">
     <div class="redirect-splash-card">
         <div class="redirect-splash-icon"><%= icon('quick') %></div>
@@ -27,6 +28,8 @@
 
 <div class="main" id="box">
     <img src="/files/serve/58" class="banner-logo" alt="Banner">
+    
+    <%# Local Time Card %>
     <div class="info-card">
         <span class="label">LOCAL TIME (AEST)</span>
         <div class="data-text">
@@ -46,6 +49,7 @@
         </div>
     </div>
                 
+    <%# Andrea Uptime Card %>
     <div class="info-card">
         <span class="label">ANDREA'S UPTIME</span>
         <div class="age-text">
@@ -56,6 +60,7 @@
         </div>
     </div>
 
+    <%# Nicky Uptime Card %>
     <div class="info-card">
         <span class="label">NICKY'S UPTIME</span>
         <div class="age-text">
@@ -66,6 +71,7 @@
         </div>
     </div>
 
+    <%# Platform Footer %>
     <p class="footer">
         Powered by <a href="https://debian.org" class="footer-link"> Debian <img alt="debian" src="/files/serve/2"></a> || 
         <a href="https://perl.org/" class="footer-link"> Perl <img alt="perl" src="/files/serve/4"></a> || 
@@ -80,6 +86,7 @@
            id="listFilesLink" class="footer-link">these thingies</a>
     </p>
 
+    <%# File Tree Overlay %>
     <div id="fileListBox" class="file-map-container">
         <ul class="file-tree" id="fileListTree"></ul>
     </div>

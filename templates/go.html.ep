@@ -29,6 +29,7 @@
         </script>
     <% } %>
     
+    <%# Add Item Form %>
     <div class="glass-panel add-item-panel">
         <form action="/go/add" method="POST" class="add-item-form">
             <div class="form-inputs">
@@ -62,6 +63,7 @@
         </form>
     </div>
 
+    <%# Active Links Container %>
     <div class="items-container">
         <% if (@$links) { %>
             <h3 class="section-title">Active Links</h3>
@@ -100,6 +102,7 @@
     </div>
 </div>
 
+<%# Edit Link Modal %>
 <div id="editModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
@@ -131,6 +134,7 @@
     </div>
 </div>
 
+<%# Delete Confirmation Modal %>
 <div id="deleteModal" class="delete-modal-overlay" style="display: none;">
     <div class="delete-modal-content">
         <div class="delete-modal-header">

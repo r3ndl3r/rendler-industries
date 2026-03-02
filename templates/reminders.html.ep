@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <!-- Reminders Grid (Rendered via JS) -->
+    <%# Reminders Grid %>
     <div id="remindersListContainer" class="reminders-grid">
         <div class="loading-state">
             <p>Loading reminders...</p>
@@ -24,7 +24,7 @@
     </div>
 </div>
 
-<!-- Add Reminder Modal -->
+<%# Add Reminder Modal %>
 <div id="addReminderModal" class="modal-overlay">
     <div class="modal-content modal-reminders">
         <div class="modal-header">
@@ -61,14 +61,12 @@
                 <div class="form-group">
                     <label>Days of the week</label>
                     <div class="days-selector" id="addDaysSelector">
-                        <!-- Populated via JS -->
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Target Recipients</label>
                     <div class="recipients-selector" id="addRecipientsSelector">
-                        <!-- Populated via JS -->
                     </div>
                 </div>
             </div>
@@ -79,7 +77,7 @@
     </div>
 </div>
 
-<!-- Edit Reminder Modal -->
+<%# Edit Reminder Modal %>
 <div id="editReminderModal" class="modal-overlay">
     <div class="modal-content modal-reminders">
         <div class="modal-header">
@@ -117,14 +115,12 @@
                 <div class="form-group">
                     <label>Days of the week</label>
                     <div class="days-selector" id="editDaysSelector">
-                        <!-- Populated via JS -->
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Target Recipients</label>
                     <div class="recipients-selector" id="editRecipientsSelector">
-                        <!-- Populated via JS -->
                     </div>
                 </div>
             </div>

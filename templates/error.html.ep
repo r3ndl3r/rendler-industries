@@ -12,6 +12,7 @@
         <h1><%= icon('warning') %> <span>System Error</span></h1>
     </div>
 
+    <%# Error Message Card %>
     <div class="glass-panel message-card">
         <div class="error-icon">
             <%= icon('warning') %>

@@ -26,13 +26,13 @@
         <script>document.addEventListener('DOMContentLoaded', () => showToast("<%= $err %>", 'error'));</script>
     <% } %>
 
-    <!-- Main Dynamic Container -->
+    <%# Main Dynamic Container %>
     <div id="medication-grid" class="medication-grid">
         <p class="loading">Loading family data...</p>
     </div>
 </div>
 
-<!-- Add Dose Modal -->
+<%# Add Dose Modal %>
 <div id="doseModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
@@ -55,7 +55,6 @@
                     <label>Quick Select Medication</label>
                     <select id="add_quick_select" class="game-input" onchange="fillForm('add', this.value, this.options[this.selectedIndex].dataset.dosage)">
                         <option value="" selected>-- Select existing --</option>
-                        <!-- Populated via AJAX -->
                     </select>
                 </div>
 
@@ -84,7 +83,7 @@
     </div>
 </div>
 
-<!-- Edit Dose Modal -->
+<%# Edit Dose Modal %>
 <div id="editModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
@@ -106,7 +105,6 @@
                     <label>Quick Select Medication</label>
                     <select id="edit_quick_select" class="game-input" onchange="fillForm('edit', this.value, this.options[this.selectedIndex].dataset.dosage)">
                         <option value="" selected>-- Select existing --</option>
-                        <!-- Populated via AJAX -->
                     </select>
                 </div>
 
@@ -135,7 +133,7 @@
     </div>
 </div>
 
-<!-- Registry Management Modal -->
+<%# Registry Management Modal (Admin) %>
 <div id="registryModal" class="modal-overlay" style="display: none;">
     <div class="modal-content modal-registry">
         <div class="modal-header">
@@ -154,7 +152,6 @@
                         </tr>
                     </thead>
                     <tbody id="registry-table-body">
-                        <!-- Populated via AJAX -->
                     </tbody>
                 </table>
             </div>
@@ -164,7 +161,7 @@
     </div>
 </div>
 
-<!-- Edit Registry Item Modal (Sub-modal) -->
+<%# Edit Registry Item Modal (Admin) %>
 <div id="manageEditModal" class="modal-overlay" style="display: none; z-index: 11000;">
     <div class="modal-content modal-content-small">
         <div class="modal-header">
@@ -192,7 +189,6 @@
 </div>
 
 <script>
-    // Pass session user to JS for default selection logic
     const CURRENT_USER = "<%= session('user') %>";
     const IS_ADMIN = <%= is_admin ? 'true' : 'false' %>;
 </script>

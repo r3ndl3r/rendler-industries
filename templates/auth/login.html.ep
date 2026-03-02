@@ -11,6 +11,7 @@
 <div class="auth-container">
     <h1 class="auth-header">Login</h1>
     
+    <%# Authentication Alerts %>
     % if (my $msg = param('msg')) {
         <div class="alert">
             % if ($msg eq 'invalid') {
@@ -21,6 +22,7 @@
         </div>
     % }
 
+    <%# Login Form %>
     <form method="POST" action="/login">
         <div class="form-group">
             <label for="username">Username</label>

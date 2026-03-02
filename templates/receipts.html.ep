@@ -63,30 +63,30 @@
 
     <div class="files-list">
         <table class="data-table files-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 60px;">Preview</th>
-                                    <th>Filename</th>
-                                    <th>Store</th>
-                                    <th>Date</th>
-                                    <th>Total</th>
-                                    <th>Uploaded By</th>
-                                    <th style="width: 100px; text-align: center;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="receiptsTableBody">
-                            </tbody>
-            </table>
-        </div>
+            <thead>
+                <tr>
+                    <th style="width: 60px;">Preview</th>
+                    <th>Filename</th>
+                    <th>Store</th>
+                    <th>Date</th>
+                    <th>Total</th>
+                    <th>Uploaded By</th>
+                    <th style="width: 100px; text-align: center;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="receiptsTableBody">
+            </tbody>
+        </table>
+    </div>
         
-        <div id="pagination-container" style="text-align: center; margin-top: 20px;">
-            <button id="loadMoreBtn" class="btn-primary" style="background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); min-width: 200px;">
-                <%= icon('expand') %> Load More
-            </button>
-        </div>
+    <div id="pagination-container" style="text-align: center; margin-top: 20px;">
+        <button id="loadMoreBtn" class="btn-primary" style="background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); min-width: 200px;">
+            <%= icon('expand') %> Load More
+        </button>
+    </div>
 </div>
 
-<!-- Edit Receipt Modal -->
+<%# Edit Receipt Modal %>
 <div id="editModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
@@ -127,7 +127,7 @@
     </div>
 </div>
 
-<!-- Post-Upload Crop Modal (Existing Receipts) -->
+<%# Post-Upload Crop Modal (Existing Receipts) %>
 <div id="cropModal" class="modal-overlay" style="display: none;">
     <div class="modal-content" style="max-width: 800px; width: 95%;">
         <div class="modal-header">
@@ -146,7 +146,7 @@
     </div>
 </div>
 
-<!-- Pre-Upload Crop Modal (New Uploads) -->
+<%# Pre-Upload Crop Modal (New Uploads) %>
 <div id="preUploadCropModal" class="modal-overlay" style="display: none;">
     <div class="modal-content" style="max-width: 800px; width: 95%;">
         <div class="modal-header">
@@ -166,7 +166,7 @@
     </div>
 </div>
 
-<!-- Electronic Receipt Modal -->
+<%# Electronic Receipt Modal %>
 <div id="eReceiptModal" class="modal-overlay" style="display: none;" onclick="closeEReceiptModal()">
     <div class="modal-content ereceipt-modal-content" onclick="event.stopPropagation()">
         <div class="modal-header ereceipt-header">
@@ -189,7 +189,7 @@
     </div>
 </div>
 
-<!-- Receipt Modal -->
+<%# Receipt Modal %>
 <div id="receiptModal" class="modal-overlay" style="display: none;" onclick="closeReceiptModal()">
     <div class="image-modal-content" onclick="event.stopPropagation()">
         <span class="close-btn" onclick="closeReceiptModal()"><%= icon('close') %></span>
@@ -197,7 +197,7 @@
     </div>
 </div>
 
-<!-- Upload Receipt Modal -->
+<%# Upload Receipt Modal %>
 <div id="uploadModal" class="modal-overlay receipt-upload-modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
@@ -216,45 +216,6 @@
                     <button type="submit" class="btn-primary"><%= icon('upload') %> Upload</button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-<!-- Post-Upload Crop Modal (Existing Receipts) -->
-<div id="cropModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="max-width: 800px; width: 95%;">
-        <div class="modal-header">
-            <h3><%= icon('crop') %> Crop Receipt</h3>
-            <span class="close-btn" onclick="closeCropModal()">&times;</span>
-        </div>
-        <div class="modal-body crop-preview-container">
-            <div class="crop-img-wrapper">
-                <img id="cropImg" class="crop-img-el">
-            </div>
-            <p class="crop-help-text">Drag the corners to crop the receipt. Only the selected area will be saved.</p>
-        </div>
-        <div class="modal-actions crop-modal-actions">
-            <button type="button" class="btn-primary" onclick="saveCrop()"><%= icon('save') %> Save Crop</button>
-        </div>
-    </div>
-</div>
-
-<!-- Pre-Upload Crop Modal (New Uploads) -->
-<div id="preUploadCropModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="max-width: 800px; width: 95%;">
-        <div class="modal-header">
-            <h3><%= icon('edit') %> Refine Receipt Image</h3>
-            <span class="close-btn" onclick="closePreUploadCropModal()">&times;</span>
-        </div>
-        <div class="modal-body" style="text-align: center;">
-            <div style="max-height: 60vh; overflow: hidden; background: #000; border-radius: 8px;">
-                <img id="preUploadCropImg" style="max-width: 100%; display: block;">
-            </div>
-            <p style="margin-top: 15px; color: #94a3b8; font-size: 0.85rem;">Drag to select the receipt area. This will be the final image uploaded.</p>
-        </div>
-        <div class="modal-actions">
-            <button type="button" class="btn-primary" onclick="applyPreUploadCrop()"><%= icon('check') %> Apply Crop</button>
-            <button type="button" class="btn-secondary" onclick="closePreUploadCropModal()">Skip Cropping</button>
         </div>
     </div>
 </div>

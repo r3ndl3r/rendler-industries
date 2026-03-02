@@ -21,6 +21,7 @@
         </form>
     </div>
 
+    <%# Active User Games Section %>
     <div id="user-games-section" style="<%= @$user_games ? '' : 'display: none;' %>">
         <h3 style="margin-left: 0.5rem; margin-bottom: 1rem;">Your Active Games</h3>
         <div id="user-game-list" class="game-list" style="margin-bottom: 2rem;">
@@ -41,6 +42,7 @@
         </div>
     </div>
 
+    <%# Open Game Lobbies Section %>
     <h3 style="margin-left: 0.5rem; margin-bottom: 1rem;">Open Games</h3>
     
     <div id="open-game-list" class="game-list">

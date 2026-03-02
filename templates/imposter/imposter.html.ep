@@ -122,7 +122,7 @@
                         </button>
                     </form>
                 <% } else { %>
-                    <!-- IMAGE DISPLAY FOR NON-IMPOSTERS -->
+                    <%# Image Display %>
                     <% if ($game->{image_url} && $current_name ne $game->{imposter}) { %>
                         <div class="mb-6">
                             <img src="<%= $game->{image_url} %>?t=<%= time() %>" 
@@ -176,7 +176,6 @@
             </div>
         </div>
         <script>
-            // Initialize timer via external JS function
             document.addEventListener('DOMContentLoaded', function() {
                 startTimer(<%= $game->{timer_seconds} %>);
             });
@@ -187,7 +186,7 @@
             <div class="bg-slate-800 border-2 border-slate-700 rounded-3xl w-full text-center shadow-2xl relative overflow-hidden p-8">
                 <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-500 to-purple-600"></div>
                 
-                <!-- IMAGE DISPLAY IN RESULTS -->
+                <%# Results Image Display %>
                 <% if ($game->{image_url}) { %>
                     <div class="mt-4 mb-6">
                         <img src="<%= $game->{image_url} %>?t=<%= time() %>" 

@@ -13,7 +13,7 @@
         <h1><%= icon('shopping') %> <span>Shopping List</span></h1>
     </div>
 
-    <!-- Add Item Form -->
+    <%# Add Item Form %>
     <div class="glass-panel add-item-panel">
         <form id="addShoppingForm" class="add-item-form">
             <div class="form-group flex-1 no-margin">
@@ -31,7 +31,7 @@
         </form>
     </div>
 
-    <!-- Shopping List Items (Rendered via JS) -->
+    <%# Shopping List Items %>
     <div id="shoppingListContainer" class="items-container">
         <div class="loading-state">
             <p>Loading shopping list...</p>
@@ -39,7 +39,7 @@
     </div>
 </div>
 
-<!-- Edit Modal -->
+<%# Edit Modal %>
 <div id="editModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">

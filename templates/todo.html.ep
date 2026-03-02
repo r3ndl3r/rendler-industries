@@ -13,41 +13,40 @@
         <h1><%= icon('todo') %> <span>Todo List</span></h1>
     </div>
 
-        <div class="glass-panel add-item-panel">
-            <form id="addTodoForm" class="add-item-form">
-                <div class="form-group flex-1 no-margin">
-                    <input type="text" id="taskInput" name="task_name" class="game-input" placeholder="What needs to be done?" autocomplete="off" required maxlength="255">
-                </div>
-                <button type="submit" class="btn-blue-add">Add Task</button>
-            </form>
-        </div>
-    
-        <!-- Todo List Items (Rendered via JS) -->
-        <div id="todoListContainer" class="items-container">
-            <div class="loading-state">
-                <p>Loading todo list...</p>
+    <%# Add Task Form %>
+    <div class="glass-panel add-item-panel">
+        <form id="addTodoForm" class="add-item-form">
+            <div class="form-group flex-1 no-margin">
+                <input type="text" id="taskInput" name="task_name" class="game-input" placeholder="What needs to be done?" autocomplete="off" required maxlength="255">
             </div>
+            <button type="submit" class="btn-blue-add">Add Task</button>
+        </form>
+    </div>
+
+    <%# Todo List Items %>
+    <div id="todoListContainer" class="items-container">
+        <div class="loading-state">
+            <p>Loading todo list...</p>
         </div>
     </div>
-    
-    <!-- Edit Modal -->
-    <div id="editModal" class="modal-overlay">
-    
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><%= icon('edit') %> Edit Task</h3>
-                <span class="close-btn" onclick="closeEditModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="modal-group">
-                    <label for="editName">Task Description</label>
-                    <input type="text" id="editName" class="game-input" maxlength="255">
-                    <input type="hidden" id="editId">
-                </div>
-            </div>
-            <div class="modal-actions modal-actions-center">
-                <button type="button" onclick="submitEdit()" class="btn-primary">Save Changes</button>
+</div>
+
+<%# Edit Modal %>
+<div id="editModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><%= icon('edit') %> Edit Task</h3>
+            <span class="close-btn" onclick="closeEditModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="modal-group">
+                <label for="editName">Task Description</label>
+                <input type="text" id="editName" class="game-input" maxlength="255">
+                <input type="hidden" id="editId">
             </div>
         </div>
+        <div class="modal-actions modal-actions-center">
+            <button type="button" onclick="submitEdit()" class="btn-primary">Save Changes</button>
+        </div>
     </div>
-    
+</div>

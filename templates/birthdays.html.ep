@@ -19,7 +19,7 @@
         <% } %>
     </div>
 
-    <!-- Main Countdown View -->
+    <%# Main Countdown View %>
     <div id="birthday-grid" class="birthdays-grid">
         <div class="loading-state">
             <div class="spinner"></div>
@@ -27,7 +27,7 @@
         </div>
     </div>
 
-    <!-- Administrative Management View (Restricted) -->
+    <%# Administrative Management View (Admin) %>
     <% if (is_admin()) { %>
         <div id="manage-view" class="manage-view glass-panel" style="display: none;">
             <div class="manage-header">
@@ -35,14 +35,13 @@
                 <button class="btn-close" onclick="toggleManageMode()">&times;</button>
             </div>
             <div id="manage-list" class="manage-list">
-                <!-- Populated by JS -->
             </div>
         </div>
     <% } %>
 </div>
 
 <% if (is_admin()) { %>
-<!-- Add/Edit Modal -->
+<%# Add/Edit Modal %>
 <div id="birthdayModal" class="modal-overlay">
     <div class="modal-content modal-content-small">
         <div class="modal-header">
@@ -62,7 +61,7 @@
                     <input type="date" name="birth_date" id="field_date" class="game-input" required>
                 </div>
             </div>
-            <div class="modal-actions" style="justify-content: center !important;">
+            <div class="modal-actions modal-actions-center">
                 <button type="submit" class="btn-primary" id="submitBtn">Save Birthday</button>
             </div>
         </form>
