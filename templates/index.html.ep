@@ -20,7 +20,7 @@
         <div class="redirect-progress-track">
             <div class="redirect-progress-fill" id="redirectProgress"></div>
         </div>
-        <button class="btn-cancel-redirect" onclick="cancelRedirect()">Stay on this page</button>
+        <button class="btn-cancel-redirect">Stay on this page</button>
     </div>
 </div>
 % }
@@ -35,23 +35,8 @@
                 <div id="main-clock" class="flip-clock"></div>
             </div>
         </div>
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                const prefixEl = document.getElementById('clock-prefix');
-                const clockEl = document.getElementById('main-clock');
-                
-                if (prefixEl) {
-                    const updatePrefix = () => {
-                        prefixEl.textContent = moment().tz("Australia/Melbourne").format('dddd, D MMMM YYYY');
-                    };
-                    updatePrefix();
-                    setInterval(updatePrefix, 60000); // Update day/month once a minute
-                }
-                
-                if (clockEl) FlipClockManager.startRealTimeClock(clockEl, 'main-dashboard-clock');
-            });
-        </script>
-        <div style="border-top: 1px solid #333; margin: 15px 0;"></div>
+        
+        <div class="card-divider"></div>
         <span class="label">SERVER UPTIME [KUMA]</span>
         <div class="age-text">
             <span id="server">Loading...</span>
@@ -85,38 +70,33 @@
         Powered by <a href="https://debian.org" class="footer-link"> Debian <img alt="debian" src="/files/serve/2"></a> || 
         <a href="https://perl.org/" class="footer-link"> Perl <img alt="perl" src="/files/serve/4"></a> || 
         <a href="http://mojolicious.org" class="footer-link"> Mojolicious <img alt="mojo" src="/files/serve/5"></a> ||
-        <a href="https://apache.org/" class="footer-link"> Apache <img alt="apache" src="/files/serve/1"></a> || 
+        <a href="https://cloudflare.com/" class="footer-link"> Cloudflare <img alt="apache" src="/files/serve/65"></a> || 
         <a href="https://mariadb.org" class="footer-link"> MariaDB <img alt="mariadb" src="/files/serve/3"></a>
     </p>
 
     <p class="footer">
         Made possible by:
         <a href="javascript:void(0);"
-           id="listFilesLink" onclick="toggleFileList()" class="footer-link">these thingies</a>
+           id="listFilesLink" class="footer-link">these thingies</a>
     </p>
 
-    <div id="fileListBox" class="file-map-container" style="display: none;">
+    <div id="fileListBox" class="file-map-container">
             <ul class="file-tree">
                 <% 
-                # Custom Sorter: Files First, then Directories (Alphabetical)
                 my $files_first_sorter = sub {
                     my @a_parts = split '/', $a;
                     my @b_parts = split '/', $b;
                     
-                    # Determine the depth to compare
                     my $limit = @a_parts < @b_parts ? $#a_parts : $#b_parts;
                     
                     for my $i (0 .. $limit) {
-                        # If the path segments differ at this depth
                         if ($a_parts[$i] ne $b_parts[$i]) {
                             my $a_is_file = ($i == $#a_parts);
                             my $b_is_file = ($i == $#b_parts);
                             
-                            # Priority Rule: Files come before Directories
                             return -1 if $a_is_file && !$b_is_file;
                             return 1  if !$a_is_file && $b_is_file;
                             
-                            # Otherwise, standard case-insensitive sort
                             return fc($a_parts[$i]) cmp fc($b_parts[$i]);
                         }
                     }
@@ -162,9 +142,9 @@
             </ul>
         </div>
     </div>
-    <div class="debug-box" style="position: fixed; bottom: 10px; right: 10px; background-color: #f0f0f0; padding: 5px; border-radius: 5px; font-size: 12px; color: #000000;">
+    <div class="debug-box">
         Client IP: <%= $client_ip %>
     </div>
-    <div class="visit-box" style="position: fixed; bottom: 10px; left: 10px; background-color: #f0f0f0; padding: 5px; border-radius: 5px; font-size: 12px; color: #000000;">
+    <div class="visit-box">
         Last visit: <%= scalar localtime($last_visit) %>
     </div>
