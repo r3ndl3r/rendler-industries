@@ -16,7 +16,7 @@
     <div class="redirect-splash-card">
         <div class="redirect-splash-icon"><%= icon('quick') %></div>
         <h2>Quick Access</h2>
-        <p>Redirecting to <strong>/quick</strong> in <span id="redirectCountdown">2</span>s&hellip;</p>
+        <p>Redirecting to <a href="/quick" class="redirect-link"><strong>/quick</strong></a> in <span id="redirectCountdown">3</span>s&hellip;</p>
         <div class="redirect-progress-track">
             <div class="redirect-progress-fill" id="redirectProgress"></div>
         </div>
