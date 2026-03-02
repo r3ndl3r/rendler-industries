@@ -214,7 +214,19 @@ img:hover {
     color: #94a3b8; font-size: 0.95rem; margin: 0 0 1.5rem;
 }
 
-.redirect-splash-card p strong { color: #90caf9; }
+.redirect-splash-card p a.redirect-link {
+    color: #90caf9;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.redirect-splash-card p a.redirect-link:hover {
+    color: #fff;
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+.redirect-splash-card p strong { color: inherit; }
 
 .redirect-progress-track {
     background: rgba(255,255,255,0.08);
