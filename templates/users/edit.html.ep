@@ -12,6 +12,7 @@
         <h1><%= icon('user') %> <span>Edit User</span></h1>
     </div>
     
+    <%# User Edit Form %>
     <form action="/users/update/<%= $user->{id} %>" method="POST" class="edit-form">
         <div class="form-group">
             <label for="username">Username</label>

@@ -22,17 +22,21 @@
     </div>
   </div>
 
+  <%# Loading State %>
   <div id="loading-state" class="text-center">
     <div class="spinner"></div>
     <p style="color: var(--text-secondary);">Loading questions... กำลังโหลดคำถาม...</p>
   </div>
 
+  <%# Error State %>
   <div id="error-state" style="display:none;" class="text-center">
     <p style="color: var(--danger-red);">Failed to load questions.</p>
   </div>
 
+  <%# Questions Container %>
   <div id="questions-container" style="display:none;"></div>
 
+  <%# Pagination Controls %>
   <div id="pagination-controls" class="controls-area" style="display: none; text-align: center; margin-top: 2rem; gap: 1rem; justify-content: center; align-items: center;">
       <button id="prev-btn" class="btn-next" style="background: #334155; display: none;">
           <%= icon('back') %> Previous

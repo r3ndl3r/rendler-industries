@@ -9,6 +9,7 @@
 % end
 
 <% if ($game->{status} eq 'waiting') { %>
+    <%# Waiting Lobby %>
     <div class="waiting-room">
         <h1>Waiting Lobby</h1>
         <p class="text-muted">At least 2 players required. All joined players must be Ready.</p>
@@ -98,22 +99,15 @@
             })
             .then(res => res.json())
             .then(data => {
-                // If game started or player list changed, reload
                 if (data.status === 'active') {
                     window.location.reload();
                     return;
                 }
-
-                // Check if players changed or ready status changed
-                // This is a simple way to trigger reload for UI updates
                 const currentPlayers = <%= scalar grep { $game->{"player${_}_id"} } (1..4) %>;
                 const newPlayers = data.players.length;
-                
                 if (newPlayers !== currentPlayers) {
                     window.location.reload();
                 }
-                
-                // Also check if someone toggled ready
                 const currentReady = <%= scalar grep { $game->{"p${_}_ready"} } (1..4) %>;
                 const newReady = data.players.filter(p => p.ready).length;
                 if (newReady !== currentReady) {
@@ -123,12 +117,13 @@
         }, 3000);
     </script>
 <% } else { %>
+    <%# Active Game View %>
     <div id="game-config" data-game-id="<%= $game->{id} %>" data-my-id="<%= $my_id %>" data-my-role="<%= $player_role %>"></div>
     
     <div class="game-container">
-        <!-- Opponents Top Bar -->
+        <%# Opponents Top Bar %>
         <div class="opponents-wrapper">
-            <!-- Opponent Panels -->
+            <%# Opponent Panels %>
             <div class="player-panel opponent-panel opp-top" id="opp-slot-top">
                 <div class="panel-content">
                     <div class="player-avatar"><%= icon('user') %></div>
@@ -160,7 +155,7 @@
             </div>
         </div>
         
-        <!-- Game Board -->
+        <%# Game Board %>
         <div class="game-board">
             <div class="table-area">
                 <div class="deck-area">
@@ -180,6 +175,7 @@
             </div>
         </div>
 
+        <%# Player Hand Container %>
         <div class="my-hand-container">
             <div id="my-hand" class="my-hand"></div>
             <div id="uno-shout-container" class="uno-shout-container">
@@ -187,7 +183,7 @@
             </div>
         </div>
         
-        <!-- Bottom Player Panel (You) -->
+        <%# Player Panel (Self) %>
         <div class="player-panel my-panel" id="my-panel">
             <div class="panel-content">
                 <div class="player-avatar">⭐</div>
@@ -198,11 +194,11 @@
             </div>
         </div>
         
-        <!-- Status Messages -->
+        <%# Status Messages %>
         <div class="status-toast" id="status-toast"></div>
     </div>
     
-    <!-- Color Picker Modal -->
+    <%# Color Picker Modal %>
     <div id="color-modal" class="color-modal">
         <h2 style="color: white; margin-bottom: 20px;">Choose a Color</h2>
         <div class="color-options">

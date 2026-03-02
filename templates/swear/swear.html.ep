@@ -25,7 +25,7 @@
         </div>
     </div>
 
-    <%# --- VIEW: DASHBOARD --- %>
+    <%# View: Dashboard %>
     <div id="swearDashboardView">
         <div class="jar-balance-card">
             <div class="jar-label">Real World Jar</div>
@@ -132,7 +132,7 @@
         </div>
     </div>
 
-    <%# --- VIEW: MANAGEMENT --- %>
+    <%# View: Management (Admin) %>
     <div id="swearManageView" class="hidden">
         <div class="glass-panel">
             <h3 class="panel-title-blue">Add New Member</h3>
@@ -169,7 +169,7 @@
     </div>
 </div>
 
-<!-- Image Viewer Modal -->
+<%# Image Viewer Modal %>
 <div id="imageModal" class="modal-overlay" style="display: none;">
     <div class="image-modal-content">
         <span class="close-btn" onclick="closeImageModal()"><%= icon('close') %></span>

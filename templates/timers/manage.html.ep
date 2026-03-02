@@ -135,7 +135,7 @@
     % }
 </div>
 
-<!-- Create Timer Modal -->
+<%# Create Timer Modal (Admin) %>
 <div id="modal-create-timer" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
@@ -186,13 +186,13 @@
             </div>
 
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn btn-primary"><%= icon('save') %> Create Timer</button>
+                <button type="submit" class="btn btn-primary"><%= icon('save') %> Save</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Edit Timer Modal -->
+<%# Edit Timer Modal (Admin) %>
 <div id="modal-edit-timer" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
@@ -232,13 +232,13 @@
             </div>
 
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn btn-primary"><%= icon('save') %> Update Timer</button>
+                <button type="submit" class="btn btn-primary"><%= icon('save') %> Save</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Bonus Time Modal -->
+<%# Bonus Time Modal (Admin) %>
 <div id="modal-bonus-time" class="modal-overlay">
     <div class="modal-content modal-small">
         <div class="modal-header">
@@ -257,7 +257,7 @@
             </div>
 
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn-primary"><%= icon('save') %> Grant Time</button>
+                <button type="submit" class="btn-primary"><%= icon('save') %> Save</button>
             </div>
         </form>
     </div>

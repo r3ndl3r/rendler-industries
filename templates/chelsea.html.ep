@@ -5,7 +5,6 @@
 
 % content_for 'head' => begin
 <style>
-    /* Weather Dashboard Styling */
     :root {
         --bg: #0f172a; --card: #1e293b; --border: #334155;
         --text: #f8fafc;
@@ -26,7 +25,6 @@
         padding: 15px; 
     }
 
-    /* Sticky Navigation */
     .jump-nav {
         position: sticky;
         top: 0;
@@ -70,7 +68,6 @@
         margin-bottom: 20px;
     }
 
-    /* Day Section - Collapsible Container */
     .day-section { 
         background: var(--card); 
         border-radius: 12px; 
@@ -81,7 +78,6 @@
         transition: all 0.3s ease;
     }
 
-    /* Header is now clickable with an arrow indicator */
     .day-header { 
         background: #334155; 
         padding: 15px 20px;
@@ -95,7 +91,6 @@
         user-select: none;
     }
 
-    /* Arrow Indicator */
     .day-header::after {
         content: '▼';
         font-size: 0.8rem;
@@ -103,7 +98,6 @@
         opacity: 0.7;
     }
 
-    /* Rotate arrow when expanded */
     .day-section.expanded .day-header::after {
         transform: rotate(180deg);
         opacity: 1;
@@ -111,12 +105,10 @@
 
     table { width: 100%; border-collapse: collapse; margin: 0; }
 
-    /* Collapsed state: Hide table by default */
     .day-section table {
         display: none;
     }
 
-    /* Expanded state: Show table */
     .day-section.expanded table {
         display: table;
         animation: slideDown 0.3s ease-out;
@@ -145,7 +137,6 @@
 
     tr:hover { background: rgba(255, 255, 255, 0.02); }
 
-    /* Condition Coloring */
     .wind-vlow { color: #94a3b8; } 
     .wind-low { color: #4ade80; } 
     .wind-med { color: #fbbf24; } 
@@ -161,7 +152,6 @@
     .time-cell { font-weight: 700; color: var(--text); white-space: nowrap; }
     .unit { font-size: 0.7rem; color: var(--dim); margin-left: 2px; }
 
-    /* Mobile Optimization */
     @media (max-width: 600px) {
         .hide-mobile { display: none; }
         .jump-nav { justify-content: flex-start; padding-left: 10px; }
@@ -172,8 +162,6 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        
-        // 1. Toggle visibility when clicking the Day Header
         document.querySelectorAll('.day-header').forEach(header => {
             header.addEventListener('click', () => {
                 const section = header.parentElement;
@@ -181,7 +169,6 @@
             });
         });
 
-        // 2. Handle Jump Links: Expand target section and smooth scroll
         document.querySelectorAll('.jump-nav a').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -189,19 +176,13 @@
                 const targetSection = document.querySelector(targetId);
 
                 if (targetSection) {
-                    // Expand the target day
                     targetSection.classList.add('expanded');
-                    
-                    // Smooth scroll to it
                     targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    
-                    // Update URL hash manually
                     history.pushState(null, null, targetId);
                 }
             });
         });
 
-        // 3. Handle Deep Linking (e.g. refresh on specific day)
         if (window.location.hash) {
             const targetSection = document.querySelector(window.location.hash);
             if (targetSection) {
@@ -223,6 +204,7 @@
 
     <% if (scalar @$forecast > 0) { %>
         
+        <%# Sticky Navigation %>
         <nav class="jump-nav">
             <% for my $day (@$forecast) { %>
                 <% my $short_name = (split(',', $day->{label}))[0]; %>
@@ -230,6 +212,7 @@
             <% } %>
         </nav>
 
+        <%# Forecast Day Sections %>
         <% for my $day (@$forecast) { %>
             <% my $anchor_id = (split(',', $day->{label}))[0]; %>
             <div class="day-section" id="day-<%= $anchor_id %>">
@@ -272,6 +255,7 @@
         <% } %>
 
     <% } else { %>
+        <%# Error State Display %>
         <div style="text-align:center; padding: 60px 20px;">
             <h2 style="color: #ef4444;"><%= icon('warning') %> Scraper Error</h2>
             <p style="color: var(--dim);">The forecast data could not be retrieved from the source. Please check the server logs.</p>

@@ -1,4 +1,4 @@
-<%# templates/files/files.html.ep %>
+<%# /templates/files/files.html.ep %>
 
 % layout 'default';
 % title icon('files') . ' Files';
@@ -29,6 +29,7 @@
         </script>
     <% } %>
 
+    <%# Files Data Table %>
     <div class="files-list">
         <% if (@{stash('files') || []}) { %>
             <table class="data-table files-table">
@@ -92,6 +93,7 @@
     </div>
 
     <% if (stash('is_admin')) { %>
+        <%# Permissions Management Modal (Admin) %>
         <div id="permissionModal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true">
             <div class="modal-content">
                 <div class="modal-header">
@@ -122,7 +124,7 @@
                         <small>Leave all unchecked for public access (unless Admin Only is set).</small>
                     </div>
                     
-                    <div class="modal-actions" style="justify-content: center !important;">
+                    <div class="modal-actions modal-actions-center">
                         <button type="submit" class="btn-primary"><%= icon('save') %> Save Changes</button>
                     </div>
                 </form>

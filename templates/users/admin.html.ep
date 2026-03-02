@@ -13,6 +13,7 @@
         <h1><%= icon('user') %> <span>Users Admin</span></h1>
     </div>
 
+    <%# Users Data Table %>
     <table class="data-table users-table">
         <thead>
             <tr>
@@ -81,7 +82,7 @@
     </table>
 </div>
 
-<!-- Edit User Modal -->
+<%# Edit User Modal (Admin) %>
 <div id="editUserModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
@@ -91,35 +92,37 @@
         <form id="editUserForm" method="POST" action="">
             <input type="hidden" id="editUserId" name="id">
             
-            <div class="form-group">
-                <label for="editUsername">Username</label>
-                <input type="text" id="editUsername" name="username" class="game-input" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="editEmail">Email</label>
-                <input type="email" id="editEmail" name="email" class="game-input" required>
-            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="editUsername">Username</label>
+                    <input type="text" id="editUsername" name="username" class="game-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editEmail">Email</label>
+                    <input type="email" id="editEmail" name="email" class="game-input" required>
+                </div>
 
-            <div class="form-group">
-                <label for="editDiscordId">Discord User ID</label>
-                <input type="text" id="editDiscordId" name="discord_id" class="game-input" placeholder="e.g. 497218154586701834">
+                <div class="form-group">
+                    <label for="editDiscordId">Discord User ID</label>
+                    <input type="text" id="editDiscordId" name="discord_id" class="game-input" placeholder="e.g. 497218154586701834">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editStatus">Status</label>
+                    <select id="editStatus" name="status" class="game-input">
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editPassword">New Password (leave blank to keep)</label>
+                    <input type="password" id="editPassword" name="password" class="game-input" placeholder="Enter new password">
+                </div>
             </div>
             
-            <div class="form-group">
-                <label for="editStatus">Status</label>
-                <select id="editStatus" name="status" class="game-input">
-                    <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="editPassword">New Password (leave blank to keep)</label>
-                <input type="password" id="editPassword" name="password" class="game-input" placeholder="Enter new password">
-            </div>
-            
-            <div class="modal-actions">
+            <div class="modal-actions modal-actions-center">
                 <button type="submit" class="btn-primary">Save Changes</button>
             </div>
         </form>

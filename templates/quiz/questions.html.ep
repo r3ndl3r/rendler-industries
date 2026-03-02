@@ -22,17 +22,20 @@
         </div>
     </div>
 
+    <%# Loading State %>
     <div id="loading-state" class="state-container">
         <div class="spinner"></div>
         <p>Loading questions... <br><span class="thai-text text-secondary small">กำลังโหลดคำถาม...</span></p>
     </div>
 
+    <%# Error State %>
     <div id="error-state" class="state-container" style="display: none;">
         <div class="error-icon" style="font-size: 3rem; margin-bottom: 1rem;"><%= icon('warning') %></div>
         <p>Failed to load quiz data.<br><span class="thai-text text-secondary">ไม่สามารถโหลดข้อมูลแบบทดสอบได้</span></p>
         <button onclick="location.reload()" class="btn-restart" style="margin-top: 1rem; width: auto; padding: 10px 30px;">Try Again / ลองอีกครั้ง</button>
     </div>
 
+    <%# Quiz Interface %>
     <div id="quiz-interface" style="display: none;">
         
         <div class="progress-section">
@@ -45,7 +48,8 @@
             </div>
         </div>
 
-    <div class="question-card">
+        <%# Question Card %>
+        <div class="question-card">
             <div class="question-row">
                 <div id="question-text-en" class="q-text-en"></div>
             </div>
@@ -63,8 +67,10 @@
             </div>
         </div>
 
+        <%# Answers Grid %>
         <div id="answers-container" class="answers-grid"></div>
 
+        <%# Feedback Box %>
         <div id="feedback-container" class="feedback-box" style="display: none;">
             <div id="feedback-icon" class="feedback-icon"></div>
             <div>
@@ -80,6 +86,7 @@
         </div>
     </div>
 
+    <%# Results Interface %>
     <div id="results-interface" style="display: none;">
         <div class="results-card" style="text-align: center;">
             <h2 style="margin-bottom: 0.5rem;">Quiz Complete!</h2>

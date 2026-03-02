@@ -5,13 +5,14 @@
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/auth.css?<%= time %>">
-%e end
+% end
 
 <div class="auth-container">
     <div class="header-bar">
         <h1><%= icon('register') %> <span>Registration</span></h1>
     </div>
 
+    <%# Success Message Card %>
     <div class="glass-panel message-card" style="text-align: center; padding: 2rem;">
         <div style="font-size: 4rem; margin-bottom: 1.5rem;">📬</div>
         <h2 style="font-weight: 300; margin-bottom: 1rem; color: #ffffff;">Account Pending</h2>

@@ -14,7 +14,6 @@
   </div>
 
   <div class="settings-layout">
-
     <nav class="settings-nav">
       <button class="settings-tab active" data-tab="notifications">
         <span class="tab-icon"><%= icon('reminders') %></span>
@@ -36,7 +35,7 @@
 
     <div class="settings-panels">
 
-      <%# ===== NOTIFICATIONS ===== %>
+      <%# Notifications %>
       <div class="settings-panel active" id="panel-notifications">
 
         <div class="settings-card" data-card="pushover">
@@ -119,7 +118,7 @@
 
       </div>
 
-      <%# ===== EMAIL ===== %>
+      <%# Email %>
       <div class="settings-panel" id="panel-email">
 
         <div class="settings-card" data-card="gmail">
@@ -168,7 +167,7 @@
                   </div>
                 </div>
                 <div class="form-actions">
-                  <button type="submit" class="btn-primary btn-small">Save Email</button>
+                  <button type="submit" class="btn-primary btn-small">Save Email Settings</button>
                 </div>
               </form>
             </div>
@@ -177,7 +176,7 @@
 
       </div>
 
-      <%# ===== INTEGRATIONS ===== %>
+      <%# Integrations %>
       <div class="settings-panel" id="panel-integrations">
 
         <div class="settings-card" data-card="unsplash">
@@ -291,7 +290,7 @@
 
       </div>
 
-      <%# ===== APPLICATION ===== %>
+      <%# Application %>
       <div class="settings-panel" id="panel-application">
 
         <div class="settings-card" data-card="timers">

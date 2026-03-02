@@ -14,6 +14,7 @@
 
 <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
 
+<%# Side Menu Navigation %>
 <div class="side-menu" id="sideMenu">
     <div class="menu-header">
         <img src="/files/serve/53" alt="Home" class="menu-home-icon">
@@ -25,6 +26,7 @@
     </div>
 </div>
 
+<%# Server Restart Modal (Admin) %>
 <div id="restart-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">

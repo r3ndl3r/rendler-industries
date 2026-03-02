@@ -13,6 +13,7 @@
         <h1><%= icon('register') %> <span>Register</span></h1>
     </div>
     
+    <%# Registration Form %>
     <form method="POST" action="/register">
         <div class="form-group">
             <label for="username">Username</label>

@@ -8,6 +8,7 @@
 % end
 
 <div class="lobby-container">
+    <%# Lobby Header %>
     <div class="lobby-header">
         <h1 class="lobby-title" style="background: linear-gradient(to right, #ef4444, #eab308); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
             <%= icon('uno') %> UNO Lobby
@@ -15,6 +16,7 @@
         <p style="color: #94a3b8;">Draw 4, Skip, and Reverse your friends!</p>
     </div>
 
+    <%# Create Game Section %>
     <div class="action-card">
         <h2 style="margin-top: 0; margin-bottom: 1.5rem;">Start a New Game</h2>
         <a href="/uno/create" class="btn-create">Create UNO Game</a>
@@ -22,6 +24,7 @@
 
     <h3 style="margin-left: 0.5rem; margin-bottom: 1rem;">Open Games</h3>
     
+    <%# Game List Container %>
     <div class="game-list">
         <% if (@$lobbies) { %>
             <% for my $game (@$lobbies) { %>
