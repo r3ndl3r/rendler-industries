@@ -18,14 +18,12 @@
     <script src="/js/default.js?<%= time %>"></script>
     <script src="/js/emoji-picker.js?<%= time %>"></script>
     <script src="/js/menu/menubar.js?<%= time %>"></script>
-    
 <%= content_for 'head' %>
 </head>
 
 <body class="bg-gray-900 text-gray-200 font-sans">
     <%= include 'menu/menubar' %>
     <%= content %>
-    <%# --- GLOBAL GENERIC CONFIRMATION MODAL --- %>
     <div id="globalConfirmActionModal" class="delete-modal-overlay" style="display: none;">
         <div class="delete-modal-content">
             <div class="delete-modal-header">
