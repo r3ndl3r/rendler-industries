@@ -292,6 +292,7 @@ sub startup {
     $r->get('/mobile')->to('root#p_page');
     $r->get('/this.is.totally.not.sus')->to('root#sus');
     $r->get('/api/v1/dynamic_data')->to('root#api_dynamic_data');
+    $r->get('/api/system/file_map')->to('root#file_map_json');
     $r->get('/api/menu/state')->to('menu#get_state');
     $r->get('/t')->to(cb => sub { shift->redirect_to('https://stash.rendler.org/stash?n=Movies&u=rendler') });
     $r->get('/quick')->to('root#quick');
