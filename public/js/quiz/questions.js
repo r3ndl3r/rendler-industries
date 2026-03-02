@@ -192,12 +192,24 @@ function handleAnswer(selectedBtn, answerObj) {
     
     const nextBtn = document.getElementById('next-btn');
     const allBtns = document.querySelectorAll('.answer-btn');
+    const feedbackContainer = document.getElementById('feedback-container');
+    const feedbackIcon = document.getElementById('feedback-icon');
+    const feedbackEn = document.getElementById('feedback-msg-en');
+    const feedbackTh = document.getElementById('feedback-msg-th');
 
     allBtns.forEach(btn => btn.disabled = true);
+
+    // Find the correct answer object from the current question data
+    const currentQ = questions[currentQuestionIndex];
+    const correctAnswerObj = currentQ.answers.find(a => a.is_correct);
 
     if (answerObj.is_correct) {
         score++;
         selectedBtn.classList.add('correct-answer');
+        feedbackContainer.className = 'feedback-box alert-success';
+        feedbackIcon.innerHTML = getIcon('success');
+        feedbackEn.textContent = 'Correct!';
+        feedbackTh.textContent = 'ถูกต้อง';
     } else {
         selectedBtn.classList.add('incorrect-answer'); 
         // Reveal the correct answer visually if the user was wrong
@@ -205,8 +217,20 @@ function handleAnswer(selectedBtn, answerObj) {
         if (correctBtn) {
             correctBtn.classList.add('correct-answer');
         }
+        feedbackContainer.className = 'feedback-box alert-danger';
+        feedbackIcon.innerHTML = getIcon('error');
+        feedbackEn.textContent = 'Incorrect';
+        feedbackTh.textContent = 'ไม่ถูกต้อง';
     }
 
+    // Play correct answer audio if available
+    if (correctAnswerObj && correctAnswerObj.audio) {
+        setTimeout(() => {
+            playAudio(correctAnswerObj.audio);
+        }, 300);
+    }
+
+    feedbackContainer.style.display = 'flex';
     nextBtn.disabled = false;
     document.getElementById('score-tracker').textContent = `Score: ${score}`;
 }
