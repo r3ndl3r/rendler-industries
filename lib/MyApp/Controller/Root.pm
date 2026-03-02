@@ -156,6 +156,17 @@ sub age {
     );
 }
 
+# JSON API endpoint serving application source file list.
+# Route: GET /api/system/file_map
+# Parameters: None
+# Returns:
+#   JSON array of file paths
+sub file_map_json {
+    my $c = shift;
+    my $files = $c->listFiles();
+    $c->render(json => $files);
+}
+
 # Debug utility to display current working directory.
 # Route: GET /cwd
 # Returns: Plain text path
