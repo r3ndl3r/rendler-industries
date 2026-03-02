@@ -396,6 +396,11 @@
     max-width: 600px !important;
 }
 
+#addReminderModal.show,
+#editReminderModal.show {
+    display: block !important;
+}
+
 .form-group-time {
     max-width: 200px !important;
 }
