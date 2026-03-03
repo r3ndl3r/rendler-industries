@@ -1,10 +1,33 @@
-/* /public/js/emoji-picker.js */
+// /public/js/emoji-picker.js
+
+/**
+ * Global Emoji Picker Module
+ * 
+ * This module manages a high-density emoji selection interface that automatically
+ * attaches to active form inputs. It provides a searchable registry of over 
+ * 1800+ emojis categorized for rapid access.
+ * 
+ * Features:
+ * - Dynamic trigger button placement (attached to active focus)
+ * - Intelligent panel positioning with viewport overflow detection
+ * - Real-time global search across all categories
+ * - Categorized navigation with visual state persistence
+ * - Cursor-aware insertion logic for inputs and textareas
+ * - Custom events (input/change) dispatching for state-driven reconciliation
+ */
 
 const EmojiPicker = {
-    activeInput: null,
-    pickerElement: null,
-    triggerBtn: null,
+    /**
+     * Internal State
+     */
+    activeInput: null,              // Input element currently being augmented
+    pickerElement: null,            // DOM reference to the selection panel
+    triggerBtn: null,               // Floating button trigger
     
+    /**
+     * Emoji Registry
+     * Organized by semantic category.
+     */
     emojis: {
         'smileys': [
             {c:'😀',n:'smile'},{c:'😃',n:'grin'},{c:'😄',n:'laugh'},{c:'😁',n:'beams'},{c:'😆',n:'squint'},
@@ -25,7 +48,7 @@ const EmojiPicker = {
             {c:'😱',n:'scream'},{c:'😖',n:'confounded'},{c:'😣',n:'persevering'},{c:'😞',n:'disappointed'},{c:'😓',n:'sweat'},
             {c:'😩',n:'weary'},{c:'😫',n:'tired'},{c:'🥱',n:'yawning'},{c:'😤',n:'triumph'},{c:'😡',n:'pouting'},
             {c:'😠',n:'angry'},{c:'🤬',n:'symbols'},{c:'😈',n:'smiling-imp'},{c:'👿',n:'imp'},{c:'💀',n:'skull'},
-            {c:'☠️',n:'skull-crossbones'},{c:'💩',n:'poop'},{c:'🤡',n:'clown'},{c:'👹',n:'ogre'},{c:'👺',n:'goblin'},
+            {c:'☠️',n:'skull-crossbones'},{c:'💩',n:'poop'},{c:' clowns',n:'clown'},{c:'👹',n:'ogre'},{c:'👺',n:'goblin'},
             {c:'👻',n:'ghost'},{c:'👽',n:'alien'},{c:'👾',n:'monster'},{c:'🤖',n:'robot'},{c:'😺',n:'cat'},
             {c:'😸',n:'grin-cat'},{c:'😹',n:'joy-cat'},{c:'😻',n:'heart-cat'},{c:'😼',n:'smirk-cat'},{c:'😽',n:'kiss-cat'},
             {c:'🙀',n:'weary-cat'},{c:'😿',n:'crying-cat'},{c:'😾',n:'pout-cat'},{c:'🙈',n:'see-no-evil'},{c:'🙉',n:'hear-no-evil'},
@@ -43,7 +66,7 @@ const EmojiPicker = {
             {c:'👋',n:'wave'},{c:'🤚',n:'back-hand'},{c:'🖐',n:'hand-fingers'},{c:'✋',n:'hand'},{c:'🖖',n:'vulcan'},
             {c:'👌',n:'ok'},{c:'🤌',n:'pinched'},{c:'🤏',n:'pinching'},{c:'✌️',n:'peace'},{c:'🤞',n:'crossed'},
             {c:'🤟',n:'love-you'},{c:'🤘',n:'rock-on'},{c:'🤙',n:'call-me'},{c:'👈',n:'left'},{c:'👉',n:'right'},
-            {c:'👆',n:'up'},{c:'🖕',n:'middle-finger'},{c:'👇',n:'down'},{c:'☝️',n:'point-up'},{c:'👍',n:'thumbs-up'},
+            {c:'👆',n:'up'},{c:' middle-finger',n:'middle-finger'},{c:'👇',n:'down'},{c:'☝️',n:'point-up'},{c:'👍',n:'thumbs-up'},
             {c:'👎',n:'thumbs-down'},{c:'✊',n:'fist'},{c:'👊',n:'punch'},{c:'🤛',n:'left-fist'},{c:'🤜',n:'right-fist'},
             {c:'👏',n:'clap'},{c:'🙌',n:'raising-hands'},{c:'👐',n:'open-hands'},{c:'🤲',n:'palms-up'},{c:'🤝',n:'shake'},
             {c:'🙏',n:'pray'},{c:'✍️',n:'writing'},{c:'💅',n:'nail-polish'},{c:'🤳',n:'selfie'},{c:'💪',n:'flex'},
@@ -65,10 +88,10 @@ const EmojiPicker = {
             {c:'👨‍🚀',n:'astronaut'},{c:'👩‍⚖️',n:'judge'},{c:'👨‍⚖️',n:'judge'},{c:'👰‍♀️',n:'bride'},{c:'👰‍♂️',n:'groom'},
             {c:'🤵‍♀️',n:'tuxedo'},{c:'🤵‍♂️',n:'tuxedo'},{c:'👼',n:'angel'},{c:'🎅',n:'santa'},{c:'🤶',n:'mrs-claus'},
             {c:'🦸',n:'superhero'},{c:'🦹',n:'supervillain'},{c:'🧙',n:'mage'},{c:'🧚',n:'fairy'},{c:'🧛',n:'vampire'},
-            {c:'🧜',n:'merperson'},{c:'🧝',n:'elf'},{c:'🧞',n:'genie'},{c:'🧟',n:'zombie'},{c:'💆',n:'massage'},
+            {c:'🧜',n:'merperson'},{c:'🧝',n:'elf'},{c:'🧞',n:'genie'},{c:' zomb',n:'zombie'},{c:'💆',n:'massage'},
             {c:'💇',n:'haircut'},{c:'🚶',n:'walking'},{c:'🧍',n:'standing'},{c:'🧎',n:'kneeling'},{c:'🏃',n:'running'},
             {c:'💃',n:'dancing'},{c:'🕺',n:'dancing'},{c:'👯',n:'partying'},{c:'🧖',n:'sauna'},{c:'🧗',n:'climbing'},
-            {c:'✌',n:'victory-hand'},{c:'☝',n:'forehand-index-finger-pointing-up'},{c:'🫵',n:'index-finger-pointing-at-viewer'},{c:'✍',n:'writing-hands'},{c:'👣',n:'footprint'},
+            {c:'✌',n:'victory-hand'},{c:'☝',n:'forehand-index-finger-pointing-up'},{c:'🫵',n:'index-finger-pointing-at viewer'},{c:'✍',n:'writing-hands'},{c:'👣',n:'footprint'},
             {c:'🧔‍♂‍',n:'bearded-man'},{c:'🧔‍♀‍',n:'bearded-woman'},{c:'👨‍🦰',n:'man-with-red-hair'},{c:'👨‍🦱',n:'man-with-curly-hair'},{c:'👨‍🦳',n:'man-with-white-hair'},
             {c:'👨‍🦲',n:'bald-man'},{c:'👩‍🦰',n:'woman-with-red-hair'},{c:'👩‍🦱',n:'woman-with-curly-hair'},{c:'👩‍🦳',n:'woman-with-white-hair'},{c:'👩‍🦲',n:'bald-woman'},
             {c:'👱‍♀‍',n:'woman-with-blonde-hair'},{c:'👱‍♂‍',n:'man-with-blonde-hair'},{c:'🙍‍♂️',n:'man-frowning'},{c:'🙍‍♀️',n:'woman-frowning'},{c:'🙎‍♂️',n:'man-pouting'},
@@ -113,7 +136,7 @@ const EmojiPicker = {
         ],
         'animals': [
             {c:'🐶',n:'dog'},{c:'🐱',n:'cat'},{c:'🐭',n:'mouse'},{c:'Hamster',n:'hamster'},{c:'🐰',n:'rabbit'},
-            {c:'🦊',n:'fox'},{c:'🐻',n:'bear'},{c:'🐼',n:'panda'},{c:'🐻‍❄️',n:'polar-bear'},{c:'🐨',n:'koala'},
+            {c:'🦊',n:'fox'},{c:'🐻',n:'bear'},{c:'屋',n:'panda'},{c:'🐻‍❄️',n:'polar-bear'},{c:'🐨',n:'koala'},
             {c:'🐯',n:'tiger'},{c:'🦁',n:'lion'},{c:'🐮',n:'cow'},{c:'🐷',n:'pig'},{c:'🐸',n:'frog'},
             {c:'🐵',n:'monkey'},{c:'🐔',n:'chicken'},{c:'🐧',n:'penguin'},{c:'🐦',n:'bird'},{c:'🐤',n:'chick'},
             {c:'🦆',n:'duck'},{c:'🦅',n:'eagle'},{c:'🦉',n:'owl'},{c:'🦇',n:'bat'},{c:'🐺',n:'wolf'},
@@ -169,18 +192,18 @@ const EmojiPicker = {
             {c:'🍠',n:'sweet-potato'},{c:'🥐',n:'croissant'},{c:'🥯',n:'bagel'},{c:'🍞',n:'bread'},{c:'🥖',n:'baguette'},
             {c:'🥨',n:'pretzel'},{c:'🧀',n:'cheese'},{c:'🥚',n:'egg'},{c:'🍳',n:'cooking'},{c:'バター',n:'butter'},
             {c:'🥞',n:'pancakes'},{c:'🧇',n:'waffle'},{c:'🥓',n:'bacon'},{c:'🥩',n:'meat'},{c:'🍗',n:'poultry'},
-            {c:'🍖',n:'meat-on-bone'},{c:'🌭',n:'hotdog'},{c:'🍔',n:'hamburger'},{c:'🍟',n:'fries'},{c:'🍕',n:'pizza'},
+            {c:'🍖',n:'meat-on-bone'},{c:'ホットドッグ',n:'hotdog'},{c:'🍔',n:'hamburger'},{c:'🍟',n:'fries'},{c:'🍕',n:'pizza'},
             {c:'🌮',n:'taco'},{c:'🌯',n:'burrito'},{c:'🥙',n:'stuffed-flatbread'},{c:'🥘',n:'shallow-pan'},{c:'🍝',n:'spaghetti'},
             {c:'🍜',n:'ramen'},{c:'🍲',n:'pot'},{c:'🍛',n:'curry'},{c:'🍣',n:'sushi'},{c:'🍱',n:'bento'},
             {c:'🥟',n:'dumpling'},{c:'🍤',n:'shrimp'},{c:'🍥',n:'fish-cake'},{c:'🥠',n:'fortune-cookie'},{c:'🍢',n:'oden'},
             {c:'🍡',n:'dango'},{c:'🍧',n:'shaved-ice'},{c:'🍨',n:'ice-cream'},{c:'🍦',n:'soft-serve'},{c:'🥧',n:'pie'},
             {c:'🍰',n:'cake'},{c:'🎂',n:'cake'},{c:'🍮',n:'custard'},{c:'🍭',n:'lollipop'},{c:'🍬',n:'candy'},
             {c:'🍫',n:'chocolate'},{c:'🍿',n:'popcorn'},{c:'🍩',n:'doughnut'},{c:'🍪',n:'cookie'},{c:'🌰',n:'chestnut'},
-            {c:'🥜',n:'peanuts'},{c:'🍯',n:'honey'},{c:'🥛',n:'milk'},{c:'🍼',n:'bottle'},{c:'☕',n:'coffee'},
+            {c:' peanuts',n:'peanuts'},{c:'🍯',n:'honey'},{c:'🥛',n:'milk'},{c:'🍼',n:'bottle'},{c:'☕',n:'coffee'},
             {c:'🍵',n:'tea'},{c:'🧃',n:'juice'},{c:'🥤',n:'cup'},{c:'🍶',n:'sake'},{c:'🍺',n:'beer'},
             {c:'🍻',n:'beers'},{c:'🥂',n:'clink'},{c:'🍷',n:'wine'},{c:'🥃',n:'whiskey'},{c:'🍸',n:'cocktail'},
-            {c:'🌶',n:'pepper'},{c:'🫑',n:'bell-pepper'},{c:'🫓',n:'flat-bread'},{c:'🥪',n:'sandwich'},{c:'🫔',n:'tamale'},
-            {c:'🧆',n:'falafel'},{c:'🫕',n:'fondue'},{c:'🥣',n:'bowl-with-food'},{c:'🥗',n:'green-salad'},{c:'🧈',n:'butter'},
+            {c:'🌶',n:'pepper'},{c:'🫑',n:'bell-pepper'},{c:'🫓',n:'flat-bread'},{c:' sandwich',n:'sandwich'},{c:'🫔',n:'tamale'},
+            {c:'🧆',n:'falafel'},{c:'🫕',n:'fondue'},{c:'🥣',n:'bowl-with-food'},{c:'🥗',n:'green-salad'},{c:'バター',n:'butter'},
             {c:'🧂',n:'salt'},{c:'🥫',n:'canned-food'},{c:'🍘',n:'rice-cracker'},{c:'🍙',n:'rice-ball'},{c:'🍚',n:'cooked-rice'},
             {c:'🥮',n:'moon-cake'},{c:'🥡',n:'take-out-box'},{c:'🦪',n:'oyster'},{c:'🧁',n:'cup-cake'},{c:'🫖',n:'teapot'},
             {c:'🍾',n:'bottle-with-poppin-cork'},{c:'🍹',n:'tropical-drink'},{c:'🧋',n:'bubble-tea'},{c:'🧉',n:'mate-drink'},{c:'🧊',n:'ice'},
@@ -189,18 +212,18 @@ const EmojiPicker = {
         ],
         'travel': [
             {c:'🚗',n:'car'},{c:'🚕',n:'taxi'},{c:'🚙',n:'suv'},{c:'🚌',n:'bus'},{c:'🚎',n:'trolleybus'},
-            {c:'🏎️',n:'racing-car'},{c:'🚓',n:'police-car'},{c:'🚑',n:'ambulance'},{c:'🚒',n:'fire-engine'},{c:'🚐',n:'minibus'},
+            {c:'🏎️',n:'racing-car'},{c:'🚓',n:'police-car'},{c:' ambulance',n:'ambulance'},{c:'🚒',n:'fire-engine'},{c:'🚐',n:'minibus'},
             {c:'🚚',n:'truck'},{c:'🚛',n:'lorry'},{c:'🚜',n:'tractor'},{c:'🚲',n:'bicycle'},{c:'🛴',n:'scooter'},
             {c:'🛵',n:'scooter'},{c:'🏍️',n:'motorcycle'},{c:'🛺',n:'rickshaw'},{c:'🚨',n:'siren'},{c:'🛣️',n:'motorway'},
             {c:'🛤️',n:'railway'},{c:'⛽',n:'fuel'},{c:'🚧',n:'construction'},{c:'🚦',n:'traffic-light'},{c:'🚥',n:'traffic-light'},
             {c:'🛑',n:'stop'},{c:'🗺️',n:'map'},{c:'🧭',n:'compass'},{c:'🏔️',n:'mountain'},{c:'⛰️',n:'mountain'},
             {c:'🌋',n:'volcano'},{c:'🗻',n:'fuji'},{c:'🏕️',n:'camping'},{c:'🏖️',n:'beach'},{c:'🏜️',n:'desert'},
-            {c:'🏝️',n:'island'},{c:'🏞️',n:'national-park'},{c:'🏟️',n:'stadium'},{c:'🏛️',n:'classical'},{c:'🏗️',n:'construction'},
+            {c:'🏝️',n:'island'},{c:'🏞️',n:'national-park'},{c:' stadium',n:'stadium'},{c:'🏛️',n:'classical'},{c:'🏗️',n:'construction'},
             {c:'🏠',n:'house'},{c:'🏡',n:'house-garden'},{c:'🏢',n:'office'},{c:'🏣',n:'post-office'},{c:'🏤',n:'post-office'},
             {c:'🏥',n:'hospital'},{c:'🏦',n:'bank'},{c:'🏨',n:'hotel'},{c:'🏩',n:'love-hotel'},{c:'🏪',n:'convenience'},
             {c:'🏫',n:'school'},{c:'🏬',n:'department-store'},{c:'🏭',n:'factory'},{c:'🏯',n:'japanese-castle'},{c:'🏰',n:'castle'},
             {c:'💒',n:'wedding'},{c:'🗼',n:'tokyo-tower'},{c:'🗽',n:'statue-of-liberty'},{c:'⛪',n:'church'},{c:'🕌',n:'mosque'},
-            {c:'🛕',n:'hindu-temple'},{c:'🕍',n:'synagogue'},{c:'⛩️',n:'shinto-shrine'},{c:'🕋',n:'kaaba'},{c:'⛲',n:'fountain'},
+            {c:'🛕',n:'hindu-temple'},{c:' synagogue',n:'synagogue'},{c:'⛩️',n:'shinto-shrine'},{c:'🕋',n:'kaaba'},{c:'⛲',n:'fountain'},
             {c:'⛺',n:'tent'},{c:'🌁',n:'foggy'},{c:'🌃',n:'night'},{c:'🏙️',n:'cityscape'},{c:'🌄',n:'sunrise'},
             {c:'🌅',n:'sunrise'},{c:'🌆',n:'dusk'},{c:'🌇',n:'sunset'},{c:'🌉',n:'bridge'},{c:'♨️',n:'hot-springs'},
             {c:'🎠',n:'carousel'},{c:'🎡',n:'ferris-wheel'},{c:'🎢',n:'roller-coaster'},{c:'💈',n:'barber'},{c:'🎪',n:'circus'},
@@ -231,7 +254,7 @@ const EmojiPicker = {
             {c:'🧵',n:'thread'},{c:'🧶',n:'yarn'},{c:'🚴',n:'cycling'},{c:'🚵',n:'mountain-biking'},{c:'🎇',n:'sparkler'},
             {c:'🎎',n:'japanese-dolls'},{c:'🎏',n:'carp-streamer'},{c:'🎑',n:'moon-viewing-ceremony'},{c:'🧧',n:'red-envelope'},{c:'🎀',n:'ribbon'},
             {c:'🎗',n:'reminder-ribbon'},{c:'🎟',n:'admission-ticket'},{c:'🎫',n:'ticket'},{c:'🎖',n:'military-medal'},{c:'🏆',n:'trophy'},
-            {c:'🏅',n:'sports-medal'},{c:'🥇',n:'gold-medal---first-position'},{c:'🥈',n:'silver-medal---second-position'},{c:'🥉',n:'bronze-medal---third-position'},{c:'🥏',n:'flying-disk'},
+            {c:'🏅',n:'sports-medal'},{c:'🥇',n:'gold-medal'},{c:'🥈',n:'silver-medal'},{c:'🥉',n:'bronze-medal'},{c:'🥏',n:'flying-disk'},
             {c:'🎳',n:'bowling'},{c:'⛸',n:'ice-skate'},{c:'🎽',n:'running-shirt'},{c:'🔮',n:'crystal-ball'},{c:'🪄',n:'magic-wand'},
             {c:'🧿',n:'nazar-amulet'},{c:'🪬',n:'hamsa'},{c:'🕹',n:'joystick'},{c:'🪅',n:'piñata'},{c:'🪆',n:'nesting-doll'},
             {c:'♠',n:'spade-suit'},{c:'♥',n:'heart-suit'},{c:'♣',n:'club-suit'},{c:'♟',n:'chess-pawn'},{c:'🖼',n:'framed-picture'},
@@ -357,9 +380,9 @@ const EmojiPicker = {
             {c:'🇷🇺',n:'russia'},{c:'🇨🇳',n:'china'},{c:'🇨🇦',n:'canada'},{c:'🇧🇷',n:'brazil'},{c:'🏴‍☠️',n:'pirate'},
             {c:'🏁',n:'chequered-flag'},{c:'🚩',n:'triangular-flag'},{c:'🎌',n:'crossed-flag'},{c:'🏴',n:'black-flag'},{c:'🏳',n:'white-flag'},
             {c:'🏳️‍🌈',n:'rainbow-flag'},{c:'🏳️‍⚧️',n:'transgender-flag'},{c:'🇦🇨',n:'ascension-island-flag'},{c:'🇦🇩',n:'andorra-flag'},{c:'🇦🇪',n:'uae-flag'},
-            {c:'🇦🇫',n:'afghanistan-flag'},{c:'🇦🇬',n:'antigua-<span-class="entity"><span>&amp;</span>amp;</span>-barbuda-flag'},{c:'🇦🇮',n:'anguilla-flag'},{c:'🇦🇱',n:'albania'},{c:'🇩🇿',n:'algeria-flag'},
+            {c:'🇦🇫',n:'afghanistan-flag'},{c:'🇦🇬',n:'antigua-flag'},{c:'🇦🇮',n:'anguilla-flag'},{c:'🇦🇱',n:'albania'},{c:'🇩🇿',n:'algeria-flag'},
             {c:'🇦🇲',n:'armenia-flag'},{c:'🇦🇴',n:'angola-flag'},{c:'🇦🇶',n:'antarctica-flag'},{c:'🇦🇷',n:'argentina-flag'},{c:'🇦🇸',n:'american-samoa-flag'},
-            {c:'🇦🇹',n:'austria-flag'},{c:'🇦🇼',n:'aruba-flag'},{c:'🇦🇽',n:'åland-islands-flag'},{c:'🇦🇿',n:'azerbaijan-flag'},{c:'🇧🇦',n:'bosnia-<span-class="entity"><span>&amp;</span>amp;</span>-herzegovina-flag'},
+            {c:'🇦🇹',n:'austria-flag'},{c:'🇦🇼',n:'aruba-flag'},{c:'🇦🇽',n:'åland-islands-flag'},{c:'🇦🇿',n:'azerbaijan-flag'},{c:'🇧🇦',n:'bosnia-flag'},
             {c:'🇧🇩',n:'bangladesh-flag'},{c:'🇧🇪',n:'belgium-flag'},{c:'🇧🇫',n:'burkina-faso-flag'},{c:'🇧🇬',n:'bulgaria-flag'},{c:'🇧🇭',n:'bahrain-flag'},
             {c:'🇧🇮',n:'burundi-flag'},{c:'🇧🇯',n:'benin-republic-flag'},{c:'🇧🇱',n:'st.-barthélemy-flag'},{c:'🇧🇲',n:'bermuda-flag'},{c:'🇧🇳',n:'brunei-flag'},
             {c:'🇧🇴',n:'bolivia-flag'},{c:'🇧🇶',n:'caribbean-netherlands-flag'},{c:'🇧🇸',n:'bahamas-flag'},{c:'🇧🇹',n:'bhutan-flag'},{c:'🇧🇻',n:'bouvet-island-flag'},
@@ -368,18 +391,18 @@ const EmojiPicker = {
             {c:'🇨🇱',n:'chile-flag'},{c:'🇨🇲',n:'cameroon-flag'},{c:'🇨🇴',n:'columbia-flag'},{c:'🇨🇵',n:'clipperton-island-flag'},{c:'🇨🇷',n:'costa-rica-flag'},
             {c:'🇨🇺',n:'cuba-flag'},{c:'🇨🇻',n:'cape-verde-flag'},{c:'🇨🇼',n:'curaçao-flag'},{c:'🇨🇽',n:'christmas-island-flag'},{c:'🇨🇾',n:'cyprus-flag'},
             {c:'🇨🇿',n:'czech-republic-flag'},{c:'🇩🇬',n:'diego-garcia-flag'},{c:'🇩🇯',n:'djibouti-flag'},{c:'🇩🇰',n:'denmark-flag'},{c:'🇩🇲',n:'dominica-flag'},
-            {c:'🇩🇴',n:'dominican-republic-flag'},{c:'🇪🇦',n:'ceuta-<span-class="entity"><span>&amp;</span>amp;</span>-melilla-flag'},{c:'🇪🇨',n:'ecuador-flag'},{c:'🇪🇪',n:'estonia-flag'},{c:'🇪🇬',n:'egypt-flag'},
+            {c:'🇩🇴',n:'dominican-republic-flag'},{c:'🇪🇦',n:'ceuta-flag'},{c:'🇪🇨',n:'ecuador-flag'},{c:'🇪🇪',n:'estonia-flag'},{c:'🇪🇬',n:'egypt-flag'},
             {c:'🇪🇭',n:'western-sahara-flag'},{c:'🇪🇷',n:'eritre-flag'},{c:'🇪🇹',n:'ethiopia-flag'},{c:'🇪🇺',n:'european-union-flag'},{c:'🇫🇮',n:'finalnd-flag'},
             {c:'🇫🇯',n:'fiji-island-flag'},{c:'🇫🇰',n:'falkland-islands-flag'},{c:'🇫🇲',n:'micronesia-flag'},{c:'🇫🇴',n:'faroe-islands-flag'},{c:'🇬🇦',n:'gabon-flag'},
             {c:'🇬🇩',n:'grenada-flag'},{c:'🇬🇪',n:'georgia-flag'},{c:'🇬🇫',n:'french-guiana-flag'},{c:'🇬🇬',n:'guernsey-flag'},{c:'🇬🇭',n:'ghana-flag'},
             {c:'🇬🇮',n:'gibraltar-flag'},{c:'🇬🇱',n:'greenland-flag'},{c:'🇬🇲',n:'gambia-flag'},{c:'🇬🇳',n:'guinea-flag'},{c:'🇬🇵',n:'guadeloupe-flag'},
-            {c:'🇬🇶',n:'equatorial-guinea-flag'},{c:'🇬🇷',n:'greece-flag'},{c:'🇬🇸',n:'south-georgia-<span-class="entity"><span>&amp;</span>amp;</span>-south-sandwich-islands-flag'},{c:'🇬🇹',n:'guatemala-flag'},{c:'🇬🇺',n:'guam-flag'},
-            {c:'🇬🇼',n:'guinea-bissau-flag'},{c:'🇬🇾',n:'guyana-flag'},{c:'🇭🇰',n:'hong-kong-sar-china-flag'},{c:'🇭🇲',n:'heard-<span-class="entity"><span>&amp;</span>amp;</span>-mcdonald-islands-flag'},{c:'🇭🇳',n:'honduras-flag'},
+            {c:'🇬🇶',n:'equatorial-guinea-flag'},{c:'🇬🇷',n:'greece-flag'},{c:'🇬🇸',n:'south-georgia-flag'},{c:'🇬🇹',n:'guatemala-flag'},{c:'🇬🇺',n:'guam-flag'},
+            {c:'🇬🇼',n:'guinea-bissau-flag'},{c:'🇬🇾',n:'guyana-flag'},{c:'🇭🇰',n:'hong-kong-sar-china-flag'},{c:'🇭🇲',n:'heard-flag'},{c:'🇭🇳',n:'honduras-flag'},
             {c:'🇭🇷',n:'croatia-flag'},{c:'🇭🇹',n:'haiti-flag'},{c:'🇭🇺',n:'hungary-flag'},{c:'🇮🇨',n:'canary-islands-flag'},{c:'🇮🇩',n:'indonesia-flag'},
             {c:'🇮🇪',n:'ireland-flag'},{c:'🇮🇱',n:'israel-flag'},{c:'🇮🇲',n:'isle-of-man-flag'},{c:'🇮🇳',n:'india-flag'},{c:'🇮🇴',n:'british-indian-ocean-territory-flag'},
             {c:'🇮🇶',n:'iraq-flag'},{c:'🇮🇷',n:'iran-flag'},{c:'🇮🇸',n:'iceland-flag'},{c:'🇯🇪',n:'jersey-flag'},{c:'🇯🇲',n:'jamaica-flag'},
             {c:'🇯🇴',n:'jordan-flag'},{c:'🇰🇪',n:'kenya-flag'},{c:'🇰🇬',n:'kyrgyzstan-flag'},{c:'🇰🇭',n:'cambodia-flag'},{c:'🇰🇮',n:'kiribati-flag'},
-            {c:'🇰🇲',n:'comoros-flag'},{c:'🇰🇳',n:'st.-kitts-<span-class="entity"><span>&amp;</span>amp;</span>-nevis-flag'},{c:'🇰🇵',n:'north-korea-flag'},{c:'🇰🇼',n:'kuwait-flag'},{c:'🇰🇾',n:'cayman-islands-flag'},
+            {c:'🇰🇲',n:'comoros-flag'},{c:'🇰🇳',n:'st.-kitts-flag'},{c:'🇰🇵',n:'north-korea-flag'},{c:'🇰🇼',n:'kuwait-flag'},{c:'🇰🇾',n:'cayman-islands-flag'},
             {c:'🇰🇿',n:'kazakhstan-flag'},{c:'🇱🇦',n:'laos-flag'},{c:'🇱🇧',n:'lebanon-flag'},{c:'🇱🇨',n:'st.-lucia-flag'},{c:'🇱🇮',n:'liechtenstein-flag'},
             {c:'🇱🇰',n:'sri-lanka-flag'},{c:'🇱🇷',n:'liberia-flag'},{c:'🇱🇸',n:'lesotho-flag'},{c:'🇱🇹',n:'lithuania-flag'},{c:'🇱🇺',n:'luxembourg-flag'},
             {c:'🇱🇻',n:'latvia-flag'},{c:'🇱🇾',n:'libya-flag'},{c:'🇲🇦',n:'morocco-flag'},{c:'🇲🇨',n:'monaco-flag'},{c:'🇲🇩',n:'moldova-flag'},
@@ -391,30 +414,38 @@ const EmojiPicker = {
             {c:'🇳🇮',n:'nicaragua-flag'},{c:'🇳🇱',n:'netherlands-flag'},{c:'🇳🇴',n:'norway-flag'},{c:'🇳🇵',n:'nepal-flag'},{c:'🇳🇷',n:'nauru-flag'},
             {c:'🇳🇺',n:'niue-flag'},{c:'🇳🇿',n:'new-zealand-flag'},{c:'🇴🇲',n:'oman-flag'},{c:'🇵🇦',n:'panama-flag'},{c:'🇵🇪',n:'peru-flag'},
             {c:'🇵🇫',n:'french-polynesia-flag'},{c:'🇵🇬',n:'papua-new-guinea-flag'},{c:'🇵🇭',n:'philippines-flag'},{c:'🇵🇰',n:'pakistan-flag'},{c:'🇵🇱',n:'poland-flag'},
-            {c:'🇵🇲',n:'st.-pierre-<span-class="entity"><span>&amp;</span>amp;</span>-miquelon-flag'},{c:'🇵🇳',n:'itcairn-islands-flag'},{c:'🇵🇷',n:'puerto-rico-flag'},{c:'🇵🇸',n:'palestinian-territories-flag'},{c:'🇵🇹',n:'portugal-flag'},
+            {c:'🇵🇲',n:'st.-pierre-flag'},{c:'🇵🇳',n:'itcairn-islands-flag'},{c:'🇵🇷',n:'puerto-rico-flag'},{c:'🇵🇸',n:'palestinian-territories-flag'},{c:'🇵🇹',n:'portugal-flag'},
             {c:'🇵🇼',n:'palau-flag'},{c:'🇵🇾',n:'paraguay-flag'},{c:'🇶🇦',n:'qatar-flag'},{c:'🇷🇪',n:'réunion-flag'},{c:'🇷🇴',n:'romania-flag'},
             {c:'🇷🇸',n:'serbia-flag'},{c:'🇷🇼',n:'rwanda-flag'},{c:'🇸🇦',n:'saudi-arabia-flag'},{c:'🇸🇧',n:'solomon-islands-flag'},{c:'🇸🇨',n:'seychelles-flag'},
             {c:'🇸🇩',n:'sudan-flag'},{c:'🇸🇪',n:'sweden-flag'},{c:'🇸🇬',n:'singapore-flag'},{c:'🇸🇭',n:'st.-helena-flag'},{c:'🇸🇮',n:'slovenia-flag'},
-            {c:'🇸🇯',n:'svalbard-<span-class="entity"><span>&amp;</span>amp;</span>-jan-mayen-flag'},{c:'🇸🇰',n:'slovakia-flag'},{c:'🇸🇱',n:'sierra-leone-flag'},{c:'🇸🇲',n:'san-marino-flag'},{c:'🇸🇳',n:'senegal-flag'},
-            {c:'🇸🇴',n:'somalia-flag'},{c:'🇸🇷',n:'suriname-flag'},{c:'🇸🇸',n:'south-sudan-flag'},{c:'🇸🇹',n:'são-tomé-<span-class="entity"><span>&amp;</span>amp;</span>-príncipe-flag'},{c:'🇸🇻',n:'el-salvador-flag'},
-            {c:'🇸🇽',n:'saint-maarten-flag'},{c:'🇸🇾',n:'syria-flag'},{c:'🇸🇿',n:'eswatini-flag'},{c:'🇹🇦',n:'tristan-da-cunha-flag'},{c:'🇹🇨',n:'turks-<span-class="entity"><span>&amp;</span>amp;</span>-caicos-islands-flag'},
+            {c:'🇸🇯',n:'svalbard-flag'},{c:'🇸🇰',n:'slovakia-flag'},{c:'🇸🇱',n:'sierra-leone-flag'},{c:'🇸🇲',n:'san-marino-flag'},{c:'🇸🇳',n:'senegal-flag'},
+            {c:'🇸🇴',n:'somalia-flag'},{c:'🇸🇷',n:'suriname-flag'},{c:'🇸🇸',n:'south-sudan-flag'},{c:'🇸🇹',n:'são-tomé-flag'},{c:'🇸🇻',n:'el-salvador-flag'},
+            {c:'🇸🇽',n:'saint-maarten-flag'},{c:'🇸🇾',n:'syria-flag'},{c:'🇸🇿',n:'eswatini-flag'},{c:'🇹🇦',n:'tristan-da-cunha-flag'},{c:'🇹🇨',n:'turks-flag'},
             {c:'🇹🇩',n:'chad-flag'},{c:'🇹🇫',n:'french-southern-territories-flag'},{c:'🇹🇬',n:'togo-flag'},{c:'🇹🇯',n:'tajikistan-flag'},{c:'🇹🇰',n:'tokelau-flag'},
             {c:'🇹🇱',n:'timor-leste-flag'},{c:'🇹🇲',n:'turkmenistan-flag'},{c:'🇹🇳',n:'tunisia-flag'},{c:'🇹🇴',n:'tonga-flag'},{c:'🇹🇷',n:'turkey-flag'},
-            {c:'🇹🇹',n:'trinidad-<span-class="entity"><span>&amp;</span>amp;</span>-tobago-flag'},{c:'🇹🇻',n:'tuvalu-flag'},{c:'🇹🇼',n:'taiwan-flag'},{c:'🇹🇿',n:'tanzania-flag'},{c:'🇺🇦',n:'ukraine-flag'},
+            {c:'🇹🇹',n:'trinidad-flag'},{c:'🇹🇻',n:'tuvalu-flag'},{c:'🇹🇼',n:'taiwan-flag'},{c:'🇹🇿',n:'tanzania-flag'},{c:'🇺🇦',n:'ukraine-flag'},
             {c:'🇺🇬',n:'uganda-flag'},{c:'🇺🇲',n:'u.s.-outlying-islands-flag'},{c:'🇺🇳',n:'united-nations-flag'},{c:'🇺🇾',n:'uruguay-flag'},{c:'🇺🇿',n:'uzbekistan-flag'},
-            {c:'🇻🇦',n:'vatican-city-flag'},{c:'🇻🇨',n:'st.-vincent-<span-class="entity"><span>&amp;</span>amp;</span>-grenadines-flag'},{c:'🇻🇪',n:'venezuela-flag'},{c:'🇻🇬',n:'british-virgin-islands-flag'},{c:'🇻🇮',n:'u.s.-virgin-islands-flag'},
-            {c:'🇻🇳',n:'vietnam-flag'},{c:'🇻🇺',n:'vanuatu-flag'},{c:'🇼🇫',n:'wallis-<span-class="entity"><span>&amp;</span>amp;</span>-futuna-flag'},{c:'🇼🇸',n:'samoa-flag'},{c:'🇽🇰',n:'kosovo-flag'},
+            {c:'🇻🇦',n:'vatican-city-flag'},{c:'🇻🇨',n:'st.-vincent-flag'},{c:'🇻🇪',n:'venezuela-flag'},{c:'🇻🇬',n:'british-virgin-islands-flag'},{c:'🇻🇮',n:'u.s.-virgin-islands-flag'},
+            {c:'🇻🇳',n:'vietnam-flag'},{c:'🇻🇺',n:'vanuatu-flag'},{c:'🇼🇫',n:'wallis-flag'},{c:'🇼🇸',n:'samoa-flag'},{c:'🇽🇰',n:'kosovo-flag'},
             {c:'🇾🇪',n:'yemen-flag'},{c:'🇾🇹',n:'mayotte-flag'},{c:'🇿🇦',n:'south-africa-flag'},{c:'🇿🇲',n:'zambia-flag'},{c:'🇿🇼',n:'zimbabwe-flag'},
-            {c:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',n:'england-flag'},{c:'🏴󠁧󠁢󠁳󠁣󠁴󠁿',n:'scotland-flag'},{c:'🏴󠁧󠁢󠁷󠁬󠁳󠁿',n:'wales-flag'}
+            {c:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',n:'england-flag'},{c:'🏴󠁧󠁢󠁳󠁣󠁴󠁿',n:'scotland-flag'},{c:'🏴󠁧󠁢󠁷󠁬์',n:'wales-flag'}
         ]
     },
 
+    /**
+     * Initialization System
+     * Bootstraps the UI elements and establishes global focus-tracking.
+     */
     init: function() {
         this.createTrigger();
         this.createPicker();
         this.setupListeners();
     },
 
+    /**
+     * UI Component: createTrigger
+     * Generates the floating button used to reveal the selection panel.
+     */
     createTrigger: function() {
         const btn = document.createElement('button');
         btn.className = 'emoji-picker-trigger';
@@ -426,6 +457,10 @@ const EmojiPicker = {
         this.triggerBtn = btn;
     },
 
+    /**
+     * UI Component: createPicker
+     * Generates the categorized selection panel and search header.
+     */
     createPicker: function() {
         const panel = document.createElement('div');
         panel.className = 'emoji-picker-panel';
@@ -456,8 +491,15 @@ const EmojiPicker = {
         this.renderEmojis(this.emojis['smileys']);
     },
 
+    /**
+     * UI Engine: renderEmojis
+     * Reconciles the emoji grid with a provided list of character objects.
+     * 
+     * @param {Object[]} list - Collection of {c: char, n: name}
+     */
     renderEmojis: function(list) {
         const grid = this.pickerElement.querySelector('.emoji-grid');
+        if (!grid) return;
         grid.innerHTML = '';
         
         list.forEach(emoji => {
@@ -473,7 +515,12 @@ const EmojiPicker = {
         });
     },
 
+    /**
+     * Logic: setupListeners
+     * Establishes high-resolution event tracking for dynamic trigger placement.
+     */
     setupListeners: function() {
+        // Lifecycle: identify compatible inputs upon focus
         document.addEventListener('focusin', (e) => {
             const target = e.target;
             if (target.matches('.game-input, input[type="text"], textarea') && 
@@ -483,37 +530,45 @@ const EmojiPicker = {
             }
         });
 
-        this.triggerBtn.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.togglePicker();
-        };
+        // Interaction: toggle panel
+        if (this.triggerBtn) {
+            this.triggerBtn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.togglePicker();
+            };
+        }
 
+        // Action: real-time category filtering
         const search = this.pickerElement.querySelector('.emoji-search');
-        search.oninput = (e) => {
-            const val = e.target.value.toLowerCase().trim();
-            if (!val) {
-                const activeCat = this.pickerElement.querySelector('.category-btn.active').dataset.cat;
-                return this.renderEmojis(this.emojis[activeCat]);
-            }
-            
-            let filtered = [];
-            Object.values(this.emojis).forEach(cat => {
-                filtered = filtered.concat(cat.filter(em => em.n.includes(val)));
-            });
-            this.renderEmojis(filtered);
-        };
+        if (search) {
+            search.oninput = (e) => {
+                const val = e.target.value.toLowerCase().trim();
+                if (!val) {
+                    const activeCat = this.pickerElement.querySelector('.category-btn.active').dataset.cat;
+                    return this.renderEmojis(this.emojis[activeCat]);
+                }
+                
+                let filtered = [];
+                Object.values(this.emojis).forEach(cat => {
+                    filtered = filtered.concat(cat.filter(em => em.n.includes(val)));
+                });
+                this.renderEmojis(filtered);
+            };
+        }
 
+        // Interaction: Category switching
         this.pickerElement.querySelectorAll('.category-btn').forEach(btn => {
             btn.onclick = (e) => {
                 e.stopPropagation();
                 this.pickerElement.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                search.value = '';
+                if (search) search.value = '';
                 this.renderEmojis(this.emojis[btn.dataset.cat]);
             };
         });
 
+        // Global: Click-outside closure
         document.addEventListener('click', (e) => {
             if (this.pickerElement.style.display === 'flex' && 
                 !this.pickerElement.contains(e.target) && 
@@ -523,8 +578,15 @@ const EmojiPicker = {
         });
     },
 
+    /**
+     * UI Logic: attachTrigger
+     * Physically moves the trigger button to the right-aligned edge of the active input.
+     * 
+     * @param {HTMLElement} input - Target text entry element
+     */
     attachTrigger: function(input) {
         const parent = input.parentElement;
+        // Context: only attach if within a recognized platform form container
         if (parent && (parent.classList.contains('form-group') || parent.classList.contains('modal-group') || parent.classList.contains('checkbox-group') || parent.classList.contains('meal-input-wrapper'))) {
             if (!parent.contains(this.triggerBtn)) {
                 parent.appendChild(this.triggerBtn);
@@ -536,6 +598,10 @@ const EmojiPicker = {
         }
     },
 
+    /**
+     * Interface: togglePicker
+     * Manages high-level panel visibility and coordinates autofocus.
+     */
     togglePicker: function() {
         if (this.pickerElement.style.display === 'none') {
             this.openPicker();
@@ -544,33 +610,48 @@ const EmojiPicker = {
         }
     },
 
+    /**
+     * Hides the emoji selection panel.
+     */
     closePicker: function() {
         this.pickerElement.style.display = 'none';
     },
 
+    /**
+     * Interface: openPicker
+     * Resolves panel coordinates based on trigger position and viewport boundaries.
+     */
     openPicker: function() {
+        if (!this.triggerBtn) return;
         const rect = this.triggerBtn.getBoundingClientRect();
         this.pickerElement.style.display = 'flex';
         
         let top = rect.bottom + 5;
         let left = rect.right - 320;
         
+        // Logic: flip to "drop-up" if space below is restricted
         if (top + 400 > window.innerHeight) {
             top = rect.top - 405;
         }
         
+        // Logic: prevent horizontal viewport overflow
         if (left < 10) left = 10;
         
         this.pickerElement.style.top = `${top}px`;
         this.pickerElement.style.left = `${left}px`;
         
-        setTimeout(() => this.pickerElement.querySelector('.emoji-search').focus(), 10);
+        // Lifecycle: focus search immediately for rapid interaction
+        const search = this.pickerElement.querySelector('.emoji-search');
+        if (search) setTimeout(() => search.focus(), 10);
     },
 
-    closePicker: function() {
-        this.pickerElement.style.display = 'none';
-    },
-
+    /**
+     * Action: insertEmoji
+     * Injects the character at the current cursor position of the active input.
+     * Triggers standard input events to ensure server state synchronization.
+     * 
+     * @param {string} emoji - The character to insert
+     */
     insertEmoji: function(emoji) {
         const input = this.activeInput;
         if (!input) return;
@@ -579,14 +660,20 @@ const EmojiPicker = {
         const end = input.selectionEnd;
         const text = input.value;
         
+        // Operation: text manipulation
         input.value = text.substring(0, start) + emoji + text.substring(end);
         
+        // Interaction: restore focus and cursor position
         input.focus();
         input.selectionStart = input.selectionEnd = start + emoji.length;
         
+        // Logic: Notify state-driven listeners (e.g., meals.js autocomplete)
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
     }
 };
 
+/**
+ * Main module initialization.
+ */
 document.addEventListener('DOMContentLoaded', () => EmojiPicker.init());
