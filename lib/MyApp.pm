@@ -53,10 +53,11 @@ sub startup {
     my $db = DB->new();
     my $secret = $db->get_app_secret();
     
-    # Load Notification systems (Discord, Email, Gotify, Pushover)
+    # Load plugins
     $self->plugin('MyApp::Plugin::Notifications');
     $self->plugin('MyApp::Plugin::Tools');
     $self->plugin('MyApp::Plugin::OCR');
+    $self->plugin('MyApp::Plugin::TTS');
 
     # Configure signed cookie secrets
     $self->secrets($config->{secrets} || [$secret]);
@@ -193,7 +194,7 @@ sub startup {
     # Helper: Singleton Database Connection
     # Parameters: None
     # Returns: DB object instance
-    $self->helper(db => sub { state $db = DB->new; return $db });
+    $self->helper(db => sub { state $db = DB->new(app => $self); return $db });
 
     # Helper: Native Background Maintenance Runner
     # Parameters: None
@@ -387,6 +388,9 @@ sub startup {
     $auth->post('/todo/delete/:id')->to('todo#delete');
     $auth->post('/todo/edit/:id')->to('todo#edit');
     $auth->post('/todo/clear')->to('todo#clear_completed');
+
+    # --- Text-to-Speech Routes ---
+    $auth->post('/api/tts/synthesize')->to('TTS#synthesize');
 
     # --- Connect 4 Routes ---
     $auth->get('/connect4/lobby')->to('connect4#lobby');
