@@ -17,7 +17,7 @@
     <div class="glass-panel add-item-panel">
         <form id="addTodoForm" class="add-item-form">
             <div class="form-group flex-1 no-margin">
-                <input type="text" id="taskInput" name="task_name" class="game-input" placeholder="What needs to be done?" autocomplete="off" required maxlength="255">
+                <textarea id="taskInput" name="task_name" class="game-input" placeholder="What needs to be done?" autocomplete="off" required maxlength="1000" rows="1"></textarea>
             </div>
             <button type="submit" class="btn-blue-add">Add Task</button>
         </form>
@@ -41,7 +41,7 @@
         <div class="modal-body">
             <div class="modal-group">
                 <label for="editName">Task Description</label>
-                <input type="text" id="editName" class="game-input" maxlength="255">
+                <textarea id="editName" class="game-input" maxlength="1000" rows="3"></textarea>
                 <input type="hidden" id="editId">
             </div>
         </div>
