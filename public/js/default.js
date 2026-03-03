@@ -497,3 +497,43 @@ const GLOBAL_ICONS = {
 window.getIcon = function(name) {
     return GLOBAL_ICONS[name.toLowerCase()] || name;
 };
+
+/**
+ * Global TTS Helper: speakText
+ * 
+ * Fetches an MP3 blob from the Google Cloud TTS API and plays it. 
+ * Automatically handles memory cleanup after playback.
+ * 
+ * @param {string} text - The text to synthesize into speech.
+ * @returns {Promise<void>}
+ */
+async function speakText(text) {
+    if (!text) return;
+
+    try {
+        const response = await fetch('/api/tts/synthesize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || 'TTS API Error');
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        
+        audio.play();
+        
+        // Lifecycle: Cleanup memory once audio finishes
+        audio.onended = () => URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error('speakText failed:', err);
+    }
+}
+
+// Ensure it's exposed to the global scope
+window.speakText = speakText;
