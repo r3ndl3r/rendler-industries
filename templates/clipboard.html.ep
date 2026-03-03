@@ -58,8 +58,7 @@
                     <textarea name="paste" id="paste" class="game-input" placeholder="Paste content here..." onkeypress="textIn()"></textarea>
                 </div>
             </div>
-            <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+            <div class="modal-actions modal-actions-center">
                 <button type="submit" class="btn-save" id="submitBtn"><%= icon('save') %> Save</button>
             </div>
         </form>
@@ -76,7 +75,7 @@
         <div class="delete-modal-body">
             <p>Are you sure you want to delete this clipping?</p>
         </div>
-        <div class="delete-modal-actions">
+        <div class="delete-modal-actions modal-actions-center">
             <button type="button" class="btn-danger-confirm" id="confirmDeleteBtn">Delete</button>
         </div>
     </div>
