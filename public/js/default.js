@@ -1,18 +1,41 @@
 // /public/js/default.js
 
 /**
- * Rendler Industries - Global Utility Library
- * Centralizes common UI logic, AJAX helpers, and formatting.
+ * Global Utility Module
+ * 
+ * This module centralizes universal functionality for the Rendler Industries 
+ * platform. It provides shared logic for UI state management, formatting,
+ * and high-level AJAX interactions across all SPA modules.
+ * 
+ * Features:
+ * - Real-time relative time formatting (e.g., "5m ago")
+ * - 3D Flip Clock engine for dashboard and reminder countdowns
+ * - Themed global confirmation modal system
+ * - Centralized AJAX wrapper with automatic Toast notification integration
+ * - Master Semantic Icon Registry for platform-wide consistency
+ * 
+ * Dependencies:
+ * - jquery.js: Necessary for certain legacy UI interactions
+ * - toast.js: For rendering success/error notifications
+ */
+
+/**
+ * --- Date & Time Utilities ---
  */
 
 /**
  * Formats a Unix timestamp into a human-readable relative string.
+ * 
  * @param {number} unix - Seconds since epoch.
- * @returns {string} - e.g., "5m ago", "2h 10m ago", "Just now"
+ * @returns {string} - Relative time description (e.g., "Just now", "2h 10m ago")
  */
 function getTimeSince(unix) {
     if (!unix) return "...";
+    
+    // Calculate delta against current system time
     const diff = Math.floor(Date.now() / 1000) - unix;
+    
+    // Handle future or extremely recent events
     if (diff < -10) return "Scheduled";
     if (diff < 60) return "Just now";
     
@@ -29,39 +52,55 @@ function getTimeSince(unix) {
 }
 
 /**
- * Formats a duration in milliseconds into a countdown string.
- * @param {number} ms - Milliseconds duration.
+ * Formats a millisecond duration into a concise countdown string.
+ * Used for task deadlines and medication windows.
+ * 
+ * @param {number} ms - Duration in milliseconds.
+ * @returns {string} - Formatted countdown (e.g., "in 3d 5h", "Due now")
  */
 function formatCountdown(ms) {
     if (ms <= 0) return 'Due now';
+    
     const totalMins = Math.floor(ms / 60000);
     const days  = Math.floor(totalMins / 1440);
     const hours = Math.floor((totalMins % 1440) / 60);
     const mins  = totalMins % 60;
     
+    // Return most significant units
     if (days  > 0) return `in ${days}d ${hours}h`;
     if (hours > 0) return `in ${hours}h ${mins}m`;
     if (mins  > 0) return `in ${mins}m`;
+    
     return 'Due now';
 }
 
 /**
- * Returns current local date/time in YYYY-MM-DDTHH:MM format.
+ * Generates current local ISO datetime string.
+ * Specifically formatted for HTML datetime-local inputs.
+ * 
+ * @returns {string} - ISO format string truncated to minutes (YYYY-MM-DDTHH:MM)
  */
 function getLocalISOString() {
     const now = new Date();
+    // Correct for timezone offset to ensure local time is captured
     const tzoffset = now.getTimezoneOffset() * 60000;
     return (new Date(now - tzoffset)).toISOString().slice(0, 16);
 }
 
 /**
+ * --- UI Management Utilities ---
+ */
+
+/**
  * Universal Modal Closing Logic.
- * Handles clicks on overlays to close visible modals.
- * @param {string[]} modalClasses - List of classes identifying modal overlays.
- * @param {function[]} closeCallbacks - Functions to call to close modals.
+ * Attaches global listener to detect clicks on modal overlays.
+ * 
+ * @param {string[]} modalClasses - CSS classes identifying modal background overlays.
+ * @param {function[]} closeCallbacks - Cleanup functions to execute on closure.
  */
 function setupGlobalModalClosing(modalClasses = ['modal-overlay', 'delete-modal-overlay'], closeCallbacks = []) {
     window.addEventListener('click', (event) => {
+        // Detect if the click target itself is the overlay container
         const isOverlay = modalClasses.some(cls => event.target.classList.contains(cls));
         if (isOverlay) {
             closeCallbacks.forEach(cb => {
@@ -72,10 +111,11 @@ function setupGlobalModalClosing(modalClasses = ['modal-overlay', 'delete-modal-
 }
 
 /**
- * Simplifies standard AJAX POST requests with Toast feedback.
- * @param {string} url - Target endpoint.
- * @param {Object} data - Payload to send.
- * @returns {Promise<Object|null>} - Response JSON or null on failure.
+ * Standard AJAX POST wrapper with integrated feedback.
+ * 
+ * @param {string} url - Target API endpoint.
+ * @param {Object|FormData} data - Payload to transmit.
+ * @returns {Promise<Object|null>} - Parsed JSON response or null on failure.
  */
 async function apiPost(url, data = {}) {
     try {
@@ -83,10 +123,10 @@ async function apiPost(url, data = {}) {
             method: 'POST'
         };
 
+        // Automatic content-type detection for binary vs form data
         if (data instanceof FormData) {
             options.body = data;
-            // Note: Do NOT set Content-Type header when sending FormData; 
-            // the browser will set it automatically with the correct boundary.
+            // Note: browser manages boundary for FormData; do NOT set Content-Type
         } else {
             options.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
             options.body = new URLSearchParams(data);
@@ -103,6 +143,7 @@ async function apiPost(url, data = {}) {
             throw new Error('Invalid JSON response');
         }
 
+        // Handle logical success/failure based on platform response standard
         if (result.success) {
             if (result.message) showToast(result.message, 'success');
             return result;
@@ -118,9 +159,11 @@ async function apiPost(url, data = {}) {
 }
 
 /**
- * Displays a global fullscreen loading overlay with customizable text.
+ * Triggers global fullscreen loading overlay.
+ * Uses frosted glass aesthetic per system design standards.
+ * 
  * @param {string} text - Primary loading message.
- * @param {string} subtext - Secondary detail message.
+ * @param {string} subtext - Supporting detail message.
  */
 function showLoadingOverlay(text = 'Loading...', subtext = 'Please wait while we process your request.') {
     const overlay = document.createElement('div');
@@ -137,7 +180,7 @@ function showLoadingOverlay(text = 'Loading...', subtext = 'Please wait while we
 }
 
 /**
- * Removes the global loading overlay.
+ * Removes global loading overlay from DOM.
  */
 function hideLoadingOverlay() {
     const overlay = document.getElementById('global-loading-overlay');
@@ -145,11 +188,12 @@ function hideLoadingOverlay() {
 }
 
 /**
- * Returns HTML for a localized component loading state.
- * @param {string} text - Primary text.
- * @param {string} subtext - Secondary text.
- * @param {boolean} showScanner - Whether to include the scanning animation line.
- * @returns {string} - HTML string.
+ * Returns HTML fragment for localized component loading states.
+ * 
+ * @param {string} text - Label.
+ * @param {string} subtext - Supporting text.
+ * @param {boolean} showScanner - Whether to include the horizontal scan animation.
+ * @returns {string} - HTML fragment.
  */
 function getLoadingHtml(text = 'Loading...', subtext = '', showScanner = false) {
     return `
@@ -163,8 +207,10 @@ function getLoadingHtml(text = 'Loading...', subtext = '', showScanner = false) 
 }
 
 /**
- * Themed Confirmation Modal Helper (Global)
- * @param {Object} options - { title, icon, message, danger, confirmText, loadingText, onConfirm }
+ * Themed Confirmation Modal Controller.
+ * Leverages the global layout fragment defined in default.html.ep.
+ * 
+ * @param {Object} options - Configuration: { title, icon, message, danger, confirmText, loadingText, onConfirm }
  */
 window.showConfirmModal = function(options) {
     const modal = document.getElementById('globalConfirmActionModal');
@@ -175,6 +221,7 @@ window.showConfirmModal = function(options) {
 
     if (!modal || !btn) return;
 
+    // Apply configuration to DOM
     if (title) title.textContent = options.title || 'Confirm Action';
     if (icon) icon.innerHTML = getIcon(options.icon || 'delete');
     if (text) text.innerHTML = options.message || 'Are you sure?';
@@ -183,11 +230,12 @@ window.showConfirmModal = function(options) {
     btn.className = options.danger ? 'btn-danger-confirm' : 'btn-primary';
     btn.disabled = false;
 
-    // Clone button to remove previous listeners
+    // Clone button to strip existing event listeners and avoid logic duplication
     const newBtn = btn.cloneNode(true);
     newBtn.disabled = false;
     btn.parentNode.replaceChild(newBtn, btn);
 
+    // Attach confirmation execution logic
     newBtn.addEventListener('click', async () => {
         const originalHtml = newBtn.innerHTML;
         newBtn.disabled = true;
@@ -204,6 +252,9 @@ window.showConfirmModal = function(options) {
     modal.style.display = 'flex';
 };
 
+/**
+ * Hides the global confirmation modal and restores button state.
+ */
 window.closeConfirmModal = function() {
     const modal = document.getElementById('globalConfirmActionModal');
     const btn = document.getElementById('globalConfirmModalBtn');
@@ -215,27 +266,31 @@ window.closeConfirmModal = function() {
  * --- Global Flip Clock Engine ---
  */
 
+/**
+ * Manages 3D Flip Clock state and animation triggers.
+ */
 const FlipClockManager = {
-    prevStates: {},
+    prevStates: {},                 // Local cache for diffing time values
 
     /**
-     * Renders or updates a 3D flip clock inside a container.
-     * @param {HTMLElement} el - The container.
-     * @param {Object} vals - { dd, hh, mm, ss } strings.
-     * @param {string} id - Unique identifier for state tracking.
+     * Updates clock UI using logic-based diffing.
+     * 
+     * @param {HTMLElement} el - Clock container.
+     * @param {Object} vals - Object containing time units { dd, hh, mm, ss }.
+     * @param {string} id - Unique identifier for state isolation.
      */
     update: function(el, vals, id) {
-        // Initialize state tracking
+        // Handle initial render
         if (!this.prevStates[id]) {
             this.prevStates[id] = vals;
             el.innerHTML = this._renderHTML(vals);
             return;
         }
 
-        // Check each unit and trigger flip if changed
+        // Compare each unit and trigger flip animations only on changes
         Object.keys(vals).forEach(unit => {
             if (vals[unit] !== this.prevStates[id][unit]) {
-                // For day hiding logic (Reminders specific)
+                // Special handling for dynamic unit visibility (e.g., hiding Day unit when 0)
                 if (unit === 'dd' && ((vals.dd === 0 && this.prevStates[id].dd !== 0) || (vals.dd !== 0 && this.prevStates[id].dd === 0))) {
                     el.innerHTML = this._renderHTML(vals);
                 } else {
@@ -247,6 +302,11 @@ const FlipClockManager = {
         this.prevStates[id] = vals;
     },
 
+    /**
+     * Generates base HTML for clock segments.
+     * 
+     * @private
+     */
     _renderHTML: function(vals) {
         let html = '';
         if (vals.dd !== undefined && vals.dd > 0) html += this._renderUnit('dd', vals.dd, 'DD');
@@ -257,6 +317,11 @@ const FlipClockManager = {
         return html;
     },
 
+    /**
+     * Renders a single 3D card unit.
+     * 
+     * @private
+     */
     _renderUnit: function(unit, val, label) {
         return `
             <div class="flip-unit" data-unit="${unit}">
@@ -271,13 +336,19 @@ const FlipClockManager = {
         `;
     },
 
+    /**
+     * Triggers the CSS-based flip animation for a specific unit.
+     * 
+     * @private
+     */
     _triggerFlip: function(container, unit, newVal, oldVal) {
         const flipCard = container.querySelector(`.flip-unit[data-unit="${unit}"] .flip-card`);
         if (!flipCard) return;
 
         flipCard.classList.remove('flipping');
-        void flipCard.offsetWidth;
+        void flipCard.offsetWidth; // Trigger reflow
 
+        // Assign new and old values to appropriate card faces
         flipCard.querySelector('.flip-card-top').textContent = newVal;
         flipCard.querySelector('.flip-card-bottom').textContent = oldVal;
         flipCard.querySelector('.flip-card-flap-front').textContent = oldVal;
@@ -285,6 +356,7 @@ const FlipClockManager = {
 
         flipCard.classList.add('flipping');
 
+        // Restore static state after animation completion
         setTimeout(() => {
             flipCard.querySelector('.flip-card-bottom').textContent = newVal;
             flipCard.querySelector('.flip-card-flap-front').textContent = newVal;
@@ -293,7 +365,10 @@ const FlipClockManager = {
     },
 
     /**
-     * Starts a real-time normal clock (HH:MM:SS AM/PM) inside a container.
+     * Initiates a standard 12-hour real-time clock.
+     * 
+     * @param {HTMLElement} el - Target container.
+     * @param {string} id - Unique instance identifier.
      */
     startRealTimeClock: function(el, id) {
         const tick = () => {
@@ -318,7 +393,8 @@ const FlipClockManager = {
 
 /**
  * --- Global Icon Registry ---
- * Mirrors the semantic names and symbols defined in lib/MyApp/Plugin/Icons.pm.
+ * Standardized mapping of semantic names to Unicode/Emoji symbols.
+ * Mirrors lib/MyApp/Plugin/Icons.pm for consistency.
  */
 const GLOBAL_ICONS = {
     // Actions
@@ -413,9 +489,10 @@ const GLOBAL_ICONS = {
 };
 
 /**
- * Global helper to retrieve an icon by its semantic name.
- * @param {string} name - Semantic icon name.
- * @returns {string} - The symbol or name if not found.
+ * Public accessor for the semantic icon registry.
+ * 
+ * @param {string} name - The semantic name of the icon (case-insensitive).
+ * @returns {string} - The symbol if found, otherwise returns the input name.
  */
 window.getIcon = function(name) {
     return GLOBAL_ICONS[name.toLowerCase()] || name;
