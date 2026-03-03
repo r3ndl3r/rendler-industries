@@ -6,7 +6,7 @@
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/menu/manage.css?<%= time %>">
     <script src="/js/menu/manage.js?<%= time %>"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="/js/vendor/sortable.min.js?<%= time %>"></script>
 % end
 
 <div class="manage-container">
