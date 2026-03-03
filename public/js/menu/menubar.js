@@ -1,13 +1,33 @@
 // /public/js/menu/menubar.js
 
 /**
- * Toggles the sidebar menu visibility.
+ * Global Navigation Controller Module
+ * 
+ * This module manages the primary application navigation system, including 
+ * the dynamic sidebar menu, permission-aware link rendering, and system-level 
+ * maintenance actions like server restarts.
+ * 
+ * Features:
+ * - AJAX-driven menu population with client-side permission filtering
+ * - Recursive rendering engine for nested submenus
+ * - Multi-level submenu toggling with visual state indicators
+ * - Unified server restart workflow with status modal feedback
+ * - Mobile-optimized auto-closing logic for viewport transitions
+ * 
+ * Dependencies:
+ * - default.js: For getIcon and global interaction helpers
+ */
+
+/**
+ * Interface: toggleMenu
+ * Manages the open/closed state of the primary sidebar and its overlay.
  */
 function toggleMenu() {
     const menu = document.getElementById('sideMenu');
     const overlay = document.getElementById('menuOverlay');
     const btn = document.querySelector('.menu-btn');
     
+    // Toggle class-based visibility states
     if (menu.classList.contains('open')) {
         menu.classList.remove('open');
         overlay.classList.remove('open');
@@ -20,13 +40,16 @@ function toggleMenu() {
 }
 
 /**
- * Toggles visibility of submenus in the sidebar.
- * @param {string} id - Submenu container ID.
+ * Interface: toggleSubmenu
+ * Handles the expand/collapse logic for nested menu categories.
+ * 
+ * @param {string} id - Unique identifier for the submenu container
  */
 function toggleSubmenu(id) {
     var submenu = document.getElementById('submenu-' + id);
     var arrow = document.getElementById('arrow-' + id);
     
+    // Manual display toggle per layout standard
     if (submenu.style.display !== 'block') {
         submenu.style.display = 'block';
         arrow.innerHTML = getIcon('collapse');
@@ -37,7 +60,11 @@ function toggleSubmenu(id) {
 }
 
 /**
- * Updates the restart modal status text and spinner.
+ * UI Component: updateModal
+ * Modifies the status and animation state of the restart overlay.
+ * 
+ * @param {string} status - Message to display
+ * @param {boolean} isSpinning - Visibility flag for the loading spinner
  */
 function updateModal(status, isSpinning = true) {
     const statusText = document.getElementById('modal-status');
@@ -48,43 +75,54 @@ function updateModal(status, isSpinning = true) {
 }
 
 /**
- * Closes the restart modal manually.
+ * Hides the server restart feedback interface.
  */
 function closeRestartModal() {
-    document.getElementById('restart-modal').style.display = 'none';
+    const modal = document.getElementById('restart-modal');
+    if (modal) modal.style.display = 'none';
 }
 
 /**
- * Initiates the server restart sequence via AJAX.
+ * Action: startRestartSequence
+ * Triggers the administrative server restart via specialized endpoint.
+ * Implements automated reconnection/reload logic.
+ * 
+ * @param {Event} event - Triggering click event
  */
 async function startRestartSequence(event) {
     event.preventDefault();
-    toggleMenu();
+    toggleMenu(); // Close navigation before showing overlay
 
     const modal = document.getElementById('restart-modal');
-    modal.style.display = 'flex';
+    if (modal) modal.style.display = 'flex';
     updateModal('Sending restart command to server...');
 
     try {
         const response = await fetch('/restart');
         if (!response.ok) {
             updateModal(`Restart failed (Status: ${response.status})`, false);
-            setTimeout(() => { modal.style.display = 'none'; }, 2000);
+            // Self-dismiss after failure feedback
+            setTimeout(() => { if (modal) modal.style.display = 'none'; }, 2000);
             return;
         }
 
+        // Logic: allow server time to initiate shutdown before triggering reload
         updateModal('Restart initiated. Reloading...', true);
         await new Promise(r => setTimeout(r, 2000));
         location.reload();
 
     } catch (error) {
+        // Fallback: connection loss usually indicates successful worker termination
         updateModal('Connection lost (Server likely restarting). Reloading...', false);
         setTimeout(() => { location.reload(); }, 2500);
     }
 }
 
 /**
- * Fetches and renders the menu structure from the server.
+ * Data Management: loadMenu
+ * Bootstraps the navigation structure from the server state.
+ * 
+ * @returns {Promise<void>}
  */
 async function loadMenu() {
     const container = document.getElementById('menuContent');
@@ -99,6 +137,7 @@ async function loadMenu() {
         let html = '';
         const currentPath = data.current_path;
 
+        // Context: dynamically build items based on authentication state
         if (data.is_logged_in) {
             data.menu.forEach(item => {
                 if (item.is_separator) {
@@ -110,6 +149,7 @@ async function loadMenu() {
 
             html += '<div class="menu-spacer"></div>';
             
+            // Add administrative maintenance actions if permitted
             if (data.is_admin) {
                 html += `
                     <button class="menu-action text-red" onclick="startRestartSequence(event)">
@@ -119,6 +159,7 @@ async function loadMenu() {
             }
             html += `<a href="/logout" class="text-red">${getIcon('logout')} Logout</a>`;
         } else {
+            // Public guest navigation view
             html += '<div class="menu-spacer"></div>';
             html += `<a href="/login" class="text-green">${getIcon('user')} Login</a>`;
             html += `<a href="/register">${getIcon('edit')} Register</a>`;
@@ -126,7 +167,7 @@ async function loadMenu() {
 
         container.innerHTML = html;
 
-        // Add click listeners to menu links to close menu on mobile
+        // Lifecycle: attach mobile viewport auto-close listeners
         container.querySelectorAll('a').forEach(link => {
             if (!link.classList.contains('submenu-toggle')) {
                 link.addEventListener('click', () => {
@@ -143,12 +184,17 @@ async function loadMenu() {
 }
 
 /**
- * Recursively renders a menu item and its children.
+ * UI Component: renderMenuItem
+ * Recursively generates HTML fragments for navigation items.
+ * 
+ * @param {Object} item - Menu item object from state
+ * @param {string} currentPath - Active URL path for highlight detection
+ * @returns {string} - Rendered HTML
  */
 function renderMenuItem(item, currentPath) {
     const hasChildren = item.children && item.children.length > 0;
     
-    // Map permission keys to human-readable alt text
+    // Constant: mapping of permission keys to descriptive titles
     const permAltMap = {
         'perm_admin': 'Admin',
         'perm_family': 'Family',
@@ -162,6 +208,7 @@ function renderMenuItem(item, currentPath) {
         : '';
     
     if (hasChildren) {
+        // Category Header rendering
         return `
             <a href="javascript:void(0)" onclick="toggleSubmenu('${item.id}')" class="submenu-toggle">
                 <span class="${item.css_class || ''}">${item.label}</span>
@@ -173,6 +220,7 @@ function renderMenuItem(item, currentPath) {
             </div>
         `;
     } else {
+        // Individual Link rendering
         const isActive = currentPath === item.url || (item.url !== '/' && currentPath.startsWith(item.url));
         const activeClass = isActive ? 'active' : '';
         const childClass = item.parent_id ? 'menu-item-child' : '';
@@ -188,11 +236,15 @@ function renderMenuItem(item, currentPath) {
     }
 }
 
-// Global click-outside-to-close logic
+/**
+ * Global Interaction Handler
+ * Manages click-outside behavior for navigation closure.
+ */
 document.addEventListener('click', function(event) {
     const menu = document.getElementById('sideMenu');
     const btn = document.querySelector('.menu-btn');
     
+    // Detect if click originated outside both the sidebar and trigger button
     if (menu && menu.classList.contains('open') && 
         !menu.contains(event.target) && 
         !btn.contains(event.target)) {
@@ -204,9 +256,15 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// Initial load
+/**
+ * Initialization Block
+ */
 document.addEventListener('DOMContentLoaded', loadMenu);
 
+/**
+ * Global Exposure
+ * Required for inline event handlers in templates.
+ */
 window.toggleMenu = toggleMenu;
 window.toggleSubmenu = toggleSubmenu;
 window.startRestartSequence = startRestartSequence;
