@@ -1,16 +1,32 @@
 // /public/js/chess/lobby.js
 
 /**
- * Handles real-time updates for the Chess Lobby using AJAX polling.
- * Periodically fetches open games and user-specific games from the server
- * and updates the DOM without requiring a full page refresh.
+ * Chess Lobby Management Module
+ * 
+ * This module manages the real-time interaction for the Chess Lobby interface. 
+ * It implements a non-blocking background polling system to ensure participants 
+ * have accurate visibility of active and pending games.
+ * 
+ * Features:
+ * - Real-time synchronization of open and active user games
+ * - Asynchronous UI reconciliation using AJAX polling (5s interval)
+ * - Dynamic list rendering with role-based "Resume" vs "Join" actions
+ * - Themed status badge management based on game progression
+ * - Robust HTML sanitization for dynamic user data
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+    /**
+     * UI Element Cache
+     */
     const userGameList = document.getElementById('user-game-list');
     const openGameList = document.getElementById('open-game-list');
     const userSection = document.getElementById('user-games-section');
 
+    /**
+     * Logic: pollLobbyStatus
+     * Orchestrates background state fetching and triggers UI updates.
+     */
     function pollLobbyStatus() {
         fetch('/chess/lobby_status')
             .then(res => res.json())
@@ -18,39 +34,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateUserGames(data.user_games);
                 updateOpenGames(data.open_games);
             })
-            .catch(err => console.error('Lobby polling failed:', err));
+            .catch(err => console.error('pollLobbyStatus failure:', err));
     }
 
     /**
-     * Updates the 'Your Active Games' section.
+     * UI Component: updateUserGames
+     * Manages the "Your Active Games" panel based on session context.
+     * 
+     * @param {Array} games - List of user-participating games
      */
     function updateUserGames(games) {
         if (!games || games.length === 0) {
-            userSection.style.display = 'none';
-            userGameList.innerHTML = '';
+            if (userSection) userSection.style.display = 'none';
+            if (userGameList) userGameList.innerHTML = '';
             return;
         }
 
-        userSection.style.display = 'block';
-        userGameList.innerHTML = games.map(game => `
-            <div class="game-item user-game">
-                <div class="host-info">
-                    <span class="host-name">
-                        ${escapeHtml(game.p1_name)} vs ${escapeHtml(game.p2_name || '?')}
-                    </span>
-                    <span class="game-time">
-                        Status: <span class="status-badge ${game.status}">${capitalize(game.status)}</span>
-                    </span>
+        if (userSection) userSection.style.display = 'block';
+        if (userGameList) {
+            userGameList.innerHTML = games.map(game => `
+                <div class="game-item user-game">
+                    <div class="host-info">
+                        <span class="host-name">
+                            ${escapeHtml(game.p1_name)} vs ${escapeHtml(game.p2_name || '?')}
+                        </span>
+                        <span class="game-time">
+                            Status: <span class="status-badge ${game.status}">${capitalize(game.status)}</span>
+                        </span>
+                    </div>
+                    <a href="/chess/play/${game.id}" class="btn-join">Resume &rarr;</a>
                 </div>
-                <a href="/chess/play/${game.id}" class="btn-join">Resume &rarr;</a>
-            </div>
-        `).join('');
+            `).join('');
+        }
     }
 
     /**
-     * Updates the 'Open Games' list.
+     * UI Component: updateOpenGames
+     * Manages the public matchmaking list.
+     * 
+     * @param {Array} games - List of games awaiting opponents
      */
     function updateOpenGames(games) {
+        if (!openGameList) return;
+
+        // Handle empty state
         if (!games || games.length === 0) {
             openGameList.innerHTML = `
                 <div class="empty-state">
@@ -75,7 +102,16 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
     }
 
-    // Helper: Escape HTML to prevent XSS
+    /**
+     * --- Helpers & Utilities ---
+     */
+
+    /**
+     * Prevents XSS by sanitizing dynamic character data.
+     * 
+     * @param {string} text - Raw input
+     * @returns {string} - Sanitized HTML
+     */
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -83,11 +119,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return div.innerHTML;
     }
 
-    // Helper: Capitalize first letter
+    /**
+     * Localized string formatter.
+     * 
+     * @param {string} s - Input string
+     * @returns {string} - Title-cased output
+     */
     function capitalize(s) {
+        if (!s) return '';
         return s.charAt(0).toUpperCase() + s.slice(1);
     }
 
-    // Poll every 5 seconds
+    // Lifecycle: Establish background sync loop (5s)
     setInterval(pollLobbyStatus, 5000);
 });
