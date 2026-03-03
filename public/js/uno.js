@@ -1,15 +1,42 @@
 // /public/js/uno.js
 
+/**
+ * UNO Game Controller Module
+ * 
+ * This module manages the real-time client logic for the UNO Online game. 
+ * It implements a complex interaction engine with sprite-based card 
+ * rendering, 3D CSS animations, and multimodal game states.
+ * 
+ * Features:
+ * - Real-time synchronization of player hands, discard pile, and direction
+ * - Sprite-sheet based card rendering with mathematical coordinate resolution
+ * - Smooth 3D flying card animations for drawing and playing
+ * - Interactive color-picker for Wild card logic
+ * - Integrated "UNO!" shout workflow with automated state detection
+ * - Role-relative opponent slot mapping (Me -> Left -> Top -> Right)
+ * - Real-time turn indicators and visual countdowns
+ * 
+ * Dependencies:
+ * - default.js: For getIcon and status feedback
+ */
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Context: resolve game identifiers from data attributes
     const configContainer = document.getElementById('game-config');
     if (!configContainer) return;
 
+    /**
+     * Immutable Game Configuration
+     */
     const config = {
         gameId: configContainer.dataset.gameId,
         myId: parseInt(configContainer.dataset.myId),
         myRole: parseInt(configContainer.dataset.myRole)
     };
 
+    /**
+     * UI Element Cache
+     */
     const els = {
         oppHand: document.getElementById('opp-hand'),
         discardPile: document.getElementById('discard-pile'),
@@ -22,28 +49,40 @@ document.addEventListener('DOMContentLoaded', () => {
         colorDot: document.getElementById('color-dot'),
         statusToast: document.getElementById('status-toast'),
         myPanel: document.getElementById('my-panel'),
-        oppPanel: document.getElementById('opponent-panel'), // This element might not exist
-        unoShoutBtn: document.querySelector('.btn-uno-shout') // Direct reference to the button
+        unoShoutBtn: document.querySelector('.btn-uno-shout')
     };
 
+    /**
+     * Mutable Game State
+     */
     let gameState = {
-        isMyTurn: false,
-        myHand: [],
-        pendingCardIdx: null,
-        pendingCardElement: null,
-        turn: null,
-        direction: null,
-        isDrawing: false,
-        isPlaying: false
+        isMyTurn: false,            // Local turn status
+        myHand: [],                 // Collection of card strings (e.g., 'red_5', 'wild')
+        pendingCardIdx: null,       // Pointer for color-selection callbacks
+        pendingCardElement: null,   // Element reference for animations
+        turn: null,                 // Current active player ID
+        direction: null,            // 1 (Clockwise) or -1 (Counter)
+        isDrawing: false,           // Drawing animation semaphore
+        isPlaying: false            // Play animation semaphore
     };
 
+    /**
+     * --- Animation Engine ---
+     */
     const animations = {
-        duration: 800,
+        duration: 800,              // Speed of the "flying" card transition
         
+        /**
+         * Orchestrates the 3D draw animation from deck to hand.
+         * 
+         * @param {function} callback - Execution hook after animation completes
+         */
         animateDraw(callback) {
+            if (!els.deck || !els.myHand) return;
             const deckRect = els.deck.getBoundingClientRect();
             const handRect = els.myHand.getBoundingClientRect();
             
+            // Target: Center of the user's hand container
             const targetRect = {
                 left: handRect.left + handRect.width / 2 - 45,
                 top: handRect.top + handRect.height / 2 - 67.5,
@@ -62,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             document.body.appendChild(flyingCard);
             
+            // Performance: trigger transition in the next paint cycle
             requestAnimationFrame(() => {
                 flyingCard.style.transition = `all ${this.duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
                 flyingCard.style.left = targetRect.left + 'px';
@@ -75,7 +115,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }, this.duration);
         },
         
+        /**
+         * Orchestrates the 3D play animation from hand to discard pile.
+         * 
+         * @param {HTMLElement} cardElement - The specific card being played
+         * @param {function} callback - Post-animation hook
+         */
         animatePlay(cardElement, callback) {
+            if (!cardElement || !els.discardPile) return;
             const cardRect = cardElement.getBoundingClientRect();
             const discardRect = els.discardPile.getBoundingClientRect();
             
@@ -102,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             document.body.appendChild(flyingCard);
             
+            // Visual: hide actual card from hand during flight
             cardElement.style.opacity = '0';
             
             requestAnimationFrame(() => {
@@ -118,16 +166,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    /**
+     * --- Action Handlers ---
+     */
+
+    // Interaction: Handle card drawing
     els.deck.addEventListener('click', () => {
         if (!gameState.isMyTurn) {
             showToast('Not your turn!');
             return;
         }
         
-        // Prevent double-clicks
+        // Semaphore: prevent multiple draw requests
         if (gameState.isDrawing) return;
         gameState.isDrawing = true;
 
+        // UI: physical press feedback
         els.deck.style.transform = 'scale(0.95)';
         setTimeout(() => els.deck.style.transform = '', 100);
         
@@ -150,6 +204,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    /**
+     * Logic: playCard
+     * Determines whether to trigger color picking or immediate play.
+     * 
+     * @param {number} index - Position in player hand
+     */
     window.playCard = function(index) {
         if (!gameState.isMyTurn) {
             showToast('Not your turn!');
@@ -159,6 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const card = gameState.myHand[index];
         const cardElement = els.myHand.children[index];
 
+        // Workflow: Wild cards require a color choice before submission
         if (card.startsWith('wild')) {
             gameState.pendingCardIdx = index;
             gameState.pendingCardElement = cardElement;
@@ -168,12 +229,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    /**
+     * Displays the color selection overlay.
+     */
     function showColorPicker() {
-        els.colorModal.style.display = 'block';
+        if (els.colorModal) els.colorModal.style.display = 'block';
     }
 
+    /**
+     * Resolution: pickColor
+     * Completes the Wild card workflow with the user's color selection.
+     */
     window.pickColor = function(color) {
-        els.colorModal.style.display = 'none';
+        if (els.colorModal) els.colorModal.style.display = 'none';
         if (gameState.pendingCardIdx !== null) {
             sendMove(gameState.pendingCardIdx, color, gameState.pendingCardElement);
             gameState.pendingCardIdx = null;
@@ -181,11 +249,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    /**
+     * Action: sendMove
+     * Transmits the chosen card index and color to the server.
+     * Orchestrates the play animation.
+     */
     function sendMove(idx, color, cardElement) {
         if (gameState.isPlaying) return;
         gameState.isPlaying = true;
 
-        gameState.isMyTurn = false;
+        gameState.isMyTurn = false; // UI: lock interaction
         updateTurnIndicators();
         
         animations.animatePlay(cardElement, () => {
@@ -208,13 +281,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    /**
+     * --- UI Rendering Engine ---
+     */
+
+    /**
+     * UI Component: renderCard
+     * Creates a card DOM node with correct sprite positioning.
+     * 
+     * @param {string} cardString - Key (e.g., 'blue_reverse')
+     * @param {boolean} isPlayable - Interaction flag
+     * @param {number} index - Optional index for event context
+     * @returns {HTMLElement} - Card node
+     */
     function renderCard(cardString, isPlayable = false, index = -1) {
         const card = parseCard(cardString);
         
         const div = document.createElement('div');
         div.className = `uno-card`;
         
-        // Mathematically correct % for 14x8 grid: (index / (total - 1)) * 100
+        // Logic: Correct % for 14x8 sprite grid: (index / (total_units - 1)) * 100
         const pctX = (card.col / 13) * 100;
         const pctY = (card.row / 7) * 100;
         div.style.backgroundPosition = `${pctX}% ${pctY}%`;
@@ -229,10 +315,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return div;
     }
 
+    /**
+     * Logic: parseCard
+     * Maps a card string to its coordinate system in the sprite asset.
+     * 
+     * @param {string} cardString - Server card identifier
+     * @returns {Object} - Metadata {color, val, col, row}
+     */
     function parseCard(cardString) {
-        // Default to a safe fallback (red 0)
+        // Fallback: red 0
         let res = { color: 'red', val: '0', col: 0, row: 0 };
         
+        // Specific: handle standalone wild cards
         if (cardString === 'wild') {
             return { color: 'wild', val: 'W', col: 13, row: 0 };
         }
@@ -249,15 +343,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         res.row = colorBaseRows[color] ?? 0;
         res.col = valCols[val] ?? 0;
-
-        // Note: The sprite sheet actually has two sets: 
-        // rows 0-3 (red, yellow, green, blue) 
-        // rows 4-7 (red, yellow, green, blue again)
-        // We'll stick to rows 0-3 for consistency.
         
         return res;
     }
 
+    /**
+     * Interface: shoutUno
+     * Registers an "UNO!" declaration for the current player.
+     */
     window.shoutUno = function() {
         fetch('/uno/shout', {
             method: 'POST',
@@ -273,43 +366,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    /**
+     * Logic: syncGame
+     * Performs comprehensive re-synchronization of board and player state.
+     */
     function syncGame() {
-        console.log('Syncing game state...');
         fetch(`/uno/play/${config.gameId}`, {
             method: 'GET',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(res => res.json())
         .then(data => {
-            console.log('Game state received:', data);
             const oldTurn = gameState.turn;
             const oldDirection = gameState.direction;
             
+            // Update master local state
             gameState.myHand = data.myhand || [];
             gameState.turn = data.turn;
             gameState.direction = data.direction;
             gameState.isMyTurn = (data.turn === config.myId && data.status === 'active');
 
-            console.log(`Hand size: ${gameState.myHand.length}, My Turn: ${gameState.isMyTurn}`);
-
-            // UNO Shout Button visibility
+            // UI: Handle "UNO!" shout button visibility (only on 2 cards remaining)
             const shoutBtn = document.getElementById('uno-shout-container');
-            if (gameState.myHand.length === 2 && gameState.isMyTurn) {
-                shoutBtn.classList.add('visible');
-            } else {
-                shoutBtn.classList.remove('visible');
+            if (shoutBtn) {
+                if (gameState.myHand.length === 2 && gameState.isMyTurn) {
+                    shoutBtn.classList.add('visible');
+                } else {
+                    shoutBtn.classList.remove('visible');
+                }
             }
 
-            // Feedback for Turn Change
-            if (oldTurn !== data.turn && gameState.isMyTurn) {
-                // Not showing toast anymore, visual glow is enough
-            }
-
-            // Feedback for Direction Change
+            // UI: Feedback for Direction reversals
             if (oldDirection !== undefined && oldDirection !== data.direction) {
                 showToast(`Direction: ${data.direction === 1 ? 'Clockwise ' + getIcon('back') : 'Counter-Clockwise ' + getIcon('back')}`);
             }
 
+            // Scenario: Game Resolution
             if (data.status === 'finished') {
                 if (data.winner === config.myId) {
                     showToast(`${getIcon('victory')} You Win! ${getIcon('victory')}`, 3000);
@@ -317,11 +409,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const winnerName = data.players.find(p => p.id === data.winner)?.name || 'Someone';
                     showToast(`${getIcon('loss')} ${winnerName} Wins!`, 3000);
                 }
-                updateTurnIndicators(null); // Clear all
+                updateTurnIndicators(null);
                 return;
             }
 
-            // Sync My Hand
+            // UI: Re-render player hand with playable logic
             const topCard = data.topcard;
             els.myHand.innerHTML = '';
             gameState.myHand.forEach((card, idx) => {
@@ -332,32 +424,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (els.myCardCount) els.myCardCount.textContent = `${gameState.myHand.length} cards`;
 
-            // Sync Discard Pile
-            els.discardPile.innerHTML = '';
-            els.discardPile.appendChild(renderCard(topCard));
+            // UI: Sync Discard Pile
+            if (els.discardPile) {
+                els.discardPile.innerHTML = '';
+                els.discardPile.appendChild(renderCard(topCard));
+            }
 
-            // Sync Opponents
+            // UI Logic: relative opponent slot mapping
             const opponents = data.players.filter(p => p.id !== config.myId);
-            
-            // Map opponents to slots relative to me
-            // Slot logic for 4 players (clockwise): Me -> Left -> Top -> Right
-            // Role 1: 2 is Left, 3 is Top, 4 is Right
-            // Role 2: 3 is Left, 4 is Top, 1 is Right
-            // ...
             const slots = ['left', 'top', 'right'];
             slots.forEach(s => {
                 const panel = document.getElementById(`opp-slot-${s}`);
                 if (panel) {
                     panel.style.visibility = 'hidden';
-                    // Clear previous card count display
                     const oldHandDisplay = panel.querySelector('.opponent-hand-display');
                     if (oldHandDisplay) oldHandDisplay.remove();
                 }
             });
 
             opponents.forEach(opp => {
-                // Determine which slot this opponent goes into
-                // Simple version: 1-3 based on relative role
+                // Resolution: determine clockwise position relative to current user
                 let relativePos = (opp.role - config.myRole + 4) % 4;
                 let slotName;
                 if (relativePos === 1) slotName = 'left';
@@ -369,9 +455,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 panel.style.visibility = 'visible';
                 panel.querySelector('.player-name').textContent = (opp.said_uno ? getIcon('shout') + ' ' : '') + opp.name;
-                // panel.querySelector('.card-count').textContent = `${opp.card_count} cards`; // Hide text count
 
-                // Add visual card backs
+                // Visual: build card back hand display for opponents
                 const handDisplay = document.createElement('div');
                 handDisplay.className = 'opponent-hand-display';
                 for (let i = 0; i < opp.card_count; i++) {
@@ -379,8 +464,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     cardBack.className = 'opponent-hand-card-back';
                     handDisplay.appendChild(cardBack);
                 }
-                panel.querySelector('.player-details').appendChild(handDisplay); // Append to player details
+                panel.querySelector('.player-details').appendChild(handDisplay);
 
+                // Turn Focus: apply glow to active opponent
                 if (data.turn === opp.id) {
                     panel.classList.add('active');
                 } else {
@@ -390,46 +476,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateTurnIndicators(data.turn);
 
+            // Visual: sync active wild color dot
             const colorMap = { red: '#ef4444', blue: '#3b82f6', green: '#22c55e', yellow: '#eab308' };
-            els.colorDot.style.backgroundColor = colorMap[data.color] || '#8b5cf6';
+            if (els.colorDot) els.colorDot.style.backgroundColor = colorMap[data.color] || '#8b5cf6';
         });
     }
 
+    /**
+     * Logic: canPlayCard
+     * Implements core UNO matching rules.
+     * 
+     * @param {string} card - Card in hand
+     * @param {string} topCard - Card on discard pile
+     * @param {string} currentColor - Active wild color
+     * @returns {boolean}
+     */
     function canPlayCard(card, topCard, currentColor) {
+        // Rule: Wilds are always playable
         if (card.startsWith('wild')) return true;
         
         const [cardColor, cardVal] = card.split('_');
         const [topColor, topVal] = topCard.split('_');
         
+        // Rule: Match by color
         if (cardColor === currentColor) return true;
+        // Rule: Match by value/symbol
         if (cardVal && topVal && cardVal === topVal) return true;
         
-        // Handle playing on a Wild (where topCard is 'wild' or 'wild_draw4')
+        // Edge Case: handle playing on a Wild (server provides active 'color')
         if (topColor === 'wild' && cardColor === currentColor) return true;
 
         return false;
     }
 
+    /**
+     * UI: updateTurnIndicators
+     * Manages visual glow states for active players.
+     */
     function updateTurnIndicators(activeTurnId) {
-        // My Panel
         if (activeTurnId === config.myId) {
-            els.myPanel.classList.add('active');
+            if (els.myPanel) els.myPanel.classList.add('active');
             if (els.deck.parentElement) els.deck.parentElement.classList.add('my-turn');
         } else {
-            els.myPanel.classList.remove('active');
+            if (els.myPanel) els.myPanel.classList.remove('active');
             if (els.deck.parentElement) els.deck.parentElement.classList.remove('my-turn');
         }
-
-        // Opponent Panels
-        ['left', 'top', 'right'].forEach(slot => {
-            const panel = document.getElementById(`opp-slot-${slot}`);
-            if (panel && panel.style.visibility === 'visible') {
-                // The slot's active state is handled inside syncGame loop for opponents
-            }
-        });
     }
 
+    /**
+     * Interface: showToast
+     * Displays transient status messages within the game container.
+     */
     function showToast(message, duration = 1500) {
+        if (!els.statusToast) return;
         els.statusToast.textContent = message;
         els.statusToast.classList.add('show');
         setTimeout(() => {
@@ -437,6 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, duration);
     }
 
+    // Lifecycle: Bootstrap sync loop (2s)
     syncGame();
     setInterval(syncGame, 2000);
 });
