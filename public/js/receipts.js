@@ -484,11 +484,68 @@ async function handleEditSubmit(e) {
 }
 
 /**
- * Action: deleteReceipt
- * Permanently removes a receipt from the system.
+ * Action: confirmDeleteReceipt
+ * Orchestrates the Mandatory Action deletion flow for a specific receipt.
  * 
- * @param {number} id - Target ID
- * @returns {Promise<void>}
+ * @param {number} id - Receipt identifier
+ * @param {string} name - Merchant/filename for confirmation text
+ */
+function confirmDeleteReceipt(id, name) {
+    const text = document.getElementById('deleteReceiptText');
+    const btn = document.getElementById('confirmDeleteReceiptBtn');
+    const modal = document.getElementById('deleteReceiptModal');
+
+    if (text) text.innerHTML = `Are you sure you want to permanently delete the receipt for <strong>${escapeHtml(name)}</strong>?`;
+    
+    if (btn) {
+        btn.onclick = async () => {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
+            
+            try {
+                const response = await fetch(`/receipts/api/delete/${id}`, { method: 'POST' });
+                const result = await response.json();
+                
+                // Lifecycle Cleanup: restore button state
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    currentReceipts = currentReceipts.filter(r => r.id != id);
+                    closeLocalModal('deleteReceiptModal');
+                    renderStats();
+                    renderReceipts(false);
+                } else {
+                    showToast(result.error || 'Failed to delete receipt.', 'error');
+                }
+            } catch (e) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                console.error("deleteReceipt Error:", e);
+                showToast("Network error during deletion", "error");
+            }
+        };
+    }
+    
+    if (modal) modal.style.display = 'flex';
+}
+
+/**
+ * Interface: closeLocalModal
+ * Utility for closing localized single-button modals.
+ * 
+ * @param {string} id - Modal identifier
+ */
+function closeLocalModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'none';
+}
+
+/**
+ * Action: deleteReceipt (Legacy - Retained for API compatibility)
+...
  */
 async function deleteReceipt(id) {
     try {
@@ -908,20 +965,38 @@ window.triggerOCR = function(id) {
 
 /**
  * Workflow: reScanReceipt
- * Forces a new AI analysis of an already digitized receipt.
+ * Orchestrates the Mandatory Action confirmation flow for receipt re-digitization.
  */
 window.reScanReceipt = function() {
-    const modal = document.getElementById('eReceiptModal');
-    const receiptId = modal ? modal.dataset.receiptId : null;
+    const parentModal = document.getElementById('eReceiptModal');
+    const receiptId = parentModal ? parentModal.dataset.receiptId : null;
     if (!receiptId) return;
 
-    const btn = document.querySelector('.btn-ereceipt-rescan');
+    const btn = document.getElementById('confirmRescanBtn');
+    const modal = document.getElementById('confirmRescanModal');
+
     if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = `${getIcon('waiting')} Rescanning...`;
+        // Logic: bind dynamic execution handler to the centered confirmation button
+        btn.onclick = async () => {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Rescanning...`;
+
+            try {
+                // Execute the actual scan via the primary interface helper
+                await viewElectronicReceipt(receiptId, 1);
+                closeLocalModal('confirmRescanModal');
+            } catch (err) {
+                console.error("Rescan failed:", err);
+            } finally {
+                // Lifecycle Cleanup: Restore button state
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        };
     }
 
-    viewElectronicReceipt(receiptId, 1);
+    if (modal) modal.style.display = 'flex';
 };
 
 /**
@@ -1104,4 +1179,6 @@ window.reScanReceipt = reScanReceipt;
 window.viewElectronicReceipt = viewElectronicReceipt;
 window.openEditModal = openEditModal;
 window.openCropModal = openCropModal;
+window.confirmDeleteReceipt = confirmDeleteReceipt;
+window.closeLocalModal = closeLocalModal;
 window.toggleStatTile = toggleStatTile;
