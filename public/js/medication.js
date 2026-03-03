@@ -102,16 +102,16 @@ function submitForm(event, url, isRegistry = false) {
 
     // Transmit using global AJAX helper
     apiPost(url, Object.fromEntries(formData)).then(data => {
+        // Lifecycle Cleanup: Restore button state regardless of outcome
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+
         if (data) {
             // Success: clear UI state and re-sync
             closeDoseModal();
             closeEditModal();
             if (isRegistry) closeManageModal();
             refreshData();
-        } else {
-            // Failure: restore UI for correction
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
         }
     }).catch(() => {
         btn.disabled = false;
@@ -411,12 +411,15 @@ function confirmDeleteMedication(id, name) {
             btn.disabled = true;
             btn.innerHTML = `${getIcon('waiting')} Deleting...`;
             const result = await apiPost(`/medication/delete/${id}`);
+            
+            // Lifecycle Cleanup: Restore button state
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
             if (result) {
                 closeLocalModal('deleteLogModal');
                 refreshData();
             }
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
         };
     }
     
@@ -509,12 +512,15 @@ function confirmResetMedication(id) {
             btn.disabled = true;
             btn.innerHTML = `${getIcon('waiting')} Resetting...`;
             const result = await apiPost(`/medication/reset/${id}`, payload);
+            
+            // Lifecycle Cleanup: Restore button state
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
             if (result) {
                 closeLocalModal('resetTimeModal');
                 refreshData();
             }
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
         };
     }
 
@@ -577,12 +583,15 @@ function confirmDeleteRegistry(id, name) {
             btn.disabled = true;
             btn.innerHTML = `${getIcon('waiting')} Removing...`;
             const result = await apiPost(`/medication/manage/delete/${id}`);
+            
+            // Lifecycle Cleanup: Restore button state
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
             if (result) {
                 closeLocalModal('removeRegistryModal');
                 refreshData();
             }
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
         };
     }
     
