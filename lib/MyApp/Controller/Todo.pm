@@ -49,7 +49,7 @@ sub add {
         return $c->render(json => { success => 0, error => 'Task cannot be empty' });
     }
     
-    if (length($task_name) > 255) {
+    if (length($task_name) > 10000) {
         return $c->render(json => { success => 0, error => 'Task too long' });
     }
     
