@@ -11,11 +11,12 @@
  * - Real-time task synchronization with server state
  * - Optimistic UI updates for creation and completion
  * - Sorted view (Active first by date, then Completed)
- * - Themed modal management for editing and batch deletion
+ * - Mandatory Action pattern for editing and batch deletion (No Cancel buttons)
+ * - Lifecycle-aware button state management to prevent "stuck" indicators
  * - Mobile-optimized touch targets for task toggling
  * 
  * Dependencies:
- * - default.js: For apiPost, getLoadingHtml, getIcon, and modal helpers
+ * - default.js: For apiPost, getLoadingHtml, getIcon, setupGlobalModalClosing, and modal helpers
  * - toast.js: For notification feedback
  */
 
@@ -32,14 +33,14 @@ let appState = {
  * Sets up initial state, event delegation, and global modal behavior
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // Bootstrap initial data from server
+    // Bootstrap initial data collection from server
     loadState();
 
     const taskInput = document.getElementById('taskInput');
     if (taskInput) {
         taskInput.focus();
 
-        // Behavior: Auto-resize and key handlers
+        // Behavior: Auto-resize and key handlers for rapid task entry
         taskInput.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
@@ -72,22 +73,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Configure unified modal closing behavior
+    // Configure unified modal closing behavior for all overlays
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeEditModal, closeConfirmModal
+        closeEditModal, closeConfirmModal,
+        () => closeLocalModal('deleteTodoModal'),
+        () => closeLocalModal('clearCompletedModal')
     ]);
 });
 
 /**
  * State Management: loadState
- * Fetches the complete todo collection and triggers re-render
+ * Fetches the complete todo collection and triggers re-render.
  * 
  * @returns {Promise<void>}
  */
 async function loadState() {
     const container = document.getElementById('todoListContainer');
     
-    // Display loading skeleton on initial fetch only
+    // Display loading skeleton on initial fetch only to minimize UI jitter
     if (container && appState.todos.length === 0) {
         container.innerHTML = getLoadingHtml('Syncing tasks...');
     }
@@ -107,7 +110,7 @@ async function loadState() {
 
 /**
  * UI Engine: renderTodoItems
- * Orchestrates the sorting and generation of the todo list HTML
+ * Orchestrates the sorting and generation of the todo list HTML.
  */
 function renderTodoItems() {
     const container = document.getElementById('todoListContainer');
@@ -163,7 +166,7 @@ function renderTodoItems() {
 
 /**
  * UI Component: renderTodoItem
- * Generates the HTML fragment for a single todo row
+ * Generates the HTML fragment for a single todo row.
  * 
  * @param {Object} todo - The task object to render
  * @returns {string} - Rendered HTML string
@@ -196,7 +199,7 @@ function renderTodoItem(todo) {
 
 /**
  * Action: addTodo
- * Submits a new task to the server and performs an optimistic UI update
+ * Submits a new task to the server and performs an optimistic UI update.
  * 
  * @returns {Promise<void>}
  */
@@ -212,9 +215,14 @@ async function addTodo() {
     btn.innerHTML = `${getIcon('waiting')} Adding...`;
 
     const result = await apiPost('/todo/add', { task_name: task_name });
+    
+    // Lifecycle Cleanup: restore button state
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+
     if (result && result.success) {
         input.value = '';
-        input.style.height = 'auto'; // Reset height for textarea
+        input.style.height = 'auto'; // Reset height for auto-expanding textarea
         // Perform optimistic update to local state
         appState.todos.unshift({
             id: result.id,
@@ -224,15 +232,11 @@ async function addTodo() {
         });
         renderTodoItems();
     }
-    
-    // Restore button state
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
 }
 
 /**
  * Action: toggleTodo
- * Updates task completion status on server and local state
+ * Updates task completion status on server and local state.
  * 
  * @param {number} id - Target Task ID
  * @returns {Promise<void>}
@@ -255,7 +259,7 @@ async function toggleTodo(id) {
 
 /**
  * Action: deleteTodo
- * Triggers confirmation modal and removes task upon user approval
+ * Orchestrates the Mandatory Action deletion flow for a specific task.
  * 
  * @param {number} id - Target Task ID
  */
@@ -263,48 +267,62 @@ async function deleteTodo(id) {
     const todo = appState.todos.find(t => t.id == id);
     if (!todo) return;
 
-    showConfirmModal({
-        title: 'Delete Task',
-        message: `Are you sure you want to remove "<strong>${escapeHtml(todo.task_name)}</strong>"?`,
-        danger: true,
-        confirmText: 'Delete',
-        onConfirm: async () => {
+    const text = document.getElementById('deleteTodoText');
+    const btn = document.getElementById('confirmDeleteTodoBtn');
+    const modal = document.getElementById('deleteTodoModal');
+
+    if (text) text.innerHTML = `Are you sure you want to remove "<strong>${escapeHtml(todo.task_name)}</strong>"?`;
+    
+    if (btn) {
+        // Logic: dynamic binding to capture closure scope ID for the purge request
+        btn.onclick = async () => {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
+            
             const result = await apiPost(`/todo/delete/${id}`);
+            
+            // Lifecycle Cleanup: Restore button state
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
             if (result && result.success) {
-                // Update local state and re-render
                 appState.todos = appState.todos.filter(t => t.id != id);
+                closeLocalModal('deleteTodoModal');
                 renderTodoItems();
             }
-        }
-    });
+        };
+    }
+    
+    if (modal) modal.style.display = 'flex';
 }
 
 /**
  * Modal: openEditModal
- * Pre-fills and displays the task editing interface
+ * Pre-fills and displays the task editing interface.
  * 
  * @param {number} id - Target Task ID
- * 
- * Exposed to window for legacy inline onclick support
  */
 window.openEditModal = function(id) {
     const todo = appState.todos.find(t => t.id == id);
     if (!todo) return;
 
     document.getElementById('editId').value = id;
-    document.getElementById('editName').value = todo.task_name;
-    document.getElementById('editModal').classList.add('show');
-    
     const editName = document.getElementById('editName');
-    editName.focus();
-    // Logic: Auto-expand height to match existing multi-line content
-    editName.style.height = 'auto';
-    editName.style.height = (editName.scrollHeight) + 'px';
+    if (editName) {
+        editName.value = todo.task_name;
+        document.getElementById('editModal').classList.add('show');
+        
+        editName.focus();
+        // Logic: Auto-expand height to match existing multi-line content
+        editName.style.height = 'auto';
+        editName.style.height = (editName.scrollHeight) + 'px';
+    }
 };
 
 /**
  * Modal: closeEditModal
- * Hides the task editing interface
+ * Hides the task editing interface.
  */
 window.closeEditModal = function() {
     document.getElementById('editModal').classList.remove('show');
@@ -312,62 +330,87 @@ window.closeEditModal = function() {
 
 /**
  * Action: submitEdit
- * Submits modified task description to server
+ * Submits modified task description to server.
  * 
  * @returns {Promise<void>}
  */
 async function submitEdit() {
     const id = document.getElementById('editId').value;
-    const name = document.getElementById('editName').value.trim();
+    const nameInput = document.getElementById('editName');
+    const name = nameInput ? nameInput.value.trim() : '';
     if (!name) return;
 
-    // UI Feedback: disable button during flight
+    // UI Feedback: disable button during processing
     const btn = document.querySelector('#editModal .btn-primary');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
     const result = await apiPost(`/todo/edit/${id}`, { task_name: name });
+    
+    // Lifecycle Cleanup: Restore state
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+
     if (result && result.success) {
         const todo = appState.todos.find(t => t.id == id);
         if (todo) todo.task_name = name;
         closeEditModal();
         renderTodoItems();
     }
-    
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
 }
 
 /**
  * Modal: openClearCompletedModal
- * Batch deletion confirmation for all completed tasks
+ * Orchestrates the Mandatory Action batch deletion flow for completed tasks.
  */
 window.openClearCompletedModal = function() {
-    showConfirmModal({
-        title: 'Clear Completed',
-        message: 'Are you sure you want to clear all completed tasks?',
-        danger: true,
-        confirmText: 'Clear All',
-        onConfirm: async () => {
+    const btn = document.getElementById('confirmClearCompletedBtn');
+    const modal = document.getElementById('clearCompletedModal');
+
+    if (btn) {
+        btn.onclick = async () => {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Clearing...`;
+            
             const result = await apiPost('/todo/clear');
+            
+            // Lifecycle Cleanup
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
             if (result && result.success) {
-                // Filter local state to remove all completed tasks
                 appState.todos = appState.todos.filter(t => !t.is_completed);
+                closeLocalModal('clearCompletedModal');
                 renderTodoItems();
             }
-        }
-    });
+        };
+    }
+
+    if (modal) modal.style.display = 'flex';
 };
 
 /**
+ * Interface: closeLocalModal
+ * Utility for closing localized single-button modals.
+ * 
+ * @param {string} id - Modal element ID
+ */
+function closeLocalModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'none';
+}
+
+/**
  * Utility: escapeHtml
- * Prevents XSS by sanitizing dynamic text strings
+ * Prevents XSS by sanitizing dynamic text strings.
  * 
  * @param {string} text - Raw input string
  * @returns {string} - Sanitized HTML string
  */
 function escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
@@ -375,8 +418,9 @@ function escapeHtml(text) {
 
 /**
  * Global Exposure
- * Necessary for inline event handlers defined in server-rendered templates
+ * Necessary for inline event handlers defined in server-rendered templates.
  */
 window.toggleTodo = toggleTodo;
 window.deleteTodo = deleteTodo;
 window.submitEdit = submitEdit;
+window.closeLocalModal = closeLocalModal;
