@@ -24,6 +24,7 @@ sub index {
     my $gemini_key = $c->db->get_gemini_key();
     my $gemini_models = $c->db->get_gemini_models();
     my $gemini_active = $c->db->get_gemini_active_model();
+    my $google_tts_key = $c->db->get_google_tts_key();
     
     $c->stash(
         settings => $settings,
@@ -31,7 +32,8 @@ sub index {
         timer_reset_hour => $timer_reset_hour,
         gemini_key       => $gemini_key,
         gemini_models    => $gemini_models,
-        gemini_active    => $gemini_active
+        gemini_active    => $gemini_active,
+        google_tts_key   => $google_tts_key
     );
     
     $c->render('settings');
@@ -145,6 +147,11 @@ sub update {
             $c->db->update_gemini_models(\@filtered);
             return $c->render(json => { success => 1, message => "Removed model: $to_delete" });
         }
+    }
+    elsif ($section eq 'google_tts') {
+        my $api_key = trim($c->param('google_tts_key') // '');
+        $c->db->update_google_tts_key($api_key);
+        return $c->render(json => { success => 1, message => 'Google Cloud TTS API key updated successfully' });
     }
 
     return $c->render(json => { success => 0, error => 'Unknown settings section' });
