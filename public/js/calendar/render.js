@@ -1,17 +1,44 @@
 // /public/js/calendar/render.js
 
+/**
+ * Calendar Rendering Engine Module
+ * 
+ * This module coordinates the dynamic generation of the Calendar interface. 
+ * It implements three distinct layout engines (Month, Week, Day) and 
+ * manages high-performance DOM reconciliation for event overlays.
+ * 
+ * Features:
+ * - Dynamic 7-column Month grid with past-day dimming
+ * - Time-aware Week view with multi-day span support
+ * - High-resolution 24-hour Day timeline with hourly event slots
+ * - Monday-aligned perspective for all weekly views
+ * - Complex event overlap resolution and participant pill rendering
+ * - Integrated "Quick Add" click-hooks for empty date cells
+ * 
+ * Dependencies:
+ * - calendar/utils.js: For formatting and boundary calculations
+ * - default.js: For getIcon and escapeHtml
+ */
+
+/**
+ * Main Controller: renderCalendar
+ * Orchestrates the selection and execution of the active layout engine.
+ */
 function renderCalendar() {
+    // 1. Sync: Update period label (e.g., "March 2026")
     updatePeriodTitle();
     
-    if (currentView === 'month') {
-        renderMonthView();
-    } else if (currentView === 'week') {
-        renderWeekView();
-    } else if (currentView === 'day') {
-        renderDayView();
-    }
+    // 2. Execution: Switch to target engine
+    if (currentView === 'month') renderMonthView();
+    else if (currentView === 'week') renderWeekView();
+    else if (currentView === 'day') renderDayView();
 }
 
+/**
+ * UI Engine: renderMonthView
+ * Generates the traditional 7-column grid.
+ * Implements sophisticated boundary logic to include previous/next month days.
+ */
 function renderMonthView() {
     const container = document.getElementById('calendarView');
     if (!container) return;
@@ -22,6 +49,7 @@ function renderMonthView() {
     calendarGrid.className = 'calendar-grid';
     container.appendChild(calendarGrid);
     
+    // Header: generate weekday labels
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     daysOfWeek.forEach(day => {
         const header = document.createElement('div');
@@ -30,6 +58,7 @@ function renderMonthView() {
         calendarGrid.appendChild(header);
     });
     
+    // Logic: calculate Monday-aligned start date for the Month view
     const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     
@@ -46,25 +75,25 @@ function renderMonthView() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    /**
+     * Component Loop: Grid Generation
+     */
     for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
         const dateStr = formatDate(date);
         
         const dayCell = document.createElement('div');
         dayCell.className = 'calendar-day';
         
-        // Add click listener for quick add, passing the specific date of this cell
+        // Interaction: click empty cell to rapid-trigger creation modal
         dayCell.setAttribute('onclick', `openAddEventModal('${dateStr}')`);
         
         const isToday = date.getTime() === today.getTime();
         const isOtherMonth = date.getMonth() !== currentDate.getMonth();
-        
-        // Check if day is strictly in the past
         const isPast = date < today;
         
+        // Visual State management
         if (isToday) dayCell.classList.add('today');
         if (isOtherMonth) dayCell.classList.add('other-month');
-
-        // Apply specific class for past days
         if (isPast) dayCell.classList.add('past-day');
         
         const dayNumber = document.createElement('div');
@@ -72,6 +101,7 @@ function renderMonthView() {
         dayNumber.textContent = date.getDate();
         dayCell.appendChild(dayNumber);
         
+        // Logic: identify and sort events for this specific cell
         const dayEvents = filteredEvents
             .filter(event => {
                 const eventStart = (event.start_date || event.startdate || '').split(' ')[0];
@@ -84,6 +114,7 @@ function renderMonthView() {
                 return aDate.localeCompare(bDate);
             });
 
+        // UI Detail: Event Overlay construction
         if (dayEvents.length > 0) {
             const eventsContainer = document.createElement('div');
             eventsContainer.className = 'day-events';
@@ -93,6 +124,7 @@ function renderMonthView() {
                 const startDate = event.start_date || event.startdate || '';
                 const eventTime = isAllDay ? '' : ` - ${formatTime(startDate)}`;
                 
+                // logic: build participant initials/pills
                 let attendeePills = '';
                 const attendeeNames = event.attendee_names || event.attendeenames || '';
                 if (attendeeNames) {
@@ -124,6 +156,11 @@ function renderMonthView() {
     }
 }
 
+/**
+ * UI Engine: renderWeekView
+ * Generates a focused 7-day strip layout.
+ * Optimized for high-density weekly planning.
+ */
 function renderWeekView() {
     const container = document.getElementById('calendarView');
     if (!container) return;
@@ -142,6 +179,7 @@ function renderWeekView() {
         calendarGrid.appendChild(header);
     });
     
+    // Logic: calculate the Monday anchor for the active week strip
     const startOfWeek = new Date(currentDate);
     const currentDay = currentDate.getDay();
     const diffToMonday = currentDay === 0 ? 6 : currentDay - 1;
@@ -151,6 +189,7 @@ function renderWeekView() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Component Loop: Week Generation
     for (let i = 0; i < 7; i++) {
         const date = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + i);
         date.setHours(0, 0, 0, 0);
@@ -158,19 +197,16 @@ function renderWeekView() {
         
         const dayCell = document.createElement('div');
         dayCell.className = 'calendar-day';
-        
-        // Add click listener for quick add
         dayCell.setAttribute('onclick', `openAddEventModal('${dateStr}')`);
 
-        if (date.getTime() === today.getTime()) {
-            dayCell.classList.add('today');
-        }
+        if (date.getTime() === today.getTime()) dayCell.classList.add('today');
         
         const dayNumber = document.createElement('div');
         dayNumber.className = 'day-number';
         dayNumber.textContent = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         dayCell.appendChild(dayNumber);
         
+        // Logic: Event filtering and chronological sorting
         const dayEvents = filteredEvents.filter(event => {
             const eventStart = (event.start_date || event.startdate || '').split(' ')[0];
             const eventEnd = (event.end_date || event.enddate || '').split(' ')[0];
@@ -208,6 +244,11 @@ function renderWeekView() {
     }
 }
 
+/**
+ * UI Engine: renderDayView
+ * Generates a high-resolution 24-hour vertical timeline.
+ * Implements "all-day" logic via the 12AM slot.
+ */
 function renderDayView() {
     const container = document.getElementById('calendarView');
     if (!container) return;
@@ -220,6 +261,7 @@ function renderDayView() {
 
     const dateStr = formatDate(currentDate);
 
+    // Component Loop: Hour Timeline Generation
     for (let hour = 0; hour < 24; hour++) {
         const hourRow = document.createElement('div');
         hourRow.className = 'calendar-hour-row';
@@ -227,15 +269,15 @@ function renderDayView() {
         const timeLabel = document.createElement('div');
         timeLabel.className = 'calendar-hour-label';
         
+        // Formatting: 12-hour display for labels
         const displayHour = hour === 0 ? '12 AM' : (hour > 12 ? `${hour - 12} PM` : (hour === 12 ? '12 PM' : `${hour} AM`));
         timeLabel.textContent = displayHour;
         
         const eventsCell = document.createElement('div');
         eventsCell.className = 'calendar-hour-events';
-        
-        // Enable clicking on the empty time slot to add event
         eventsCell.setAttribute('onclick', `openAddEventModal('${dateStr}')`);
 
+        // Logic: filter for events occurring exactly within this hour slot
         const hourEvents = filteredEvents.filter(event => {
             const eventStart = (event.start_date || event.startdate || '').split(' ')[0];
             const eventEnd = (event.end_date || event.enddate || '').split(' ')[0];
@@ -243,6 +285,7 @@ function renderDayView() {
             
             if (dateStr < eventStart || dateStr > eventEnd) return false;
             
+            // Logic: Force all-day events to the 12AM strip
             if (isAllDay && hour === 0) return true;
             if (isAllDay) return false;
 
@@ -273,13 +316,16 @@ function renderDayView() {
     }
 }
 
+/**
+ * UI Engine: updatePeriodTitle
+ * Reconciles the primary viewport label based on mode and date pointer.
+ */
 function updatePeriodTitle() {
     const titleElement = document.getElementById('currentPeriod');
     if (!titleElement) return;
     
     if (currentView === 'month') {
-        const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        titleElement.textContent = monthName;
+        titleElement.textContent = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     } else if (currentView === 'week') {
         const startOfWeek = new Date(currentDate);
         const currentDay = currentDate.getDay();
@@ -294,10 +340,7 @@ function updatePeriodTitle() {
         titleElement.textContent = `${startStr} - ${endStr}`;
     } else if (currentView === 'day') {
         titleElement.textContent = currentDate.toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
         });
     }
 }
