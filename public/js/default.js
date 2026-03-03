@@ -535,5 +535,37 @@ async function speakText(text) {
     }
 }
 
+/**
+ * Global Translation Helper: translateText
+ * 
+ * Translates text via the secured Google Cloud Translation API.
+ * 
+ * @param {string} text - The text to translate.
+ * @param {string} [target='th'] - Target language code.
+ * @returns {Promise<Object|null>} - { translated_text, detected_source_lang, cached }
+ */
+async function translateText(text, target = 'th') {
+    if (!text) return null;
+
+    try {
+        const response = await fetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text, target: target })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || 'Translation API Error');
+        }
+
+        return await response.json();
+    } catch (err) {
+        console.error('translateText failed:', err);
+        return null;
+    }
+}
+
 // Ensure it's exposed to the global scope
 window.speakText = speakText;
+window.translateText = translateText;
