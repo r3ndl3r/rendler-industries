@@ -14,6 +14,7 @@
  * - Integrated 60-second state synchronization with server maintenance
  * - Optimistic UI updates for status toggles and day-level adjustments
  * - One-off reminder support with automated self-deletion logic
+ * - Mandatory Action pattern for secure record deletion
  * 
  * Dependencies:
  * - default.js: For FlipClockManager, apiPost, getIcon, and modal helpers
@@ -60,9 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Modal: Configure unified closure behavior
+    // Modal: Configure unified closure behavior for all global and local overlays
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeAddModal, closeEditModal, closeConfirmModal
+        closeAddModal, closeEditModal, closeConfirmModal, closeDeleteModal
     ]);
 });
 
@@ -344,6 +345,14 @@ function closeEditModal() {
 }
 
 /**
+ * Hides the localized deletion confirmation interface.
+ */
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteReminderModal');
+    if (modal) modal.style.display = 'none';
+}
+
+/**
  * --- API Interactions ---
  */
 
@@ -362,11 +371,18 @@ async function submitAdd() {
     btn.disabled = true;
     btn.innerHTML = `${getIcon('waiting')} Creating...`;
 
-    const result = await apiPost('/reminders/add', new FormData(form));
-    if (result && result.success) {
-        closeAddModal();
-        await loadState();
-    } else {
+    try {
+        const result = await apiPost('/reminders/add', new FormData(form));
+        
+        // Lifecycle Cleanup: Restore button state
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+
+        if (result && result.success) {
+            closeAddModal();
+            await loadState();
+        }
+    } catch (err) {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
@@ -387,11 +403,18 @@ async function submitEdit() {
     btn.disabled = true;
     btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
-    const result = await apiPost(`/reminders/update/${id}`, new FormData(form));
-    if (result && result.success) {
-        closeEditModal();
-        await loadState();
-    } else {
+    try {
+        const result = await apiPost(`/reminders/update/${id}`, new FormData(form));
+        
+        // Lifecycle Cleanup: Restore button state
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+
+        if (result && result.success) {
+            closeEditModal();
+            await loadState();
+        }
+    } catch (err) {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
@@ -399,21 +422,39 @@ async function submitEdit() {
 
 /**
  * Action: confirmDeleteReminder
- * Triggers confirmation and removes record upon user approval.
+ * Orchestrates the Mandatory Action deletion flow for a specific reminder.
+ * 
+ * @param {number} id - Record identifier
+ * @param {string} title - Label for confirmation prompt
  */
 function confirmDeleteReminder(id, title) {
-    showConfirmModal({
-        title: 'Delete Reminder',
-        message: `Are you sure you want to delete "<strong>${escapeHtml(title)}</strong>"?`,
-        danger: true,
-        confirmText: 'Delete',
-        onConfirm: async () => {
+    const text = document.getElementById('deleteReminderText');
+    const btn = document.getElementById('confirmDeleteBtn');
+    const modal = document.getElementById('deleteReminderModal');
+
+    if (text) text.innerHTML = `Are you sure you want to delete "<strong>${escapeHtml(title)}</strong>"?`;
+    
+    if (btn) {
+        // Logic: dynamic binding to capture closure scope ID for the purge request
+        btn.onclick = async () => {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
+            
             const result = await apiPost(`/reminders/delete/${id}`);
+            
+            // Lifecycle Cleanup: Restore button state
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
             if (result && result.success) {
+                closeDeleteModal();
                 await loadState();
             }
-        }
-    });
+        };
+    }
+    
+    if (modal) modal.style.display = 'flex';
 }
 
 /**
@@ -573,3 +614,16 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+/**
+ * Global Exposure
+ * Required for inline event handlers in server-rendered templates.
+ */
+window.openAddModal = openAddModal;
+window.closeAddModal = closeAddModal;
+window.prepareEditModal = prepareEditModal;
+window.closeEditModal = closeEditModal;
+window.confirmDeleteReminder = confirmDeleteReminder;
+window.closeDeleteModal = closeDeleteModal;
+window.toggleReminder = toggleReminder;
+window.toggleDay = toggleDay;
