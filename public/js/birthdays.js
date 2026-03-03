@@ -1,43 +1,86 @@
 // /public/js/birthdays.js
 
 /**
- * client-side ui engine for birthday tracking and countdowns.
+ * Birthday Management Module
+ * 
+ * This module manages the Family Birthday Tracker. It handles real-time
+ * countdowns, age calculations, and administrative record management
+ * through a 100% AJAX-driven SPA interface.
+ * 
+ * Features:
+ * - Real-time countdowns (updated every 60 seconds)
+ * - Automated Western and Chinese Zodiac determination
+ * - Leap year birthday logic handling
+ * - Administrative management mode for CRUD operations
+ * - Integrated confirmation workflows for record deletion
+ * 
+ * Dependencies:
+ * - default.js: For apiPost, getIcon, escapeHtml, and modal helpers
+ * - toast.js: For notification feedback
  */
 
-let birthdaysData = [];
-let manageMode = false;
+/**
+ * Application State
+ * Coordinates internal data store and interface mode
+ */
+let birthdaysData = [];             // Collection of {id, name, birth_date, zodiac, chinese_zodiac, formatted_date}
+let manageMode = false;             // Toggle state for administrative vs countdown view
 
+/**
+ * Initialization System
+ * Triggers initial sync and sets up recurring countdown updates
+ */
 document.addEventListener('DOMContentLoaded', () => {
+    // Bootstrap initial data
     refreshBirthdays();
+    
+    // Schedule background countdown updates (1-minute resolution)
     setInterval(updateCountdowns, 60000);
 
-    // Use global modal closing helper
+    // Modal: Configure global click-outside-to-close behavior
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
         closeModal, closeConfirmModal
     ]);
 });
 
 /**
- * Data Management
+ * --- Data Management ---
+ */
+
+/**
+ * Syncs the birthday collection with the server state.
+ * 
+ * @returns {Promise<void>}
  */
 async function refreshBirthdays() {
     try {
         const response = await fetch('/birthdays/api/data');
         const data = await response.json();
         if (data.success) {
+            // Update local store and trigger comprehensive UI refresh
             birthdaysData = data.birthdays;
             renderUI();
         }
     } catch (err) {
+        console.error('refreshBirthdays error:', err);
         showToast("Failed to load birthday data", "error");
     }
 }
 
+/**
+ * Action: submitBirthdayForm
+ * Handles both Addition and Editing of birthday records.
+ * 
+ * @param {Event} event - Form submission event
+ */
 async function submitBirthdayForm(event) {
     event.preventDefault();
+    
+    // Determine context (ID presence indicates Edit mode)
     const id = document.getElementById('field_id').value;
     const url = id ? `/birthdays/edit/${id}` : '/birthdays/add';
     
+    // UI Feedback: disable button and show loading state
     const btn = document.getElementById('submitBtn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
@@ -49,14 +92,23 @@ async function submitBirthdayForm(event) {
     });
 
     if (result) {
+        // Success: hide interface and re-sync
         closeModal();
         refreshBirthdays();
     } else {
+        // Failure: restore button for retry
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
 }
 
+/**
+ * Action: confirmDelete
+ * Triggers confirmation and removes record upon user approval.
+ * 
+ * @param {number} id - Record ID
+ * @param {string} name - Name for confirmation prompt
+ */
 function confirmDelete(id, name) {
     showConfirmModal({
         title: 'Delete Birthday',
@@ -67,6 +119,7 @@ function confirmDelete(id, name) {
         onConfirm: async () => {
             const result = await apiPost(`/birthdays/delete/${id}`);
             if (result) {
+                // Record removal requires a full re-sync to update all views
                 refreshBirthdays();
             }
         }
@@ -74,7 +127,11 @@ function confirmDelete(id, name) {
 }
 
 /**
- * UI Rendering
+ * --- UI Rendering ---
+ */
+
+/**
+ * Orchestrates the full UI refresh across all views.
  */
 function renderUI() {
     renderGrid();
@@ -82,16 +139,21 @@ function renderUI() {
     updateCountdowns();
 }
 
+/**
+ * Generates the main countdown tile grid.
+ */
 function renderGrid() {
     const grid = document.getElementById('birthday-grid');
     if (!grid) return;
     grid.innerHTML = '';
 
+    // Handle empty state
     if (birthdaysData.length === 0) {
         grid.innerHTML = '<div class="empty-state"><p>📭 No birthdays found.</p></div>';
         return;
     }
 
+    // Build and append card for every record
     birthdaysData.forEach(b => {
         const card = document.createElement('div');
         card.className = 'birthday-card glass-panel';
@@ -117,6 +179,9 @@ function renderGrid() {
     });
 }
 
+/**
+ * Generates the administrative management list rows.
+ */
 function renderManageList() {
     const list = document.getElementById('manage-list');
     if (!list) return;
@@ -126,7 +191,7 @@ function renderManageList() {
         const row = document.createElement('div');
         row.className = 'manage-row';
         
-        // Use a temporary button to store the JSON safely without attribute-breaking issues
+        // Setup specialized edit button using data attributes for safe JSON storage
         const btn = document.createElement('button');
         btn.className = 'btn-icon-edit';
         btn.innerHTML = getIcon('edit');
@@ -143,34 +208,36 @@ function renderManageList() {
                 </div>
             </div>
             <div class="manage-actions">
-                <!-- Button injected below -->
                 <button onclick="confirmDelete(${b.id}, '${escapeHtml(b.name).replace(/'/g, "\\'")}')" class="btn-icon-delete">${getIcon('delete')}</button>
             </div>
         `;
+        // Inject the complex edit button into the row structure
         row.querySelector('.manage-actions').prepend(btn);
         list.appendChild(row);
     });
 }
 
+/**
+ * Logic: updateCountdowns
+ * Calculates days remaining and target age for all birthday cards.
+ * Implements specific rollover logic for past dates in the current year.
+ */
 function updateCountdowns() {
     const cards = document.querySelectorAll('.birthday-card');
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // Normalize to date-only comparison
     
     cards.forEach(card => {
         const [y, m, d] = card.dataset.birthdate.split('-').map(Number);
         const birthDate = new Date(y, m - 1, d);
         
-        // Calculate next birthday
+        // Calculate the next occurrence of this birthday
         let nextBirthday = new Date(today.getFullYear(), m - 1, d);
         
-        // Handle Leap Year Feb 29 edge case
-        if (m === 2 && d === 29 && !isLeapYear(today.getFullYear())) {
-            // If they are born on Feb 29 and it's not a leap year, 
-            // the Date constructor naturally rolls over to March 1st. 
-            // We'll leave it as is or explicitly set it.
-        }
+        // Note: Javascript's Date constructor handles Feb 29 rollover to March 1 
+        // naturally in non-leap years. We preserve this behavior for simplicity.
 
+        // If birthday already occurred this year, target next year
         if (nextBirthday < today) {
             nextBirthday.setFullYear(today.getFullYear() + 1);
         }
@@ -178,9 +245,10 @@ function updateCountdowns() {
         const diffTime = nextBirthday.getTime() - today.getTime();
         const daysUntil = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
-        // Calculate age they will turn
+        // Calculate age they will turn on their next birthday
         const age = nextBirthday.getFullYear() - birthDate.getFullYear();
         
+        // UI Update: localize targets within the card
         const daysSpan = card.querySelector('.countdown-days');
         const textSpan = card.querySelector('.countdown-text');
         const ageSpan = card.querySelector('.age-number');
@@ -188,6 +256,7 @@ function updateCountdowns() {
         card.classList.remove('today');
         
         if (daysUntil === 0) {
+            // Event Day: display victory feedback
             daysSpan.textContent = `${getIcon('victory')} TODAY!`;
             textSpan.textContent = '';
             card.classList.add('today');
@@ -201,12 +270,25 @@ function updateCountdowns() {
 }
 
 /**
- * Helpers & Utilities
+ * --- Helpers & Utilities ---
+ */
+
+/**
+ * Determines if a given year is a leap year.
+ * 
+ * @param {number} year - The 4-digit year.
+ * @returns {boolean} - True if leap year.
  */
 function isLeapYear(year) {
     return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 }
 
+/**
+ * Prevents XSS by sanitizing dynamic text strings.
+ * 
+ * @param {string} text - Raw input string.
+ * @returns {string} - Sanitized HTML string.
+ */
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -214,7 +296,11 @@ function escapeHtml(text) {
 }
 
 /**
- * Modal & Mode Toggles
+ * --- Interface Handlers ---
+ */
+
+/**
+ * Toggles between countdown grid and administrative management list.
  */
 function toggleManageMode() {
     manageMode = !manageMode;
@@ -233,6 +319,10 @@ function toggleManageMode() {
     }
 }
 
+/**
+ * Interface: openAddModal
+ * Initializes the birthday modal for a new record.
+ */
 function openAddModal() {
     const modal = document.getElementById('birthdayModal');
     if (!modal) return;
@@ -243,6 +333,12 @@ function openAddModal() {
     modal.style.display = 'flex';
 }
 
+/**
+ * Interface: openEditModal
+ * Pre-fills the birthday modal with existing record data.
+ * 
+ * @param {HTMLElement} btn - The edit button element containing the JSON record.
+ */
 function openEditModal(btn) {
     const b = JSON.parse(btn.dataset.birthday);
     const modal = document.getElementById('birthdayModal');
@@ -254,7 +350,22 @@ function openEditModal(btn) {
     modal.style.display = 'flex';
 }
 
+/**
+ * Hides the birthday record modal.
+ */
 function closeModal() {
     const modal = document.getElementById('birthdayModal');
     if (modal) modal.style.display = 'none';
 }
+
+/**
+ * Global Exposure
+ * Necessary for event handlers defined in server-rendered templates.
+ */
+window.submitBirthdayForm = submitBirthdayForm;
+window.confirmDelete = confirmDelete;
+window.toggleManageMode = toggleManageMode;
+window.openAddModal = openAddModal;
+window.openEditModal = openEditModal;
+window.closeModal = closeModal;
+window.refreshBirthdays = refreshBirthdays;
