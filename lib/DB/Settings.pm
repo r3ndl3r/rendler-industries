@@ -80,12 +80,12 @@ sub DB::get_all_settings {
         $settings->{gemini_key} = $key || '';
     };
 
-    # Safely fetch Google Cloud TTS API key
+    # Safely fetch Google Cloud API key (TTS/Translation)
     eval {
-        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'google_tts_key'");
+        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'google_cloud_key'");
         $sth->execute();
         my ($key) = $sth->fetchrow_array();
-        $settings->{google_tts_key} = $key || '';
+        $settings->{google_cloud_key} = $key || '';
     };
 
     return $settings;
@@ -415,31 +415,31 @@ sub DB::update_gemini_active_model {
     }
 }
 
-# Retrieves the Google Cloud TTS API key.
-sub DB::get_google_tts_key {
+# Retrieves the Google Cloud API key (TTS/Translation).
+sub DB::get_google_cloud_key {
     my ($self) = @_;
     $self->ensure_connection;
     my $key = '';
     eval {
-        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'google_tts_key'");
+        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'google_cloud_key'");
         $sth->execute();
         ($key) = $sth->fetchrow_array();
     };
     return $key || '';
 }
 
-# Updates the Google Cloud TTS API key.
-sub DB::update_google_tts_key {
+# Updates the Google Cloud API key.
+sub DB::update_google_cloud_key {
     my ($self, $api_key) = @_;
     $self->ensure_connection;
-    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'google_tts_key'");
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'google_cloud_key'");
     $sth->execute();
     my ($count) = $sth->fetchrow_array();
     if ($count > 0) {
-        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'google_tts_key'");
+        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'google_cloud_key'");
         $sth->execute($api_key);
     } else {
-        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('google_tts_key', ?)");
+        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('google_cloud_key', ?)");
         $sth->execute($api_key);
     }
 }
