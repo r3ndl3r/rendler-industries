@@ -10,7 +10,8 @@
  * - Real-time synchronization with family shopping data
  * - Sectioned views (To Buy vs. Checked Items)
  * - Automatic Google Search deep-linking for active items
- * - Themed modal interactions for editing and batch clearing
+ * - Mandatory Action pattern for editing and batch clearing (No Cancel buttons)
+ * - Lifecycle-aware button state management to prevent "stuck" indicators
  * - Mobile-first layout with high-visibility touch targets
  * 
  * Dependencies:
@@ -46,9 +47,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Modal: Configure global click-outside-to-close behavior
+    // Modal: Configure global click-outside-to-close behavior for all overlays
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeEditModal, closeConfirmModal
+        closeEditModal, closeConfirmModal, 
+        () => closeLocalModal('deleteItemModal'),
+        () => closeLocalModal('clearAllModal')
     ]);
 });
 
@@ -69,12 +72,15 @@ async function loadShoppingList() {
         renderShoppingList();
     } else {
         // Error handling with manual retry option
-        document.getElementById('shoppingListContainer').innerHTML = `
-            <div class="empty-state">
-                <p>Failed to load shopping list.</p>
-                <button onclick="loadShoppingList()" class="btn-secondary btn-small">Retry</button>
-            </div>
-        `;
+        const container = document.getElementById('shoppingListContainer');
+        if (container) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>Failed to load shopping list.</p>
+                    <button onclick="loadShoppingList()" class="btn-secondary btn-small">Retry</button>
+                </div>
+            `;
+        }
     }
 }
 
@@ -84,6 +90,7 @@ async function loadShoppingList() {
  */
 function renderShoppingList() {
     const container = document.getElementById('shoppingListContainer');
+    if (!container) return;
     
     // Handle empty state
     if (shoppingItems.length === 0) {
@@ -159,9 +166,9 @@ function renderItemHtml(item) {
             </div>
             <div class="action-buttons">
                 ${!isChecked ? `
-                    <button type="button" class="btn-icon-edit" onclick="editItem(${item.id}, \`${item.item_name.replace(/'/g, "\\'")}\`)" title="Edit">${getIcon('edit')}</button>
+                    <button type="button" class="btn-icon-edit" onclick="editItem(${item.id}, \`${item.item_name.replace(/`/g, "\\`")}\`)" title="Edit">${getIcon('edit')}</button>
                 ` : ''}
-                <button type="button" class="btn-icon-delete" onclick="deleteItem(${item.id}, \`${item.item_name.replace(/'/g, "\\'")}\`)" title="Delete">${getIcon('delete')}</button>
+                <button type="button" class="btn-icon-delete" onclick="deleteItem(${item.id}, \`${item.item_name.replace(/`/g, "\\`")}\`)" title="Delete">${getIcon('delete')}</button>
             </div>
         </div>
     `;
@@ -185,6 +192,11 @@ async function addItem() {
     btn.innerHTML = `${getIcon('waiting')} Adding...`;
 
     const result = await apiPost('/shopping/api/add', { item_name: name });
+    
+    // Lifecycle Cleanup: restore button state
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+
     if (result && result.success) {
         input.value = '';
         // Optimistic State Update
@@ -196,9 +208,6 @@ async function addItem() {
         });
         renderShoppingList();
     }
-    
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
 }
 
 /**
@@ -226,27 +235,40 @@ async function toggleItem(id) {
 
 /**
  * Modal: deleteItem
- * Triggers confirmation for item removal
+ * Orchestrates the Mandatory Action deletion flow for a specific item.
  * 
- * @param {number} id - Item ID
+ * @param {number} id - Item identifier
  * @param {string} itemName - Display name for confirmation text
  */
 function deleteItem(id, itemName) {
-    showConfirmModal({
-        title: 'Delete Item',
-        message: `Are you sure you want to remove "<strong>${itemName}</strong>" from the list?`,
-        danger: true,
-        confirmText: 'Delete',
-        loadingText: 'Deleting...',
-        onConfirm: async () => {
+    const text = document.getElementById('deleteItemText');
+    const btn = document.getElementById('confirmDeleteItemBtn');
+    const modal = document.getElementById('deleteItemModal');
+
+    if (text) text.innerHTML = `Are you sure you want to remove "<strong>${escapeHtml(itemName)}</strong>" from the list?`;
+    
+    if (btn) {
+        // Logic: bind closure-scoped ID to the centered action button
+        btn.onclick = async () => {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
+            
             const result = await apiPost(`/shopping/api/delete/${id}`);
+            
+            // Lifecycle Cleanup: Restore state
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
             if (result && result.success) {
-                // Update local state and refresh
                 shoppingItems = shoppingItems.filter(i => i.id != id);
+                closeLocalModal('deleteItemModal');
                 renderShoppingList();
             }
-        }
-    });
+        };
+    }
+    
+    if (modal) modal.style.display = 'flex';
 }
 
 /**
@@ -258,16 +280,20 @@ function deleteItem(id, itemName) {
  */
 function editItem(id, currentName) {
     document.getElementById('editId').value = id;
-    document.getElementById('editName').value = currentName;
-    document.getElementById('editModal').classList.add('show');
-    document.getElementById('editName').focus();
+    const nameInput = document.getElementById('editName');
+    if (nameInput) {
+        nameInput.value = currentName;
+        document.getElementById('editModal').classList.add('show');
+        nameInput.focus();
+    }
 }
 
 /**
  * Hides the item editor modal
  */
 function closeEditModal() { 
-    document.getElementById('editModal').classList.remove('show'); 
+    const modal = document.getElementById('editModal');
+    if (modal) modal.classList.remove('show'); 
 }
 
 /**
@@ -278,7 +304,8 @@ function closeEditModal() {
  */
 async function submitEdit() {
     const id = document.getElementById('editId').value;
-    const name = document.getElementById('editName').value.trim();
+    const nameInput = document.getElementById('editName');
+    const name = nameInput ? nameInput.value.trim() : '';
     const btn = document.querySelector('#editModal .btn-primary');
     if (!name) return;
 
@@ -288,6 +315,11 @@ async function submitEdit() {
     btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
     const result = await apiPost(`/shopping/api/edit/${id}`, { item_name: name });
+    
+    // Lifecycle Cleanup: Restore state
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+
     if (result && result.success) {
         // Sync local state and refresh UI
         const item = shoppingItems.find(i => i.id == id);
@@ -295,31 +327,48 @@ async function submitEdit() {
         renderShoppingList();
         closeEditModal();
     }
-    
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
 }
 
 /**
  * Modal: openClearAllModal
- * Confirmation for batch deletion of all checked items
+ * Orchestrates the Mandatory Action batch deletion flow.
  */
 function openClearAllModal() {
-    showConfirmModal({
-        title: 'Clear All',
-        message: 'Are you sure you want to clear all checked items?',
-        danger: true,
-        confirmText: 'Clear All',
-        loadingText: 'Clearing...',
-        onConfirm: async () => {
+    const btn = document.getElementById('confirmClearAllBtn');
+    const modal = document.getElementById('clearAllModal');
+
+    if (btn) {
+        btn.onclick = async () => {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Clearing...`;
+            
             const result = await apiPost('/shopping/api/clear');
+            
+            // Lifecycle Cleanup
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
             if (result && result.success) {
-                // Remove all checked items from local state
                 shoppingItems = shoppingItems.filter(i => !i.is_checked);
+                closeLocalModal('clearAllModal');
                 renderShoppingList();
             }
-        }
-    });
+        };
+    }
+
+    if (modal) modal.style.display = 'flex';
+}
+
+/**
+ * Interface: closeLocalModal
+ * Utility for closing localized single-button modals.
+ * 
+ * @param {string} id - Modal identifier
+ */
+function closeLocalModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'none';
 }
 
 /**
@@ -330,6 +379,7 @@ function openClearAllModal() {
  * @returns {string} - Sanitized HTML string
  */
 function escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
@@ -346,3 +396,4 @@ window.submitEdit = submitEdit;
 window.openClearAllModal = openClearAllModal;
 window.loadShoppingList = loadShoppingList;
 window.closeEditModal = closeEditModal;
+window.closeLocalModal = closeLocalModal;
