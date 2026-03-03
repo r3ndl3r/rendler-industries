@@ -46,7 +46,7 @@
     margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.3);
     position: relative;
@@ -91,9 +91,10 @@
 
 .item-content {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 18px;
     flex: 1;
+    min-width: 0;
 }
 
 .item-name {
@@ -102,6 +103,16 @@
     color: #ffffff;
     letter-spacing: 0.2px;
     line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    padding-right: 15px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-top: -2px;
 }
 
 .todo-item.completed .item-name {
