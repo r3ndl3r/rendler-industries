@@ -4,7 +4,7 @@
 % title icon('imposter') . ' Imposter Game';
 
 % content_for 'head' => begin
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/js/vendor/tailwind.min.js?<%= time %>"></script>
     <link rel="stylesheet" href="/css/imposter.css?<%= time %>">
     <script src="/js/imposter.js?<%= time %>"></script>
 % end
