@@ -1,10 +1,31 @@
-/* /public/js/users.js */
+// /public/js/users.js
 
 /**
- * Toggles a user role via AJAX.
- * @param {number} userId - The ID of the user to update.
- * @param {string} role - 'admin' or 'family'.
- * @param {boolean} value - True for enabled, false for disabled.
+ * User Management Controller Module
+ * 
+ * This module manages the Administrative User interface. It handles role 
+ * toggling, account approval, and record modification through a high-density 
+ * AJAX-driven SPA ledger.
+ * 
+ * Features:
+ * - Real-time role switching (Admin/Family) with toggle-switch UI
+ * - Integrated approval workflow for pending registrations
+ * - Dynamic ledger updates (row reconciliation) after edits
+ * - Themed confirmation workflow for permanent user deletion
+ * - Visual fade-out animations for record removal
+ * 
+ * Dependencies:
+ * - default.js: For apiPost, getIcon, and modal helpers
+ * - toast.js: For operation feedback
+ */
+
+/**
+ * Action: toggleRole (Admin)
+ * Inverts a user's permission bit on the server.
+ * 
+ * @param {number} userId - Target user
+ * @param {string} role - 'admin' or 'family'
+ * @param {boolean} value - Target state
  */
 async function toggleRole(userId, role, value) {
     const data = {
@@ -14,35 +35,49 @@ async function toggleRole(userId, role, value) {
     };
 
     const result = await apiPost('/users/toggle_role', data);
+    // Logic: fallback to reload on failure to sync visual switch state
     if (!result || !result.success) {
         location.reload();
     }
 }
 
-// Handle Forms and Listeners
+/**
+ * Initialization System
+ * Sets up listeners for user management forms.
+ */
 document.addEventListener('DOMContentLoaded', function() {
     const editForm = document.getElementById('editUserForm');
     if (editForm) {
+        /**
+         * Action: Edit Submission Handler
+         * Submits account modifications and reconciles the ledger row.
+         */
         editForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             const btn = this.querySelector('button[type="submit"]');
-            const originalHtml = btn.innerHTML;
+            const originalHtml = btn ? btn.innerHTML : '';
             const userId = document.getElementById('editUserId').value;
             const formData = new FormData(this);
             
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Saving...`;
+            // UI Feedback: disable button and pulse icon
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `${getIcon('waiting')} Saving...`;
+            }
 
             const result = await apiPost(`/users/update/${userId}`, Object.fromEntries(formData));
             
-            // Always reset button state before closing or on error
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
+            // Cleanup UI state
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
 
             if (result && result.success) {
                 closeEditModal();
                 
-                // Dynamic DOM Update
+                // Logic: Dynamic Ledger Reconciliation
+                // Manually update cells to avoid a full list fetch/re-render
                 const row = document.getElementById(`user-row-${userId}`);
                 if (row) {
                     row.querySelector('.user-username').textContent = formData.get('username');
@@ -64,6 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const status = formData.get('status');
                     if (status === 'approved') {
                         statusCell.innerHTML = '<span class="status-badge status-approved">Approved</span>';
+                        // Lifecycle: remove redundant approval button if status shifted
                         const approveBtn = row.querySelector('.btn-icon-view');
                         if (approveBtn) approveBtn.closest('form')?.remove();
                     } else {
@@ -74,35 +110,53 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Use global modal closing helper
+    // Modal: Configure global closure logic
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
         closeEditModal, closeConfirmModal
     ]);
 });
 
+/**
+ * Action: approveUser (Admin)
+ * Transitions a user from 'pending' to 'approved' state.
+ * 
+ * @param {number} userId - Target user
+ * @param {HTMLElement} formEl - The triggering form container for cleanup
+ */
 async function approveUser(userId, formEl) {
     const btn = formEl.querySelector('button');
-    const originalHtml = btn.innerHTML;
+    const originalHtml = btn ? btn.innerHTML : '';
     
-    btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')}`;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `${getIcon('waiting')}`;
+    }
 
     const result = await apiPost(`/users/approve/${userId}`);
     if (result && result.success) {
+        // UI Sync: Update row status and remove trigger
         const row = document.getElementById(`user-row-${userId}`);
         if (row) {
             const statusCell = row.querySelector('.user-status-cell');
-            statusCell.innerHTML = '<span class="status-badge status-approved">Approved</span>';
+            if (statusCell) statusCell.innerHTML = '<span class="status-badge status-approved">Approved</span>';
             formEl.remove();
         }
-    } else {
+    } else if (btn) {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
 }
 
+/**
+ * Interface: openEditUserModal
+ * Pre-fills the administrative user editor.
+ * 
+ * @param {Object} user - User record from state
+ */
 function openEditUserModal(user) {
     const modal = document.getElementById('editUserModal');
+    if (!modal) return;
+
     document.getElementById('editUserId').value = user.id;
     document.getElementById('editUsername').value = user.username;
     document.getElementById('editEmail').value = user.email;
@@ -114,11 +168,19 @@ function openEditUserModal(user) {
     document.body.classList.add('modal-open');
 }
 
+/**
+ * Hides the user editor interface.
+ */
 function closeEditModal() {
-    document.getElementById('editUserModal').style.display = 'none';
+    const modal = document.getElementById('editUserModal');
+    if (modal) modal.style.display = 'none';
     document.body.classList.remove('modal-open');
 }
 
+/**
+ * Action: confirmDeleteUser (Admin)
+ * Specialized confirmation workflow for permanent account removal.
+ */
 function confirmDeleteUser(id, username) {
     showConfirmModal({
         title: 'Delete User',
@@ -129,6 +191,7 @@ function confirmDeleteUser(id, username) {
         onConfirm: async () => {
             const result = await apiPost(`/users/delete/${id}`);
             if (result && result.success) {
+                // UI Lifecycle: animate row removal
                 const row = document.getElementById(`user-row-${id}`);
                 if (row) {
                     row.classList.add('row-fade-out');
@@ -138,3 +201,13 @@ function confirmDeleteUser(id, username) {
         }
     });
 }
+
+/**
+ * Global Exposure
+ * Required for event delegation and template handlers.
+ */
+window.toggleRole = toggleRole;
+window.approveUser = approveUser;
+window.openEditUserModal = openEditUserModal;
+window.closeEditModal = closeEditModal;
+window.confirmDeleteUser = confirmDeleteUser;
