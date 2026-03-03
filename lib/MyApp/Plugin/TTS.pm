@@ -33,10 +33,10 @@ sub register {
         #   voice_name    : (optional) Specific voice e.g. 'en-AU-Neural2-A'
         #   gender        : (optional) 'MALE', 'FEMALE', or 'NEUTRAL' (default: 'FEMALE')
 
-        my $api_key = $c->db->get_google_tts_key();
+        my $api_key = $c->db->get_google_cloud_key();
         unless ($api_key) {
-            $c->app->log->warn('TTS: Google TTS API key not configured');
-            return { error => 'Google TTS API key not configured' };
+            $c->app->log->warn('TTS: Google Cloud API key not configured');
+            return { error => 'Google Cloud API key not configured' };
         }
 
         unless ($args{text}) {
