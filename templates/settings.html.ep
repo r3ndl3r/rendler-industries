@@ -288,6 +288,41 @@
             </div>
         </div>
 
+        <div class="settings-card" data-card="google_tts">
+            <div class="settings-card-header" role="button" tabindex="0" aria-expanded="false">
+                <div class="card-header-meta">
+                    <h3 class="settings-card-title">Google Text-to-Speech</h3>
+                    <p class="settings-card-desc">Google Cloud TTS API key for voice synthesis.</p>
+                </div>
+                <div class="card-header-right">
+                    <span class="settings-badge <%= $google_tts_key ? 'badge-active' : 'badge-inactive' %>">
+                        <%= $google_tts_key ? 'Configured' : 'Not Set' %>
+                    </span>
+                    <span class="card-chevron"></span>
+                </div>
+            </div>
+            <div class="settings-card-body">
+                <div class="settings-card-body-inner">
+                    <form method="POST" action="/settings/update">
+                        <input type="hidden" name="section" value="google_tts">
+                        <div class="settings-fields">
+                            <div class="form-group full-width">
+                                <label>API Key</label>
+                                <div class="input-wrapper">
+                                    <input type="password" name="google_tts_key" class="form-input"
+                                        value="<%= $google_tts_key // '' %>" autocomplete="off">
+                                    <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary btn-small">Save TTS Settings</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
       </div>
 
       <%# Application %>
