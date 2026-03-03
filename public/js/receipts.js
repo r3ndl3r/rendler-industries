@@ -1,83 +1,52 @@
 // /public/js/receipts.js
 
 /**
- * Receipt Management and AI Analysis Logic - 100% AJAX SPA
+ * Receipt Ledger Controller Module
+ * 
+ * This module manages the Receipt Management and AI Analysis interface. It 
+ * handles large file uploads, specialized client-side image cropping,
+ * and integration with the Gemini-powered OCR digitization engine.
+ * 
+ * Features:
+ * - Real-time ledger filtering (Search, Store, Date, AI Status, Uploader)
+ * - Intelligent expenditure statistics with mobile-responsive breakdowns
+ * - Integrated client-side image cropping (Cropper.js) for pre and post-upload refinement
+ * - One-click AI digitization workflow with electronic receipt rendering
+ * - HEIC/HEIF image conversion support for cross-platform compatibility
+ * - Drag-and-drop file upload zone with 1GB capacity support
+ * 
+ * Dependencies:
+ * - default.js: For apiPost, getLoadingHtml, getIcon, and modal helpers
+ * - cropperjs: For image manipulation
+ * - heic2any: For modern image format conversion
  */
 
-let cropper         = null;
-let currentReceipts = [];
-let storeNames      = [];
-let uploaders       = [];
-let summary         = {};
-let breakdown       = {};
-let isAdmin         = false;
-let currentUser     = '';
-let currentOffset   = 0;
-let refinedBlob     = null; // Local store for cropped data
-let refinedName     = '';
-const LIMIT         = 10;
+/**
+ * Application State
+ * Maintains collection metadata, stats summary, and interactive UI states
+ */
+let cropper         = null;         // Cropper.js instance
+let currentReceipts = [];           // Active list of receipt objects {id, store_name, total_amount, ...}
+let storeNames      = [];           // Unified list of stores for filter dropdowns
+let uploaders       = [];           // Unified list of uploaders for filter dropdowns
+let summary         = {};           // Aggregated spend totals (week, month, year)
+let breakdown       = {};           // Store-specific breakdowns for the stats tiles
+let isAdmin         = false;        // Permission context
+let currentUser     = '';           // Current session username for ownership logic
+let currentOffset   = 0;            // Pagination pointer
+let refinedBlob     = null;         // Local store for cropped image data during upload
+let refinedName     = '';           // Processed filename for refined uploads
+const LIMIT         = 10;           // Pagination page size
 
-// --- Modal Management Functions ---
-
-function closeReceiptModal() {
-    const modal = document.getElementById('receiptModal');
-    if (modal) modal.style.display = 'none';
-}
-
-function closeEditModal() {
-    const modal = document.getElementById('editModal');
-    if (modal) modal.style.display = 'none';
-}
-
-function closeCropModal() {
-    const modal = document.getElementById('cropModal');
-    if (modal) modal.style.display = 'none';
-}
-
-function closePreUploadCropModal() {
-    const modal = document.getElementById('preUploadCropModal');
-    if (modal && modal.style.display !== 'none') {
-        modal.style.display = 'none';
-        if (cropper) {
-            cropper.destroy();
-            cropper = null;
-        }
-        openUploadModal();
-    }
-}
-
-function openUploadModal() {
-    const modal = document.getElementById('uploadModal');
-    if (modal) modal.style.display = 'flex';
-}
-
-function closeUploadModal() {
-    const modal = document.getElementById('uploadModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-    refinedBlob = null; // Clear refined state on close
-}
-
-function closeEReceiptModal() {
-    const modal = document.getElementById('eReceiptModal');
-    if (modal) modal.style.display = 'none';
-}
-
-// Global Exports
-window.closeReceiptModal = closeReceiptModal;
-window.closeEditModal = closeEditModal;
-window.closeCropModal = closeCropModal;
-window.closePreUploadCropModal = closePreUploadCropModal;
-window.closeEReceiptModal = closeEReceiptModal;
-window.openUploadModal = openUploadModal;
-window.closeUploadModal = closeUploadModal;
-
+/**
+ * Initialization System
+ * Boots the ledger state and establishes filter event delegation
+ */
 document.addEventListener('DOMContentLoaded', function() {
-    // Initial State Load
+    // Bootstrap initial collection
     loadState();
 
-    // Attach listeners to all filter inputs
+    // Setup debounced filtering for high-performance searching
     const filterIds = ['filterSearch', 'filterStore', 'filterTime', 'filterAI', 'filterUploader', 'filterMinAmount'];
     filterIds.forEach(id => {
         const el = document.getElementById(id);
@@ -89,13 +58,13 @@ document.addEventListener('DOMContentLoaded', function() {
         el.addEventListener(eventType, () => {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
-                currentOffset = 0;
+                currentOffset = 0; // Reset pagination on new filter
                 loadState();
             }, 300);
         });
     });
 
-    // Reset button logic
+    // Interaction: Filter reset logic
     const resetBtn = document.getElementById('resetFilters');
     if (resetBtn) {
         resetBtn.onclick = () => {
@@ -108,16 +77,18 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
+    // Interaction: Pagination loader
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     if (loadMoreBtn) {
         loadMoreBtn.onclick = loadMore;
     }
 
+    // Interaction: File upload drop-zone orchestration
     const dropZone        = document.getElementById('dropZone');
     const fileInput       = document.getElementById('file');
-    const fileNameDisplay = document.getElementById('fileName');
 
     if (dropZone && fileInput) {
+        // Handle drag states
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, e => {
                 e.preventDefault();
@@ -130,6 +101,8 @@ document.addEventListener('DOMContentLoaded', function() {
         ['dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
         });
+        
+        // Process file drops
         dropZone.addEventListener('drop', e => {
             const files = e.dataTransfer.files;
             if (files.length > 0) {
@@ -138,13 +111,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, false);
 
+        // Process manual selections and trigger refinement workflow
         fileInput.addEventListener('change', function() {
             if (this.files.length > 0) {
                 const file = this.files[0];
                 updateFileName(file.name);
-                refinedBlob = null; // New selection, clear refined state
+                refinedBlob = null; // Reset refinement state for new file
                 const lowerName = file.name.toLowerCase();
                 if (file.type.startsWith('image/') || lowerName.endsWith('.heic') || lowerName.endsWith('.heif')) {
+                    // Transition to refinement interface
                     closeUploadModal();
                     initPreUploadCrop(file);
                 }
@@ -152,6 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Form: Submission handling
     const uploadForm = document.getElementById('uploadForm');
     if (uploadForm) {
         uploadForm.addEventListener('submit', handleUpload);
@@ -162,28 +138,21 @@ document.addEventListener('DOMContentLoaded', function() {
         editForm.onsubmit = handleEditSubmit;
     }
 
-    // --- Confirmation Modal Functions ---
-
-    window.confirmDeleteReceipt = function(id, label) {
-        showConfirmModal({
-            title: 'Delete Receipt',
-            message: `Are you sure you want to permanently delete the receipt for "<strong>${label}</strong>"?`,
-            danger: true,
-            confirmText: 'Delete Receipt',
-            onConfirm: () => deleteReceipt(id)
-        });
-    };
-
-    // Standardize modal closing using global helper from default.js
-    if (typeof setupGlobalModalClosing === 'function') {
-        setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay', 'image-modal-overlay'], [
-            closeReceiptModal, closeEditModal, closeCropModal, closePreUploadCropModal, closeEReceiptModal, closeConfirmModal
-        ]);
-    }
+    // Modal: Configure unified click-outside behavior
+    setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay', 'image-modal-overlay'], [
+        closeReceiptModal, closeEditModal, closeCropModal, closePreUploadCropModal, closeEReceiptModal, closeConfirmModal
+    ]);
 });
 
-// --- API and State Management ---
+/**
+ * --- API and State Management ---
+ */
 
+/**
+ * Fetches the master ledger state including receipts, metadata, and stats.
+ * 
+ * @returns {Promise<void>}
+ */
 async function loadState() {
     const filters = getActiveFilters();
     const params = new URLSearchParams(filters);
@@ -193,6 +162,7 @@ async function loadState() {
         const data = await response.json();
 
         if (data.success) {
+            // Update comprehensive module state
             currentReceipts = data.receipts;
             storeNames = data.store_names;
             uploaders = data.uploaders;
@@ -202,20 +172,27 @@ async function loadState() {
             if (data.current_user !== undefined) currentUser = data.current_user;
             currentOffset = currentReceipts.length;
 
+            // Trigger UI layer updates
             updateFilterDropdowns();
             renderStats();
             renderReceipts(false);
             
+            // Manage pagination visibility
             const loadMoreBtn = document.getElementById('loadMoreBtn');
             if (loadMoreBtn) {
                 loadMoreBtn.style.display = (data.has_more || currentReceipts.length >= 10) ? 'inline-block' : 'none';
             }
         }
     } catch (e) {
-        console.error("LoadState Error:", e);
+        console.error("loadState Error:", e);
     }
 }
 
+/**
+ * Fetches subsequent pages of receipt data for the ledger.
+ * 
+ * @returns {Promise<void>}
+ */
 async function loadMore() {
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     if (loadMoreBtn) {
@@ -232,9 +209,10 @@ async function loadMore() {
 
         if (data.success && data.receipts) {
             const newItems = data.receipts;
+            // Append to master state
             currentReceipts = [...currentReceipts, ...newItems];
             
-            // Render only the new items
+            // Perform incremental DOM update
             renderReceipts(true, newItems);
             
             currentOffset += newItems.length;
@@ -244,7 +222,7 @@ async function loadMore() {
             }
         }
     } catch (e) {
-        console.error("LoadMore Error:", e);
+        console.error("loadMore Error:", e);
     } finally {
         if (loadMoreBtn) {
             loadMoreBtn.disabled = false;
@@ -253,6 +231,10 @@ async function loadMore() {
     }
 }
 
+/**
+ * UI Component: renderStats
+ * Generates the spend aggregate tiles with hidden breakdown sections.
+ */
 function renderStats() {
     const container = document.getElementById('spendingSummaryContainer');
     if (!container) return;
@@ -294,22 +276,30 @@ function renderStats() {
 }
 
 /**
- * Toggles expanded state for stat tiles on mobile.
+ * Toggles expanded breakdown state for stat tiles on mobile devices.
+ * 
+ * @param {HTMLElement} el - Clicked tile
  */
 function toggleStatTile(el) {
-    // Only toggle if we are in mobile view (detected by presence of toggle icon visibility)
     const icon = el.querySelector('.tile-toggle-icon');
+    // Device check: only trigger if the toggle icon is visible (CSS media query dependency)
     if (icon && getComputedStyle(icon).display !== 'none') {
         el.classList.toggle('expanded');
     }
 }
 
-window.toggleStatTile = toggleStatTile;
-
+/**
+ * UI Engine: renderReceipts
+ * Generates the master ledger table from current state.
+ * 
+ * @param {boolean} append - Whether to append or replace existing rows
+ * @param {Array|null} itemsToAppend - Subset of items for incremental rendering
+ */
 function renderReceipts(append = false, itemsToAppend = null) {
     const tbody = document.getElementById('receiptsTableBody');
     if (!tbody) return;
 
+    // Handle empty state
     if (!append && currentReceipts.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="receipt-empty-ledger">📭 No receipts found. Upload one to get started.</td></tr>';
         return;
@@ -389,12 +379,19 @@ function renderReceipts(append = false, itemsToAppend = null) {
     }
 }
 
+/**
+ * Action: handleUpload
+ * Manages multipart file uploads with optional refined blob support.
+ * 
+ * @param {Event} e - Form submission event
+ * @returns {Promise<void>}
+ */
 async function handleUpload(e) {
     if (e) e.preventDefault();
     const form = document.getElementById('uploadForm');
     const formData = new FormData(form);
     
-    // Check if we should override with refined data
+    // Check if we should override the raw selection with a refined crop blob
     if (refinedBlob) {
         formData.delete('file');
         formData.append('file', refinedBlob, refinedName || 'receipt.png');
@@ -412,12 +409,14 @@ async function handleUpload(e) {
         if (result.success) {
             showToast(result.message, 'success');
             
+            // Reset UI state
             if (form) form.reset();
             const fileName = document.getElementById('fileName');
             if (fileName) fileName.style.display = 'none';
 
             closeUploadModal();
             
+            // Insert into active view and refresh summaries
             currentReceipts.unshift(result.receipt);
             summary = result.summary;
             breakdown = result.breakdown;
@@ -428,12 +427,19 @@ async function handleUpload(e) {
             showToast(result.error || 'Upload failed.', 'error');
         }
     } catch (e) {
-        console.error("Upload Error:", e);
+        console.error("handleUpload Error:", e);
     } finally {
         hideLoadingOverlay();
     }
 }
 
+/**
+ * Action: handleEditSubmit
+ * Updates existing receipt metadata.
+ * 
+ * @param {Event} e - Form submission event
+ * @returns {Promise<void>}
+ */
 async function handleEditSubmit(e) {
     e.preventDefault();
     const form = e.target;
@@ -456,6 +462,7 @@ async function handleEditSubmit(e) {
             showToast(result.message, 'success');
             closeEditModal();
             
+            // Update local master collection
             const index = currentReceipts.findIndex(r => r.id == id);
             if (index !== -1) {
                 currentReceipts[index] = result.receipt;
@@ -469,13 +476,20 @@ async function handleEditSubmit(e) {
             showToast(result.error || 'Failed to update.', 'error');
         }
     } catch (e) {
-        console.error("Update Error:", e);
+        console.error("handleEditSubmit Error:", e);
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
 }
 
+/**
+ * Action: deleteReceipt
+ * Permanently removes a receipt from the system.
+ * 
+ * @param {number} id - Target ID
+ * @returns {Promise<void>}
+ */
 async function deleteReceipt(id) {
     try {
         const response = await fetch(`/receipts/api/delete/${id}`, { method: 'POST' });
@@ -492,11 +506,18 @@ async function deleteReceipt(id) {
             showToast(result.error || 'Failed to delete receipt.', 'error');
         }
     } catch (e) {
-        console.error("Delete Error:", e);
+        console.error("deleteReceipt Error:", e);
         showToast("Network error during deletion", "error");
     }
 }
 
+/**
+ * --- UI Helpers & Utilities ---
+ */
+
+/**
+ * Syncs the filter select elements with dynamic store and uploader lists.
+ */
 function updateFilterDropdowns() {
     const storeSelect = document.getElementById('filterStore');
     if (storeSelect) {
@@ -513,6 +534,11 @@ function updateFilterDropdowns() {
     }
 }
 
+/**
+ * Captures current values of all ledger filter inputs.
+ * 
+ * @returns {Object} - Active filter state
+ */
 function getActiveFilters() {
     return {
         search:     document.getElementById('filterSearch')?.value || '',
@@ -524,12 +550,24 @@ function getActiveFilters() {
     };
 }
 
+/**
+ * Resolves store branding assets from filesystem based on name.
+ * 
+ * @param {string} name - Merchant name
+ * @returns {string|null} - Path to branding image or null
+ */
 function getStoreIcon(name) {
     if (!name) return null;
     const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
     return `/images/shops/${slug}.png`;
 }
 
+/**
+ * Prevents XSS by sanitizing dynamic HTML injections.
+ * 
+ * @param {string} text - Raw input
+ * @returns {string} - Sanitized HTML
+ */
 function escapeHtml(text) {
     if (!text) return '';
     return String(text)
@@ -540,11 +578,23 @@ function escapeHtml(text) {
         .replace(/'/g, '&#39;');
 }
 
-// --- Crop and Upload Workflow ---
+/**
+ * --- Crop and Refinement Workflow ---
+ */
 
+/**
+ * Workflow: initPreUploadCrop
+ * Initializes the refinement interface for new uploads.
+ * Handles HEIC to JPEG conversion for browser-side cropping.
+ * 
+ * @param {File} file - Raw uploaded file
+ * @returns {Promise<void>}
+ */
 async function initPreUploadCrop(file) {
     let displayFile    = file;
     const lowerName    = file.name.toLowerCase();
+    
+    // Compatibility: convert HEIC formats for preview display
     if (lowerName.endsWith('.heic') || lowerName.endsWith('.heif')) {
         showToast('Converting HEIC for preview...', 'info');
         try {
@@ -562,12 +612,12 @@ async function initPreUploadCrop(file) {
     const applyBtn = document.querySelector('#preUploadCropModal .btn-primary');
     
     if (modal && img) {
+        // Cleanup previous instances to prevent memory leaks
         if (cropper) {
             cropper.destroy();
             cropper = null;
         }
 
-        // Disable apply button until cropper is ready
         if (applyBtn) {
             applyBtn.disabled = true;
             applyBtn.innerHTML = 'Initializing...';
@@ -581,6 +631,7 @@ async function initPreUploadCrop(file) {
                 
                 modal.style.display = 'flex';
                 
+                // Initialize Cropper engine with automated area detection
                 cropper = new Cropper(img, { 
                     viewMode: 1, 
                     autoCropArea: 1, 
@@ -598,6 +649,7 @@ async function initPreUploadCrop(file) {
                 showToast("Failed to initialize cropping engine", "error");
             }
             
+            // Lifecycle: revoke URL to free memory after safe margin
             setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
         };
         
@@ -609,6 +661,10 @@ async function initPreUploadCrop(file) {
     }
 }
 
+/**
+ * Action: applyPreUploadCrop
+ * Captures the current crop area and stores it as a blob for subsequent upload.
+ */
 function applyPreUploadCrop() {
     if (!cropper) return;
     
@@ -617,7 +673,7 @@ function applyPreUploadCrop() {
     btn.disabled = true;
     btn.innerHTML = 'Refining...';
 
-    // Capture with white background to avoid blackness/transparency
+    // Captures with white background to prevent black padding in non-square crops
     const canvas = cropper.getCroppedCanvas({ fillColor: '#fff' });
     
     if (!canvas) {
@@ -634,12 +690,12 @@ function applyPreUploadCrop() {
             return;
         }
 
+        // Store refinement data for the handleUpload hook
         refinedBlob = blob;
         const fileInput = document.getElementById('file');
         refinedName = fileInput.files[0].name.replace(/\.[^/.]+$/, "") + ".png";
         
         updateFileName("(Refined) " + refinedName);
-        
         showToast('Image refined! Ready to upload.', 'success');
         
         if (cropper) {
@@ -654,6 +710,12 @@ function applyPreUploadCrop() {
     }, 'image/png');
 }
 
+/**
+ * UI: updateFileName
+ * Updates the display name in the upload zone.
+ * 
+ * @param {string} name - Filename
+ */
 function updateFileName(name) {
     const fileNameDisplay = document.getElementById('fileName');
     if (fileNameDisplay) {
@@ -662,8 +724,14 @@ function updateFileName(name) {
     }
 }
 
-// --- Legacy Actions (kept for compatibility) ---
+/**
+ * --- Interface Handlers & Legacy Actions ---
+ */
 
+/**
+ * Interface: openReceiptModal
+ * Displays the full-size receipt image in a lightbox.
+ */
 window.openReceiptModal = function(id) {
     const modalImg = document.getElementById('modalImg');
     const modal    = document.getElementById('receiptModal');
@@ -673,6 +741,12 @@ window.openReceiptModal = function(id) {
     }
 };
 
+/**
+ * Interface: openEditModal
+ * Pre-fills the metadata editor and manages AI data application buttons.
+ * 
+ * @param {Object} receipt - Receipt record
+ */
 window.openEditModal = function(receipt) {
     const modal = document.getElementById('editModal');
     const form  = document.getElementById('editForm');
@@ -685,6 +759,7 @@ window.openEditModal = function(receipt) {
         document.getElementById('editAmount').value      = receipt.total_amount || '';
         document.getElementById('editDescription').value = receipt.description || '';
         
+        // Context: only show AI button if structured data exists
         if (btnAI) {
             if (receipt.ai_json && receipt.ai_json.trim().startsWith('{')) {
                 btnAI.style.display = 'flex';
@@ -693,6 +768,7 @@ window.openEditModal = function(receipt) {
                         const data = JSON.parse(receipt.ai_json);
                         if (data.store_name) document.getElementById('editStoreName').value = data.store_name;
                         if (data.total_amount) document.getElementById('editAmount').value = data.total_amount;
+                        // Transform date format for HTML input compatibility
                         if (data.date) {
                             let dateVal = data.date;
                             if (dateVal.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
@@ -714,6 +790,12 @@ window.openEditModal = function(receipt) {
     }
 };
 
+/**
+ * Interface: openCropModal
+ * Initializes post-upload refinement for an existing record.
+ * 
+ * @param {number} id - Receipt ID
+ */
 window.openCropModal = async function(id) {
     const modal      = document.getElementById('cropModal');
     const img        = document.getElementById('cropImg');
@@ -724,6 +806,8 @@ window.openCropModal = async function(id) {
         const response = await fetch('/receipts/serve/' + id);
         const blob     = await response.blob();
         let displayBlob = blob;
+        
+        // Format check: convert HEIC if necessary
         if (blob.type === 'image/heic' || blob.type === 'image/heif') {
             showToast('Converting HEIC for preview...', 'info');
             const convertedBlob = await heic2any({ blob: blob, toType: 'image/jpeg', quality: 0.8 });
@@ -744,7 +828,7 @@ window.openCropModal = async function(id) {
         };
         img.src = objectUrl;
         
-        // Target specific save button logic for post-upload crop
+        // Scope the save button to this specific record ID
         window.saveCrop = async function() {
             if (!cropper) return;
             const btn = document.querySelector('#cropModal .btn-primary');
@@ -781,12 +865,21 @@ window.openCropModal = async function(id) {
     }
 };
 
+/**
+ * Action: triggerOCR
+ * Initiates the AI-driven OCR scan for a specific receipt.
+ * 
+ * @param {number} id - Receipt ID
+ */
 window.triggerOCR = function(id) {
     const btn             = document.getElementById('ocr-btn-' + id);
     const originalContent = btn.innerHTML;
+    if (!btn) return;
+
     btn.disabled   = true;
     btn.innerHTML  = `${getIcon('waiting')} ...`;
     showToast('Scanning receipt... please wait.', 'info');
+    
     fetch('/receipts/api/ocr/' + id, { method: 'POST' })
         .then(r => r.json())
         .then(data => {
@@ -794,6 +887,7 @@ window.triggerOCR = function(id) {
             btn.innerHTML = originalContent;
             if (data.success) {
                 showToast('OCR complete! Reviewing details.', 'success');
+                // Open editor with extracted AI data
                 openEditModal({
                     id:           id,
                     store_name:   data.store_name,
@@ -812,29 +906,46 @@ window.triggerOCR = function(id) {
         });
 };
 
+/**
+ * Workflow: reScanReceipt
+ * Forces a new AI analysis of an already digitized receipt.
+ */
 window.reScanReceipt = function() {
     const modal = document.getElementById('eReceiptModal');
-    const content = document.getElementById('eReceiptContent');
-    const receiptId = modal.dataset.receiptId;
+    const receiptId = modal ? modal.dataset.receiptId : null;
     if (!receiptId) return;
 
     const btn = document.querySelector('.btn-ereceipt-rescan');
-    const originalHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Rescanning...`;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `${getIcon('waiting')} Rescanning...`;
+    }
 
     viewElectronicReceipt(receiptId, 1);
 };
 
+/**
+ * Workflow: viewElectronicReceipt
+ * Orchestrates the AI analysis or retrieval of structured receipt data.
+ * Generates the "Electronic Receipt" visual fragment.
+ * 
+ * @param {number} id - Receipt ID
+ * @param {number} force - Forced re-analysis flag (1/0)
+ * @param {string|null} preLoadedData - Existing AI JSON string
+ * @param {string|null} initialIcon - Merchant branding path
+ */
 window.viewElectronicReceipt = function(id, force = 0, preLoadedData = null, initialIcon = null) {
     const modal = document.getElementById('eReceiptModal');
     const content = document.getElementById('eReceiptContent');
     const rescanBtn = document.querySelector('.btn-ereceipt-rescan');
     const originalRescanHtml = rescanBtn ? rescanBtn.innerHTML : '';
     
-    modal.style.display = 'flex';
-    modal.dataset.receiptId = id;
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.dataset.receiptId = id;
+    }
 
+    // Optimization: avoid network call if valid data is provided and not forced
     if (preLoadedData && preLoadedData.trim() !== '' && !force) {
         try {
             const data = JSON.parse(preLoadedData);
@@ -845,9 +956,13 @@ window.viewElectronicReceipt = function(id, force = 0, preLoadedData = null, ini
         } catch(e) {}
     }
 
-    content.innerHTML = getLoadingHtml('Digitizing...', 'Analyzing items and structured data', true);
+    if (content) content.innerHTML = getLoadingHtml('Digitizing...', 'Analyzing items and structured data', true);
 
-    fetch(`/receipts/api/ai_analyze/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ force: force }) })
+    fetch(`/receipts/api/ai_analyze/${id}`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
+        body: new URLSearchParams({ force: force }) 
+    })
     .then(r => r.json())
     .then(res => {
         if (rescanBtn) {
@@ -856,11 +971,11 @@ window.viewElectronicReceipt = function(id, force = 0, preLoadedData = null, ini
         }
         if (res.success) {
             showToast("AI Analysis complete", "success");
-            loadState(); // Refresh everything to get the AI badge
+            loadState(); // Sync state to show AI badge in ledger
             renderEReceipt(res.data, initialIcon);
         } else {
             showToast(res.error || "AI analysis failed", "error");
-            content.innerHTML = `<div class="alert alert-error">${res.error || 'AI analysis failed'}</div>`;
+            if (content) content.innerHTML = `<div class="alert alert-error">${res.error || 'AI analysis failed'}</div>`;
         }
     })
     .catch(() => {
@@ -871,17 +986,31 @@ window.viewElectronicReceipt = function(id, force = 0, preLoadedData = null, ini
     });
 };
 
+/**
+ * UI Component: renderEReceipt
+ * Generates the digital receipt view from AI-structured data.
+ * 
+ * @param {Object} data - Structured receipt data {store_name, items, total_amount, ...}
+ * @param {string|null} iconUrl - Branding asset path
+ */
 function renderEReceipt(data, iconUrl = null) {
     const content = document.getElementById('eReceiptContent');
+    if (!content) return;
+
     let displayDate = data.date || '';
+    // Format date from YYYY-MM-DD to DD-MM-YYYY for display
     if (displayDate && displayDate.includes('-')) {
         const [y, m, d] = displayDate.split('-');
         if (y && m && d && y.length === 4) displayDate = `${d}-${m}-${y}`;
     }
+    
+    // Resolve icon if not provided
     if (!iconUrl && data.store_name) {
         const slug = data.store_name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
         iconUrl = `/images/shops/${slug}.png`;
     }
+
+    // Build items list
     let itemsHtml = (data.items || []).map(item => `
         <div class="ereceipt-item">
             <div class="ereceipt-item-content">
@@ -907,10 +1036,72 @@ function renderEReceipt(data, iconUrl = null) {
     `;
 }
 
+/**
+ * --- Modal Closures ---
+ */
+function closeReceiptModal() {
+    const modal = document.getElementById('receiptModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function closeEditModal() {
+    const modal = document.getElementById('editModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function closeCropModal() {
+    const modal = document.getElementById('cropModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function closePreUploadCropModal() {
+    const modal = document.getElementById('preUploadCropModal');
+    if (modal && modal.style.display !== 'none') {
+        modal.style.display = 'none';
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+        openUploadModal();
+    }
+}
+
+function closeEReceiptModal() {
+    const modal = document.getElementById('eReceiptModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function openUploadModal() {
+    const modal = document.getElementById('uploadModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeUploadModal() {
+    const modal = document.getElementById('uploadModal');
+    if (modal) modal.style.display = 'none';
+    refinedBlob = null; // Clear state on closure
+}
+
+/**
+ * Global Exposure
+ * Necessary for event handling in templates and cross-module interaction.
+ */
+window.closeReceiptModal = closeReceiptModal;
+window.closeEditModal = closeEditModal;
+window.closeCropModal = closeCropModal;
+window.closePreUploadCropModal = closePreUploadCropModal;
+window.closeEReceiptModal = closeEReceiptModal;
+window.openUploadModal = openUploadModal;
+window.closeUploadModal = closeUploadModal;
 window.initPreUploadCrop = initPreUploadCrop;
 window.applyPreUploadCrop = applyPreUploadCrop;
-window.showUploadProgress = showUploadProgress;
 window.updateFileName = updateFileName;
 window.handleUpload = handleUpload;
 window.loadState = loadState;
 window.loadMore = loadMore;
+window.triggerOCR = triggerOCR;
+window.reScanReceipt = reScanReceipt;
+window.viewElectronicReceipt = viewElectronicReceipt;
+window.openEditModal = openEditModal;
+window.openCropModal = openCropModal;
+window.toggleStatTile = toggleStatTile;
