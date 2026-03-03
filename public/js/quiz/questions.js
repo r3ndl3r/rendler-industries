@@ -1,57 +1,86 @@
 // /public/js/quiz/questions.js
 
-// State variables for managing the quiz lifecycle
-let questions = [];
-let currentQuestionIndex = 0;
-let score = 0;
-let isAnswered = false;
+/**
+ * Quiz Engine Controller Module
+ * 
+ * This module manages the Australian Citizenship Quiz interface. It coordinates 
+ * the fetching of randomized question sets, real-time feedback logic, 
+ * and localized audio playback for educational accessibility.
+ * 
+ * Features:
+ * - Real-time question synchronization with server-side JSON assets
+ * - Automatic answer randomization for every attempt
+ * - Interactive feedback container with Thai/English translations
+ * - Integrated localized audio playback for questions and correct answers
+ * - High-resolution progress tracking and dynamic score badges
+ * - Visual "Hint" system for image-based questions
+ * 
+ * Dependencies:
+ * - default.js: For getIcon and platform consistency
+ * - toast.js: For connection feedback
+ */
 
-// TTS State (Replaced with Audio State)
-let currentAudio = null;
-let currentPlayingFile = null;
+/**
+ * Application State
+ */
+let questions = [];                 // Local collection of randomized records
+let currentQuestionIndex = 0;       // active pointer
+let score = 0;                      // User tally
+let isAnswered = false;             // Interaction semaphore
 
-// Initializes the quiz by fetching data from the internal API.
-// Behavior:
-//   - Detects mode (standard vs all) from the window path
-//   - Toggles visibility between loading, error, and quiz states
+/**
+ * TTS/Audio State
+ */
+let currentAudio = null;            // Global Audio element reference
+let currentPlayingFile = null;      // Identifier for smart-toggle logic
+
+/**
+ * Initialization System: initQuiz
+ * Boots the quiz interface based on URL context (Random vs. All).
+ * 
+ * @returns {Promise<void>}
+ */
 async function initQuiz() {
     const loadingState = document.getElementById('loading-state');
     const quizInterface = document.getElementById('quiz-interface');
     const errorState = document.getElementById('error-state');
 
-    // Determine if we are in "All Questions" mode based on the current URL
+    // Context: detect "Study All" vs "Test Mode" from path
     const isAllMode = window.location.pathname.includes('/all');
     const apiUrl = isAllMode ? '/api/quiz/questions?mode=all' : '/api/quiz/questions';
 
     try {
         const response = await fetch(apiUrl);
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch questions');
-        }
+        if (!response.ok) throw new Error('Failed to fetch questions');
 
         questions = await response.json();
         
-        loadingState.style.display = 'none';
+        if (loadingState) loadingState.style.display = 'none';
         if (questions.length > 0) {
-            quizInterface.style.display = 'block';
+            if (quizInterface) quizInterface.style.display = 'block';
             startQuiz();
         } else {
             throw new Error('No questions received');
         }
 
     } catch (error) {
-        console.error(error);
-        loadingState.style.display = 'none';
-        errorState.style.display = 'block';
+        console.error('initQuiz failure:', error);
+        if (loadingState) loadingState.style.display = 'none';
+        if (errorState) errorState.style.display = 'block';
     }
 }
 
-// Native Speak Function (Replaced with File Audio)
+/**
+ * Logic: playAudio
+ * Executes the playback of a localized MP3/WAV asset.
+ * Implements automated stop-and-reset for overlapping requests.
+ * 
+ * @param {string} filename - The target audio resource
+ */
 function playAudio(filename) {
     if (!filename) return;
     
-    // Always cancel before speaking to prevent queue buildups
+    // Lifecycle: ensure silence before starting new stream
     stopSpeaking(); 
 
     currentPlayingFile = filename;
@@ -64,6 +93,10 @@ function playAudio(filename) {
     currentAudio.play().catch(e => console.warn("Audio playback failed:", e));
 }
 
+/**
+ * Logic: stopSpeaking
+ * Forcefully terminates active audio playback and clears references.
+ */
 function stopSpeaking() {
     if (currentAudio) {
         currentAudio.pause();
@@ -73,121 +106,140 @@ function stopSpeaking() {
     currentPlayingFile = null;
 }
 
-// Resets game state and triggers the first question render.
+/**
+ * Logic: startQuiz
+ * Resets tallies and triggers the primary render cycle.
+ */
 function startQuiz() {
     currentQuestionIndex = 0;
     score = 0;
-    document.getElementById('total-q').textContent = questions.length;
+    const totalEl = document.getElementById('total-q');
+    if (totalEl) totalEl.textContent = questions.length;
     renderQuestion();
 }
 
-// Handles DOM construction for the current question and answers.
-// Behavior:
-//   - Randomizes answer order visually for every question
-//   - Attaches correctness data to buttons for validation
+/**
+ * UI Engine: renderQuestion
+ * Orchestrates the DOM construction for the active question.
+ * Implements randomization and image-hint logic.
+ */
 function renderQuestion() {
     isAnswered = false;
     const currentQ = questions[currentQuestionIndex];
+    if (!currentQ) return;
     
-    // Ensure silence
+    // Lifecycle: ensure silence during transition
     stopSpeaking();
     
     const hintBtn = document.getElementById('hint-btn');
     const hintContainer = document.getElementById('hint-image-container');
     const hintImage = document.getElementById('hint-image');
 
-    // Reset Hint State for the new question
-    hintContainer.style.display = 'none'; 
-    hintBtn.classList.remove('active');
+    // Reset Hint Interface
+    if (hintContainer) hintContainer.style.display = 'none'; 
+    if (hintBtn) hintBtn.classList.remove('active');
 
-    // Check if this question has an image
-    if (currentQ.image) {
-        hintBtn.style.display = 'flex'; // Show the button
-        hintImage.src = `/images/quiz/${currentQ.image}`; // Set image source
+    // Context: resolve image-based hints
+    if (currentQ.image && hintBtn && hintImage) {
+        hintBtn.style.display = 'flex'; 
+        hintImage.src = `/images/quiz/${currentQ.image}`; 
         
-        // Remove old event listeners to prevent duplicates (cloning is a quick hack)
+        // Interaction: attach toggle logic via cloning to purge previous listeners
         const newBtn = hintBtn.cloneNode(true);
         hintBtn.parentNode.replaceChild(newBtn, hintBtn);
         
-        // Add click listener to toggle image
         newBtn.onclick = function() {
             if (hintContainer.style.display === 'none') {
-                hintContainer.style.display = 'block'; // Show image
-                newBtn.classList.add('active'); // Light up button
+                hintContainer.style.display = 'block';
+                newBtn.classList.add('active'); 
             } else {
-                hintContainer.style.display = 'none'; // Hide image
-                newBtn.classList.remove('active'); // Dim button
+                hintContainer.style.display = 'none';
+                newBtn.classList.remove('active');
             }
         };
-    } else {
-        hintBtn.style.display = 'none'; // Hide button if no image
+    } else if (hintBtn) {
+        hintBtn.style.display = 'none';
     }
 
-    // Reset UI and navigation states
-    document.getElementById('next-btn').disabled = true;
-    document.getElementById('feedback-container').style.display = 'none';
-    document.getElementById('feedback-container').className = 'feedback-box';
+    // UI: Reset navigation and feedback states
+    const nextBtn = document.getElementById('next-btn');
+    const feedback = document.getElementById('feedback-container');
+    if (nextBtn) nextBtn.disabled = true;
+    if (feedback) {
+        feedback.style.display = 'none';
+        feedback.className = 'feedback-box';
+    }
     
-    // Update progress markers and score display
-    document.getElementById('current-q').textContent = currentQuestionIndex + 1;
-    document.getElementById('score-tracker').textContent = `Score: ${score}`;
-    const progressPercent = ((currentQuestionIndex) / questions.length) * 100;
-    document.getElementById('progress-fill').style.width = `${progressPercent}%`;
+    // UI: Update progress markers
+    const curQEl = document.getElementById('current-q');
+    const scoreEl = document.getElementById('score-tracker');
+    const progEl = document.getElementById('progress-fill');
+    
+    if (curQEl) curQEl.textContent = currentQuestionIndex + 1;
+    if (scoreEl) scoreEl.textContent = `Score: ${score}`;
+    if (progEl) {
+        const progressPercent = ((currentQuestionIndex) / questions.length) * 100;
+        progEl.style.width = `${progressPercent}%`;
+    }
 
-    // Populate question text (English, Phonetic, and Thai)
+    // UI: Populate localized question text
     document.getElementById('question-text-en').textContent = currentQ.question;
     document.getElementById('question-text-ph').textContent = currentQ.question_ph;
     document.getElementById('question-text-th').textContent = currentQ.question_th;
 
+    // Action: Automated TTS button logic
     const ttsBtn = document.getElementById('tts-btn');
-    
-    ttsBtn.onclick = function(e) {
-        e.preventDefault();
-        // Smart Toggle: Stop only if playing THIS file
-        if (currentAudio && !currentAudio.paused && currentPlayingFile === currentQ.audio) {
-            stopSpeaking();
-        } else {
-            playAudio(currentQ.audio);
-        }
-    };
+    if (ttsBtn) {
+        ttsBtn.onclick = function(e) {
+            e.preventDefault();
+            // Logic: toggle playback if already active, else start
+            if (currentAudio && !currentAudio.paused && currentPlayingFile === currentQ.audio) {
+                stopSpeaking();
+            } else {
+                playAudio(currentQ.audio);
+            }
+        };
+    }
 
+    // UI Component: Answer Grid construction
     const answersContainer = document.getElementById('answers-container');
-    answersContainer.innerHTML = '';
+    if (answersContainer) {
+        answersContainer.innerHTML = '';
 
-    // Shuffle answer array to prevent position-based guessing
-    const shuffledAnswers = [...currentQ.answers].sort(() => Math.random() - 0.5);
+        // Logic: Shuffle answers to prevent pattern-guessing
+        const shuffledAnswers = [...currentQ.answers].sort(() => Math.random() - 0.5);
 
-    shuffledAnswers.forEach(answer => {
-        const btn = document.createElement('button');
-        btn.className = 'answer-btn';
-        
-        // Tag the button for validation during the handleAnswer phase
-        btn.dataset.correct = answer.is_correct; 
+        shuffledAnswers.forEach(answer => {
+            const btn = document.createElement('button');
+            btn.className = 'answer-btn';
+            
+            // Context: tag for validation hook
+            btn.dataset.correct = answer.is_correct; 
 
-        btn.innerHTML = `
-            <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 4px;">${answer.text}</div>
-            <div style="color: var(--aus-gold); font-size: 0.9rem; font-style: italic; margin-bottom: 4px;">${answer.ph}</div>
-            <div class="thai-text" style="color: var(--text-secondary); font-size: 0.95rem;">${answer.th}</div>
-        `;
+            btn.innerHTML = `
+                <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 4px;">${answer.text}</div>
+                <div style="color: var(--aus-gold); font-size: 0.9rem; font-style: italic; margin-bottom: 4px;">${answer.ph}</div>
+                <div class="thai-text" style="color: var(--text-secondary); font-size: 0.95rem;">${answer.th}</div>
+            `;
 
-        // Pass the answer object itself so we can access text for TTS
-        btn.onclick = () => handleAnswer(btn, answer);
-        answersContainer.appendChild(btn);
-    });
+            btn.onclick = () => handleAnswer(btn, answer);
+            answersContainer.appendChild(btn);
+        });
+    }
 }
 
-// Validates the user selection and provides immediate feedback.
-// Parameters:
-//   selectedBtn : The DOM element clicked
-//   isCorrect   : Boolean result from the data source
-// Behavior:
-//   - Highlights correct/incorrect choices
-//   - Automatically scrolls to the bottom to show the Next button
+/**
+ * Action: handleAnswer
+ * Validates the user selection and triggers visual/audio feedback.
+ * 
+ * @param {HTMLElement} selectedBtn - The DOM node clicked
+ * @param {Object} answerObj - The source answer metadata
+ */
 function handleAnswer(selectedBtn, answerObj) {
     if (isAnswered) return; 
     isAnswered = true;
 
-    // Stop reading question if user interrupts
+    // Lifecycle: Stop reading question if user interrupts with an answer
     stopSpeaking();
     
     const nextBtn = document.getElementById('next-btn');
@@ -197,50 +249,61 @@ function handleAnswer(selectedBtn, answerObj) {
     const feedbackEn = document.getElementById('feedback-msg-en');
     const feedbackTh = document.getElementById('feedback-msg-th');
 
+    // UI: Disable all interactions after selection
     allBtns.forEach(btn => btn.disabled = true);
 
-    // Find the correct answer object from the current question data
+    // Logic: Identify target records from state
     const currentQ = questions[currentQuestionIndex];
     const correctAnswerObj = currentQ.answers.find(a => a.is_correct);
 
     if (answerObj.is_correct) {
+        // Scenario: Success
         score++;
         selectedBtn.classList.add('correct-answer');
-        feedbackContainer.className = 'feedback-box alert-success';
-        feedbackIcon.innerHTML = getIcon('success');
-        feedbackEn.textContent = 'Correct!';
-        feedbackTh.textContent = 'ถูกต้อง';
-    } else {
-        selectedBtn.classList.add('incorrect-answer'); 
-        // Reveal the correct answer visually if the user was wrong
-        const correctBtn = document.querySelector('.answer-btn[data-correct="true"]');
-        if (correctBtn) {
-            correctBtn.classList.add('correct-answer');
+        if (feedbackContainer) {
+            feedbackContainer.className = 'feedback-box alert-success';
+            if (feedbackIcon) feedbackIcon.innerHTML = getIcon('success');
+            if (feedbackEn) feedbackEn.textContent = 'Correct!';
+            if (feedbackTh) feedbackTh.textContent = 'ถูกต้อง';
         }
-        feedbackContainer.className = 'feedback-box alert-danger';
-        feedbackIcon.innerHTML = getIcon('error');
-        feedbackEn.textContent = 'Incorrect';
-        feedbackTh.textContent = 'ไม่ถูกต้อง';
+    } else {
+        // Scenario: Failure
+        selectedBtn.classList.add('incorrect-answer'); 
+        // Logic: reveal the correct answer visually for learning reinforcement
+        const correctBtn = document.querySelector('.answer-btn[data-correct="true"]');
+        if (correctBtn) correctBtn.classList.add('correct-answer');
+        
+        if (feedbackContainer) {
+            feedbackContainer.className = 'feedback-box alert-danger';
+            if (feedbackIcon) feedbackIcon.innerHTML = getIcon('error');
+            if (feedbackEn) feedbackEn.textContent = 'Incorrect';
+            if (feedbackTh) feedbackTh.textContent = 'ไม่ถูกต้อง';
+        }
     }
 
-    // Play correct answer audio if available
+    // Logic: automatic audio reinforcement for the correct answer
     if (correctAnswerObj && correctAnswerObj.audio) {
         setTimeout(() => {
             playAudio(correctAnswerObj.audio);
-        }, 300);
+        }, 300); // 300ms delay for visual processing
     }
 
-    feedbackContainer.style.display = 'flex';
-    nextBtn.disabled = false;
-    document.getElementById('score-tracker').textContent = `Score: ${score}`;
+    if (feedbackContainer) feedbackContainer.style.display = 'flex';
+    if (nextBtn) nextBtn.disabled = false;
+    
+    const scoreTracker = document.getElementById('score-tracker');
+    if (scoreTracker) scoreTracker.textContent = `Score: ${score}`;
 }
 
-// Advances the question index and resets the viewport.
-// Targets multiple scroll containers to ensure cross-browser/mobile compatibility.
+/**
+ * Interface: nextQuestion
+ * Advances the pointer and resets the viewport for the next challenge.
+ */
 function nextQuestion() {
     stopSpeaking();
     currentQuestionIndex++;
 
+    // UI: Ensure top-of-page focus for new question
     const scrollTargets = [
         document.documentElement,
         document.body,
@@ -251,11 +314,7 @@ function nextQuestion() {
         if (target) target.scrollTop = 0;
     });
 
-    window.scrollTo({
-        top: 0,
-        left: 0,
-        behavior: 'instant'
-    });
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     
     if (currentQuestionIndex < questions.length) {
         renderQuestion();
@@ -264,41 +323,61 @@ function nextQuestion() {
     }
 }
 
-// Renders the final score and results panel.
+/**
+ * UI Component: finishQuiz
+ * Generates the final performance summary.
+ */
 function finishQuiz() {
-    document.getElementById('quiz-interface').style.display = 'none';
-    document.getElementById('results-interface').style.display = 'block';
+    const quizInt = document.getElementById('quiz-interface');
+    const resInt = document.getElementById('results-interface');
+    
+    if (quizInt) quizInt.style.display = 'none';
+    if (resInt) resInt.style.display = 'block';
     
     const percentage = Math.round((score / questions.length) * 100);
     const scoreDisplay = document.getElementById('final-score-display');
     const resultMsg = document.getElementById('result-message');
     
-    scoreDisplay.textContent = `${percentage}%`;
-    
-    if (percentage >= 75) {
-        scoreDisplay.style.color = 'var(--aus-green)';
-        resultMsg.innerHTML = `
-            <h4 style="color: var(--aus-green); margin-bottom: 10px;">Congratulations!</h4>
-            <p>You passed the practice test.</p>
-            <p class="thai-text" style="color: var(--text-secondary); margin-bottom: 0;">ขอแสดงความยินดี! คุณสอบผ่านแบบทดสอบฝึกหัด</p>
-        `;
-    } else {
-        scoreDisplay.style.color = 'var(--danger-red)';
-        resultMsg.innerHTML = `
-            <h4 style="color: var(--danger-red); margin-bottom: 10px;">Keep Practicing</h4>
-            <p>You need 75% to pass.</p>
-            <p class="thai-text" style="color: var(--text-secondary); margin-bottom: 0;">ฝึกฝนต่อไป คุณต้องได้คะแนน 75% เพื่อสอบผ่าน</p>
-        `;
+    if (scoreDisplay) {
+        scoreDisplay.textContent = `${percentage}%`;
+        
+        // Logic: set color based on 75% passing threshold
+        if (percentage >= 75) {
+            scoreDisplay.style.color = 'var(--aus-green)';
+            if (resultMsg) resultMsg.innerHTML = `
+                <h4 style="color: var(--aus-green); margin-bottom: 10px;">Congratulations!</h4>
+                <p>You passed the practice test.</p>
+                <p class="thai-text" style="color: var(--text-secondary); margin-bottom: 0;">ขอแสดงความยินดี! คุณสอบผ่านแบบทดสอบฝึกหัด</p>
+            `;
+        } else {
+            scoreDisplay.style.color = 'var(--danger-red)';
+            if (resultMsg) resultMsg.innerHTML = `
+                <h4 style="color: var(--danger-red); margin-bottom: 10px;">Keep Practicing</h4>
+                <p>You need 75% to pass.</p>
+                <p class="thai-text" style="color: var(--text-secondary); margin-bottom: 0;">ฝึกฝนต่อไป คุณต้องได้คะแนน 75% เพื่อสอบผ่าน</p>
+            `;
+        }
     }
 }
 
-// Main event loop initialization
+/**
+ * Event Listener Initialization
+ */
 document.addEventListener('DOMContentLoaded', function() {
     initQuiz();
-    document.getElementById('next-btn').addEventListener('click', nextQuestion);
-    document.getElementById('restart-btn').addEventListener('click', function() {
-        document.getElementById('results-interface').style.display = 'none';
-        document.getElementById('loading-state').style.display = 'block';
-        initQuiz();
-    });
+    
+    const nextBtn = document.getElementById('next-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    
+    if (nextBtn) nextBtn.addEventListener('click', nextQuestion);
+    
+    if (restartBtn) {
+        restartBtn.addEventListener('click', function() {
+            const resInt = document.getElementById('results-interface');
+            const loadInt = document.getElementById('loading-state');
+            if (resInt) resInt.style.display = 'none';
+            if (loadInt) loadInt.style.display = 'block';
+            initQuiz();
+        });
+    }
 });
