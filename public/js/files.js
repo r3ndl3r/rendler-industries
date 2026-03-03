@@ -1,13 +1,35 @@
-// public/js/files.js
+// /public/js/files.js
 
+/**
+ * File Management Controller Module
+ * 
+ * This module manages the Platform Binary Storage interface. It handles
+ * large file transfers, drag-and-drop orchestration, and permission-based
+ * access control for the central file vault.
+ * 
+ * Features:
+ * - Multipart file upload with 1GB capacity support
+ * - Drag-and-drop upload zone with high-resolution file validation
+ * - Dynamic permission management (Admin Only vs. User Restricted)
+ * - Browser-compatible clipboard sharing for public/restricted links
+ * - Integrated confirmation workflows for permanent file deletion
+ * 
+ * Dependencies:
+ * - default.js: For apiPost, getIcon, and modal helpers
+ * - toast.js: For status feedback
+ */
+
+/**
+ * Initialization System
+ * Boots the module and establishes drop-zone event delegation
+ */
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Files module loaded');
-
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('file');
     const fileNameDisplay = document.getElementById('fileName');
 
     if (dropZone && fileInput) {
+        // Lifecycle: Attach unified event prevention for all drag states
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, preventDefaults, false);
         });
@@ -17,6 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
         }
 
+        // UI Feedback: Highlight zone during active drag
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, highlight, false);
         });
@@ -33,6 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dropZone.classList.remove('dragover');
         }
 
+        // Action: Process file drop
         dropZone.addEventListener('drop', handleDrop, false);
 
         function handleDrop(e) {
@@ -45,6 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
+        // Action: Process manual file selection
         fileInput.addEventListener('change', function() {
             if (this.files.length > 0) {
                 updateFileName(this.files[0].name);
@@ -52,6 +77,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
+        /**
+         * UI: updateFileName
+         * Updates the display label in the upload zone.
+         * 
+         * @param {string} name - Selected filename
+         */
         function updateFileName(name) {
             if (fileNameDisplay) {
                 fileNameDisplay.textContent = name;
@@ -59,9 +90,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
+        /**
+         * Logic: handleFiles
+         * Performs pre-transmission validation on selected binaries.
+         * 
+         * @param {FileList} files - List of target files
+         */
         function handleFiles(files) {
             const file = files[0];
-            const maxSize = 1024 * 1024 * 1024;
+            const maxSize = 1024 * 1024 * 1024; // 1GB Threshold
             if (file.size > maxSize) {
                 showToast('File too large! Maximum size is 1GB.', 'error');
                 fileInput.value = '';
@@ -74,33 +111,58 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    /**
+     * Interface: copyLink
+     * Copies the full file retrieval URL to the system clipboard.
+     * Implements legacy fallback for non-secure contexts.
+     * 
+     * @param {number} id - File resource ID
+     */
     window.copyLink = function(id) {
         const fullUrl = `${window.location.origin}/files/serve/${id}`;
-        navigator.clipboard.writeText(fullUrl).then(function() {
-            showToast('Link copied to clipboard!', 'success');
-        }).catch(function() {
+        
+        // Context: try modern Clipboard API first
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(fullUrl).then(function() {
+                showToast('Link copied to clipboard!', 'success');
+            }).catch(function() {
+                fallbackCopy(fullUrl);
+            });
+        } else {
+            fallbackCopy(fullUrl);
+        }
+        
+        /**
+         * Legacy Fallback for document.execCommand('copy')
+         */
+        function fallbackCopy(text) {
             const textArea = document.createElement('textarea');
-            textArea.value = fullUrl;
+            textArea.value = text;
             document.body.appendChild(textArea);
             textArea.select();
             document.execCommand('copy');
             document.body.removeChild(textArea);
             showToast('Link copied to clipboard!', 'success');
-        });
+        }
     };
 
+    /**
+     * Interface: openPermissions (Admin)
+     * Displays the ACL management interface for a specific file.
+     * 
+     * @param {Object} file - File record object from table
+     */
     window.openPermissions = function(file) {
         const modal = document.getElementById('permissionModal');
         if (modal) {
             document.getElementById('permissionFileId').value = file.id;
             
-            // Set Admin Only checkbox
+            // Sync Admin Only flag
             document.getElementById('permissionAdminOnly').checked = file.admin_only == 1;
             
-            // Reset all user checkboxes
+            // UI Sync: Reset and apply allowed user checkboxes
             document.querySelectorAll('.user-permission-checkbox').forEach(cb => cb.checked = false);
             
-            // Set allowed users
             if (file.allowed_users) {
                 const allowed = file.allowed_users.split(',');
                 allowed.forEach(username => {
@@ -113,6 +175,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    /**
+     * Action: confirmDeleteFile (Admin)
+     * Triggers permanent resource deletion confirmation.
+     * 
+     * @param {number} id - File ID
+     * @param {string} filename - Display name for confirmation
+     */
     window.confirmDeleteFile = function(id, filename) {
         showConfirmModal({
             title: 'Delete File',
@@ -123,25 +192,33 @@ document.addEventListener('DOMContentLoaded', function() {
             onConfirm: async () => {
                 const result = await apiPost(`/files/delete/${id}`);
                 if (result && result.success) {
+                    // Logic: full reload required to sync storage stats and table
                     window.location.reload();
                 }
             }
         });
     };
 
-    // Use global modal closing helper
+    // Modal: Configure global closure logic
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        () => document.getElementById('permissionModal').style.display = 'none',
+        () => {
+            const modal = document.getElementById('permissionModal');
+            if (modal) modal.style.display = 'none';
+        },
         closeConfirmModal
     ]);
 
-    // Handle Permissions Form
+    /**
+     * Form: Permissions Submission (Admin)
+     * Transmits ACL updates to the server.
+     */
     document.getElementById('permissionForm')?.addEventListener('submit', async function(e) {
         e.preventDefault();
         const id = document.getElementById('permissionFileId').value;
         const btn = this.querySelector('button[type="submit"]');
         const originalHtml = btn.innerHTML;
 
+        // UI Feedback: indicate network flight
         btn.disabled = true;
         btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
@@ -156,7 +233,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Handle Upload Form
+    /**
+     * Form: File Upload Submission
+     * Executes the binary transfer to server storage.
+     */
     document.getElementById('uploadForm')?.addEventListener('submit', async function(e) {
         e.preventDefault();
         const fileInput = document.getElementById('file');
@@ -173,11 +253,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const formData = new FormData(this);
         
-        // Use Fetch directly for upload to handle progress if needed in future, 
-        // but for now apiPost supports FormData
+        // Use global Fetch wrapper for multipart support
         const result = await apiPost('/files', formData);
 
         if (result && result.success) {
+            // Redirect back to vault on success
             window.location.href = '/files';
         } else {
             btn.disabled = false;
@@ -185,6 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Workflow: Automated alert cleanup
     document.querySelectorAll('.alert').forEach(alert => {
         setTimeout(() => {
             alert.style.opacity = '0';
