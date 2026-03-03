@@ -13,6 +13,7 @@
  * - Integrated dosage reset workflow with automated follow-up reminders
  * - Administrative management of the global medication registry
  * - Mobile-optimized collapsible log entries
+ * - 100% AJAX-driven Mandatory Action pattern (Single-button confirmations)
  * 
  * Dependencies:
  * - default.js: For apiPost, getLoadingHtml, getIcon, getLocalISOString, and modal helpers
@@ -31,18 +32,21 @@ let appData = {
 
 /**
  * Initialization System
- * Triggers initial data sync and schedules background UI updates
+ * Triggers initial data sync, schedules background UI updates, and configures modal closure.
  */
 document.addEventListener('DOMContentLoaded', () => {
     // Bootstrap collection from server
     refreshData();
     
-    // Maintain accurate "time since" labels
+    // Maintain accurate "time since" labels for relative dosing tracking
     setInterval(updateAllIntervals, 60000);
     
-    // Configure unified modal closure behavior
+    // Configure unified modal closure behavior for all global and local overlays
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeDoseModal, closeEditModal, closeConfirmModal, closeRegistryModal, closeManageModal
+        closeDoseModal, closeEditModal, closeRegistryModal, closeManageModal,
+        () => closeLocalModal('deleteLogModal'),
+        () => closeLocalModal('resetTimeModal'),
+        () => closeLocalModal('removeRegistryModal')
     ]);
 });
 
@@ -73,7 +77,7 @@ function refreshData() {
  * 
  * @param {Event} event - Submission event
  * @param {string} url - Target endpoint
- * @param {boolean} isRegistry - Context flag for registry vs log entries
+ * @param {boolean} [isRegistry=false] - Context flag for registry vs log entries
  */
 function submitForm(event, url, isRegistry = false) {
     event.preventDefault();
@@ -81,7 +85,7 @@ function submitForm(event, url, isRegistry = false) {
     const btn = form.querySelector('button[type="submit"]');
     const formData = new FormData(form);
 
-    // Contextual merging: consolidate split date/time inputs for DB compatibility
+    // Contextual merging: consolidate split date/time inputs for DB compatibility (YYYY-MM-DD HH:MM)
     if (!isRegistry) {
         const mode = form.id === 'doseForm' ? 'add' : 'edit';
         const timeEl = document.getElementById(`${mode}_taken_at_time`);
@@ -91,7 +95,7 @@ function submitForm(event, url, isRegistry = false) {
         }
     }
 
-    // UI Feedback: disable button and pulse icon
+    // UI Feedback: disable button and pulse icon to prevent double-submission
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `${getIcon('waiting')} Processing...`;
@@ -131,6 +135,7 @@ function renderUI() {
 
 /**
  * Generates the user-categorized medication dose grid.
+ * Implements mobile-first accordion logic for dosage details.
  */
 function renderGrid() {
     const grid = document.getElementById('medication-grid');
@@ -163,7 +168,7 @@ function renderGrid() {
                 displayDt = `${timeStr} ${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
             }
             
-            // Build dosage row fragment
+            // Build dosage row fragment with expansion logic
             logsHtml += `
                 <div class="med-item" data-id="${l.id}" onclick="toggleMedExpand(this)">
                     <div class="med-item-main">
@@ -194,7 +199,7 @@ function renderGrid() {
         card.innerHTML = `
             <div class="user-header">
                 <h2 class="user-name">
-                    <span class="user-icon">${getFamilyIcon(member)}</span>
+                    <span class="user-icon">${getIcon(member)}</span>
                     <span class="user-label">${member}</span>
                 </h2>
             </div>
@@ -207,8 +212,8 @@ function renderGrid() {
 /**
  * Searches local state for a specific log record.
  * 
- * @param {number} id - Target ID
- * @returns {Object|null} - Log object or null
+ * @param {number} id - Target record identifier
+ * @returns {Object|null} - Log object or null if not found
  */
 function findLogById(id) {
     for (const member in appData.logs) {
@@ -219,7 +224,7 @@ function findLogById(id) {
 }
 
 /**
- * Populates form dropdowns from the global registry.
+ * Populates form dropdowns from the global medication registry.
  */
 function renderDropdowns() {
     const options = appData.registry.map(m => 
@@ -236,6 +241,7 @@ function renderDropdowns() {
 
 /**
  * Generates the administrative registry management table.
+ * Implements safety checks to prevent deletion of meds with active history.
  */
 function renderRegistryTable() {
     const body = document.getElementById('registry-table-body');
@@ -262,22 +268,12 @@ function renderRegistryTable() {
  */
 
 /**
- * Resolves user-specific icons from the global registry.
- * 
- * @param {string} member - Username
- * @returns {string} - Icon symbol
- */
-function getFamilyIcon(member) {
-    return getIcon(member);
-}
-
-/**
  * Helper: fillForm
- * Pre-populates the dose form when a registry item is selected.
+ * Pre-populates the dose form when a registry item is selected via quick-select.
  * 
- * @param {string} mode - 'add' or 'edit'
- * @param {string} name - Med name
- * @param {number} dosage - Default dosage
+ * @param {string} mode - Interaction mode ('add' or 'edit')
+ * @param {string} name - Medication name string
+ * @param {number} dosage - Default dosage in milligrams
  */
 function fillForm(mode, name, dosage) {
     if (!name) return;
@@ -288,15 +284,16 @@ function fillForm(mode, name, dosage) {
 /**
  * Logic: toggleMedExpand
  * Manages accordion-style expansion of medication log items.
+ * Ensures only one item per user is expanded at a time for UI clarity.
  * 
- * @param {HTMLElement} el - Clicked item element
+ * @param {HTMLElement} el - Triggering item element
  */
 function toggleMedExpand(el) {
     if (el.classList.contains('expanded')) {
         el.classList.remove('expanded');
     } else {
         const list = el.closest('.user-med-list');
-        // Close others in the same list for focus
+        // Logic: focus - close others in the same list to reduce visual noise
         list.querySelectorAll('.med-item.expanded').forEach(item => item !== el && item.classList.remove('expanded'));
         el.classList.add('expanded');
     }
@@ -304,7 +301,7 @@ function toggleMedExpand(el) {
 
 /**
  * UI Refresh: updateAllIntervals
- * Re-calculates "time since" labels for all visible log entries.
+ * Re-calculates relative "time since" labels for all visible log entries.
  */
 function updateAllIntervals() {
     document.querySelectorAll('.interval-update').forEach(el => {
@@ -315,9 +312,9 @@ function updateAllIntervals() {
 
 /**
  * Logic: setNow
- * Syncs the form inputs with current system time.
+ * Synchronizes form date/time inputs with the current system clock.
  * 
- * @param {string} mode - 'add' or 'edit'
+ * @param {string} mode - Interaction mode ('add' or 'edit')
  */
 function setNow(mode) {
     const localISO = getLocalISOString();
@@ -335,7 +332,7 @@ function setNow(mode) {
 
 /**
  * Interface: openDoseModal
- * Prepares and displays the logging interface.
+ * Resets and displays the medication logging interface.
  */
 function openDoseModal() {
     const modal = document.getElementById('doseModal');
@@ -344,7 +341,6 @@ function openDoseModal() {
 }
 
 /**
- * Interface: closeDoseModal
  * Hides the logging interface.
  */
 function closeDoseModal() { 
@@ -354,9 +350,9 @@ function closeDoseModal() {
 
 /**
  * Interface: openEditModal
- * Pre-fills the logging interface with existing record data.
+ * Pre-fills the logging interface with existing record metadata.
  * 
- * @param {Object} data - Log record object
+ * @param {Object} data - Source log record object
  */
 function openEditModal(data) {
     const form = document.getElementById('editForm');
@@ -367,6 +363,7 @@ function openEditModal(data) {
     document.getElementById('edit_med_name').value = data.medication_name;
     document.getElementById('edit_dosage').value = data.dosage;
     
+    // Logic: handle space-delimited MariaDB datetime format
     const parts = data.taken_at.split(' ');
     document.getElementById('edit_taken_at_date').value = parts[0];
     document.getElementById('edit_taken_at_time').value = parts[1].substring(0, 5);
@@ -383,25 +380,53 @@ function closeEditModal() {
 }
 
 /**
+ * Interface: closeLocalModal
+ * Standardized closer for locally-defined single-button (Mandatory Action) modals.
+ * 
+ * @param {string} id - Modal element ID
+ */
+function closeLocalModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'none';
+}
+
+/**
  * Action: confirmDeleteMedication
- * Triggers deletion confirmation for a specific log entry.
+ * Orchestrates the Mandatory Action deletion flow for a specific log entry.
+ * 
+ * @param {number} id - Record identifier
+ * @param {string} name - Medication/member descriptor for confirmation text
  */
 function confirmDeleteMedication(id, name) {
-    showConfirmModal({
-        title: 'Delete Medication Log',
-        message: `Are you sure you want to delete the log for <strong>${name}</strong>?`,
-        danger: true,
-        confirmText: 'Delete Log',
-        onConfirm: async () => {
+    const text = document.getElementById('deleteLogText');
+    const btn = document.getElementById('confirmDeleteLogBtn');
+    const modal = document.getElementById('deleteLogModal');
+
+    if (text) text.innerHTML = `Are you sure you want to delete the log for <strong>${name}</strong>?`;
+    
+    if (btn) {
+        // Logic: dynamic binding to capture closure scope ID
+        btn.onclick = async () => {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
             const result = await apiPost(`/medication/delete/${id}`);
-            if (result) refreshData();
-        }
-    });
+            if (result) {
+                closeLocalModal('deleteLogModal');
+                refreshData();
+            }
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        };
+    }
+    
+    if (modal) modal.style.display = 'flex';
 }
 
 /**
  * Workflow: confirmResetMedication
- * Complex workflow for resetting a dose time and scheduling automated follow-ups.
+ * Complex Mandatory Action workflow for retroactive dosage timestamping.
+ * Integrates automated follow-up reminder scheduling into the confirmation step.
  * 
  * @param {number} id - Target log entry ID
  */
@@ -416,7 +441,7 @@ function confirmResetMedication(id) {
     const localISO = getLocalISOString();
     const [date, currentTime] = localISO.split('T');
     
-    // Generate recipient grid from state
+    // Logic: generate recipient picker from global family state
     const recipientCheckboxes = appData.members.map(m => `
         <label class="recipient-checkbox">
             <input type="checkbox" name="reminder_recipients[]" value="${m.id}" ${m.id == memberId ? 'checked' : ''}>
@@ -424,11 +449,12 @@ function confirmResetMedication(id) {
         </label>
     `).join('');
 
-    // Launch specialized confirmation modal with embedded reminder logic
-    showConfirmModal({
-        title: 'Reset Dose Time',
-        icon: 'reset',
-        message: `
+    const body = document.getElementById('resetTimeBody');
+    const btn = document.getElementById('confirmResetTimeBtn');
+    const modal = document.getElementById('resetTimeModal');
+
+    if (body) {
+        body.innerHTML = `
             <div class="reset-modal-text">
                 Reset timestamp for <strong>${medName}</strong> for <strong>${memberName}</strong>?
             </div>
@@ -460,38 +486,64 @@ function confirmResetMedication(id) {
                     </div>
                 </div>
             </div>
-        `,
-        confirmText: 'Reset to Selected Time',
-        onConfirm: async () => {
+        `;
+    }
+
+    if (btn) {
+        btn.onclick = async () => {
             const selectedTime = document.getElementById('reset_time_input').value;
             const enableReminder = document.getElementById('enable_reminder').checked;
-            
             const payload = { taken_at: `${date} ${selectedTime}` };
             
-            // Integrate reminder creation if requested
+            // Logic: integrate reminder subsystem if requested by user
             if (enableReminder) {
                 payload.create_reminder = 1;
                 payload.reminder_delay = document.querySelector('input[name="reminder_delay"]:checked').value;
-                
                 const recipients = Array.from(document.querySelectorAll('input[name="reminder_recipients[]"]:checked')).map(cb => cb.value);
                 payload.reminder_recipients = recipients.join(',');
-                
                 payload.reminder_title = `💊 Meds: ${medName} for ${memberName}`;
                 payload.reminder_desc = `Follow-up dose reminder created from Medication Tracker. http://rendler.org/medication`;
             }
 
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Resetting...`;
             const result = await apiPost(`/medication/reset/${id}`, payload);
-            if (result) refreshData();
-        }
-    });
+            if (result) {
+                closeLocalModal('resetTimeModal');
+                refreshData();
+            }
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        };
+    }
+
+    if (modal) modal.style.display = 'flex';
 }
 
 /**
- * Registry Controls: Interface toggles
+ * --- Registry Controls (Admin) ---
+ */
+
+/**
+ * Interface: openRegistryModal
+ * Displays the global medication catalog management interface.
  */
 function openRegistryModal() { document.getElementById('registryModal').style.display = 'block'; }
+
+/**
+ * Hides the global medication catalog.
+ */
 function closeRegistryModal() { document.getElementById('registryModal').style.display = 'none'; }
 
+/**
+ * Interface: openManageModal
+ * Prepares the specialized editor for registry metadata modification.
+ * 
+ * @param {number} id - Registry record ID
+ * @param {string} name - Medication name
+ * @param {number} dosage - Default dosage
+ */
 function openManageModal(id, name, dosage) {
     document.getElementById('manageEditForm').action = `/medication/manage/update/${id}`;
     document.getElementById('manage_id').value = id;
@@ -499,30 +551,47 @@ function openManageModal(id, name, dosage) {
     document.getElementById('manage_dosage').value = dosage;
     document.getElementById('manageEditModal').style.display = 'block';
 }
+
+/**
+ * Hides the registry item editor.
+ */
 function closeManageModal() { document.getElementById('manageEditModal').style.display = 'none'; }
 
 /**
  * Action: confirmDeleteRegistry
- * Confirmation for permanent removal of a medication from the global registry.
+ * Orchestrates the Mandatory Action removal of a medication from the global catalog.
+ * 
+ * @param {number} id - Record identifier
+ * @param {string} name - Medication name for confirmation text
  */
 function confirmDeleteRegistry(id, name) {
-    showConfirmModal({
-        title: 'Remove from Registry',
-        message: `Are you sure you want to remove <strong>${name}</strong> from the medication registry?`,
-        danger: true,
-        confirmText: 'Remove',
-        onConfirm: async () => {
+    const text = document.getElementById('removeRegistryText');
+    const btn = document.getElementById('confirmRemoveRegistryBtn');
+    const modal = document.getElementById('removeRegistryModal');
+
+    if (text) text.innerHTML = `Are you sure you want to remove <strong>${name}</strong> from the medication registry?`;
+    
+    if (btn) {
+        btn.onclick = async () => {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Removing...`;
             const result = await apiPost(`/medication/manage/delete/${id}`);
             if (result) {
+                closeLocalModal('removeRegistryModal');
                 refreshData();
             }
-        }
-    });
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        };
+    }
+    
+    if (modal) modal.style.display = 'flex';
 }
 
 /**
  * Global Exposure
- * Necessary for inline event handlers in server-rendered templates.
+ * Required for inline event handlers in Mojolicious templates.
  */
 window.submitForm = submitForm;
 window.fillForm = fillForm;
@@ -539,3 +608,4 @@ window.openManageModal = openManageModal;
 window.closeManageModal = closeManageModal;
 window.confirmDeleteRegistry = confirmDeleteRegistry;
 window.refreshData = refreshData;
+window.closeLocalModal = closeLocalModal;
