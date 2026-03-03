@@ -1,14 +1,43 @@
 // /public/js/quiz/study.js
 
-let questions = [];
-let currentPage = 0;
-const ITEMS_PER_PAGE = 10;
+/**
+ * Quiz Study Mode Controller Module
+ * 
+ * This module manages the Quiz Study Guide interface. It coordinates 
+ * the paginated display of the entire citizenship question registry, 
+ * including localized audio playback and educational explanations.
+ * 
+ * Features:
+ * - Paginated rendering of all 1800+ questions
+ * - Highlighted "Correct Answer" view with Thai/English translations
+ * - Intelligent explanation blocks for learning reinforcement
+ * - Integrated localized audio playback for every question and answer
+ * - Interactive navigation with visual page indicators
+ * - Automatic "Scroll-to-Top" orchestration for page transitions
+ * 
+ * Dependencies:
+ * - default.js: For getIcon and platform consistency
+ */
 
-// TTS State (Replaced with Audio State)
-let currentAudio = null;
-let currentPlayingFile = null;
+/**
+ * Application State
+ */
+let questions = [];                 // Master collection from server
+let currentPage = 0;                // Pagination pointer
+const ITEMS_PER_PAGE = 10;          // View threshold
 
-// Fetch all questions and initialize
+/**
+ * TTS/Audio State
+ */
+let currentAudio = null;            // Active Audio reference
+let currentPlayingFile = null;      // Pointer for smart-toggle logic
+
+/**
+ * Initialization System: initStudyMode
+ * Fetches the complete question set and initiates the first render cycle.
+ * 
+ * @returns {Promise<void>}
+ */
 async function initStudyMode() {
     const loadingState = document.getElementById('loading-state');
     const questionsContainer = document.getElementById('questions-container');
@@ -18,18 +47,17 @@ async function initStudyMode() {
 
     try {
         const response = await fetch('/api/quiz/questions?mode=all');
-        if (!response.ok) {
-            throw new Error('Failed to fetch questions');
-        }
+        if (!response.ok) throw new Error('Failed to fetch questions');
         
         questions = await response.json();
         
-        loadingState.style.display = 'none';
+        if (loadingState) loadingState.style.display = 'none';
         
         if (questions.length > 0) {
-            totalDisplay.textContent = `${questions.length} Questions Total`;
-            questionsContainer.style.display = 'block';
-            controlsContainer.style.display = 'flex';
+            // UI: Update metadata and show containers
+            if (totalDisplay) totalDisplay.textContent = `${questions.length} Questions Total`;
+            if (questionsContainer) questionsContainer.style.display = 'block';
+            if (controlsContainer) controlsContainer.style.display = 'flex';
             
             // Initial Render
             renderPage();
@@ -37,17 +65,24 @@ async function initStudyMode() {
             throw new Error('No questions received');
         }
     } catch (error) {
-        console.error(error);
-        loadingState.style.display = 'none';
-        errorState.style.display = 'block';
+        console.error('initStudyMode failure:', error);
+        if (loadingState) loadingState.style.display = 'none';
+        if (errorState) errorState.style.display = 'block';
     }
 }
 
-// Audio Playback Function
+/**
+ * Logic: playAudio
+ * Executes the playback of a localized MP3/WAV asset.
+ * Implements automated stop-and-reset for overlapping requests.
+ * 
+ * @param {string} filename - Target resource
+ */
 function playAudio(filename) {
     if (!filename) return;
     
-    stopSpeaking(); // Always stop previous
+    // Lifecycle: ensure silence before starting new stream
+    stopSpeaking(); 
     
     currentPlayingFile = filename;
     currentAudio = new Audio(`/audio/quiz/${filename}`);
@@ -59,6 +94,10 @@ function playAudio(filename) {
     currentAudio.play().catch(e => console.warn("Audio playback failed:", e));
 }
 
+/**
+ * Logic: stopSpeaking
+ * Forcefully terminates active audio playback and clears references.
+ */
 function stopSpeaking() {
     if (currentAudio) {
         currentAudio.pause();
@@ -68,9 +107,14 @@ function stopSpeaking() {
     currentPlayingFile = null;
 }
 
-// Toggle logic for buttons
+/**
+ * Interface Logic: toggleAudio
+ * Implements "Smart Toggle" behavior for audio buttons.
+ * Stops current playback if the same file is clicked again.
+ * 
+ * @param {string} filename - Target resource
+ */
 function toggleAudio(filename) {
-    // Smart Toggle: Stop only if playing THIS file
     if (currentAudio && !currentAudio.paused && currentPlayingFile === filename) {
         stopSpeaking();
     } else {
@@ -78,24 +122,29 @@ function toggleAudio(filename) {
     }
 }
 
-// Render a specific page of questions
+/**
+ * UI Engine: renderPage
+ * Generates the paginated list of question cards for the current page index.
+ */
 function renderPage() {
     const container = document.getElementById('questions-container');
+    if (!container) return;
+    
     container.innerHTML = '';
-    stopSpeaking(); // Stop audio when changing pages
+    // Lifecycle: Ensure silence when context changes
+    stopSpeaking(); 
 
-    // Calculate start and end indices
+    // Resolution: Calculate slicing indices
     const start = currentPage * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
     const pageQuestions = questions.slice(start, end);
 
+    // UI Component Generation Loop
     pageQuestions.forEach((q, index) => {
-        // Find the correct answer
         const correctAnswer = q.answers.find(a => a.is_correct);
-        
-        // Calculate absolute question number
         const absoluteIndex = start + index + 1;
 
+        // UI Detail: Conditional image rendering
         const imageHtml = q.image 
             ? `<div class="quiz-image-wrapper" style="margin: 1rem 0; text-align: center;">
                  <img src="/images/quiz/${q.image}" 
@@ -109,7 +158,7 @@ function renderPage() {
         card.className = 'question-card';
         card.style.marginBottom = '2rem';
         
-        // We use flex layouts in the HTML string to position the buttons next to text
+        // Template: Building card HTML fragment
         card.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
                 <div style="flex: 1;">
@@ -165,25 +214,20 @@ function renderPage() {
             </div>
         `;
         
-        // Attach Event Listeners to the specific buttons in this card
+        // Interaction: attach dynamic audio listeners to this specific card's buttons
         const qBtn = card.querySelector('.tts-q-btn');
-        qBtn.onclick = (e) => {
-            e.preventDefault();
-            toggleAudio(q.audio);
-        };
+        if (qBtn) qBtn.onclick = (e) => { e.preventDefault(); toggleAudio(q.audio); };
 
         const aBtn = card.querySelector('.tts-a-btn');
-        aBtn.onclick = (e) => {
-            e.preventDefault();
-            toggleAudio(correctAnswer.audio);
-        };
+        if (aBtn) aBtn.onclick = (e) => { e.preventDefault(); toggleAudio(correctAnswer.audio); };
 
         container.appendChild(card);
     });
 
+    // UI: Update state indicators
     updateControls();
     
-    // Smooth scroll to top when changing pages
+    // UI: Ensure top-of-page focus after transition
     const scrollTargets = [
         document.documentElement,
         document.body,
@@ -193,7 +237,10 @@ function renderPage() {
     window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
-// Update button visibility and page counter
+/**
+ * UI: updateControls
+ * Synchronizes pagination button visibility and page labels.
+ */
 function updateControls() {
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
@@ -201,24 +248,34 @@ function updateControls() {
     
     const totalPages = Math.ceil(questions.length / ITEMS_PER_PAGE);
     
-    prevBtn.style.display = currentPage > 0 ? 'block' : 'none';
-    nextBtn.style.display = currentPage < totalPages - 1 ? 'block' : 'none';
-    pageIndicator.textContent = `Page ${currentPage + 1} of ${totalPages}`;
+    if (prevBtn) prevBtn.style.display = currentPage > 0 ? 'block' : 'none';
+    if (nextBtn) nextBtn.style.display = currentPage < totalPages - 1 ? 'block' : 'none';
+    if (pageIndicator) pageIndicator.textContent = `Page ${currentPage + 1} of ${totalPages}`;
 }
 
-// Event Listeners
+/**
+ * Initialization Block
+ */
 document.addEventListener('DOMContentLoaded', () => {
     initStudyMode();
 
-    document.getElementById('next-btn').addEventListener('click', () => {
-        currentPage++;
-        renderPage();
-    });
-
-    document.getElementById('prev-btn').addEventListener('click', () => {
-        if (currentPage > 0) {
-            currentPage--;
+    // Interaction: Next Page
+    const nextBtn = document.getElementById('next-btn');
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            currentPage++;
             renderPage();
-        }
-    });
+        });
+    }
+
+    // Interaction: Previous Page
+    const prevBtn = document.getElementById('prev-btn');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 0) {
+                currentPage--;
+                renderPage();
+            }
+        });
+    }
 });
