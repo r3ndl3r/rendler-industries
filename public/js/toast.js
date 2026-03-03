@@ -1,26 +1,46 @@
-/* /public/js/toast.js */
+// /public/js/toast.js
 
 /**
- * Displays a global toast notification.
- * @param {string} message - The text to display.
- * @param {string} type - success, error, or info (default).
+ * Global Notification Module (Toast)
+ * 
+ * This module provides a transient notification system for the platform.
+ * It manages a non-blocking UI layer for success, error, and info messages
+ * with automated lifecycle management and icon integration.
+ * 
+ * Features:
+ * - Dynamic container generation (bootstrapped on first call)
+ * - High-density semantic styling (success/error/info)
+ * - Automated 3-second dismissal with fade-out animations
+ * - Integration with the master Platform Icon registry
+ * 
+ * Dependencies:
+ * - default.js: For the getIcon utility
+ */
+
+/**
+ * Interface: showToast
+ * Displays a global transient notification bubble.
+ * 
+ * @param {string} message - The text content to display.
+ * @param {string} type - semantic key: success, error, or info (default).
  * @param {number} duration - Time in ms before auto-dismiss (default 3000).
  */
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toast-container');
     
-    // Create container if it doesn't exist
+    // Lifecycle: ensure the host container exists in the current DOM
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
         document.body.appendChild(container);
     }
     
+    // UI Component creation
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     
-    // Add icon based on type (success, error, or info)
-    const icon = getIcon(type);
+    // Icon Logic: resolve symbol based on semantic type
+    const icon = typeof getIcon === 'function' ? getIcon(type) : '';
     
     toast.innerHTML = `
         <span>${icon} ${message}</span>
@@ -28,11 +48,21 @@ function showToast(message, type = 'info', duration = 3000) {
     
     container.appendChild(toast);
     
-    // Auto-remove after duration
+    /**
+     * Automated Dismissal Workflow
+     * Triggers the CSS exit animation and purges the DOM node.
+     */
     setTimeout(() => {
         toast.classList.add('fade-out');
+        // Cleanup: wait for transition to end before removal
         toast.addEventListener('animationend', () => {
             toast.remove();
         });
     }, duration);
 }
+
+/**
+ * Global Exposure
+ * Essential for platform-wide availability in both JS and templates.
+ */
+window.showToast = showToast;
