@@ -6,10 +6,10 @@
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/files.css?<%= time %>">
     <link rel="stylesheet" href="/css/receipts.css?<%= time %>">
-    <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+    <link  href="/css/vendor/cropper.min.css?<%= time %>" rel="stylesheet">
     <script src="/js/receipts.js?<%= time %>"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+    <script src="/js/vendor/cropper.min.js?<%= time %>"></script>
+    <script src="/js/vendor/heic2any.min.js?<%= time %>"></script>
 % end
 
 <div class="admin-container">
