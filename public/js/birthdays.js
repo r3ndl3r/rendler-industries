@@ -10,9 +10,8 @@
  * Features:
  * - Real-time countdowns (updated every 60 seconds)
  * - Automated Western and Chinese Zodiac determination
- * - Leap year birthday logic handling
  * - Administrative management mode for CRUD operations
- * - Integrated confirmation workflows for record deletion
+ * - Mandatory Action pattern for secure record deletion
  * 
  * Dependencies:
  * - default.js: For apiPost, getIcon, escapeHtml, and modal helpers
@@ -28,18 +27,18 @@ let manageMode = false;             // Toggle state for administrative vs countd
 
 /**
  * Initialization System
- * Triggers initial sync and sets up recurring countdown updates
+ * Triggers initial sync, sets up recurring countdown updates, and configures modal closure.
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // Bootstrap initial data
+    // Bootstrap initial data collection from server
     refreshBirthdays();
     
     // Schedule background countdown updates (1-minute resolution)
     setInterval(updateCountdowns, 60000);
 
-    // Modal: Configure global click-outside-to-close behavior
+    // Modal: Configure global click-outside-to-close behavior for all overlays
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeModal, closeConfirmModal
+        closeModal, closeConfirmModal, closeDeleteModal
     ]);
 });
 
@@ -48,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 
 /**
- * Syncs the birthday collection with the server state.
+ * Syncs the birthday collection with the server-side source of truth.
  * 
  * @returns {Promise<void>}
  */
@@ -80,7 +79,7 @@ async function submitBirthdayForm(event) {
     const id = document.getElementById('field_id').value;
     const url = id ? `/birthdays/edit/${id}` : '/birthdays/add';
     
-    // UI Feedback: disable button and show loading state
+    // UI Feedback: disable button and show loading state to prevent race conditions
     const btn = document.getElementById('submitBtn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
@@ -91,39 +90,52 @@ async function submitBirthdayForm(event) {
         birth_date: document.getElementById('field_date').value
     });
 
+    // Lifecycle Cleanup: Restore button regardless of result to prevent "stuck" state on next open
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+
     if (result) {
-        // Success: hide interface and re-sync
+        // Success: hide interface and re-sync state
         closeModal();
         refreshBirthdays();
-    } else {
-        // Failure: restore button for retry
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
     }
 }
 
 /**
  * Action: confirmDelete
- * Triggers confirmation and removes record upon user approval.
+ * Orchestrates the Mandatory Action deletion flow for a specific record.
  * 
- * @param {number} id - Record ID
- * @param {string} name - Name for confirmation prompt
+ * @param {number} id - Record identifier
+ * @param {string} name - Name for confirmation message
  */
 function confirmDelete(id, name) {
-    showConfirmModal({
-        title: 'Delete Birthday',
-        message: `Are you sure you want to remove "<strong>${name}</strong>" from the records?`,
-        danger: true,
-        confirmText: 'Delete',
-        loadingText: 'Deleting...',
-        onConfirm: async () => {
+    const text = document.getElementById('deleteBirthdayText');
+    const btn = document.getElementById('confirmDeleteBtn');
+    const modal = document.getElementById('deleteBirthdayModal');
+
+    if (text) text.innerHTML = `Are you sure you want to remove "<strong>${name}</strong>" from the records?`;
+    
+    if (btn) {
+        // Logic: dynamic binding to capture closure scope ID for the deletion request
+        btn.onclick = async () => {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
+            
             const result = await apiPost(`/birthdays/delete/${id}`);
+            
+            // Lifecycle Cleanup: Restore button state
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
             if (result) {
-                // Record removal requires a full re-sync to update all views
+                closeDeleteModal();
                 refreshBirthdays();
             }
-        }
-    });
+        };
+    }
+    
+    if (modal) modal.style.display = 'flex';
 }
 
 /**
@@ -140,7 +152,7 @@ function renderUI() {
 }
 
 /**
- * Generates the main countdown tile grid.
+ * Generates the main countdown tile grid from the active state.
  */
 function renderGrid() {
     const grid = document.getElementById('birthday-grid');
@@ -153,7 +165,7 @@ function renderGrid() {
         return;
     }
 
-    // Build and append card for every record
+    // Build and append card for every record in the collection
     birthdaysData.forEach(b => {
         const card = document.createElement('div');
         card.className = 'birthday-card glass-panel';
@@ -234,9 +246,6 @@ function updateCountdowns() {
         // Calculate the next occurrence of this birthday
         let nextBirthday = new Date(today.getFullYear(), m - 1, d);
         
-        // Note: Javascript's Date constructor handles Feb 29 rollover to March 1 
-        // naturally in non-leap years. We preserve this behavior for simplicity.
-
         // If birthday already occurred this year, target next year
         if (nextBirthday < today) {
             nextBirthday.setFullYear(today.getFullYear() + 1);
@@ -272,16 +281,6 @@ function updateCountdowns() {
 /**
  * --- Helpers & Utilities ---
  */
-
-/**
- * Determines if a given year is a leap year.
- * 
- * @param {number} year - The 4-digit year.
- * @returns {boolean} - True if leap year.
- */
-function isLeapYear(year) {
-    return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
-}
 
 /**
  * Prevents XSS by sanitizing dynamic text strings.
@@ -335,7 +334,7 @@ function openAddModal() {
 
 /**
  * Interface: openEditModal
- * Pre-fills the birthday modal with existing record data.
+ * Pre-fills the birthday modal with existing record metadata.
  * 
  * @param {HTMLElement} btn - The edit button element containing the JSON record.
  */
@@ -359,6 +358,14 @@ function closeModal() {
 }
 
 /**
+ * Hides the deletion confirmation interface.
+ */
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteBirthdayModal');
+    if (modal) modal.style.display = 'none';
+}
+
+/**
  * Global Exposure
  * Necessary for event handlers defined in server-rendered templates.
  */
@@ -368,4 +375,5 @@ window.toggleManageMode = toggleManageMode;
 window.openAddModal = openAddModal;
 window.openEditModal = openEditModal;
 window.closeModal = closeModal;
+window.closeDeleteModal = closeDeleteModal;
 window.refreshBirthdays = refreshBirthdays;
