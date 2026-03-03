@@ -1,34 +1,69 @@
 // /public/js/meals.js
 
 /**
- * Family Meal Planner - Client Side Logic (100% AJAX SPA)
+ * Meal Planner Controller Module
+ * 
+ * This module manages the Family Meal Planner interface. It implements 
+ * a collaborative voting and suggestion system with automated locking
+ * logic based on time-of-day thresholds.
+ * 
+ * Features:
+ * - Rolling 7-day timeline with daily meal suggestions
+ * - Collaborative voting system with real-time leader/tie detection
+ * - Automated 2 PM daily lock-in for meal decisions
+ * - Global Meal Vault management for frequent selections
+ * - Smart autocomplete with "New Meal" detection logic
+ * - Administrative blackout and manual winner selection
+ * 
+ * Dependencies:
+ * - default.js: For apiPost, getLoadingHtml, getIcon, and modal helpers
+ * - toast.js: For status feedback
+ * - emoji-picker.js: For icon-enriched meal naming
  */
 
+/**
+ * Initialization System
+ * Triggers initial render and bootstraps autocomplete registries
+ */
 document.addEventListener('DOMContentLoaded', () => {
-    // Initial render from the data provided by the template
+    // Initial render from data injected into the template
     if (window.initialPlan) {
         renderTimeline(window.initialPlan);
     } else {
         loadPlan();
     }
 
+    // Configure unified modal closure behavior
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
         closeSuggestModal, closeBlackoutModal, closeEditSuggestionModal, closeConfirmModal,
         closeManageVaultModal, closeAddEditMealModal
     ]);
     
+    // Bootstrap autocomplete for all suggestion and management inputs
     setupMealAutocomplete('mealInput', 'mealDropdown');
     setupMealAutocomplete('editMealInput', 'editMealDropdown');
     setupMealAutocomplete('manageMealName', 'manageMealDropdown');
 });
 
-let vaultData = [];
+/**
+ * Application State
+ * Local cache for the global meal registry
+ */
+let vaultData = [];                 // Collection of {id, name, is_used}
 
 /**
- * Core Data Fetching
+ * --- Core Data Management ---
+ */
+
+/**
+ * Logic: loadPlan
+ * Fetches the current 7-day plan and triggers timeline re-render.
+ * 
+ * @returns {Promise<void>}
  */
 async function loadPlan() {
     const container = document.getElementById('meals-timeline');
+    // Show loading skeleton if transition is not already in flight
     if (container && !container.querySelector('.component-loading')) {
         container.innerHTML = getLoadingHtml('Syncing meal plan...');
     }
@@ -39,6 +74,7 @@ async function loadPlan() {
         });
         const data = await response.json();
         
+        // Sync global vault and trigger re-render
         if (data.vault) window.mealVault = data.vault;
         if (data.plan) renderTimeline(data.plan);
     } catch (err) {
@@ -48,17 +84,36 @@ async function loadPlan() {
 }
 
 /**
- * Vault Management Logic (Admin)
+ * --- Vault Management Logic (Admin) ---
+ */
+
+/**
+ * Interface: openManageVaultModal
+ * Displays the global meal registry for administrative editing.
+ * 
+ * @returns {Promise<void>}
  */
 async function openManageVaultModal() {
-    document.getElementById('manageVaultModal').style.display = 'flex';
+    const modal = document.getElementById('manageVaultModal');
+    if (modal) modal.style.display = 'flex';
     loadVaultData();
 }
 
+/**
+ * Interface: closeManageVaultModal
+ * Hides the vault management modal.
+ */
 function closeManageVaultModal() {
-    document.getElementById('manageVaultModal').style.display = 'none';
+    const modal = document.getElementById('manageVaultModal');
+    if (modal) modal.style.display = 'none';
 }
 
+/**
+ * Logic: loadVaultData
+ * Syncs the administrative meal table with the server state.
+ * 
+ * @returns {Promise<void>}
+ */
 async function loadVaultData() {
     const response = await fetch('/meals/api/vault');
     const data = await response.json();
@@ -68,8 +123,14 @@ async function loadVaultData() {
     }
 }
 
+/**
+ * UI: renderVaultTable
+ * Generates the management table rows with contextual action disabling.
+ */
 function renderVaultTable() {
     const body = document.getElementById('vault-table-body');
+    if (!body) return;
+
     body.innerHTML = vaultData.map(m => `
         <tr>
             <td><strong>${escapeHtml(m.name)}</strong></td>
@@ -90,6 +151,12 @@ function renderVaultTable() {
     `).join('');
 }
 
+/**
+ * Interface: openAddEditMealModal
+ * Pre-fills the meal editor for either addition or modification.
+ * 
+ * @param {number|null} mealId - ID of existing meal or null for new
+ */
 function openAddEditMealModal(mealId = null) {
     const title = document.getElementById('manageMealModalTitle');
     const meal = mealId ? vaultData.find(m => m.id == mealId) : null;
@@ -104,14 +171,25 @@ function openAddEditMealModal(mealId = null) {
         document.getElementById('manageMealName').value = '';
     }
     document.getElementById('manageMealDropdown').style.display = 'none';
-    document.getElementById('addEditMealModal').style.display = 'flex';
+    const modal = document.getElementById('addEditMealModal');
+    if (modal) modal.style.display = 'flex';
 }
 
+/**
+ * Hides the meal addition/edit modal.
+ */
 function closeAddEditMealModal() {
-    document.getElementById('addEditMealModal').style.display = 'none';
+    const modal = document.getElementById('addEditMealModal');
+    if (modal) modal.style.display = 'none';
     document.getElementById('manageMealDropdown').style.display = 'none';
 }
 
+/**
+ * Action: submitManageMeal
+ * Submits a new or modified meal to the global registry.
+ * 
+ * @returns {Promise<void>}
+ */
 async function submitManageMeal() {
     const id = document.getElementById('manageMealId').value;
     const name = document.getElementById('manageMealName').value.trim();
@@ -133,7 +211,7 @@ async function submitManageMeal() {
         showToast(result.message, 'success');
         closeAddEditMealModal();
         loadVaultData();
-        loadPlan(); // Sync autocomplete vault
+        loadPlan(); // Ensure autocomplete vault is synchronized
     } else {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
@@ -141,6 +219,13 @@ async function submitManageMeal() {
     }
 }
 
+/**
+ * Action: deleteManageMeal
+ * Triggers deletion confirmation for a vault item.
+ * 
+ * @param {number} id - Meal ID
+ * @param {string} name - Meal name
+ */
 async function deleteManageMeal(id, name) {
     showConfirmModal({
         title: 'Remove from Vault',
@@ -161,7 +246,14 @@ async function deleteManageMeal(id, name) {
 }
 
 /**
- * Dynamic Rendering Engine
+ * --- Dynamic Rendering Engine ---
+ */
+
+/**
+ * Logic: renderTimeline
+ * Generates the horizontal 7-day scrolling plan interface.
+ * 
+ * @param {Array} plan - Collection of day objects
  */
 function renderTimeline(plan) {
     const container = document.getElementById('meals-timeline');
@@ -170,13 +262,23 @@ function renderTimeline(plan) {
     container.innerHTML = plan.map((day, idx) => renderDayColumn(day, idx)).join('');
 }
 
+/**
+ * UI Component: renderDayColumn
+ * Generates the HTML fragment for a single day in the plan.
+ * Implements complex logic for locking, blackout, and winner detection.
+ * 
+ * @param {Object} day - Day configuration from state
+ * @param {number} index - Index in the timeline (0 = today)
+ * @returns {string} - Rendered HTML
+ */
 function renderDayColumn(day, index) {
     const now = new Date();
     const isPast2PM = now.getHours() >= 14;
+    // Lock day if status is forced or if it's today after 2PM
     const isLocked = day.status === 'locked' || (index === 0 && isPast2PM);
     const blackout = day.blackout_reason;
     
-    // Check if it's past 2PM for the first day (Today)
+    // Visibility: Lock pill for today's deadline awareness
     let lockPill = '';
     if (index === 0 && !blackout && !day.final_suggestion_id) {
         const icon = isPast2PM ? getIcon('lock') : getIcon('clock');
@@ -186,6 +288,7 @@ function renderDayColumn(day, index) {
 
     let contentHtml = '';
 
+    // Scenario A: Admin Blackout
     if (blackout) {
         contentHtml = `
             <div class="blackout-state">
@@ -198,7 +301,9 @@ function renderDayColumn(day, index) {
                         </button>
                     </div>` : ''}
             </div>`;
-    } else if (isLocked && day.final_suggestion_id) {
+    } 
+    // Scenario B: Locked with Winner
+    else if (isLocked && day.final_suggestion_id) {
         const winner = day.suggestions.find(s => s.id == day.final_suggestion_id);
         contentHtml = winner ? `
             <div class="winner-card">
@@ -212,25 +317,23 @@ function renderDayColumn(day, index) {
                         </button>
                     </div>` : ''}
             </div>` : '<p>Locked but no winner found.</p>';
-    } else {
-        // Tie detection for the leader banner
-        const maxVotes = day.suggestions.length ? day.suggestions[0].vote_count : 0;
+    } 
+    // Scenario C: Active Voting
+    else {
+        // Calculate leaders for tie-detection banner
+        const maxVotes = day.suggestions.length ? Math.max(...day.suggestions.map(s => s.vote_count)) : 0;
         const leaders  = day.suggestions.filter(s => s.vote_count === maxVotes && maxVotes > 0);
         
-        const now = new Date();
-        const isPast2PM = now.getHours() >= 14;
-        const isToday = index === 0;
-
         let leaderBanner = '';
         if (leaders.length > 1) {
-            const label = (isToday && isPast2PM) ? "Today's Tie" : "Current Tie";
+            const label = (index === 0 && isPast2PM) ? "Today's Tie" : "Current Tie";
             leaderBanner = `
                 <div class="leader-banner is-tie">
                     <span class="leader-label">${getIcon('vote')} ${label}</span>
                     <span class="leader-meal">${leaders.map(l => escapeHtml(l.meal_name)).join(' / ')}</span>
                 </div>`;
         } else if (leaders.length === 1) {
-            const label = (isToday && isPast2PM) ? "Today's Winner" : "Current Leader";
+            const label = (index === 0 && isPast2PM) ? "Today's Winner" : "Current Leader";
             leaderBanner = `
                 <div class="leader-banner">
                     <span class="leader-label">${getIcon('trophy')} ${label}</span>
@@ -238,7 +341,7 @@ function renderDayColumn(day, index) {
                 </div>`;
         }
 
-        // Suggestions List
+        // Build suggestions list
         const suggestionsHtml = day.suggestions.map(s => `
             <div class="suggestion-row" data-suggestion-id="${s.id}">
                 <div class="suggestion-body">
@@ -270,7 +373,6 @@ function renderDayColumn(day, index) {
                 </div>` : ''}
             </div>`).join('');
 
-        // Action Buttons (Only show if NOT locked)
         const dayActions = isLocked ? '' : `
             <div class="day-actions">
                 ${(!day.user_has_suggested) ? `
@@ -300,6 +402,13 @@ function renderDayColumn(day, index) {
         </div>`;
 }
 
+/**
+ * UI Component: renderVoterPills
+ * Generates badge fragments for users who voted for a suggestion.
+ * 
+ * @param {Array} voters - List of usernames
+ * @returns {string} - HTML fragment
+ */
 function renderVoterPills(voters) {
     if (!voters || !voters.length) return '';
     return `
@@ -309,12 +418,21 @@ function renderVoterPills(voters) {
 }
 
 /**
- * Smart Positioning for Autocomplete
+ * --- Smart UI Positioning ---
+ */
+
+/**
+ * Logic: positionDropdown
+ * Adjusts autocomplete dropdown position to avoid viewport overflow.
+ * Implements "drop-up" logic when space below is restricted.
+ * 
+ * @param {HTMLElement} input - Reference input
+ * @param {HTMLElement} dropdown - Dropdown container
  */
 function positionDropdown(input, dropdown) {
     const rect = input.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
-    const dropdownHeight = 200; // Matches CSS max-height
+    const dropdownHeight = 200; // Expected max-height
 
     if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
         dropdown.classList.add('drop-up');
@@ -323,10 +441,17 @@ function positionDropdown(input, dropdown) {
     }
 }
 
-// Update setupMealAutocomplete to use positioning and internal click handling
+/**
+ * Bootstraps autocomplete logic for a specific input field.
+ * Handles bidirectional state updates and keyboard focus management.
+ * 
+ * @param {string} inputId - ID of target input
+ * @param {string} dropdownId - ID of dropdown container
+ */
 function setupMealAutocomplete(inputId, dropdownId) {
     const input    = document.getElementById(inputId);
     const dropdown = document.getElementById(dropdownId);
+    if (!input || !dropdown) return;
 
     const updateMatches = () => {
         const query   = input.value.toLowerCase().trim();
@@ -342,14 +467,13 @@ function setupMealAutocomplete(inputId, dropdownId) {
     input.addEventListener('input', updateMatches);
     input.addEventListener('focus', updateMatches);
 
-    // Prevent focus loss when clicking items
+    // Context: prevent focus loss when selecting items
     dropdown.addEventListener('mousedown', (e) => {
         if (e.target.closest('.meal-option')) {
             e.preventDefault();
         }
     });
 
-    // Handle selection and stop propagation to prevent "click leakage"
     dropdown.addEventListener('click', (e) => {
         const option = e.target.closest('.meal-option');
         if (option) {
@@ -360,6 +484,7 @@ function setupMealAutocomplete(inputId, dropdownId) {
         }
     });
 
+    // Global: close dropdown when clicking away
     document.addEventListener('click', (e) => {
         if (!input.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.style.display = 'none';
@@ -367,6 +492,12 @@ function setupMealAutocomplete(inputId, dropdownId) {
     });
 }
 
+/**
+ * Generates the autocomplete options list.
+ * Includes "NEW" badge for items not present in the vault.
+ * 
+ * @private
+ */
 function renderDropdown(input, dropdown, items) {
     const query = input.value.trim();
     if (!items.length && !query) {
@@ -380,7 +511,7 @@ function renderDropdown(input, dropdown, items) {
         </div>`
     ).join('');
 
-    // If typing something new, show a special 'New Meal' option
+    // Highlight new additions not found in registry
     if (query && !items.find(m => m.toLowerCase() === query.toLowerCase())) {
         html += `
             <div class="meal-option meal-option-new" data-value="${escapeHtml(query)}">
@@ -396,13 +527,21 @@ function renderDropdown(input, dropdown, items) {
     dropdown.innerHTML = html;
     dropdown.style.display = 'block';
     
+    // Z-index management for emoji picker integration
     if (window.EmojiPicker && EmojiPicker.triggerBtn) {
         EmojiPicker.triggerBtn.style.zIndex = '1001';
     }
 }
 
 /**
- * API Interactions
+ * --- API Interactions ---
+ */
+
+/**
+ * Action: submitSuggestion
+ * Registers a new meal suggestion for a specific day.
+ * 
+ * @returns {Promise<void>}
  */
 async function submitSuggestion() {
     const planId   = document.getElementById('activePlanId').value;
@@ -423,7 +562,7 @@ async function submitSuggestion() {
     if (result && result.success) {
         showToast('Suggestion added!', 'success');
         closeSuggestModal();
-        loadPlan(); // Sync UI
+        loadPlan();
     } else {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
@@ -431,9 +570,16 @@ async function submitSuggestion() {
     }
 }
 
+/**
+ * Action: castVote
+ * Handles voting for a suggestion with automated switch logic.
+ * 
+ * @param {number} suggestionId - Target suggestion ID
+ * @returns {Promise<void>}
+ */
 async function castVote(suggestionId) {
     const row = document.querySelector(`.suggestion-row[data-suggestion-id="${suggestionId}"]`);
-    if (row) row.classList.add('vote-pop');
+    if (row) row.classList.add('vote-pop'); // Visual pop animation
 
     const result = await apiPost('/meals/vote', { suggestion_id: suggestionId });
 
@@ -446,7 +592,7 @@ async function castVote(suggestionId) {
         } else {
             showToast('Vote removed', 'success');
         }
-        // Small delay to let animation finish before sync
+        // Debounced sync to allow animation completion
         setTimeout(loadPlan, 300);
     } else {
         if (row) row.classList.remove('vote-pop');
@@ -454,6 +600,12 @@ async function castVote(suggestionId) {
     }
 }
 
+/**
+ * Action: submitEditSuggestion
+ * Modifies an existing meal suggestion description.
+ * 
+ * @returns {Promise<void>}
+ */
 async function submitEditSuggestion() {
     const suggestionId = document.getElementById('editSuggestionId').value;
     const mealName     = document.getElementById('editMealInput').value.trim();
@@ -481,6 +633,10 @@ async function submitEditSuggestion() {
     }
 }
 
+/**
+ * Action: deleteSuggestion
+ * Confirms and removes a meal suggestion from the plan.
+ */
 async function deleteSuggestion(suggestionId, mealName) {
     showConfirmModal({
         title: 'Remove Suggestion',
@@ -499,6 +655,10 @@ async function deleteSuggestion(suggestionId, mealName) {
     });
 }
 
+/**
+ * Action: submitBlackout (Admin)
+ * Disables a day in the plan for a specified reason (e.g., Takeout).
+ */
 async function submitBlackout() {
     const planId = document.getElementById('blackoutPlanId').value;
     const reason = document.getElementById('blackoutReason').value;
@@ -522,6 +682,10 @@ async function submitBlackout() {
     });
 }
 
+/**
+ * Action: adminLock (Admin)
+ * Manually forces a meal selection and closes voting for the day.
+ */
 async function adminLock(planId, suggestionId) {
     showConfirmModal({
         title: 'Lock Winner',
@@ -539,6 +703,10 @@ async function adminLock(planId, suggestionId) {
     });
 }
 
+/**
+ * Action: adminUnlock (Admin)
+ * Re-opens a locked or blacked-out day for suggestions and voting.
+ */
 async function adminUnlock(planId) {
     showConfirmModal({
         title: 'Unlock Day',
@@ -557,49 +725,131 @@ async function adminUnlock(planId) {
 }
 
 /**
- * Modal Helpers
+ * --- Modal Helpers ---
+ */
+
+/**
+ * Interface: openSuggestModal
+ * Prepares the suggestion interface for a specific day.
  */
 function openSuggestModal(planId, dateLabel) {
-    document.getElementById('activePlanId').value = planId;
-    document.getElementById('suggestDateLabel').textContent = dateLabel;
-    document.getElementById('mealInput').value = '';
+    const activePlanInput = document.getElementById('activePlanId');
+    const suggestLabel = document.getElementById('suggestDateLabel');
+    const mealInput = document.getElementById('mealInput');
     const dropdown = document.getElementById('mealDropdown');
-    dropdown.style.display = 'none';
-    dropdown.classList.remove('drop-up'); // Reset position
-    document.getElementById('suggestModal').style.display = 'flex';
+    const modal = document.getElementById('suggestModal');
+
+    if (activePlanInput) activePlanInput.value = planId;
+    if (suggestLabel) suggestLabel.textContent = dateLabel;
+    if (mealInput) mealInput.value = '';
+    
+    if (dropdown) {
+        dropdown.style.display = 'none';
+        dropdown.classList.remove('drop-up');
+    }
+    
+    if (modal) modal.style.display = 'flex';
 }
 
+/**
+ * Interface: closeSuggestModal
+ * Hides the suggestion interface.
+ */
 function closeSuggestModal() {
-    document.getElementById('suggestModal').style.display = 'none';
-    document.getElementById('mealDropdown').style.display = 'none';
+    const modal = document.getElementById('suggestModal');
+    const dropdown = document.getElementById('mealDropdown');
+    if (modal) modal.style.display = 'none';
+    if (dropdown) dropdown.style.display = 'none';
 }
 
+/**
+ * Interface: openEditSuggestionModal
+ * Displays the edit interface for an existing suggestion.
+ */
 function openEditSuggestionModal(suggestionId, mealName) {
-    document.getElementById('editSuggestionId').value = suggestionId;
-    document.getElementById('editMealInput').value = mealName;
+    const idInput = document.getElementById('editSuggestionId');
+    const nameInput = document.getElementById('editMealInput');
     const dropdown = document.getElementById('editMealDropdown');
-    dropdown.style.display = 'none';
-    dropdown.classList.remove('drop-up'); // Reset position
-    document.getElementById('editSuggestionModal').style.display = 'flex';
-    document.getElementById('editMealInput').focus();
+    const modal = document.getElementById('editSuggestionModal');
+
+    if (idInput) idInput.value = suggestionId;
+    if (nameInput) nameInput.value = mealName;
+    
+    if (dropdown) {
+        dropdown.style.display = 'none';
+        dropdown.classList.remove('drop-up');
+    }
+    
+    if (modal) modal.style.display = 'flex';
+    if (nameInput) nameInput.focus();
 }
 
+/**
+ * Interface: closeEditSuggestionModal
+ * Hides the edit suggestion interface.
+ */
 function closeEditSuggestionModal() {
-    document.getElementById('editSuggestionModal').style.display = 'none';
-    document.getElementById('editMealDropdown').style.display = 'none';
+    const modal = document.getElementById('editSuggestionModal');
+    const dropdown = document.getElementById('editMealDropdown');
+    if (modal) modal.style.display = 'none';
+    if (dropdown) dropdown.style.display = 'none';
 }
 
+/**
+ * Interface: openBlackoutModal
+ * Displays the blackout management interface.
+ */
 function openBlackoutModal(planId) {
-    document.getElementById('blackoutPlanId').value = planId;
-    document.getElementById('blackoutModal').style.display = 'flex';
+    const idInput = document.getElementById('blackoutPlanId');
+    const modal = document.getElementById('blackoutModal');
+    if (idInput) idInput.value = planId;
+    if (modal) modal.style.display = 'flex';
 }
 
+/**
+ * Interface: closeBlackoutModal
+ * Hides the blackout management interface.
+ */
 function closeBlackoutModal() {
-    document.getElementById('blackoutModal').style.display = 'none';
+    const modal = document.getElementById('blackoutModal');
+    if (modal) modal.style.display = 'none';
 }
 
+/**
+ * Utility: escapeHtml
+ * Sanitizes dynamic strings to prevent XSS.
+ * 
+ * @param {string} text - Raw input
+ * @returns {string} - Sanitized HTML
+ */
 function escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
+
+/**
+ * Global Exposure
+ * Necessary for event delegation and inline handlers in templates.
+ */
+window.submitSuggestion = submitSuggestion;
+window.castVote = castVote;
+window.submitEditSuggestion = submitEditSuggestion;
+window.deleteSuggestion = deleteSuggestion;
+window.submitBlackout = submitBlackout;
+window.adminLock = adminLock;
+window.adminUnlock = adminUnlock;
+window.openSuggestModal = openSuggestModal;
+window.closeSuggestModal = closeSuggestModal;
+window.openEditSuggestionModal = openEditSuggestionModal;
+window.closeEditSuggestionModal = closeEditSuggestionModal;
+window.openBlackoutModal = openBlackoutModal;
+window.closeBlackoutModal = closeBlackoutModal;
+window.openManageVaultModal = openManageVaultModal;
+window.closeManageVaultModal = closeManageVaultModal;
+window.openAddEditMealModal = openAddEditMealModal;
+window.closeAddEditMealModal = closeAddEditMealModal;
+window.submitManageMeal = submitManageMeal;
+window.deleteManageMeal = deleteManageMeal;
+window.loadPlan = loadPlan;
