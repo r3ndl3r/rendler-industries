@@ -58,6 +58,7 @@ sub startup {
     $self->plugin('MyApp::Plugin::Tools');
     $self->plugin('MyApp::Plugin::OCR');
     $self->plugin('MyApp::Plugin::TTS');
+    $self->plugin('MyApp::Plugin::Translation');
 
     # Configure signed cookie secrets
     $self->secrets($config->{secrets} || [$secret]);
@@ -389,8 +390,9 @@ sub startup {
     $auth->post('/todo/edit/:id')->to('todo#edit');
     $auth->post('/todo/clear')->to('todo#clear_completed');
 
-    # --- Text-to-Speech Routes ---
+    # --- Google Cloud API Routes ---
     $auth->post('/api/tts/synthesize')->to('TTS#synthesize');
+    $auth->post('/api/translate')->to('Translation#translate');
 
     # --- Connect 4 Routes ---
     $auth->get('/connect4/lobby')->to('connect4#lobby');
