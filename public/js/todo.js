@@ -35,9 +35,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bootstrap initial data from server
     loadState();
 
-    // Auto-focus input for rapid task entry
     const taskInput = document.getElementById('taskInput');
-    if (taskInput) taskInput.focus();
+    if (taskInput) {
+        taskInput.focus();
+
+        // Behavior: Auto-resize and key handlers
+        taskInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        taskInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                addTodo();
+            }
+        });
+    }
+
+    const editName = document.getElementById('editName');
+    if (editName) {
+        editName.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitEdit();
+            }
+        });
+    }
 
     // Attach form submission handler
     const addForm = document.getElementById('addTodoForm');
@@ -158,11 +182,11 @@ function renderTodoItem(todo) {
             </div>
             <div class="action-buttons">
                 ${!isCompleted ? `
-                    <button class="btn-icon-edit" onclick="openEditModal(${todo.id}, \`${todo.task_name.replace(/`/g, '\\`')}\`)" title="Edit">
+                    <button class="btn-icon-edit" onclick="openEditModal(${todo.id})" title="Edit">
                         ${getIcon('edit')}
                     </button>
                 ` : ''}
-                <button class="btn-icon-delete" onclick="deleteTodo(${todo.id}, \`${todo.task_name.replace(/`/g, '\\`')}\`)" title="Delete">
+                <button class="btn-icon-delete" onclick="deleteTodo(${todo.id})" title="Delete">
                     ${getIcon('delete')}
                 </button>
             </div>
@@ -190,6 +214,7 @@ async function addTodo() {
     const result = await apiPost('/todo/add', { task_name: task_name });
     if (result && result.success) {
         input.value = '';
+        input.style.height = 'auto'; // Reset height for textarea
         // Perform optimistic update to local state
         appState.todos.unshift({
             id: result.id,
@@ -233,12 +258,14 @@ async function toggleTodo(id) {
  * Triggers confirmation modal and removes task upon user approval
  * 
  * @param {number} id - Target Task ID
- * @param {string} name - Task description for confirmation display
  */
-async function deleteTodo(id, name) {
+async function deleteTodo(id) {
+    const todo = appState.todos.find(t => t.id == id);
+    if (!todo) return;
+
     showConfirmModal({
         title: 'Delete Task',
-        message: `Are you sure you want to remove "<strong>${escapeHtml(name)}</strong>"?`,
+        message: `Are you sure you want to remove "<strong>${escapeHtml(todo.task_name)}</strong>"?`,
         danger: true,
         confirmText: 'Delete',
         onConfirm: async () => {
@@ -257,15 +284,22 @@ async function deleteTodo(id, name) {
  * Pre-fills and displays the task editing interface
  * 
  * @param {number} id - Target Task ID
- * @param {string} currentName - Existing task description
  * 
  * Exposed to window for legacy inline onclick support
  */
-window.openEditModal = function(id, currentName) {
+window.openEditModal = function(id) {
+    const todo = appState.todos.find(t => t.id == id);
+    if (!todo) return;
+
     document.getElementById('editId').value = id;
-    document.getElementById('editName').value = currentName;
+    document.getElementById('editName').value = todo.task_name;
     document.getElementById('editModal').classList.add('show');
-    document.getElementById('editName').focus();
+    
+    const editName = document.getElementById('editName');
+    editName.focus();
+    // Logic: Auto-expand height to match existing multi-line content
+    editName.style.height = 'auto';
+    editName.style.height = (editName.scrollHeight) + 'px';
 };
 
 /**
