@@ -10,7 +10,7 @@ use Mojo::JSON qw(decode_json encode_json);
 # Features:
 #   - Binary upload and persistent storage of receipt images
 #   - Metadata tagging (Store, Date, Total) with OCR assistance
-#   - AJAX-powered pagination for large ledgers
+#   - Pagination for large ledgers
 #   - Gemini 2.0 AI integration for high-fidelity electronic receipts
 #   - Client-side image cropping and refinement
 # Integration points:
@@ -18,14 +18,19 @@ use Mojo::JSON qw(decode_json encode_json);
 #   - Depends on DB::Receipts for binary and structured storage
 #   - Leverages global Gemini API configuration from Settings
 
-# Renders the main receipt ledger (Skeleton for SPA).
+# Renders the main receipt ledger skeleton.
 # Route: GET /receipts
+# Parameters: None
+# Returns: Rendered HTML template 'receipts'.
 sub index {
     shift->render('receipts');
 }
 
-# API: Returns full SPA state (Receipts + Summaries + Config)
+# Returns the consolidated state for the module.
 # Route: GET /receipts/api/state
+# Parameters:
+#   store, days, search, min_amount, ai_status, uploader : Filter params.
+# Returns: JSON object { receipts, store_names, uploaders, summary, breakdown, is_admin, current_user }
 sub api_state {
     my $c = shift;
     
@@ -41,7 +46,7 @@ sub api_state {
     my $state = {
         receipts    => $c->db->get_all_receipts_metadata(10, 0, $f),
         store_names => $c->db->get_unique_store_names(),
-        uploaders   => $c->db->get_medication_members(),
+        uploaders   => $c->db->get_all_users(),
         summary     => $c->db->get_spending_summary(),
         breakdown   => $c->db->get_store_spending_breakdown(3),
         is_admin    => $c->is_admin ? 1 : 0,
@@ -52,8 +57,12 @@ sub api_state {
     $c->render(json => $state);
 }
 
-# API endpoint for lazy-loading receipt metadata via AJAX.
+# Lazy-loads receipt metadata for pagination.
 # Route: GET /api/receipts/list
+# Parameters:
+#   offset : Integer pagination pointer.
+#   store, days, search, min_amount, ai_status, uploader : Filter params.
+# Returns: JSON object { success, receipts, has_more }
 sub api_list {
     my $c = shift;
     my $offset = int($c->param('offset') // 0);
@@ -77,23 +86,24 @@ sub api_list {
     });
 }
 
-# Processes a new receipt upload with automated OCR suggestion.
-# Route: POST /receipts
+# Processes a new binary receipt upload.
+# Route: POST /receipts/api/upload
 # Parameters:
-#   file: Binary upload object
-#   store_name, receipt_date, total_amount, description: Form fields
+#   file : Multipart binary object (Max 1GB).
+#   store_name, receipt_date, total_amount, description : Metadata fields.
+# Returns: JSON object { success, message, receipt, summary, breakdown }
 sub upload {
     my $c = shift;
     
     my $upload = $c->param('file');
-    unless ($upload) { return $c->render_error("No file uploaded", 400); }
+    unless ($upload) { return $c->render(json => { success => 0, error => "No file uploaded" }); }
     
     my $original_filename = $upload->filename;
     my $file_size = $upload->size || 0;
     my $mime_type = $upload->headers->content_type || 'application/octet-stream';
 
     if ($file_size > 1024 * 1024 * 1024) {
-        return $c->render_error("File too large (Max 1GB)", 413);
+        return $c->render(json => { success => 0, error => "File too large (Max 1GB)" });
     }
     
     my $file_data = $upload->asset->slurp;
@@ -142,16 +152,20 @@ sub upload {
     }
 }
 
-# Updates metadata for an existing receipt.
-# Route: POST /receipts/update/:id
+# Updates metadata for an existing receipt record.
+# Route: POST /receipts/api/update/:id
+# Parameters:
+#   id : Unique Receipt ID.
+#   store_name, receipt_date, total_amount, description : Metadata fields.
+# Returns: JSON object { success, message, receipt, summary, breakdown }
 sub update {
     my $c = shift;
     my $id = $c->param('id');
     my $receipt = $c->db->get_receipt_by_id($id);
-    return $c->render_error("Receipt not found", 404) unless $receipt;
+    return $c->render(json => { success => 0, error => "Receipt not found" }) unless $receipt;
     
     unless ($c->session('user') eq $receipt->{uploaded_by} || $c->is_admin) {
-        return $c->render_error("Access Denied", 403);
+        return $c->render(json => { success => 0, error => "Access Denied" });
     }
     
     my $store_name   = $c->param('store_name') ? trim($c->param('store_name')) : undef;
@@ -178,8 +192,12 @@ sub update {
     });
 }
 
-# Processes a client-side cropped image update via AJAX.
-# Route: POST /receipts/crop/:id
+# Processes a client-side cropped image update.
+# Route: POST /receipts/api/crop/:id
+# Parameters:
+#   id : Unique Receipt ID.
+#   cropped_image : Binary file object.
+# Returns: JSON object { success }
 sub crop {
     my $c = shift;
     my $id = $c->param('id');
@@ -199,20 +217,22 @@ sub crop {
     eval { $c->db->update_receipt_binary($id, $file_data, $file_size); };
     if ($@) { return $c->render(json => { success => 0, error => "Database failure" }, status => 500); }
 
-    $c->flash(message => "Receipt image successfully refined.");
-    return $c->render(json => { success => 1 });
+    return $c->render(json => { success => 1, message => "Receipt image successfully refined." });
 }
 
-# Permanently deletes a receipt and its associated metadata.
-# Route: POST /receipts/delete/:id
+# Permanently removes a receipt resource.
+# Route: POST /receipts/api/delete/:id
+# Parameters:
+#   id : Unique Receipt ID.
+# Returns: JSON object { success, message, summary, breakdown }
 sub delete {
     my $c = shift;
     my $id = $c->param('id');
     my $receipt = $c->db->get_receipt_by_id($id);
-    return $c->render_error("Receipt not found", 404) unless $receipt;
+    return $c->render(json => { success => 0, error => "Receipt not found" }) unless $receipt;
     
     unless ($c->session('user') eq $receipt->{uploaded_by} || $c->is_admin) {
-        return $c->render_error("Access Denied", 403);
+        return $c->render(json => { success => 0, error => "Access Denied" });
     }
     
     eval {
@@ -230,6 +250,9 @@ sub delete {
 
 # Serves raw binary content with correct MIME headers.
 # Route: GET /receipts/serve/:id
+# Parameters:
+#   id : Unique Receipt ID.
+# Returns: Binary stream.
 sub serve {
     my $c = shift;
     my $id = $c->param('id');
@@ -240,12 +263,11 @@ sub serve {
     return $c->render(data => $receipt->{file_data});
 }
 
-# API Endpoint: Manual OCR Scan - Extracts basic metadata from an existing image.
-# Route: POST /receipts/ocr/:id
+# Extracts metadata from an existing image via AI OCR.
+# Route: POST /receipts/api/ocr/:id
 # Parameters:
-#   - id: Unique receipt ID.
-# Returns:
-#   JSON: { success, store_name, receipt_date, total_amount, raw_text }
+#   id : Unique Receipt ID.
+# Returns: JSON object { success, store_name, receipt_date, total_amount, raw_text }
 sub trigger_ocr {
     my $c = shift;
     my $id = $c->param('id');
@@ -276,6 +298,7 @@ sub trigger_ocr {
 
         $c->render(json => {
             success      => 1,
+            message      => "OCR extraction complete.",
             store_name   => $ocr_data->{store_name},
             receipt_date => $ocr_data->{receipt_date},
             total_amount => $ocr_data->{total_amount},
@@ -290,9 +313,12 @@ sub trigger_ocr {
     }
 }
 
-# AJAX: AI-powered structured receipt extraction and electronic generation.
-# Route: POST /receipts/ai_analyze/:id
-# Returns: JSON object with cached or fresh deep analysis data
+# Performs AI-powered structured receipt digitization.
+# Route: POST /receipts/api/ai_analyze/:id
+# Parameters:
+#   id    : Unique Receipt ID.
+#   force : Force rescan (Boolean).
+# Returns: JSON object { success, cached, data }
 sub ai_analyze {
     my $c = shift;
     my $id = $c->param('id');
@@ -349,7 +375,7 @@ sub ai_analyze {
         if ($extracted && ref($extracted) eq 'HASH') {
             # Update ai_json column only; metadata columns remain untouched
             eval { $c->db->update_receipt_ai_json($id, $json_text); };
-            return $c->render(json => { success => 1, cached => 0, data => $extracted });
+            return $c->render(json => { success => 1, message => "AI Digitization successful.", cached => 0, data => $extracted });
         }
     }
 
