@@ -303,7 +303,7 @@ body.modal-open {
     display: none;
     justify-content: center;
     align-items: center;
-    z-index: 11000;
+    z-index: 13000;
 }
 
 /* Maintain centering for delete modals */
@@ -954,4 +954,38 @@ a:hover {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* --- Smart Global Modal Utilities --- */
+.modal-overlay.persistent { cursor: default; }
+
+.modal-content.modal-sm { max-width: 350px; }
+.modal-content.modal-md { max-width: 500px; }
+.modal-content.modal-lg { max-width: 800px; }
+
+.modal-actions-left   { justify-content: flex-start !important; }
+.modal-actions-center { justify-content: center !important; }
+.modal-actions-right  { justify-content: flex-end !important; }
+
+/* Theme Modifiers */
+.modal-theme-danger  .modal-header h3 { color: #ef4444 !important; }
+.modal-theme-success .modal-header h3 { color: #10b981 !important; }
+.modal-theme-warning .modal-header h3 { color: #f59e0b !important; }
+
+.modal-sub-message { 
+    display: block; 
+    font-size: 0.85rem; 
+    color: #94a3b8; 
+    margin-top: 0.5rem; 
+    line-height: 1.4;
+}
+
+.modal-prompt-container { margin-top: 1.5rem; }
+.modal-prompt-input { 
+    width: 100%; 
+    padding: 0.75rem; 
+    background: #0f172a; 
+    border: 1px solid #334155; 
+    border-radius: 6px; 
+    color: white;
 }
