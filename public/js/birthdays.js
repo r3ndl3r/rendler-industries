@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal: Configure global click-outside-to-close behavior for all overlays
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeModal, closeConfirmModal, closeDeleteModal
+        closeModal, closeConfirmModal
     ]);
 });
 
@@ -109,33 +109,21 @@ async function submitBirthdayForm(event) {
  * @param {string} name - Name for confirmation message
  */
 function confirmDelete(id, name) {
-    const text = document.getElementById('deleteBirthdayText');
-    const btn = document.getElementById('confirmDeleteBtn');
-    const modal = document.getElementById('deleteBirthdayModal');
-
-    if (text) text.innerHTML = `Are you sure you want to remove "<strong>${name}</strong>" from the records?`;
-    
-    if (btn) {
-        // Logic: dynamic binding to capture closure scope ID for the deletion request
-        btn.onclick = async () => {
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
-            
+    showConfirmModal({
+        title: 'Delete Birthday',
+        message: `Are you sure you want to remove \"<strong>${name}</strong>\" from the records?`,
+        danger: true,
+        confirmText: 'Delete',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
             const result = await apiPost(`/birthdays/delete/${id}`);
-            
-            // Lifecycle Cleanup: Restore button state
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-
             if (result) {
-                closeDeleteModal();
                 refreshBirthdays();
             }
-        };
-    }
-    
-    if (modal) modal.style.display = 'flex';
+        }
+    });
 }
 
 /**
@@ -358,14 +346,6 @@ function closeModal() {
 }
 
 /**
- * Hides the deletion confirmation interface.
- */
-function closeDeleteModal() {
-    const modal = document.getElementById('deleteBirthdayModal');
-    if (modal) modal.style.display = 'none';
-}
-
-/**
  * Global Exposure
  * Necessary for event handlers defined in server-rendered templates.
  */
@@ -375,5 +355,4 @@ window.toggleManageMode = toggleManageMode;
 window.openAddModal = openAddModal;
 window.openEditModal = openEditModal;
 window.closeModal = closeModal;
-window.closeDeleteModal = closeDeleteModal;
 window.refreshBirthdays = refreshBirthdays;
