@@ -62,11 +62,15 @@
                         <div class="debt-actions">
                             <span class="debt-amount">$<%= sprintf("%.2f", $row->{total}) %></span>
                             
-                            <form class="pay-debt-form">
-                                <input type="hidden" name="perpetrator" value="<%= $row->{perpetrator} %>">
-                                <input type="number" name="amount" value="<%= sprintf("%.2f", $row->{total}) %>" step="0.50" min="0" class="game-input small-input">
-                                <button type="submit" class="game-btn btn-green btn-small">DEPOSIT</button>
-                            </form>
+                            <%# Logic: Hide deposit button for own debt; show for guests or others %>
+                            % my $cur_user = current_user();
+                            % if (!$cur_user || lc($row->{perpetrator}) ne lc($cur_user->{username} // '')) {
+                                <form class="pay-debt-form">
+                                    <input type="hidden" name="perpetrator" value="<%= $row->{perpetrator} %>">
+                                    <input type="number" name="amount" value="<%= sprintf("%.2f", $row->{total}) %>" step="0.50" min="0" class="game-input small-input">
+                                    <button type="submit" class="game-btn btn-green btn-small">DEPOSIT</button>
+                                </form>
+                            % }
                         </div>
                     </div>
                 % }
@@ -126,6 +130,7 @@
                     <small class="history-date">
                         <%= $item->{created_at} %> 
                         <%= $item->{reason} ? "- " . $item->{reason} : "" %>
+                        <%= $item->{type} eq 'payment' && $item->{payer_name} ? " By " . $item->{payer_name} : "" %>
                     </small>
                 </div>
             % }
