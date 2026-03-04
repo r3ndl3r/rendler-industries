@@ -67,34 +67,3 @@
     </div>
 </div>
 
-<%# Local Mandatory Action Modal: Delete Item %>
-<div id="deleteItemModal" class="delete-modal-overlay" style="display: none;">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('delete') %> Delete</h3>
-            <span class="delete-modal-close" onclick="closeLocalModal('deleteItemModal')">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <div id="deleteItemText"></div>
-        </div>
-        <div class="delete-modal-actions modal-actions-center">
-            <button type="button" class="btn-danger-confirm" id="confirmDeleteItemBtn">Delete</button>
-        </div>
-    </div>
-</div>
-
-<%# Local Mandatory Action Modal: Clear All Checked %>
-<div id="clearAllModal" class="delete-modal-overlay" style="display: none;">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('delete') %> Clear All</h3>
-            <span class="delete-modal-close" onclick="closeLocalModal('clearAllModal')">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            Are you sure you want to clear all checked items from the list?
-        </div>
-        <div class="delete-modal-actions modal-actions-center">
-            <button type="button" class="btn-danger-confirm" id="confirmClearAllBtn">Clear All</button>
-        </div>
-    </div>
-</div>
