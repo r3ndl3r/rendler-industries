@@ -1,0 +1,91 @@
+<%# /templates/users.html.ep %>
+
+% layout 'default';
+% title icon('admin') . ' Users Admin';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/users.css?<%= time %>">
+    <script src="/js/users.js?<%= time %>"></script>
+% end
+
+<div class="admin-container">
+    <div class="header-bar">
+        <h1><%= icon('user') %> <span>Users Admin</span></h1>
+    </div>
+
+    <%# Users Ledger %>
+    <div class="table-responsive">
+        <table class="data-table users-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Discord ID</th>
+                    <th>Created</th>
+                    <th>Approved</th>
+                    <th>Admin</th>
+                    <th>Family</th>
+                    <th style="width: 120px; text-align: center;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="users-table-body">
+                <tr class="component-loading-row">
+                    <td colspan="9">
+                        <div class="component-loading">
+                            <span class="loading-icon-pulse"><%= icon('ai') %></span>
+                            <p class="loading-label">Syncing user roster...</p>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<%# Edit User Modal %>
+<div id="editUserModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><%= icon('edit') %> Edit User</h3>
+            <span class="close-btn" onclick="closeEditModal()">&times;</span>
+        </div>
+        <form id="editUserForm" onsubmit="submitUserEdit(event)">
+            <input type="hidden" id="editUserId" name="id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="editUsername">Username</label>
+                    <input type="text" id="editUsername" name="username" class="game-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editEmail">Email</label>
+                    <input type="email" id="editEmail" name="email" class="game-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="editDiscordId">Discord User ID</label>
+                    <input type="text" id="editDiscordId" name="discord_id" class="game-input" placeholder="e.g. 497218154586701834">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editStatus">Status</label>
+                    <select id="editStatus" name="status" class="game-input">
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editPassword">New Password</label>
+                    <input type="password" id="editPassword" name="password" class="game-input" placeholder="Leave blank to keep current">
+                </div>
+            </div>
+            
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" id="editSaveBtn" class="btn-primary"><%= icon('save') %> Save Profile</button>
+            </div>
+        </form>
+    </div>
+</div>
