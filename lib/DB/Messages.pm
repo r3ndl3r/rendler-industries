@@ -12,19 +12,19 @@ use warnings;
 #   - User-scoped text storage (Write).
 #   - History retrieval with auto-link conversion (Read).
 #   - Secure entry removal (Delete).
-#   - Real-time notification integration for new clips.
+#   - Support for updated content (Update).
 #
 # Integration Points:
 #   - Extends DB package via package injection.
 #   - Used by Root controller for the /clipboard SPA.
-#   - Coordinates with Notifications helper for clip alerts.
+#   - Coordinates with DB::Users for session identity verification.
 
 # Saves a text snippet to the database.
 # Parameters:
-#   user_id : Unique user ID.
+#   user_id : Unique user ID (Integer).
 #   paste   : Text content to store (String).
 # Returns:
-#   Result of execute().
+#   Integer: The result code from the execute() statement.
 sub DB::paste {
     my ($self, $user_id, $paste) = @_;
     
@@ -38,9 +38,9 @@ sub DB::paste {
 
 # Retrieves paste history for a specific user formatted for display.
 # Parameters:
-#   user_id : Unique user ID.
+#   user_id : Unique user ID (Integer).
 # Returns:
-#   Array of HashRefs: [{ id => Int, text => String, raw => String }, ...]
+#   Array: List of HashRefs [{ id, text, raw }].
 # Behavior:
 #   - Sorts by newest first (DESC).
 #   - Auto-converts text starting with 'http' into HTML links.
@@ -76,10 +76,10 @@ sub DB::get_pasted {
 
 # Removes a paste entry from the database.
 # Parameters:
-#   id      : Unique ID of the message to delete.
-#   user_id : Verification user ID.
+#   id      : Unique ID of the message to delete (Integer).
+#   user_id : Verification user ID (Integer).
 # Returns:
-#   Result of execute().
+#   Integer: 1 on success, 0 on failure.
 sub DB::delete_message {
     my ($self, $id, $user_id) = @_;
     
@@ -93,11 +93,11 @@ sub DB::delete_message {
 
 # Updates an existing paste entry.
 # Parameters:
-#   id      : Record ID.
-#   user_id : Verification user ID.
+#   id      : Record ID (Integer).
+#   user_id : Verification user ID (Integer).
 #   text    : New content (String).
 # Returns:
-#   Result of execute().
+#   Integer: 1 on success, 0 on failure.
 sub DB::update_message {
     my ($self, $id, $user_id, $text) = @_;
     $self->ensure_connection;
