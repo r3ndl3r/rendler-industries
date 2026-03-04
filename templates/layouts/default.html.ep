@@ -31,17 +31,22 @@
 
     <%# Global Confirmation Modal %>
     <div id="globalConfirmActionModal" class="delete-modal-overlay" style="display: none;">
-        <div class="delete-modal-content">
+        <div id="globalConfirmModalContent" class="delete-modal-content">
             <div class="delete-modal-header">
                 <h3><span id="globalConfirmModalIcon"><%= icon('delete') %></span> <span id="globalConfirmModalTitle">Confirm Action</span></h3>
-                <span class="delete-modal-close" onclick="closeConfirmModal()">&times;</span>
+                <span id="globalConfirmCloseX" class="delete-modal-close" onclick="closeConfirmModal()">&times;</span>
             </div>
             <div class="delete-modal-body">
                 <div id="globalConfirmModalText"></div>
+                <div id="globalConfirmModalSubText" class="modal-sub-message" style="display: none;"></div>
+                
+                <div id="globalConfirmPromptContainer" class="modal-prompt-container" style="display: none;">
+                    <input type="text" id="globalConfirmPromptInput" class="modal-prompt-input" autocomplete="off">
+                </div>
             </div>
-            <div class="delete-modal-actions" style="justify-content: center !important;">
-                <button id="globalConfirmModalBtn" class="btn-danger-confirm">Confirm</button>
-                <button class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+            <div id="globalConfirmModalActions" class="delete-modal-actions">
+                <button id="globalConfirmModalBtn" class="btn-primary">Confirm</button>
+                <button id="globalConfirmCancelBtn" class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
             </div>
         </div>
     </div>
