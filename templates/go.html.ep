@@ -1,7 +1,7 @@
 <%# /templates/go.html.ep %>
 
-<% layout 'default'; %>
-<% title icon('link') . ' Go Links'; %>
+% layout 'default';
+% title icon('link') . ' Go Links';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/go.css?<%= time %>">
@@ -13,29 +13,14 @@
         <h1><%= icon('link') %> <span>Go Links</span></h1>
     </div>
 
-    <% if (my $msg = flash('message')) { %>
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                showToast("<%= $msg %>", 'success');
-            });
-        </script>
-    <% } %>
-    
-    <% if (my $error = flash('error')) { %>
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                showToast("<%= $error %>", 'error');
-            });
-        </script>
-    <% } %>
-    
-    <%# Add Item Form %>
+    <%# Add Link Panel %>
     <div class="glass-panel add-item-panel">
-        <form action="/go/add" method="POST" class="add-item-form">
+        <form id="addLinkForm" onsubmit="submitEntry(event)" class="add-item-form">
             <div class="form-inputs">
                 <input 
                     type="text" 
                     name="keyword" 
+                    id="addKeyword"
                     class="game-input" 
                     placeholder="Keyword (e.g. plex)" 
                     autocomplete="off"
@@ -45,6 +30,7 @@
                 <input 
                     type="url" 
                     name="url" 
+                    id="addUrl"
                     class="game-input" 
                     placeholder="Target URL" 
                     autocomplete="off"
@@ -53,84 +39,57 @@
                 <input 
                     type="text" 
                     name="description" 
+                    id="addDescription"
                     class="game-input" 
                     placeholder="Description (Optional)" 
                     autocomplete="off"
                     maxlength="255"
                 >
             </div>
-            <button type="submit" class="game-btn btn-blue">Add</button>
+            <button type="submit" id="addBtn" class="game-btn btn-blue">Add</button>
         </form>
     </div>
 
-    <%# Active Links Container %>
+    <%# Active Links Container (Pattern A: Ledger) %>
     <div class="items-container">
-        <% if (@$links) { %>
-            <h3 class="section-title">Active Links</h3>
-            
-            <% for my $link (@$links) { %>
-                <div class="go-item glass-panel">
-                    <div class="item-details">
-                        <div class="link-header">
-                            <a href="<%= $link->{url} %>" target="_blank" class="item-link">
-                                g/<%= $link->{keyword} %>
-                            </a>
-                            <span class="visit-badge"><%= $link->{visits} %> visits</span>
-                        </div>
-                        <div class="item-meta">
-                            <i class="url-text">→ <%= $link->{url} %></i>
-                            <% if ($link->{description}) { %>
-                                <span class="description-text"><%= $link->{description} %></span>
-                            <% } %>
-                        </div>
-                    </div>
-                    
-                    <div class="item-actions">
-                        <button type="button" class="btn-icon-copy" data-url="<%= url_for('/g/' . $link->{keyword})->to_abs %>" title="Copy Link"><%= icon('copy') %></button>
-                        <button type="button" class="btn-icon-edit" onclick="editLink(<%= $link->{id} %>, '<%= $link->{keyword} %>', '<%= $link->{url} %>', '<%= $link->{description} // '' %>')" title="Edit"><%= icon('edit') %></button>
-                        <button type="button" class="btn-icon-delete" onclick="openDeleteModal(<%= $link->{id} %>, '<%= $link->{keyword} %>')" title="Delete"><%= icon('delete') %></button>
-                    </div>
-                </div>
-            <% } %>
-            
-        <% } else { %>
-            <div class="empty-state">
-                <p>No Go Links configured yet!</p>
-                <p class="empty-hint">Create your first short link above.</p>
+        <h3 class="section-title">Active Links</h3>
+        <div id="go-list" class="go-list">
+            <div class="component-loading">
+                <span class="loading-icon-pulse"><%= icon('ai') %></span>
+                <p class="loading-label">Syncing links...</p>
             </div>
-        <% } %>
+        </div>
     </div>
 </div>
 
-<%# Edit Link Modal %>
+<%# Edit Link Modal (Mandatory Action Pattern) %>
 <div id="editModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Edit Link</h3>
+            <h3><%= icon('edit') %> Edit Link</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
-        <form id="editForm" method="POST" action="/go/edit">
+        <form id="editForm" onsubmit="submitEntry(event, true)">
             <input type="hidden" id="editId" name="id">
             
             <div class="modal-body">
-                <div class="modal-group">
+                <div class="form-group">
                     <label for="editKeyword">Keyword</label>
                     <input type="text" id="editKeyword" name="keyword" class="game-input" required maxlength="50" placeholder="plex">
                 </div>
-                <div class="modal-group">
+                <div class="form-group">
                     <label for="editUrl">Target URL</label>
                     <input type="url" id="editUrl" name="url" class="game-input" required placeholder="https://plex.example.com">
                 </div>
-                <div class="modal-group">
+                <div class="form-group">
                     <label for="editDescription">Description</label>
                     <input type="text" id="editDescription" name="description" class="game-input" maxlength="255" placeholder="Home Media Server">
                 </div>
             </div>
             
-            <div class="modal-actions">
-                <button type="submit" class="btn-primary">Save Changes</button>
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" id="editSaveBtn" class="btn-primary"><%= icon('save') %> Save Changes</button>
             </div>
         </form>
     </div>
 </div>
-
