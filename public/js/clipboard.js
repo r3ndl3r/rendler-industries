@@ -86,18 +86,23 @@ function editMessage(id, btn) {
  * @param {number} id - Record ID
  */
 function removeMessage(id) {
-    messageIdToDelete = id;
-    const modal = document.getElementById('deleteModal');
-    if (modal) modal.style.display = 'flex';
-}
-
-/**
- * Resets the deletion pointer and hides the interface.
- */
-function closeDeleteModal() {
-    messageIdToDelete = null;
-    const modal = document.getElementById('deleteModal');
-    if (modal) modal.style.display = 'none';
+    showConfirmModal({
+        title: 'Delete Clipping',
+        message: 'Are you sure you want to delete this clipping?',
+        danger: true,
+        confirmText: 'Delete',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
+            const result = await apiPost(`/clipboard/delete/${id}`);
+            if (result && result.success) {
+                location.reload();
+            } else if (result && result.error) {
+                showToast(result.error, 'error');
+            }
+        }
+    });
 }
 
 /**
@@ -126,27 +131,10 @@ function copyToClipboard(btn) {
 
 /**
  * Initialization System
- * Boots the clipboard logic and attaches confirmation listeners.
+ * Boots the clipboard logic.
  */
 document.addEventListener('DOMContentLoaded', function() {
-    const confirmBtn = document.getElementById('confirmDeleteBtn');
-    if (confirmBtn) {
-        /**
-         * Action: Final Deletion Hook
-         * Executes the persistent purge of a clipping.
-         */
-        confirmBtn.onclick = function() {
-            if (messageIdToDelete) {
-                // Logic: use jQuery for rapid POST submission with legacy fail hooks
-                $.post('/clipboard/delete/' + messageIdToDelete, function() {
-                    location.reload(); // Lifecycle: full refresh to sync ledger
-                }).fail(function() {
-                    showToast('Unauthorized: You are not allowed to delete messages.', 'error');
-                    closeDeleteModal();
-                });
-            }
-        };
-    }
+    // Initialization logic for clipboard...
 });
 
 /**
@@ -155,10 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 window.onclick = function(event) {
     const contentModal = document.getElementById('contentModal');
-    const deleteModal = document.getElementById('deleteModal');
-    
     if (event.target == contentModal) closeModal();
-    if (event.target == deleteModal) closeDeleteModal();
 };
 
 /**
@@ -178,6 +163,5 @@ window.openModal = openModal;
 window.closeModal = closeModal;
 window.editMessage = editMessage;
 window.removeMessage = removeMessage;
-window.closeDeleteModal = closeDeleteModal;
 window.copyToClipboard = copyToClipboard;
 window.textIn = textIn;
