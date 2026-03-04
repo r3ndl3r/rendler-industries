@@ -182,15 +182,24 @@ function quickPrompt(text) {
  * @returns {Promise<void>}
  */
 async function clearChat() {
-    // Confirmation: mandatory for destructive history purge
-    if (confirm('Clear entire conversation history?')) {
-        const result = await apiPost('/ai/clear');
-        if (result && result.success) {
-            const container = document.getElementById('chat-messages');
-            if (container) container.innerHTML = '';
-            showToast('History cleared', 'success');
+    showConfirmModal({
+        title: 'Clear History',
+        icon: 'delete',
+        message: 'Are you sure you want to clear your entire conversation history? This action is permanent and cannot be undone.',
+        danger: true,
+        confirmText: 'Clear All',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Clearing...',
+        onConfirm: async () => {
+            const result = await apiPost('/ai/clear');
+            if (result && result.success) {
+                const container = document.getElementById('chat-messages');
+                if (container) container.innerHTML = '';
+                showToast('History cleared', 'success');
+            }
         }
-    }
+    });
 }
 
 /**
