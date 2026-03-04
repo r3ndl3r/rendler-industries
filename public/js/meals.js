@@ -229,9 +229,11 @@ async function submitManageMeal() {
 async function deleteManageMeal(id, name) {
     showConfirmModal({
         title: 'Remove from Vault',
-        message: `Are you sure you want to permanently remove "<strong>${escapeHtml(name)}</strong>" from the vault?`,
+        message: `Are you sure you want to permanently remove \"<strong>${escapeHtml(name)}</strong>\" from the vault?`,
         danger: true,
         confirmText: 'Delete',
+        hideCancel: true,
+        alignment: 'center',
         onConfirm: async () => {
             const result = await apiPost('/meals/api/vault/delete', { id });
             if (result.success) {
@@ -640,9 +642,11 @@ async function submitEditSuggestion() {
 async function deleteSuggestion(suggestionId, mealName) {
     showConfirmModal({
         title: 'Remove Suggestion',
-        message: `Are you sure you want to remove "<strong>${escapeHtml(mealName)}</strong>"?`,
+        message: `Are you sure you want to remove \"<strong>${escapeHtml(mealName)}</strong>\"?`,
         danger: true,
         confirmText: 'Remove',
+        hideCancel: true,
+        alignment: 'center',
         onConfirm: async () => {
             const result = await apiPost('/meals/delete_suggestion', { suggestion_id: suggestionId });
             if (result.success) {
@@ -666,9 +670,11 @@ async function submitBlackout() {
     showConfirmModal({
         title: 'Blackout Day',
         icon: 'cancel',
-        message: `Are you sure you want to blackout this day for "<strong>${escapeHtml(reason)}</strong>"? This will disable all suggestions.`,
+        message: `Are you sure you want to blackout this day for \"<strong>${escapeHtml(reason)}</strong>\"? This will disable all suggestions.`,
         danger: true,
         confirmText: 'Blackout',
+        hideCancel: true,
+        alignment: 'center',
         onConfirm: async () => {
             const result = await apiPost('/meals/admin/lock', { plan_id: planId, blackout: reason });
             if (result.success) {
@@ -691,6 +697,8 @@ async function adminLock(planId, suggestionId) {
         title: 'Lock Winner',
         icon: 'check',
         message: 'Manually lock in this meal as the winner? This will close voting for this day.',
+        hideCancel: true,
+        alignment: 'center',
         onConfirm: async () => {
             const result = await apiPost('/meals/admin/lock', { plan_id: planId, suggestion_id: suggestionId });
             if (result.success) {
@@ -712,6 +720,8 @@ async function adminUnlock(planId) {
         title: 'Unlock Day',
         icon: 'lock',
         message: 'Unlock this day? This will clear any blackout or winner selection and allow new suggestions/votes.',
+        hideCancel: true,
+        alignment: 'center',
         onConfirm: async () => {
             const result = await apiPost('/meals/admin/lock', { plan_id: planId, unlock: 1 });
             if (result.success) {
