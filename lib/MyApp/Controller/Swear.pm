@@ -79,9 +79,15 @@ sub pay_debt {
     
     my $name = trim($c->param('perpetrator') // '');
     my $amount = trim($c->param('amount') // '');
+    my $current_user_name = $c->current_user->{username} // 'Unknown';
+
+    # Logic: Prevent users from paying their own fines
+    if ($name eq $current_user_name) {
+        return $c->render(json => { success => 0, error => 'You cannot pay your own fines!' });
+    }
 
     if ($name && $amount =~ /^\d+(\.\d{1,2})?$/) {
-        $c->db->mark_user_paid($name, $amount);
+        $c->db->mark_user_paid($name, $amount, $current_user_name);
         return $c->render(json => { success => 1, message => "Payment recorded for $name (\$$amount)" });
     } else {
         return $c->render(json => { success => 0, error => 'Invalid payment details' });
