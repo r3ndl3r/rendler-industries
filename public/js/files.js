@@ -185,9 +185,11 @@ document.addEventListener('DOMContentLoaded', function() {
     window.confirmDeleteFile = function(id, filename) {
         showConfirmModal({
             title: 'Delete File',
-            message: `Are you sure you want to permanently delete "<strong>${filename}</strong>"?`,
+            message: `Are you sure you want to permanently delete \"<strong>${filename}</strong>\"?`,
             danger: true,
             confirmText: 'Delete',
+            hideCancel: true,
+            alignment: 'center',
             loadingText: 'Deleting...',
             onConfirm: async () => {
                 const result = await apiPost(`/files/delete/${id}`);
