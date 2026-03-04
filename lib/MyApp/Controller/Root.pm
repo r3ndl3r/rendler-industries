@@ -198,106 +198,125 @@ sub contact {
     $c->render(template => 'contact', qr_images => \@qr_images);
 }
 
-# Renders the Admin Clipboard/Pastebin interface.
-# Route: GET /copy
+# Renders the skeleton template for the Clipboard SPA.
+# Route: GET /clipboard
 # Parameters: None
-# Returns:
-#   Rendered HTML template 'copy/copy' with history
+# Returns: Rendered HTML template 'clipboard'.
 sub copy_get {
     my $c = shift;
-    my $user_id = $c->current_user_id;
-    my @msgs = $c->db->get_pasted($user_id);
-    my $client_ip = $c->tx->remote_address;
-
-    $c->stash(
-        messages  => \@msgs,
-        client_ip => $client_ip,
-        is_admin  => $c->is_admin
-    );
-
     $c->render('clipboard');
 }
 
-# Saves a new item to the Admin Clipboard.
+# Returns the complete state for the Clipboard module.
+# Route: GET /clipboard/api/state
+# Parameters: None
+# Returns: JSON object { success, messages, is_admin, user_config }
+sub copy_api_state {
+    my $c = shift;
+    my $user_id = $c->current_user_id;
+    my $user = $c->db->get_user_by_id($user_id);
+    my @msgs = $c->db->get_pasted($user_id);
+
+    $c->render(json => {
+        success  => 1,
+        messages => \@msgs,
+        is_admin => $c->is_admin ? 1 : 0,
+        user_config => {
+            has_discord  => $user->{discord_id} ? 1 : 0,
+            has_email    => $user->{email} ? 1 : 0,
+            can_pushover => $c->is_admin ? 1 : 0,
+            can_gotify   => $c->is_admin ? 1 : 0,
+        }
+    });
+}
+
+# Registers a new text snippet and dispatches selected notifications.
 # Route: POST /copy
 # Parameters:
-#   paste : Text content or URL to save
-# Returns:
-#   Redirects to clipboard page on success
-# Behavior:
-#   - Encodes HTML entities for safety
-#   - Triggers external notifications (Pushover, Gotify) ONLY for user 'rendler'
+#   paste           : Text content to store (String)
+#   notify_discord  : Enable Discord DM (Boolean)
+#   notify_email    : Enable Gmail delivery (Boolean)
+#   notify_pushover : Enable Pushover alert (Admin only)
+#   notify_gotify   : Enable Gotify push (Admin only)
+# Returns: JSON object { success, message }
 sub copy_post {
     my $c = shift;
     my $user_id = $c->current_user_id;
-    my $username = $c->session('user');
     my $text = trim($c->param('paste') // '');
 
-    return $c->redirect_to('/clipboard') unless $text;
+    unless ($text) {
+        return $c->render(json => { success => 0, error => "Content is required" });
+    }
 
     # Persist to database
     my $encoded_text = encode_entities($text);
-    $c->db->paste($user_id, $encoded_text);
+    my $id = $c->db->paste($user_id, $encoded_text);
     
-    # Notify user via Discord (if configured)
-    my $msg = "📋 NEW CLIPPING:\n\n$text\n\nhttps://rendler.org/clipboard";
-    $c->notify_user($user_id, $msg, "Clipboard: New Content");
-
-    # Legacy external notifications ONLY for rendler
-    if ($username eq 'rendler') {
-        $c->push_pushover($text);
-        $c->push_gotify($text);
+    # Handle Dynamic Notifications
+    my @channels;
+    if ($c->param('notify_discord') && $c->db->get_user_by_id($user_id)->{discord_id}) {
+        $c->send_discord_dm($c->db->get_user_by_id($user_id)->{discord_id}, "📋 CLIPBOARD: $text");
+        push @channels, "Discord";
     }
-    
-    $c->flash(message => "Content added successfully.");
-    return $c->redirect_to('/clipboard');
+    if ($c->param('notify_email') && $c->db->get_user_by_id($user_id)->{email}) {
+        $c->send_email_via_gmail($c->db->get_user_by_id($user_id)->{email}, "Clipboard: New Content", $text);
+        push @channels, "Email";
+    }
+    if ($c->is_admin) {
+        if ($c->param('notify_pushover')) {
+            $c->push_pushover($text);
+            push @channels, "Pushover";
+        }
+        if ($c->param('notify_gotify')) {
+            $c->push_gotify($text);
+            push @channels, "Gotify";
+        }
+    }
+
+    my $msg = "Content added.";
+    $msg .= " Sent via " . join(", ", @channels) if @channels;
+
+    $c->render(json => { success => 1, message => $msg });
 }
 
-# Updates an existing item in the Admin Clipboard.
+# Modifies an existing clipboard entry.
 # Route: POST /clipboard/update
 # Parameters:
-#   id    : Unique ID of the message
-#   paste : New text content
-# Returns:
-#   Redirects to clipboard page
+#   id    : Record ID (Integer)
+#   paste : Updated text content (String)
+# Returns: JSON object { success, message }
 sub copy_update {
     my $c = shift;
     my $id = $c->param('id');
     my $user_id = $c->current_user_id;
     my $text = trim($c->param('paste') // '');
 
-    unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render_error('Invalid ID');
+    unless ($id && $id =~ /^\d+$/) {
+        return $c->render(json => { success => 0, error => "Invalid ID" });
     }
 
     my $encoded_text = encode_entities($text);
     $c->db->update_message($id, $user_id, $encoded_text);
 
-    # Notify user of the update
-    my $msg = "📋 CLIPPING UPDATED:\n\n$text\n\nhttps://rendler.org/clipboard";
-    $c->notify_user($user_id, $msg, "Clipboard: Content Updated");
-
-    $c->flash(message => "Content updated successfully.");
-    return $c->redirect_to('/clipboard');
+    $c->render(json => { success => 1, message => "Content updated." });
 }
 
-# Removes an item from the Admin Clipboard.
+# Permanently removes a clipping from history.
 # Route: POST /clipboard/delete
 # Parameters:
-#   id : Unique ID of the message to delete
-# Returns:
-#   Redirects to clipboard page
+#   id : Unique record ID (Integer)
+# Returns: JSON object { success, message }
 sub remove_message {
     my $c = shift;
     my $id = $c->param('id');
     my $user_id = $c->current_user_id;
 
-    unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render_error('Invalid ID');
+    unless ($id && $id =~ /^\d+$/) {
+        return $c->render(json => { success => 0, error => "Invalid ID" });
     }
 
     $c->db->delete_message($id, $user_id);
-    $c->redirect_to('/clipboard');
+    $c->render(json => { success => 1, message => "Content removed." });
 }
 
 1;
