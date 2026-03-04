@@ -84,8 +84,10 @@ sub DB::get_all_files_metadata {
     
     # Fetch lightweight columns only; exclude 'file_data' BLOB for performance
     my $sth = $self->{dbh}->prepare(
-        "SELECT id, filename, original_filename, mime_type, file_size, uploaded_by, uploaded_at, admin_only, allowed_users, description, download_count
-        FROM files ORDER BY uploaded_at DESC"
+        "SELECT id, filename, original_filename, mime_type, file_size, uploaded_by, 
+        DATE_FORMAT(uploaded_at, '%d-%m-%Y %h:%i %p') AS uploaded_at, 
+        admin_only, allowed_users, description, download_count
+        FROM files ORDER BY id DESC"
     );
     
     $sth->execute();
