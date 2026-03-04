@@ -209,47 +209,134 @@ function getLoadingHtml(text = 'Loading...', subtext = '', showScanner = false) 
 /**
  * Themed Confirmation Modal Controller.
  * Leverages the global layout fragment defined in default.html.ep.
- * 
- * @param {Object} options - Configuration: { title, icon, message, danger, confirmText, loadingText, onConfirm }
+ *
+ * @param {Object} options - Configuration:
+ *   - title, icon, message, subMessage: Content
+ *   - danger, success, warning: Themes
+ *   - confirmText, confirmIcon, cancelText, hideCancel: Buttons
+ *   - alignment: 'left', 'center', 'right'
+ *   - width: 'small', 'medium', 'large'
+ *   - persistent, hideCloseX, autoFocus: Behavior
+ *   - input: { type, placeholder, requiredText } - Prompt
+ *   - onConfirm: Async callback (receives input value)
  */
 window.showConfirmModal = function(options) {
     const modal = document.getElementById('globalConfirmActionModal');
+    const content = document.getElementById('globalConfirmModalContent');
     const title = document.getElementById('globalConfirmModalTitle');
     const icon = document.getElementById('globalConfirmModalIcon');
     const text = document.getElementById('globalConfirmModalText');
-    const btn = document.getElementById('globalConfirmModalBtn');
+    const subText = document.getElementById('globalConfirmModalSubText');
+    const btnConfirm = document.getElementById('globalConfirmModalBtn');
+    const btnCancel = document.getElementById('globalConfirmCancelBtn');
+    const actions = document.getElementById('globalConfirmModalActions');
+    const closeX = document.getElementById('globalConfirmCloseX');
+    const promptContainer = document.getElementById('globalConfirmPromptContainer');
+    const promptInput = document.getElementById('globalConfirmPromptInput');
 
-    if (!modal || !btn) return;
+    if (!modal || !btnConfirm) return;
 
-    // Apply configuration to DOM
+    // Reset UI State
+    content.className = 'delete-modal-content';
+    actions.className = 'delete-modal-actions';
+    modal.classList.toggle('persistent', !!options.persistent);
+    
+    /**
+     * Internal: handleCancel
+     * Orchestrates the dismissal of the modal and triggers the optional onCancel callback.
+     */
+    const handleCancel = () => {
+        if (typeof options.onCancel === 'function') options.onCancel();
+        closeConfirmModal();
+    };
+
+    // Behavior: Dismissal triggers
+    modal.onclick = (e) => {
+        if (!options.persistent && e.target === modal) handleCancel();
+    };
+    if (closeX) closeX.onclick = handleCancel;
+    if (btnCancel) btnCancel.onclick = handleCancel;
+
+    // 1. Content Injection
     if (title) title.textContent = options.title || 'Confirm Action';
     if (icon) icon.innerHTML = getIcon(options.icon || 'delete');
     if (text) text.innerHTML = options.message || 'Are you sure?';
     
-    btn.textContent = options.confirmText || 'Confirm';
-    btn.className = options.danger ? 'btn-danger-confirm' : 'btn-primary';
-    btn.disabled = false;
+    if (subText) {
+        subText.style.display = options.subMessage ? 'block' : 'none';
+        subText.innerHTML = options.subMessage || '';
+    }
 
-    // Clone button to strip existing event listeners and avoid logic duplication
-    const newBtn = btn.cloneNode(true);
-    newBtn.disabled = false;
-    btn.parentNode.replaceChild(newBtn, btn);
+    // 2. Theme & Layout
+    if (options.danger) content.classList.add('modal-theme-danger');
+    if (options.success) content.classList.add('modal-theme-success');
+    if (options.warning) content.classList.add('modal-theme-warning');
 
-    // Attach confirmation execution logic
+    if (options.width === 'small') content.classList.add('modal-sm');
+    else if (options.width === 'large') content.classList.add('modal-lg');
+    else content.classList.add('modal-md');
+
+    const align = options.alignment || (options.hideCancel ? 'center' : 'right');
+    actions.classList.add(`modal-actions-${align}`);
+
+    // 3. Button Configuration
+    btnConfirm.innerHTML = (options.confirmIcon ? getIcon(options.confirmIcon) + ' ' : '') + (options.confirmText || 'Confirm');
+    btnConfirm.className = options.danger ? 'btn-danger-confirm' : (options.success ? 'btn-success' : 'btn-primary');
+    btnConfirm.disabled = !!(options.input && options.input.requiredText);
+
+    if (btnCancel) {
+        btnCancel.style.display = options.hideCancel ? 'none' : 'inline-flex';
+        btnCancel.textContent = options.cancelText || 'Cancel';
+    }
+
+    if (closeX) closeX.style.display = options.hideCloseX ? 'none' : 'block';
+
+    // 4. Prompt Logic
+    if (promptContainer && promptInput) {
+        if (options.input) {
+            promptContainer.style.display = 'block';
+            promptInput.type = options.input.type || 'text';
+            promptInput.placeholder = options.input.placeholder || '';
+            promptInput.value = '';
+            
+            if (options.input.requiredText) {
+                promptInput.oninput = () => {
+                    btnConfirm.disabled = promptInput.value !== options.input.requiredText;
+                };
+            } else {
+                promptInput.oninput = null;
+            }
+        } else {
+            promptContainer.style.display = 'none';
+        }
+    }
+
+    // 5. Execution Logic (Clone to strip old listeners)
+    const newBtn = btnConfirm.cloneNode(true);
+    btnConfirm.parentNode.replaceChild(newBtn, btnConfirm);
+
     newBtn.addEventListener('click', async () => {
         const originalHtml = newBtn.innerHTML;
         newBtn.disabled = true;
         newBtn.innerHTML = `${getIcon('waiting')} ${options.loadingText || 'Processing...'}`;
+        
         try {
-            await options.onConfirm();
+            await options.onConfirm(options.input ? promptInput.value : null);
             closeConfirmModal();
         } catch (err) {
+            console.error("Modal Action Failed:", err);
             newBtn.disabled = false;
             newBtn.innerHTML = originalHtml;
-            showToast('Action failed', 'error');
         }
     });
+
+    // 6. Display & Focus
     modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
+
+    if (options.autoFocus) {
+        setTimeout(() => (options.input ? promptInput : newBtn).focus(), 50);
+    }
 };
 
 /**
@@ -257,9 +344,8 @@ window.showConfirmModal = function(options) {
  */
 window.closeConfirmModal = function() {
     const modal = document.getElementById('globalConfirmActionModal');
-    const btn = document.getElementById('globalConfirmModalBtn');
     if (modal) modal.style.display = 'none';
-    if (btn) btn.disabled = false;
+    document.body.classList.remove('modal-open');
 };
 
 /**
