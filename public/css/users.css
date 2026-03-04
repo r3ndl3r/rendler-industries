@@ -203,6 +203,17 @@ input:checked + .slider-family {
     background-color: #a855f7;
 }
 
+/* Variant for user approval toggle color */
+input:checked + .slider-approved {
+    background-color: #10b981; /* Emerald Green */
+}
+
+/* Disabled state styling for the lock-out effect */
+input:disabled + .slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .form-actions {
     display: flex;
     gap: 1rem;
