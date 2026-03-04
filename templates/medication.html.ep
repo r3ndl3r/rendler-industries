@@ -187,56 +187,6 @@
     </div>
 </div>
 
-<%# Local Mandatory Action Modals (No Cancel) %>
-
-<%# Delete Log Confirmation %>
-<div id="deleteLogModal" class="delete-modal-overlay" style="display: none; z-index: 12000;">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('delete') %> Delete Log</h3>
-            <span class="delete-modal-close" onclick="closeLocalModal('deleteLogModal')">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <div id="deleteLogText"></div>
-        </div>
-        <div class="delete-modal-actions modal-actions-center">
-            <button type="button" class="btn-danger-confirm" id="confirmDeleteLogBtn">Delete</button>
-        </div>
-    </div>
-</div>
-
-<%# Reset Time Confirmation %>
-<div id="resetTimeModal" class="modal-overlay" style="display: none; z-index: 12000;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><%= icon('reset') %> Reset Time</h3>
-            <span class="close-btn" onclick="closeLocalModal('resetTimeModal')">&times;</span>
-        </div>
-        <div class="modal-body" id="resetTimeBody">
-            <%# Populated via JS %>
-        </div>
-        <div class="modal-actions modal-actions-center">
-            <button type="button" class="btn-primary" id="confirmResetTimeBtn"><%= icon('save') %> Reset</button>
-        </div>
-    </div>
-</div>
-
-<%# Remove from Registry Confirmation %>
-<div id="removeRegistryModal" class="delete-modal-overlay" style="display: none; z-index: 12000;">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('delete') %> Remove</h3>
-            <span class="delete-modal-close" onclick="closeLocalModal('removeRegistryModal')">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <div id="removeRegistryText"></div>
-        </div>
-        <div class="delete-modal-actions modal-actions-center">
-            <button type="button" class="btn-danger-confirm" id="confirmRemoveRegistryBtn">Remove</button>
-        </div>
-    </div>
-</div>
-
 <script>
     const CURRENT_USER = "<%= session('user') %>";
     const IS_ADMIN = <%= is_admin ? 'true' : 'false' %>;
