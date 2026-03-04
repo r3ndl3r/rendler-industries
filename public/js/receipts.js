@@ -491,56 +491,27 @@ async function handleEditSubmit(e) {
  * @param {string} name - Merchant/filename for confirmation text
  */
 function confirmDeleteReceipt(id, name) {
-    const text = document.getElementById('deleteReceiptText');
-    const btn = document.getElementById('confirmDeleteReceiptBtn');
-    const modal = document.getElementById('deleteReceiptModal');
-
-    if (text) text.innerHTML = `Are you sure you want to permanently delete the receipt for <strong>${escapeHtml(name)}</strong>?`;
-    
-    if (btn) {
-        btn.onclick = async () => {
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
-            
-            try {
-                const response = await fetch(`/receipts/api/delete/${id}`, { method: 'POST' });
-                const result = await response.json();
-                
-                // Lifecycle Cleanup: restore button state
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-
-                if (result.success) {
-                    showToast(result.message, 'success');
-                    currentReceipts = currentReceipts.filter(r => r.id != id);
-                    closeLocalModal('deleteReceiptModal');
-                    renderStats();
-                    renderReceipts(false);
-                } else {
-                    showToast(result.error || 'Failed to delete receipt.', 'error');
-                }
-            } catch (e) {
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-                console.error("deleteReceipt Error:", e);
-                showToast("Network error during deletion", "error");
+    showConfirmModal({
+        title: 'Delete Receipt',
+        message: `Are you sure you want to permanently delete the receipt for <strong>${escapeHtml(name)}</strong>?`,
+        danger: true,
+        confirmText: 'Delete',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
+            const response = await fetch(`/receipts/api/delete/${id}`, { method: 'POST' });
+            const result = await response.json();
+            if (result.success) {
+                showToast(result.message, 'success');
+                currentReceipts = currentReceipts.filter(r => r.id != id);
+                renderStats();
+                renderReceipts(false);
+            } else {
+                showToast(result.error || 'Failed to delete receipt.', 'error');
             }
-        };
-    }
-    
-    if (modal) modal.style.display = 'flex';
-}
-
-/**
- * Interface: closeLocalModal
- * Utility for closing localized single-button modals.
- * 
- * @param {string} id - Modal identifier
- */
-function closeLocalModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) modal.style.display = 'none';
+        }
+    });
 }
 
 /**
@@ -972,31 +943,19 @@ window.reScanReceipt = function() {
     const receiptId = parentModal ? parentModal.dataset.receiptId : null;
     if (!receiptId) return;
 
-    const btn = document.getElementById('confirmRescanBtn');
-    const modal = document.getElementById('confirmRescanModal');
-
-    if (btn) {
-        // Logic: bind dynamic execution handler to the centered confirmation button
-        btn.onclick = async () => {
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Rescanning...`;
-
-            try {
-                // Execute the actual scan via the primary interface helper
-                await viewElectronicReceipt(receiptId, 1);
-                closeLocalModal('confirmRescanModal');
-            } catch (err) {
-                console.error("Rescan failed:", err);
-            } finally {
-                // Lifecycle Cleanup: Restore button state
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-            }
-        };
-    }
-
-    if (modal) modal.style.display = 'flex';
+    showConfirmModal({
+        title: 'Confirm Rescan',
+        icon: 'ai',
+        message: 'Are you sure you want to perform a <strong>Full Rescan</strong>? This will re-analyze the receipt using Gemini and overwrite existing digitized data.',
+        confirmText: 'Confirm',
+        confirmIcon: 'search',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Rescanning...',
+        onConfirm: async () => {
+            await viewElectronicReceipt(receiptId, 1);
+        }
+    });
 };
 
 /**
@@ -1180,5 +1139,4 @@ window.viewElectronicReceipt = viewElectronicReceipt;
 window.openEditModal = openEditModal;
 window.openCropModal = openCropModal;
 window.confirmDeleteReceipt = confirmDeleteReceipt;
-window.closeLocalModal = closeLocalModal;
 window.toggleStatTile = toggleStatTile;
