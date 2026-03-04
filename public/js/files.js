@@ -3,276 +3,423 @@
 /**
  * File Management Controller Module
  * 
- * This module manages the Platform Binary Storage interface. It handles
- * large file transfers, drag-and-drop orchestration, and permission-based
- * access control for the central file vault.
+ * This module manages the Platform Binary Vault interface using a 100% 
+ * AJAX-driven architecture. It handles large multipart uploads, 
+ * state-driven ledger rendering, and granular ACL synchronization.
  * 
  * Features:
- * - Multipart file upload with 1GB capacity support
- * - Drag-and-drop upload zone with high-resolution file validation
- * - Dynamic permission management (Admin Only vs. User Restricted)
- * - Browser-compatible clipboard sharing for public/restricted links
- * - Integrated confirmation workflows for permanent file deletion
+ * - Single Source of Truth state-driven rendering from /files (AJAX state)
+ * - Drag-and-drop orchestration with 1GB binary threshold validation
+ * - Dynamic ACL management (Admin Only vs. Whitelisted Recipients)
+ * - High-density JSDoc documentation for behavioral transparency
+ * - Ledger implementation with glassmorphism styling
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, and modal helpers
- * - toast.js: For status feedback
+ * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
  */
 
 /**
- * Initialization System
- * Boots the module and establishes drop-zone event delegation
+ * --- Application State ---
  */
-document.addEventListener('DOMContentLoaded', function() {
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('file');
-    const fileNameDisplay = document.getElementById('fileName');
+let moduleState = {
+    files: [],      // Metadata-only file records
+    users: [],      // Full roster for permission whitelisting
+    isAdmin: false   // Authorization gate for administrative actions
+};
 
-    if (dropZone && fileInput) {
-        // Lifecycle: Attach unified event prevention for all drag states
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
+/**
+ * --- Initialization ---
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial fetch of the file vault roster
+    loadState();
+
+    // Configure global modal behavior for upload and permissions
+    setupGlobalModalClosing(['modal-overlay'], [closeUploadModal, closePermissionModal]);
+
+    // Initialize the Drop Zone orchestration
+    setupDropZone();
+});
+
+/**
+ * Orchestrates the "Single Source of Truth" handshake.
+ * Fetches vault metadata and triggers the rendering engine.
+ * 
+ * @async
+ * @returns {Promise<void>}
+ */
+async function loadState() {
+    try {
+        const response = await fetch('/files', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
+        const data = await response.json();
+        
+        if (data.success) {
+            moduleState.files = data.files;
+            moduleState.users = data.users;
+            moduleState.isAdmin = data.is_admin;
+            renderTable();
+            renderRecipientSelectors();
         }
+    } catch (err) {
+        console.error('File Vault Load Error:', err);
+        showToast('Failed to synchronize file vault', 'error');
+    }
+}
 
-        // UI Feedback: Highlight zone during active drag
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, highlight, false);
-        });
+/**
+ * UI Engine: renderTable
+ * Generates the ledger rows for the binary vault.
+ * Implements MIME-aware iconography and access badges.
+ * 
+ * @returns {void}
+ */
+function renderTable() {
+    const tbody = document.getElementById('files-table-body');
+    if (!tbody) return;
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, unhighlight, false);
-        });
-
-        function highlight(e) {
-            dropZone.classList.add('dragover');
-        }
-
-        function unhighlight(e) {
-            dropZone.classList.remove('dragover');
-        }
-
-        // Action: Process file drop
-        dropZone.addEventListener('drop', handleDrop, false);
-
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            if (files.length > 0) {
-                fileInput.files = files;
-                updateFileName(files[0].name);
-                handleFiles(files);
-            }
-        }
-
-        // Action: Process manual file selection
-        fileInput.addEventListener('change', function() {
-            if (this.files.length > 0) {
-                updateFileName(this.files[0].name);
-                handleFiles(this.files);
-            }
-        });
-
-        /**
-         * UI: updateFileName
-         * Updates the display label in the upload zone.
-         * 
-         * @param {string} name - Selected filename
-         */
-        function updateFileName(name) {
-            if (fileNameDisplay) {
-                fileNameDisplay.textContent = name;
-                fileNameDisplay.style.display = 'block';
-            }
-        }
-
-        /**
-         * Logic: handleFiles
-         * Performs pre-transmission validation on selected binaries.
-         * 
-         * @param {FileList} files - List of target files
-         */
-        function handleFiles(files) {
-            const file = files[0];
-            const maxSize = 1024 * 1024 * 1024; // 1GB Threshold
-            if (file.size > maxSize) {
-                showToast('File too large! Maximum size is 1GB.', 'error');
-                fileInput.value = '';
-                if (fileNameDisplay) {
-                    fileNameDisplay.textContent = '';
-                    fileNameDisplay.style.display = 'none';
-                }
-                return;
-            }
-        }
+    if (moduleState.files.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">No resources found in the vault.</td></tr>';
+        return;
     }
 
-    /**
-     * Interface: copyLink
-     * Copies the full file retrieval URL to the system clipboard.
-     * Implements legacy fallback for non-secure contexts.
-     * 
-     * @param {number} id - File resource ID
-     */
-    window.copyLink = function(id) {
-        const fullUrl = `${window.location.origin}/files/serve/${id}`;
-        
-        // Context: try modern Clipboard API first
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(fullUrl).then(function() {
-                showToast('Link copied to clipboard!', 'success');
-            }).catch(function() {
-                fallbackCopy(fullUrl);
-            });
-        } else {
-            fallbackCopy(fullUrl);
-        }
-        
-        /**
-         * Legacy Fallback for document.execCommand('copy')
-         */
-        function fallbackCopy(text) {
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            showToast('Link copied to clipboard!', 'success');
-        }
-    };
-
-    /**
-     * Interface: openPermissions (Admin)
-     * Displays the ACL management interface for a specific file.
-     * 
-     * @param {Object} file - File record object from table
-     */
-    window.openPermissions = function(file) {
-        const modal = document.getElementById('permissionModal');
-        if (modal) {
-            document.getElementById('permissionFileId').value = file.id;
-            
-            // Sync Admin Only flag
-            document.getElementById('permissionAdminOnly').checked = file.admin_only == 1;
-            
-            // UI Sync: Reset and apply allowed user checkboxes
-            document.querySelectorAll('.user-permission-checkbox').forEach(cb => cb.checked = false);
-            
-            if (file.allowed_users) {
-                const allowed = file.allowed_users.split(',');
-                allowed.forEach(username => {
-                    const cb = document.querySelector(`.user-permission-checkbox[data-username="${username}"]`);
-                    if (cb) cb.checked = true;
-                });
-            }
-            
-            modal.style.display = 'flex';
-        }
-    };
-
-    /**
-     * Action: confirmDeleteFile (Admin)
-     * Triggers permanent resource deletion confirmation.
-     * 
-     * @param {number} id - File ID
-     * @param {string} filename - Display name for confirmation
-     */
-    window.confirmDeleteFile = function(id, filename) {
-        showConfirmModal({
-            title: 'Delete File',
-            message: `Are you sure you want to permanently delete \"<strong>${filename}</strong>\"?`,
-            danger: true,
-            confirmText: 'Delete',
-            hideCancel: true,
-            alignment: 'center',
-            loadingText: 'Deleting...',
-            onConfirm: async () => {
-                const result = await apiPost(`/files/delete/${id}`);
-                if (result && result.success) {
-                    // Logic: full reload required to sync storage stats and table
-                    window.location.reload();
+    tbody.innerHTML = moduleState.files.map(file => `
+        <tr id="file-row-${file.id}">
+            <td data-label="Type" style="text-align: center; font-size: 1.2rem;">
+                ${getFileEmoji(file.mime_type)}
+            </td>
+            <td data-label="Filename">
+                <div class="file-name-cell">
+                    <strong>${escapeHtml(file.original_filename)}</strong>
+                    ${file.description ? `<br><small class="file-desc">${escapeHtml(file.description)}</small>` : ''}
+                </div>
+            </td>
+            <td data-label="Uploader">${file.uploaded_by}</td>
+            <td data-label="Date"><span class="text-small">${file.uploaded_at}</span></td>
+            <td data-label="Size"><span class="text-small">${(file.file_size / 1024 / 1024).toFixed(2)} MB</span></td>
+            <td data-label="Downloads" style="text-align: center;">${file.download_count || 0}</td>
+            <td data-label="Access">
+                ${file.admin_only 
+                    ? `<span class="badge badge-admin">Admin</span>` 
+                    : (file.allowed_users 
+                        ? `<span class="badge badge-restricted">Restricted</span>` 
+                        : `<span class="badge badge-public">Public</span>`)
                 }
-            }
-        });
-    };
+            </td>
+            <td data-label="Actions">
+                <div class="action-buttons">
+                    <a href="/files/serve/${file.id}" target="_blank" class="btn-icon-view" title="View/Download">${getIcon('view')}</a>
+                    <button type="button" class="btn-icon-copy" onclick="copyFileLink(${file.id})" title="Copy Link">${getIcon('copy')}</button>
+                    ${moduleState.isAdmin ? `
+                        <button type="button" class="btn-icon-edit" onclick="openPermissionModal(${file.id})" title="Permissions">${getIcon('settings')}</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteFile(${file.id}, '${escapeHtml(file.original_filename)}')" title="Purge">${getIcon('delete')}</button>
+                    ` : ''}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
 
-    // Modal: Configure global closure logic
-    setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        () => {
-            const modal = document.getElementById('permissionModal');
-            if (modal) modal.style.display = 'none';
-        },
-        closeConfirmModal
-    ]);
+/**
+ * UI Engine: renderRecipientSelectors
+ * populates the whitelisting checkboxes in both modals.
+ * 
+ * @returns {void}
+ */
+function renderRecipientSelectors() {
+    const approvedUsers = moduleState.users.filter(u => u.status === 'approved');
+    const html = approvedUsers.map(user => `
+        <label class="recipient-checkbox">
+            <input type="checkbox" name="allowed_users[]" value="${user.username}" class="user-permission-checkbox" data-username="${user.username}">
+            <div class="recipient-pill">
+                <span class="pill-icon">${getIcon(user.username)}</span>
+                <span>${user.username}</span>
+            </div>
+        </label>
+    `).join('');
 
-    /**
-     * Form: Permissions Submission (Admin)
-     * Transmits ACL updates to the server.
-     */
-    document.getElementById('permissionForm')?.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const id = document.getElementById('permissionFileId').value;
-        const btn = this.querySelector('button[type="submit"]');
-        const originalHtml = btn.innerHTML;
+    const uploadList = document.getElementById('uploadRecipientsList');
+    const permList = document.getElementById('permissionRecipientsList');
+    
+    if (uploadList) uploadList.innerHTML = html;
+    if (permList) permList.innerHTML = html;
+}
 
-        // UI Feedback: indicate network flight
-        btn.disabled = true;
-        btn.innerHTML = `${getIcon('waiting')} Saving...`;
+/**
+ * Interface: openUploadModal
+ * Displays the binary transfer interface.
+ * 
+ * @returns {void}
+ */
+function openUploadModal() {
+    const modal = document.getElementById('uploadModal');
+    if (modal) {
+        document.getElementById('uploadForm').reset();
+        document.getElementById('fileNameDisplay').textContent = '';
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+    }
+}
 
-        const formData = new FormData(this);
-        const result = await apiPost(`/files/permissions/${id}`, formData);
+/**
+ * Hides the upload interface.
+ * 
+ * @returns {void}
+ */
+function closeUploadModal() {
+    const modal = document.getElementById('uploadModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }
+}
 
-        if (result && result.success) {
-            window.location.reload();
-        } else {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-        }
+/**
+ * Interface: openPermissionModal (Admin)
+ * Pre-fills the ACL management interface for a resource.
+ * 
+ * @param {number} id - Target resource identifier.
+ * @returns {void}
+ */
+function openPermissionModal(id) {
+    const file = moduleState.files.find(f => f.id == id);
+    if (!file) return;
+
+    const modal = document.getElementById('permissionModal');
+    document.getElementById('permissionFileId').value = file.id;
+    document.getElementById('permissionAdminOnly').checked = file.admin_only == 1;
+
+    // Logic: Sync whitelisted user checkboxes
+    const allowed = file.allowed_users ? file.allowed_users.split(',') : [];
+    document.querySelectorAll('#permissionRecipientsList .user-permission-checkbox').forEach(cb => {
+        cb.checked = allowed.includes(cb.dataset.username);
     });
 
-    /**
-     * Form: File Upload Submission
-     * Executes the binary transfer to server storage.
-     */
-    document.getElementById('uploadForm')?.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const fileInput = document.getElementById('file');
-        if (!fileInput.files.length) {
-            showToast('Please select a file', 'error');
-            return;
-        }
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+    }
+}
 
-        const btn = this.querySelector('button[type="submit"]');
-        const originalHtml = btn.innerHTML;
+/**
+ * Hides the ACL interface.
+ * 
+ * @returns {void}
+ */
+function closePermissionModal() {
+    const modal = document.getElementById('permissionModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }
+}
 
-        btn.disabled = true;
-        btn.innerHTML = `${getIcon('waiting')} Uploading...`;
+/**
+ * Action: submitFileUpload
+ * Orchestrates the multipart binary transfer via AJAX.
+ * 
+ * @async
+ * @param {Event} event - Triggering form event.
+ * @returns {Promise<void>}
+ */
+async function submitFileUpload(event) {
+    if (event) event.preventDefault();
 
-        const formData = new FormData(this);
-        
-        // Use global Fetch wrapper for multipart support
+    const form = event.target;
+    const fileInput = document.getElementById('file');
+    if (!fileInput.files.length) {
+        showToast('No binary selected', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('uploadSaveBtn');
+    const originalHtml = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Uploading...`;
+
+    try {
+        const formData = new FormData(form);
         const result = await apiPost('/files', formData);
 
         if (result && result.success) {
-            // Redirect back to vault on success
-            window.location.href = '/files';
-        } else {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
+            closeUploadModal();
+            loadState();
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+/**
+ * Action: submitPermissions (Admin)
+ * Synchronizes ACL updates with the vault.
+ * 
+ * @async
+ * @param {Event} event - Triggering form event.
+ * @returns {Promise<void>}
+ */
+async function submitPermissions(event) {
+    if (event) event.preventDefault();
+
+    const form = event.target;
+    const id = document.getElementById('permissionFileId').value;
+    const btn = document.getElementById('permissionSaveBtn');
+
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
+    try {
+        const formData = new FormData(form);
+        const result = await apiPost(`/files/permissions/${id}`, formData);
+
+        if (result && result.success) {
+            closePermissionModal();
+            loadState();
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+/**
+ * Action: confirmDeleteFile (Admin)
+ * Orchestrates the Mandatory Action deletion flow for a resource.
+ * 
+ * @param {number} id - Target database record ID.
+ * @param {string} filename - Display name for context.
+ * @returns {void}
+ */
+function confirmDeleteFile(id, filename) {
+    showConfirmModal({
+        title: 'Purge Resource',
+        message: `Are you sure you want to permanently delete \"<strong>${filename}</strong>\"?`,
+        danger: true,
+        confirmText: 'Purge',
+        hideCancel: true,
+        alignment: 'center',
+        onConfirm: async () => {
+            const result = await apiPost(`/files/delete/${id}`);
+            if (result && result.success) {
+                const row = document.getElementById(`file-row-${id}`);
+                if (row) {
+                    row.classList.add('row-fade-out');
+                    setTimeout(() => loadState(), 500);
+                } else {
+                    loadState();
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Action: copyFileLink
+ * Copies the full serve URL to the clipboard.
+ * 
+ * @param {number} id - Target resource identifier.
+ * @returns {void}
+ */
+function copyFileLink(id) {
+    const url = `${window.location.origin}/files/serve/${id}`;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => showToast('Link copied', 'success'));
+    } else {
+        const el = document.createElement('textarea');
+        el.value = url;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        showToast('Link copied', 'success');
+    }
+}
+
+/**
+ * Helper: getFileEmoji
+ * Maps MIME types to semantic icons from the global registry.
+ * 
+ * @param {string} mime - Content-Type string.
+ * @returns {string} - Semantic icon symbol.
+ */
+function getFileEmoji(mime) {
+    if (!mime) return getIcon('file_attach');
+    if (mime.startsWith('image/')) return getIcon('file_image');
+    if (mime.includes('pdf')) return getIcon('file_pdf');
+    if (mime.startsWith('text/')) return getIcon('file_text');
+    if (mime.includes('zip') || mime.includes('archive')) return getIcon('file_archive');
+    return getIcon('file_attach');
+}
+
+/**
+ * Configures drag-and-drop orchestration for the upload modal.
+ * 
+ * @returns {void}
+ */
+function setupDropZone() {
+    const zone = document.getElementById('dropZone');
+    const input = document.getElementById('file');
+    const display = document.getElementById('fileNameDisplay');
+
+    if (!zone || !input) return;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+        zone.addEventListener(e, (evt) => {
+            evt.preventDefault();
+            evt.stopPropagation();
+        });
+    });
+
+    ['dragenter', 'dragover'].forEach(e => {
+        zone.addEventListener(e, () => zone.classList.add('dragover'));
+    });
+
+    ['dragleave', 'drop'].forEach(e => {
+        zone.addEventListener(e, () => zone.classList.remove('dragover'));
+    });
+
+    zone.addEventListener('drop', (evt) => {
+        const files = evt.dataTransfer.files;
+        if (files.length) {
+            input.files = files;
+            display.textContent = files[0].name;
+            display.style.display = 'block';
         }
     });
 
-    // Workflow: Automated alert cleanup
-    document.querySelectorAll('.alert').forEach(alert => {
-        setTimeout(() => {
-            alert.style.opacity = '0';
-            alert.style.transform = 'translateY(-10px)';
-            setTimeout(() => alert.remove(), 500);
-        }, 5000);
+    input.addEventListener('change', () => {
+        if (input.files.length) {
+            display.textContent = input.files[0].name;
+            display.style.display = 'block';
+        }
     });
-});
+}
+
+/**
+ * Sanitizes strings for safe DOM injection.
+ * 
+ * @param {string} str - Unsafe input.
+ * @returns {string} - Escaped output.
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+/**
+ * --- Global Exposure ---
+ */
+window.openUploadModal = openUploadModal;
+window.closeUploadModal = closeUploadModal;
+window.submitFileUpload = submitFileUpload;
+window.openPermissionModal = openPermissionModal;
+window.closePermissionModal = closePermissionModal;
+window.submitPermissions = submitPermissions;
+window.confirmDeleteFile = confirmDeleteFile;
+window.copyFileLink = copyFileLink;
