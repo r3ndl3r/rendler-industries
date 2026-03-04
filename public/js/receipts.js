@@ -1,52 +1,56 @@
 // /public/js/receipts.js
 
 /**
- * Receipt Ledger Controller Module
+ * Receipt Management Controller
  * 
- * This module manages the Receipt Management and AI Analysis interface. It 
- * handles large file uploads, specialized client-side image cropping,
- * and integration with the Gemini-powered OCR digitization engine.
+ * This module manages the Receipt Ledger and AI-powered digitization pipeline.
+ * It handles multipart binary transfers, client-side image manipulation,
+ * and high-fidelity electronic receipt generation via Gemini 2.0.
  * 
  * Features:
- * - Real-time ledger filtering (Search, Store, Date, AI Status, Uploader)
- * - Intelligent expenditure statistics with mobile-responsive breakdowns
- * - Integrated client-side image cropping (Cropper.js) for pre and post-upload refinement
- * - One-click AI digitization workflow with electronic receipt rendering
- * - HEIC/HEIF image conversion support for cross-platform compatibility
- * - Drag-and-drop file upload zone with 1GB capacity support
+ * - Real-time state-driven ledger with dynamic filtering and pagination
+ * - Multi-stage image refinement (Cropper.js) for pre and post-upload flows
+ * - Integrated AI OCR and structured data extraction
+ * - HEIC/HEIF conversion for mobile cross-platform compatibility
+ * - Automatic spend aggregation and merchant breakdown tiles
  * 
  * Dependencies:
  * - default.js: For apiPost, getLoadingHtml, getIcon, and modal helpers
- * - cropperjs: For image manipulation
- * - heic2any: For modern image format conversion
+ * - cropper.js: For high-resolution image manipulation
  */
 
 /**
- * Application State
- * Maintains collection metadata, stats summary, and interactive UI states
+ * --- Module Configuration & State ---
  */
-let cropper         = null;         // Cropper.js instance
-let currentReceipts = [];           // Active list of receipt objects {id, store_name, total_amount, ...}
-let storeNames      = [];           // Unified list of stores for filter dropdowns
-let uploaders       = [];           // Unified list of uploaders for filter dropdowns
-let summary         = {};           // Aggregated spend totals (week, month, year)
-let breakdown       = {};           // Store-specific breakdowns for the stats tiles
-let isAdmin         = false;        // Permission context
-let currentUser     = '';           // Current session username for ownership logic
-let currentOffset   = 0;            // Pagination pointer
-let refinedBlob     = null;         // Local store for cropped image data during upload
-let refinedName     = '';           // Processed filename for refined uploads
-const LIMIT         = 10;           // Pagination page size
+const CONFIG = {
+    LIMIT: 10,                      // Pagination page density
+    DEBOUNCE_MS: 300                // Search input throttle threshold
+};
+
+let STATE = {
+    receipts: [],                   // Metadata collection for the active ledger
+    stores: [],                     // Unique merchant roster for autocomplete
+    uploaders: [],                  // User roster for permission filtering
+    summary: {},                    // Spend aggregates (week, month, year)
+    breakdown: {},                  // Merchant-specific totals for stats tiles
+    isAdmin: false,                 // Authorization gate for destructive actions
+    currentUser: '',                // Owner identification for ACL logic
+    offset: 0,                      // Current pagination pointer
+    cropper: null,                  // Active Cropper.js instance
+    refinedBlob: null,              // Refined image data for upload pipeline
+    refinedName: ''                 // Sanitized filename for refined uploads
+};
 
 /**
- * Initialization System
- * Boots the ledger state and establishes filter event delegation
+ * Bootstraps the module state and establishes event delegation.
+ * 
+ * @returns {void}
  */
-document.addEventListener('DOMContentLoaded', function() {
-    // Bootstrap initial collection
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial state synchronization
     loadState();
 
-    // Setup debounced filtering for high-performance searching
+    // Event Delegation: Real-time Ledger Filtering
     const filterIds = ['filterSearch', 'filterStore', 'filterTime', 'filterAI', 'filterUploader', 'filterMinAmount'];
     filterIds.forEach(id => {
         const el = document.getElementById(id);
@@ -58,13 +62,13 @@ document.addEventListener('DOMContentLoaded', function() {
         el.addEventListener(eventType, () => {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
-                currentOffset = 0; // Reset pagination on new filter
+                STATE.offset = 0;
                 loadState();
-            }, 300);
+            }, CONFIG.DEBOUNCE_MS);
         });
     });
 
-    // Interaction: Filter reset logic
+    // Action: Filter Reset
     const resetBtn = document.getElementById('resetFilters');
     if (resetBtn) {
         resetBtn.onclick = () => {
@@ -72,85 +76,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
-            currentOffset = 0;
+            STATE.offset = 0;
             loadState();
         };
     }
 
-    // Interaction: Pagination loader
+    // Action: Pagination
     const loadMoreBtn = document.getElementById('loadMoreBtn');
-    if (loadMoreBtn) {
-        loadMoreBtn.onclick = loadMore;
-    }
+    if (loadMoreBtn) loadMoreBtn.onclick = loadMore;
 
-    // Interaction: File upload drop-zone orchestration
-    const dropZone        = document.getElementById('dropZone');
-    const fileInput       = document.getElementById('file');
+    // Interaction: Drop Zone Orchestration
+    setupUploadOrchestration();
 
-    if (dropZone && fileInput) {
-        // Handle drag states
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, e => {
-                e.preventDefault();
-                e.stopPropagation();
-            }, false);
-        });
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
-        });
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
-        });
-        
-        // Process file drops
-        dropZone.addEventListener('drop', e => {
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                fileInput.files = files;
-                fileInput.dispatchEvent(new Event('change'));
-            }
-        }, false);
-
-        // Process manual selections and trigger refinement workflow
-        fileInput.addEventListener('change', function() {
-            if (this.files.length > 0) {
-                const file = this.files[0];
-                updateFileName(file.name);
-                refinedBlob = null; // Reset refinement state for new file
-                const lowerName = file.name.toLowerCase();
-                if (file.type.startsWith('image/') || lowerName.endsWith('.heic') || lowerName.endsWith('.heif')) {
-                    // Transition to refinement interface
-                    closeUploadModal();
-                    initPreUploadCrop(file);
-                }
-            }
-        });
-    }
-
-    // Form: Submission handling
-    const uploadForm = document.getElementById('uploadForm');
-    if (uploadForm) {
-        uploadForm.addEventListener('submit', handleUpload);
-    }
-
-    const editForm = document.getElementById('editForm');
-    if (editForm) {
-        editForm.onsubmit = handleEditSubmit;
-    }
-
-    // Modal: Configure unified click-outside behavior
+    // Modal: Global Closure Logic
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay', 'image-modal-overlay'], [
         closeReceiptModal, closeEditModal, closeCropModal, closePreUploadCropModal, closeEReceiptModal, closeConfirmModal
     ]);
 });
 
 /**
- * --- API and State Management ---
+ * --- Core Logic & API Operations ---
  */
 
 /**
- * Fetches the master ledger state including receipts, metadata, and stats.
+ * Synchronizes the module state with the server (Single Source of Truth).
  * 
+ * @async
  * @returns {Promise<void>}
  */
 async function loadState() {
@@ -162,78 +113,67 @@ async function loadState() {
         const data = await response.json();
 
         if (data.success) {
-            // Update comprehensive module state
-            currentReceipts = data.receipts;
-            storeNames = data.store_names;
-            uploaders = data.uploaders;
-            summary = data.summary;
-            breakdown = data.breakdown;
-            if (data.is_admin !== undefined) isAdmin = data.is_admin;
-            if (data.current_user !== undefined) currentUser = data.current_user;
-            currentOffset = currentReceipts.length;
+            STATE.receipts = data.receipts;
+            STATE.stores = data.store_names;
+            STATE.uploaders = data.uploaders;
+            STATE.summary = data.summary;
+            STATE.breakdown = data.breakdown;
+            STATE.isAdmin = data.is_admin || false;
+            STATE.currentUser = data.current_user || '';
+            STATE.offset = STATE.receipts.length;
 
-            // Trigger UI layer updates
-            updateFilterDropdowns();
             renderStats();
             renderReceipts(false);
+            updateFilterDropdowns();
             
-            // Manage pagination visibility
-            const loadMoreBtn = document.getElementById('loadMoreBtn');
-            if (loadMoreBtn) {
-                loadMoreBtn.style.display = (data.has_more || currentReceipts.length >= 10) ? 'inline-block' : 'none';
-            }
+            const btn = document.getElementById('loadMoreBtn');
+            if (btn) btn.style.display = (data.has_more || STATE.receipts.length >= CONFIG.LIMIT) ? 'inline-block' : 'none';
         }
-    } catch (e) {
-        console.error("loadState Error:", e);
+    } catch (err) {
+        console.error("loadState failure:", err);
     }
 }
 
 /**
- * Fetches subsequent pages of receipt data for the ledger.
+ * Appends subsequent pages of data to the active ledger.
  * 
+ * @async
  * @returns {Promise<void>}
  */
 async function loadMore() {
-    const loadMoreBtn = document.getElementById('loadMoreBtn');
-    if (loadMoreBtn) {
-        loadMoreBtn.disabled = true;
-        loadMoreBtn.innerHTML = 'Loading...';
-    }
+    const btn = document.getElementById('loadMoreBtn');
+    if (!btn) return;
+
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Loading...`;
 
     const filters = getActiveFilters();
-    const params = new URLSearchParams({ ...filters, offset: currentOffset });
+    const params = new URLSearchParams({ ...filters, offset: STATE.offset });
 
     try {
         const response = await fetch(`/api/receipts/list?${params.toString()}`);
         const data = await response.json();
 
         if (data.success && data.receipts) {
-            const newItems = data.receipts;
-            // Append to master state
-            currentReceipts = [...currentReceipts, ...newItems];
-            
-            // Perform incremental DOM update
-            renderReceipts(true, newItems);
-            
-            currentOffset += newItems.length;
-            
-            if (loadMoreBtn) {
-                loadMoreBtn.style.display = data.has_more ? 'inline-block' : 'none';
-            }
+            STATE.receipts = [...STATE.receipts, ...data.receipts];
+            renderReceipts(true, data.receipts);
+            STATE.offset += data.receipts.length;
+            btn.style.display = data.has_more ? 'inline-block' : 'none';
         }
-    } catch (e) {
-        console.error("loadMore Error:", e);
+    } catch (err) {
+        console.error("loadMore failure:", err);
     } finally {
-        if (loadMoreBtn) {
-            loadMoreBtn.disabled = false;
-            loadMoreBtn.innerHTML = getIcon('expand') + ' Load More';
-        }
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     }
 }
 
 /**
  * UI Component: renderStats
- * Generates the spend aggregate tiles with hidden breakdown sections.
+ * Generates the spend aggregate tiles with merchant breakdowns.
+ * 
+ * @returns {void}
  */
 function renderStats() {
     const container = document.getElementById('spendingSummaryContainer');
@@ -242,12 +182,11 @@ function renderStats() {
     const periods = ['week', 'month', 'year'];
     const labels = { week: 'Weekly Spend', month: 'Monthly Spend', year: 'Yearly Spend' };
 
-    let html = '';
-    periods.forEach(period => {
-        const total = summary[period + '_total'] || 0;
-        const periodBreakdown = breakdown[period] || [];
+    container.innerHTML = periods.map(period => {
+        const total = STATE.summary[period + '_total'] || 0;
+        const sub = STATE.breakdown[period] || [];
         
-        html += `
+        return `
             <div class="stat-tile" onclick="toggleStatTile(this)">
                 <span class="stat-label">${labels[period]}</span>
                 <span class="stat-value">
@@ -255,135 +194,94 @@ function renderStats() {
                     <span class="tile-toggle-icon">${getIcon('expand')}</span>
                 </span>
                 <div class="stat-breakdown">
-                    ${periodBreakdown.map(s => {
-                        const iconPath = getStoreIcon(s.store_name);
-                        return `
-                            <div class="breakdown-row">
-                                <span class="breakdown-store">
-                                    ${iconPath ? `<img src="${iconPath}" class="store-logo" alt="" onerror="this.style.display='none'">` : ''}
-                                    ${escapeHtml(s.store_name)}
-                                </span>
-                                <span class="breakdown-total">$${parseFloat(s.total).toFixed(2)}</span>
-                            </div>
-                        `;
-                    }).join('')}
+                    ${sub.map(s => `
+                        <div class="breakdown-row">
+                            <span class="breakdown-store">
+                                ${getStoreLogoHtml(s.store_name)}
+                                ${escapeHtml(s.store_name)}
+                            </span>
+                            <span class="breakdown-total">$${parseFloat(s.total).toFixed(2)}</span>
+                        </div>
+                    `).join('')}
                 </div>
             </div>
         `;
-    });
-
-    container.innerHTML = html;
-}
-
-/**
- * Toggles expanded breakdown state for stat tiles on mobile devices.
- * 
- * @param {HTMLElement} el - Clicked tile
- */
-function toggleStatTile(el) {
-    const icon = el.querySelector('.tile-toggle-icon');
-    // Device check: only trigger if the toggle icon is visible (CSS media query dependency)
-    if (icon && getComputedStyle(icon).display !== 'none') {
-        el.classList.toggle('expanded');
-    }
+    }).join('');
 }
 
 /**
  * UI Engine: renderReceipts
- * Generates the master ledger table from current state.
+ * Generates the master ledger from the current state.
  * 
- * @param {boolean} append - Whether to append or replace existing rows
- * @param {Array|null} itemsToAppend - Subset of items for incremental rendering
+ * @param {boolean} append - Whether to preserve existing rows.
+ * @param {Array|null} batch - Subset of items for incremental updates.
+ * @returns {void}
  */
-function renderReceipts(append = false, itemsToAppend = null) {
+function renderReceipts(append = false, batch = null) {
     const tbody = document.getElementById('receiptsTableBody');
     if (!tbody) return;
 
-    // Handle empty state
-    if (!append && currentReceipts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="receipt-empty-ledger">📭 No receipts found. Upload one to get started.</td></tr>';
+    if (!append && STATE.receipts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="receipt-empty-ledger">📭 No resources found in the vault.</td></tr>';
         return;
     }
 
-    const items = append ? (itemsToAppend || []) : currentReceipts;
-    
-    const html = items.map(r => {
-        const iconPath = getStoreIcon(r.store_name);
-        const isOwnerOrAdmin = (r.uploaded_by === currentUser || isAdmin);
-        
-        return `
-            <tr id="receipt-row-${r.id}">
-                <td class="col-icon receipt-col-preview" data-label="Preview">
-                    ${r.mime_type.startsWith('image/') ? `
-                        <div class="receipt-thumbnail-wrapper" onclick="openReceiptModal('${r.id}')">
-                            <img src="/receipts/serve/${r.id}" class="receipt-thumb">
-                        </div>
-                    ` : `
-                        <span style="font-size: 1.5rem;">${getIcon('receipts')}</span>
-                    `}
-                </td>
-                <td data-label="Filename">
-                    <small>${escapeHtml(r.original_filename)}</small>
-                </td>
-                <td data-label="Store">
-                    <div class="store-icon-wrapper" id="store-wrapper-${r.id}">
-                        ${iconPath ? `<img src="${iconPath}" class="store-logo" alt="" onerror="this.style.display='none'">` : ''}
-                        <strong>${escapeHtml(r.store_name || 'Unknown')}</strong>
-                        ${(r.ai_json && r.ai_json.trim().startsWith('{')) ? `
-                            <span class="ai-badge" title="AI Analyzed">${getIcon('ai')}</span>
-                        ` : ''}
+    const items = append ? (batch || []) : STATE.receipts;
+    const html = items.map(r => `
+        <tr id="receipt-row-${r.id}">
+            <td class="col-icon receipt-col-preview" data-label="Preview">
+                ${r.mime_type.startsWith('image/') ? `
+                    <div class="receipt-thumbnail-wrapper" onclick="openReceiptModal('${r.id}')">
+                        <img src="/receipts/serve/${r.id}" class="receipt-thumb">
                     </div>
-                    ${r.description ? `<br><small class="receipt-description">${escapeHtml(r.description)}</small>` : ''}
-                </td>
-                <td data-label="Date">${r.formatted_date || '-'}</td>
-                <td data-label="Total" class="receipt-total-value">$${parseFloat(r.total_amount || 0).toFixed(2)}</td>
-                <td data-label="Uploaded By"><small>${escapeHtml(r.uploaded_by)}</small></td>
-                <td class="col-actions">
-                    <div class="action-buttons">
-                        <a href="/receipts/serve/${r.id}" target="_blank" class="btn-icon-view" title="View Full Image">
-                            ${getIcon('view')}
-                        </a>
-                        <button type="button" 
-                                class="btn-icon-ai" 
-                                data-receipt-id="${r.id}"
-                                data-ai-json="${escapeHtml(r.ai_json || "")}"
-                                data-store-icon="${iconPath || ''}"
-                                onclick="viewElectronicReceipt(this.dataset.receiptId, 0, this.dataset.aiJson, this.dataset.storeIcon)" 
-                                title="Electronic Receipt">
-                            ${getIcon('ai')}
-                        </button>
-                        ${isOwnerOrAdmin ? `
-                            <button type="button" class="btn-icon-crop" onclick="openCropModal('${r.id}')" title="Crop Image">
-                                ${getIcon('crop')}
-                            </button>
-                            <button type="button" class="btn-icon-bonus" onclick="triggerOCR('${r.id}')" title="Scan with OCR" id="ocr-btn-${r.id}">
-                                ${getIcon('search')}
-                            </button>
-                            <button type="button" class="btn-icon-edit" onclick="openEditModal(JSON.parse(this.dataset.receipt))" data-receipt='${escapeHtml(JSON.stringify(r))}' title="Edit Details">
-                                ${getIcon('edit')}
-                            </button>
-                            <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('${r.id}', '${escapeHtml(r.store_name || r.original_filename)}')" title="Delete">
-                                ${getIcon('delete')}
-                            </button>
-                        ` : ''}
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
+                ` : `<span style="font-size: 1.5rem;">${getIcon('receipts')}</span>`}
+            </td>
+            <td data-label="Filename"><small>${escapeHtml(r.original_filename)}</small></td>
+            <td data-label="Store">
+                <div class="store-icon-wrapper">
+                    ${getStoreLogoHtml(r.store_name)}
+                    <strong>${escapeHtml(r.store_name || 'Unknown')}</strong>
+                    ${r.ai_json ? `<span class="ai-badge" title="AI Digitized">${getIcon('ai')}</span>` : ''}
+                </div>
+                ${r.description ? `<br><small class="receipt-description">${escapeHtml(r.description)}</small>` : ''}
+            </td>
+            <td data-label="Date">${r.formatted_date || '-'}</td>
+            <td data-label="Total" class="receipt-total-value">$${parseFloat(r.total_amount || 0).toFixed(2)}</td>
+            <td data-label="Uploaded By"><small>${escapeHtml(r.uploaded_by)}</small></td>
+            <td class="col-actions">
+                <div class="action-buttons">
+                    <a href="/receipts/serve/${r.id}" target="_blank" class="btn-icon-view" title="Original">${getIcon('view')}</a>
+                    <button type="button" 
+                            class="btn-icon-ai" 
+                            data-receipt-id="${r.id}"
+                            data-ai-json="${escapeHtml(r.ai_json || "")}"
+                            data-store-icon="${getStoreLogoUrl(r.store_name)}"
+                            onclick="viewElectronicReceipt(this.dataset.receiptId, 0, this.dataset.aiJson, this.dataset.storeIcon)" 
+                            title="Electronic">${getIcon('ai')}</button>
+                    ${(r.uploaded_by === STATE.currentUser || STATE.isAdmin) ? `
+                        <button type="button" class="btn-icon-crop" onclick="openCropModal('${r.id}')" title="Refine">${getIcon('crop')}</button>
+                        <button type="button" class="btn-icon-bonus" onclick="triggerOCR('${r.id}')" title="OCR Scan" id="ocr-btn-${r.id}">${getIcon('search')}</button>
+                        <button type="button" class="btn-icon-edit" onclick="openEditModal(this.dataset.receipt)" data-receipt='${escapeHtml(JSON.stringify(r))}' title="Edit">${getIcon('edit')}</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('${r.id}', '${escapeHtml(r.store_name || r.original_filename)}')" title="Purge">${getIcon('delete')}</button>
+                    ` : ''}
+                </div>
+            </td>
+        </tr>
+    `).join('');
 
-    if (append) {
-        tbody.insertAdjacentHTML('beforeend', html);
-    } else {
-        tbody.innerHTML = html;
-    }
+    if (append) tbody.insertAdjacentHTML('beforeend', html);
+    else tbody.innerHTML = html;
 }
 
 /**
- * Action: handleUpload
- * Manages multipart file uploads with optional refined blob support.
+ * --- Action Handlers ---
+ */
+
+/**
+ * Orchestrates the multipart upload pipeline.
  * 
- * @param {Event} e - Form submission event
+ * @async
+ * @param {Event} e - Form submission event.
  * @returns {Promise<void>}
  */
 async function handleUpload(e) {
@@ -391,57 +289,41 @@ async function handleUpload(e) {
     const form = document.getElementById('uploadForm');
     const formData = new FormData(form);
     
-    // Check if we should override the raw selection with a refined crop blob
-    if (refinedBlob) {
+    if (STATE.refinedBlob) {
         formData.delete('file');
-        formData.append('file', refinedBlob, refinedName || 'receipt.png');
+        formData.append('file', STATE.refinedBlob, STATE.refinedName || 'receipt.png');
     }
 
-    showLoadingOverlay('Uploading receipt...', 'Please wait while we scan and extract details.');
+    showLoadingOverlay('Processing receipt...', 'Performing binary scan and OCR extraction.');
     
     try {
-        const response = await fetch('/receipts/api/upload', {
-            method: 'POST',
-            body: formData
-        });
-        const result = await response.json();
-        
-        if (result.success) {
-            showToast(result.message, 'success');
-            
-            // Reset UI state
-            if (form) form.reset();
-            const fileName = document.getElementById('fileName');
-            if (fileName) fileName.style.display = 'none';
-
+        const result = await apiPost('/receipts/api/upload', formData);
+        if (result && result.success) {
+            form.reset();
+            const display = document.getElementById('fileName');
+            if (display) display.style.display = 'none';
             closeUploadModal();
             
-            // Insert into active view and refresh summaries
-            currentReceipts.unshift(result.receipt);
-            summary = result.summary;
-            breakdown = result.breakdown;
-            
+            STATE.receipts.unshift(result.receipt);
+            STATE.summary = result.summary;
+            STATE.breakdown = result.breakdown;
             renderStats();
             renderReceipts(false);
-        } else {
-            showToast(result.error || 'Upload failed.', 'error');
         }
-    } catch (e) {
-        console.error("handleUpload Error:", e);
     } finally {
         hideLoadingOverlay();
     }
 }
 
 /**
- * Action: handleEditSubmit
- * Updates existing receipt metadata.
+ * Updates metadata for an existing record.
  * 
- * @param {Event} e - Form submission event
+ * @async
+ * @param {Event} e - Form submission event.
  * @returns {Promise<void>}
  */
 async function handleEditSubmit(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const form = e.target;
     const id = form.dataset.receiptId;
     const formData = new FormData(form);
@@ -449,34 +331,19 @@ async function handleEditSubmit(e) {
     const btn = form.querySelector('button[type="submit"]');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `${getIcon('waiting')} Syncing...`;
     
     try {
-        const response = await fetch(`/receipts/api/update/${id}`, {
-            method: 'POST',
-            body: formData
-        });
-        const result = await response.json();
-        
-        if (result.success) {
-            showToast(result.message, 'success');
+        const result = await apiPost(`/receipts/api/update/${id}`, formData);
+        if (result && result.success) {
             closeEditModal();
-            
-            // Update local master collection
-            const index = currentReceipts.findIndex(r => r.id == id);
-            if (index !== -1) {
-                currentReceipts[index] = result.receipt;
-            }
-            summary = result.summary;
-            breakdown = result.breakdown;
-            
+            const index = STATE.receipts.findIndex(r => r.id == id);
+            if (index !== -1) STATE.receipts[index] = result.receipt;
+            STATE.summary = result.summary;
+            STATE.breakdown = result.breakdown;
             renderStats();
             renderReceipts(false);
-        } else {
-            showToast(result.error || 'Failed to update.', 'error');
         }
-    } catch (e) {
-        console.error("handleEditSubmit Error:", e);
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
@@ -484,88 +351,103 @@ async function handleEditSubmit(e) {
 }
 
 /**
- * Action: confirmDeleteReceipt
- * Orchestrates the Mandatory Action deletion flow for a specific receipt.
+ * Orchestrates the Mandatory Action deletion flow.
  * 
- * @param {number} id - Receipt identifier
- * @param {string} name - Merchant/filename for confirmation text
+ * @param {number} id - Target identifier.
+ * @param {string} name - Merchant context.
+ * @returns {void}
  */
 function confirmDeleteReceipt(id, name) {
     showConfirmModal({
-        title: 'Delete Receipt',
-        message: `Are you sure you want to permanently delete the receipt for <strong>${escapeHtml(name)}</strong>?`,
+        title: 'Purge Receipt',
+        message: `Permanently delete record for <strong>${escapeHtml(name)}</strong>?`,
         danger: true,
-        confirmText: 'Delete',
+        confirmText: 'Purge',
         hideCancel: true,
         alignment: 'center',
-        loadingText: 'Deleting...',
         onConfirm: async () => {
-            const response = await fetch(`/receipts/api/delete/${id}`, { method: 'POST' });
-            const result = await response.json();
-            if (result.success) {
-                showToast(result.message, 'success');
-                currentReceipts = currentReceipts.filter(r => r.id != id);
+            const result = await apiPost(`/receipts/api/delete/${id}`);
+            if (result && result.success) {
+                STATE.receipts = STATE.receipts.filter(r => r.id != id);
+                STATE.summary = result.summary;
+                STATE.breakdown = result.breakdown;
                 renderStats();
                 renderReceipts(false);
-            } else {
-                showToast(result.error || 'Failed to delete receipt.', 'error');
             }
         }
     });
 }
 
 /**
- * Action: deleteReceipt (Legacy - Retained for API compatibility)
-...
+ * --- Interface & Utility Helpers ---
  */
-async function deleteReceipt(id) {
-    try {
-        const response = await fetch(`/receipts/api/delete/${id}`, { method: 'POST' });
-        const result = await response.json();
-        
-        if (result.success) {
-            showToast(result.message, 'success');
-            currentReceipts = currentReceipts.filter(r => r.id != id);
-            summary = result.summary;
-            breakdown = result.breakdown;
-            renderStats();
-            renderReceipts(false);
-        } else {
-            showToast(result.error || 'Failed to delete receipt.', 'error');
+
+/**
+ * Configures the drag-and-drop orchestration.
+ * 
+ * @returns {void}
+ */
+function setupUploadOrchestration() {
+    const zone = document.getElementById('dropZone');
+    const input = document.getElementById('file');
+    if (!zone || !input) return;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+        zone.addEventListener(e, evt => { evt.preventDefault(); evt.stopPropagation(); });
+    });
+    
+    zone.addEventListener('dragover', () => zone.classList.add('dragover'));
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', evt => {
+        if (evt.dataTransfer.files.length) {
+            input.files = evt.dataTransfer.files;
+            input.dispatchEvent(new Event('change'));
         }
-    } catch (e) {
-        console.error("deleteReceipt Error:", e);
-        showToast("Network error during deletion", "error");
-    }
+    });
+
+    input.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            const file = this.files[0];
+            updateFileName(file.name);
+            STATE.refinedBlob = null;
+            const low = file.name.toLowerCase();
+            if (file.type.startsWith('image/') || low.endsWith('.heic') || low.endsWith('.heif')) {
+                closeUploadModal();
+                initPreUploadCrop(file);
+            }
+        }
+    });
 }
 
 /**
- * --- UI Helpers & Utilities ---
- */
-
-/**
- * Syncs the filter select elements with dynamic store and uploader lists.
+ * Synchronizes the filter and editor datalists with current state.
+ * 
+ * @returns {void}
  */
 function updateFilterDropdowns() {
-    const storeSelect = document.getElementById('filterStore');
-    if (storeSelect) {
-        const currentVal = storeSelect.value;
-        storeSelect.innerHTML = '<option value="">All Stores</option>' + 
-            storeNames.map(name => `<option value="${escapeHtml(name)}" ${name === currentVal ? 'selected' : ''}>${escapeHtml(name)}</option>`).join('');
+    const storeSel = document.getElementById('filterStore');
+    const dataList = document.getElementById('edit_store_list');
+    if (storeSel) {
+        const val = storeSel.value;
+        storeSel.innerHTML = '<option value="">All Stores</option>' + 
+            STATE.stores.map(n => `<option value="${escapeHtml(n)}" ${n === val ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('');
+    }
+    if (dataList) {
+        dataList.innerHTML = STATE.stores.map(n => `<option value="${escapeHtml(n)}">`).join('');
     }
 
-    const uploaderSelect = document.getElementById('filterUploader');
-    if (uploaderSelect) {
-        const currentVal = uploaderSelect.value;
-        uploaderSelect.innerHTML = '<option value="">All Uploaders</option>' + 
-            uploaders.map(u => `<option value="${escapeHtml(u.username)}" ${u.username === currentVal ? 'selected' : ''}>${escapeHtml(u.username)}</option>`).join('');
+    const upSel = document.getElementById('filterUploader');
+    if (upSel) {
+        const val = upSel.value;
+        upSel.innerHTML = '<option value="">All Uploaders</option>' + 
+            STATE.uploaders.map(u => `<option value="${escapeHtml(u.username)}" ${u.username === val ? 'selected' : ''}>${escapeHtml(u.username)}</option>`).join('');
     }
 }
 
 /**
- * Captures current values of all ledger filter inputs.
+ * Captures active ledger filter values.
  * 
- * @returns {Object} - Active filter state
+ * @returns {Object} - Active filters.
  */
 function getActiveFilters() {
     return {
@@ -579,479 +461,378 @@ function getActiveFilters() {
 }
 
 /**
- * Resolves store branding assets from filesystem based on name.
+ * Toggles expanded breakdown for stats tiles on mobile.
  * 
- * @param {string} name - Merchant name
- * @returns {string|null} - Path to branding image or null
+ * @param {HTMLElement} el - Clicked tile.
+ * @returns {void}
  */
-function getStoreIcon(name) {
-    if (!name) return null;
+function toggleStatTile(el) {
+    const icon = el.querySelector('.tile-toggle-icon');
+    if (icon && getComputedStyle(icon).display !== 'none') el.classList.toggle('expanded');
+}
+
+/**
+ * Generates URL for merchant branding assets.
+ * 
+ * @param {string} name - Merchant name.
+ * @returns {string} - Asset URL.
+ */
+function getStoreLogoUrl(name) {
+    if (!name) return '';
     const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
     return `/images/shops/${slug}.png`;
 }
 
 /**
- * Prevents XSS by sanitizing dynamic HTML injections.
+ * Generates HTML for merchant branding assets.
  * 
- * @param {string} text - Raw input
- * @returns {string} - Sanitized HTML
+ * @param {string} name - Merchant name.
+ * @returns {string} - IMG tag or empty.
  */
-function escapeHtml(text) {
-    if (!text) return '';
-    return String(text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+function getStoreLogoHtml(name) {
+    const url = getStoreLogoUrl(name);
+    if (!url) return '';
+    return `<img src="${url}" class="store-logo" alt="" onerror="this.style.display='none'">`;
 }
 
 /**
- * --- Crop and Refinement Workflow ---
+ * Sanitizes input for DOM safety.
+ * 
+ * @param {string} text - Unsafe input.
+ * @returns {string} - Escaped output.
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/**
+ * --- Image Refinement & AI Digitization ---
  */
 
 /**
- * Workflow: initPreUploadCrop
- * Initializes the refinement interface for new uploads.
- * Handles HEIC to JPEG conversion for browser-side cropping.
+ * Initializes the pre-upload image manipulation flow.
  * 
- * @param {File} file - Raw uploaded file
+ * @async
+ * @param {File} file - Raw source file.
  * @returns {Promise<void>}
  */
 async function initPreUploadCrop(file) {
-    let displayFile    = file;
-    const lowerName    = file.name.toLowerCase();
+    let source = file;
+    const low = file.name.toLowerCase();
     
-    // Compatibility: convert HEIC formats for preview display
-    if (lowerName.endsWith('.heic') || lowerName.endsWith('.heif')) {
-        showToast('Converting HEIC for preview...', 'info');
+    if (low.endsWith('.heic') || low.endsWith('.heif')) {
+        showToast('Processing modern image format...', 'info');
         try {
-            const blob  = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 });
-            displayFile = Array.isArray(blob) ? blob[0] : blob;
+            const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 });
+            source = Array.isArray(blob) ? blob[0] : blob;
         } catch (err) {
-            console.error('HEIC conversion failed:', err);
-            showToast('Could not convert HEIC for preview.', 'error');
+            showToast('Conversion failed', 'error');
             return;
         }
     }
 
     const modal = document.getElementById('preUploadCropModal');
     const img   = document.getElementById('preUploadCropImg');
-    const applyBtn = document.querySelector('#preUploadCropModal .btn-primary');
+    const btn   = document.querySelector('#preUploadCropModal .btn-primary');
     
-    if (modal && img) {
-        // Cleanup previous instances to prevent memory leaks
-        if (cropper) {
-            cropper.destroy();
-            cropper = null;
-        }
+    if (!modal || !img) return;
+    if (STATE.cropper) STATE.cropper.destroy();
 
-        if (applyBtn) {
-            applyBtn.disabled = true;
-            applyBtn.innerHTML = 'Initializing...';
-        }
-
-        const objectUrl = URL.createObjectURL(displayFile);
-        
-        img.onload = async function() {
-            try {
-                if (img.decode) await img.decode();
-                
-                modal.style.display = 'flex';
-                
-                // Initialize Cropper engine with automated area detection
-                cropper = new Cropper(img, { 
-                    viewMode: 1, 
-                    autoCropArea: 1, 
-                    responsive: true,
-                    checkOrientation: true,
-                    ready() {
-                        if (applyBtn) {
-                            applyBtn.disabled = false;
-                            applyBtn.innerHTML = 'Apply Crop';
-                        }
-                    }
-                });
-            } catch (err) {
-                console.error("Cropper init error", err);
-                showToast("Failed to initialize cropping engine", "error");
-            }
-            
-            // Lifecycle: revoke URL to free memory after safe margin
-            setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
-        };
-        
-        img.onerror = (err) => {
-            showToast("Failed to load image preview", "error");
-        };
-
-        img.src = objectUrl;
-    }
+    const url = URL.createObjectURL(source);
+    img.onload = async () => {
+        if (img.decode) await img.decode();
+        modal.style.display = 'flex';
+        STATE.cropper = new Cropper(img, { 
+            viewMode: 1, 
+            autoCropArea: 1, 
+            responsive: true,
+            checkOrientation: true
+        });
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    };
+    img.src = url;
 }
 
 /**
- * Action: applyPreUploadCrop
- * Captures the current crop area and stores it as a blob for subsequent upload.
+ * Captures the refined image area for the upload queue.
+ * 
+ * @returns {void}
  */
 function applyPreUploadCrop() {
-    if (!cropper) return;
+    if (!STATE.cropper) return;
     
     const btn = document.querySelector('#preUploadCropModal .btn-primary');
-    const originalHtml = btn.innerHTML;
+    const original = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = 'Refining...';
+    btn.innerHTML = `${getIcon('waiting')} Refining...`;
 
-    // Captures with white background to prevent black padding in non-square crops
-    const canvas = cropper.getCroppedCanvas({ fillColor: '#fff' });
-    
-    if (!canvas) {
-        showToast('Error generating refined image', 'error');
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-        return;
-    }
-
-    canvas.toBlob((blob) => {
-        if (!blob) {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-            return;
+    STATE.cropper.getCroppedCanvas({ fillColor: '#fff' }).toBlob(blob => {
+        if (blob) {
+            STATE.refinedBlob = blob;
+            const input = document.getElementById('file');
+            STATE.refinedName = input.files[0].name.replace(/\.[^/.]+$/, "") + ".png";
+            updateFileName("(Refined) " + STATE.refinedName);
+            showToast('Image optimized', 'success');
+            STATE.cropper.destroy();
+            STATE.cropper = null;
+            closePreUploadCropModal();
         }
-
-        // Store refinement data for the handleUpload hook
-        refinedBlob = blob;
-        const fileInput = document.getElementById('file');
-        refinedName = fileInput.files[0].name.replace(/\.[^/.]+$/, "") + ".png";
-        
-        updateFileName("(Refined) " + refinedName);
-        showToast('Image refined! Ready to upload.', 'success');
-        
-        if (cropper) {
-            cropper.destroy();
-            cropper = null;
-        }
-        
-        closePreUploadCropModal();
-        
         btn.disabled = false;
-        btn.innerHTML = originalHtml;
+        btn.innerHTML = original;
     }, 'image/png');
 }
 
 /**
- * UI: updateFileName
- * Updates the display name in the upload zone.
+ * Updates the display name in the drop zone.
  * 
- * @param {string} name - Filename
+ * @param {string} name - Target filename.
+ * @returns {void}
  */
 function updateFileName(name) {
-    const fileNameDisplay = document.getElementById('fileName');
-    if (fileNameDisplay) {
-        fileNameDisplay.textContent = name;
-        fileNameDisplay.style.display = 'block';
-    }
+    const el = document.getElementById('fileName');
+    if (el) { el.textContent = name; el.style.display = 'block'; }
 }
 
 /**
- * --- Interface Handlers & Legacy Actions ---
- */
-
-/**
- * Interface: openReceiptModal
- * Displays the full-size receipt image in a lightbox.
- */
-window.openReceiptModal = function(id) {
-    const modalImg = document.getElementById('modalImg');
-    const modal    = document.getElementById('receiptModal');
-    if (modalImg && modal) {
-        modalImg.src            = '/receipts/serve/' + id;
-        modal.style.display     = 'flex';
-    }
-};
-
-/**
- * Interface: openEditModal
- * Pre-fills the metadata editor and manages AI data application buttons.
+ * Displays the full-size receipt Lightbox.
  * 
- * @param {Object} receipt - Receipt record
+ * @param {number} id - Target identifier.
+ * @returns {void}
  */
-window.openEditModal = function(receipt) {
+function openReceiptModal(id) {
+    const img = document.getElementById('modalImg');
+    const modal = document.getElementById('receiptModal');
+    if (img && modal) { img.src = '/receipts/serve/' + id; modal.style.display = 'flex'; }
+}
+
+/**
+ * Pre-fills the metadata editor.
+ * 
+ * @param {string} rawJson - Stringified record data.
+ * @returns {void}
+ */
+function openEditModal(rawJson) {
+    const r = JSON.parse(rawJson);
     const modal = document.getElementById('editModal');
     const form  = document.getElementById('editForm');
     const btnAI = document.getElementById('btnApplyAI');
 
-    if (modal && form) {
-        form.dataset.receiptId = receipt.id;
-        document.getElementById('editStoreName').value   = receipt.store_name   || '';
-        document.getElementById('editDate').value        = receipt.receipt_date || '';
-        document.getElementById('editAmount').value      = receipt.total_amount || '';
-        document.getElementById('editDescription').value = receipt.description || '';
-        
-        // Context: only show AI button if structured data exists
-        if (btnAI) {
-            if (receipt.ai_json && receipt.ai_json.trim().startsWith('{')) {
-                btnAI.style.display = 'flex';
-                btnAI.onclick = () => {
-                    try {
-                        const data = JSON.parse(receipt.ai_json);
-                        if (data.store_name) document.getElementById('editStoreName').value = data.store_name;
-                        if (data.total_amount) document.getElementById('editAmount').value = data.total_amount;
-                        // Transform date format for HTML input compatibility
-                        if (data.date) {
-                            let dateVal = data.date;
-                            if (dateVal.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-                                const parts = dateVal.split('/');
-                                dateVal = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-                            }
-                            document.getElementById('editDate').value = dateVal;
-                        }
-                        showToast("AI data applied to form fields.", "success");
-                    } catch (err) {
-                        showToast("Error parsing AI data.", "error");
+    if (!modal || !form) return;
+    form.dataset.receiptId = r.id;
+    document.getElementById('editStoreName').value   = r.store_name   || '';
+    document.getElementById('editDate').value        = r.receipt_date || '';
+    document.getElementById('editAmount').value      = r.total_amount || '';
+    document.getElementById('editDescription').value = r.description || '';
+    
+    if (btnAI) {
+        btnAI.style.display = r.ai_json ? 'flex' : 'none';
+        btnAI.onclick = () => {
+            try {
+                const data = JSON.parse(r.ai_json);
+                if (data.store_name) document.getElementById('editStoreName').value = data.store_name;
+                if (data.total_amount) document.getElementById('editAmount').value = data.total_amount;
+                if (data.date) {
+                    let d = data.date;
+                    if (d.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+                        const parts = d.split('/');
+                        d = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
                     }
-                };
-            } else {
-                btnAI.style.display = 'none';
-            }
-        }
-        modal.style.display = 'flex';
+                    document.getElementById('editDate').value = d;
+                }
+                showToast("AI data synchronized", "success");
+            } catch (err) { console.error("AI apply error:", err); }
+        };
     }
-};
+    modal.style.display = 'flex';
+}
 
 /**
- * Interface: openCropModal
- * Initializes post-upload refinement for an existing record.
+ * Initializes the post-upload manipulation flow.
  * 
- * @param {number} id - Receipt ID
+ * @async
+ * @param {number} id - Target identifier.
+ * @returns {Promise<void>}
  */
-window.openCropModal = async function(id) {
-    const modal      = document.getElementById('cropModal');
-    const img        = document.getElementById('cropImg');
-    if (!(modal && img)) return;
+async function openCropModal(id) {
+    const modal = document.getElementById('cropModal');
+    const img   = document.getElementById('cropImg');
+    if (!modal || !img) return;
     modal.style.display = 'flex';
-    showToast('Loading image...', 'info');
+    
     try {
         const response = await fetch('/receipts/serve/' + id);
-        const blob     = await response.blob();
-        let displayBlob = blob;
+        const blob = await response.blob();
+        let display = blob;
         
-        // Format check: convert HEIC if necessary
         if (blob.type === 'image/heic' || blob.type === 'image/heif') {
-            showToast('Converting HEIC for preview...', 'info');
-            const convertedBlob = await heic2any({ blob: blob, toType: 'image/jpeg', quality: 0.8 });
-            displayBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+            const conv = await heic2any({ blob: blob, toType: 'image/jpeg', quality: 0.8 });
+            display = Array.isArray(conv) ? conv[0] : conv;
         }
         
-        const objectUrl = URL.createObjectURL(displayBlob);
-        img.onload = function() {
-            if (cropper) cropper.destroy();
-            cropper = new Cropper(img, { 
-                viewMode: 1, 
-                autoCropArea: 1, 
-                responsive: true,
-                checkOrientation: true
-            });
-            showToast('Ready to crop.', 'success');
-            URL.revokeObjectURL(objectUrl);
+        const url = URL.createObjectURL(display);
+        img.onload = () => {
+            if (STATE.cropper) STATE.cropper.destroy();
+            STATE.cropper = new Cropper(img, { viewMode: 1, autoCropArea: 1, responsive: true, checkOrientation: true });
+            URL.revokeObjectURL(url);
         };
-        img.src = objectUrl;
+        img.src = url;
         
-        // Scope the save button to this specific record ID
-        window.saveCrop = async function() {
-            if (!cropper) return;
+        window.saveCrop = async () => {
+            if (!STATE.cropper) return;
             const btn = document.querySelector('#cropModal .btn-primary');
-            const originalHtml = btn.innerHTML;
+            const original = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = 'Saving...';
+            btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
-            const canvas = cropper.getCroppedCanvas({ fillColor: '#fff' });
-            canvas.toBlob(async (blob) => {
-                const formData = new FormData();
-                formData.append('cropped_image', blob, 'receipt_cropped.png');
-                try {
-                    const response = await fetch('/receipts/api/crop/' + id, { method: 'POST', body: formData });
-                    const result = await response.json();
-                    if (result.success) {
-                        showToast('Receipt cropped successfully!', 'success');
-                        closeCropModal();
-                        loadState();
-                    } else {
-                        showToast('Failed to save crop: ' + (result.error || 'Unknown error'), 'error');
-                    }
-                } catch (err) {
-                    showToast('Request failed', 'error');
-                } finally {
-                    btn.disabled = false;
-                    btn.innerHTML = originalHtml;
+            STATE.cropper.getCroppedCanvas({ fillColor: '#fff' }).toBlob(async b => {
+                const fd = new FormData();
+                fd.append('cropped_image', b, 'receipt_cropped.png');
+                const res = await apiPost('/receipts/api/crop/' + id, fd);
+                if (res && res.success) {
+                    showToast('Optimized', 'success');
+                    closeCropModal();
+                    loadState();
                 }
+                btn.disabled = false;
+                btn.innerHTML = original;
             }, 'image/png');
         };
     } catch (err) {
-        console.error('Failed to load image for cropping:', err);
-        showToast('Error loading image.', 'error');
         closeCropModal();
     }
-};
+}
 
 /**
- * Action: triggerOCR
- * Initiates the AI-driven OCR scan for a specific receipt.
+ * Initiates an AI OCR scan for an existing record.
  * 
- * @param {number} id - Receipt ID
+ * @async
+ * @param {number} id - Target identifier.
+ * @returns {Promise<void>}
  */
-window.triggerOCR = function(id) {
-    const btn             = document.getElementById('ocr-btn-' + id);
-    const originalContent = btn.innerHTML;
+async function triggerOCR(id) {
+    const btn = document.getElementById('ocr-btn-' + id);
     if (!btn) return;
 
-    btn.disabled   = true;
-    btn.innerHTML  = `${getIcon('waiting')} ...`;
-    showToast('Scanning receipt... please wait.', 'info');
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} ...`;
     
-    fetch('/receipts/api/ocr/' + id, { method: 'POST' })
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled  = false;
-            btn.innerHTML = originalContent;
-            if (data.success) {
-                showToast('OCR complete! Reviewing details.', 'success');
-                // Open editor with extracted AI data
-                openEditModal({
-                    id:           id,
-                    store_name:   data.store_name,
-                    receipt_date: data.receipt_date,
-                    total_amount: data.total_amount,
-                    description:  data.description
-                });
-            } else {
-                showToast('OCR failed: ' + (data.error || 'Unknown error'), 'error');
-            }
-        })
-        .catch(() => {
-            btn.disabled  = false;
-            btn.innerHTML = originalContent;
-            showToast('Server error during scan.', 'error');
-        });
-};
-
-/**
- * Workflow: reScanReceipt
- * Orchestrates the Mandatory Action confirmation flow for receipt re-digitization.
- */
-window.reScanReceipt = function() {
-    const parentModal = document.getElementById('eReceiptModal');
-    const receiptId = parentModal ? parentModal.dataset.receiptId : null;
-    if (!receiptId) return;
-
-    showConfirmModal({
-        title: 'Confirm Rescan',
-        icon: 'ai',
-        message: 'Are you sure you want to perform a <strong>Full Rescan</strong>? This will re-analyze the receipt using Gemini and overwrite existing digitized data.',
-        confirmText: 'Confirm',
-        confirmIcon: 'search',
-        hideCancel: true,
-        alignment: 'center',
-        loadingText: 'Rescanning...',
-        onConfirm: async () => {
-            await viewElectronicReceipt(receiptId, 1);
+    try {
+        const data = await apiPost('/receipts/api/ocr/' + id);
+        if (data && data.success) {
+            showToast('OCR complete', 'success');
+            openEditModal(JSON.stringify({
+                id: id, store_name: data.store_name, receipt_date: data.receipt_date,
+                total_amount: data.total_amount, description: data.description
+            }));
         }
-    });
-};
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
 
 /**
- * Workflow: viewElectronicReceipt
- * Orchestrates the AI analysis or retrieval of structured receipt data.
- * Generates the "Electronic Receipt" visual fragment.
+ * Displays the AI-structured electronic receipt view.
  * 
- * @param {number} id - Receipt ID
- * @param {number} force - Forced re-analysis flag (1/0)
- * @param {string|null} preLoadedData - Existing AI JSON string
- * @param {string|null} initialIcon - Merchant branding path
+ * @async
+ * @param {number} id - Target identifier.
+ * @param {number} force - Forced rescan flag.
+ * @param {string|null} preLoaded - Existing AI JSON.
+ * @param {string|null} initialIcon - Merchant branding path.
+ * @returns {Promise<void>}
  */
-window.viewElectronicReceipt = function(id, force = 0, preLoadedData = null, initialIcon = null) {
+async function viewElectronicReceipt(id, force = 0, preLoaded = null, initialIcon = null) {
     const modal = document.getElementById('eReceiptModal');
     const content = document.getElementById('eReceiptContent');
-    const rescanBtn = document.querySelector('.btn-ereceipt-rescan');
-    const originalRescanHtml = rescanBtn ? rescanBtn.innerHTML : '';
-    
-    if (modal) {
-        modal.style.display = 'flex';
-        modal.dataset.receiptId = id;
-    }
+    if (!modal || !content) return;
 
-    // Optimization: avoid network call if valid data is provided and not forced
-    if (preLoadedData && preLoadedData.trim() !== '' && !force) {
+    modal.style.display = 'flex';
+    modal.dataset.receiptId = id;
+    modal.dataset.initialIcon = initialIcon || '';
+
+    if (preLoaded && !force) {
         try {
-            const data = JSON.parse(preLoadedData);
-            if (data && data.store_name) {
-                renderEReceipt(data, initialIcon);
-                return;
-            }
-        } catch(e) {}
+            // Decode entities (like &#39;) before parsing
+            const doc = new DOMParser().parseFromString(preLoaded, 'text/html');
+            const decoded = doc.documentElement.textContent;
+            const data = JSON.parse(decoded);
+            if (data && data.store_name) { renderEReceipt(data, initialIcon); return; }
+        } catch(e) {
+            console.error("Failed to parse pre-loaded AI data:", e);
+        }
     }
 
-    if (content) content.innerHTML = getLoadingHtml('Digitizing...', 'Analyzing items and structured data', true);
+    content.innerHTML = getLoadingHtml('Digitizing...', 'Analyzing structured data', true);
 
-    fetch(`/receipts/api/ai_analyze/${id}`, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
-        body: new URLSearchParams({ force: force }) 
-    })
-    .then(r => r.json())
-    .then(res => {
-        if (rescanBtn) {
-            rescanBtn.disabled = false;
-            rescanBtn.innerHTML = originalRescanHtml;
-        }
-        if (res.success) {
-            showToast("AI Analysis complete", "success");
-            loadState(); // Sync state to show AI badge in ledger
+    try {
+        const res = await apiPost(`/receipts/api/ai_analyze/${id}`, new URLSearchParams({ force: force }));
+        if (res && res.success) {
+            loadState();
             renderEReceipt(res.data, initialIcon);
         } else {
-            showToast(res.error || "AI analysis failed", "error");
-            if (content) content.innerHTML = `<div class="alert alert-error">${res.error || 'AI analysis failed'}</div>`;
+            content.innerHTML = `<div class="alert alert-error">AI Analysis failed</div>`;
         }
-    })
-    .catch(() => {
-        if (rescanBtn) {
-            rescanBtn.disabled = false;
-            rescanBtn.innerHTML = originalRescanHtml;
-        }
-    });
-};
+    } catch (err) {
+        content.innerHTML = `<div class="alert alert-error">Network error</div>`;
+    }
+}
 
 /**
- * UI Component: renderEReceipt
- * Generates the digital receipt view from AI-structured data.
+ * Normalizes time strings to HH:MM AM/PM format.
  * 
- * @param {Object} data - Structured receipt data {store_name, items, total_amount, ...}
- * @param {string|null} iconUrl - Branding asset path
+ * @param {string} timeStr - Raw time string.
+ * @returns {string} - Formatted time.
+ */
+function formatTime(timeStr) {
+    if (!timeStr) return '';
+    
+    // Attempt to parse standard 24h or 12h formats
+    const match = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?(\s*[AaPp][Mm])?$/);
+    if (match) {
+        let h = parseInt(match[1]);
+        const m = match[2];
+        let ampm = match[4] ? match[4].trim().toUpperCase() : (h >= 12 ? 'PM' : 'AM');
+        
+        h = h % 12 || 12; // Convert to 12h format
+        return `${h}:${m} ${ampm}`;
+    }
+    
+    return timeStr;
+}
+
+/**
+ * Generates the digital receipt visual fragment.
+ * 
+ * @param {Object} data - Structured data.
+ * @param {string|null} iconUrl - Merchant branding path.
+ * @returns {void}
  */
 function renderEReceipt(data, iconUrl = null) {
     const content = document.getElementById('eReceiptContent');
     if (!content) return;
 
-    let displayDate = data.date || '';
-    // Format date from YYYY-MM-DD to DD-MM-YYYY for display
-    if (displayDate && displayDate.includes('-')) {
-        const [y, m, d] = displayDate.split('-');
-        if (y && m && d && y.length === 4) displayDate = `${d}-${m}-${y}`;
+    let d = data.date || '';
+    if (d && d.includes('-')) {
+        const [y, m, day] = d.split('-');
+        if (y.length === 4) d = `${day}-${m}-${y}`;
     }
     
-    // Resolve icon if not provided
+    const displayTime = formatTime(data.time || '');
+    
+    // Fallback if iconUrl not provided
     if (!iconUrl && data.store_name) {
-        const slug = data.store_name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
-        iconUrl = `/images/shops/${slug}.png`;
+        iconUrl = getStoreLogoUrl(data.store_name);
     }
 
-    // Build items list
-    let itemsHtml = (data.items || []).map(item => `
+    const items = (data.items || []).map(i => `
         <div class="ereceipt-item">
             <div class="ereceipt-item-content">
-                <div class="ereceipt-item-desc">${escapeHtml(item.desc || 'Item')}</div>
-                ${item.qty ? `<small class="ereceipt-item-qty">Qty: ${item.qty}</small>` : ''}
+                <div class="ereceipt-item-desc">${escapeHtml(i.desc || 'Item')}</div>
+                ${i.qty ? `<small class="ereceipt-item-qty">Qty: ${i.qty}</small>` : ''}
             </div>
-            <div class="ereceipt-item-price">$${parseFloat(item.line_total || item.price || 0).toFixed(2)}</div>
+            <div class="ereceipt-item-price">$${parseFloat(i.line_total || i.price || 0).toFixed(2)}</div>
         </div>
     `).join('');
 
@@ -1059,10 +840,10 @@ function renderEReceipt(data, iconUrl = null) {
         <div class="ereceipt-body">
             <div class="ereceipt-summary">
                 ${iconUrl ? `<img src="${iconUrl}" class="ereceipt-store-logo" onerror="this.style.display='none'">` : ''}
-                <h2 class="ereceipt-store-name">${escapeHtml(data.store_name || 'Store')}</h2>
-                <p class="ereceipt-datetime">${displayDate} ${data.time || ''}</p>
+                <h2 class="ereceipt-store-name">${escapeHtml(data.store_name || 'Merchant')}</h2>
+                <p class="ereceipt-datetime">${d} ${displayTime}</p>
             </div>
-            <div class="ereceipt-items-list">${itemsHtml}</div>
+            <div class="ereceipt-items-list">${items || '<div class="ereceipt-empty-items">No items extracted</div>'}</div>
             <div class="ereceipt-total-container">
                 <div class="ereceipt-total-row"><span>TOTAL</span><span>$${parseFloat(data.total_amount || 0).toFixed(2)}</span></div>
             </div>
@@ -1071,54 +852,89 @@ function renderEReceipt(data, iconUrl = null) {
 }
 
 /**
- * --- Modal Closures ---
+ * Orchestrates receipt re-digitization.
+ * 
+ * @async
+ * @returns {Promise<void>}
  */
-function closeReceiptModal() {
-    const modal = document.getElementById('receiptModal');
-    if (modal) modal.style.display = 'none';
+async function reScanReceipt() {
+    const modal = document.getElementById('eReceiptModal');
+    if (modal?.dataset.receiptId) {
+        showConfirmModal({
+            title: 'Full Rescan',
+            icon: 'ai',
+            message: 'Overwrite existing digitized data?',
+            confirmText: 'Rescan',
+            confirmIcon: 'search',
+            hideCancel: true,
+            alignment: 'center',
+            onConfirm: async () => { await viewElectronicReceipt(modal.dataset.receiptId, 1, null, modal.dataset.initialIcon); }
+        });
+    }
 }
 
-function closeEditModal() {
-    const modal = document.getElementById('editModal');
-    if (modal) modal.style.display = 'none';
-}
+/**
+ * --- Modal Management ---
+ */
 
-function closeCropModal() {
-    const modal = document.getElementById('cropModal');
-    if (modal) modal.style.display = 'none';
-}
+/**
+ * Hides the full-size receipt Lightbox.
+ * 
+ * @returns {void}
+ */
+function closeReceiptModal() { const m = document.getElementById('receiptModal'); if (m) m.style.display = 'none'; }
 
+/**
+ * Hides the metadata editor.
+ * 
+ * @returns {void}
+ */
+function closeEditModal() { const m = document.getElementById('editModal'); if (m) m.style.display = 'none'; }
+
+/**
+ * Hides the post-upload refinement interface.
+ * 
+ * @returns {void}
+ */
+function closeCropModal() { const m = document.getElementById('cropModal'); if (m) m.style.display = 'none'; }
+
+/**
+ * Hides the AI-structured data view.
+ * 
+ * @returns {void}
+ */
+function closeEReceiptModal() { const m = document.getElementById('eReceiptModal'); if (m) m.style.display = 'none'; }
+
+/**
+ * Displays the binary transfer interface.
+ * 
+ * @returns {void}
+ */
+function openUploadModal() { const m = document.getElementById('uploadModal'); if (m) m.style.display = 'flex'; }
+
+/**
+ * Hides the binary transfer interface and clears pending state.
+ * 
+ * @returns {void}
+ */
+function closeUploadModal() { const m = document.getElementById('uploadModal'); if (m) m.style.display = 'none'; STATE.refinedBlob = null; }
+
+/**
+ * Hides the pre-upload refinement interface and returns to queue.
+ * 
+ * @returns {void}
+ */
 function closePreUploadCropModal() {
-    const modal = document.getElementById('preUploadCropModal');
-    if (modal && modal.style.display !== 'none') {
-        modal.style.display = 'none';
-        if (cropper) {
-            cropper.destroy();
-            cropper = null;
-        }
+    const m = document.getElementById('preUploadCropModal');
+    if (m?.style.display !== 'none') {
+        m.style.display = 'none';
+        if (STATE.cropper) { STATE.cropper.destroy(); STATE.cropper = null; }
         openUploadModal();
     }
 }
 
-function closeEReceiptModal() {
-    const modal = document.getElementById('eReceiptModal');
-    if (modal) modal.style.display = 'none';
-}
-
-function openUploadModal() {
-    const modal = document.getElementById('uploadModal');
-    if (modal) modal.style.display = 'flex';
-}
-
-function closeUploadModal() {
-    const modal = document.getElementById('uploadModal');
-    if (modal) modal.style.display = 'none';
-    refinedBlob = null; // Clear state on closure
-}
-
 /**
- * Global Exposure
- * Necessary for event handling in templates and cross-module interaction.
+ * --- Global Exposure ---
  */
 window.closeReceiptModal = closeReceiptModal;
 window.closeEditModal = closeEditModal;
@@ -1140,3 +956,4 @@ window.openEditModal = openEditModal;
 window.openCropModal = openCropModal;
 window.confirmDeleteReceipt = confirmDeleteReceipt;
 window.toggleStatTile = toggleStatTile;
+window.handleEditSubmit = handleEditSubmit;
