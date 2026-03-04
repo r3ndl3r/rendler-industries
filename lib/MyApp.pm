@@ -310,9 +310,11 @@ sub startup {
 
     # --- Clipboard Routes ---
     $auth->get('/clipboard')->to('root#copy_get');
-    $auth->post('/clipboard')->to('root#copy_post');
+    $auth->get('/copy')->to('root#copy_get');
+    $auth->get('/clipboard/api/state')->to('root#copy_api_state');
+    $auth->post('/copy')->to('root#copy_post');
     $auth->post('/clipboard/update')->to('root#copy_update');
-    $auth->post('/clipboard/delete/:id')->to('root#remove_message');
+    $auth->post('/clipboard/delete')->to('root#remove_message');
 
     # --- User Administration Routes ---
     $admin->get('/users')->to('admin#user_list');
