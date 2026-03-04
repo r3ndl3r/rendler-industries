@@ -113,8 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Modal: Configure unified closure logic for global and local overlays
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeEditModal, closeConfirmModal,
-        () => closeLocalModal('deleteUserModal')
+        closeEditModal, closeConfirmModal
     ]);
 });
 
@@ -181,18 +180,6 @@ function closeEditModal() {
 }
 
 /**
- * Interface: closeLocalModal
- * Utility for closing localized single-button modals.
- * 
- * @param {string} id - Modal element ID
- */
-function closeLocalModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) modal.style.display = 'none';
-    document.body.classList.remove('modal-open');
-}
-
-/**
  * Action: confirmDeleteUser (Admin)
  * Orchestrates the Mandatory Action deletion flow for a user account.
  * 
@@ -200,46 +187,26 @@ function closeLocalModal(id) {
  * @param {string} username - Name for confirmation prompt
  */
 function confirmDeleteUser(id, username) {
-    const text = document.getElementById('deleteUserText');
-    const btn = document.getElementById('confirmDeleteUserBtn');
-    const modal = document.getElementById('deleteUserModal');
-
-    if (text) text.innerHTML = `Are you sure you want to permanently delete user "<strong>${username}</strong>"?`;
-    
-    if (btn) {
-        // Logic: bind dynamic execution handler to the centered confirmation button
-        btn.onclick = async () => {
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
-            
-            try {
-                const result = await apiPost(`/users/delete/${id}`);
-                
-                // Lifecycle Cleanup: restore button state
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-
-                if (result && result.success) {
-                    closeLocalModal('deleteUserModal');
-                    // UI Lifecycle: animate row removal from ledger
-                    const row = document.getElementById(`user-row-${id}`);
-                    if (row) {
-                        row.classList.add('row-fade-out');
-                        setTimeout(() => row.remove(), 500);
-                    }
+    showConfirmModal({
+        title: 'Delete User',
+        message: `Are you sure you want to permanently delete user \"<strong>${username}</strong>\"?`,
+        danger: true,
+        confirmText: 'Delete',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
+            const result = await apiPost(`/users/delete/${id}`);
+            if (result && result.success) {
+                // UI Lifecycle: animate row removal from ledger
+                const row = document.getElementById(`user-row-${id}`);
+                if (row) {
+                    row.classList.add('row-fade-out');
+                    setTimeout(() => row.remove(), 500);
                 }
-            } catch (err) {
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
             }
-        };
-    }
-    
-    if (modal) {
-        modal.style.display = 'flex';
-        document.body.classList.add('modal-open');
-    }
+        }
+    });
 }
 
 /**
@@ -251,4 +218,3 @@ window.approveUser = approveUser;
 window.openEditUserModal = openEditUserModal;
 window.closeEditModal = closeEditModal;
 window.confirmDeleteUser = confirmDeleteUser;
-window.closeLocalModal = closeLocalModal;
