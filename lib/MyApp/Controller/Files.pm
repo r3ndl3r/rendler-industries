@@ -8,115 +8,87 @@ use Digest::SHA qw(sha256_hex);
 
 # Controller for File Management and Storage.
 # Features:
-#   - Secure file upload with size limits and safe naming
-#   - Role-based access control (Admin-only, specific users, or public)
-#   - Safe file serving with correct MIME types and disposition
+#   - State-driven file listing with metadata-only transfers
+#   - Secure binary upload with 1GB threshold and SHA256 safety
+#   - Granular ACL management (Admin-only vs. Specific User whitelists)
+#   - MIME-aware file serving with dynamic Content-Disposition
 # Integration points:
-#   - Uses DB::Files for BLOB storage and metadata
-#   - Enforces strict Admin permissions for uploads/deletions
-#   - Tracks download statistics
+#   - Uses DB::Files for BLOB storage and metadata reconciliation
+#   - Enforces strict administrative gates for destructive operations
+#   - Coordinates with centralized notification systems for audit logs
 
-# Renders the file list dashboard.
+# Renders the main file management dashboard (Skeleton).
 # Route: GET /files
 # Parameters: None
-# Returns:
-#   Rendered HTML template 'files/files' with file metadata and user list
+# Returns: Rendered HTML template 'files'.
 sub index {
     my $c = shift;
-    
-    # Fetch metadata for display (BLOB data is excluded for performance)
-    my $files = $c->db->get_all_files_metadata;
-    my $users = $c->db->get_all_users;
-    
-    $c->stash(
-        files    => $files, 
-        users    => $users,
-        is_admin => $c->is_admin
-    );
-    
-    $c->render('files/files');
+
+    # Handle AJAX state request (Single Source of Truth)
+    if ($c->req->headers->header('X-Requested-With') && $c->req->headers->header('X-Requested-With') eq 'XMLHttpRequest') {
+        my $files = $c->db->get_all_files_metadata;
+        my $users = $c->db->get_all_users;
+        
+        return $c->render(json => { 
+            success  => 1, 
+            files    => $files,
+            users    => $users,
+            is_admin => $c->is_admin ? 1 : 0
+        });
+    }
+
+    $c->stash(is_admin => $c->is_admin);
+    $c->render('files');
 }
 
-# Renders the file upload form.
-# Route: GET /files/upload
-# Parameters: None
-# Returns:
-#   Rendered HTML template 'files/upload'
-#   Redirect to 'noperm' if not Admin
-sub upload_form {
-    my $c = shift;
-    
-    # Fetch users for the permission selector
-    my $users = $c->db->get_all_users;
-    $c->stash(
-        users    => $users,
-        is_admin => $c->is_admin
-    );
-    $c->render('files/upload');
-}
-
-# Processes a new file upload.
-# Route: POST /files/upload
+# Processes a new binary upload via AJAX.
+# Route: POST /files
 # Parameters:
-#   file          : The file upload object (max 1GB)
-#   description   : Optional text description
-#   admin_only    : Flag to restrict access to admins (1/0)
-#   allowed_users : List of usernames allowed to access the file
-# Returns:
-#   Redirects to file list on success
-#   Renders error on validation failure or DB error
+#   file          : The multipart binary object (max 1GB)
+#   description   : Optional context string (String)
+#   admin_only    : Restriction flag (Boolean)
+#   allowed_users : Whitelisted usernames (ArrayRef[String])
+# Returns: JSON object { success, message }
 sub upload {
     my $c = shift;
     
-    # Validate file presence
+    # Validate binary presence
     my $upload = $c->param('file');
     unless ($upload) {
-        return $c->render_error('No file uploaded');
+        return $c->render(json => { success => 0, error => 'No file provided' });
     }
     
-    # Extract file metadata
+    # Extract metadata
     my $original_filename = $upload->filename;
     my $file_size = $upload->size || 0;
     my $mime_type = $upload->headers->content_type || 'application/octet-stream';
     
-    # Enforce file size limit (1GB)
+    # Enforce 1GB safety limit
     if ($file_size > 1024 * 1024 * 1024) {
-        return $c->render_error('File too large (max 1GB)');
+        return $c->render(json => { success => 0, error => 'File exceeds 1GB limit' });
     }
     
-    # Read file content into memory (Slurp)
+    # Read binary content (Slurp)
     my $file_data = $upload->asset->slurp;
     
-    # Generate a cryptographically safe system filename
-    my $timestamp = time;
-    my $random = int(rand(1000000));
+    # Generate cryptographically safe system filename
     my ($ext) = $original_filename =~ /(\.[^.]+)$/;
     $ext = lc($ext || '');
-    my $safe_filename = sha256_hex($original_filename . $timestamp . $random) . $ext;
+    my $safe_filename = sha256_hex($original_filename . time . int(rand(1000))) . $ext;
     
-    # Process optional parameters
+    # Process ACL parameters
     my $admin_only = $c->param('admin_only') ? 1 : 0;
     my $description = trim($c->param('description') || '');
     
-    # Filter and validate allowed usernames
+    # Filter whitelisted users
     my @allowed_users = $c->every_param('allowed_users[]');
-    
-    # Robust flattening: Ensure we have a list of scalars
     @allowed_users = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @allowed_users;
+    @allowed_users = grep { defined $_ && $_ =~ /^[a-zA-Z0-9_-]+$/ } @allowed_users;
     
-    @allowed_users = grep { defined $_ && length($_) > 0 && $_ =~ /^[a-zA-Z0-9_-]+$/ } @allowed_users;
-    
-    # Convert list to CSV string for storage (or undef if empty)
-    my $allowed_users_str;
-    if (@allowed_users) {
-        $allowed_users_str = join(',', @allowed_users);
-    } else {
-        $allowed_users_str = undef; 
-    }
-    
+    my $allowed_users_str = @allowed_users ? join(',', @allowed_users) : undef;
     my $username = $c->session('user');
     
-    # Persist file to database
+    # Persist to vault
     eval {
         $c->db->store_file(
             $safe_filename, $original_filename, $mime_type, $file_size,
@@ -124,162 +96,121 @@ sub upload {
         );
     };
     if (my $err = $@) {
-        $c->app->log->error("Failed to store file: $err");
-        return $c->render(json => { success => 0, error => 'Error uploading file' });
+        $c->app->log->error("Vault storage failure: $err");
+        return $c->render(json => { success => 0, error => 'Database integrity error' });
     }
     
-    $c->app->log->info("File uploaded: $original_filename ($file_size bytes) by $username");
-    return $c->render(json => { success => 1, message => "File '$original_filename' uploaded successfully" });
+    $c->app->log->info("File stored: $original_filename ($file_size bytes) by $username");
+    return $c->render(json => { success => 1, message => "File uploaded successfully." });
 }
 
-# Serves the file content to the user.
+# Serves binary content with appropriate streaming headers.
 # Route: GET /files/serve/:id
 # Parameters:
-#   id : Unique File ID
-# Returns:
-#   Binary file content with appropriate Content-Type and Disposition headers
-#   Renders 403/404 on permission failure or missing file
+#   id : Unique File ID (Integer)
+# Returns: Binary stream or 403/404 error
 sub serve {
     my $c = shift;
-    
-    # Validate File ID
     my $id = $c->param('id') // '';
-    return $c->render_error('File ID not specified', 400) unless $id;
-    return $c->render_error('Invalid file ID', 400) unless $id =~ /^\d+$/;
     
-    # Retrieve file record
+    return $c->render_error('Invalid resource ID', 400) unless $id =~ /^\d+$/;
+    
     my $file = $c->db->get_file_by_id($id);
     unless ($file) {
-        return $c->render_error('File not found', 404);
+        return $c->render_error('Resource not found', 404);
     }
     
-    # Determine Access Control Logic
+    # Access Control Logic (Admin | Whitelist | Public)
     my $has_access = 0;
     my $current_user = $c->session('user') // '';
     
     if ($c->is_admin) {
-        # Admins have global access
         $has_access = 1;
-    }
-    elsif ($file->{admin_only}) {
-        # Restricted to admins only
+    } elsif ($file->{admin_only}) {
         $has_access = 0;
-    }
-    elsif ($file->{allowed_users}) {
-        # Check against allow-list
+    } elsif ($file->{allowed_users}) {
         my @allowed = split(',', $file->{allowed_users});
         $has_access = grep { $_ eq $current_user } @allowed;
-    }
-    else {
-        # Public file
+    } else {
         $has_access = 1;
     }
     
-    # Enforce Access Decision
     unless ($has_access) {
-        $c->app->log->warn(
-            "Unauthorized file access attempt: ID $id by " . ($current_user || 'anonymous')
-        );
+        $c->app->log->warn("Forbidden access attempt: File $id by " . ($current_user || 'anonymous'));
         return $c->render_error('Access denied', 403);
     }
     
-    # Update usage statistics
+    # Update audit trail
     eval { $c->db->increment_download_count($file->{id}); };
     
-    # Determine Content-Disposition (Inline vs Attachment)
+    # Determine Content-Disposition
     my $mime = $file->{mime_type} || 'application/octet-stream';
-    my $disp = 'inline';
+    my $disp = ($mime =~ /^(image|text)\// || $mime =~ m{^application/(pdf)}i) ? 'inline' : 'attachment';
     
-    # Force download for non-browser-safe types
-    if ($mime !~ /^(image|text)\// && $mime !~ m{^application/(pdf)}i) {
-        $disp = 'attachment';
-    }
-    
-    # Serve content
     $c->res->headers->content_type($mime);
-    $c->res->headers->content_disposition(
-        qq{$disp; filename="$file->{original_filename}"}
-    );
+    $c->res->headers->content_disposition(qq{$disp; filename="$file->{original_filename}"});
     
     return $c->render(data => $file->{file_data});
 }
 
-# Permanently deletes a file.
-# Route: POST /files/delete
+# Permanently removes a file resource via AJAX.
+# Route: POST /files/delete/:id
 # Parameters:
-#   id : Unique File ID
-# Returns:
-#   JSON response
+#   id : Unique File ID (Integer)
+# Returns: JSON object { success, message }
 sub delete_file {
     my $c = shift;
-
-    # Validate ID
     my $id = $c->param('id');
+    
     unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render(json => { success => 0, error => 'Invalid file ID' });
+        return $c->render(json => { success => 0, error => 'Invalid resource ID' });
     }
 
-    # Verify existence
     my $file = $c->db->get_file_by_id($id);
     unless ($file) {
-        return $c->render(json => { success => 0, error => 'File not found' });
+        return $c->render(json => { success => 0, error => 'Resource not found' });
     }
 
-    # Execute deletion
     eval {
         $c->db->delete_file_record($id);
     };
     if ($@) {
-        return $c->render(json => { success => 0, error => 'Failed to delete file' });
+        return $c->render(json => { success => 0, error => 'Resource locked or database error' });
     }
 
-    my $username = $c->session('user') // '';
-    $c->app->log->info("File deleted: $file->{original_filename} (id=$id) by $username");
-
-    return $c->render(json => { success => 1, message => 'File deleted successfully' });
+    $c->app->log->info("Resource purged: $file->{original_filename} (id=$id) by " . ($c->session('user') || 'system'));
+    return $c->render(json => { success => 1, message => 'Resource deleted.' });
 }
 
-# Updates access permissions for an existing file.
-# Route: POST /files/permissions
+# Updates ACL permissions for a specific resource via AJAX.
+# Route: POST /files/permissions/:id
 # Parameters:
-#   id            : Unique File ID
-#   admin_only    : Flag to restrict access (1/0)
-#   allowed_users : List of allowed usernames
-# Returns:
-#   JSON response
+#   id            : Unique File ID (Integer)
+#   admin_only    : Restriction flag (Boolean)
+#   allowed_users : Whitelisted usernames (ArrayRef[String])
+# Returns: JSON object { success, message }
 sub edit_permissions {
     my $c = shift;
-
-    # Validate ID
     my $id = $c->param('id');
+
     unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render(json => { success => 0, error => 'Invalid file ID' });
+        return $c->render(json => { success => 0, error => 'Invalid resource ID' });
     }
 
-    # Verify existence
-    my $file = $c->db->get_file_by_id($id);
-    unless ($file) {
-        return $c->render(json => { success => 0, error => 'File not found' });
-    }
-
-    # Process permissions
     my $admin_only = $c->param('admin_only') ? 1 : 0;
     my @allowed_users = $c->every_param('allowed_users[]');
-    
-    # Robust flattening
     @allowed_users = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @allowed_users;
 
     my $allowed_users_str = @allowed_users ? join(',', @allowed_users) : undef;
 
-    # Update record
     eval {
         $c->db->update_file_permissions($id, $admin_only, $allowed_users_str);
     };
     if ($@) {
-        return $c->render(json => { success => 0, error => 'Failed to update permissions' });
+        return $c->render(json => { success => 0, error => 'Failed to update ACL' });
     }
 
-    return $c->render(json => { success => 1, message => 'Permissions updated successfully' });
+    return $c->render(json => { success => 1, message => 'Access permissions synchronized.' });
 }
 
 1;
