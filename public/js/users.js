@@ -11,11 +11,12 @@
  * - Real-time role switching (Admin/Family) with toggle-switch UI
  * - Integrated approval workflow for pending registrations
  * - Dynamic ledger updates (row reconciliation) after edits
- * - Themed confirmation workflow for permanent user deletion
+ * - Mandatory Action pattern for permanent user deletion (No Cancel)
  * - Visual fade-out animations for record removal
+ * - Lifecycle-aware button state management
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, and modal helpers
+ * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
  * - toast.js: For operation feedback
  */
 
@@ -23,9 +24,9 @@
  * Action: toggleRole (Admin)
  * Inverts a user's permission bit on the server.
  * 
- * @param {number} userId - Target user
- * @param {string} role - 'admin' or 'family'
- * @param {boolean} value - Target state
+ * @param {number} userId - Target user identifier
+ * @param {string} role - Permission bit to toggle ('admin' or 'family')
+ * @param {boolean} value - Target boolean state
  */
 async function toggleRole(userId, role, value) {
     const data = {
@@ -43,7 +44,7 @@ async function toggleRole(userId, role, value) {
 
 /**
  * Initialization System
- * Sets up listeners for user management forms.
+ * Sets up listeners for user management forms and configures global modal behavior.
  */
 document.addEventListener('DOMContentLoaded', function() {
     const editForm = document.getElementById('editUserForm');
@@ -59,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const userId = document.getElementById('editUserId').value;
             const formData = new FormData(this);
             
-            // UI Feedback: disable button and pulse icon
+            // UI Feedback: disable button and show processing state
             if (btn) {
                 btn.disabled = true;
                 btn.innerHTML = `${getIcon('waiting')} Saving...`;
@@ -67,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const result = await apiPost(`/users/update/${userId}`, Object.fromEntries(formData));
             
-            // Cleanup UI state
+            // Lifecycle Cleanup: Restore button regardless of result
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
@@ -110,9 +111,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Modal: Configure global closure logic
+    // Modal: Configure unified closure logic for global and local overlays
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeEditModal, closeConfirmModal
+        closeEditModal, closeConfirmModal,
+        () => closeLocalModal('deleteUserModal')
     ]);
 });
 
@@ -120,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
  * Action: approveUser (Admin)
  * Transitions a user from 'pending' to 'approved' state.
  * 
- * @param {number} userId - Target user
+ * @param {number} userId - Target user identifier
  * @param {HTMLElement} formEl - The triggering form container for cleanup
  */
 async function approveUser(userId, formEl) {
@@ -133,8 +135,9 @@ async function approveUser(userId, formEl) {
     }
 
     const result = await apiPost(`/users/approve/${userId}`);
+    
+    // Lifecycle Cleanup: restore button on failure, otherwise row is updated
     if (result && result.success) {
-        // UI Sync: Update row status and remove trigger
         const row = document.getElementById(`user-row-${userId}`);
         if (row) {
             const statusCell = row.querySelector('.user-status-cell');
@@ -178,28 +181,65 @@ function closeEditModal() {
 }
 
 /**
+ * Interface: closeLocalModal
+ * Utility for closing localized single-button modals.
+ * 
+ * @param {string} id - Modal element ID
+ */
+function closeLocalModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+}
+
+/**
  * Action: confirmDeleteUser (Admin)
- * Specialized confirmation workflow for permanent account removal.
+ * Orchestrates the Mandatory Action deletion flow for a user account.
+ * 
+ * @param {number} id - Record identifier
+ * @param {string} username - Name for confirmation prompt
  */
 function confirmDeleteUser(id, username) {
-    showConfirmModal({
-        title: 'Delete User',
-        message: `Are you sure you want to permanently delete user "<strong>${username}</strong>"?`,
-        danger: true,
-        confirmText: 'Delete User',
-        loadingText: 'Deleting...',
-        onConfirm: async () => {
-            const result = await apiPost(`/users/delete/${id}`);
-            if (result && result.success) {
-                // UI Lifecycle: animate row removal
-                const row = document.getElementById(`user-row-${id}`);
-                if (row) {
-                    row.classList.add('row-fade-out');
-                    setTimeout(() => row.remove(), 500);
+    const text = document.getElementById('deleteUserText');
+    const btn = document.getElementById('confirmDeleteUserBtn');
+    const modal = document.getElementById('deleteUserModal');
+
+    if (text) text.innerHTML = `Are you sure you want to permanently delete user "<strong>${username}</strong>"?`;
+    
+    if (btn) {
+        // Logic: bind dynamic execution handler to the centered confirmation button
+        btn.onclick = async () => {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
+            
+            try {
+                const result = await apiPost(`/users/delete/${id}`);
+                
+                // Lifecycle Cleanup: restore button state
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+
+                if (result && result.success) {
+                    closeLocalModal('deleteUserModal');
+                    // UI Lifecycle: animate row removal from ledger
+                    const row = document.getElementById(`user-row-${id}`);
+                    if (row) {
+                        row.classList.add('row-fade-out');
+                        setTimeout(() => row.remove(), 500);
+                    }
                 }
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
             }
-        }
-    });
+        };
+    }
+    
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+    }
 }
 
 /**
@@ -211,3 +251,4 @@ window.approveUser = approveUser;
 window.openEditUserModal = openEditUserModal;
 window.closeEditModal = closeEditModal;
 window.confirmDeleteUser = confirmDeleteUser;
+window.closeLocalModal = closeLocalModal;
