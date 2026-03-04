@@ -173,7 +173,8 @@ sub edit_user {
     my $is_admin = defined $c->param('is_admin') ? ($c->param('is_admin') ? 1 : 0) : $current_user->{is_admin};
     my $is_family = defined $c->param('is_family') ? ($c->param('is_family') ? 1 : 0) : $current_user->{is_family};
     
-    my $status = $c->param('status') // 'pending';
+    # Logic: Protection - Preserve existing status if not provided in request
+    my $status = $c->param('status') // $current_user->{status} // 'pending';
     my $password = $c->param('password');
     
     # Validate strict username and email formats
