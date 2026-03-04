@@ -215,7 +215,9 @@ function confirmDeleteMember(id, name) {
         title: 'Remove Member',
         message: `Are you sure you want to remove <strong>${name}</strong>? Historical fine data will be preserved, but they will no longer appear in the roster.`,
         danger: true,
-        confirmText: 'Remove Member',
+        confirmText: 'Remove',
+        hideCancel: true,
+        alignment: 'center',
         loadingText: 'Removing...',
         onConfirm: async () => {
             const result = await apiPost('/swear/member/delete', { id: id });
