@@ -158,16 +158,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         message: 'Changing the App Secret will invalidate all active sessions and require an application restart. Continue?',
                         danger: true,
                         confirmText: 'Update Secret',
-                        onConfirm: () => resolve(true)
+                        hideCancel: true,
+                        alignment: 'center',
+                        onConfirm: () => resolve(true),
+                        onCancel: () => resolve(false)
                     });
-                    // Scope: specialized cancel hook for this inline promise
-                    const cancelBtn = document.querySelector('.btn-secondary');
-                    if (cancelBtn) {
-                        cancelBtn.onclick = () => {
-                            closeConfirmModal();
-                            resolve(false);
-                        };
-                    }
                 });
                 if (!confirmed) return;
             }
@@ -210,6 +205,8 @@ document.addEventListener('DOMContentLoaded', function () {
             message: `Are you sure you want to remove <strong>${modelName}</strong> from available models?`,
             danger: true,
             confirmText: 'Remove',
+            hideCancel: true,
+            alignment: 'center',
             loadingText: 'Removing...',
             onConfirm: async () => {
                 const result = await apiPost('/settings/update', {
