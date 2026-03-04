@@ -321,7 +321,6 @@ sub startup {
     $admin->post('/users/toggle_role')->to('admin#toggle_role');
     $admin->post('/users/delete/:id')->to('admin#delete_user');
     $admin->post('/users/approve/:id')->to('admin#approve_user');
-    $admin->get('/users/edit/:id')->to('admin#edit_user_form');
     $admin->post('/users/update/:id')->to('admin#edit_user');
 
     # --- Reminders Administration Routes ---
