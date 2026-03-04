@@ -43,10 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Configure unified modal closure behavior for all global and local overlays
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeDoseModal, closeEditModal, closeRegistryModal, closeManageModal,
-        () => closeLocalModal('deleteLogModal'),
-        () => closeLocalModal('resetTimeModal'),
-        () => closeLocalModal('removeRegistryModal')
+        closeDoseModal, closeEditModal, closeRegistryModal, closeManageModal, closeConfirmModal
     ]);
 });
 
@@ -380,17 +377,6 @@ function closeEditModal() {
 }
 
 /**
- * Interface: closeLocalModal
- * Standardized closer for locally-defined single-button (Mandatory Action) modals.
- * 
- * @param {string} id - Modal element ID
- */
-function closeLocalModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) modal.style.display = 'none';
-}
-
-/**
  * Action: confirmDeleteMedication
  * Orchestrates the Mandatory Action deletion flow for a specific log entry.
  * 
@@ -398,32 +384,21 @@ function closeLocalModal(id) {
  * @param {string} name - Medication/member descriptor for confirmation text
  */
 function confirmDeleteMedication(id, name) {
-    const text = document.getElementById('deleteLogText');
-    const btn = document.getElementById('confirmDeleteLogBtn');
-    const modal = document.getElementById('deleteLogModal');
-
-    if (text) text.innerHTML = `Are you sure you want to delete the log for <strong>${name}</strong>?`;
-    
-    if (btn) {
-        // Logic: dynamic binding to capture closure scope ID
-        btn.onclick = async () => {
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
+    showConfirmModal({
+        title: 'Delete Log',
+        message: `Are you sure you want to delete the log for <strong>${name}</strong>?`,
+        danger: true,
+        confirmText: 'Delete',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
             const result = await apiPost(`/medication/delete/${id}`);
-            
-            // Lifecycle Cleanup: Restore button state
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-
             if (result) {
-                closeLocalModal('deleteLogModal');
                 refreshData();
             }
-        };
-    }
-    
-    if (modal) modal.style.display = 'flex';
+        }
+    });
 }
 
 /**
@@ -452,48 +427,50 @@ function confirmResetMedication(id) {
         </label>
     `).join('');
 
-    const body = document.getElementById('resetTimeBody');
-    const btn = document.getElementById('confirmResetTimeBtn');
-    const modal = document.getElementById('resetTimeModal');
+    const resetHtml = `
+        <div class="reset-modal-text">
+            Reset timestamp for <strong>${medName}</strong> for <strong>${memberName}</strong>?
+        </div>
+        <div class="form-group reset-form-group">
+            <label class="reset-label">Target Time (Today)</label>
+            <input type="time" id="reset_time_input" class="game-input reset-time-input" value="${currentTime}">
+        </div>
 
-    if (body) {
-        body.innerHTML = `
-            <div class="reset-modal-text">
-                Reset timestamp for <strong>${medName}</strong> for <strong>${memberName}</strong>?
-            </div>
-            <div class="form-group reset-form-group">
-                <label class="reset-label">Target Time (Today)</label>
-                <input type="time" id="reset_time_input" class="game-input reset-time-input" value="${currentTime}">
-            </div>
-
-            <div class="reminder-box">
-                <label class="reminder-toggle-label">
-                    <input type="checkbox" id="enable_reminder" onchange="document.getElementById('reminder_options').style.display = this.checked ? 'block' : 'none'">
-                    <span class="reminder-toggle-content">${getIcon('reminders')} Schedule Reminder</span>
-                </label>
+        <div class="reminder-box">
+            <label class="reminder-toggle-label">
+                <input type="checkbox" id="enable_reminder" onchange="document.getElementById('reminder_options').style.display = this.checked ? 'block' : 'none'">
+                <span class="reminder-toggle-content">${getIcon('reminders')} Schedule Reminder</span>
+            </label>
+            
+            <div id="reminder_options" class="reminder-options">
+                <label class="reminder-delay-label">Delay (Hours)</label>
+                <div class="reminder-delay-selector">
+                    ${[1,2,3,4,5,6,7,8,9,10,12,24].map(h => `
+                        <label class="delay-pill">
+                            <input type="radio" name="reminder_delay" value="${h}" ${h==4 ? 'checked' : ''}>
+                            <span>${h}</span>
+                        </label>
+                    `).join('')}
+                </div>
                 
-                <div id="reminder_options" class="reminder-options">
-                    <label class="reminder-delay-label">Delay (Hours)</label>
-                    <div class="reminder-delay-selector">
-                        ${[1,2,3,4,5,6,7,8,9,10,12,24].map(h => `
-                            <label class="delay-pill">
-                                <input type="radio" name="reminder_delay" value="${h}" ${h==4 ? 'checked' : ''}>
-                                <span>${h}</span>
-                            </label>
-                        `).join('')}
-                    </div>
-                    
-                    <label class="reminder-recipients-label">Send To</label>
-                    <div class="reminder-recipients-list">
-                        ${recipientCheckboxes}
-                    </div>
+                <label class="reminder-recipients-label">Send To</label>
+                <div class="reminder-recipients-list">
+                    ${recipientCheckboxes}
                 </div>
             </div>
-        `;
-    }
+        </div>
+    `;
 
-    if (btn) {
-        btn.onclick = async () => {
+    showConfirmModal({
+        title: 'Reset Time',
+        icon: 'reset',
+        message: resetHtml,
+        confirmText: 'Reset',
+        confirmIcon: 'save',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Resetting...',
+        onConfirm: async () => {
             const selectedTime = document.getElementById('reset_time_input').value;
             const enableReminder = document.getElementById('enable_reminder').checked;
             const payload = { taken_at: `${date} ${selectedTime}` };
@@ -508,23 +485,12 @@ function confirmResetMedication(id) {
                 payload.reminder_desc = `Follow-up dose reminder created from Medication Tracker. http://rendler.org/medication`;
             }
 
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Resetting...`;
             const result = await apiPost(`/medication/reset/${id}`, payload);
-            
-            // Lifecycle Cleanup: Restore button state
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-
             if (result) {
-                closeLocalModal('resetTimeModal');
                 refreshData();
             }
-        };
-    }
-
-    if (modal) modal.style.display = 'flex';
+        }
+    });
 }
 
 /**
@@ -571,31 +537,21 @@ function closeManageModal() { document.getElementById('manageEditModal').style.d
  * @param {string} name - Medication name for confirmation text
  */
 function confirmDeleteRegistry(id, name) {
-    const text = document.getElementById('removeRegistryText');
-    const btn = document.getElementById('confirmRemoveRegistryBtn');
-    const modal = document.getElementById('removeRegistryModal');
-
-    if (text) text.innerHTML = `Are you sure you want to remove <strong>${name}</strong> from the medication registry?`;
-    
-    if (btn) {
-        btn.onclick = async () => {
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Removing...`;
+    showConfirmModal({
+        title: 'Remove from Registry',
+        message: `Are you sure you want to remove <strong>${name}</strong> from the medication registry?`,
+        danger: true,
+        confirmText: 'Remove',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Removing...',
+        onConfirm: async () => {
             const result = await apiPost(`/medication/manage/delete/${id}`);
-            
-            // Lifecycle Cleanup: Restore button state
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-
             if (result) {
-                closeLocalModal('removeRegistryModal');
                 refreshData();
             }
-        };
-    }
-    
-    if (modal) modal.style.display = 'flex';
+        }
+    });
 }
 
 /**
@@ -617,4 +573,3 @@ window.openManageModal = openManageModal;
 window.closeManageModal = closeManageModal;
 window.confirmDeleteRegistry = confirmDeleteRegistry;
 window.refreshData = refreshData;
-window.closeLocalModal = closeLocalModal;
