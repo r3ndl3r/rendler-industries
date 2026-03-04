@@ -31,9 +31,9 @@ The system features a redundant, priority-weighted alert engine:
 ## 👑 Administrative & Orchestration
 
 ### 👥 User & Role Control (`/users`)
-*   **Approval Workflow:** Registrations are sequestered in a `pending` state. Admins receive alerts and can approve accounts with a single click, triggering an **automated welcome email**.
-*   **Role Management:** Real-time toggling of `Admin` and `Family` flags.
-*   **Profile Audit:** Manage user Discord IDs, email addresses, and perform secure password resets.
+*   **Approval Workflow:** Registrations are sequestered in a `pending` state. Admins activate accounts via one-way toggle switches, triggering an **automated welcome email**.
+*   **Role Management:** Real-time toggling of `Admin` and `Family` flags directly within the administrative ledger.
+*   **Profile Audit:** Integrated modal-based editor for managing Discord IDs, email addresses, and performing secure password resets.
 
 ### 🧭 Dynamic Menu Management (`/menu`)
 *   **Hierarchical Structure:** Database-driven menu supporting parent/child nesting and separators.
@@ -163,8 +163,8 @@ The system features a redundant, priority-weighted alert engine:
 *   **Cyclical Sort:** Specialized SQL engine that ranks birthdays by nearest upcoming date, regardless of the current year.
 
 ### 🔗 Go Links & 📋 Clipboard (`/go`, `/clipboard`)
-*   **Go Links:** Internal URL shortener with visit analytics.
-*   **Clipboard:** Cross-device pastebin with instant notifications for user `rendler`.
+*   **Go Links:** Internal URL shortener with real-time management, visit analytics, and popularity-based sorting.
+*   **Clipboard:** Cross-device pastebin with dynamic notification routing (Discord, Email, Gotify, Pushover) and touch-optimized selection UI.
 
 <p align="center">
   <img src="public/images/screenshots/go_links.png" width="48%" />
