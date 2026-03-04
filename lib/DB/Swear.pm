@@ -115,18 +115,19 @@ sub DB::add_swear {
 
 # Records a payment made by a user (Partial, Full, or Extra/Credit).
 # Parameters:
-#   name   : Name of the user paying.
-#   amount : The monetary value deposited.
+#   name       : Name of the user paying.
+#   amount     : The monetary value deposited.
+#   payer_name : The name of the logged-in user who made the deposit.
 # Returns: Void.
 sub DB::mark_user_paid {
-    my ($self, $name, $amount) = @_;
+    my ($self, $name, $amount, $payer_name) = @_;
     
     # Verify database connectivity
     $self->ensure_connection;
     
     # 1. Record the physical payment entry for the jar history and balance
-    my $sth_pay = $self->{dbh}->prepare("INSERT INTO swear_ledger (type, name, amount, reason, status, paid_at) VALUES ('payment', ?, ?, 'Jar Deposit', 1, NOW())");
-    $sth_pay->execute($name, $amount);
+    my $sth_pay = $self->{dbh}->prepare("INSERT INTO swear_ledger (type, name, amount, reason, payer_name, status, paid_at) VALUES ('payment', ?, ?, 'Jar Deposit', ?, 1, NOW())");
+    $sth_pay->execute($name, $amount, $payer_name);
 
     # 2. Reconcile the user's unpaid fines
     my $remaining = $amount;
@@ -198,8 +199,8 @@ sub DB::get_swear_history {
     # Verify database connectivity
     $self->ensure_connection;
     
-    # Fetch recent history including payments, excluding migration markers
-    my $sth = $self->{dbh}->prepare("SELECT id, type, name as perpetrator, amount, reason, created_at FROM swear_ledger WHERE type IN ('fine', 'spend', 'payment') AND reason NOT IN ('Legacy Payment Conversion', 'Legacy Fine Payment') ORDER BY created_at DESC LIMIT 20");
+    # Fetch recent history including payments and payer name, excluding migration markers
+    my $sth = $self->{dbh}->prepare("SELECT id, type, name as perpetrator, amount, reason, payer_name, created_at FROM swear_ledger WHERE type IN ('fine', 'spend', 'payment') AND reason NOT IN ('Legacy Payment Conversion', 'Legacy Fine Payment') ORDER BY created_at DESC LIMIT 20");
     $sth->execute();
     
     return $sth->fetchall_arrayref({});
