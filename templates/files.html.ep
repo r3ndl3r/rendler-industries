@@ -1,0 +1,131 @@
+<%# /templates/files.html.ep %>
+
+% layout 'default';
+% title icon('files') . ' Files';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/files.css?<%= time %>">
+    <link rel="stylesheet" href="/css/reminders.css?<%= time %>">
+    <script src="/js/files.js?<%= time %>"></script>
+% end
+
+<div class="admin-container">
+    <div class="header-bar">
+        <h1><%= icon('files') %> <span>Files Vault</span></h1>
+        <% if (stash('is_admin')) { %>
+            <div class="manage-actions">
+                <button type="button" class="btn-primary" onclick="openUploadModal()">
+                    <%= icon('upload') %> Upload
+                </button>
+            </div>
+        <% } %>
+    </div>
+
+    <%# File Vault Ledger %>
+    <div class="table-responsive">
+        <table class="data-table files-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px; text-align: center;">Type</th>
+                    <th>Filename</th>
+                    <th>Uploader</th>
+                    <th>Date</th>
+                    <th>Size</th>
+                    <th>Downloads</th>
+                    <th>Access</th>
+                    <th style="width: 140px; text-align: center;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="files-table-body">
+                <tr class="component-loading-row">
+                    <td colspan="8">
+                        <div class="component-loading">
+                            <span class="loading-icon-pulse"><%= icon('ai') %></span>
+                            <p class="loading-label">Synchronizing file vault...</p>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<%# Upload Resource Modal %>
+<div id="uploadModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><%= icon('upload') %> Upload New Resource</h3>
+            <span class="close-btn" onclick="closeUploadModal()">&times;</span>
+        </div>
+        <form id="uploadForm" onsubmit="submitFileUpload(event)" enctype="multipart/form-data">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="file">Binary Source (Max 1GB)</label>
+                    <div class="file-drop-zone" id="dropZone">
+                        <input type="file" id="file" name="file" required>
+                        <p class="drop-text"><%= icon('files') %> Drag & drop source or click to browse</p>
+                        <p class="file-name" id="fileNameDisplay"></p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Contextual Description</label>
+                    <textarea id="description" name="description" rows="3" class="game-input" placeholder="Optional notes..."></textarea>
+                </div>
+
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" name="admin_only" id="uploadAdminOnly">
+                        <span><%= icon('lock') %> Admin Only Access</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>Whitelisted Recipients</label>
+                    <div class="recipients-selector" id="uploadRecipientsList">
+                        <%# Populated via loadState %>
+                    </div>
+                    <small>Leave unselected for public access (unless Admin Only is set).</small>
+                </div>
+            </div>
+
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" id="uploadSaveBtn" class="btn-primary"><%= icon('upload') %> Secure Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<%# Permissions Management Modal %>
+<div id="permissionModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><%= icon('settings') %> Access Control</h3>
+            <span class="close-btn" onclick="closePermissionModal()">&times;</span>
+        </div>
+        <form id="permissionForm" onsubmit="submitPermissions(event)">
+            <input type="hidden" id="permissionFileId" name="id">
+            
+            <div class="modal-body">
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" name="admin_only" id="permissionAdminOnly">
+                        <span><%= icon('lock') %> Admin Only Access</span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label>Whitelisted Recipients</label>
+                    <div class="recipients-selector" id="permissionRecipientsList">
+                        <%# Populated via loadState %>
+                    </div>
+                    <small>Leave unselected for public access (unless Admin Only is set).</small>
+                </div>
+            </div>
+            
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" id="permissionSaveBtn" class="btn-primary"><%= icon('save') %> Sync ACL</button>
+            </div>
+        </form>
+    </div>
+</div>
