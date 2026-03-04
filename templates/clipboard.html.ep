@@ -16,29 +16,14 @@
         </div>
     </div>
 
-    <% if (my $msg = flash('message')) { %>
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                showToast("<%= $msg %>", 'success');
-            });
-        </script>
-    <% } %>
-
-    <%# Recent Clippings Section %>
+    <%# Main Content Section %>
     <div class="section">
         <h2>Recent Clippings</h2>
-        <div class="messages-list">
-            <% my @messages = @{ stash('messages') // [] }; %>
-            <% for my $message ( @messages ) { %>
-                <div class="message-item">
-                    <div class="item-actions">
-                        <button class="btn-icon-copy" data-text="<%= $message->{raw} %>" onclick="copyToClipboard(this)" title="Copy to Clipboard"><%= icon('copy') %></button>
-                        <button class="btn-icon-edit" data-text="<%= $message->{raw} %>" onclick="editMessage(<%= $message->{id} %>, this)" title="Edit"><%= icon('edit') %></button>
-                        <button class="btn-icon-delete" onclick="removeMessage(<%= $message->{id} %>)" title="Delete"><%= icon('delete') %></button>
-                    </div>
-                    <span class="message-text"><%== $message->{text} %></span>
-                </div>
-            <% } %>
+        <div id="messages-list" class="messages-list">
+            <div class="component-loading">
+                <span class="loading-icon-pulse"><%= icon('ai') %></span>
+                <p class="loading-label">Loading clippings...</p>
+            </div>
         </div>
     </div>
 </div>
@@ -50,12 +35,47 @@
             <h3 id="modalTitle">Add New Content</h3>
             <span class="close-btn" onclick="closeModal()">&times;</span>
         </div>
-        <form id="contentForm" method="post" action="/clipboard">
+        <form id="contentForm" onsubmit="submitEntry(event)">
             <input type="hidden" name="id" id="messageId">
             <div class="modal-body">
                 <div class="form-group">
                     <label for="paste">Content</label>
-                    <textarea name="paste" id="paste" class="game-input" placeholder="Paste content here..." onkeypress="textIn()"></textarea>
+                    <textarea name="paste" id="paste" class="game-input" placeholder="Paste content here..." required></textarea>
+                </div>
+
+                <%# Dynamic Notification Options (Pattern C: Selector) %>
+                <div id="notification-options" class="notification-selector-section" style="display: none;">
+                    <p class="options-label">Send Notifications:</p>
+                    <div class="notification-pills-grid">
+                        <label id="notify-discord-wrap" class="recipient-checkbox" style="display: none;">
+                            <input type="checkbox" name="notify_discord" value="1">
+                            <span class="recipient-pill">
+                                <span class="pill-icon"><%= icon('discord') %></span>
+                                <span class="pill-name">Discord</span>
+                            </span>
+                        </label>
+                        <label id="notify-email-wrap" class="recipient-checkbox" style="display: none;">
+                            <input type="checkbox" name="notify_email" value="1">
+                            <span class="recipient-pill">
+                                <span class="pill-icon"><%= icon('email') %></span>
+                                <span class="pill-name">Email</span>
+                            </span>
+                        </label>
+                        <label id="notify-pushover-wrap" class="recipient-checkbox" style="display: none;">
+                            <input type="checkbox" name="notify_pushover" value="1">
+                            <span class="recipient-pill">
+                                <span class="pill-icon"><%= icon('pushover') %></span>
+                                <span class="pill-name">Pushover</span>
+                            </span>
+                        </label>
+                        <label id="notify-gotify-wrap" class="recipient-checkbox" style="display: none;">
+                            <input type="checkbox" name="notify_gotify" value="1">
+                            <span class="recipient-pill">
+                                <span class="pill-icon"><%= icon('gotify') %></span>
+                                <span class="pill-name">Gotify</span>
+                            </span>
+                        </label>
+                    </div>
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
@@ -64,4 +84,3 @@
         </form>
     </div>
 </div>
-
