@@ -77,6 +77,13 @@ sub register {
         'reminders' => '🔔',
         'medication' => '💊',
         'ai'         => '🧠',
+        
+        # Notification Channels
+        'discord'    => '💬',
+        'email'      => '📧',
+        'pushover'   => '⏱️',
+        'gotify'     => '🔔',
+
         'expand'    => '▼',
         'collapse'  => '▲',
         'audio'     => '🔊',
