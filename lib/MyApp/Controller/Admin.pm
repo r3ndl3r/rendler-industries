@@ -13,46 +13,39 @@ use Mojo::Util qw(trim);
 # Integration points:
 #   - Uses DB::Users helpers for all data persistence
 
-# Renders the main user administration dashboard.
+# Renders the main user administration dashboard (Skeleton).
 # Route: GET /users
 # Parameters: None
-# Returns:
-#   Rendered HTML template 'users/admin' with list of all users
+# Returns: Rendered HTML template 'users'.
 sub user_list {
     my $c = shift;
 
-    # Debug Flash Message
-    if (my $msg = $c->flash('message')) {
-        $c->app->log->debug("DEBUG FLASH: $msg");
-        # Re-flash it so it's available to the template (flash is consume-once)
-        $c->flash(message => $msg);
-    } else {
-        $c->app->log->debug("DEBUG FLASH: No message");
+    # Handle AJAX state request
+    if ($c->req->headers->header('X-Requested-With') && $c->req->headers->header('X-Requested-With') eq 'XMLHttpRequest') {
+        my $users = $c->db->get_all_users();
+        return $c->render(json => { 
+            success => 1, 
+            users   => $users,
+            is_admin => $c->is_admin ? 1 : 0
+        });
     }
 
-    # Fetch full user roster for display
-    my $users = $c->db->get_all_users();
-    
-    $c->stash(users => $users);
-    $c->render('users/admin');
+    $c->render('users');
 }
 
-# Permanently deletes a user account.
-# Route: POST /users/delete
+# Permanently removes a user account via AJAX.
+# Route: POST /users/delete/:id
 # Parameters:
 #   id : Unique User ID (Integer)
-# Returns:
-#   JSON response
+# Returns: JSON object { success, message }
 sub delete_user {
     my $c = shift;
     my $id = $c->param('id');
     
-    # Validate User ID format
     unless (defined $id && $id =~ /^\d+$/) {
         return $c->render(json => { success => 0, error => 'Invalid user ID' });
     }
     
-    # Execute deletion
     eval {
         $c->db->delete_user($id);
     };
@@ -60,31 +53,27 @@ sub delete_user {
         return $c->render(json => { success => 0, error => 'Database error' });
     }
 
-    return $c->render(json => { success => 1, message => "User ID $id deleted successfully." });
+    return $c->render(json => { success => 1, message => "Account removed." });
 }
 
-# Activates a pending user account.
-# Route: POST /users/approve
+# Activates a pending user account via AJAX.
+# Route: POST /users/approve/:id
 # Parameters:
 #   id : Unique User ID (Integer)
-# Returns:
-#   JSON response
+# Returns: JSON object { success, message }
 sub approve_user {
     my $c = shift;
     my $id = $c->param('id');
     
-    # Validate User ID format
     unless (defined $id && $id =~ /^\d+$/) {
         return $c->render(json => { success => 0, error => 'Invalid user ID' });
     }
 
-    # Fetch user details before approval to get email
     my $user = $c->db->get_user_by_id($id);
     unless ($user) {
         return $c->render(json => { success => 0, error => 'User not found' });
     }
 
-    # Perform approval status update
     eval {
         $c->db->approve_user($id);
     };
@@ -92,66 +81,30 @@ sub approve_user {
         return $c->render(json => { success => 0, error => 'Database error' });
     }
 
-    # Send notification email to the user
+    # Dispatch welcome email asynchronously
     if ($user->{email}) {
         eval {
             my $subject = "Account Approved: $user->{username}";
-            my $body = qq{Hello $user->{username},
-
-Your account has been approved and is now active! 
-
-You can now log in to the dashboard at: https://rendler.org/login
-
-- Rendler Industries®};
-
+            my $body = qq{Hello $user->{username},\n\nYour account has been approved!\n\nLog in: https://rendler.org/login\n\n- Rendler Industries®};
             $c->send_email_via_gmail($user->{email}, $subject, $body);
         };
-        if ($@) {
-            $c->app->log->error("Failed to send approval email to $user->{username}: $@");
-        }
     }
 
-    return $c->render(json => { success => 1, message => "User '$user->{username}' approved successfully." });
+    return $c->render(json => { success => 1, message => "User approved." });
 }
 
-# Renders the form for editing an existing user.
-# Route: GET /users/edit
+# Processes updates to a user profile via AJAX.
+# Route: POST /users/update/:id
 # Parameters:
-#   id : Unique User ID (Integer)
-# Returns:
-#   Rendered HTML template 'users/edit' with user data
-#   Renders 404 if user not found
-sub edit_user_form {
-    my $c = shift;
-    my $id = $c->param('id');
-
-    # Validate User ID format
-    unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render_error('Invalid user ID');
-    }
-
-    # Retrieve current user data
-    my $user = $c->db->get_user_by_id($id);
-
-    unless ($user) {
-        return $c->render_error('User not found', 404);
-    }
-
-    $c->stash(user => $user);
-    $c->render('users/edit');
-}
-
-# Processes updates to a user profile.
-# Route: POST /users/update
-# Parameters:
-#   id       : Unique User ID (Integer)
-#   username : New username (3-20 chars, alphanumeric)
-#   email    : New email address
-#   is_admin : Admin flag (1 for true, 0 for false)
-#   status   : Account status (e.g., 'pending', 'approved')
-#   password : (Optional) New password to set. Ignored if empty.
-# Returns:
-#   JSON response
+#   id         : Unique User ID (Integer)
+#   username   : New username (String)
+#   email      : New email address (String)
+#   discord_id : Discord user identifier (String)
+#   is_admin   : Administrative bit (Boolean)
+#   is_family  : Family member bit (Boolean)
+#   status     : Account lifecycle state (String)
+#   password   : New credential (Optional String)
+# Returns: JSON object { success, message }
 sub edit_user {
     my $c = shift;
     my $id = $c->param('id');
@@ -207,14 +160,13 @@ sub edit_user {
     return $c->render(json => { success => 1, message => "User profile updated successfully." });
 }
 
-# API Endpoint: Granularly toggles a user role (Admin/Family) via AJAX.
+# Granularly toggles a user role (Admin/Family) via AJAX.
 # Route: POST /users/toggle_role
 # Parameters:
-#   id    : User ID
-#   role  : 'admin' or 'family'
-#   value : 1 or 0
-# Returns:
-#   JSON: { success => 1 } or { success => 0, error => $msg }
+#   id    : User ID (Integer)
+#   role  : Targeted role ('admin'|'family')
+#   value : New boolean state (1|0)
+# Returns: JSON object { success }
 sub toggle_role {
     my $c = shift;
     my $id = $c->param('id');
