@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal: Configure unified closure behavior for all global and local overlays
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeAddModal, closeEditModal, closeConfirmModal, closeDeleteModal
+        closeAddModal, closeEditModal, closeConfirmModal
     ]);
 });
 
@@ -345,14 +345,6 @@ function closeEditModal() {
 }
 
 /**
- * Hides the localized deletion confirmation interface.
- */
-function closeDeleteModal() {
-    const modal = document.getElementById('deleteReminderModal');
-    if (modal) modal.style.display = 'none';
-}
-
-/**
  * --- API Interactions ---
  */
 
@@ -428,33 +420,21 @@ async function submitEdit() {
  * @param {string} title - Label for confirmation prompt
  */
 function confirmDeleteReminder(id, title) {
-    const text = document.getElementById('deleteReminderText');
-    const btn = document.getElementById('confirmDeleteBtn');
-    const modal = document.getElementById('deleteReminderModal');
-
-    if (text) text.innerHTML = `Are you sure you want to delete "<strong>${escapeHtml(title)}</strong>"?`;
-    
-    if (btn) {
-        // Logic: dynamic binding to capture closure scope ID for the purge request
-        btn.onclick = async () => {
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
-            
+    showConfirmModal({
+        title: 'Delete Reminder',
+        message: `Are you sure you want to permanently delete \"<strong>${title}</strong>\"?`,
+        danger: true,
+        confirmText: 'Delete',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
             const result = await apiPost(`/reminders/delete/${id}`);
-            
-            // Lifecycle Cleanup: Restore button state
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-
             if (result && result.success) {
-                closeDeleteModal();
                 await loadState();
             }
-        };
-    }
-    
-    if (modal) modal.style.display = 'flex';
+        }
+    });
 }
 
 /**
@@ -624,6 +604,5 @@ window.closeAddModal = closeAddModal;
 window.prepareEditModal = prepareEditModal;
 window.closeEditModal = closeEditModal;
 window.confirmDeleteReminder = confirmDeleteReminder;
-window.closeDeleteModal = closeDeleteModal;
 window.toggleReminder = toggleReminder;
 window.toggleDay = toggleDay;
