@@ -78,22 +78,23 @@ function closeEditModal() {
  * @param {string} keyword - Short keyword for confirmation text
  */
 function openDeleteModal(id, keyword) {
-    const modal = document.getElementById('deleteModal');
-    if (!modal) return;
-
-    document.getElementById('deleteId').value = id;
-    const label = document.getElementById('deleteKeyword');
-    if (label) label.textContent = 'g/' + keyword;
-    
-    modal.style.display = 'flex';
-}
-
-/**
- * Hides the deletion confirmation interface.
- */
-function closeDeleteModal() {
-    const modal = document.getElementById('deleteModal');
-    if (modal) modal.style.display = 'none';
+    showConfirmModal({
+        title: 'Delete Link',
+        message: `Are you sure you want to delete the link for <strong>g/${keyword}</strong>?`,
+        danger: true,
+        confirmText: 'Delete Link',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
+            const result = await apiPost('/go/delete', { id: id });
+            if (result && result.success) {
+                location.reload();
+            } else if (result && result.error) {
+                showToast(result.error, 'error');
+            }
+        }
+    });
 }
 
 /**
@@ -102,10 +103,7 @@ function closeDeleteModal() {
  */
 window.onclick = function(event) {
     const editModal = document.getElementById('editModal');
-    const deleteModal = document.getElementById('deleteModal');
-    
     if (event.target == editModal) closeEditModal();
-    if (event.target == deleteModal) closeDeleteModal();
 };
 
 /**
@@ -115,4 +113,3 @@ window.onclick = function(event) {
 window.editLink = editLink;
 window.closeEditModal = closeEditModal;
 window.openDeleteModal = openDeleteModal;
-window.closeDeleteModal = closeDeleteModal;
