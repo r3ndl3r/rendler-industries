@@ -368,7 +368,6 @@ sub startup {
     # --- File Management Routes ---
     $r->get('/files/serve/:id')->to('files#serve');
     $admin->get('/files')->to('files#index');
-    $admin->get('/files/upload')->to('files#upload_form');
     $admin->post('/files')->to('files#upload'); 
     $admin->post('/files/delete/:id')->to('files#delete_file');
     $admin->post('/files/permissions/:id')->to('files#edit_permissions');
