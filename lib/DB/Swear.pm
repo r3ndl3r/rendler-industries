@@ -78,8 +78,18 @@ sub DB::get_swear_leaderboard {
     # Verify database connectivity
     $self->ensure_connection;
     
-    # Aggregate unpaid fines
-    my $sth = $self->{dbh}->prepare("SELECT name as perpetrator, SUM(amount) as total FROM swear_ledger WHERE type='fine' AND status=0 GROUP BY name ORDER BY total DESC");
+    # Logic: Calculate net debt (Total Fines - Total Payments)
+    # This ensures partial payments are immediately reflected on the leaderboard.
+    my $sth = $self->{dbh}->prepare("
+        SELECT name as perpetrator, 
+               (SUM(CASE WHEN type='fine' THEN amount ELSE 0 END) - 
+                SUM(CASE WHEN type='payment' THEN amount ELSE 0 END)) as total 
+        FROM swear_ledger 
+        WHERE type IN ('fine', 'payment') 
+        GROUP BY name 
+        HAVING total > 0 
+        ORDER BY total DESC
+    ");
     $sth->execute();
     
     return $sth->fetchall_arrayref({});
