@@ -75,9 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Configure unified modal closing behavior for all overlays
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeEditModal, closeConfirmModal,
-        () => closeLocalModal('deleteTodoModal'),
-        () => closeLocalModal('clearCompletedModal')
+        closeEditModal, closeConfirmModal
     ]);
 });
 
@@ -267,34 +265,22 @@ async function deleteTodo(id) {
     const todo = appState.todos.find(t => t.id == id);
     if (!todo) return;
 
-    const text = document.getElementById('deleteTodoText');
-    const btn = document.getElementById('confirmDeleteTodoBtn');
-    const modal = document.getElementById('deleteTodoModal');
-
-    if (text) text.innerHTML = `Are you sure you want to remove "<strong>${escapeHtml(todo.task_name)}</strong>"?`;
-    
-    if (btn) {
-        // Logic: dynamic binding to capture closure scope ID for the purge request
-        btn.onclick = async () => {
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
-            
+    showConfirmModal({
+        title: 'Delete Task',
+        message: `Are you sure you want to remove \"<strong>${escapeHtml(todo.task_name)}</strong>\"?`,
+        danger: true,
+        confirmText: 'Delete',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
             const result = await apiPost(`/todo/delete/${id}`);
-            
-            // Lifecycle Cleanup: Restore button state
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-
             if (result && result.success) {
                 appState.todos = appState.todos.filter(t => t.id != id);
-                closeLocalModal('deleteTodoModal');
                 renderTodoItems();
             }
-        };
-    }
-    
-    if (modal) modal.style.display = 'flex';
+        }
+    });
 }
 
 /**
@@ -365,42 +351,23 @@ async function submitEdit() {
  * Orchestrates the Mandatory Action batch deletion flow for completed tasks.
  */
 window.openClearCompletedModal = function() {
-    const btn = document.getElementById('confirmClearCompletedBtn');
-    const modal = document.getElementById('clearCompletedModal');
-
-    if (btn) {
-        btn.onclick = async () => {
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Clearing...`;
-            
+    showConfirmModal({
+        title: 'Clear Completed',
+        message: 'Are you sure you want to clear all completed tasks from the list?',
+        danger: true,
+        confirmText: 'Clear All',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Clearing...',
+        onConfirm: async () => {
             const result = await apiPost('/todo/clear');
-            
-            // Lifecycle Cleanup
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-
             if (result && result.success) {
                 appState.todos = appState.todos.filter(t => !t.is_completed);
-                closeLocalModal('clearCompletedModal');
                 renderTodoItems();
             }
-        };
-    }
-
-    if (modal) modal.style.display = 'flex';
+        }
+    });
 };
-
-/**
- * Interface: closeLocalModal
- * Utility for closing localized single-button modals.
- * 
- * @param {string} id - Modal element ID
- */
-function closeLocalModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) modal.style.display = 'none';
-}
 
 /**
  * Utility: escapeHtml
@@ -423,4 +390,3 @@ function escapeHtml(text) {
 window.toggleTodo = toggleTodo;
 window.deleteTodo = deleteTodo;
 window.submitEdit = submitEdit;
-window.closeLocalModal = closeLocalModal;
