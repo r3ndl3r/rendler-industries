@@ -49,9 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Modal: Configure global click-outside-to-close behavior for all overlays
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeEditModal, closeConfirmModal, 
-        () => closeLocalModal('deleteItemModal'),
-        () => closeLocalModal('clearAllModal')
+        closeEditModal, closeConfirmModal
     ]);
 });
 
@@ -241,34 +239,22 @@ async function toggleItem(id) {
  * @param {string} itemName - Display name for confirmation text
  */
 function deleteItem(id, itemName) {
-    const text = document.getElementById('deleteItemText');
-    const btn = document.getElementById('confirmDeleteItemBtn');
-    const modal = document.getElementById('deleteItemModal');
-
-    if (text) text.innerHTML = `Are you sure you want to remove "<strong>${escapeHtml(itemName)}</strong>" from the list?`;
-    
-    if (btn) {
-        // Logic: bind closure-scoped ID to the centered action button
-        btn.onclick = async () => {
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Deleting...`;
-            
+    showConfirmModal({
+        title: 'Delete Item',
+        message: `Are you sure you want to remove \"<strong>${escapeHtml(itemName)}</strong>\" from the list?`,
+        danger: true,
+        confirmText: 'Delete',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Deleting...',
+        onConfirm: async () => {
             const result = await apiPost(`/shopping/api/delete/${id}`);
-            
-            // Lifecycle Cleanup: Restore state
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-
             if (result && result.success) {
                 shoppingItems = shoppingItems.filter(i => i.id != id);
-                closeLocalModal('deleteItemModal');
                 renderShoppingList();
             }
-        };
-    }
-    
-    if (modal) modal.style.display = 'flex';
+        }
+    });
 }
 
 /**
@@ -334,41 +320,22 @@ async function submitEdit() {
  * Orchestrates the Mandatory Action batch deletion flow.
  */
 function openClearAllModal() {
-    const btn = document.getElementById('confirmClearAllBtn');
-    const modal = document.getElementById('clearAllModal');
-
-    if (btn) {
-        btn.onclick = async () => {
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Clearing...`;
-            
+    showConfirmModal({
+        title: 'Clear All Checked',
+        message: 'Are you sure you want to clear all checked items from the list?',
+        danger: true,
+        confirmText: 'Clear All',
+        hideCancel: true,
+        alignment: 'center',
+        loadingText: 'Clearing...',
+        onConfirm: async () => {
             const result = await apiPost('/shopping/api/clear');
-            
-            // Lifecycle Cleanup
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-
             if (result && result.success) {
                 shoppingItems = shoppingItems.filter(i => !i.is_checked);
-                closeLocalModal('clearAllModal');
                 renderShoppingList();
             }
-        };
-    }
-
-    if (modal) modal.style.display = 'flex';
-}
-
-/**
- * Interface: closeLocalModal
- * Utility for closing localized single-button modals.
- * 
- * @param {string} id - Modal identifier
- */
-function closeLocalModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) modal.style.display = 'none';
+        }
+    });
 }
 
 /**
@@ -396,4 +363,3 @@ window.submitEdit = submitEdit;
 window.openClearAllModal = openClearAllModal;
 window.loadShoppingList = loadShoppingList;
 window.closeEditModal = closeEditModal;
-window.closeLocalModal = closeLocalModal;
