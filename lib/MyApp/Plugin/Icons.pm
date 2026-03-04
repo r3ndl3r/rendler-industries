@@ -78,6 +78,13 @@ sub register {
         'medication' => '💊',
         'ai'         => '🧠',
         
+        # File Types
+        'file_image'   => '🖼️',
+        'file_pdf'     => '📄',
+        'file_text'    => '📃',
+        'file_archive' => '📦',
+        'file_attach'  => '📎',
+        
         # Notification Channels
         'discord'    => '💬',
         'email'      => '📧',
