@@ -8,42 +8,52 @@ use Mojo::Util qw(trim);
 # Features:
 #   - Centralized settings display interface for admins
 #   - Handles updates for Pushover, Gotify, Unsplash, App Secret, and Email settings
+#   - Dynamic Gemini AI model registry management
+#   - Real-time configuration state synchronization
 # Integration points:
-#   - Uses DB::Settings for retrieving and updating configuration
+#   - Restricted to administrative members via router bridge
+#   - Depends on DB::Settings for persistence and system maintenance triggers
 
-# Renders the settings management interface.
+# Renders the settings management dashboard skeleton.
 # Route: GET /settings
 # Parameters: None
-# Returns:
-#   Rendered HTML template 'settings' with current configuration
+# Returns: Rendered HTML template 'settings'.
 sub index {
     my $c = shift;
-    my $settings = $c->db->get_all_settings();
-    my $email_settings = $c->db->get_email_settings();
-    my $timer_reset_hour = $c->db->get_timer_reset_hour();
-    my $gemini_key = $c->db->get_gemini_key();
-    my $gemini_models = $c->db->get_gemini_models();
-    my $gemini_active = $c->db->get_gemini_active_model();
-    my $google_cloud_key = $c->db->get_google_cloud_key();
-    
-    $c->stash(
-        settings => $settings,
-        email_settings => $email_settings,
-        timer_reset_hour => $timer_reset_hour,
-        gemini_key       => $gemini_key,
-        gemini_models    => $gemini_models,
-        gemini_active    => $gemini_active,
-        google_cloud_key   => $google_cloud_key
-    );
-    
+    $c->stash(title => 'Settings');
     $c->render('settings');
 }
+
+# Returns the consolidated state for the module.
+# Route: GET /settings/api/state
+# Parameters: None
+# Returns: JSON object { settings, email_settings, timer_reset_hour, gemini, google_cloud, success }
+sub api_state {
+    my $c = shift;
+    
+    my $state = {
+        settings         => $c->db->get_all_settings(),
+        email_settings   => $c->db->get_email_settings(),
+        timer_reset_hour => $c->db->get_timer_reset_hour(),
+        gemini           => {
+            key    => $c->db->get_gemini_key(),
+            models => $c->db->get_gemini_models(),
+            active => $c->db->get_gemini_active_model()
+        },
+        google_cloud     => {
+            key => $c->db->get_google_cloud_key()
+        },
+        success          => 1
+    };
+    
+    $c->render(json => $state);
+}
+
 # Processes updates for a specific configuration section.
 # Route: POST /settings/update
 # Parameters:
-#   section            : The configuration block to update ('pushover', 'gotify', 'app_secret', 'unsplash', 'email', 'timers', 'gemini', 'gemini_models')
-# Returns:
-#   JSON response
+#   section : The configuration block to update
+# Returns: JSON object { success, message, error }
 sub update {
     my $c = shift;
     my $section = $c->param('section') // '';
@@ -118,7 +128,7 @@ sub update {
                          : $reset_hour == 12 ? '12:00 PM'
                          : sprintf("%d:00 PM", $reset_hour - 12);
         
-        return $c->render(json => { success => 1, message => "Timer reset time set to $display_hour (Australia/Melbourne timezone)" });
+        return $c->render(json => { success => 1, message => "Timer reset time set to $display_hour" });
     } elsif ($section eq 'gemini') {
         my $api_key = trim($c->param('gemini_key') // '');
         $c->db->update_gemini_key($api_key);
