@@ -376,9 +376,12 @@
     max-width: 200px !important;
 }
 
-/* Row Fade Out Animation */
-.row-fade-out {
-    animation: row-fade-out 0.5s ease forwards;
+/* Row Fade Out Animation (Matched to 0.8s JS delay) */
+.reminder-card.row-fade-out {
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    opacity: 0 !important;
+    transform: translateX(30px) !important;
+    animation: none !important;
 }
 
 @keyframes row-fade-out {
