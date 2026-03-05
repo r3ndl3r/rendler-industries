@@ -5,12 +5,6 @@
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/meals.css?<%= time %>">
-    <script>
-        let mealVault = <%== Mojo::JSON::to_json($vault) %>;
-        let initialPlan = <%== Mojo::JSON::to_json($plan) %>;
-        const currentUserId = <%= current_user_id() %>;
-        const isAdmin = <%= is_admin() ? 'true' : 'false' %>;
-    </script>
     <script src="/js/meals.js?<%= time %>"></script>
 % end
 
@@ -18,18 +12,21 @@
     <div class="header-bar">
         <h1><%= icon('meals') %> <span>Meal Planner</span></h1>
         <div class="header-meta">
-            % if (is_admin) {
+            <%# Admin Management Actions %>
+            <div id="adminActions" style="display: none;">
                 <button class="btn-primary" onclick="openAddEditMealModal()"><%= icon('add') %> Add</button>
                 <button class="btn-secondary" onclick="openManageVaultModal()"><%= icon('settings') %> Manage</button>
-            % }
+            </div>
         </div>
     </div>
 
     <%# Rolling Timeline %>
     <div id="meals-timeline" class="meals-timeline">
         <div class="component-loading">
-            <span class="loading-icon-pulse"><%= icon('ai') %></span>
-            <p class="loading-label">Loading meal plan...</p>
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse"><%= icon('meals') %></span>
+            <p class="loading-label">Synchronizing meal plan...</p>
+            <p class="loading-sub">Retrieving active suggestions and voting data</p>
         </div>
     </div>
 </div>
@@ -108,7 +105,7 @@
 
 <%# Manage Meals Modal (Admin) %>
 <div id="manageVaultModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="max-width: 450px; width: 95%;">
+    <div class="modal-content modal-vault-manage">
         <div class="modal-header">
             <h3><%= icon('settings') %> Manage Meals</h3>
             <span class="close-btn" onclick="closeManageVaultModal()">&times;</span>
@@ -119,7 +116,7 @@
                     <thead>
                         <tr>
                             <th>Meal Name</th>
-                            <th style="width: 80px; text-align: center;">Actions</th>
+                            <th class="col-actions-narrow">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="vault-table-body">
@@ -132,7 +129,7 @@
 
 <%# Modal: Add/Edit Meal in Vault (Admin) %>
 <div id="addEditMealModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="z-index: 10001;">
+    <div class="modal-content modal-vault-edit">
         <div class="modal-header">
             <h3 id="manageMealModalTitle"><%= icon('add') %> Add Meal</h3>
             <span class="close-btn" onclick="closeAddEditMealModal()">&times;</span>
