@@ -427,7 +427,18 @@ async function toggleReminder(id, active) {
         const r = STATE.reminders.find(item => item.id == id);
         if (r) {
             r.is_active = active ? 1 : 0;
-            renderReminders(); // Re-sort and re-render grid locally
+            
+            // UI: If pausing, apply fade-out animation before re-sorting
+            if (!active) {
+                const card = document.querySelector(`.reminder-card[data-id="${id}"]`);
+                if (card) {
+                    card.classList.add('row-fade-out');
+                    setTimeout(() => renderReminders(), 800); // Match CSS transition
+                    return;
+                }
+            }
+            
+            renderReminders();
         }
     }
 }
@@ -534,7 +545,7 @@ function updateCountdowns() {
                     setTimeout(() => {
                         STATE.reminders = STATE.reminders.filter(r => r.id != reminderId);
                         card.remove();
-                    }, 500);
+                    }, 800);
                 }, 2000);
             }
             return;
