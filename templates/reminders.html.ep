@@ -18,20 +18,23 @@
 
     <%# Reminders Grid %>
     <div id="remindersListContainer" class="reminders-grid">
-        <div class="loading-state">
-            <p>Loading reminders...</p>
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse"><%= icon('reminders') %></span>
+            <p class="loading-label">Synchronizing with maintenance loop...</p>
+            <p class="loading-sub">Retrieving active schedules and recipient rules</p>
         </div>
     </div>
 </div>
 
 <%# Add Reminder Modal %>
-<div id="addReminderModal" class="modal-overlay">
+<div id="addReminderModal" class="modal-overlay" style="display: none;">
     <div class="modal-content modal-reminders">
         <div class="modal-header">
             <h3><%= icon('add') %> New Recurring Reminder</h3>
             <span class="close-btn" onclick="closeAddModal()">&times;</span>
         </div>
-        <form id="addReminderForm">
+        <form id="addReminderForm" onsubmit="handleAdd(event)">
             <div class="modal-body">
                 <div class="form-group">
                     <label>Title</label>
@@ -78,13 +81,13 @@
 </div>
 
 <%# Edit Reminder Modal %>
-<div id="editReminderModal" class="modal-overlay">
+<div id="editReminderModal" class="modal-overlay" style="display: none;">
     <div class="modal-content modal-reminders">
         <div class="modal-header">
             <h3><%= icon('edit') %> Edit Recurring Reminder</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
-        <form id="editReminderForm">
+        <form id="editReminderForm" onsubmit="handleEdit(event)">
             <div class="modal-body">
                 <input type="hidden" name="id" id="editReminderId">
                 <div class="form-group">
