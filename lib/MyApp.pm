@@ -361,8 +361,9 @@ sub startup {
     $admin->post('/birthdays/edit/:id')->to('birthdays#edit');
     $admin->post('/birthdays/delete/:id')->to('birthdays#delete');
 
-    # --- System Settings Routes ---
+    # --- Admin Settings Routes ---
     $admin->get('/settings')->to('settings#index');
+    $admin->get('/settings/api/state')->to('settings#api_state');
     $admin->post('/settings/update')->to('settings#update');
 
     # --- File Management Routes ---
