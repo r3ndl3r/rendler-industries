@@ -15,8 +15,6 @@
 }
 
 /* --- Sidebar Tab Navigation --- */
-
-/* Sticky so the nav remains accessible while scrolling a tall card panel */
 .settings-nav {
     display: flex;
     flex-direction: column;
@@ -34,7 +32,7 @@
     background: transparent;
     border: 1px solid transparent;
     border-radius: 0.625rem;
-    color: #94a3b8;
+    color: var(--text-secondary, #94a3b8);
     font-size: 0.9rem;
     font-weight: 500;
     font-family: inherit;
@@ -45,13 +43,13 @@
 
 .settings-tab:hover {
     background: rgba(255, 255, 255, 0.05);
-    color: #e2e8f0;
-    border-color: #334155;
+    color: var(--text-primary, #ffffff);
+    border-color: var(--glass-border, rgba(255, 255, 255, 0.1));
 }
 
 .settings-tab.active {
     background: rgba(59, 130, 246, 0.12);
-    color: #60a5fa;
+    color: var(--accent-primary, #3b82f6);
     border-color: rgba(59, 130, 246, 0.3);
 }
 
@@ -59,8 +57,6 @@
 .tab-label { font-size: 0.9rem; }
 
 /* --- Content Panels --- */
-
-/* Prevent the panel column from overflowing the grid container */
 .settings-panels { min-width: 0; }
 
 .settings-panel {
@@ -72,16 +68,14 @@
 .settings-panel.active { display: flex; }
 
 /* --- Settings Card --- */
-
 .settings-card {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--card-bg, #1e293b);
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
     border-radius: 0.75rem;
     overflow: hidden;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
-/* Clickable card header row */
 .settings-card-header {
     display: flex;
     justify-content: space-between;
@@ -98,7 +92,7 @@
 }
 
 .settings-card-header:focus-visible {
-    outline: 2px solid #3b82f6;
+    outline: 2px solid var(--accent-primary, #3b82f6);
     outline-offset: -2px;
 }
 
@@ -107,18 +101,17 @@
 .settings-card-title {
     font-size: 1rem;
     font-weight: 600;
-    color: #ffffff;
+    color: var(--text-primary, #ffffff);
     margin: 0 0 0.25rem;
 }
 
 .settings-card-desc {
     font-size: 0.85rem;
-    color: #94a3b8;
+    color: var(--text-secondary, #94a3b8);
     margin: 0;
     line-height: 1.4;
 }
 
-/* Badge + chevron grouped on the right side of the header */
 .card-header-right {
     display: flex;
     align-items: center;
@@ -126,7 +119,7 @@
     flex-shrink: 0;
 }
 
-/* Configuration status pill — class set server-side */
+/* Status Badges */
 .settings-badge {
     font-size: 0.75rem;
     font-weight: 600;
@@ -136,18 +129,18 @@
 }
 
 .badge-active {
-    background: rgba(16, 185, 129, 0.12);
-    color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .badge-inactive {
-    background: rgba(100, 116, 139, 0.12);
-    color: #64748b;
-    border: 1px solid rgba(100, 116, 139, 0.25);
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-/* Chevron arrow — CSS-only, rotates on open */
+/* Chevron arrow */
 .card-chevron {
     width: 10px;
     height: 10px;
@@ -162,9 +155,7 @@
     transform: rotate(-135deg);
 }
 
-/* --- Collapsible Card Body ---                                              */
-/* Uses the CSS grid row trick: animating grid-template-rows from 0fr to 1fr */
-/* gives a true height transition without needing a fixed max-height value.  */
+/* Collapsible Body */
 .settings-card-body {
     display: grid;
     grid-template-rows: 0fr;
@@ -175,23 +166,17 @@
     grid-template-rows: 1fr;
 }
 
-/* The inner wrapper is required — overflow:hidden on it clips content when  */
-/* the row height is 0 without clipping during the open animation.           */
 .settings-card-body-inner {
     overflow: hidden;
     padding: 0 1.5rem;
 }
 
-/* Add top padding inside the body once open so content has breathing room   */
-/* above the border; bottom padding pads the save button from the card edge. */
 .settings-card--open .settings-card-body-inner {
     padding: 1.5rem;
-    border-top: 1px solid #334155;
+    border-top: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
 }
 
-/* --- Form Layout --- */
-
-/* Two-column field grid within a card */
+/* Form Layout */
 .settings-fields {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -199,7 +184,6 @@
     margin-bottom: 1.5rem;
 }
 
-/* A lone field or one explicitly marked full-width spans both columns */
 .settings-fields .form-group:only-child,
 .settings-fields .form-group.full-width {
     grid-column: 1 / -1;
@@ -213,13 +197,12 @@
 
 .form-group label {
     font-size: 0.8rem;
-    color: #94a3b8;
+    color: var(--text-secondary, #94a3b8);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
-/* Dimmed qualifier text appended to optional field labels */
 .label-optional {
     font-weight: 400;
     text-transform: none;
@@ -237,21 +220,20 @@
     display: block;
     padding: 0.75rem;
     padding-right: 5rem;
-    background: #0f172a;
-    border: 1px solid #334155;
-    color: #e2e8f0;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+    color: var(--text-primary, #ffffff);
     border-radius: 0.5rem;
     font-size: 0.95rem;
     font-family: 'Courier New', monospace;
     transition: all 0.2s;
 }
 
-/* Numeric inputs have no Show/Hide button so don't need the right padding offset */
 .form-input.no-pad-right { padding-right: 0.75rem; }
 
 .form-input:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: var(--accent-primary, #3b82f6);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -275,7 +257,6 @@
     color: #ffffff;
 }
 
-/* Save button pinned to the right edge of each card body */
 .form-actions {
     display: flex;
     justify-content: flex-end;
@@ -283,7 +264,7 @@
 
 .form-info {
     background: rgba(59, 130, 246, 0.1);
-    border-left: 4px solid #3b82f6;
+    border-left: 4px solid var(--accent-primary, #3b82f6);
     padding: 1rem;
     border-radius: 0.5rem;
     margin-bottom: 1.25rem;
@@ -301,31 +282,67 @@
     color: #fbbf24;
 }
 
-.alert {
-    padding: 1rem 1.5rem;
-    border-radius: 0.5rem;
-    margin-bottom: 1.5rem;
-    font-weight: 600;
-    text-align: center;
+/* Gemini Model Display */
+.model-list-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
 }
 
-.alert-success {
-    background: rgba(16, 185, 129, 0.2);
-    border: 1px solid #10b981;
-    color: #10b981;
+.pill-badge {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-.alert-error {
-    background: rgba(239, 68, 68, 0.2);
-    border: 1px solid #ef4444;
+.model-name-text {
+    font-size: 0.85rem;
+    color: #93c5fd;
+}
+
+.btn-remove-model {
+    background: none;
+    border: 0;
     color: #ef4444;
+    cursor: pointer;
+    padding: 0;
+    font-size: 1.2rem;
+    line-height: 1;
+    opacity: 0.6;
+    transition: opacity 0.2s;
 }
 
-/* --- Responsive: ≤768px --- */
+.btn-remove-model:hover {
+    opacity: 1;
+}
+
+.settings-separator {
+    border: 0;
+    border-top: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+    margin: 20px 0;
+}
+
+.nowrap { white-space: nowrap; }
+.mt-15  { margin-top: 15px; }
+.d-flex { display: flex; }
+.gap-10 { gap: 10px; }
+.w-100  { width: 100%; }
+
+.gemini-select {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+    color: white;
+}
+
+/* --- Responsive --- */
 @media (max-width: 768px) {
     .settings-container { padding: 1rem; }
 
-    /* Sidebar collapses to a horizontally scrollable tab strip above the panels */
     .settings-layout {
         grid-template-columns: 1fr;
         gap: 16px;
@@ -354,76 +371,7 @@
 
     .settings-card--open .settings-card-body-inner { padding: 1.25rem; }
 
-    /* Collapse field grid to a single column on narrow screens */
     .settings-fields { grid-template-columns: 1fr; }
 
     .settings-fields .form-group.full-width { grid-column: 1; }
-}
-
-/* Gemini Model Display */
-.model-list-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 10px;
-}
-
-.pill-badge {
-    background: rgba(144, 202, 249, 0.1);
-    border: 1px solid rgba(144, 202, 249, 0.2);
-    padding: 4px 12px;
-    border-radius: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.model-name-text {
-    font-size: 0.85rem;
-    color: #90caf9;
-}
-
-.btn-remove-model {
-    background: none;
-    border: 0;
-    color: #ff5252;
-    cursor: pointer;
-    padding: 0;
-    font-weight: bold;
-}
-
-.settings-separator {
-    border: 0;
-    border-top: 1px solid rgba(255,255,255,0.1);
-    margin: 20px 0;
-}
-
-.form-inline {
-    display: inline;
-}
-
-.nowrap {
-    white-space: nowrap;
-}
-
-.mt-15 {
-    margin-top: 15px;
-}
-
-.d-flex {
-    display: flex;
-}
-
-.gap-10 {
-    gap: 10px;
-}
-
-.w-100 {
-    width: 100%;
-}
-
-.gemini-select {
-    background: #0f172a;
-    border: 1px solid #334155;
-    color: white;
 }
