@@ -11,41 +11,46 @@ use Mojo::Util qw(trim);
 #   - Toggled per-day voting with strict "one vote per user" enforcement.
 #   - Ownership-based suggestion management (Edit/Delete).
 #   - Admin-level overrides for lock-ins, blackouts, and global vault management.
-#
 # Integration points:
 #   - Restricted to authenticated family members via bridge logic.
 #   - Depends on DB::Meals for state persistence and aggregated voter data.
 #   - Coordinates with System::maintenance for 2PM auto-lock and Discord reminders.
 
-# Renders the main meal planner dashboard or returns JSON data for SPA syncing.
+# Renders the main meal planner dashboard skeleton.
 # Route: GET /meals
 # Parameters: None
-# Returns:
-#   - HTML: Rendered 'meals' template.
-#   - JSON: { plan, vault } for XMLHttpRequest.
+# Returns: Rendered HTML template 'meals'.
 sub index {
+    my $c = shift;
+    $c->stash(title => 'Meal Planner');
+    $c->render('meals');
+}
+
+# Returns the consolidated state for the module.
+# Route: GET /meals/api/state
+# Parameters: None
+# Returns: JSON object { plan, vault, is_admin, current_user_id, success }
+sub api_state {
     my $c     = shift;
     my $uid   = $c->current_user_id;
-    my $plan  = $c->db->get_active_plan($uid);
-    my $vault = $c->db->get_meal_vault;
+    
+    my $state = {
+        plan            => $c->db->get_active_plan($uid),
+        vault           => $c->db->get_meal_vault,
+        is_admin        => $c->is_admin ? 1 : 0,
+        current_user_id => $uid,
+        success         => 1
+    };
 
-    unless ($plan && scalar @$plan) {
-        return $c->render(text => 'Plan is empty. DB error?', status => 500);
-    }
-
-    if ($c->req->headers->header('X-Requested-With') && $c->req->headers->header('X-Requested-With') eq 'XMLHttpRequest') {
-        return $c->render(json => { plan => $plan, vault => $vault });
-    }
-
-    $c->render('meals', plan => $plan, vault => $vault);
+    $c->render(json => $state);
 }
 
 # Submits a new meal suggestion for a specific plan day.
 # Route: POST /meals/suggest
 # Parameters:
-#   - plan_id: Target day ID.
-#   - meal_name: Name of the proposed meal.
-# Returns: JSON status object.
+#   plan_id   : Target day identifier
+#   meal_name : Name of the proposed meal
+# Returns: JSON object { success, message, error }
 sub suggest {
     my $c         = shift;
     my $plan_id   = $c->param('plan_id');
@@ -58,15 +63,15 @@ sub suggest {
 
     my $result = $c->db->add_suggestion($plan_id, $meal_name, $uid);
     
-    # Notify other family members immediately on successful suggestion
+    # Notifications: Dispatch Discord alerts to other eligible family members
     if ($result->{success}) {
+        $result->{message} //= "Suggestion added!";
         my $user = $c->db->get_user_by_id($uid);
         my $username = $user ? $user->{username} : 'Someone';
         my $msg = "🍳 NEW MEAL SUGGESTION: $username suggested '$meal_name' for today!\n\nhttps://rendler.org/meals";
         
         my $all_users = $c->db->get_all_users();
         foreach my $u (@$all_users) {
-            # Notify only family/admins with Discord IDs, excluding the suggester
             if ($u->{discord_id} && $u->{id} != $uid && ($u->{is_family} || $u->{is_admin})) {
                 $c->send_discord_dm($u->{discord_id}, $msg);
             }
@@ -79,8 +84,8 @@ sub suggest {
 # Toggles a user's vote for a specific suggestion.
 # Route: POST /meals/vote
 # Parameters:
-#   - suggestion_id: Target suggestion.
-# Returns: JSON { success, voted (boolean) }.
+#   suggestion_id : Target suggestion identifier
+# Returns: JSON object { success, voted, removed_meal_name, message }
 sub vote {
     my $c             = shift;
     my $suggestion_id = $c->param('suggestion_id');
@@ -91,15 +96,26 @@ sub vote {
     }
 
     my $result = $c->db->cast_vote($suggestion_id, $uid);
+    
+    if ($result->{success}) {
+        if ($result->{voted}) {
+            $result->{message} = $result->{removed_meal_name} 
+                ? "Vote moved to new meal!" 
+                : "Vote cast!";
+        } else {
+            $result->{message} = "Vote removed";
+        }
+    }
+
     $c->render(json => $result);
 }
 
-# Updates the meal name on an existing suggestion. Verified for ownership or admin.
+# Updates the metadata for an existing suggestion.
 # Route: POST /meals/edit_suggestion
 # Parameters:
-#   - suggestion_id: ID of the suggestion.
-#   - meal_name: New meal name.
-# Returns: JSON status object.
+#   suggestion_id : Target identifier
+#   meal_name     : Updated meal name
+# Returns: JSON object { success, message, error }
 sub edit_suggestion {
     my $c             = shift;
     my $suggestion_id = $c->param('suggestion_id');
@@ -111,14 +127,17 @@ sub edit_suggestion {
     }
 
     my $result = $c->db->update_suggestion($suggestion_id, $meal_name, $uid, $c->is_admin);
+    if ($result->{success}) {
+        $result->{message} //= "Suggestion updated";
+    }
     $c->render(json => $result);
 }
 
-# Deletes a meal suggestion. Verified for ownership or admin.
+# Permanently removes a meal suggestion.
 # Route: POST /meals/delete_suggestion
 # Parameters:
-#   - suggestion_id: ID of target suggestion.
-# Returns: JSON status object.
+#   suggestion_id : Target identifier
+# Returns: JSON object { success, message, error }
 sub delete_suggestion {
     my $c             = shift;
     my $suggestion_id = $c->param('suggestion_id');
@@ -129,16 +148,20 @@ sub delete_suggestion {
     }
 
     my $result = $c->db->delete_suggestion($suggestion_id, $uid, $c->is_admin);
+    if ($result->{success}) {
+        $result->{message} //= "Suggestion removed";
+    }
     $c->render(json => $result);
 }
 
-# Admin: Manually locks in a suggestion or sets a blackout for the day.
+# Admin: Orchestrates lock-in or blackout events for specific days.
 # Route: POST /meals/admin/lock
 # Parameters:
-#   - plan_id: Target day ID.
-#   - suggestion_id: Winner ID (optional if blackout).
-#   - blackout: Reason text (optional if locking).
-# Returns: JSON status object.
+#   plan_id       : Target day identifier
+#   suggestion_id : Winner identifier (Optional)
+#   blackout      : Reason text (Optional)
+#   unlock        : Reset flag (Optional)
+# Returns: JSON object { success, message, error }
 sub admin_lock {
     my $c             = shift;
     return $c->render(json => { error => 'Forbidden' }, status => 403) unless $c->is_admin;
@@ -148,21 +171,25 @@ sub admin_lock {
     my $blackout      = trim($c->param('blackout') // '');
     my $unlock        = $c->param('unlock') // 0;
 
+    my $msg = "Day updated";
     if ($unlock) {
         $c->db->unlock_day($plan_id);
+        $msg = "Day unlocked";
     } elsif ($blackout) {
         $c->db->set_blackout($plan_id, $blackout);
+        $msg = "Blackout set";
     } else {
         $c->db->lock_suggestion($plan_id, $suggestion_id);
+        $msg = "Meal locked in";
     }
 
-    $c->render(json => { success => 1 });
+    $c->render(json => { success => 1, message => $msg });
 }
 
-# Admin API: Retrieves the full meal vault for the management table.
+# Admin API: Retrieves the high-density meal registry.
 # Route: GET /meals/api/vault
 # Parameters: None
-# Returns: JSON object { meals }.
+# Returns: JSON object { meals }
 sub get_vault_data {
     my $c = shift;
     return $c->render(json => { error => 'Forbidden' }, status => 403) unless $c->is_admin;
@@ -171,11 +198,11 @@ sub get_vault_data {
     $c->render(json => { meals => $meals });
 }
 
-# Admin API: Adds a new meal directly to the global vault.
+# Admin API: Direct registration of a meal into the global vault.
 # Route: POST /meals/api/vault/add
 # Parameters:
-#   - name: Meal name.
-# Returns: JSON status object.
+#   name : Meal name
+# Returns: JSON object { success, message, error }
 sub add_meal_to_vault {
     my $c     = shift;
     return $c->render(json => { error => 'Forbidden' }, status => 403) unless $c->is_admin;
@@ -193,12 +220,12 @@ sub add_meal_to_vault {
     }
 }
 
-# Admin API: Updates a meal name in the vault.
+# Admin API: Modification of vault entry metadata.
 # Route: POST /meals/api/vault/update
 # Parameters:
-#   - id: Vault entry ID.
-#   - name: New meal name.
-# Returns: JSON status object.
+#   id   : Vault entry identifier
+#   name : Updated meal name
+# Returns: JSON object { success, message, error }
 sub update_meal_in_vault {
     my $c     = shift;
     return $c->render(json => { error => 'Forbidden' }, status => 403) unless $c->is_admin;
@@ -213,11 +240,11 @@ sub update_meal_in_vault {
     }
 }
 
-# Admin API: Permanently removes a meal from the vault.
+# Admin API: Permanent removal of a meal from the global registry.
 # Route: POST /meals/api/vault/delete
 # Parameters:
-#   - id: Vault entry ID.
-# Returns: JSON status object.
+#   id : Target identifier
+# Returns: JSON object { success, message, error }
 sub delete_meal_from_vault {
     my $c  = shift;
     return $c->render(json => { error => 'Forbidden' }, status => 403) unless $c->is_admin;
