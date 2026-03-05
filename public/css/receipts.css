@@ -136,17 +136,17 @@
 }
 
 .filter-group {
-    flex: 0 0 auto; /* Don't grow by default */
+    flex: 0 0 auto;
     min-width: 140px;
 }
 
-/* Make search input soak up all remaining dead space */
+/* Make search input soak up all remaining space */
 .filter-group:first-child {
     flex: 1;
 }
 
 #filterMinAmount {
-    max-width: 120px;
+    max-width: 100px;
 }
 
 .btn-icon-reset {
@@ -162,6 +162,47 @@
     height: 38px;
     border-radius: 8px;
     flex: 0 0 auto;
+}
+/* Ledger Structural Refinements */
+.files-table th.col-preview { width: 60px; }
+.files-table th.col-actions-header { width: 140px; text-align: center; }
+
+.pagination-container {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.btn-load-more {
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    min-width: 200px;
+}
+
+/* Modal Variants */
+.modal-large {
+    max-width: 800px !important;
+    width: 95% !important;
+}
+
+.crop-preview-wrapper {
+    max-height: 60vh;
+    overflow: hidden;
+    background: #000;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.crop-preview-img {
+    max-width: 100%;
+    display: block;
+    margin: 0 auto;
+}
+
+.help-text-muted {
+    margin-top: 15px;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    text-align: center;
 }
 
 .btn-icon-reset:hover {
@@ -538,41 +579,92 @@
 .receipt-upload-modal .modal-content {
     max-width: 500px;
     width: 95%;
-    border: none;
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.receipt-upload-modal .modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+    justify-content: flex-start;
+    position: relative;
+}
+
+.receipt-upload-modal .modal-header h3 {
+    font-size: 1.75rem;
+    font-weight: 300;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.receipt-upload-modal .close-btn {
+    position: absolute;
+    right: 0;
+    top: 0;
+    font-size: 1.5rem;
+    opacity: 0.5;
 }
 
 .file-drop-area {
     cursor: pointer;
-    height: 250px;
+    height: 300px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    border: 2px dashed rgba(255, 255, 255, 0.2);
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 12px;
+    border: 2px dashed rgba(255, 255, 255, 0.15);
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 1rem;
     transition: all 0.3s ease;
+    margin-bottom: 2.5rem;
 }
 
 .file-drop-area:hover, .file-drop-area.dragover {
     border-color: #3b82f6;
-    background: rgba(59, 130, 246, 0.1);
+    background: rgba(59, 130, 246, 0.05);
 }
 
 .drop-hint {
     text-align: center;
-    color: var(--text-secondary);
-    line-height: 1.6;
+    color: #94a3b8;
+    line-height: 1.8;
+    font-size: 1.1rem;
 }
 
-.upload-file-name {
-    margin-top: 10px;
-    font-weight: 600;
-    color: #fff;
-    font-size: 0.9rem;
+.drop-hint span {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: 1rem;
+    opacity: 0.8;
 }
 
 .upload-actions {
+    display: flex;
     justify-content: center !important;
-    margin-top: 20px;
+}
+
+.upload-actions .btn-primary {
+    background: #3b82f6;
+    color: white;
+    padding: 0.75rem 2.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.upload-actions .btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
