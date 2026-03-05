@@ -467,8 +467,9 @@ sub startup {
     $family->post('/medication/reset/:id')->to('medication#reset');
     $family->post('/medication/delete/:id')->to('medication#delete');
 
-    # --- Family Meal Planner Routes ---
+    # --- Meal Planner Routes ---
     $family->get('/meals')->to('meals#index');
+    $family->get('/meals/api/state')->to('meals#api_state');
     $family->post('/meals/suggest')->to('meals#suggest');
     $family->post('/meals/vote')->to('meals#vote');
     $family->post('/meals/edit_suggestion')->to('meals#edit_suggestion');
