@@ -1,11 +1,11 @@
 // /public/js/reminders.js
 
 /**
- * Reminders Controller Module
+ * Reminders Controller
  * 
- * This module manages the Recurring Reminders interface. It implements
- * a high-resolution countdown engine paired with a 100% AJAX-driven 
- * SPA architecture for real-time task awareness.
+ * Manages the Recurring Reminders interface, implementing a high-resolution 
+ * countdown engine paired with a state-driven architecture for real-time 
+ * task awareness and administrative schedule management.
  * 
  * Features:
  * - Real-time countdowns using the 3D Flip Clock engine
@@ -18,52 +18,40 @@
  * 
  * Dependencies:
  * - default.js: For FlipClockManager, apiPost, getIcon, and modal helpers
- * - toast.js: For status feedback
  */
 
 /**
- * Application State
- * Synchronized collection of reminder configurations and eligible recipients
+ * --- Module Configuration & State ---
  */
-let appState = {
-    reminders: [],                  // Collection of reminder records
-    recipients: []                  // List of users available for assignment
+const CONFIG = {
+    SYNC_INTERVAL_MS: 60000,         // Background synchronization frequency
+    TICK_INTERVAL_MS: 1000          // Countdown engine resolution
+};
+
+let STATE = {
+    reminders: [],                   // Collection of active reminder records
+    recipients: [],                  // List of users available for assignment
+    isAdmin: false,                  // Authorization gate for destructive actions
+    currentUser: ''                  // Owner identification for session context
 };
 
 /**
- * Initialization System
- * Boots the module and establishes high-frequency polling for countdowns
+ * Bootstraps the module state and establishes high-frequency polling.
+ * 
+ * @returns {void}
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // Bootstrap initial state
     loadState();
     
-    // UI: High-resolution tick for 3D clocks (1s)
-    setInterval(updateCountdowns, 1000);
+    // UI: High-resolution tick for 3D clocks
+    setInterval(updateCountdowns, CONFIG.TICK_INTERVAL_MS);
     
-    // Sync: Background refresh to stay aligned with server background maintenance (60s)
-    setInterval(loadState, 60000);
+    // Sync: Background refresh to stay aligned with server maintenance
+    setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
 
-    // Interaction: Form delegation
-    const addForm = document.getElementById('addReminderForm');
-    if (addForm) {
-        addForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            submitAdd();
-        });
-    }
-
-    const editForm = document.getElementById('editReminderForm');
-    if (editForm) {
-        editForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            submitEdit();
-        });
-    }
-
-    // Modal: Configure unified closure behavior for all global and local overlays
-    setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeAddModal, closeEditModal, closeConfirmModal
+    // Modal: Configure unified closure behavior
+    setupGlobalModalClosing(['modal-overlay'], [
+        closeAddModal, closeEditModal
     ]);
 });
 
@@ -72,34 +60,33 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 
 /**
- * Logic: loadState
- * Fetches master configuration and populates the local state store.
- * Implements interaction-locking to prevent UI jitter during editing.
+ * Synchronizes the module state with the server (Single Source of Truth).
  * 
+ * @async
  * @returns {Promise<void>}
  */
 async function loadState() {
     // Lifecycle: inhibit background sync if user is actively interacting with forms
-    const anyModalOpen = document.querySelector('.modal-overlay.show');
-    if (anyModalOpen && appState.reminders.length > 0) return;
-
-    const container = document.getElementById('remindersListContainer');
-    // Show skeleton only on initial boot
-    if (container && appState.reminders.length === 0) {
-        container.innerHTML = getLoadingHtml('Syncing reminders...');
-    }
+    const anyModalOpen = document.querySelector('.modal-overlay[style*="display: block"]');
+    if (anyModalOpen && STATE.reminders.length > 0) return;
 
     try {
         const response = await fetch('/reminders/api/state');
         const data = await response.json();
         
-        // Sync state and trigger UI reconciliation
-        appState.reminders = data.reminders;
-        appState.recipients = data.recipients;
-        renderReminders();
+        if (data && data.success) {
+            STATE.reminders = data.reminders;
+            STATE.recipients = data.recipients;
+            STATE.isAdmin = !!data.is_admin;
+            STATE.currentUser = data.current_user;
+            renderReminders();
+        }
     } catch (err) {
         console.error('loadState error:', err);
-        showToast('Connection error. Failed to sync reminders.', 'error');
+        const container = document.getElementById('remindersListContainer');
+        if (container && STATE.reminders.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>❌ Failed to synchronize with server.</p></div>';
+        }
     }
 }
 
@@ -108,7 +95,9 @@ async function loadState() {
  */
 
 /**
- * Orchestrates the sorting and generation of reminder cards.
+ * Orchestrates the generation of the reminder grid from state.
+ * 
+ * @returns {void}
  */
 function renderReminders() {
     const container = document.getElementById('remindersListContainer');
@@ -117,8 +106,7 @@ function renderReminders() {
     // FlipClock: reset internal diff tracker to ensure fresh card initialization
     FlipClockManager.prevStates = {};
 
-    // Handle empty state
-    if (appState.reminders.length === 0) {
+    if (STATE.reminders.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <p>📭 No recurring reminders configured.</p>
@@ -127,15 +115,11 @@ function renderReminders() {
         return;
     }
 
-    // Sort:
-    // 1. Operational status (Paused items at bottom)
-    // 2. Next trigger time (Soonest first)
-    const sorted = [...appState.reminders].sort((a, b) => {
+    // Sort: 1. Operational status (Active first) 2. Next trigger time (Soonest first)
+    const sorted = [...STATE.reminders].sort((a, b) => {
         if (a.is_active !== b.is_active) return b.is_active - a.is_active;
-
         const nextA = getNextOccurrence(a.reminder_time, a.days_of_week, a.last_run_at);
         const nextB = getNextOccurrence(b.reminder_time, b.days_of_week, b.last_run_at);
-
         if (!nextA) return 1;
         if (!nextB) return -1;
         return nextA - nextB;
@@ -143,34 +127,30 @@ function renderReminders() {
 
     container.innerHTML = sorted.map(r => renderReminderCard(r)).join('');
     
-    // Initial sync for the new DOM elements
     updateCountdowns();
-    
-    // Update modal checkbox grids
     renderSelectors();
 }
 
 /**
- * UI Component: renderReminderCard
- * Builds the HTML fragment for a single reminder.
+ * Generates the HTML fragment for a single reminder card.
  * 
- * @param {Object} r - Reminder record
- * @returns {string} - Rendered HTML
+ * @param {Object} r - Reminder record metadata.
+ * @returns {string} - Rendered HTML template.
  */
 function renderReminderCard(r) {
     const isActive = !!r.is_active;
     const isOneOff = !!r.is_one_off;
-    const reminderTime = r.reminder_time.substring(0, 5);
+    const reminderTime = (r.reminder_time || '00:00').substring(0, 5);
     
     // Localize: convert 24h server time to display format
     const [hRaw, mRaw] = reminderTime.split(':');
-    let h = parseInt(hRaw);
+    let h = parseInt(hRaw || 0);
     const ampm = h >= 12 ? 'PM' : 'AM';
     h = h % 12 || 12;
-    const displayTime = `${h}:${mRaw}`;
+    const displayTime = `${h}:${mRaw || '00'}`;
 
-    // Logic: build interactive day-of-week toggles
-    const activeDays = (r.days_of_week || '').split(',').reduce((acc, d) => { acc[d] = true; return acc; }, {});
+    // Interactive day-of-week toggles
+    const activeDays = (r.days_of_week || '').split(',').reduce((acc, d) => { if(d) acc[d] = true; return acc; }, {});
     const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     const dayDots = dayLabels.map((label, idx) => {
         const dayNum = idx + 1;
@@ -178,13 +158,13 @@ function renderReminderCard(r) {
         return `<span class="day-dot ${active ? 'active' : ''}" onclick="toggleDay(${r.id}, ${dayNum}, ${active ? 0 : 1})" title="${getDayFullName(dayNum)}">${label}</span>`;
     }).join('');
 
-    // Logic: build recipient icons
+    // Recipient branding
     const recipientPills = (r.recipient_names || '').split(',').filter(n => n).map(name => 
         `<span class="recipient-badge">${getIcon('reminders')} ${escapeHtml(name)}</span>`
     ).join('');
 
     return `
-        <div class="glass-panel reminder-card ${isActive ? '' : 'paused'}"
+        <div class="reminder-card ${isActive ? '' : 'paused'}"
              data-id="${r.id}"
              data-time="${reminderTime}"
              data-days="${r.days_of_week || ''}"
@@ -193,7 +173,7 @@ function renderReminderCard(r) {
             <div class="reminder-header">
                 <div class="title-stack">
                     ${isOneOff ? `<span class="one-off-badge">${getIcon('clock')} One-off</span>` : ''}
-                    <h2 class="reminder-title">${escapeHtml(r.title)}</h2>
+                    <h2 class="reminder-title">${escapeHtml(r.title || 'Untitled')}</h2>
                 </div>
             </div>
 
@@ -220,17 +200,17 @@ function renderReminderCard(r) {
             </div>
 
             <div class="reminder-footer-actions">
-                <button class="btn-icon-${isActive ? 'view' : 'copy'} btn-status-toggle"
-                        onclick="toggleReminder(${r.id}, ${isActive ? 0 : 1}, this)"
+                <button class="btn-icon-${isActive ? 'view' : 'copy'}"
+                        onclick="toggleReminder(${r.id}, ${isActive ? 0 : 1})"
                         title="${isActive ? 'Pause Reminder' : 'Resume Reminder'}">
                     ${getIcon(isActive ? 'running' : 'paused')}
                 </button>
                 <button class="btn-icon-edit"
-                        onclick="prepareEditModal(${r.id})"
+                        onclick="openEditModal(${r.id})"
                         title="Edit Reminder">${getIcon('edit')}
                 </button>
                 <button class="btn-icon-delete"
-                        onclick="confirmDeleteReminder(${r.id}, \`${r.title.replace(/`/g, '\\`')}\`)"
+                        onclick="confirmDeleteReminder(${r.id}, \`${(r.title || 'Untitled').replace(/`/g, '\\`')}\`)"
                         title="Delete Reminder">${getIcon('delete')}
                 </button>
             </div>
@@ -239,8 +219,9 @@ function renderReminderCard(r) {
 }
 
 /**
- * Logic: renderSelectors
- * Updates the checkbox grids within the add/edit modals based on latest recipient state.
+ * Updates the checkbox selection grids in creation/edit interfaces.
+ * 
+ * @returns {void}
  */
 function renderSelectors() {
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -259,7 +240,7 @@ function renderSelectors() {
     const renderRecipients = (prefix) => {
         const container = document.getElementById(`${prefix}RecipientsSelector`);
         if (!container) return;
-        container.innerHTML = appState.recipients.map(u => `
+        container.innerHTML = STATE.recipients.map(u => `
             <label class="recipient-checkbox">
                 <input type="checkbox" name="recipients[]" value="${u.id}" id="${prefix}Recipient${u.id}">
                 <span>${escapeHtml(u.username)}</span>
@@ -278,33 +259,35 @@ function renderSelectors() {
  */
 
 /**
- * Interface: openAddModal
- * Resets and displays the reminder creation interface.
+ * Displays the reminder creation interface.
+ * 
+ * @returns {void}
  */
 function openAddModal() {
     const modal = document.getElementById('addReminderModal');
     const form = document.getElementById('addReminderForm');
     if (form) form.reset();
-    if (modal) modal.classList.add('show');
+    if (modal) modal.style.display = 'block';
 }
 
 /**
- * Interface: closeAddModal
  * Hides the reminder creation interface.
+ * 
+ * @returns {void}
  */
 function closeAddModal() {
     const modal = document.getElementById('addReminderModal');
-    if (modal) modal.classList.remove('show');
+    if (modal) modal.style.display = 'none';
 }
 
 /**
- * Interface: prepareEditModal
- * Pre-fills the reminder editor with existing record state.
+ * Pre-fills and displays the reminder editor.
  * 
- * @param {number} id - Target ID
+ * @param {number} id - Target identifier.
+ * @returns {void}
  */
-function prepareEditModal(id) {
-    const r = appState.reminders.find(item => item.id == id);
+function openEditModal(id) {
+    const r = STATE.reminders.find(item => item.id == id);
     if (!r) return;
 
     const modal = document.getElementById('editReminderModal');
@@ -317,7 +300,6 @@ function prepareEditModal(id) {
     document.getElementById('editReminderTime').value = r.reminder_time.substring(0, 5);
     document.getElementById('editReminderOneOff').checked = (r.is_one_off == 1);
 
-    // Sync multi-level selectors
     if (r.days_of_week) {
         r.days_of_week.split(',').forEach(d => {
             const cb = document.getElementById(`editDay${d}`);
@@ -332,16 +314,17 @@ function prepareEditModal(id) {
         });
     }
 
-    if (modal) modal.classList.add('show');
+    if (modal) modal.style.display = 'block';
 }
 
 /**
- * Interface: closeEditModal
  * Hides the reminder editor.
+ * 
+ * @returns {void}
  */
 function closeEditModal() {
     const modal = document.getElementById('editReminderModal');
-    if (modal) modal.classList.remove('show');
+    if (modal) modal.style.display = 'none';
 }
 
 /**
@@ -349,45 +332,43 @@ function closeEditModal() {
  */
 
 /**
- * Action: submitAdd
- * Transmits a new reminder record to the server.
+ * Orchestrates the reminder creation workflow.
  * 
+ * @async
+ * @param {Event} e - Form submission event.
  * @returns {Promise<void>}
  */
-async function submitAdd() {
-    const form = document.getElementById('addReminderForm');
+async function handleAdd(e) {
+    e.preventDefault();
+    const form = e.target;
     const btn = form.querySelector('button[type="submit"]');
     const originalHtml = btn.innerHTML;
     
-    // UI: indicate network flight
     btn.disabled = true;
     btn.innerHTML = `${getIcon('waiting')} Creating...`;
 
     try {
         const result = await apiPost('/reminders/add', new FormData(form));
-        
-        // Lifecycle Cleanup: Restore button state
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-
         if (result && result.success) {
             closeAddModal();
             await loadState();
         }
-    } catch (err) {
+    } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
 }
 
 /**
- * Action: submitEdit
- * Transmits modifications to an existing record.
+ * Orchestrates the reminder modification workflow.
  * 
+ * @async
+ * @param {Event} e - Form submission event.
  * @returns {Promise<void>}
  */
-async function submitEdit() {
-    const form = document.getElementById('editReminderForm');
+async function handleEdit(e) {
+    e.preventDefault();
+    const form = e.target;
     const id = document.getElementById('editReminderId').value;
     const btn = form.querySelector('button[type="submit"]');
     const originalHtml = btn.innerHTML;
@@ -397,65 +378,83 @@ async function submitEdit() {
 
     try {
         const result = await apiPost(`/reminders/update/${id}`, new FormData(form));
-        
-        // Lifecycle Cleanup: Restore button state
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-
         if (result && result.success) {
             closeEditModal();
             await loadState();
         }
-    } catch (err) {
+    } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
 }
 
 /**
- * Action: confirmDeleteReminder
- * Orchestrates the Mandatory Action deletion flow for a specific reminder.
+ * Orchestrates the Mandatory Action deletion flow.
  * 
- * @param {number} id - Record identifier
- * @param {string} title - Label for confirmation prompt
+ * @param {number} id - Target identifier.
+ * @param {string} title - Merchant context.
+ * @returns {void}
  */
 function confirmDeleteReminder(id, title) {
     showConfirmModal({
         title: 'Delete Reminder',
-        message: `Are you sure you want to permanently delete \"<strong>${title}</strong>\"?`,
+        message: `Permanently remove schedule for \"<strong>${title}</strong>\"?`,
         danger: true,
         confirmText: 'Delete',
         hideCancel: true,
         alignment: 'center',
-        loadingText: 'Deleting...',
         onConfirm: async () => {
             const result = await apiPost(`/reminders/delete/${id}`);
             if (result && result.success) {
-                await loadState();
+                STATE.reminders = STATE.reminders.filter(r => r.id != id);
+                renderReminders();
             }
         }
     });
 }
 
 /**
- * Action: toggleReminder
- * Inverts the active/operational status of a reminder.
+ * Toggles the operational status of a reminder.
+ * 
+ * @async
+ * @param {number} id - Target identifier.
+ * @param {number} active - Target status (1/0).
+ * @returns {Promise<void>}
  */
 async function toggleReminder(id, active) {
     const result = await apiPost(`/reminders/toggle/${id}`, { active: active ? 1 : 0 });
     if (result && result.success) {
-        await loadState();
+        const r = STATE.reminders.find(item => item.id == id);
+        if (r) {
+            r.is_active = active ? 1 : 0;
+            renderReminders(); // Re-sort and re-render grid locally
+        }
     }
 }
 
 /**
- * Action: toggleDay
- * Surgical toggle for a specific day of the week within a reminder's schedule.
+ * Surgical toggle for a specific scheduled day.
+ * 
+ * @async
+ * @param {number} reminderId - Parent identifier.
+ * @param {number} day - ISO day number (1-7).
+ * @param {number} active - Target status (1/0).
+ * @returns {Promise<void>}
  */
 async function toggleDay(reminderId, day, active) {
     const result = await apiPost('/reminders/toggle_day', { id: reminderId, day: day, active: active });
     if (result && result.success) {
-        await loadState();
+        const r = STATE.reminders.find(item => item.id == reminderId);
+        if (r) {
+            let days = (r.days_of_week || '').split(',').filter(d => d).map(Number);
+            if (active) {
+                if (!days.includes(day)) days.push(day);
+            } else {
+                days = days.filter(d => d !== day);
+            }
+            r.days_of_week = days.sort((a, b) => a - b).join(',');
+            renderReminders(); // Re-render locally
+        }
     }
 }
 
@@ -465,15 +464,14 @@ async function toggleDay(reminderId, day, active) {
 
 /**
  * Resolves the absolute date/time of the next scheduled trigger.
- * Implements rollover logic for time-of-day and day-of-week boundaries.
  * 
- * @param {string} timeStr - 24h format HH:MM
- * @param {string} daysStr - Comma-separated ISO day numbers
- * @param {string|null} lastRunAt - Server timestamp of previous execution
- * @returns {Date|null} - Target date object
+ * @param {string} timeStr - 24h format HH:MM.
+ * @param {string} daysStr - Comma-separated ISO day numbers.
+ * @param {string|null} lastRunAt - Server timestamp of previous execution.
+ * @returns {Date|null} - Target date object.
  */
 function getNextOccurrence(timeStr, daysStr, lastRunAt = '') {
-    if (!daysStr) return null;
+    if (!daysStr || !timeStr) return null;
     const [h, m] = timeStr.split(':').map(Number);
     const days = daysStr.split(',').map(Number);
 
@@ -482,23 +480,16 @@ function getNextOccurrence(timeStr, daysStr, lastRunAt = '') {
     const nowMins  = now.getHours() * 60 + now.getMinutes();
     const targetMins = h * 60 + m;
 
-    // Guard: check if task already executed during the current calendar day
     let hasRunToday = false;
     if (lastRunAt) {
         const lastRun = new Date(lastRunAt.replace(' ', 'T'));
-        if (lastRun.toDateString() === now.toDateString()) {
-            hasRunToday = true;
-        }
+        if (lastRun.toDateString() === now.toDateString()) hasRunToday = true;
     }
 
-    // Logic: scan next 7 days for the first valid intersection
     for (let offset = 0; offset <= 7; offset++) {
         const checkDay = ((isoToday - 1 + offset) % 7) + 1;
         if (days.includes(checkDay)) {
-            // Edge Case: if today, ensure it hasn't run and the time is still in the future
-            if (offset === 0) {
-                if (hasRunToday || targetMins < nowMins) continue;
-            }
+            if (offset === 0 && (hasRunToday || targetMins < nowMins)) continue;
             const next = new Date(now);
             next.setDate(now.getDate() + offset);
             next.setHours(h, m, 0, 0);
@@ -509,9 +500,9 @@ function getNextOccurrence(timeStr, daysStr, lastRunAt = '') {
 }
 
 /**
- * Logic: updateCountdowns
- * Calculates remainders and updates FlipClock DOM nodes.
- * Implements self-destruction logic for expired one-off reminders.
+ * Synchronizes FlipClock DOM nodes with calculated remainders.
+ * 
+ * @returns {void}
  */
 function updateCountdowns() {
     document.querySelectorAll('.reminder-card').forEach(card => {
@@ -519,7 +510,6 @@ function updateCountdowns() {
         const el = document.getElementById(`countdown-${reminderId}`);
         if (!el) return;
 
-        // Context: clear clock if reminder is manually paused
         if (card.classList.contains('paused')) { 
             el.innerHTML = ''; 
             delete FlipClockManager.prevStates[reminderId];
@@ -534,20 +524,18 @@ function updateCountdowns() {
         }
 
         const diff = next - new Date();
-        // Scenario: Trigger Threshold reached
         if (diff <= 0) {
             el.innerHTML = '<div class="flip-card due-badge">DUE NOW</div>';
             delete FlipClockManager.prevStates[reminderId];
             
-            // Lifecycle: manage auto-removal for one-off events
             if (card.dataset.oneOff === '1' && !card.classList.contains('row-fade-out')) {
                 setTimeout(() => {
                     card.classList.add('row-fade-out');
                     setTimeout(() => {
-                        appState.reminders = appState.reminders.filter(r => r.id != reminderId);
+                        STATE.reminders = STATE.reminders.filter(r => r.id != reminderId);
                         card.remove();
-                    }, 500); // Animation duration margin
-                }, 2000); // Grace period for "DUE NOW" visibility
+                    }, 500);
+                }, 2000);
             }
             return;
         }
@@ -558,7 +546,6 @@ function updateCountdowns() {
         const m = Math.floor((totalSeconds % 3600) / 60);
         const s = totalSeconds % 60;
 
-        // Trigger FlipClock reconciliation
         FlipClockManager.update(el, { 
             dd: d, 
             hh: String(h).padStart(2, '0'), 
@@ -575,18 +562,18 @@ function updateCountdowns() {
 /**
  * Translates ISO day number to human-readable name.
  * 
- * @param {number} day - 1-7
- * @returns {string} - Name
+ * @param {number} day - ISO day index (1-7).
+ * @returns {string} - Full name.
  */
 function getDayFullName(day) {
     return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][day - 1];
 }
 
 /**
- * Prevents XSS by sanitizing dynamic HTML content.
+ * Prevents XSS by sanitizing dynamic content.
  * 
- * @param {string} text - Raw input
- * @returns {string} - Sanitized HTML
+ * @param {string} text - Raw input.
+ * @returns {string} - Sanitized HTML.
  */
 function escapeHtml(text) {
     if (!text) return '';
@@ -596,13 +583,15 @@ function escapeHtml(text) {
 }
 
 /**
- * Global Exposure
- * Required for inline event handlers in server-rendered templates.
+ * --- Global Exposure ---
  */
 window.openAddModal = openAddModal;
 window.closeAddModal = closeAddModal;
-window.prepareEditModal = prepareEditModal;
+window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
 window.confirmDeleteReminder = confirmDeleteReminder;
 window.toggleReminder = toggleReminder;
 window.toggleDay = toggleDay;
+window.handleAdd = handleAdd;
+window.handleEdit = handleEdit;
+window.loadState = loadState;
