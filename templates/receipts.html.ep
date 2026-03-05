@@ -25,15 +25,15 @@
 
     <div class="ledger-filters">
         <div class="filter-group">
-            <input type="text" id="filterSearch" placeholder="Search stores, files, notes..." class="filter-input">
+            <input type="text" id="filterSearch" placeholder="Search stores, files, notes..." class="game-input">
         </div>
         <div class="filter-group">
-            <select id="filterStore" class="filter-select">
+            <select id="filterStore" class="game-input">
                 <option value="">All Stores</option>
             </select>
         </div>
         <div class="filter-group">
-            <select id="filterTime" class="filter-select">
+            <select id="filterTime" class="game-input">
                 <option value="">All Time</option>
                 <option value="7">Last 7 Days</option>
                 <option value="30">Last 30 Days</option>
@@ -42,36 +42,37 @@
             </select>
         </div>
         <div class="filter-group">
-            <select id="filterAI" class="filter-select">
+            <select id="filterAI" class="game-input">
                 <option value="">AI Status</option>
                 <option value="1">Digitized (AI)</option>
                 <option value="0">Pending AI</option>
             </select>
         </div>
         <div class="filter-group">
-            <select id="filterUploader" class="filter-select">
+            <select id="filterUploader" class="game-input">
                 <option value="">All Uploaders</option>
             </select>
         </div>
         <div class="filter-group">
-            <input type="number" id="filterMinAmount" placeholder="Min $" class="filter-input" step="0.01" style="max-width: 100px;">
+            <input type="number" id="filterMinAmount" placeholder="Min $" class="game-input" step="0.01">
         </div>
-        <button type="button" id="resetFilters" class="btn-icon-reset" title="Reset Filters" style="width: 38px; height: 38px; border-radius: 8px;">
+        <button type="button" id="resetFilters" class="btn-icon-reset" title="Reset Filters">
             <%= icon('reset') %>
         </button>
     </div>
 
+    <%# Receipt Ledger %>
     <div class="files-list">
         <table class="data-table files-table">
             <thead>
                 <tr>
-                    <th style="width: 60px;">Preview</th>
+                    <th class="col-preview">Preview</th>
                     <th>Filename</th>
                     <th>Store</th>
                     <th>Date</th>
                     <th>Total</th>
                     <th>Uploaded By</th>
-                    <th style="width: 100px; text-align: center;">Actions</th>
+                    <th class="col-actions-header">Actions</th>
                 </tr>
             </thead>
             <tbody id="receiptsTableBody">
@@ -79,8 +80,8 @@
         </table>
     </div>
         
-    <div id="pagination-container" style="text-align: center; margin-top: 20px;">
-        <button id="loadMoreBtn" class="btn-primary" style="background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); min-width: 200px;">
+    <div id="pagination-container" class="pagination-container">
+        <button id="loadMoreBtn" class="btn-primary btn-load-more" style="display: none;">
             <%= icon('expand') %> Load More
         </button>
     </div>
@@ -125,9 +126,9 @@
     </div>
 </div>
 
-<%# Post-Upload Crop Modal (Existing Receipts) %>
+<%# Post-Upload Refinement Modal %>
 <div id="cropModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="max-width: 800px; width: 95%;">
+    <div class="modal-content modal-large">
         <div class="modal-header">
             <h3><%= icon('crop') %> Crop Receipt</h3>
             <span class="close-btn" onclick="closeCropModal()">&times;</span>
@@ -138,26 +139,26 @@
             </div>
             <p class="crop-help-text">Drag the corners to crop the receipt. Only the selected area will be saved.</p>
         </div>
-        <div class="modal-actions crop-modal-actions">
+        <div class="modal-actions crop-modal-actions modal-actions-center">
             <button type="button" class="btn-primary" onclick="saveCrop()"><%= icon('save') %> Save Crop</button>
         </div>
     </div>
 </div>
 
-<%# Pre-Upload Crop Modal (New Uploads) %>
+<%# Pre-Upload Refinement Modal %>
 <div id="preUploadCropModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="max-width: 800px; width: 95%;">
+    <div class="modal-content modal-large">
         <div class="modal-header">
             <h3><%= icon('edit') %> Refine Receipt Image</h3>
             <span class="close-btn" onclick="closePreUploadCropModal()">&times;</span>
         </div>
-        <div class="modal-body" style="text-align: center;">
-            <div style="max-height: 60vh; overflow: hidden; background: #000; border-radius: 8px;">
-                <img id="preUploadCropImg" style="max-width: 100%; display: block;">
+        <div class="modal-body">
+            <div class="crop-preview-wrapper">
+                <img id="preUploadCropImg" class="crop-preview-img">
             </div>
-            <p style="margin-top: 15px; color: #94a3b8; font-size: 0.85rem;">Drag to select the receipt area. This will be the final image uploaded.</p>
+            <p class="help-text-muted">Drag to select the receipt area. This will be the final image uploaded.</p>
         </div>
-        <div class="modal-actions">
+        <div class="modal-actions modal-actions-center">
             <button type="button" class="btn-primary" onclick="applyPreUploadCrop()"><%= icon('check') %> Apply Crop</button>
             <button type="button" class="btn-secondary" onclick="closePreUploadCropModal()">Skip Cropping</button>
         </div>
@@ -179,7 +180,7 @@
                 <p class="loading-sub">Analyzing items and structured data</p>
             </div>
         </div>
-        <div class="modal-actions ereceipt-actions">
+        <div class="modal-actions ereceipt-actions modal-actions-center">
             <button type="button" class="btn-icon-ai btn-ereceipt-rescan" onclick="reScanReceipt()">
                 <%= icon('search') %> Full Rescan
             </button>
@@ -195,7 +196,7 @@
     </div>
 </div>
 
-<%# Upload Queue Modal %>
+<%# Upload Receipt Modal %>
 <div id="uploadModal" class="modal-overlay receipt-upload-modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
@@ -206,12 +207,18 @@
             <form id="uploadForm" onsubmit="handleUpload(event)">
                 <div class="file-drop-area" id="dropZone" onclick="document.getElementById('file').click()">
                     <input type="file" id="file" name="file" required accept="image/*,application/pdf" style="display: none;">
-                    <p class="drop-hint"><%= icon('receipts') %><br>Drag & drop receipt here<br>or click to browse</p>
+                    <p class="drop-hint">
+                        <span><%= icon('receipts') %></span>
+                        Drag & drop receipt here<br>
+                        or click to browse
+                    </p>
                     <p class="file-name upload-file-name" id="fileName" style="display: none;"></p>
                 </div>
 
-                <div class="modal-actions modal-actions-center">
-                    <button type="submit" class="btn-primary"><%= icon('upload') %> Upload</button>
+                <div class="upload-actions">
+                    <button type="submit" class="btn-primary">
+                        <%= icon('upload') %> Upload
+                    </button>
                 </div>
             </form>
         </div>
