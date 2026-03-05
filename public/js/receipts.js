@@ -262,7 +262,7 @@ function renderReceipts(append = false, batch = null) {
                         <button type="button" class="btn-icon-crop" onclick="openCropModal('${r.id}')" title="Refine">${getIcon('crop')}</button>
                         <button type="button" class="btn-icon-bonus" onclick="triggerOCR('${r.id}')" title="OCR Scan" id="ocr-btn-${r.id}">${getIcon('search')}</button>
                         <button type="button" class="btn-icon-edit" onclick="openEditModal(this.dataset.receipt)" data-receipt='${escapeHtml(JSON.stringify(r))}' title="Edit">${getIcon('edit')}</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('${r.id}', '${escapeHtml(r.store_name || r.original_filename)}')" title="Purge">${getIcon('delete')}</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('${r.id}', '${escapeHtml(r.store_name || r.original_filename)}')" title="Delete">${getIcon('delete')}</button>
                     ` : ''}
                 </div>
             </td>
@@ -307,8 +307,16 @@ async function handleUpload(e) {
             STATE.receipts.unshift(result.receipt);
             STATE.summary = result.summary;
             STATE.breakdown = result.breakdown;
+            
+            // Re-sync store list if uploader added a new merchant
+            if (result.receipt.store_name && !STATE.stores.includes(result.receipt.store_name)) {
+                STATE.stores.push(result.receipt.store_name);
+                STATE.stores.sort();
+            }
+
             renderStats();
             renderReceipts(false);
+            updateFilterDropdowns();
         }
     } finally {
         hideLoadingOverlay();
@@ -341,8 +349,16 @@ async function handleEditSubmit(e) {
             if (index !== -1) STATE.receipts[index] = result.receipt;
             STATE.summary = result.summary;
             STATE.breakdown = result.breakdown;
+
+            // Re-sync store list if edit added a new merchant
+            if (result.receipt.store_name && !STATE.stores.includes(result.receipt.store_name)) {
+                STATE.stores.push(result.receipt.store_name);
+                STATE.stores.sort();
+            }
+
             renderStats();
             renderReceipts(false);
+            updateFilterDropdowns();
         }
     } finally {
         btn.disabled = false;
@@ -359,10 +375,10 @@ async function handleEditSubmit(e) {
  */
 function confirmDeleteReceipt(id, name) {
     showConfirmModal({
-        title: 'Purge Receipt',
+        title: 'Delete Receipt',
         message: `Permanently delete record for <strong>${escapeHtml(name)}</strong>?`,
         danger: true,
-        confirmText: 'Purge',
+        confirmText: 'Delete',
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
@@ -427,15 +443,20 @@ function setupUploadOrchestration() {
 function updateFilterDropdowns() {
     const storeSel = document.getElementById('filterStore');
     const dataList = document.getElementById('edit_store_list');
+    
+    // 1. Synchronize Store Filter (preserve selection)
     if (storeSel) {
         const val = storeSel.value;
         storeSel.innerHTML = '<option value="">All Stores</option>' + 
             STATE.stores.map(n => `<option value="${escapeHtml(n)}" ${n === val ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('');
     }
+    
+    // 2. Synchronize Edit Datalist
     if (dataList) {
         dataList.innerHTML = STATE.stores.map(n => `<option value="${escapeHtml(n)}">`).join('');
     }
 
+    // 3. Synchronize Uploader Filter (preserve selection)
     const upSel = document.getElementById('filterUploader');
     if (upSel) {
         const val = upSel.value;
@@ -721,7 +742,6 @@ async function triggerOCR(id) {
     try {
         const data = await apiPost('/receipts/api/ocr/' + id);
         if (data && data.success) {
-            showToast('OCR complete', 'success');
             openEditModal(JSON.stringify({
                 id: id, store_name: data.store_name, receipt_date: data.receipt_date,
                 total_amount: data.total_amount, description: data.description
