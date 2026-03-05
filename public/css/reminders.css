@@ -70,10 +70,6 @@
     letter-spacing: 0.5px;
 }
 
-.reminder-actions {
-    display: none;
-}
-
 .reminder-time {
     font-size: 2.2rem;
     font-weight: 700;
@@ -249,22 +245,6 @@
     opacity: 0.5;
 }
 
-.checkbox-group small {
-    display: block; 
-    color: rgba(255,255,255,0.4); 
-    margin-top: 5px; 
-    font-style: italic; 
-    padding-left: 2rem;
-}
-
-.modal-content-small {
-    max-width: 600px;
-}
-
-.form-group-time {
-    max-width: 200px;
-}
-
 .reminder-recipients {
     margin-top: auto;
     padding-bottom: 1.5rem;
@@ -388,21 +368,22 @@
     padding-left: 2rem;
 }
 
-.modal-actions, .delete-modal-actions {
-    justify-content: center !important;
-}
-
 .modal-reminders {
     max-width: 600px !important;
 }
 
-#addReminderModal.show,
-#editReminderModal.show {
-    display: block !important;
-}
-
 .form-group-time {
     max-width: 200px !important;
+}
+
+/* Row Fade Out Animation */
+.row-fade-out {
+    animation: row-fade-out 0.5s ease forwards;
+}
+
+@keyframes row-fade-out {
+    0% { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(30px); }
 }
 
 @media (min-width: 769px) {
