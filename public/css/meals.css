@@ -40,6 +40,21 @@
     overflow: hidden;
 }
 
+/* Modal Variants */
+.modal-vault-manage {
+    max-width: 480px !important;
+    width: 95% !important;
+}
+
+.modal-vault-edit {
+    z-index: 11000 !important;
+}
+
+.col-actions-narrow {
+    width: 100px;
+    text-align: center;
+}
+
 .day-column::before {
     content: '';
     position: absolute;
@@ -251,10 +266,6 @@
 }
 
 /* Vault Management Styles */
-#manageVaultModal .modal-content {
-    max-width: 480px; 
-}
-
 #manageVaultModal .table-responsive {
     max-height: 400px;
     overflow-y: auto;
