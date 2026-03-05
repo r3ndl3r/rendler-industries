@@ -4,48 +4,46 @@ package MyApp::Controller::Reminders;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
-# Controller for Managing Recurring Reminders and Notification Rules.
+# Controller for managing recurring reminders and notification rules.
 # Features:
 #   - CRUD operations for weekly recurring tasks
 #   - Multi-recipient selection for targeted notifications
 #   - Real-time status toggling (Pause/Resume)
 #   - Integration with Discord and Email dispatch systems
 # Integration points:
-#   - Restricted to administrators via router bridge
+#   - Restricted to family/admin members via router bridge
 #   - Depends on DB::Reminders for data persistence
 #   - Coordinates with global maintenance API for execution triggers
 
-# Renders the main reminders management dashboard (SPA skeleton).
+# Renders the main reminders management dashboard skeleton.
 # Route: GET /reminders
 # Parameters: None
+# Returns: Rendered HTML template 'reminders'.
 sub index {
     my $c = shift;
     $c->stash(title => 'Manage Reminders');
     $c->render('reminders');
 }
 
-# Returns all reminders and eligible recipients as JSON for SPA state management.
+# Returns the consolidated state for the module.
 # Route: GET /reminders/api/state
-# Returns: JSON object { reminders, recipients }
+# Parameters: None
+# Returns: JSON object { reminders, recipients, is_admin, current_user, success }
 sub api_state {
     my $c = shift;
     
-    # Retrieve all reminder rules and recipient mapping
-    my $reminders = $c->db->get_all_reminders();
-    
-    # Retrieve roster for recipient selection
-    my $users     = $c->db->get_all_users();
-    
-    # Filter for approved family/admin users only for selection pool
-    my @eligible_recipients = grep { 
-        ($_->{status} // '') eq 'approved' && 
-        (($_->{is_family} // 0) == 1 || ($_->{is_admin} // 0) == 1)
-    } @$users;
+    my $state = {
+        reminders    => $c->db->get_all_reminders(),
+        recipients   => [ grep { 
+            ($_->{status} // '') eq 'approved' && 
+            (($_->{is_family} // 0) == 1 || ($_->{is_admin} // 0) == 1)
+        } @{$c->db->get_all_users() || []} ],
+        is_admin     => $c->is_admin ? 1 : 0,
+        current_user => $c->session('user') // '',
+        success      => 1
+    };
 
-    $c->render(json => {
-        reminders  => $reminders,
-        recipients => \@eligible_recipients
-    });
+    $c->render(json => $state);
 }
 
 # Processes the creation of a new recurring reminder rule.
@@ -56,9 +54,8 @@ sub api_state {
 #   reminder_time : Target trigger time (HH:MM)
 #   days[]        : Array of active day numbers (1=Mon, 7=Sun)
 #   recipients[]  : Array of target User IDs
-# Returns:
-#   Redirects to '/reminders' on success
-#   Renders error on validation or database failure
+#   is_one_off    : Boolean flag for single-use reminders
+# Returns: JSON object { success, message, error }
 sub add {
     my $c = shift;
     
@@ -105,8 +102,8 @@ sub add {
 #   reminder_time : Updated trigger time
 #   days[]        : Updated active days
 #   recipients[]  : Updated target users
-# Returns:
-#   JSON response
+#   is_one_off    : Boolean flag
+# Returns: JSON object { success, message, error }
 sub update {
     my $c = shift;
     
@@ -143,12 +140,11 @@ sub update {
     return $c->render(json => { success => 1, message => "Reminder '$title' updated successfully." });
 }
 
-# Permanently deletes a reminder rule and its mappings.
+# Permanently removes a reminder rule and its mappings.
 # Route: POST /reminders/delete/:id
 # Parameters:
 #   id : Unique Reminder ID
-# Returns:
-#   JSON response
+# Returns: JSON object { success, message, error }
 sub delete {
     my $c = shift;
     my $id = $c->param('id');
@@ -167,13 +163,12 @@ sub delete {
     return $c->render(json => { success => 0, error => "Invalid ID" });
 }
 
-# Toggles the operational status of a reminder rule via AJAX.
+# Toggles the operational status of a reminder rule.
 # Route: POST /reminders/toggle/:id
 # Parameters:
 #   id     : Unique Reminder ID
 #   active : Target status (1 or 0)
-# Returns:
-#   JSON object { success => 1/0 }
+# Returns: JSON object { success, message, error }
 sub toggle {
     my $c = shift;
     my $id = $c->param('id');
@@ -190,8 +185,13 @@ sub toggle {
     return $c->render(json => { success => 0, error => 'Invalid parameters' });
 }
 
-# Toggles a specific day for a reminder rule via AJAX.
+# Toggles a specific day for a reminder rule schedule.
 # Route: POST /reminders/toggle_day
+# Parameters:
+#   id     : Unique Reminder ID
+#   day    : Day number (1-7)
+#   active : Target status (1 or 0)
+# Returns: JSON object { success, message, error }
 sub toggle_day {
     my $c = shift;
     my $id = $c->param('id');
