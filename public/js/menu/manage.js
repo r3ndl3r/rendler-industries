@@ -1,288 +1,364 @@
 // /public/js/menu/manage.js
 
 /**
- * Menu Management Controller Module
+ * Menu Management Controller
  * 
- * This module manages the administrative Navigation interface. It coordinates 
- * the interactive ledger for platform links, including real-time reordering 
- * using Sortable.js and complex nested property configuration.
+ * Orchestrates the administrative interface for hierarchical navigation. 
+ * Implements a state-driven ledger with real-time drag-and-drop reordering.
  * 
  * Features:
- * - Dynamic link creation and editing with permission level awareness
- * - Real-time drag-and-drop reordering with ghost-preview support
- * - Specialized "Separator" mode handling for UI organization
- * - Themed confirmation workflow for cascaded link deletion
- * - AJAX-driven state updates with automated page reconciliation
+ * - Synchronized state management via /menu/api/state
+ * - Drag-and-drop link reordering using SortableJS
+ * - Hierarchical parent/child relationship management
+ * - Themed confirmation workflows for destructive removal
+ * - Permission-aware link configuration
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, and modal helpers
- * - toast.js: For status feedback
- * - sortable.js: For high-performance reordering logic
+ * - default.js: For apiPost, getIcon, showConfirmModal, showToast
+ * - sortable.min.js: For high-performance reordering logic
  */
 
-document.addEventListener('DOMContentLoaded', function() {
-    /**
-     * UI Element Cache
-     */
-    const modal = document.getElementById('linkModal');
-    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
-    const form = document.getElementById('linkForm');
-    const addBtn = document.getElementById('addLinkBtn');
-    const closeBtn = document.getElementById('closeModalBtn');
-    const saveOrderBtn = document.getElementById('saveOrderBtn');
-    const tableBody = document.getElementById('menuTableBody');
-    
-    /**
-     * Application State
-     */
-    let linkIdToDelete = null;      // active pointer for deletion requests
+/**
+ * Global Configuration & Persistent State
+ */
+const CONFIG = {
+    REORDER_STAGGER: 10             // Incremental step for sort_order persistence
+};
 
+let STATE = {
+    links: [],                      // Collection of all menu records
+    parents: [],                    // Eligible top-level parent items
+    isAdmin: false                  // Administrative authorization flag
+};
+
+const MenuMgmt = {
     /**
-     * --- Modal Interface Logic ---
-     */
-    
-    /**
-     * Interface: openModal
-     * Prepares and displays the link creation or modification interface.
+     * Bootstraps the module logic and establishes lifecycles.
      * 
-     * @param {string} title - Modal heading
-     * @param {string} iconName - semantic icon key
-     * @param {Object|null} data - Pre-filled record data
+     * @returns {void}
      */
-    function openModal(title, iconName, data = null) {
-        const titleEl = document.getElementById('modalTitle');
-        if (titleEl) titleEl.innerHTML = `${getIcon(iconName)} ${title}`;
+    init: function() {
+        this.loadState();
+        this.initSortable();
         
-        if (form) form.reset();
-        
-        // Context: Apply pre-existing values if in Edit mode
-        if (data) {
-            document.getElementById('linkId').value = data.id;
-            document.getElementById('linkSort').value = data.sort || "0";
-            document.getElementById('linkLabel').value = data.label;
-            document.getElementById('linkUrl').value = data.url;
-            document.getElementById('linkParent').value = data.parent || "";
-            document.getElementById('linkPermission').value = data.permission;
-            document.getElementById('linkClass').value = data.class || "";
-            document.getElementById('linkTarget').value = data.target;
-            document.getElementById('linkActive').checked = data.active == "1";
-            document.getElementById('linkSeparator').checked = data.separator == "1";
-        } else {
-            // Default initialization for Add mode
-            document.getElementById('linkId').value = "";
-            document.getElementById('linkSort').value = "0";
-            document.getElementById('linkActive').checked = true;
-            document.getElementById('linkSeparator').checked = false;
+        // Global modal behavior
+        setupGlobalModalClosing(['delete-modal-overlay'], [() => this.closeModal(), closeConfirmModal]);
+    },
+
+    /**
+     * Synchronizes module state with the server.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
+    loadState: async function() {
+        try {
+            const response = await fetch('/menu/api/state');
+            const data = await response.json();
+            
+            if (data && data.success) {
+                STATE.links = data.links;
+                STATE.parents = data.parents;
+                STATE.isAdmin = !!data.is_admin;
+                this.renderUI();
+            }
+        } catch (err) {
+            console.error('loadState failed:', err);
         }
+    },
+
+    /**
+     * Orchestrates the full UI rendering lifecycle.
+     * 
+     * @returns {void}
+     */
+    renderUI: function() {
+        this.renderTable();
+        this.renderParentDropdown();
+    },
+
+    /**
+     * Generates the administrative link ledger from state.
+     * 
+     * @returns {void}
+     */
+    renderTable: function() {
+        const tbody = document.getElementById('menuTableBody');
+        if (!tbody) return;
+
+        if (STATE.links.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No menu links found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = STATE.links.map(link => `
+            <tr data-id="${link.id}" class="${link.parent_id ? 'child-row' : 'parent-row'}">
+                <td class="drag-handle">${getIcon('menu')}</td>
+                <td data-label="Label">
+                    ${link.is_separator ? 
+                        '<span class="separator-label">───── SEPARATOR ─────</span>' : 
+                        `<span class="${link.css_class || ''}"><strong>${escapeHtml(link.label)}</strong></span>`
+                    }
+                </td>
+                <td data-label="URL" class="${link.url === '#' ? 'empty-url' : ''}">
+                    <code>${escapeHtml(link.url)}</code>
+                </td>
+                <td data-label="Parent" class="${link.parent_label ? '' : 'empty-parent'}">
+                    ${escapeHtml(link.parent_label) || '-'}
+                </td>
+                <td data-label="Permission">
+                    <span class="permission-tag tag-${link.permission_level}">
+                        ${link.permission_level.charAt(0).toUpperCase() + link.permission_level.slice(1)}
+                    </span>
+                </td>
+                <td data-label="Status">
+                    <span class="status-pill ${link.is_active ? 'active' : 'inactive'}">
+                        ${link.is_active ? 'Active' : 'Hidden'}
+                    </span>
+                </td>
+                <td class="actions-cell">
+                    <div class="action-buttons">
+                        <button type="button" class="btn-icon-edit" onclick="MenuMgmt.openEditModal(${link.id})" title="Edit">${getIcon('edit')}</button>
+                        <button type="button" class="btn-icon-delete" onclick="MenuMgmt.confirmDelete(${link.id}, '${escapeHtml(link.label)}')" title="Delete">${getIcon('delete')}</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    },
+
+    /**
+     * Hydrates the parent item selection dropdown.
+     * 
+     * @returns {void}
+     */
+    renderParentDropdown: function() {
+        const select = document.getElementById('linkParent');
+        if (!select) return;
+
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">None (Top Level)</option>';
         
-        if (modal) modal.style.display = 'flex';
-    }
-
-    /**
-     * Hides the link editor interface.
-     */
-    function closeModal() {
-        if (modal) modal.style.display = 'none';
-    }
-
-    /**
-     * Interface: openDeleteConfirmModal
-     * Displays the cascaded deletion confirmation for a specific link.
-     */
-    function openDeleteConfirmModal(id, label) {
-        linkIdToDelete = id;
-        const labelEl = document.getElementById('deleteLinkLabel');
-        if (labelEl) labelEl.textContent = label;
-        if (deleteConfirmModal) deleteConfirmModal.style.display = 'flex';
-    }
-
-    /**
-     * Resets deletion state and hides the confirmation interface.
-     */
-    window.closeDeleteConfirmModal = function() {
-        linkIdToDelete = null;
-        if (deleteConfirmModal) deleteConfirmModal.style.display = 'none';
-    };
-
-    // Interaction: Global add trigger
-    if (addBtn) addBtn.addEventListener('click', () => openModal('Add Menu Link', 'add'));
-    
-    // Interaction: Modal close triggers
-    if (closeBtn) closeBtn.addEventListener('click', closeModal);
-    
-    window.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-        if (e.target === deleteConfirmModal) closeDeleteConfirmModal();
-    });
-
-    /**
-     * --- CRUD Actions ---
-     */
-
-    // Interaction: Edit button delegation
-    document.querySelectorAll('.btn-edit').forEach(btn => {
-        btn.addEventListener('click', function() {
-            // Operation: resolve data from attributes for modal pre-filling
-            const data = {
-                id: this.dataset.id,
-                label: this.dataset.label,
-                url: this.dataset.url,
-                parent: this.dataset.parent,
-                permission: this.dataset.permission,
-                class: this.dataset.class,
-                target: this.dataset.target,
-                active: this.dataset.active,
-                sort: this.dataset.sort,
-                separator: this.dataset.separator
-            };
-            openModal('Edit Menu Link', 'edit', data);
+        STATE.parents.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.label;
+            select.appendChild(opt);
         });
-    });
 
-    // Interaction: Delete button delegation
-    document.querySelectorAll('.btn-delete').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.dataset.id;
-            const label = this.dataset.label;
-            openDeleteConfirmModal(id, label);
-        });
-    });
+        select.value = currentValue;
+    },
 
     /**
-     * Action: Form Submission Handler
-     * Manages link persistence and "Separator" normalization logic.
+     * Initialization: SortableJS
+     * Establishes drag-and-drop reordering for the ledger.
+     * 
+     * @returns {void}
      */
-    if (form) {
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const id = document.getElementById('linkId').value;
-            const isSeparator = document.getElementById('linkSeparator').checked;
-            const labelInput = document.getElementById('linkLabel');
-            const urlInput = document.getElementById('linkUrl');
+    initSortable: function() {
+        const tableBody = document.getElementById('menuTableBody');
+        if (!tableBody || typeof Sortable === 'undefined') return;
 
-            // Logic: Auto-populate separator values if missing
-            if (isSeparator) {
-                if (!labelInput.value.trim()) labelInput.value = 'SEPARATOR';
-                if (!urlInput.value.trim()) urlInput.value = '#';
-            }
-
-            const endpoint = id ? '/menu/update' : '/menu/add';
-            const formData = new FormData(form);
-            
-            // Logic: Explicitly set checkbox fallback values for FormData compatibility
-            if (!formData.has('is_active')) formData.append('is_active', '0');
-            if (!formData.has('is_separator')) formData.append('is_separator', '0');
-
-            try {
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showToast(result.message, 'success');
-                    // Lifecycle: force reload to refresh dynamic navigation tree
-                    setTimeout(() => location.reload(), 500);
-                } else {
-                    showToast('Error: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Submission error:', error);
-                showToast('Request failed', 'error');
-            }
-        });
-    }
-
-    /**
-     * Action: Final Deletion Executor
-     * Triggers the persistent removal of a link resource.
-     */
-    const finalDelBtn = document.getElementById('finalDeleteBtn');
-    if (finalDelBtn) {
-        finalDelBtn.addEventListener('click', async function() {
-            if (!linkIdToDelete) return;
-            
-            const formData = new FormData();
-            formData.append('id', linkIdToDelete);
-
-            try {
-                const response = await fetch('/menu/delete', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showToast(result.message, 'success');
-                    setTimeout(() => location.reload(), 500);
-                } else {
-                    showToast('Error: ' + result.error, 'error');
-                    closeDeleteConfirmModal();
-                }
-            } catch (error) {
-                console.error('Delete error:', error);
-                closeDeleteConfirmModal();
-                showToast('Request failed', 'error');
-            }
-        });
-    }
-
-    /**
-     * --- Reordering Engine (SortableJS) ---
-     */
-
-    if (tableBody && typeof Sortable !== 'undefined') {
-        /**
-         * Initialization: Draggable Roster
-         * Configures Sortable logic for administrative link ordering.
-         */
-        const sortable = new Sortable(tableBody, {
+        new Sortable(tableBody, {
             handle: '.drag-handle',
             animation: 150,
             ghostClass: 'sortable-ghost',
-            onUpdate: function() {
-                // UI Lifecycle: reveal "Save" action only after modifications
-                if (saveOrderBtn) saveOrderBtn.style.display = 'block';
+            onUpdate: () => {
+                document.getElementById('saveOrderBtn').classList.remove('hidden');
             }
         });
-    }
+    },
 
     /**
-     * Action: Reorder Submission
-     * Transmits the current DOM sequence to the server for sort_order persistence.
+     * Interface: openAddModal
+     * Prepares and displays the link creation interface.
+     * 
+     * @returns {void}
      */
-    if (saveOrderBtn) {
-        saveOrderBtn.addEventListener('click', async function() {
-            const orders = {};
-            // Logic: Resolve sequence and apply standard 10-step staggering
-            document.querySelectorAll('#menuTableBody tr').forEach((row, index) => {
-                orders[row.dataset.id] = (index + 1) * 10;
-            });
+    openAddModal: function() {
+        const titleEl = document.getElementById('modalTitle');
+        if (titleEl) titleEl.innerHTML = `${getIcon('add')} Add Menu Link`;
+        
+        const form = document.getElementById('linkForm');
+        if (form) form.reset();
+        
+        document.getElementById('linkId').value = '';
+        document.getElementById('linkSort').value = '0';
+        document.getElementById('linkActive').checked = true;
+        document.getElementById('linkSeparator').checked = false;
+        
+        const modal = document.getElementById('linkModal');
+        if (modal) modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+    },
 
-            try {
-                const response = await fetch('/menu/reorder', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orders: orders })
-                });
+    /**
+     * Pre-fills and displays the link editor.
+     * 
+     * @param {number} id - Record identifier.
+     * @returns {void}
+     */
+    openEditModal: function(id) {
+        const link = STATE.links.find(l => l.id == id);
+        if (!link) return;
+
+        const titleEl = document.getElementById('modalTitle');
+        if (titleEl) titleEl.innerHTML = `${getIcon('edit')} Edit Menu Link`;
+
+        document.getElementById('linkId').value = link.id;
+        document.getElementById('linkSort').value = link.sort_order || '0';
+        document.getElementById('linkLabel').value = link.label;
+        document.getElementById('linkUrl').value = link.url;
+        document.getElementById('linkParent').value = link.parent_id || '';
+        document.getElementById('linkPermission').value = link.permission_level;
+        document.getElementById('linkClass').value = link.css_class || '';
+        document.getElementById('linkTarget').value = link.target;
+        document.getElementById('linkActive').checked = link.is_active == 1;
+        document.getElementById('linkSeparator').checked = link.is_separator == 1;
+
+        const modal = document.getElementById('linkModal');
+        if (modal) modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+    },
+
+    /**
+     * Hides the link editor modal.
+     * 
+     * @returns {void}
+     */
+    closeModal: function() {
+        const modal = document.getElementById('linkModal');
+        if (modal) modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    },
+
+    /**
+     * Executes persistent link creation or modification.
+     * 
+     * @async
+     * @param {Event} e - Form event.
+     * @returns {Promise<void>}
+     */
+    handleSubmit: async function(e) {
+        if (e) e.preventDefault();
+        
+        const btn = document.getElementById('saveLinkBtn');
+        const originalHtml = btn.innerHTML;
+        const id = document.getElementById('linkId').value;
+        const url = id ? '/menu/api/update' : '/menu/api/add';
+
+        btn.disabled = true;
+        btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
+        try {
+            const formData = new FormData(e.target);
+            
+            // Logic: Explicitly set checkbox fallbacks
+            formData.set('is_active', document.getElementById('linkActive').checked ? 1 : 0);
+            formData.set('is_separator', document.getElementById('linkSeparator').checked ? 1 : 0);
+
+            const result = await apiPost(url, Object.fromEntries(formData));
+            if (result && result.success) {
+                this.closeModal();
+                await this.loadState();
                 
-                const result = await response.json();
-                
-                if (result.success) {
-                    showToast(result.message, 'success');
-                    saveOrderBtn.style.display = 'none';
-                    setTimeout(() => location.reload(), 500);
-                } else {
-                    showToast('Reorder failed', 'error');
+                // Sidebar Reconciliation: Force menu refresh if global menubar exists
+                if (window.loadMenu) window.loadMenu();
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    },
+
+    /**
+     * Orchestrates the terminal link removal workflow.
+     * 
+     * @param {number} id - Record identifier.
+     * @param {string} label - Display label for context.
+     * @returns {void}
+     */
+    confirmDelete: function(id, label) {
+        showConfirmModal({
+            title: 'Delete Menu Link',
+            message: `Are you sure you want to delete "<strong>${escapeHtml(label)}</strong>"?`,
+            subMessage: 'Warning: All nested sub-menu items will also be removed.',
+            danger: true,
+            confirmText: 'Delete Everywhere',
+            onConfirm: async () => {
+                const result = await apiPost('/menu/api/delete', { id });
+                if (result && result.success) {
+                    // Local Reconciliation: Optimistically remove from state and re-render
+                    STATE.links = STATE.links.filter(l => l.id != id && l.parent_id != id);
+                    STATE.parents = STATE.parents.filter(p => p.id != id);
+                    this.renderUI();
+                    
+                    if (window.loadMenu) window.loadMenu();
                 }
-            } catch (error) {
-                console.error('Reorder error:', error);
-                showToast('Request failed', 'error');
             }
         });
+    },
+
+    /**
+     * Executes bulk reordering persistence.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
+    handleReorder: async function() {
+        const btn = document.getElementById('saveOrderBtn');
+        const originalHtml = btn.innerHTML;
+        const orders = {};
+
+        btn.disabled = true;
+        btn.innerHTML = `${getIcon('waiting')} Updating...`;
+
+        try {
+            // Logic: Resolve sequence and apply staggered ordering
+            document.querySelectorAll('#menuTableBody tr').forEach((row, index) => {
+                if (row.dataset.id) {
+                    orders[row.dataset.id] = (index + 1) * CONFIG.REORDER_STAGGER;
+                }
+            });
+
+            const response = await fetch('/menu/api/reorder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orders })
+            });
+            const result = await response.json();
+
+            if (result && result.success) {
+                if (result.message) showToast(result.message, 'success');
+                btn.classList.add('hidden');
+                await this.loadState();
+                if (window.loadMenu) window.loadMenu();
+            } else {
+                showToast(result.error || 'Reorder failed', 'error');
+            }
+        } catch (err) {
+            console.error('handleReorder failed:', err);
+            showToast('Network error', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
     }
-});
+};
+
+/**
+ * Bootstrapper
+ */
+document.addEventListener('DOMContentLoaded', () => MenuMgmt.init());
+
+/**
+ * Utility: Sanitizes input for DOM safety.
+ * 
+ * @param {string} text - Raw string.
+ * @returns {string} - Escaped string.
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
