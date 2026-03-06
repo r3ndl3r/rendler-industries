@@ -133,9 +133,9 @@
             </div>
             
             <div class="modal-actions">
-                <button type="button" class="btn-danger btn-small hidden" id="deleteEventBtn">Delete</button>
-                <button type="button" class="btn-clone btn-small hidden" id="cloneEventBtn">Clone</button>
-                <button type="submit" id="saveEventBtn" class="btn-primary btn-small">Save</button>
+                <button type="button" class="btn-danger btn-small hidden" id="deleteEventBtn"><%= icon('delete') %> Delete</button>
+                <button type="button" class="btn-clone btn-small hidden" id="cloneEventBtn"><%= icon('copy') %> Clone</button>
+                <button type="submit" id="saveEventBtn" class="btn-primary btn-small"><%= icon('save') %> Save</button>
             </div>
         </form>
     </div>
@@ -148,7 +148,7 @@
         <div id="eventDetailsContent">
         </div>
         <div class="modal-actions">
-            <button type="button" id="editFromDetailsBtn" class="btn-primary btn-small">Edit</button>
+            <button type="button" id="editFromDetailsBtn" class="btn-primary btn-small"><%= icon('edit') %> Edit</button>
         </div>
     </div>
 </div>
