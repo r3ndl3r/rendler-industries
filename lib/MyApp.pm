@@ -68,7 +68,7 @@ sub startup {
     $self->sessions->default_expiration(3600 * 24 * 30); # 30 Days
 
     # Global Hook: Disable caching for all responses to bypass Cloudflare/Proxy staleness.
-    # This ensures absolute freshness for SPA state updates across all modules.
+    # This ensures absolute freshness for synchronized updates across all modules.
     $self->hook(before_dispatch => sub {
         my $c = shift;
         $c->res->headers->cache_control('no-store, no-cache, must-revalidate, max-age=0');
@@ -356,11 +356,12 @@ sub startup {
     $family->post('/swear/member/delete')->to('swear#delete_member');
     
     # --- Birthday Calendar Routes ---
+    # --- Birthday Routes ---
     $family->get('/birthdays')->to('birthdays#index');
-    $family->get('/birthdays/api/data')->to('birthdays#api_data');
-    $admin->post('/birthdays/add')->to('birthdays#add');
-    $admin->post('/birthdays/edit/:id')->to('birthdays#edit');
-    $admin->post('/birthdays/delete/:id')->to('birthdays#delete');
+    $family->get('/birthdays/api/state')->to('birthdays#api_state');
+    $admin->post('/birthdays/api/add')->to('birthdays#add');
+    $admin->post('/birthdays/api/edit/:id')->to('birthdays#edit');
+    $admin->post('/birthdays/api/delete/:id')->to('birthdays#delete');
 
     # --- Admin Settings Routes ---
     $admin->get('/settings')->to('settings#index');
@@ -486,8 +487,9 @@ sub startup {
 
     # --- Family Pulse AI Routes ---
     $family->get('/ai')->to('AI#index');
-    $family->post('/ai/chat')->to('AI#chat');
-    $family->post('/ai/clear')->to('AI#clear');
+    $family->get('/ai/api/state')->to('AI#api_state');
+    $family->post('/ai/api/chat')->to('AI#chat');
+    $family->post('/ai/api/clear')->to('AI#clear');
 
     # --- Medication Registry Management (Admin Only) ---
     my $med_admin = $family->under(sub { shift->is_admin || 0 });
