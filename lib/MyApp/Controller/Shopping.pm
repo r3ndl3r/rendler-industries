@@ -13,15 +13,15 @@ use Mojo::Util qw(trim);
 #   - Depends on authentication context
 #   - Uses DB::ShoppingList helpers for persistence
 
-# Renders the shopping list interface (SPA skeleton).
+# Renders the shopping list interface.
 # Route: GET /shopping
 sub index {
     shift->render('shopping');
 }
 
-# Returns all shopping list items as JSON for initial SPA load.
-# Route: GET /shopping/api/data
-sub api_data {
+# Returns all shopping list items as JSON for synchronization.
+# Route: GET /shopping/api/state
+sub api_state {
     my $c = shift;
     my $items = $c->db->get_shopping_items();
     $c->render(json => { 
@@ -108,7 +108,7 @@ sub edit {
     }
 }
 
-# Bulk deletes all completed items (AJAX).
+# Bulk deletes all completed items.
 # Route: POST /shopping/api/clear
 sub clear_checked {
     my $c = shift;
