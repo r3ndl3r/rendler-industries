@@ -602,7 +602,7 @@ async function speakText(text) {
     if (!text) return;
 
     try {
-        const response = await fetch('/api/tts/synthesize', {
+        const response = await fetch('/tts/api/synthesize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: text })
@@ -639,7 +639,7 @@ async function translateText(text, target = 'th') {
     if (!text) return null;
 
     try {
-        const response = await fetch('/api/translate', {
+        const response = await fetch('/translation/api/translate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: text, target: target })
