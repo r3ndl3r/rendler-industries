@@ -1,7 +1,7 @@
 <%# /templates/ai.html.ep %>
 
 % layout 'default';
-% title icon('imposter') . ' Family Pulse AI';
+% title icon('ai') . ' Family Pulse AI';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/ai.css?<%= time %>">
@@ -10,7 +10,7 @@
 
 <div class="ai-container">
     <div class="header-bar">
-        <h1><%= icon('imposter') %> <span>Family Pulse AI</span></h1>
+        <h1><%= icon('ai') %> <span>Family Pulse AI</span></h1>
         <div class="manage-actions">
             <button class="btn-secondary" onclick="clearChat()"><%= icon('delete') %> Clear History</button>
         </div>
@@ -19,24 +19,17 @@
     <div class="chat-wrapper glass-panel">
         <%# Chat Messages %>
         <div id="chat-messages" class="chat-messages">
-            % for my $msg (@$history) {
-                <div class="message <%= $msg->{role} %>">
-                    <div class="message-bubble">
-                        <span class="role-icon"><%= $msg->{role} eq 'user' ? icon(session('user')) : '🧠' %></span>
-                        <div class="text-content"><script>document.write(formatMarkdown(`<%== $msg->{content} %>`))</script></div>
-                    </div>
-                </div>
-            % }
-            % unless (@$history) {
-                <div class="welcome-hint">
-                    <p>🧠 I'm your dashboard assistant. Ask me anything about your medications, shopping, or calendar.</p>
-                </div>
-            % }
+            <div class="component-loading">
+                <div class="loading-scan-line"></div>
+                <span class="loading-icon-pulse"><%= icon('ai') %></span>
+                <p class="loading-label">Synchronizing neural link...</p>
+                <p class="loading-sub">Retrieving conversation history and dashboard context</p>
+            </div>
         </div>
 
         <%# Chat Input Area %>
         <div class="chat-input-area">
-            <div id="file-indicator" class="file-pill" style="display:none;">
+            <div id="file-indicator" class="file-pill">
                 <span id="file-label"></span>
                 <span class="close-btn" onclick="clearFile()">&times;</span>
             </div>
