@@ -425,15 +425,17 @@ sub startup {
 
     # --- Timer Routes ---
     $family->get('/timers')->to('timers#dashboard');
-    $family->get('/timers/api/status')->to('timers#api_status');
-    $family->post('/timers/start')->to('timers#start_timer');
-    $family->post('/timers/stop')->to('timers#stop_timer');
-    $family->post('/timers/pause')->to('timers#toggle_pause');
+    $family->get('/timers/api/state')->to('timers#api_state');
+    $family->post('/timers/api/start')->to('timers#start_timer');
+    $family->post('/timers/api/stop')->to('timers#stop_timer');
+    $family->post('/timers/api/pause')->to('timers#toggle_pause');
+    
     $admin->get('/timers/manage')->to('timers#manage');
-    $admin->post('/timers/create')->to('timers#create');
-    $admin->post('/timers/update/:id')->to('timers#update');
-    $admin->post('/timers/delete/:id')->to('timers#delete');
-    $admin->post('/timers/bonus')->to('timers#grant_bonus');
+    $admin->get('/timers/api/manage/state')->to('timers#api_manage_state');
+    $admin->post('/timers/api/create')->to('timers#create');
+    $admin->post('/timers/api/update/:id')->to('timers#update');
+    $admin->post('/timers/api/delete/:id')->to('timers#delete');
+    $admin->post('/timers/api/bonus')->to('timers#grant_bonus');
 
     # --- Citizenship Quiz Routes ---
     $r->get('/quiz')->to('quiz#index');
