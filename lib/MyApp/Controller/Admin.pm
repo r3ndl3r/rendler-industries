@@ -10,34 +10,42 @@ use Mojo::Util qw(trim);
 #   - Approval workflow for new registrations
 #   - User profile editing (Roles, Details, Passwords)
 #   - Account deletion
+#   - Granular role toggling (Admin/Family)
 # Integration points:
-#   - Uses DB::Users helpers for all data persistence
+#   - Restricted to administrative members via router bridge
+#   - Depends on DB::Users for all data persistence and aggregated roster data
 
-# Renders the main user administration dashboard (Skeleton).
+# Renders the main user administration dashboard skeleton.
 # Route: GET /users
 # Parameters: None
 # Returns: Rendered HTML template 'users'.
 sub user_list {
     my $c = shift;
-
-    # Handle AJAX state request
-    if ($c->req->headers->header('X-Requested-With') && $c->req->headers->header('X-Requested-With') eq 'XMLHttpRequest') {
-        my $users = $c->db->get_all_users();
-        return $c->render(json => { 
-            success => 1, 
-            users   => $users,
-            is_admin => $c->is_admin ? 1 : 0
-        });
-    }
-
+    $c->stash(title => 'User Management');
     $c->render('users');
 }
 
-# Permanently removes a user account via AJAX.
+# Returns the consolidated state for the module.
+# Route: GET /users/api/state
+# Parameters: None
+# Returns: JSON object { users, is_admin, success }
+sub api_state {
+    my $c = shift;
+    
+    my $state = {
+        users    => $c->db->get_all_users(),
+        is_admin => $c->is_admin ? 1 : 0,
+        success  => 1
+    };
+
+    $c->render(json => $state);
+}
+
+# Permanently removes a user account.
 # Route: POST /users/delete/:id
 # Parameters:
-#   id : Unique User ID (Integer)
-# Returns: JSON object { success, message }
+#   id : Unique User ID
+# Returns: JSON object { success, message, error }
 sub delete_user {
     my $c = shift;
     my $id = $c->param('id');
@@ -50,17 +58,17 @@ sub delete_user {
         $c->db->delete_user($id);
     };
     if ($@) {
-        return $c->render(json => { success => 0, error => 'Database error' });
+        return $c->render(json => { success => 0, error => 'Database error while removing account' });
     }
 
     return $c->render(json => { success => 1, message => "Account removed." });
 }
 
-# Activates a pending user account via AJAX.
+# Activates a pending user account.
 # Route: POST /users/approve/:id
 # Parameters:
-#   id : Unique User ID (Integer)
-# Returns: JSON object { success, message }
+#   id : Unique User ID
+# Returns: JSON object { success, message, error }
 sub approve_user {
     my $c = shift;
     my $id = $c->param('id');
@@ -78,7 +86,7 @@ sub approve_user {
         $c->db->approve_user($id);
     };
     if ($@) {
-        return $c->render(json => { success => 0, error => 'Database error' });
+        return $c->render(json => { success => 0, error => 'Database error while approving user' });
     }
 
     # Dispatch welcome email asynchronously
@@ -93,18 +101,18 @@ sub approve_user {
     return $c->render(json => { success => 1, message => "User approved." });
 }
 
-# Processes updates to a user profile via AJAX.
+# Processes updates to an existing user profile.
 # Route: POST /users/update/:id
 # Parameters:
-#   id         : Unique User ID (Integer)
-#   username   : New username (String)
-#   email      : New email address (String)
-#   discord_id : Discord user identifier (String)
-#   is_admin   : Administrative bit (Boolean)
-#   is_family  : Family member bit (Boolean)
-#   status     : Account lifecycle state (String)
-#   password   : New credential (Optional String)
-# Returns: JSON object { success, message }
+#   id         : Unique User ID
+#   username   : Updated username
+#   email      : Updated email address
+#   discord_id : Discord identifier
+#   is_admin   : Administrative permission bit
+#   is_family  : Family member permission bit
+#   status     : Account lifecycle state
+#   password   : New credential (Optional)
+# Returns: JSON object { success, message, error }
 sub edit_user {
     my $c = shift;
     my $id = $c->param('id');
@@ -112,12 +120,10 @@ sub edit_user {
     my $email = trim($c->param('email') // '');
     my $discord_id = trim($c->param('discord_id') // '');
     
-    # Validate User ID format
     unless (defined $id && $id =~ /^\d+$/) {
         return $c->render(json => { success => 0, error => 'Invalid user ID' });
     }
 
-    # Retrieve current user data to preserve roles if not in form
     my $current_user = $c->db->get_user_by_id($id);
     unless ($current_user) {
         return $c->render(json => { success => 0, error => 'User not found' });
@@ -125,12 +131,9 @@ sub edit_user {
 
     my $is_admin = defined $c->param('is_admin') ? ($c->param('is_admin') ? 1 : 0) : $current_user->{is_admin};
     my $is_family = defined $c->param('is_family') ? ($c->param('is_family') ? 1 : 0) : $current_user->{is_family};
-    
-    # Logic: Protection - Preserve existing status if not provided in request
     my $status = $c->param('status') // $current_user->{status} // 'pending';
     my $password = $c->param('password');
     
-    # Validate strict username and email formats
     unless ($username =~ /^[a-zA-Z0-9_]{3,20}$/) {
         return $c->render(json => { success => 0, error => 'Invalid username (3-20 chars, alphanumeric/underscore)' });
     }
@@ -139,15 +142,12 @@ sub edit_user {
     }
     
     eval {
-        # Conditionally update password if provided
         if (defined $password && length $password > 0) {
             if (length($password) < 8) {
                 die "Password too short (min 8 chars)";
             }
             $c->db->update_user_password($id, $password);
         }
-        
-        # Update profile details
         $c->db->update_user($id, $username, $email, $discord_id, $is_admin, $is_family, $status);
     };
     
@@ -160,13 +160,13 @@ sub edit_user {
     return $c->render(json => { success => 1, message => "User profile updated successfully." });
 }
 
-# Granularly toggles a user role (Admin/Family) via AJAX.
+# Granularly toggles a specific user role.
 # Route: POST /users/toggle_role
 # Parameters:
-#   id    : User ID (Integer)
+#   id    : Unique User ID
 #   role  : Targeted role ('admin'|'family')
-#   value : New boolean state (1|0)
-# Returns: JSON object { success }
+#   value : New boolean state
+# Returns: JSON object { success, message, error }
 sub toggle_role {
     my $c = shift;
     my $id = $c->param('id');
@@ -179,12 +179,12 @@ sub toggle_role {
 
     eval {
         $c->db->toggle_user_role($id, $role, $value);
-        $c->render(json => { success => 1 });
+        $c->render(json => { success => 1, message => "Role updated" });
     };
 
     if ($@) {
         $c->app->log->error("Failed to toggle role ($role) for user $id: $@");
-        $c->render(json => { success => 0, error => 'Database error' });
+        $c->render(json => { success => 0, error => 'Database error while updating role' });
     }
 }
 
