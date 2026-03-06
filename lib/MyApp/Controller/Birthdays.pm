@@ -12,27 +12,18 @@ use Mojo::Util qw(trim);
 # Integration points:
 #   - Uses DB::Birthdays for data persistence
 #   - Restricted administrative actions via backend is_admin checks
-#   - Standardized JSON responses for SPA integration
+#   - Standardized JSON responses for interface synchronization
 
-# Renders the main birthdays dashboard.
+# Renders the birthday interface.
 # Route: GET /birthdays
-# Parameters: None
-# Returns:
-#   Rendered HTML template 'birthdays' (SPA container)
 sub index {
-    my $c = shift;
-    $c->render('birthdays');
+    shift->render('birthdays');
 }
 
 # Returns all birthday records with enriched metadata.
-# Route: GET /birthdays/api/data
-# Parameters: None
-# Returns:
-#   JSON object containing:
-#     - success   : Boolean status
-#     - birthdays : Array of records with zodiac and formatted dates
-#     - is_admin  : Permission flag for UI toggles
-sub api_data {
+# Route: GET /birthdays/api/state
+# Returns: JSON object { birthdays, is_admin, success }
+sub api_state {
     my $c = shift;
     my @birthdays = $c->db->get_all_birthdays();
     
@@ -52,32 +43,20 @@ sub api_data {
 }
 
 # Processes the creation of a new birthday record.
-# Route: POST /birthdays/add
-# Parameters:
-#   name       : Name of the individual
-#   birth_date : ISO date string (YYYY-MM-DD)
-# Returns:
-#   JSON object { success, message/error }
+# Route: POST /birthdays/api/add
 sub add {
     my $c = shift;
-    
-    # Enforce administrative permissions
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $name       = trim($c->param('name') // '');
     my $birth_date = trim($c->param('birth_date') // '');
     
-    # Validate required payload
     unless ($name && $birth_date) {
         return $c->render(json => { success => 0, error => 'Name and Date are required' });
     }
     
-    eval {
-        $c->db->add_birthday($name, $birth_date);
-    };
-    
+    eval { $c->db->add_birthday($name, $birth_date); };
     if ($@) {
-        $c->app->log->error("Birthday creation failed: $@");
         return $c->render(json => { success => 0, error => "Database error occurred" });
     }
     
@@ -85,16 +64,9 @@ sub add {
 }
 
 # Updates an existing birthday record.
-# Route: POST /birthdays/edit/:id
-# Parameters:
-#   id         : Target record ID
-#   name       : Updated name
-#   birth_date : Updated ISO date string
-# Returns:
-#   JSON object { success, message/error }
+# Route: POST /birthdays/api/edit/:id
 sub edit {
     my $c = shift;
-    
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $id         = $c->param('id');
@@ -105,12 +77,8 @@ sub edit {
         return $c->render(json => { success => 0, error => 'All fields are required' });
     }
     
-    eval {
-        $c->db->update_birthday($id, $name, $birth_date);
-    };
-    
+    eval { $c->db->update_birthday($id, $name, $birth_date); };
     if ($@) {
-        $c->app->log->error("Birthday update failed for ID $id: $@");
         return $c->render(json => { success => 0, error => "Database update failed" });
     }
     
@@ -118,24 +86,14 @@ sub edit {
 }
 
 # Permanently removes a birthday record.
-# Route: POST /birthdays/delete/:id
-# Parameters:
-#   id : Unique record ID
-# Returns:
-#   JSON object { success, message/error }
+# Route: POST /birthdays/api/delete/:id
 sub delete {
     my $c = shift;
-    
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $id = $c->param('id');
-    
-    eval {
-        $c->db->delete_birthday($id);
-    };
-    
+    eval { $c->db->delete_birthday($id); };
     if ($@) {
-        $c->app->log->error("Birthday deletion failed for ID $id: $@");
         return $c->render(json => { success => 0, error => "Database deletion failed" });
     }
     
