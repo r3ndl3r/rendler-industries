@@ -167,7 +167,7 @@ sub reorder {
 }
 
 # API Endpoint: Retrieves the hierarchical menu tree for the current user.
-# Route: GET /api/menu/state
+# Route: GET /menu/api/state
 # Parameters: None (Uses session for permissions).
 # Returns:
 #   JSON object containing 'menu' tree, 'is_logged_in', and 'is_admin' flags.
