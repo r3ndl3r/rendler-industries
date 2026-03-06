@@ -212,6 +212,10 @@
     margin-top: 5rem !important;
 }
 
+.modal-high-index {
+    z-index: 11000 !important;
+}
+
 @media (max-width: 768px) {
     .medication-container {
         padding: 1rem;
