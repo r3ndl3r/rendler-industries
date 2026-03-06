@@ -1,154 +1,62 @@
 /* /public/css/users.css */
 
-* {
-    box-sizing: border-box;
-}
-
-.admin-container {
+.users-container {
     padding: 2rem 1rem;
     padding-top: 0;
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     min-height: 100vh;
-    font-family: inherit;
 }
 
-/* .users-table uses global .data-table styles */
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #1e293b;
+    border-radius: 1rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
 
-.status-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
+.users-table th {
+    text-transform: uppercase;
     font-size: 0.75rem;
     font-weight: 600;
-    font-family: inherit;
+    color: #94a3b8;
+    padding: 1.25rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.status-approved {
-    background: #10b981;
-    color: #fff;
+.users-table tr td {
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+    font-size: 0.95rem;
 }
 
-.status-pending {
-    background: #f59e0b;
-    color: #fff;
+.users-table tr:last-child td {
+    border-bottom: none;
 }
 
-.admin-badge {
-    color: #3b82f6;
-    font-weight: 600;
+.user-username {
+    color: #ffffff;
+    font-weight: 400;
 }
 
-.family-badge {
-    color: #a855f7;
-    font-weight: 600;
-}
-
-.text-wrap {
-    word-wrap: break-word;
-    word-break: break-word;
-    overflow-wrap: break-word;
-    hyphens: auto;
-    max-width: 100%;
-    display: block;
-    font-family: inherit;
-}
-
-.action-btns form {
-    display: inline;
-}
-
-.modal-actions {
-    justify-content: center !important;
-}
-
-.user-discord-active {
-    color: #7289da !important;
-    opacity: 1 !important;
+.user-email, .user-discord {
+    color: #93c5fd;
 }
 
 .user-discord-empty {
-    opacity: 0.3 !important;
+    color: #475569;
 }
 
 .text-small {
-    font-size: 0.8125rem;
-}
-
-.action-btns {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.edit-container {
-    padding: 2rem 1rem;
-    padding-top: 0;
-    max-width: 600px;
-    margin: 0 auto;
-    background-color: #050c1d;
-    min-height: 100vh;
-    font-family: inherit;
-}
-
-.edit-form {
-    background: #1e293b;
-    border-radius: 0.75rem;
-    padding: 1.5rem;
-    border: 1px solid #334155;
-}
-
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    color: #94a3b8;
-    font-weight: 600;
     font-size: 0.875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-family: inherit;
 }
 
-.form-group input,
-.form-group select {
-    width: 100%;
-    padding: 0.75rem;
-    background: #0f172a;
-    border: 1px solid #334155;
-    border-radius: 0.5rem;
-    color: #e2e8f0;
-    font-size: 1rem;
-    font-family: inherit;
-    appearance: auto;
-}
-
-.form-group input:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: #3b82f6;
-}
-
-/* Toggle Switch Styles */
-.toggle-group {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #0f172a;
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    border: 1px solid #334155;
-    margin-bottom: 1.5rem;
-}
-
-.toggle-group label {
-    margin-bottom: 0;
-    cursor: pointer;
-}
-
+/* --- iOS Toggle Switch Standards --- */
 .switch {
     position: relative;
     display: inline-block;
@@ -165,12 +73,9 @@
 .slider {
     position: absolute;
     cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    top: 0; left: 0; right: 0; bottom: 0;
     background-color: #334155;
-    transition: .4s;
+    transition: .3s;
     border-radius: 34px;
 }
 
@@ -182,254 +87,77 @@
     left: 4px;
     bottom: 4px;
     background-color: white;
-    transition: .4s;
+    transition: .3s;
     border-radius: 50%;
 }
 
-input:checked + .slider {
-    background-color: #3b82f6;
+/* Colors from Screenshot */
+input:checked + .slider { background-color: #3b82f6; } /* Default: Admin Blue */
+input:checked + .slider-approved { background-color: #065f46; } /* Approved Muted Green */
+input:checked + .slider-family { background-color: #a855f7; } /* Family Purple */
+
+/* Handle for Approved Green Switch is darker/grey */
+input:checked + .slider-approved:before {
+    background-color: #94a3b8;
 }
 
 input:checked + .slider:before {
     transform: translateX(24px);
 }
 
-.slider.family:checked + .slider {
-    background-color: #a855f7;
-}
-
-/* Variant for family member toggle color */
-input:checked + .slider-family {
-    background-color: #a855f7;
-}
-
-/* Variant for user approval toggle color */
-input:checked + .slider-approved {
-    background-color: #10b981; /* Emerald Green */
-}
-
-/* Disabled state styling for the lock-out effect */
 input:disabled + .slider {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
-.form-actions {
+/* --- Action Buttons --- */
+.action-btns {
     display: flex;
-    gap: 1rem;
-    margin-top: 2rem;
+    gap: 10px;
+    justify-content: center;
 }
 
-.btn {
-    flex: 1;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    text-decoration: none;
-    text-align: center;
+.btn-icon-edit, .btn-icon-delete {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
     border: none;
     cursor: pointer;
+    transition: all 0.2s;
     font-size: 1rem;
-    font-family: inherit;
 }
 
-.btn-save {
-    background: #10b981;
-    color: #fff;
-}
+.btn-icon-edit { background: #3b82f6; color: white; }
+.btn-icon-delete { background: #ef4444; color: white; }
 
-.btn-save:hover {
-    background: #059669;
-}
+.btn-icon-edit:hover { background: #2563eb; transform: translateY(-1px); }
+.btn-icon-delete:hover { background: #dc2626; transform: translateY(-1px); }
 
-.btn-cancel {
-    background: #334155;
-    color: #e2e8f0;
-}
-
-.btn-cancel:hover {
-    background: #475569;
-}
-
+/* --- Responsive --- */
 @media (max-width: 768px) {
-    body {
-        overflow-x: hidden;
-    }
-    
-    .admin-container {
+    .users-table thead { display: none; }
+    .users-table tr { 
+        display: block; 
+        margin-bottom: 1.5rem; 
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 1rem;
         padding: 0.5rem;
-        padding-top: 0;
-        background-color: #0f172a;
-        width: 100%;
-        max-width: 100vw;
-        overflow-x: hidden;
     }
-    
-    .admin-container h1 {
-        font-size: 1.5rem;
-        margin-bottom: 0.75rem;
-        padding: 0 0.25rem;
-        color: #f1f5f9;
-    }
-    
-    .users-table thead {
-        display: none;
-    }
-    
-    .users-table,
-    .users-table tbody {
-        display: block;
-        width: 100%;
-        max-width: 100%;
-        background-color: transparent;
-    }
-    
-    .users-table {
-        background: transparent;
-        box-shadow: none;
-    }
-    
-    .users-table tr {
-        margin-bottom: 0.65rem;
-        background: #1e293b;
-        border-radius: 0.75rem;
-        padding: 0.65rem;
-        border: 1px solid #334155;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.5rem;
-        overflow: hidden;
-        
-    }
-    
-    .users-table tr:hover {
-        background: #1e293b;
-    }
-    
     .users-table td {
         display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.2rem;
-        padding: 0;
-        border: none;
-        font-size: 0.8125rem;
-        color: #e2e8f0;
-        background: transparent;
-        line-height: 1.3;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border: none !important;
     }
-    
     .users-table td::before {
         content: attr(data-label);
         font-weight: 600;
-        color: #94a3b8;
+        color: #64748b;
+        font-size: 0.7rem;
         text-transform: uppercase;
-        font-size: 0.625rem;
-        letter-spacing: 0.05em;
-        margin-bottom: 0.1rem;
-        display: block;
-    }
-    
-    /* Data values on mobile */
-    .users-table td > * {
-        overflow-wrap: break-word;
-        word-wrap: break-word;
-        word-break: break-all;
-        max-width: 100%;
-        color: #e2e8f0;
-    }
-    
-    .text-wrap {
-        font-size: 0.75rem;
-        line-height: 1.3;
-        max-width: 100%;
-        overflow-wrap: break-word;
-        word-wrap: break-word;
-        word-break: break-all;
-    }
-    
-    /* Smaller status badge on mobile */
-    .status-badge {
-        font-size: 0.6875rem;
-        padding: 0.15rem 0.5rem;
-        display: inline-block;
-        max-width: fit-content;
-    }
-    
-    /* Grid positioning */
-    .users-table td[data-label="ID"] {
-        display: none;
-    }
-    
-    .users-table td[data-label="Username"] {
-        grid-column: 1;
-    }
-    
-    .users-table td[data-label="Email"] {
-        grid-column: 2;
-    }
-    
-    .users-table td[data-label="Created"] {
-        grid-column: 1;
-    }
-    
-    .users-table td[data-label="Status"] {
-        grid-column: 2;
-    }
-    
-    .users-table td[data-label="Admin"] {
-        grid-column: 1;
-    }
-
-    .users-table td[data-label="Family"] {
-        grid-column: 2;
-    }
-    
-    .users-table td[data-label="Actions"] {
-        grid-column: 1 / 3;
-        flex-direction: row !important;
-        gap: 0.4rem;
-        margin-top: 0.4rem;
-        padding-top: 0.5rem;
-        border-top: 1px solid #334155;
-        justify-content: center; /* Align icons to the center */
-    }
-    
-    .users-table td[data-label="Actions"]::before {
-        display: none;
-    }
-    
-    .action-btns {
-        width: 100%;
-        display: flex;
-        flex-direction: row;
-        gap: 0.4rem;
-        max-width: 100%;
-        justify-content: center;
-    }
-    
-    .action-btns form,
-    .action-btns a {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    /* Edit Page Mobile */
-    .edit-container {
-        padding: 1rem 0.75rem;
-        padding-top: 0;
-        max-width: 100vw;
-        overflow-x: hidden;
-    }
-    
-    .edit-form {
-        padding: 1rem;
-        max-width: 100%;
-    }
-    
-    .form-actions {
-        flex-direction: column;
     }
 }
