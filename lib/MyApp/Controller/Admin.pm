@@ -33,9 +33,10 @@ sub api_state {
     my $c = shift;
     
     my $state = {
-        users    => $c->db->get_all_users(),
-        is_admin => $c->is_admin ? 1 : 0,
-        success  => 1
+        users           => $c->db->get_all_users(),
+        is_admin        => $c->is_admin ? 1 : 0,
+        current_user_id => $c->current_user_id,
+        success         => 1
     };
 
     $c->render(json => $state);
@@ -175,6 +176,11 @@ sub toggle_role {
 
     unless ($id && $id =~ /^\d+$/ && $role =~ /^(admin|family)$/ && defined $value) {
         return $c->render(json => { success => 0, error => 'Invalid parameters' });
+    }
+
+    # Security: Prevent admins from un-admining themselves
+    if ($role eq 'admin' && $value == 0 && $id == $c->current_user_id) {
+        return $c->render(json => { success => 0, error => 'You cannot remove your own administrative privileges.' });
     }
 
     eval {
