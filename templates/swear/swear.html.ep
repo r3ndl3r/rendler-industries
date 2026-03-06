@@ -9,6 +9,7 @@
 % end
 
 <div class="swear-container">
+    <%# Visual Reference: Rules Lightbox %>
     <div class="harmony-jar-header">
         <a href="javascript:void(0)" onclick="openImageModal('https://rendler.org/files/serve/6')" class="harmony-jar-link">
             <img src="https://rendler.org/files/serve/6" alt="Family Harmony Jar Rules" class="harmony-jar-img">
@@ -16,7 +17,7 @@
     </div>
     
     <div class="manage-header">
-        <h1><%= icon('swear') %> Swear Jar</h1>
+        <h1><%= icon('swear') %> <span>Swear Jar</span></h1>
         <div class="manage-actions">
             <button class="action-btn toggle-view-btn" id="toggleViewBtn" onclick="SwearModule.toggleView()">
                 <span class="view-dashboard-text"><%= icon('settings') %> Manage Members</span>
@@ -25,74 +26,49 @@
         </div>
     </div>
 
-    <%# View: Dashboard %>
+    <%# View: Dashboard (Default) %>
     <div id="swearDashboardView">
-        <div class="jar-balance-card">
+        <div class="jar-balance-card glass-panel">
             <div class="jar-label">Real World Jar</div>
-            <div class="jar-amount">$<%= sprintf("%.2f", $jar_balance) %></div>
+            <div id="jarBalance" class="jar-amount">$0.00</div>
         </div>
 
         <div class="glass-panel">
             <h3 class="panel-title-red">Report Offense</h3>
-            <form id="addFineForm">
+            <form id="addFineForm" onsubmit="SwearModule.handleFineSubmit(event)">
                 <select name="perpetrator" id="perp_select" class="game-input" required onchange="SwearModule.updateFine()">
                     <option value="" data-fine="0" class="select-placeholder">Select Perpetrator...</option>
-                    % for my $m (@$members) {
-                        <option value="<%= $m->{name} %>" data-fine="<%= $m->{default_fine} %>" class="select-option">
-                            <%= $m->{name} %>
-                        </option>
-                    % }
                 </select>
 
                 <div class="input-row">
                     <input type="number" name="amount" id="fine_amount" class="game-input" placeholder="$ Amount" step="0.50" required>
                     <input type="text" name="reason" class="game-input" placeholder="Reason (Optional)">
                 </div>
-                <button type="submit" class="game-btn btn-red">Add Fine</button>
+                <button type="submit" id="addFineBtn" class="game-btn btn-red">Add Fine</button>
             </form>
         </div>
 
         <h2 class="section-header">Current Debts</h2>
-        
-        <div class="glass-panel panel-padding">
-            % if (@$leaderboard) {
-                % for my $row (@$leaderboard) {
-                    <div class="jar-row flex-wrap">
-                        <span class="member-name"><%= $row->{perpetrator} %></span>
-                        <div class="debt-actions">
-                            <span class="debt-amount">$<%= sprintf("%.2f", $row->{total}) %></span>
-                            
-                            <%# Logic: Hide deposit button for own debt; show for guests or others %>
-                            % my $cur_user = current_user();
-                            % if (!$cur_user || lc($row->{perpetrator}) ne lc($cur_user->{username} // '')) {
-                                <form class="pay-debt-form">
-                                    <input type="hidden" name="perpetrator" value="<%= $row->{perpetrator} %>">
-                                    <input type="number" name="amount" value="<%= sprintf("%.2f", $row->{total}) %>" step="0.50" min="0" class="game-input small-input">
-                                    <button type="submit" class="game-btn btn-green btn-small">DEPOSIT</button>
-                                </form>
-                            % }
-                        </div>
-                    </div>
-                % }
-            % } else {
-                <p class="empty-state">No active debts.</p>
-            % }
+        <div id="leaderboardContainer" class="glass-panel panel-padding">
+            <div class="component-loading">
+                <div class="loading-scan-line"></div>
+                <span class="loading-icon-pulse"><%= icon('swear') %></span>
+                <p class="loading-label">Synchronizing financial ledger...</p>
+                <p class="loading-sub">Retrieving active debts and community contributions</p>
+            </div>
         </div>
 
         <details class="collapsible-details">
             <summary>Jar Deposit (Extra Credit)</summary>
             <div class="glass-panel mt-15">
                 <p class="hint-text">Add extra credit to the jar even if you don't have active debts.</p>
-                <form id="extraDepositForm" class="flex-column">
-                    <select name="perpetrator" class="game-input" required>
+                <form id="extraDepositForm" class="flex-column" onsubmit="SwearModule.handleDepositSubmit(event)">
+                    <select name="perpetrator" id="extra_perp_select" class="game-input" required>
                         <option value="">Select Member...</option>
-                        % for my $m (@$members) {
-                            <option value="<%= $m->{name} %>"><%= $m->{name} %></option>
-                        % }
                     </select>
                     <div class="input-row">
                         <input type="number" name="amount" class="game-input" placeholder="Amount to Deposit" step="0.50" required min="0">
-                        <button type="submit" class="game-btn btn-green">Deposit Cash</button>
+                        <button type="submit" id="extraDepositBtn" class="game-btn btn-green">Deposit Cash</button>
                     </div>
                 </form>
             </div>
@@ -101,39 +77,19 @@
         <details class="collapsible-details">
             <summary>Spend from Jar</summary>
             <div class="glass-panel mt-15">
-                <form id="spendForm">
+                <form id="spendForm" onsubmit="SwearModule.handleSpendSubmit(event)">
                     <input type="number" name="amount" class="game-input" placeholder="Amount to Withdraw" step="0.50" required>
                     <input type="text" name="reason" class="game-input" placeholder="What did we buy? (e.g. Pizza)">
-                    <button type="submit" class="game-btn btn-green">Withdraw Money</button>
+                    <button type="submit" id="spendBtn" class="game-btn btn-green">Withdraw Money</button>
                 </form>
             </div>
         </details>
 
         <h3 class="panel-subtitle">Recent Activity</h3>
-        <div class="glass-panel panel-padding">
-            % for my $item (@$history) {
-                <div class="history-item <%= $item->{type} eq 'fine' ? 'type-fine' : 'type-spend' %>">
-                    <div class="history-meta">
-                        <span>
-                            % if ($item->{type} eq 'fine') {
-                                <strong class="white-text"><%= $item->{perpetrator} %></strong> owed
-                            % } elsif ($item->{type} eq 'payment') {
-                                <strong class="success-text"><%= $item->{perpetrator} %></strong> deposited
-                            % } else {
-                                <strong class="success-text">JAR SPEND</strong>
-                            % }
-                        </span>
-                        <span class="history-amount <%= $item->{type} eq 'payment' ? 'success-text' : 'white-text' %>">
-                            <%= $item->{type} eq 'payment' ? "+" : "" %>$<%= sprintf("%.2f", $item->{amount}) %>
-                        </span>
-                    </div>
-                    <small class="history-date">
-                        <%= $item->{created_at} %> 
-                        <%= $item->{reason} ? "- " . $item->{reason} : "" %>
-                        <%= $item->{type} eq 'payment' && $item->{payer_name} ? " By " . $item->{payer_name} : "" %>
-                    </small>
-                </div>
-            % }
+        <div id="historyContainer" class="glass-panel panel-padding">
+            <div class="component-loading">
+                <span class="loading-icon-pulse"><%= icon('waiting') %></span>
+            </div>
         </div>
     </div>
 
@@ -141,41 +97,28 @@
     <div id="swearManageView" class="hidden">
         <div class="glass-panel">
             <h3 class="panel-title-blue">Add New Member</h3>
-            <form id="addMemberForm">
+            <form id="addMemberForm" onsubmit="SwearModule.handleAddMemberSubmit(event)">
                 <label>Name</label>
                 <input type="text" name="name" class="game-input" required placeholder="e.g. Mom">
                 
                 <label>Default Fine ($)</label>
                 <input type="number" name="default_fine" class="game-input" required value="2.00" step="0.50">
                 
-                <button type="submit" class="game-btn btn-green">Add Member</button>
+                <button type="submit" id="addMemberBtn" class="game-btn btn-green">Add Member</button>
             </form>
         </div>
 
         <h3 class="member-list-title">Active Members</h3>
-        <div class="glass-panel panel-padding">
-            % if (@$members) {
-                % for my $m (@$members) {
-                    <div class="member-row" data-id="<%= $m->{id} %>">
-                        <div>
-                            <strong class="member-display-name"><%= $m->{name} %></strong>
-                            <br>
-                            <span class="member-default-fine">Default: $<%= sprintf("%.2f", $m->{default_fine}) %></span>
-                        </div>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteMember(<%= $m->{id} %>, '<%= $m->{name} %>')"><%= icon('delete') %></button>
-                    </div>
-                % }
-            % } else {
-                <div class="empty-state">
-                    <p>📭 No members found.</p>
-                </div>
-            % }
+        <div id="memberListContainer" class="glass-panel panel-padding">
+            <div class="component-loading">
+                <span class="loading-icon-pulse"><%= icon('waiting') %></span>
+            </div>
         </div>
     </div>
 </div>
 
 <%# Image Viewer Modal %>
-<div id="imageModal" class="modal-overlay" style="display: none;">
+<div id="imageModal" class="modal-overlay">
     <div class="image-modal-content">
         <span class="close-btn" onclick="closeImageModal()"><%= icon('close') %></span>
         <img id="modalImage" src="" alt="Full Screen Rules">
