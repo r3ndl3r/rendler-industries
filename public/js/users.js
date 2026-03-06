@@ -26,7 +26,8 @@ const CONFIG = {
 
 let STATE = {
     users: [],      // Collection of user account records
-    isAdmin: false   // Authorization flag for administrative actions
+    isAdmin: false,  // Authorization flag for administrative actions
+    currentUserId: 0 // ID of the currently logged-in admin
 };
 
 /**
@@ -60,6 +61,7 @@ async function loadState() {
         if (data && data.success) {
             STATE.users = data.users;
             STATE.isAdmin = !!data.is_admin;
+            STATE.currentUserId = data.current_user_id;
             renderTable();
         }
     } catch (err) {
@@ -120,7 +122,9 @@ function renderUserRow(u) {
             </td>
             <td data-label="Admin">
                 <label class="switch">
-                    <input type="checkbox" onchange="toggleRole(${u.id}, 'admin', this.checked)" ${u.is_admin == 1 ? 'checked' : ''}>
+                    <input type="checkbox" onchange="toggleRole(${u.id}, 'admin', this.checked)" 
+                           ${u.is_admin == 1 ? 'checked' : ''}
+                           ${u.id == STATE.currentUserId ? 'disabled' : ''}>
                     <span class="slider"></span>
                 </label>
             </td>
@@ -245,6 +249,13 @@ async function approveUser(userId, checkbox) {
  * @returns {Promise<void>}
  */
 async function toggleRole(userId, role, value) {
+    // Security: Prevent administrators from removing their own privileges
+    if (role === 'admin' && !value && userId == STATE.currentUserId) {
+        showToast('Operation rejected: You cannot remove your own admin status.', 'error');
+        renderTable();
+        return;
+    }
+
     const result = await apiPost('/users/toggle_role', { id: userId, role, value: value ? 1 : 0 });
     if (result && result.success) {
         const u = STATE.users.find(item => item.id == userId);
