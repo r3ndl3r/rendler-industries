@@ -15,39 +15,52 @@
 
     <%# Add Task Form %>
     <div class="glass-panel add-item-panel">
-        <form id="addTodoForm" class="add-item-form">
+        <form id="addTodoForm" class="add-item-form" onsubmit="handleAddTodo(event)">
             <div class="form-group flex-1 no-margin">
-                <textarea id="taskInput" name="task_name" class="game-input" placeholder="What needs to be done?" autocomplete="off" required maxlength="1000" rows="1"></textarea>
+                <textarea 
+                    id="taskInput" 
+                    name="task_name" 
+                    class="game-input" 
+                    placeholder="What needs to be done?" 
+                    autocomplete="off" 
+                    required 
+                    maxlength="1000" 
+                    rows="1"
+                ></textarea>
             </div>
-            <button type="submit" class="btn-blue-add">Add Task</button>
+            <button type="submit" id="addTaskBtn" class="btn-blue-add">Add Task</button>
         </form>
     </div>
 
     <%# Todo List Items %>
     <div id="todoListContainer" class="items-container">
-        <div class="loading-state">
-            <p>Loading todo list...</p>
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse"><%= icon('todo') %></span>
+            <p class="loading-label">Synchronizing todo list...</p>
+            <p class="loading-sub">Retrieving active tasks and historical records</p>
         </div>
     </div>
 </div>
 
 <%# Edit Modal %>
-<div id="editModal" class="modal-overlay">
+<div id="editModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
             <h3><%= icon('edit') %> Edit Task</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
-        <div class="modal-body">
-            <div class="modal-group">
-                <label for="editName">Task Description</label>
-                <textarea id="editName" class="game-input" maxlength="1000" rows="3"></textarea>
-                <input type="hidden" id="editId">
+        <form id="editForm" onsubmit="handleEditSubmit(event)">
+            <div class="modal-body">
+                <div class="modal-group">
+                    <label for="editName">Task Description</label>
+                    <textarea id="editName" name="task_name" class="game-input" maxlength="1000" rows="3" required></textarea>
+                    <input type="hidden" id="editId" name="id">
+                </div>
             </div>
-        </div>
-        <div class="modal-actions modal-actions-center">
-            <button type="button" onclick="submitEdit()" class="btn-primary"><%= icon('save') %> Save</button>
-        </div>
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" id="editSaveBtn" class="btn-primary"><%= icon('save') %> Save changes</button>
+            </div>
+        </form>
     </div>
 </div>
-
