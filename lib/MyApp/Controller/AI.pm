@@ -10,22 +10,36 @@ use Mojo::JSON qw(encode_json decode_json);
 # Features:
 #   - Contextual memory (Dashboard state injection)
 #   - Multimodal analysis (BLOB image processing from DB)
-#   - Task orchestration foundation (Gemini 2.5 Flash)
 #   - Conversational persistence via MariaDB
+#   - Synchronized message history handshake
 # Integration points:
 #   - Restricted to 'family' bridge via router
 #   - Depends on DB::AI for state aggregation and history
 #   - Uses global gemini_api_key from app_secrets
 
-# Renders the primary AI chat interface.
+# Renders the message interface.
 # Route: GET /ai
 sub index {
+    shift->render('ai');
+}
+
+# Returns the consolidated state for the AI module.
+# Route: GET /ai/api/state
+# Returns: JSON object { history, username, success }
+sub api_state {
     my $c = shift;
-    my $history = $c->db->get_ai_history($c->current_user_id, 20);
-    $c->render('ai', history => $history, title => 'Family Pulse AI');
+    my $user_id = $c->current_user_id;
+    my $history = $c->db->get_ai_history($user_id, 20);
+    
+    $c->render(json => {
+        success  => 1,
+        history  => $history,
+        username => $c->session('user')
+    });
 }
 
 # Processes a user prompt and returns AI response via AJAX.
+# Route: POST /ai/api/chat
 sub chat {
     my $c = shift;
     my $user_id = $c->current_user_id;
@@ -43,14 +57,14 @@ sub chat {
     Be helpful, concise, and occasionally slightly witty. 
     CURRENT DASHBOARD STATE: " . encode_json($snapshot);
 
-    # 2. Prepare Payload (Matching your working receipts.pl logic)
+    # 2. Prepare Payload
     my @user_parts = ({ text => $prompt });
     
     if ($file_id) {
         my $attachment = $c->db->get_ai_attachment($file_type, $file_id);
         if ($attachment && $attachment->{data}) {
             push @user_parts, {
-                inlineData => { # Use camelCase as required by v1beta
+                inlineData => { 
                     mimeType => $attachment->{mime},
                     data     => b64_encode($attachment->{data}, '')
                 }
@@ -76,7 +90,7 @@ sub chat {
     my $tx = $ua->post("$endpoint?key=$api_key" => json => {
         contents => \@contents,
         system_instruction => { parts => [{ text => $system_instructions }] },
-        tools => [{ google_search => {} }], # Enable web search
+        tools => [{ google_search => {} }], 
         generationConfig => {
             temperature => 0.7,
             maxOutputTokens => 1000,
@@ -108,9 +122,7 @@ sub chat {
 }
 
 # Permanently removes all chat history for the current user.
-# Route: POST /ai/clear
-# Returns:
-#   JSON: { success => 1 }
+# Route: POST /ai/api/clear
 sub clear {
     my $c = shift;
     $c->db->clear_ai_history($c->current_user_id);
