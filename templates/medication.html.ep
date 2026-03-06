@@ -11,49 +11,45 @@
 <div class="medication-container">
     <div class="header-bar">
         <h1><%= icon('medication') %> <span>Family Medication</span></h1>
-        <div class="manage-actions">
-            % if (is_admin) {
-                <button class="action-btn registry-btn" onclick="openRegistryModal()"><%= icon('settings') %> Registry</button>
-            % }
+        <div class="manage-actions" id="admin-actions">
+            <button class="action-btn registry-btn" onclick="openRegistryModal()"><%= icon('settings') %> Registry</button>
+            <button class="btn-primary" onclick="openDoseModal()"><%= icon('add') %> Log</button>
+        </div>
+        <div class="manage-actions" id="member-actions">
             <button class="btn-primary" onclick="openDoseModal()"><%= icon('add') %> Log</button>
         </div>
     </div>
 
-    <% if (my $msg = flash('message')) { %>
-        <script>document.addEventListener('DOMContentLoaded', () => showToast("<%= $msg %>", 'success'));</script>
-    <% } %>
-    <% if (my $err = flash('error')) { %>
-        <script>document.addEventListener('DOMContentLoaded', () => showToast("<%= $err %>", 'error'));</script>
-    <% } %>
-
     <%# Main Dynamic Container %>
     <div id="medication-grid" class="medication-grid">
-        <p class="loading">Loading family data...</p>
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse"><%= icon('medication') %></span>
+            <p class="loading-label">Synchronizing medication logs...</p>
+            <p class="loading-sub">Retrieving latest dosage history and family registry</p>
+        </div>
     </div>
 </div>
 
 <%# Add Dose Modal %>
-<div id="doseModal" class="modal-overlay" style="display: none;">
+<div id="doseModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
             <h3><%= icon('add') %> Log Medication</h3>
             <span class="close-btn" onclick="closeDoseModal()">&times;</span>
         </div>
-        <form id="doseForm" onsubmit="submitForm(event, '/medication/add')">
+        <form id="doseForm" onsubmit="handleLogSubmit(event, '/medication/api/add')">
             <div class="modal-body">
                 <div class="form-group">
                     <label>Who took it?</label>
-                    <select name="family_member_id" id="add_member_select" class="game-input" required>
+                    <select name="family_member_id" id="add_member_select" class="game-input member-dropdown" required>
                         <option value="" disabled selected>Select family member</option>
-                        % for my $m (@$members) {
-                            <option value="<%= $m->{id} %>" <%= $m->{username} eq session('user') ? 'selected' : '' %>><%= icon($m->{username}) %> <%= $m->{username} %></option>
-                        % }
                     </select>
                 </div>
 
                 <div class="form-group">
                     <label>Quick Select Medication</label>
-                    <select id="add_quick_select" class="game-input" onchange="fillForm('add', this.value, this.options[this.selectedIndex].dataset.dosage)">
+                    <select id="add_quick_select" class="game-input registry-dropdown" onchange="fillForm('add', this.value, this.options[this.selectedIndex].dataset.dosage)">
                         <option value="" selected>-- Select existing --</option>
                     </select>
                 </div>
@@ -77,33 +73,30 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn-primary"><%= icon('save') %> Save Log</button>
+                <button type="submit" id="addSaveBtn" class="btn-primary"><%= icon('save') %> Save Log</button>
             </div>
         </form>
     </div>
 </div>
 
 <%# Edit Dose Modal %>
-<div id="editModal" class="modal-overlay" style="display: none;">
+<div id="editModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
             <h3><%= icon('edit') %> Edit Log</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
-        <form id="editForm" onsubmit="submitForm(event, this.action)">
+        <form id="editForm" onsubmit="handleLogSubmit(event, this.action)">
             <div class="modal-body">
                 <div class="form-group">
                     <label>Who took it?</label>
-                    <select name="family_member_id" id="edit_member_select" class="game-input" required>
-                        % for my $m (@$members) {
-                            <option value="<%= $m->{id} %>"><%= icon($m->{username}) %> <%= $m->{username} %></option>
-                        % }
+                    <select name="family_member_id" id="edit_member_select" class="game-input member-dropdown" required>
                     </select>
                 </div>
 
                 <div class="form-group">
                     <label>Quick Select Medication</label>
-                    <select id="edit_quick_select" class="game-input" onchange="fillForm('edit', this.value, this.options[this.selectedIndex].dataset.dosage)">
+                    <select id="edit_quick_select" class="game-input registry-dropdown" onchange="fillForm('edit', this.value, this.options[this.selectedIndex].dataset.dosage)">
                         <option value="" selected>-- Select existing --</option>
                     </select>
                 </div>
@@ -127,14 +120,14 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" id="editSaveBtn" class="btn-primary"><%= icon('save') %> Save changes</button>
             </div>
         </form>
     </div>
 </div>
 
 <%# Registry Management Modal (Admin) %>
-<div id="registryModal" class="modal-overlay" style="display: none;">
+<div id="registryModal" class="modal-overlay">
     <div class="modal-content modal-registry">
         <div class="modal-header">
             <h3><%= icon('settings') %> Manage Medication</h3>
@@ -156,19 +149,17 @@
                 </table>
             </div>
         </div>
-        <div class="modal-actions" style="display: none;">
-        </div>
     </div>
 </div>
 
 <%# Edit Registry Item Modal (Admin) %>
-<div id="manageEditModal" class="modal-overlay" style="display: none; z-index: 11000;">
+<div id="manageEditModal" class="modal-overlay modal-high-index">
     <div class="modal-content modal-content-small">
         <div class="modal-header">
             <h3><%= icon('edit') %> Edit Medication</h3>
             <span class="close-btn" onclick="closeManageModal()">&times;</span>
         </div>
-        <form id="manageEditForm" onsubmit="submitForm(event, this.action, true)">
+        <form id="manageEditForm" onsubmit="handleRegistrySubmit(event, this.action)">
             <div class="modal-body">
                 <input type="hidden" name="id" id="manage_id">
                 <div class="form-group">
@@ -181,13 +172,8 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" id="manageSaveBtn" class="btn-primary"><%= icon('save') %> Save</button>
             </div>
         </form>
     </div>
 </div>
-
-<script>
-    const CURRENT_USER = "<%= session('user') %>";
-    const IS_ADMIN = <%= is_admin ? 'true' : 'false' %>;
-</script>
