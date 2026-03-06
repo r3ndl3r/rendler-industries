@@ -1,121 +1,113 @@
 // /public/js/shopping.js
 
 /**
- * Shopping List Module
+ * Shopping List Controller
  * 
- * This module manages the collaborative Family Shopping List. It provides
- * a 100% AJAX-driven SPA experience for real-time list management.
+ * Manages the collaborative Family Shopping List using a state-driven 
+ * architecture. It provides a 100% AJAX-driven SPA experience with 
+ * real-time synchronization and optimistic UI updates.
  * 
  * Features:
- * - Real-time synchronization with family shopping data
- * - Sectioned views (To Buy vs. Checked Items)
- * - Automatic Google Search deep-linking for active items
- * - Mandatory Action pattern for editing and batch clearing (No Cancel buttons)
- * - Lifecycle-aware button state management to prevent "stuck" indicators
- * - Mobile-first layout with high-visibility touch targets
+ * - State-driven list rendering (To Buy vs. Checked Items)
+ * - Automatic background synchronization every 5 minutes
+ * - Real-time role-based UI adjustments (Admin actions)
+ * - Mandatory Action pattern for modifications (No Cancel buttons)
+ * - Lifecycle-aware button state management for network flight indicators
+ * - Sanity-checked DOM manipulation for XSS prevention
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, escapeHtml, and modal helpers
+ * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
  * - toast.js: For notification feedback
  */
 
 /**
- * Application State
- * Maintains current collection of shopping items and user permission context
+ * --- Module Configuration & State ---
  */
-let shoppingItems = [];             // Collection of {id, item_name, added_by, is_checked}
-let isAdmin = false;                // Permission flag for administrative actions
+const CONFIG = {
+    SYNC_INTERVAL_MS: 300000         // Background synchronization frequency
+};
+
+let STATE = {
+    items: [],                      // Collection of {id, item_name, added_by, is_checked}
+    isAdmin: false                  // Permission gate for destructive actions
+};
 
 /**
- * Initialization System
- * Boots the module and establishes event listeners
+ * Bootstraps the module state and establishes event delegation.
+ * 
+ * @returns {void}
  */
-document.addEventListener('DOMContentLoaded', function() {
-    // UI: focus item entry field for rapid input
+document.addEventListener('DOMContentLoaded', () => {
+    // UI: Focus entry field for rapid input
     const itemInput = document.querySelector('input[name="item_name"]');
     if (itemInput) itemInput.focus();
 
-    // Data: Fetch initial collection from server
-    loadShoppingList();
+    // Initial fetch of the shopping roster
+    loadState();
 
-    // Interaction: Handle item addition form
-    const addForm = document.getElementById('addShoppingForm');
-    if (addForm) {
-        addForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            addItem();
-        });
-    }
+    // Global modal behavior
+    setupGlobalModalClosing(['modal-overlay'], [closeEditModal]);
 
-    // Modal: Configure global click-outside-to-close behavior for all overlays
-    setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeEditModal, closeConfirmModal
-    ]);
+    // Background synchronization
+    setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
 });
 
 /**
- * Action: loadShoppingList
- * Fetches the master shopping collection from the server
+ * --- Logic & UI Operations ---
+ */
+
+/**
+ * Synchronizes the module state with the server (Single Source of Truth).
  * 
+ * @async
  * @returns {Promise<void>}
  */
-async function loadShoppingList() {
-    const response = await fetch('/shopping/api/data');
-    const result = await response.json();
-    
-    if (result && result.success) {
-        // Sync state and trigger render
-        shoppingItems = result.items;
-        isAdmin = result.is_admin;
-        renderShoppingList();
-    } else {
-        // Error handling with manual retry option
-        const container = document.getElementById('shoppingListContainer');
-        if (container) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <p>Failed to load shopping list.</p>
-                    <button onclick="loadShoppingList()" class="btn-secondary btn-small">Retry</button>
-                </div>
-            `;
+async function loadState() {
+    try {
+        const response = await fetch('/shopping/api/data');
+        const data = await response.json();
+        
+        if (data && data.success) {
+            STATE.items = data.items;
+            STATE.isAdmin = !!data.is_admin;
+            renderTable();
         }
+    } catch (err) {
+        console.error('loadState failed:', err);
     }
 }
 
 /**
- * UI Engine: renderShoppingList
- * Generates the categorized shopping list HTML from current state
+ * Orchestrates the generation of the shopping list categories.
+ * 
+ * @returns {void}
  */
-function renderShoppingList() {
+function renderTable() {
     const container = document.getElementById('shoppingListContainer');
     if (!container) return;
     
-    // Handle empty state
-    if (shoppingItems.length === 0) {
+    if (STATE.items.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <p>Your shopping list is empty!</p>
+                <p>🛒 Your shopping list is empty!</p>
                 <p class="empty-hint">Add your first item above to get started.</p>
             </div>
         `;
         return;
     }
 
-    // Categorize items based on bought status
-    const unchecked = shoppingItems.filter(i => !i.is_checked);
-    const checked = shoppingItems.filter(i => i.is_checked);
+    const unchecked = STATE.items.filter(i => !i.is_checked);
+    const checked = STATE.items.filter(i => i.is_checked);
 
     let html = '';
 
-    // Render "To Buy" section
+    // Active Items
     if (unchecked.length > 0) {
         html += `<h3 class="section-title">To Buy</h3>`;
-        unchecked.forEach(item => {
-            html += renderItemHtml(item);
-        });
+        html += unchecked.map(item => renderItemRow(item)).join('');
     }
 
-    // Render "Checked Items" with batch clear functionality
+    // Completed Items
     if (checked.length > 0) {
         html += `
             <div class="checked-section">
@@ -125,7 +117,7 @@ function renderShoppingList() {
                         Clear All
                     </button>
                 </div>
-                ${checked.map(item => renderItemHtml(item)).join('')}
+                ${checked.map(item => renderItemRow(item)).join('')}
             </div>
         `;
     }
@@ -134,216 +126,237 @@ function renderShoppingList() {
 }
 
 /**
- * UI Component: renderItemHtml
- * Builds the HTML fragment for a single shopping item
+ * Generates the HTML fragment for a single shopping item.
  * 
- * @param {Object} item - Item object from state
- * @returns {string} - Rendered HTML
+ * @param {Object} item - Item record metadata.
+ * @returns {string} - Rendered HTML row.
  */
-function renderItemHtml(item) {
-    const isChecked = item.is_checked;
-    const itemNameEscaped = escapeHtml(item.item_name);
-    const addedByEscaped = escapeHtml(item.added_by);
+function renderItemRow(item) {
+    const isChecked = !!item.is_checked;
+    const nameEscaped = escapeHtml(item.item_name);
+    const userEscaped = escapeHtml(item.added_by);
 
     return `
         <div class="shopping-item ${isChecked ? 'checked' : ''}" data-id="${item.id}">
             <div class="item-content">
-                <button type="button" class="checkbox-btn ${isChecked ? 'checked' : ''}" onclick="toggleItem(${item.id})" title="${isChecked ? 'Uncheck' : 'Mark as bought'}">
+                <button type="button" class="checkbox-btn ${isChecked ? 'checked' : ''}" 
+                        onclick="toggleItem(${item.id})" title="${isChecked ? 'Uncheck' : 'Mark as bought'}">
                     <span class="checkmark">${isChecked ? '✓' : ''}</span>
                 </button>
                 <div class="item-details">
                     ${!isChecked ? `
                         <a href="https://www.google.com/search?q=${encodeURIComponent(item.item_name)}" target="_blank" class="item-link">
-                            <span class="item-name">${itemNameEscaped}</span>
+                            <span class="item-name">${nameEscaped}</span>
                         </a>
                     ` : `
-                        <span class="item-name">${itemNameEscaped}</span>
+                        <span class="item-name">${nameEscaped}</span>
                     `}
-                    <small class="item-meta">Added by ${addedByEscaped}</small>
+                    <small class="item-meta">Added by ${userEscaped}</small>
                 </div>
             </div>
             <div class="action-buttons">
                 ${!isChecked ? `
-                    <button type="button" class="btn-icon-edit" onclick="editItem(${item.id}, \`${item.item_name.replace(/`/g, "\\`")}\`)" title="Edit">${getIcon('edit')}</button>
+                    <button type="button" class="btn-icon-edit" onclick="openEditModal(${item.id})" title="Edit Item">
+                        ${getIcon('edit')}
+                    </button>
                 ` : ''}
-                <button type="button" class="btn-icon-delete" onclick="deleteItem(${item.id}, \`${item.item_name.replace(/`/g, "\\`")}\`)" title="Delete">${getIcon('delete')}</button>
+                <button type="button" class="btn-icon-delete" onclick="confirmDeleteItem(${item.id}, \`${item.item_name.replace(/`/g, "\\`")}\`)" title="Remove Item">
+                    ${getIcon('delete')}
+                </button>
             </div>
         </div>
     `;
 }
 
 /**
- * Action: addItem
- * Submits new item to server and performs an optimistic update
+ * --- Interactive Handlers ---
+ */
+
+/**
+ * Submits a new item to the collection.
+ * Performs an optimistic UI update upon success.
  * 
+ * @async
+ * @param {Event} event - Triggering form event.
  * @returns {Promise<void>}
  */
-async function addItem() {
-    const input = document.querySelector('input[name="item_name"]');
+async function handleAddItem(event) {
+    if (event) event.preventDefault();
+
+    const form = event.target;
+    const input = form.querySelector('input[name="item_name"]');
     const name = input.value.trim();
     if (!name) return;
 
-    // UI Feedback: indicate network flight
-    const btn = document.querySelector('#addShoppingForm .btn-blue-add');
+    const btn = document.getElementById('addItemBtn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `${getIcon('waiting')} Adding...`;
 
-    const result = await apiPost('/shopping/api/add', { item_name: name });
-    
-    // Lifecycle Cleanup: restore button state
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
-
-    if (result && result.success) {
-        input.value = '';
-        // Optimistic State Update
-        shoppingItems.unshift({
-            id: result.id,
-            item_name: result.item_name,
-            added_by: result.added_by,
-            is_checked: 0
-        });
-        renderShoppingList();
+    try {
+        const result = await apiPost('/shopping/api/add', { item_name: name });
+        if (result && result.success) {
+            input.value = '';
+            // Optimistic update
+            STATE.items.unshift({
+                id: result.id,
+                item_name: result.item_name,
+                added_by: result.added_by,
+                is_checked: 0
+            });
+            renderTable();
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     }
 }
 
 /**
- * Action: toggleItem
- * Inverts item checked status on server and local state
+ * Updates item check status.
+ * Reconciles the local state immediately upon success.
  * 
- * @param {number} id - Item ID
+ * @async
+ * @param {number} id - Target identifier.
  * @returns {Promise<void>}
  */
 async function toggleItem(id) {
-    const itemEl = document.querySelector(`.shopping-item[data-id="${id}"]`);
-    if (itemEl) itemEl.classList.add('pending'); // Visual feedback during processing
+    const row = document.querySelector(`.shopping-item[data-id="${id}"]`);
+    if (row) row.classList.add('pending');
 
     const result = await apiPost(`/shopping/api/toggle/${id}`);
     if (result && result.success) {
-        const item = shoppingItems.find(i => i.id == id);
+        const item = STATE.items.find(i => i.id == id);
         if (item) {
             item.is_checked = !item.is_checked;
-            renderShoppingList();
+            renderTable();
         }
-    } else if (itemEl) {
-        itemEl.classList.remove('pending');
+    } else if (row) {
+        row.classList.remove('pending');
     }
 }
 
 /**
- * Modal: deleteItem
- * Orchestrates the Mandatory Action deletion flow for a specific item.
+ * Pre-fills and displays the item editor.
  * 
- * @param {number} id - Item identifier
- * @param {string} itemName - Display name for confirmation text
+ * @param {number} id - Target identifier.
+ * @returns {void}
  */
-function deleteItem(id, itemName) {
-    showConfirmModal({
-        title: 'Delete Item',
-        message: `Are you sure you want to remove \"<strong>${escapeHtml(itemName)}</strong>\" from the list?`,
-        danger: true,
-        confirmText: 'Delete',
-        hideCancel: true,
-        alignment: 'center',
-        loadingText: 'Deleting...',
-        onConfirm: async () => {
-            const result = await apiPost(`/shopping/api/delete/${id}`);
-            if (result && result.success) {
-                shoppingItems = shoppingItems.filter(i => i.id != id);
-                renderShoppingList();
-            }
-        }
-    });
-}
+function openEditModal(id) {
+    const item = STATE.items.find(i => i.id == id);
+    if (!item) return;
 
-/**
- * Modal: editItem
- * Pre-fills and shows the item description editor
- * 
- * @param {number} id - Item ID
- * @param {string} currentName - Existing item description
- */
-function editItem(id, currentName) {
     document.getElementById('editId').value = id;
-    const nameInput = document.getElementById('editName');
-    if (nameInput) {
-        nameInput.value = currentName;
-        document.getElementById('editModal').classList.add('show');
-        nameInput.focus();
+    const input = document.getElementById('editName');
+    if (input) {
+        input.value = item.item_name;
+        const modal = document.getElementById('editModal');
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+        input.focus();
     }
 }
 
 /**
- * Hides the item editor modal
+ * Hides the editor modal.
+ * 
+ * @returns {void}
  */
-function closeEditModal() { 
+function closeEditModal() {
     const modal = document.getElementById('editModal');
-    if (modal) modal.classList.remove('show'); 
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }
 }
 
 /**
- * Action: submitEdit
- * Submits the updated item description to the server
+ * Executes persistent modifications to an item.
  * 
+ * @async
+ * @param {Event} event - Triggering form event.
  * @returns {Promise<void>}
  */
-async function submitEdit() {
+async function handleEditSubmit(event) {
+    if (event) event.preventDefault();
+
     const id = document.getElementById('editId').value;
-    const nameInput = document.getElementById('editName');
-    const name = nameInput ? nameInput.value.trim() : '';
-    const btn = document.querySelector('#editModal .btn-primary');
+    const input = document.getElementById('editName');
+    const name = input.value.trim();
     if (!name) return;
 
-    // UI Feedback: indicate processing
+    const btn = document.getElementById('editSaveBtn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
-    const result = await apiPost(`/shopping/api/edit/${id}`, { item_name: name });
-    
-    // Lifecycle Cleanup: Restore state
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
-
-    if (result && result.success) {
-        // Sync local state and refresh UI
-        const item = shoppingItems.find(i => i.id == id);
-        if (item) item.item_name = name;
-        renderShoppingList();
-        closeEditModal();
+    try {
+        const result = await apiPost(`/shopping/api/edit/${id}`, { item_name: name });
+        if (result && result.success) {
+            const item = STATE.items.find(i => i.id == id);
+            if (item) item.item_name = name;
+            renderTable();
+            closeEditModal();
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     }
 }
 
 /**
- * Modal: openClearAllModal
- * Orchestrates the Mandatory Action batch deletion flow.
+ * Orchestrates the deletion flow for a specific item.
+ * 
+ * @param {number} id - Target identifier.
+ * @param {string} itemName - Display label for context.
+ * @returns {void}
  */
-function openClearAllModal() {
+function confirmDeleteItem(id, itemName) {
     showConfirmModal({
-        title: 'Clear All Checked',
-        message: 'Are you sure you want to clear all checked items from the list?',
+        title: 'Delete Item',
+        message: `Are you sure you want to remove \"<strong>${escapeHtml(itemName)}</strong>\"?`,
         danger: true,
-        confirmText: 'Clear All',
+        confirmText: 'Delete',
         hideCancel: true,
         alignment: 'center',
-        loadingText: 'Clearing...',
         onConfirm: async () => {
-            const result = await apiPost('/shopping/api/clear');
+            const result = await apiPost(`/shopping/api/delete/${id}`);
             if (result && result.success) {
-                shoppingItems = shoppingItems.filter(i => !i.is_checked);
-                renderShoppingList();
+                STATE.items = STATE.items.filter(i => i.id != id);
+                renderTable();
             }
         }
     });
 }
 
 /**
- * Utility: escapeHtml
- * Sanitizes strings to prevent XSS in dynamic HTML injections
+ * Orchestrates the batch deletion of checked items.
  * 
- * @param {string} text - Raw input string
- * @returns {string} - Sanitized HTML string
+ * @returns {void}
+ */
+function openClearAllModal() {
+    showConfirmModal({
+        title: 'Clear Completed',
+        message: 'Are you sure you want to clear all checked items?',
+        danger: true,
+        confirmText: 'Clear All',
+        hideCancel: true,
+        alignment: 'center',
+        onConfirm: async () => {
+            const result = await apiPost('/shopping/api/clear');
+            if (result && result.success) {
+                STATE.items = STATE.items.filter(i => !i.is_checked);
+                renderTable();
+            }
+        }
+    });
+}
+
+/**
+ * Sanitizes input for safe DOM injection.
+ * 
+ * @param {string} text - Raw input.
+ * @returns {string} - Escaped output.
  */
 function escapeHtml(text) {
     if (!text) return '';
@@ -353,13 +366,13 @@ function escapeHtml(text) {
 }
 
 /**
- * Global Exposure
- * Required for event handlers defined in .ep templates
+ * --- Global Exposure ---
  */
+window.loadState = loadState;
 window.toggleItem = toggleItem;
-window.deleteItem = deleteItem;
-window.editItem = editItem;
-window.submitEdit = submitEdit;
-window.openClearAllModal = openClearAllModal;
-window.loadShoppingList = loadShoppingList;
+window.confirmDeleteItem = confirmDeleteItem;
+window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
+window.handleEditSubmit = handleEditSubmit;
+window.handleAddItem = handleAddItem;
+window.openClearAllModal = openClearAllModal;
