@@ -1,0 +1,378 @@
+/* /public/css/timers.css */
+
+/**
+ * Timer Module Styles
+ * 
+ * Provides high-fidelity styling for both the user dashboard and 
+ * administrative management interfaces. It preserves the original 
+ * high-contrast aesthetic (white background, dark text) while 
+ * maintaining project-standard structure.
+ * 
+ * Sections:
+ * 1. Base Layout
+ * 2. User Dashboard (Tiles)
+ * 3. Admin Management (Ledger)
+ * 4. Modals & Forms
+ * 5. Mobile Responsiveness
+ */
+
+/* --- 1. Base Layout --- */
+
+.timers-container,
+.timers-manage-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    padding-top: 0;
+    min-height: 100vh;
+}
+
+/* --- 2. User Dashboard (Tiles) --- */
+
+.timers-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    justify-content: center;
+    padding-top: 1rem;
+}
+
+.timer-card {
+    width: 360px;
+    background: #ffffff;
+    border: 2px solid transparent;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    position: relative;
+    transition: transform 0.3s var(--transition-bounce), box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.timer-card[data-status="green"] { border-color: #22c55e; }
+.timer-card[data-status="yellow"] { border-color: #eab308; }
+.timer-card[data-status="red"] { border-color: #ef4444; }
+
+.timer-card:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.timer-card-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.timer-icon {
+    font-size: 2.5rem;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+}
+
+.timer-icon.computer { background: #dbeafe; }
+.timer-icon.phone, .timer-icon.tablet { background: #fce7f3; }
+.timer-icon.gaming-console { background: #fef3c7; }
+.timer-icon.tv { background: #dcfce7; }
+
+.timer-title-group { flex: 1; }
+
+.timer-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.timer-category {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+}
+
+.timer-status-bar {
+    width: 100%;
+    height: 8px;
+    background: #f3f4f6;
+    border-radius: 100px;
+    overflow: hidden;
+}
+
+.status-fill {
+    height: 100%;
+    transition: width 1s linear, background-color 0.5s ease;
+}
+
+.status-fill.green { background: #22c55e; }
+.status-fill.yellow { background: #eab308; }
+.status-fill.red { background: #ef4444; }
+
+.timer-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.stat-row:last-child { border-bottom: none; }
+
+.stat-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.stat-value {
+    font-family: var(--font-mono);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.stat-value.expired { color: #ef4444; }
+
+.bonus-indicator {
+    background: #fef3c7;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid #fde68a;
+    color: #92400e;
+}
+
+.timer-controls {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.timer-controls .btn {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn-start { background: #22c55e; color: #ffffff; }
+.btn-pause { background: #eab308; color: #ffffff; }
+.btn-pause.paused { background: #6b7280; color: #ffffff; }
+
+.running-indicator {
+    text-align: center;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    background: #16a34a;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.3); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.expired-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(239, 68, 68, 0.95);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.expired-message { text-align: center; color: #ffffff; }
+.expired-icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
+.expired-message p { font-size: 1.5rem; font-weight: 800; margin: 0; }
+.expired-message small { opacity: 0.9; }
+
+/* --- 3. Admin Management (Ledger) --- */
+
+.timers-table {
+    background: #ffffff !important;
+    color: #111827 !important;
+}
+
+.timers-table thead {
+    background: #f3f4f6 !important;
+}
+
+.timers-table th {
+    color: #6b7280 !important;
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+.timers-table td {
+    border-top: 1px solid #f3f4f6 !important;
+    color: #111827 !important;
+}
+
+.timers-table tbody tr:hover {
+    background: #f9fafb !important;
+}
+
+.manage-filters {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.manage-filters label {
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.user-select {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    min-width: 200px;
+}
+
+.user-cell { font-weight: 600; color: #60a5fa !important; }
+.elapsed-cell { font-weight: 700; color: #fbbf24; }
+.remaining-cell { font-weight: 700; color: #4ade80; }
+
+.category-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+}
+
+.category-badge.computer { color: #60a5fa; background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3); }
+.category-badge.phone, .category-badge.tablet { color: #f472b6; background: rgba(236, 72, 153, 0.15); border-color: rgba(236, 72, 153, 0.3); }
+.category-badge.gaming-console { color: #fbbf24; background: rgba(251, 191, 36, 0.15); border-color: rgba(251, 191, 36, 0.3); }
+.category-badge.tv { color: #4ade80; background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.3); }
+
+.status-badge {
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
+.status-badge.running { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+.status-badge.paused { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+.status-badge.idle { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
+
+/* --- 4. Modals & Forms --- */
+
+.timer-form .modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* --- 5. Mobile Responsiveness --- */
+
+@media (max-width: 768px) {
+    .timers-grid { grid-template-columns: 1fr; }
+    
+    .timers-table {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .timers-table thead { display: none; }
+    
+    .timers-table tr {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas:
+            "user category"
+            "name name"
+            "status status"
+            "used remaining"
+            "actions actions";
+        gap: 0.75rem;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 1rem;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .timers-table td { padding: 0 !important; border: none !important; display: block; }
+    .timers-table .user-cell { grid-area: user; font-size: 0.8rem; }
+    .timers-table .category-cell { grid-area: category; justify-self: end; }
+    .timers-table .name-cell { grid-area: name; font-weight: 700; border-bottom: 1px solid #f3f4f6; padding-bottom: 0.5rem !important; }
+    .timers-table .status-cell { grid-area: status; }
+    
+    .timers-table .elapsed-cell,
+    .timers-table .remaining-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0.75rem !important;
+        background: #f9fafb;
+        border-radius: 0.5rem;
+    }
+    
+    .timers-table .elapsed-cell { grid-area: used; }
+    .timers-table .remaining-cell { grid-area: remaining; }
+    
+    .timers-table .elapsed-cell::before { content: "USED"; font-size: 0.6rem; font-weight: 800; opacity: 0.6; }
+    .timers-table .remaining-cell::before { content: "LEFT"; font-size: 0.6rem; font-weight: 800; opacity: 0.6; }
+    
+    .timers-table .actions-cell {
+        grid-area: actions;
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        padding-top: 0.75rem !important;
+        border-top: 1px solid #f3f4f6;
+    }
+    
+    .timers-table .limit-cell { display: none; }
+}
