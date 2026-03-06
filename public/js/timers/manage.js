@@ -1,242 +1,414 @@
 // /public/js/timers/manage.js
 
 /**
- * Timer Management Controller Module
+ * Timer Management Controller
  * 
- * This module manages the administrative interface for device usage timers. 
- * It facilitates the creation, modification, and deletion of user-specific 
- * time limits, as well as the granting of bonus time.
+ * Manages the administrative interface for device usage timers using a 
+ * state-driven architecture. It facilitates the creation, modification, 
+ * and deletion of user-specific time limits and bonus time grants.
  * 
  * Features:
- * - administrative creation/edit workflows for weekday and weekend limits
- * - Real-time filtering of timer rosters by user
- * - Specialized "Bonus Time" grant system with immediate sync
- * - Themed confirmation workflow for permanent timer removal
- * - Visual ledger reconciliation using fade-out animations
- * - Integrated LocalStorage view-state persistence
+ * - State-driven ledger rendering with user-based filtering
+ * - Interactive definition creation and modification workflows
+ * - Integrated bonus time grant system with instant reconciliation
+ * - Standardized lifecycle for destructive removal operations
+ * - Dynamic dropdown population from synchronized user state
+ * - High-density JSDoc documentation for all handlers
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, and modal helpers
- * - timers/utils.js: For formatting logic
+ * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
  */
 
-const TimerManagement = {
-    /**
-     * Initialization System
-     * Boots the administrative logic and establishes event delegation.
-     */
-    init: function() {
-        this.attachEventListeners();
-        
-        // Modal: Configure global click-outside-to-close behavior
-        setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-            () => this.closeModals(),
-            closeConfirmModal
-        ]);
-    },
+/**
+ * --- Module Configuration & State ---
+ */
+const CONFIG = {
+    SYNC_INTERVAL_MS: 300000         // Background synchronization frequency
+};
 
-    /**
-     * Orchestrates event delegation for administrative controls and forms.
-     */
-    attachEventListeners: function() {
-        // Interaction: Main Create trigger
-        const btnCreate = document.getElementById('btn-create-timer');
-        if (btnCreate) {
-            btnCreate.addEventListener('click', () => this.openCreateModal());
-        }
+let STATE = {
+    timers: [],                     // Collection of all timer definitions
+    users: [],                      // Collection of platform user accounts
+    filterUserId: ''                // Current active user filter
+};
 
-        // Interaction: User filtering
-        const userFilter = document.getElementById('user-filter');
-        if (userFilter) {
-            userFilter.addEventListener('change', (e) => this.handleFilterChange(e));
-        }
+/**
+ * Bootstraps the module state and establishes event delegation.
+ * 
+ * @returns {void}
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial fetch of the administrative roster
+    loadState();
 
-        // Interaction: Ledger row delegation
-        document.addEventListener('click', (e) => {
-            const editBtn = e.target.closest('.btn-icon-edit');
-            const delBtn = e.target.closest('.btn-icon-delete');
-            const bonusBtn = e.target.closest('.btn-icon-bonus');
+    // Interaction: Main Create trigger
+    const btnCreate = document.getElementById('btn-create-timer');
+    if (btnCreate) {
+        btnCreate.addEventListener('click', openCreateModal);
+    }
 
-            if (editBtn) this.openEditModal(editBtn);
-            else if (delBtn) this.handleDelete(delBtn);
-            else if (bonusBtn) this.openBonusModal(bonusBtn);
+    // Interaction: User filtering
+    const userFilter = document.getElementById('user-filter');
+    if (userFilter) {
+        userFilter.addEventListener('change', (e) => {
+            STATE.filterUserId = e.target.value;
+            renderUI();
         });
+    }
 
-        // Form: Creation submission
-        const createForm = document.getElementById('create-timer-form');
-        if (createForm) {
-            createForm.addEventListener('submit', (e) => this.handleSubmit(e, '/timers/create'));
+    // Global modal behavior
+    setupGlobalModalClosing(['modal-overlay'], [closeModals]);
+
+    // Background synchronization
+    setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
+});
+
+/**
+ * --- Logic & UI Operations ---
+ */
+
+/**
+ * Synchronizes the administrative state with the server.
+ * 
+ * @async
+ * @returns {Promise<void>}
+ */
+async function loadState() {
+    try {
+        const response = await fetch(`/timers/api/manage/state${STATE.filterUserId ? `?user_id=${STATE.filterUserId}` : ''}`);
+        const data = await response.json();
+        
+        if (data && data.success) {
+            STATE.timers = data.timers;
+            STATE.users = data.users;
+            renderUI();
         }
+    } catch (err) {
+        console.error('loadState failed:', err);
+    }
+}
 
-        // Form: Modification submission
-        const editForm = document.getElementById('edit-timer-form');
-        if (editForm) {
-            editForm.addEventListener('submit', (e) => {
-                const id = document.getElementById('edit-timer-id').value;
-                this.handleSubmit(e, `/timers/update/${id}`);
-            });
-        }
+/**
+ * Orchestrates the full UI synchronization lifecycle.
+ * 
+ * @returns {void}
+ */
+function renderUI() {
+    renderTable();
+    renderUserDropdowns();
+}
 
-        // Form: Bonus grant submission
-        const bonusForm = document.getElementById('bonus-form');
-        if (bonusForm) {
-            bonusForm.addEventListener('submit', (e) => this.handleBonusSubmit(e));
-        }
-    },
+/**
+ * Generates the timer definition ledger.
+ * 
+ * @returns {void}
+ */
+function renderTable() {
+    const container = document.getElementById('manageTableContainer');
+    if (!container) return;
 
-    /**
-     * Interface: handleFilterChange
-     * Reloads the management view with a user-specific filter query.
-     */
-    handleFilterChange: function(e) {
-        const userId = e.target.value;
-        const url = userId ? `/timers/manage?user_id=${userId}` : '/timers/manage';
-        window.location.href = url;
-    },
+    if (STATE.timers.length === 0) {
+        container.innerHTML = `<div class="no-timers"><p>No timers found.</p></div>`;
+        return;
+    }
 
-    /**
-     * Interface: openCreateModal
-     * Prepares and displays the timer creation interface.
-     */
-    openCreateModal: function() {
-        const modal = document.getElementById('modal-create-timer');
-        if (modal) {
-            const form = document.getElementById('create-timer-form');
-            if (form) form.reset();
-            modal.style.display = 'flex';
-            document.body.classList.add('modal-open');
-        }
-    },
+    // Apply local filtering
+    const filtered = STATE.filterUserId 
+        ? STATE.timers.filter(t => t.user_id == STATE.filterUserId)
+        : STATE.timers;
 
-    /**
-     * Interface: openEditModal
-     * Pre-fills the timer editor with existing configuration.
-     * 
-     * @param {HTMLElement} button - Button containing source data attributes
-     */
-    openEditModal: function(button) {
-        const modal = document.getElementById('modal-edit-timer');
-        if (!modal) return;
+    let html = `
+        <table class="data-table timers-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Timer Name</th>
+                    <th>Category</th>
+                    <th>Weekday Limit</th>
+                    <th>Weekend Limit</th>
+                    <th>Used Today</th>
+                    <th>Remaining</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${filtered.map(t => renderTableRow(t)).join('')}
+            </tbody>
+        </table>
+    `;
 
-        // Context: Sync form inputs with button metadata
-        document.getElementById('edit-timer-id').value = button.dataset.timerId;
-        document.getElementById('edit-name').value = button.dataset.name;
-        document.getElementById('edit-category').value = button.dataset.category;
-        document.getElementById('edit-weekday').value = button.dataset.weekday;
-        document.getElementById('edit-weekend').value = button.dataset.weekend;
+    container.innerHTML = html;
+}
 
+/**
+ * Generates the HTML fragment for a single ledger row.
+ * 
+ * @param {Object} t - Timer record metadata.
+ * @returns {string} - Rendered HTML row.
+ */
+function renderTableRow(t) {
+    const remaining = t.remaining_seconds || 0;
+    const catClass = (t.category || '').toLowerCase().replace(' ', '-');
+    
+    return `
+        <tr data-timer-id="${t.id}">
+            <td class="user-cell" data-label="User">${escapeHtml(t.username)}</td>
+            <td class="name-cell" data-label="Timer Name">${escapeHtml(t.name)}</td>
+            <td class="category-cell" data-label="Category">
+                <span class="category-badge ${catClass}">${escapeHtml(t.category)}</span>
+            </td>
+            <td class="limit-cell" data-label="Weekday Limit">${t.weekday_minutes}m</td>
+            <td class="limit-cell" data-label="Weekend Limit">${t.weekend_minutes}m</td>
+            <td class="elapsed-cell" data-label="Used Today">${Math.floor((t.elapsed_seconds || 0) / 60)}m</td>
+            <td class="remaining-cell" data-label="Remaining">
+                ${remaining > 0 ? `${Math.floor(remaining / 60)}m` : '<span class="expired-text">EXPIRED</span>'}
+            </td>
+            <td class="status-cell" data-label="Status">
+                ${t.is_running ? `<span class="status-badge running">${getIcon('running')} Running</span>` : (t.is_paused ? `<span class="status-badge paused">${getIcon('paused')} Paused</span>` : `<span class="status-badge idle">${getIcon('idle')} Idle</span>`)}
+            </td>
+            <td class="actions-cell" data-label="Actions">
+                <div class="action-buttons">
+                    <button class="btn-icon-bonus" onclick="openBonusModal(${t.id})" title="Grant Bonus Time">${getIcon('bonus')}</button>
+                    <button class="btn-icon-edit" onclick="openEditModal(${t.id})" title="Edit Timer">${getIcon('edit')}</button>
+                    <button class="btn-icon-delete" onclick="confirmDeleteTimer(${t.id}, '${escapeHtml(t.name)}')" title="Delete Timer">${getIcon('delete')}</button>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+/**
+ * Populates all user selection dropdowns from state.
+ * 
+ * @returns {void}
+ */
+function renderUserDropdowns() {
+    const nonAdmins = STATE.users.filter(u => !u.is_admin);
+    const options = nonAdmins.map(u => `<option value="${u.id}">${escapeHtml(u.username)}</option>`).join('');
+    
+    document.querySelectorAll('.user-dropdown').forEach(el => {
+        const currentVal = el.value;
+        const isFilter = el.id === 'user-filter';
+        el.innerHTML = (isFilter ? '<option value="">All Users</option>' : '<option value="">Select User...</option>') + options;
+        el.value = currentVal;
+    });
+}
+
+/**
+ * --- Interactive Handlers ---
+ */
+
+/**
+ * Prepares and displays the timer creation interface.
+ * 
+ * @returns {void}
+ */
+function openCreateModal() {
+    const form = document.getElementById('create-timer-form');
+    if (form) form.reset();
+    
+    const modal = document.getElementById('modal-create-timer');
+    if (modal) {
         modal.style.display = 'flex';
         document.body.classList.add('modal-open');
-    },
+    }
+}
 
-    /**
-     * Interface: openBonusModal
-     * Displays the grant interface for additional minutes.
-     * 
-     * @param {HTMLElement} button - Triggering element
-     */
-    openBonusModal: function(button) {
-        const modal = document.getElementById('modal-bonus-time');
-        if (!modal) return;
+/**
+ * Pre-fills and displays the timer editor.
+ * 
+ * @param {number} id - Target identifier.
+ * @returns {void}
+ */
+function openEditModal(id) {
+    const t = STATE.timers.find(item => item.id == id);
+    if (!t) return;
 
-        document.getElementById('bonus-timer-id').value = button.dataset.timerId;
-        document.getElementById('bonus-minutes').value = 15; // Default increment
+    document.getElementById('edit-timer-id').value = t.id;
+    document.getElementById('edit-name').value = t.name;
+    document.getElementById('edit-category').value = t.category;
+    document.getElementById('edit-weekday').value = t.weekday_minutes;
+    document.getElementById('edit-weekend').value = t.weekend_minutes;
 
+    const modal = document.getElementById('modal-edit-timer');
+    if (modal) {
         modal.style.display = 'flex';
         document.body.classList.add('modal-open');
-    },
+    }
+}
 
-    /**
-     * Action: handleDelete
-     * Triggers confirmation and removes timer record upon user approval.
-     */
-    handleDelete: function(button) {
-        const timerId = button.dataset.timerId;
-        const name = button.dataset.name;
+/**
+ * Displays the bonus time grant interface.
+ * 
+ * @param {number} id - Target identifier.
+ * @returns {void}
+ */
+function openBonusModal(id) {
+    document.getElementById('bonus-timer-id').value = id;
+    document.getElementById('bonus-minutes').value = 15;
 
-        showConfirmModal({
-            title: 'Delete Timer',
-            message: `Are you sure you want to delete timer "<strong>${name}</strong>"?<br><small style="color: #64748b; font-style: italic;">This action cannot be undone.</small>`,
-            danger: true,
-            confirmText: 'Delete Timer',
-            loadingText: 'Deleting...',
-            onConfirm: async () => {
-                const result = await apiPost(`/timers/delete/${timerId}`);
-                if (result && result.success) {
-                    // UI: Animate removal of the specific row
-                    const row = document.querySelector(`tr[data-timer-id="${timerId}"]`);
-                    if (row) {
-                        row.classList.add('row-fade-out');
-                        setTimeout(() => row.remove(), 500);
-                    } else {
-                        window.location.reload();
-                    }
+    const modal = document.getElementById('modal-bonus-time');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+    }
+}
+
+/**
+ * Executes persistent definition creation.
+ * 
+ * @async
+ * @param {Event} event - Triggering form event.
+ * @returns {Promise<void>}
+ */
+async function handleCreateSubmit(event) {
+    if (event) event.preventDefault();
+    const form = event.target;
+    const btn = document.getElementById('createSaveBtn');
+    const originalHtml = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
+    try {
+        const formData = new FormData(form);
+        const result = await apiPost('/timers/api/create', Object.fromEntries(formData));
+        if (result && result.success) {
+            closeModals();
+            await loadState();
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+/**
+ * Executes persistent definition modifications.
+ * 
+ * @async
+ * @param {Event} event - Triggering form event.
+ * @returns {Promise<void>}
+ */
+async function handleEditSubmit(event) {
+    if (event) event.preventDefault();
+    const form = event.target;
+    const id = document.getElementById('edit-timer-id').value;
+    const btn = document.getElementById('editSaveBtn');
+    const originalHtml = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
+    try {
+        const formData = new FormData(form);
+        const result = await apiPost(`/timers/api/update/${id}`, Object.fromEntries(formData));
+        if (result && result.success) {
+            closeModals();
+            await loadState();
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+/**
+ * Executes persistent bonus time grants.
+ * 
+ * @async
+ * @param {Event} event - Triggering form event.
+ * @returns {Promise<void>}
+ */
+async function handleBonusSubmit(event) {
+    if (event) event.preventDefault();
+    const form = event.target;
+    const btn = document.getElementById('bonusSaveBtn');
+    const originalHtml = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
+    try {
+        const formData = new FormData(form);
+        const result = await apiPost('/timers/api/bonus', Object.fromEntries(formData));
+        if (result && result.success) {
+            closeModals();
+            await loadState();
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+/**
+ * Orchestrates the deletion flow for a timer definition.
+ * 
+ * @param {number} id - Target identifier.
+ * @param {string} name - Display label for context.
+ * @returns {void}
+ */
+function confirmDeleteTimer(id, name) {
+    showConfirmModal({
+        title: 'Delete Timer',
+        message: `Are you sure you want to remove definition \"<strong>${escapeHtml(name)}</strong>\"?`,
+        danger: true,
+        confirmText: 'Delete',
+        hideCancel: true,
+        alignment: 'center',
+        onConfirm: async () => {
+            const result = await apiPost(`/timers/api/delete/${id}`);
+            if (result && result.success) {
+                // UI: Animate removal
+                const row = document.querySelector(`tr[data-timer-id="${id}"]`);
+                if (row) {
+                    row.classList.add('row-fade-out');
+                    setTimeout(async () => {
+                        STATE.timers = STATE.timers.filter(t => t.id != id);
+                        renderUI();
+                    }, 500);
+                } else {
+                    await loadState();
                 }
             }
-        });
-    },
-
-    /**
-     * Action: handleSubmit
-     * Universal handler for creation and update forms.
-     * 
-     * @param {Event} e - Submission event
-     * @param {string} url - Target endpoint
-     */
-    handleSubmit: async function(e, url) {
-        e.preventDefault();
-        const form = e.target;
-        const btn = form.querySelector('button[type="submit"]');
-        const originalHtml = btn.innerHTML;
-
-        // UI Feedback: indicate processing
-        btn.disabled = true;
-        btn.innerHTML = `${getIcon('waiting')} Processing...`;
-
-        const formData = new FormData(form);
-        const result = await apiPost(url, formData);
-
-        if (result && result.success) {
-            this.closeModals();
-            window.location.reload(); // Lifecycle: full sync required for ledger
-        } else {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
         }
-    },
+    });
+}
 
-    /**
-     * Action: handleBonusSubmit
-     * Transmits a bonus time grant to the server.
-     */
-    handleBonusSubmit: async function(e) {
-        e.preventDefault();
-        const form = e.target;
-        const btn = form.querySelector('button[type="submit"]');
-        const originalHtml = btn.innerHTML;
+/**
+ * Hides all active administrative modals.
+ * 
+ * @returns {void}
+ */
+function closeModals() {
+    document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+    document.body.classList.remove('modal-open');
+}
 
-        btn.disabled = true;
-        btn.innerHTML = `${getIcon('waiting')} Processing...`;
+/**
+ * Sanitizes input for safe DOM injection.
+ * 
+ * @param {string} text - Raw input.
+ * @returns {string} - Escaped output.
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
-        const formData = new FormData(form);
-        const result = await apiPost('/timers/bonus', Object.fromEntries(formData));
-
-        if (result && result.success) {
-            this.closeModals();
-            window.location.reload();
-        } else {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-        }
-    },
-
-    /**
-     * Resets all modal overlays and restores scroll focus.
-     */
-    closeModals: function() {
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            modal.style.display = 'none';
-        });
-        document.body.classList.remove('modal-open');
-    }
-};
+/**
+ * --- Global Exposure ---
+ */
+window.handleCreateSubmit = handleCreateSubmit;
+window.handleEditSubmit = handleEditSubmit;
+window.handleBonusSubmit = handleBonusSubmit;
+window.openCreateModal = openCreateModal;
+window.openEditModal = openEditModal;
+window.openBonusModal = openBonusModal;
+window.confirmDeleteTimer = confirmDeleteTimer;
+window.closeModals = closeModals;
+window.loadState = loadState;
