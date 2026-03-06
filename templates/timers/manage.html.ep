@@ -4,10 +4,7 @@
 % title icon('timers') . ' Manage Timers';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/timers/base.css?<%= time %>">
-    <link rel="stylesheet" href="/css/timers/modals.css?<%= time %>">
-    <link rel="stylesheet" href="/css/timers/responsive.css?<%= time %>">
-    <link rel="stylesheet" href="/css/timers/manage.css?<%= time %>">
+    <link rel="stylesheet" href="/css/timers.css?<%= time %>">
     <script src="/js/timers/utils.js?<%= time %>"></script>
     <script src="/js/timers/manage.js?<%= time %>"></script>
 % end
@@ -18,121 +15,21 @@
         <button class="btn btn-primary" id="btn-create-timer"><%= icon('add') %> New</button>
     </div>
 
-    <% if (my $msg = flash('message')) { %>
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                showToast("<%= $msg %>", 'success');
-            });
-        </script>
-    <% } %>
-
-    <% if (my $error = flash('error')) { %>
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                showToast("<%= $error %>", 'error');
-            });
-        </script>
-    <% } %>
-
     <div class="manage-filters">
         <label for="user-filter">Filter by User:</label>
-        <select id="user-filter" class="user-select">
+        <select id="user-filter" class="user-select user-dropdown">
             <option value="">All Users</option>
-            % for my $user (@$users) {
-                % next if $user->{is_admin};
-                <option value="<%= $user->{id} %>" <%= defined $filter_user_id && $filter_user_id == $user->{id} ? 'selected' : '' %>>
-                    <%= $user->{username} %>
-                </option>
-            % }
         </select>
     </div>
 
-    % if (@$timers == 0) {
-        <div class="no-timers">
-            <p>No timers found.</p>
+    <div id="manageTableContainer">
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse"><%= icon('timers') %></span>
+            <p class="loading-label">Synchronizing administrative roster...</p>
+            <p class="loading-sub">Retrieving timer definitions and user associations</p>
         </div>
-    % } else {
-        <table class="data-table timers-table">
-            <thead>
-                <tr>
-                    <th>User</th>
-                    <th>Timer Name</th>
-                    <th>Category</th>
-                    <th>Weekday Limit</th>
-                    <th>Weekend Limit</th>
-                    <th>Used Today</th>
-                    <th>Remaining</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                % for my $timer (@$timers) {
-                    <tr data-timer-id="<%= $timer->{id} %>">
-                        <td class="user-cell" data-label="User">
-                            <%= $timer->{username} %>
-                        </td>
-                        <td class="name-cell" data-label="Timer Name">
-                            <%= $timer->{name} %>
-                        </td>
-                        <td class="category-cell" data-label="Category">
-                            <span class="category-badge <%= lc($timer->{category}) =~ s/ /-/gr %>">
-                                <%= $timer->{category} %>
-                            </span>
-                        </td>
-                        <td class="limit-cell" data-label="Weekday Limit">
-                            <%= $timer->{weekday_minutes} %>m
-                        </td>
-                        <td class="limit-cell" data-label="Weekend Limit">
-                            <%= $timer->{weekend_minutes} %>m
-                        </td>
-                        <td class="elapsed-cell" data-label="Used Today">
-                            <%= int(($timer->{elapsed_seconds} // 0) / 60) %>m
-                        </td>
-                        <td class="remaining-cell" data-label="Remaining">
-                            % my $remaining = $timer->{remaining_seconds} // 0;
-                            % if ($remaining > 0) {
-                                <%= int($remaining / 60) %>m
-                            % } else {
-                                <span class="expired-text">EXPIRED</span>
-                            % }
-                        </td>
-                        <td class="status-cell" data-label="Status">
-                            % if ($timer->{is_running}) {
-                                <span class="status-badge running"><%= icon('running') %> Running</span>
-                            % } elsif ($timer->{is_paused}) {
-                                <span class="status-badge paused"><%= icon('paused') %> Paused</span>
-                            % } else {
-                                <span class="status-badge idle"><%= icon('idle') %> Idle</span>
-                            % }
-                        </td>
-                        <td class="actions-cell" data-label="Actions">
-                            <button class="btn-icon-bonus" 
-                                    data-timer-id="<%= $timer->{id} %>"
-                                    title="Grant Bonus Time">
-                                <%= icon('bonus') %>
-                            </button>
-                            <button class="btn-icon-edit" 
-                                    data-timer-id="<%= $timer->{id} %>"
-                                    data-name="<%= $timer->{name} %>"
-                                    data-category="<%= $timer->{category} %>"
-                                    data-weekday="<%= $timer->{weekday_minutes} %>"
-                                    data-weekend="<%= $timer->{weekend_minutes} %>"
-                                    title="Edit Timer">
-                                <%= icon('edit') %>
-                            </button>
-                            <button class="btn-icon-delete" 
-                                    data-timer-id="<%= $timer->{id} %>"
-                                    data-name="<%= $timer->{name} %>"
-                                    title="Delete Timer">
-                                <%= icon('delete') %>
-                            </button>
-                        </td>
-                    </tr>
-                % }
-            </tbody>
-        </table>
-    % }
+    </div>
 </div>
 
 <%# Create Timer Modal (Admin) %>
@@ -140,18 +37,14 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2><%= icon('add') %> Create New Timer</h2>
-            <span class="close-btn" onclick="TimerManagement.closeModals()">&times;</span>
+            <span class="close-btn" onclick="closeModals()">&times;</span>
         </div>
-        <form id="create-timer-form" class="timer-form">
+        <form id="create-timer-form" class="timer-form" onsubmit="handleCreateSubmit(event)">
             <div class="modal-body">
                 <div class="form-group">
                     <label for="create-user-id">User *</label>
-                    <select id="create-user-id" name="user_id" class="game-input" required>
+                    <select id="create-user-id" name="user_id" class="game-input user-dropdown" required>
                         <option value="">Select User...</option>
-                        % for my $user (@$users) {
-                            % next if $user->{is_admin};
-                            <option value="<%= $user->{id} %>"><%= $user->{username} %></option>
-                        % }
                     </select>
                 </div>
 
@@ -186,7 +79,7 @@
             </div>
 
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" id="createSaveBtn" class="btn btn-primary"><%= icon('save') %> Save</button>
             </div>
         </form>
     </div>
@@ -197,9 +90,9 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2><%= icon('edit') %> Edit Timer</h2>
-            <span class="close-btn" onclick="TimerManagement.closeModals()">&times;</span>
+            <span class="close-btn" onclick="closeModals()">&times;</span>
         </div>
-        <form id="edit-timer-form" class="timer-form">
+        <form id="edit-timer-form" class="timer-form" onsubmit="handleEditSubmit(event)">
             <input type="hidden" id="edit-timer-id" name="id">
             <div class="modal-body">
                 <div class="form-group">
@@ -232,7 +125,7 @@
             </div>
 
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" id="editSaveBtn" class="btn btn-primary"><%= icon('save') %> Save</button>
             </div>
         </form>
     </div>
@@ -243,9 +136,9 @@
     <div class="modal-content modal-small">
         <div class="modal-header">
             <h2><%= icon('bonus') %> Grant Bonus Time</h2>
-            <span class="close-btn" onclick="TimerManagement.closeModals()">&times;</span>
+            <span class="close-btn" onclick="closeModals()">&times;</span>
         </div>
-        <form id="bonus-form" class="timer-form">
+        <form id="bonus-form" class="timer-form" onsubmit="handleBonusSubmit(event)">
             <div class="modal-body">
                 <input type="hidden" id="bonus-timer-id" name="timer_id">
                 
@@ -257,12 +150,8 @@
             </div>
 
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" id="bonusSaveBtn" class="btn-primary"><%= icon('save') %> Save</button>
             </div>
         </form>
     </div>
 </div>
-
-<script>
-    TimerManagement.init();
-</script>
