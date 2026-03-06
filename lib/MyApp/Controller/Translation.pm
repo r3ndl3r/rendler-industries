@@ -13,7 +13,7 @@ use utf8;
 # It handles request validation and returns translated text as JSON.
 
 # API: Translate Text
-# Route: POST /api/translate
+# Route: POST /translation/api/translate
 # 
 # Parameters (JSON):
 #   text   : (Required) The string to translate
