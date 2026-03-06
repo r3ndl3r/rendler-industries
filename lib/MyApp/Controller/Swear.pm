@@ -4,54 +4,47 @@ package MyApp::Controller::Swear;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
-# Controller for the "Swear Jar" financial tracking feature.
+# Controller for managing the Swear Jar financial tracking module.
+#
 # Features:
-#   - Public dashboard with leaderboards and transaction history
-#   - Transaction management (Issuing fines, recording payments, logging spending)
-#   - Participant administration (Family member roster)
-# Integration points:
-#   - Depends on authentication context for write operations
-#   - Uses DB::SwearJar helpers for ledger persistence
+#   - Real-time offense reporting and fine tracking.
+#   - Individual debt management and jar balance reconciliation.
+#   - Administrative roster management (Add/Remove members).
+#   - Synchronized state-driven interface architecture.
+#
+# Integration Points:
+#   - Depends on DB::Swear for all financial persistence and roster data.
 
-# Renders the main Swear Jar dashboard.
+# Renders the main Swear Jar interface skeleton.
 # Route: GET /swear
-# Parameters: None
-# Returns:
-#   Rendered HTML template 'swear/swear' with:
-#     - leaderboard: Aggregated debt stats
-#     - jar_balance: Current cash in hand
-#     - history: Recent transaction log
-#     - members: Active participants
 sub index {
-    my $c = shift;
-    
-    # Retrieve aggregate data for dashboard visualization
-    my $leaderboard = $c->db->get_swear_leaderboard();
-    my $jar_balance = $c->db->get_jar_balance();
-    my $history     = $c->db->get_swear_history();
-    
-    # Retrieve roster for form selection
-    my $members     = $c->db->get_family_members(); 
-
-    $c->stash(
-        leaderboard  => $leaderboard,
-        jar_balance  => $jar_balance,
-        history      => $history,
-        members      => $members,
-        is_logged_in => $c->is_logged_in
-    );
-    
-    $c->render('swear/swear');
+    shift->render('swear/swear');
 }
 
-# Records a new fine against a user.
-# Route: POST /swear/add
-# Parameters:
-#   perpetrator : Name of the family member
-#   amount      : Monetary value (Decimal, e.g., 1.50)
-#   reason      : Context for the fine
-# Returns:
-#   JSON response
+# API Endpoint: Returns the full synchronized state for the module.
+# Route: GET /api/swear/state
+# Returns: JSON object { success, leaderboard, balance, history, members, is_admin, current_user }
+sub api_state {
+    my $c = shift;
+    
+    my $leaderboard = $c->db->get_swear_leaderboard();
+    my $balance     = $c->db->get_jar_balance();
+    my $history     = $c->db->get_swear_history();
+    my $members     = $c->db->get_family_members();
+
+    $c->render(json => {
+        success      => 1,
+        leaderboard  => $leaderboard,
+        balance      => $balance // 0,
+        history      => $history,
+        members      => $members,
+        is_admin     => $c->is_admin ? 1 : 0,
+        current_user => $c->session('user') || 'Guest'
+    });
+}
+
+# API Endpoint: Records a new fine against a user.
+# Route: POST /api/swear/add
 sub add_fine {
     my $c = shift;
 
@@ -60,99 +53,110 @@ sub add_fine {
     my $reason = trim($c->param('reason') // '');
 
     unless ($name && $amount =~ /^\d+(\.\d{1,2})?$/) {
-        return $c->render(json => { success => 0, error => 'Invalid Name or Amount' });
+        return $c->render(json => { success => 0, error => 'Invalid name or amount' });
     }
 
-    $c->db->add_swear($name, $amount, $reason);
+    eval {
+        $c->db->add_swear($name, $amount, $reason);
+    };
+    
+    if ($@) {
+        return $c->render(json => { success => 0, error => 'Database failure' });
+    }
+
     return $c->render(json => { success => 1, message => "Fine added for $name (\$$amount)" });
 }
 
-# Records a payment/deposit made by a user.
-# Route: POST /swear/pay
-# Parameters:
-#   perpetrator : Name of the user clearing their debt
-#   amount      : Amount deposited
-# Returns:
-#   JSON response
+# API Endpoint: Records a payment or deposit made by a user.
+# Route: POST /api/swear/pay
 sub pay_debt {
     my $c = shift;
     
     my $name = trim($c->param('perpetrator') // '');
     my $amount = trim($c->param('amount') // '');
-    my $current_user_name = $c->current_user->{username} // 'Unknown';
+    my $current_user_name = $c->session('user') // 'Guest';
 
-    # Logic: Prevent users from paying their own fines
-    if ($name eq $current_user_name) {
+    # Logic: Prevent users from paying their own fines (Self-governance rule)
+    if (lc($name) eq lc($current_user_name)) {
         return $c->render(json => { success => 0, error => 'You cannot pay your own fines!' });
     }
 
-    if ($name && $amount =~ /^\d+(\.\d{1,2})?$/) {
-        $c->db->mark_user_paid($name, $amount, $current_user_name);
-        return $c->render(json => { success => 1, message => "Payment recorded for $name (\$$amount)" });
-    } else {
+    unless ($name && $amount =~ /^\d+(\.\d{1,2})?$/) {
         return $c->render(json => { success => 0, error => 'Invalid payment details' });
     }
+
+    eval {
+        $c->db->mark_user_paid($name, $amount, $current_user_name);
+    };
+
+    if ($@) {
+        return $c->render(json => { success => 0, error => 'Payment failed' });
+    }
+
+    return $c->render(json => { success => 1, message => "Payment recorded for $name (\$$amount)" });
 }
 
-# Records a withdrawal from the jar balance.
-# Route: POST /swear/spend
-# Parameters:
-#   amount : Monetary value to withdraw
-#   reason : Description of expenditure
-# Returns:
-#   JSON response
+# API Endpoint: Records a withdrawal from the jar.
+# Route: POST /api/swear/spend
 sub spend {
     my $c = shift;
     
     my $amount = trim($c->param('amount') // '');
     my $reason = trim($c->param('reason') // '');
 
-    if ($amount =~ /^\d+(\.\d{1,2})?$/) {
-        $c->db->withdraw_from_jar($amount, $reason);
-        return $c->render(json => { success => 1, message => "Spent \$$amount from jar" });
-    } else {
+    unless ($amount =~ /^\d+(\.\d{1,2})?$/) {
         return $c->render(json => { success => 0, error => 'Invalid amount' });
     }
+
+    eval {
+        $c->db->withdraw_from_jar($amount, $reason);
+    };
+
+    if ($@) {
+        return $c->render(json => { success => 0, error => 'Expenditure failed' });
+    }
+
+    return $c->render(json => { success => 1, message => "Spent \$$amount from jar" });
 }
 
-# Registers a new family member to the roster.
-# Route: POST /swear/member/add
-# Parameters:
-#   name         : Display name
-#   default_fine : Default fine amount (defaults to 2.00)
-# Returns:
-#   JSON response
+# API Endpoint: Registers a new family member to the roster.
+# Route: POST /api/swear/member/add
 sub add_member {
     my $c = shift;
     
     my $name = trim($c->param('name') // '');
     my $def  = trim($c->param('default_fine') // '2.00');
     
-    if ($name && $def =~ /^\d+(\.\d{1,2})?$/) {
-        eval { 
-            $c->db->add_family_member($name, $def);
-        };
-        if ($@) {
-            return $c->render(json => { success => 0, error => "Failed to add member" });
-        }
-        return $c->render(json => { success => 1, message => "Member '$name' added successfully" });
-    } else {
+    unless ($name && $def =~ /^\d+(\.\d{1,2})?$/) {
         return $c->render(json => { success => 0, error => "Invalid member details" });
     }
+    
+    eval { 
+        $c->db->add_family_member($name, $def);
+    };
+    
+    if ($@) {
+        return $c->render(json => { success => 0, error => "Failed to add member" });
+    }
+
+    return $c->render(json => { success => 1, message => "Member '$name' added successfully" });
 }
 
-# Removes a family member from the roster.
-# Route: POST /swear/member/delete
-# Parameters:
-#   id : Unique Member ID
-# Returns:
-#   JSON response
+# API Endpoint: Removes a family member from the roster.
+# Route: POST /api/swear/member/delete
 sub delete_member {
     my $c = shift;
     
     my $id = $c->param('id');
     
-    $c->db->remove_family_member($id);
+    eval {
+        $c->db->remove_family_member($id);
+    };
+
+    if ($@) {
+        return $c->render(json => { success => 0, error => "Removal failed" });
+    }
+
     return $c->render(json => { success => 1, message => "Member removed successfully" });
 }
 
