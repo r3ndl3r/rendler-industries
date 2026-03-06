@@ -4,14 +4,14 @@
  * Shopping List Controller
  * 
  * Manages the collaborative Family Shopping List using a state-driven 
- * architecture. It provides a 100% AJAX-driven SPA experience with 
- * real-time synchronization and optimistic UI updates.
+ * architecture. It provides a synchronized experience with 
+ * real-time updates and optimistic UI modifications.
  * 
  * Features:
  * - State-driven list rendering (To Buy vs. Checked Items)
  * - Automatic background synchronization every 5 minutes
  * - Real-time role-based UI adjustments (Admin actions)
- * - Mandatory Action pattern for modifications (No Cancel buttons)
+ * - Standardized lifecycle for record modifications
  * - Lifecycle-aware button state management for network flight indicators
  * - Sanity-checked DOM manipulation for XSS prevention
  * 
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadState() {
     try {
-        const response = await fetch('/shopping/api/data');
+        const response = await fetch('/shopping/api/state');
         const data = await response.json();
         
         if (data && data.success) {
