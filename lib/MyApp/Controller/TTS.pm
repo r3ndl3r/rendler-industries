@@ -13,7 +13,7 @@ use utf8;
 # It handles request validation and returns raw MP3 binary data.
 
 # API: Synthesize Text
-# Route: POST /api/tts/synthesize
+# Route: POST /tts/api/synthesize
 # 
 # Parameters (JSON):
 #   text          : (Required) The string to convert to speech
