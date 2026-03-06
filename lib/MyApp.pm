@@ -46,14 +46,12 @@ sub startup {
     # Load configuration plugin
     my $config = $self->plugin('Config');
     
-    # Load standardized icons
-    $self->plugin('MyApp::Plugin::Icons');
-    
     # Initialize DB connection to retrieve application secrets
     my $db = DB->new();
     my $secret = $db->get_app_secret();
     
     # Load plugins
+    $self->plugin('MyApp::Plugin::Icons');
     $self->plugin('MyApp::Plugin::Notifications');
     $self->plugin('MyApp::Plugin::Tools');
     $self->plugin('MyApp::Plugin::OCR');
@@ -253,6 +251,7 @@ sub startup {
 
     # Protected Application Routes (Require Login or Admin)
     my $auth = $r->under('/')->to('auth#check_login');
+    
     # Admin bridge nested under the auth bridge
     my $admin = $auth->under(sub {
         my $c = shift;
@@ -293,9 +292,8 @@ sub startup {
     $r->get('/phone')->to('root#p_page');
     $r->get('/mobile')->to('root#p_page');
     $r->get('/this.is.totally.not.sus')->to('root#sus');
-    $r->get('/api/v1/dynamic_data')->to('root#api_dynamic_data');
-    $r->get('/api/system/file_map')->to('root#file_map_json');
-    $r->get('/api/menu/state')->to('menu#get_state');
+    $r->get('/system/api/file_map')->to('root#file_map_json');
+    $r->get('/menu/api/state')->to('menu#get_state');
     $r->get('/t')->to(cb => sub { shift->redirect_to('https://stash.rendler.org/stash?n=Movies&u=rendler') });
     $r->get('/quick')->to('root#quick');
     $auth->get('/chelsea')->to('chelsea#index');
@@ -349,11 +347,12 @@ sub startup {
     
     # --- Swear Jar Routes ---
     $family->get('/swear')->to('swear#index');
-    $family->post('/swear/add')->to('swear#add_fine');
-    $family->post('/swear/pay')->to('swear#pay_debt');
-    $family->post('/swear/spend')->to('swear#spend');
-    $family->post('/swear/member/add')->to('swear#add_member');
-    $family->post('/swear/member/delete')->to('swear#delete_member');
+    $family->get('/swear/api/state')->to('swear#api_state');
+    $family->post('/swear/api/add')->to('swear#add_fine');
+    $family->post('/swear/api/pay')->to('swear#pay_debt');
+    $family->post('/swear/api/spend')->to('swear#spend');
+    $family->post('/swear/api/member/add')->to('swear#add_member');
+    $family->post('/swear/api/member/delete')->to('swear#delete_member');
     
     # --- Birthday Calendar Routes ---
     # --- Birthday Routes ---
@@ -394,8 +393,8 @@ sub startup {
     $auth->post('/todo/api/clear')->to('todo#clear_completed');
 
     # --- Google Cloud API Routes ---
-    $auth->post('/api/tts/synthesize')->to('TTS#synthesize');
-    $auth->post('/api/translate')->to('Translation#translate');
+    $auth->post('/tts/api/synthesize')->to('TTS#synthesize');
+    $auth->post('/translation/api/translate')->to('Translation#translate');
 
     # --- Connect 4 Routes ---
     $auth->get('/connect4/lobby')->to('connect4#lobby');
@@ -443,7 +442,7 @@ sub startup {
     $r->get('/quiz')->to('quiz#index');
     $r->get('/quiz/all')->to('quiz#index', mode => 'all');
     $r->get('/quiz/study')->to('quiz#study_mode');
-    $r->get('/api/quiz/questions')->to('quiz#get_questions');
+    $r->get('/quiz/api/questions')->to('quiz#get_questions');
 
     # --- Go Links Routes ---
     $r->get('/g/:keyword')->to('go#resolve');
@@ -456,7 +455,7 @@ sub startup {
     # --- Receipts Management Routes ---
     $family->get('/receipts')->to('receipts#index');
     $family->get('/receipts/api/state')->to('receipts#api_state');
-    $family->get('/api/receipts/list')->to('receipts#api_list');
+    $family->get('/receipts/api/list')->to('receipts#api_list');
     $family->post('/receipts/api/upload')->to('receipts#upload');
     $family->post('/receipts/api/update/:id')->to('receipts#update');
     $family->post('/receipts/api/delete/:id')->to('receipts#delete');
