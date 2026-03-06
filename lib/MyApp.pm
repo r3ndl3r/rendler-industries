@@ -376,7 +376,7 @@ sub startup {
 
     # --- Shopping List Routes ---
     $family->get('/shopping')->to('shopping#index');
-    $family->get('/shopping/api/data')->to('shopping#api_data');
+    $family->get('/shopping/api/state')->to('shopping#api_state');
     $family->post('/shopping/api/add')->to('shopping#add');
     $family->post('/shopping/api/toggle/:id')->to('shopping#toggle');
     $family->post('/shopping/api/delete/:id')->to('shopping#delete');
