@@ -129,7 +129,7 @@ async function loadMenu() {
     if (!container) return;
 
     try {
-        const response = await fetch('/menu/api/state');
+        const response = await fetch('/menu/api/menubar');
         const data = await response.json();
         
         if (!data.success) throw new Error(data.error || 'Failed to load menu');
