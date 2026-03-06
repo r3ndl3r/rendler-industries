@@ -46,7 +46,7 @@ async function initStudyMode() {
     const totalDisplay = document.getElementById('total-questions');
 
     try {
-        const response = await fetch('/api/quiz/questions?mode=all');
+        const response = await fetch('/quiz/api/questions?mode=all');
         if (!response.ok) throw new Error('Failed to fetch questions');
         
         questions = await response.json();
