@@ -5,282 +5,214 @@ use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
 # Controller for Timer Management and Real-time Session Tracking.
+#
 # Features:
-#   - User dashboard with live timer updates
-#   - Admin management interface (create, edit, delete timers)
-#   - Real-time AJAX API for start/stop/pause operations
-#   - Email notification triggers for warnings and expiry
-#   - Individual and aggregate timer views for admins
-# Integration points:
-#   - Uses DB::Timers for all data operations
-#   - Coordinates with Email plugin for notification delivery
-#   - Restricted to authenticated users via router bridge
+#   - User dashboard with synchronized live timer updates.
+#   - Admin management interface for cross-user timer control.
+#   - Real-time state handshake via api_state endpoints.
+#   - Lifecycle management for Start/Pause/Stop operations.
+#   - Automated daily limit enforcement and bonus time grants.
+#
+# Integration Points:
+#   - DB::Timers for all data persistence and interval calculation.
+#   - MyApp::Plugin::Icons for semantic status indicators.
+#   - Dashboard Poller for high-frequency client-side updates.
 
-# Render user's personal timer dashboard.
+# Renders the user dashboard skeleton.
 # Route: GET /timers
-# Parameters: None
-# Returns:
-#   Rendered HTML template 'timers/dashboard' with user's active timers
 sub dashboard {
     my $c = shift;
     
-    # Admins are redirected to the management interface as they don't use personal timers
+    # Redirection: admins utilize the unified management interface
     return $c->redirect_to('/timers/manage') if $c->is_admin;
 
-    my $user_id = $c->current_user_id;
-    my $timers = $c->db->get_user_timers($user_id);
-    
-    $c->render('timers/dashboard', timers => $timers, current => 'timers');
+    $c->render('timers/dashboard');
 }
 
-# Render admin management interface (all users or specific user).
+# Renders the administrative management skeleton.
 # Route: GET /timers/manage
-# Parameters:
-#   user_id : Optional query parameter to filter by specific user
-# Returns:
-#   Rendered HTML template 'timers/manage' with timer list
 sub manage {
+    shift->render('timers/manage');
+}
+
+# Returns the consolidated state for the active user's timers.
+# Route: GET /timers/api/state
+# Returns: JSON object { timers, success }
+sub api_state {
+    my $c = shift;
+    my $user_id = $c->current_user_id;
+    
+    # Maintenance: ensure all running intervals are reconciled before fetch
+    $c->db->update_running_timers();
+    
+    my $timers = $c->db->get_user_timers($user_id);
+    
+    $c->render(json => { 
+        success => 1,
+        timers  => $timers 
+    });
+}
+
+# Returns the administrative state for all timers or specific user filter.
+# Route: GET /timers/api/manage/state
+# Parameters:
+#   user_id : Optional filter
+# Returns: JSON object { timers, users, success }
+sub api_manage_state {
     my $c = shift;
     
     my $filter_user_id = $c->param('user_id');
     my $timers = $c->db->get_all_timers($filter_user_id);
-    my $users = $c->db->get_all_users();
+    my $users  = $c->db->get_all_users();
     
-    $c->render('timers/manage', 
-        timers => $timers, 
-        users => $users,
-        filter_user_id => $filter_user_id,
-        current => 'timers'
-    );
+    $c->render(json => {
+        success => 1,
+        timers  => $timers,
+        users   => $users
+    });
 }
 
-# AJAX API endpoint to get current state of user's timers.
-# Route: GET /timers/api/status
-# Parameters: None
-# Returns:
-#   JSON array of timer objects with real-time elapsed/remaining values
-sub api_status {
-    my $c = shift;
-    my $userid = $c->current_user_id;
-    
-    $c->db->update_running_timers();
-    
-    my $timers = $c->db->get_user_timers($userid);
-
-    # Notifications are handled by scripts/timer_maintenance.pl cron job 
-    $c->render(json => { timers => $timers });
-}
-
-# Start a timer session.
-# Route: POST /timers/start
-# Parameters:
-#   timer_id : Unique timer ID
-# Returns:
-#   JSON response
+# Initiates a timer session.
+# Route: POST /timers/api/start
 sub start_timer {
     my $c = shift;
-    
     my $timer_id = $c->param('timer_id');
-    my $user_id = $c->current_user_id;
+    my $user_id  = $c->current_user_id;
     
     unless ($timer_id && $timer_id =~ /^\d+$/) {
-        return $c->render(json => { success => 0, error => 'Invalid timer ID' });
+        return $c->render(json => { success => 0, error => 'Invalid timer identification' });
     }
     
-    my $success = $c->db->start_timer($timer_id, $user_id);
-    
-    if ($success) {
-        $c->render(json => { success => 1, message => 'Timer started' });
+    if ($c->db->start_timer($timer_id, $user_id)) {
+        $c->render(json => { success => 1, message => 'Session initiated' });
     } else {
-        $c->render(json => { success => 0, error => 'Cannot start timer (expired or paused)' });
+        $c->render(json => { success => 0, error => 'Operation rejected: Timer expired or already active' });
     }
 }
 
-# Stop a running timer.
-# Route: POST /timers/stop
-# Parameters:
-#   timer_id : Unique timer ID
-# Returns:
-#   JSON response
+# Finalizes a running timer session.
+# Route: POST /timers/api/stop
 sub stop_timer {
     my $c = shift;
-    
     my $timer_id = $c->param('timer_id');
-    my $user_id = $c->current_user_id;
+    my $user_id  = $c->current_user_id;
     
     unless ($timer_id && $timer_id =~ /^\d+$/) {
-        return $c->render(json => { success => 0, error => 'Invalid timer ID' });
+        return $c->render(json => { success => 0, error => 'Invalid timer identification' });
     }
     
-    my $success = $c->db->stop_timer($timer_id, $user_id);
-    
-    if ($success) {
-        $c->render(json => { success => 1, message => 'Timer stopped' });
+    if ($c->db->stop_timer($timer_id, $user_id)) {
+        $c->render(json => { success => 1, message => 'Session finalized' });
     } else {
-        $c->render(json => { success => 0, error => 'Failed to stop timer' });
+        $c->render(json => { success => 0, error => 'Operation rejected: Stop command failed' });
     }
 }
 
-# Toggle pause state for a timer.
-# Route: POST /timers/pause
-# Parameters:
-#   timer_id : Unique timer ID
-# Returns:
-#   JSON response
+# Reconciles the pause state for a timer.
+# Route: POST /timers/api/pause
 sub toggle_pause {
     my $c = shift;
-    
     my $timer_id = $c->param('timer_id');
-    my $user_id = $c->current_user_id;
+    my $user_id  = $c->current_user_id;
     
     unless ($timer_id && $timer_id =~ /^\d+$/) {
-        return $c->render(json => { success => 0, error => 'Invalid timer ID' });
+        return $c->render(json => { success => 0, error => 'Invalid timer identification' });
     }
     
-    my $success = $c->db->toggle_pause($timer_id, $user_id);
-    
-    if ($success) {
-        # Get updated state to return current pause status
-        my $timers = $c->db->get_user_timers($user_id);
-        my ($timer) = grep { $_->{id} == $timer_id } @$timers;
-        
-        my $paused = $timer ? $timer->{is_paused} : 0;
-        my $message = $paused ? 'Timer paused' : 'Timer resumed';
-        
-        $c->render(json => { success => 1, paused => $paused, message => $message });
+    if ($c->db->toggle_pause($timer_id, $user_id)) {
+        $c->render(json => { success => 1, message => 'State reconciled' });
     } else {
-        $c->render(json => { success => 0, error => 'Failed to toggle pause' });
+        $c->render(json => { success => 0, error => 'Operation rejected: State transition failed' });
     }
 }
 
-# Create a new timer (Admin only).
-# Route: POST /timers/create
-# Parameters:
-#   user_id          : Target user ID
-#   name             : Timer display name
-#   category         : Device category
-#   weekday_minutes  : Daily limit for weekdays
-#   weekend_minutes  : Daily limit for weekends
-# Returns:
-#   Redirects to manage page on success, renders error on failure
+# Creates a new timer definition (Admin).
+# Route: POST /timers/api/create
 sub create {
     my $c = shift;
     
-    my $user_id = $c->param('user_id');
-    my $name = trim($c->param('name') // '');
-    my $category = $c->param('category');
+    my $user_id         = $c->param('user_id');
+    my $name            = trim($c->param('name') // '');
+    my $category        = $c->param('category');
     my $weekday_minutes = $c->param('weekday_minutes');
     my $weekend_minutes = $c->param('weekend_minutes');
     
-    # Validation
-    return $c->render_error('Invalid user') unless $user_id && $user_id =~ /^\d+$/;
-    return $c->render_error('Timer name required') unless $name;
-    return $c->render_error('Invalid category') unless $category && $category =~ /^(Computer|Phone|Tablet|Gaming Console|TV)$/;
-    return $c->render_error('Invalid weekday minutes') unless defined $weekday_minutes && $weekday_minutes =~ /^\d+$/;
-    return $c->render_error('Invalid weekend minutes') unless defined $weekend_minutes && $weekend_minutes =~ /^\d+$/;
+    unless ($user_id && $name && $category && defined $weekday_minutes && defined $weekend_minutes) {
+        return $c->render(json => { success => 0, error => 'Missing mandatory configuration fields' });
+    }
     
     eval {
         my $admin_id = $c->current_user_id;
         $c->db->create_timer($user_id, $name, $category, $weekday_minutes, $weekend_minutes, $admin_id);
+        $c->render(json => { success => 1, message => "Definition '$name' created" });
     };
     
-    if (my $error = $@) {
-        $c->app->log->error("Failed to create timer: $error");
-        return $c->render(json => { success => 0, error => "Error creating timer: $error" });
+    if ($@) {
+        $c->app->log->error("Timer Creation Error: $@");
+        $c->render(json => { success => 0, error => 'Database synchronization failed' });
     }
-    
-    return $c->render(json => { success => 1, message => "Timer '$name' created successfully" });
 }
 
-# Update an existing timer (Admin only).
-# Route: POST /timers/update/:id
-# Parameters:
-#   id               : Timer ID (from route)
-#   name             : New display name
-#   category         : New category
-#   weekday_minutes  : New weekday limit
-#   weekend_minutes  : New weekend limit
-# Returns:
-#   JSON response
+# Modifies an existing timer definition (Admin).
+# Route: POST /timers/api/update/:id
 sub update {
     my $c = shift;
-    
-    my $timer_id = $c->param('id');
-    my $name = trim($c->param('name') // '');
-    my $category = $c->param('category');
+    my $id              = $c->param('id');
+    my $name            = trim($c->param('name') // '');
+    my $category        = $c->param('category');
     my $weekday_minutes = $c->param('weekday_minutes');
     my $weekend_minutes = $c->param('weekend_minutes');
     
-    # Validation
-    unless ($timer_id && $timer_id =~ /^\d+$/) {
-        return $c->render(json => { success => 0, error => 'Invalid timer ID' });
-    }
-    
     eval {
         my $admin_id = $c->current_user_id;
-        my $success = $c->db->update_timer($timer_id, $name, $category, $weekday_minutes, $weekend_minutes, $admin_id);
-        die "Failed to update timer" unless $success;
+        if ($c->db->update_timer($id, $name, $category, $weekday_minutes, $weekend_minutes, $admin_id)) {
+            $c->render(json => { success => 1, message => 'Definition updated' });
+        } else {
+            $c->render(json => { success => 0, error => 'Update rejected: Record not found' });
+        }
     };
     
-    if (my $error = $@) {
-        return $c->render(json => { success => 0, error => $error });
+    if ($@) {
+        $c->render(json => { success => 0, error => 'Database synchronization failed' });
     }
-
-    return $c->render(json => { success => 1, message => "Timer updated successfully" });
 }
 
-# Delete a timer (Admin only).
-# Route: POST /timers/delete/:id
-# Parameters:
-#   id : Timer ID (from route)
-# Returns:
-#   JSON response
+# Removes a timer definition from the roster (Admin).
+# Route: POST /timers/api/delete/:id
 sub delete {
     my $c = shift;
-    
-    my $timer_id = $c->param('id');
-    
-    unless ($timer_id && $timer_id =~ /^\d+$/) {
-        return $c->render(json => { success => 0, error => 'Invalid timer ID' });
-    }
+    my $id = $c->param('id');
     
     eval {
         my $admin_id = $c->current_user_id;
-        my $success = $c->db->delete_timer($timer_id, $admin_id);
-        die "Failed to delete timer" unless $success;
+        if ($c->db->delete_timer($id, $admin_id)) {
+            $c->render(json => { success => 1, message => 'Definition removed' });
+        } else {
+            $c->render(json => { success => 0, error => 'Removal rejected: Record not found' });
+        }
     };
     
-    if (my $error = $@) {
-        return $c->render(json => { success => 0, error => $error });
+    if ($@) {
+        $c->render(json => { success => 0, error => 'Database synchronization failed' });
     }
-
-    return $c->render(json => { success => 1, message => "Timer deleted successfully" });
 }
 
-# Grant bonus time to a timer (Admin only).
-# Route: POST /timers/bonus
-# Parameters:
-#   timer_id       : Unique timer ID
-#   bonus_minutes  : Additional minutes to grant
-# Returns:
-#   JSON response
+# Appends bonus time to a specific session (Admin).
+# Route: POST /timers/api/bonus
 sub grant_bonus {
     my $c = shift;
-    
-    my $timer_id = $c->param('timer_id');
+    my $timer_id      = $c->param('timer_id');
     my $bonus_minutes = $c->param('bonus_minutes');
     
-    unless ($timer_id && $timer_id =~ /^\d+$/ && defined $bonus_minutes && $bonus_minutes =~ /^\d+$/) {
-        return $c->render(json => { success => 0, error => 'Invalid parameters' });
+    unless ($timer_id && defined $bonus_minutes) {
+        return $c->render(json => { success => 0, error => 'Invalid grant parameters' });
     }
     
     my $admin_id = $c->current_user_id;
-    my $success = $c->db->grant_bonus_time($timer_id, $bonus_minutes, $admin_id);
-    
-    if ($success) {
-        $c->render(json => { success => 1, message => "$bonus_minutes minutes added" });
+    if ($c->db->grant_bonus_time($timer_id, $bonus_minutes, $admin_id)) {
+        $c->render(json => { success => 1, message => "Bonus granted: $bonus_minutes minutes" });
     } else {
-        $c->render(json => { success => 0, error => 'Failed to grant bonus time' });
+        $c->render(json => { success => 0, error => 'Grant rejected: Operation failed' });
     }
 }
 
