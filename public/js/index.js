@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function () {
             tree.innerHTML = '<li><span class="loading-text">Scanning project structure...</span></li>';
 
             try {
-                const response = await fetch('/api/system/file_map');
+                const response = await fetch('/system/api/file_map');
                 const files = await response.json();
                 
                 // Sort: directories first, then filenames case-insensitively
