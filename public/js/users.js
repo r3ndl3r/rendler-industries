@@ -1,76 +1,78 @@
 // /public/js/users.js
 
 /**
- * User Management Controller Module (SPA)
+ * User Management Controller
  * 
- * This module manages the Administrative User interface using a 100% AJAX-driven 
- * SPA architecture. It facilitates role toggling, account approval, and 
- * record modification through a high-density state-driven ledger.
+ * Manages the Administrative User interface using a state-driven 
+ * architecture. It facilitates role toggling, account approval, and 
+ * record modification through a high-density ledger.
  * 
  * Features:
- * - State-driven ledger rendering from /users (AJAX state)
- * - Real-time role switching (Admin/Family) with toggle-switch UI
- * - Integrated approval workflow with automated email dispatch
- * - High-density JSDoc documentation for behavioral transparency
- * - Pattern A (Ledger) implementation with glassmorphism styling
+ * - State-driven ledger rendering with 9-column grid
+ * - Real-time role switching with iOS-style toggle UI
+ * - Integrated approval workflow with automated synchronization
+ * - High-density JSDoc documentation
  * 
  * Dependencies:
  * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
- * - toast.js: For operation feedback
  */
 
 /**
- * --- Application State ---
+ * --- Module Configuration & State ---
  */
-let moduleState = {
+const CONFIG = {
+    SYNC_INTERVAL_MS: 300000         // Background synchronization frequency
+};
+
+let STATE = {
     users: [],      // Collection of user account records
     isAdmin: false   // Authorization flag for administrative actions
 };
 
 /**
- * --- Initialization ---
+ * Bootstraps the module state and establishes event delegation.
+ * 
+ * @returns {void}
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // Initial fetch of the user roster
     loadState();
 
-    // Configure global modal behavior for edit interfaces
     setupGlobalModalClosing(['modal-overlay'], [closeEditModal]);
+
+    setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
 });
 
 /**
- * --- Logic & UI Operations ---
+ * --- Core Data Management ---
  */
 
 /**
- * Orchestrates the "Single Source of Truth" handshake.
- * Fetches all users from the API and triggers the rendering engine.
+ * Synchronizes the module state with the server (Single Source of Truth).
  * 
  * @async
  * @returns {Promise<void>}
  */
 async function loadState() {
     try {
-        const response = await fetch('/users', {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
+        const response = await fetch('/users/api/state');
         const data = await response.json();
         
-        if (data.success) {
-            moduleState.users = data.users;
-            moduleState.isAdmin = data.is_admin;
+        if (data && data.success) {
+            STATE.users = data.users;
+            STATE.isAdmin = !!data.is_admin;
             renderTable();
         }
     } catch (err) {
-        console.error('User State Load Error:', err);
-        showToast('Failed to sync user roster', 'error');
+        console.error('loadState failed:', err);
     }
 }
 
 /**
- * UI Engine: renderTable
- * Generates the ledger rows for all users.
- * Implements dynamic role switches and status badges.
+ * --- UI Rendering Engine ---
+ */
+
+/**
+ * Orchestrates the generation of the user ledger from state.
  * 
  * @returns {void}
  */
@@ -78,172 +80,131 @@ function renderTable() {
     const tbody = document.getElementById('users-table-body');
     if (!tbody) return;
 
-    if (moduleState.users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No users found.</td></tr>';
+    if (STATE.users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No users registered in the system.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = moduleState.users.map(user => `
-        <tr id="user-row-${user.id}">
-            <td data-label="ID">${user.id}</td>
-            <td data-label="Username"><span class="text-wrap user-username">${escapeHtml(user.username)}</span></td>
-            <td data-label="Email"><span class="text-wrap text-small user-email">${escapeHtml(user.email)}</span></td>
+    // Sort: Permanent record identifier (ascending)
+    const sorted = [...STATE.users].sort((a, b) => a.id - b.id);
+
+    tbody.innerHTML = sorted.map(u => renderUserRow(u)).join('');
+}
+
+/**
+ * Generates the HTML fragment for a single user ledger row.
+ * 
+ * @param {Object} u - User record metadata.
+ * @returns {string} - Rendered HTML.
+ */
+function renderUserRow(u) {
+    const isApproved = u.status === 'approved';
+    
+    return `
+        <tr id="user-row-${u.id}" class="${u.status === 'pending' ? 'row-pending' : ''}">
+            <td data-label="ID">${u.id}</td>
+            <td data-label="Username"><span class="user-username">${escapeHtml(u.username)}</span></td>
+            <td data-label="Email"><span class="user-email text-small">${escapeHtml(u.email)}</span></td>
             <td data-label="Discord ID">
-                ${user.discord_id 
-                    ? `<span class="text-wrap text-small user-discord user-discord-active">${escapeHtml(user.discord_id)}</span>`
-                    : `<span class="user-discord user-discord-empty">-</span>`
+                ${u.discord_id 
+                    ? `<span class="user-discord text-small">${escapeHtml(u.discord_id)}</span>`
+                    : `<span class="user-discord-empty">-</span>`
                 }
             </td>
-            <td data-label="Created"><span class="text-wrap text-small">${user.created_at}</span></td>
-            <td data-label="Approved" class="user-status-cell">
+            <td data-label="Created"><span class="text-small">${u.created_at || '-'}</span></td>
+            <td data-label="Approved">
                 <label class="switch">
-                    <input type="checkbox" 
-                           onchange="approveUser(${user.id}, this)" 
-                           ${user.status === 'approved' ? 'checked disabled' : ''}>
+                    <input type="checkbox" onchange="approveUser(${u.id}, this)" ${isApproved ? 'checked disabled' : ''}>
                     <span class="slider slider-approved"></span>
                 </label>
             </td>
             <td data-label="Admin">
                 <label class="switch">
-                    <input type="checkbox" onchange="toggleRole(${user.id}, 'admin', this.checked)" ${user.is_admin ? 'checked' : ''}>
+                    <input type="checkbox" onchange="toggleRole(${u.id}, 'admin', this.checked)" ${u.is_admin == 1 ? 'checked' : ''}>
                     <span class="slider"></span>
                 </label>
             </td>
             <td data-label="Family">
                 <label class="switch">
-                    <input type="checkbox" onchange="toggleRole(${user.id}, 'family', this.checked)" ${user.is_family ? 'checked' : ''}>
+                    <input type="checkbox" onchange="toggleRole(${u.id}, 'family', this.checked)" ${u.is_family == 1 ? 'checked' : ''}>
                     <span class="slider slider-family"></span>
                 </label>
             </td>
             <td data-label="Actions">
                 <div class="action-btns">
-                    <button type="button" class="btn-icon-edit" onclick="openEditUserModal(${user.id})" title="Edit">${getIcon('edit')}</button>
-                    <button type="button" class="btn-icon-delete" onclick="confirmDeleteUser(${user.id}, '${escapeHtml(user.username)}')" title="Delete">${getIcon('delete')}</button>
+                    <button type="button" class="btn-icon-edit" onclick="openEditUserModal(${u.id})" title="Edit Profile">
+                        ${getIcon('edit')}
+                    </button>
+                    <button type="button" class="btn-icon-delete" onclick="confirmDeleteUser(${u.id}, '${escapeHtml(u.username)}')" title="Delete Account">
+                        ${getIcon('delete')}
+                    </button>
                 </div>
             </td>
         </tr>
-    `).join('');
+    `;
 }
 
 /**
- * Action: toggleRole (Admin)
- * Inverts a user's permission bit on the server.
- * 
- * @async
- * @param {number} userId - Target user identifier.
- * @param {string} role - Permission bit to toggle ('admin' or 'family').
- * @param {boolean} value - Target boolean state.
- * @returns {Promise<void>}
+ * --- Interactive Logic ---
  */
-async function toggleRole(userId, role, value) {
-    const data = {
-        id: userId,
-        role: role,
-        value: value ? 1 : 0
-    };
-
-    const result = await apiPost('/users/toggle_role', data);
-    
-    // Logic: if update fails, sync state to restore visual switch state
-    if (!result || !result.success) {
-        loadState();
-    }
-}
 
 /**
- * Action: approveUser (Admin)
- * Transitions a user from 'pending' to 'approved' state.
- * Triggers automated welcome email dispatch and locks the interface.
+ * Pre-fills and displays the user editor.
  * 
- * @async
- * @param {number} userId - Target user identifier.
- * @param {HTMLInputElement} checkbox - The triggering toggle switch.
- * @returns {Promise<void>}
- */
-async function approveUser(userId, checkbox) {
-    if (!checkbox.checked) return; // Prevent logic if somehow unchecked
-
-    // UI: Disable immediately to prevent spam/double-clicks
-    checkbox.disabled = true;
-
-    // Logic: result processing is handled by apiPost (Toast)
-    const result = await apiPost(`/users/approve/${userId}`);
-    
-    if (result && result.success) {
-        // Success: keep checked and disabled (locked out)
-        loadState(); 
-    } else {
-        // Failure: revert state
-        checkbox.checked = false;
-        checkbox.disabled = false;
-    }
-}
-
-/**
- * Interface: openEditUserModal
- * Pre-fills the administrative user editor with record data from state.
- * 
- * @param {number} id - Target user identifier.
+ * @param {number} id - Target identifier.
  * @returns {void}
  */
 function openEditUserModal(id) {
-    const user = moduleState.users.find(u => u.id == id);
-    if (!user) return;
+    const u = STATE.users.find(item => item.id == id);
+    if (!u) return;
 
-    const modal = document.getElementById('editUserModal');
-    
-    document.getElementById('editUserId').value = user.id;
-    document.getElementById('editUsername').value = user.username;
-    document.getElementById('editEmail').value = user.email;
-    document.getElementById('editDiscordId').value = user.discord_id || '';
-    document.getElementById('editStatus').value = user.status || 'pending';
-    document.getElementById('editPassword').value = ''; 
-    
-    if (modal) {
-        modal.style.display = 'flex';
-        document.body.classList.add('modal-open');
-    }
+    document.getElementById('editUserId').value = u.id;
+    document.getElementById('editUsername').value = u.username;
+    document.getElementById('editEmail').value = u.email;
+    document.getElementById('editDiscordId').value = u.discord_id || '';
+    document.getElementById('editStatus').value = u.status;
+    document.getElementById('editPassword').value = '';
+
+    const m = document.getElementById('editUserModal');
+    if (m) m.style.display = 'flex';
 }
 
 /**
- * Hides the user editor interface and restores scroll focus.
+ * Hides the user editor.
  * 
  * @returns {void}
  */
 function closeEditModal() {
-    const modal = document.getElementById('editUserModal');
-    if (modal) {
-        modal.style.display = 'none';
-        document.body.classList.remove('modal-open');
-    }
+    const m = document.getElementById('editUserModal');
+    if (m) m.style.display = 'none';
 }
 
 /**
- * Executes persistent profile modifications via AJAX.
- * Reconciles the ledger upon successful update.
+ * --- API Interactions ---
+ */
+
+/**
+ * Executes persistent profile modifications.
  * 
  * @async
- * @param {Event} event - Triggering form event.
+ * @param {Event} event - Form submission event.
  * @returns {Promise<void>}
  */
-async function submitUserEdit(event) {
+async function handleEditSubmit(event) {
     if (event) event.preventDefault();
-
     const form = event.target;
     const userId = document.getElementById('editUserId').value;
     const btn = document.getElementById('editSaveBtn');
-    
     const originalHtml = btn.innerHTML;
+
     btn.disabled = true;
     btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
     try {
-        const formData = new FormData(form);
-        const result = await apiPost(`/users/update/${userId}`, Object.fromEntries(formData));
-
+        const result = await apiPost(`/users/update/${userId}`, new FormData(form));
         if (result && result.success) {
             closeEditModal();
-            loadState();
+            await loadState();
         }
     } finally {
         btn.disabled = false;
@@ -252,11 +213,57 @@ async function submitUserEdit(event) {
 }
 
 /**
- * Action: confirmDeleteUser (Admin)
- * Orchestrates the Mandatory Action deletion flow for a user account.
+ * Activates a pending account registration.
  * 
- * @param {number} id - Target database record ID.
- * @param {string} username - Name for confirmation context.
+ * @async
+ * @param {number} userId - Target identifier.
+ * @param {HTMLInputElement} checkbox - The triggering toggle switch.
+ * @returns {Promise<void>}
+ */
+async function approveUser(userId, checkbox) {
+    if (!checkbox.checked) return;
+    checkbox.disabled = true;
+
+    const result = await apiPost(`/users/approve/${userId}`);
+    if (result && result.success) {
+        const u = STATE.users.find(item => item.id == userId);
+        if (u) u.status = 'approved';
+        renderTable();
+    } else {
+        checkbox.checked = false;
+        checkbox.disabled = false;
+    }
+}
+
+/**
+ * Surgical toggle for user permission bits.
+ * 
+ * @async
+ * @param {number} userId - Target identifier.
+ * @param {string} role - Role key ('admin'|'family').
+ * @param {boolean} value - Target status.
+ * @returns {Promise<void>}
+ */
+async function toggleRole(userId, role, value) {
+    const result = await apiPost('/users/toggle_role', { id: userId, role, value: value ? 1 : 0 });
+    if (result && result.success) {
+        const u = STATE.users.find(item => item.id == userId);
+        if (u) {
+            if (role === 'admin') u.is_admin = value ? 1 : 0;
+            if (role === 'family') u.is_family = value ? 1 : 0;
+            renderTable();
+        }
+    } else {
+        renderTable();
+    }
+}
+
+/**
+ * Action: confirmDeleteUser (Admin)
+ * Orchestrates the deletion flow for a user account.
+ * 
+ * @param {number} id - Target record ID.
+ * @param {string} username - Account label.
  * @returns {void}
  */
 function confirmDeleteUser(id, username) {
@@ -270,13 +277,15 @@ function confirmDeleteUser(id, username) {
         onConfirm: async () => {
             const result = await apiPost(`/users/delete/${id}`);
             if (result && result.success) {
-                // UI Lifecycle: animate row removal from ledger
                 const row = document.getElementById(`user-row-${id}`);
                 if (row) {
                     row.classList.add('row-fade-out');
-                    setTimeout(() => loadState(), 500);
+                    setTimeout(() => {
+                        STATE.users = STATE.users.filter(u => u.id != id);
+                        renderTable();
+                    }, 500);
                 } else {
-                    loadState();
+                    await loadState();
                 }
             }
         }
@@ -284,26 +293,25 @@ function confirmDeleteUser(id, username) {
 }
 
 /**
- * Sanitizes strings for safe DOM injection.
+ * Prevents XSS by sanitizing dynamic content.
  * 
- * @param {string} str - Unsafe input.
- * @returns {string} - Escaped output.
+ * @param {string} text - Raw input.
+ * @returns {string} - Sanitized HTML.
  */
-function escapeHtml(str) {
-    if (!str) return '';
+function escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
-    div.textContent = str;
+    div.textContent = text;
     return div.innerHTML;
 }
 
 /**
  * --- Global Exposure ---
- * These functions are explicitly exposed to the window object to support 
- * legacy inline event handlers defined in server-side templates.
  */
+window.loadState = loadState;
 window.toggleRole = toggleRole;
 window.approveUser = approveUser;
 window.openEditUserModal = openEditUserModal;
 window.closeEditModal = closeEditModal;
-window.submitUserEdit = submitUserEdit;
+window.handleEditSubmit = handleEditSubmit;
 window.confirmDeleteUser = confirmDeleteUser;
