@@ -11,44 +11,41 @@
 <div class="birthday-container">
     <div class="header-bar">
         <h1><%= icon('birthdays') %> <span>Birthdays</span></h1>
-        <% if (is_admin()) { %>
-            <div class="manage-actions">
-                <button class="btn-primary" onclick="openAddModal()"><%= icon('add') %> New</button>
-                <button class="btn-secondary" onclick="toggleManageMode()" id="manageBtn"><%= icon('settings') %> Manage</button>
-            </div>
-        <% } %>
+        <div class="manage-actions" id="admin-actions">
+            <button class="btn-primary" onclick="openAddModal()"><%= icon('add') %> New</button>
+            <button class="btn-secondary" onclick="toggleManageMode()" id="manageBtn"><%= icon('settings') %> Manage</button>
+        </div>
     </div>
 
-    <%# Main Countdown View %>
+    <%# Main Dynamic Container %>
     <div id="birthday-grid" class="birthdays-grid">
-        <div class="loading-state">
-            <div class="spinner"></div>
-            <p>Loading birthdays...</p>
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse"><%= icon('birthdays') %></span>
+            <p class="loading-label">Synchronizing birthday records...</p>
+            <p class="loading-sub">Retrieving family milestones and celestial alignments</p>
         </div>
     </div>
 
-    <%# Administrative Management View (Admin) %>
-    <% if (is_admin()) { %>
-        <div id="manage-view" class="manage-view glass-panel" style="display: none;">
-            <div class="manage-header">
-                <h2>Manage Records</h2>
-                <button class="btn-close" onclick="toggleManageMode()">&times;</button>
-            </div>
-            <div id="manage-list" class="manage-list">
-            </div>
+    <%# Administrative Management View (Admin Only) %>
+    <div id="manage-view" class="manage-view glass-panel">
+        <div class="manage-header">
+            <h2>Manage Records</h2>
+            <button class="btn-close" onclick="toggleManageMode()">&times;</button>
         </div>
-    <% } %>
+        <div id="manage-list" class="manage-list">
+        </div>
+    </div>
 </div>
 
-<% if (is_admin()) { %>
-<%# Add/Edit Modal %>
+<%# Add/Edit Modal (Admin Only) %>
 <div id="birthdayModal" class="modal-overlay">
     <div class="modal-content modal-content-small">
         <div class="modal-header">
             <h3 id="modalTitle"><%= icon('add') %> Add Birthday</h3>
             <span class="close-btn" onclick="closeModal()">&times;</span>
         </div>
-        <form id="birthdayForm" onsubmit="submitBirthdayForm(event)">
+        <form id="birthdayForm" onsubmit="handleBirthdaySubmit(event)">
             <input type="hidden" name="id" id="field_id">
             <div class="modal-body">
                 <div class="form-group">
@@ -67,5 +64,3 @@
         </form>
     </div>
 </div>
-<% } %>
-
