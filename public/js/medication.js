@@ -1,259 +1,318 @@
 // /public/js/medication.js
 
 /**
- * Medication Tracker Controller Module
+ * Medication Tracker Controller
  * 
- * This module manages the Family Medication interface, providing 
- * real-time tracking of dosages, automated interval calculations, 
- * and administrative registry management.
+ * Manages the Family Medication interface using a state-driven architecture. 
+ * It provides real-time dosage tracking, interval calculations, and 
+ * administrative registry maintenance through a synchronized interface.
  * 
  * Features:
- * - Real-time dosing intervals (updated every 60 seconds)
+ * - State-driven rendering for logs, registry, and family members
+ * - Real-time dosing intervals (auto-refreshing every 60s)
  * - Intelligent form pre-filling from medication registry
- * - Integrated dosage reset workflow with automated follow-up reminders
- * - Administrative management of the global medication registry
- * - Mobile-optimized collapsible log entries
- * - 100% AJAX-driven Mandatory Action pattern (Single-button confirmations)
+ * - Integrated dosage reset workflow with reminder scheduling
+ * - Administrative management of the global medication catalog
+ * - Local state reconciliation for zero-latency user feedback
  * 
  * Dependencies:
- * - default.js: For apiPost, getLoadingHtml, getIcon, getLocalISOString, and modal helpers
+ * - default.js: For apiPost, getIcon, getLocalISOString, setupGlobalModalClosing, and modal helpers
  * - toast.js: For status notifications
  */
 
 /**
- * Application State
- * Central data store for medication logs, registry items, and family members
+ * --- Module Configuration & State ---
  */
-let appData = { 
+const CONFIG = {
+    SYNC_INTERVAL_MS: 300000,        // Background synchronization (5 min)
+    UI_TICK_MS: 60000               // Relative time update frequency (1 min)
+};
+
+let STATE = {
     logs: {},                       // Map of member names to dosage arrays
     registry: [],                   // Global list of available medications
-    members: []                     // List of family members for selection logic
+    members: [],                    // List of family members for dropdowns
+    isAdmin: false                  // Authorization gate for administrative actions
 };
 
 /**
- * Initialization System
- * Triggers initial data sync, schedules background UI updates, and configures modal closure.
+ * Bootstraps the module state and establishes background lifecycles.
+ * 
+ * @returns {void}
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // Bootstrap collection from server
-    refreshData();
+    // Initial fetch of the master dataset
+    loadState();
     
-    // Maintain accurate "time since" labels for relative dosing tracking
-    setInterval(updateAllIntervals, 60000);
+    // Background relative time updates
+    setInterval(updateAllIntervals, CONFIG.UI_TICK_MS);
     
-    // Configure unified modal closure behavior for all global and local overlays
-    setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
+    // Background data synchronization
+    setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
+    
+    // Configure unified modal closure behavior
+    setupGlobalModalClosing(['modal-overlay'], [
         closeDoseModal, closeEditModal, closeRegistryModal, closeManageModal, closeConfirmModal
     ]);
 });
 
 /**
- * --- Data Management ---
+ * --- Core Data Management ---
  */
 
 /**
- * Synchronizes module state with the server-side source of truth.
+ * Synchronizes the module state with the server (Single Source of Truth).
+ * 
+ * @async
+ * @returns {Promise<void>}
  */
-function refreshData() {
-    fetch('/medication/api/data')
-        .then(res => res.json())
-        .then(data => {
-            appData = data;
+async function loadState() {
+    try {
+        const response = await fetch('/medication/api/state');
+        const data = await response.json();
+        
+        if (data && data.success) {
+            STATE.logs = data.logs;
+            STATE.registry = data.registry;
+            STATE.members = data.members;
+            STATE.isAdmin = !!data.is_admin;
             renderUI();
-        })
-        .catch(err => {
-            console.error('refreshData error:', err);
-            showToast("Failed to load medication data", "error");
-        });
+        }
+    } catch (err) {
+        console.error('loadState failed:', err);
+    }
 }
 
 /**
- * Logic: submitForm
- * Universal handler for medication log and registry forms.
- * Performs date/time merging for log entries before transmission.
+ * Universal handler for log-related form submissions.
+ * Performs date/time consolidation before transmission.
  * 
- * @param {Event} event - Submission event
- * @param {string} url - Target endpoint
- * @param {boolean} [isRegistry=false] - Context flag for registry vs log entries
+ * @async
+ * @param {Event} event - Triggering form event.
+ * @param {string} url - Target API endpoint.
+ * @returns {Promise<void>}
  */
-function submitForm(event, url, isRegistry = false) {
-    event.preventDefault();
+async function handleLogSubmit(event, url) {
+    if (event) event.preventDefault();
     const form = event.target;
-    const btn = form.querySelector('button[type="submit"]');
+    const btnId = form.id === 'doseForm' ? 'addSaveBtn' : 'editSaveBtn';
+    const btn = document.getElementById(btnId);
     const formData = new FormData(form);
 
-    // Contextual merging: consolidate split date/time inputs for DB compatibility (YYYY-MM-DD HH:MM)
-    if (!isRegistry) {
-        const mode = form.id === 'doseForm' ? 'add' : 'edit';
-        const timeEl = document.getElementById(`${mode}_taken_at_time`);
-        const dateEl = document.getElementById(`${mode}_taken_at_date`);
-        if (timeEl && dateEl) {
-            formData.set('taken_at', `${dateEl.value} ${timeEl.value}`);
-        }
+    // Contextual merging: consolidate split inputs for DB compatibility
+    const mode = form.id === 'doseForm' ? 'add' : 'edit';
+    const timeEl = document.getElementById(`${mode}_taken_at_time`);
+    const dateEl = document.getElementById(`${mode}_taken_at_date`);
+    if (timeEl && dateEl) {
+        formData.set('taken_at', `${dateEl.value} ${timeEl.value}`);
     }
 
-    // UI Feedback: disable button and pulse icon to prevent double-submission
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Processing...`;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
-    // Transmit using global AJAX helper
-    apiPost(url, Object.fromEntries(formData)).then(data => {
-        // Lifecycle Cleanup: Restore button state regardless of outcome
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-
-        if (data) {
-            // Success: clear UI state and re-sync
+    try {
+        const result = await apiPost(url, Object.fromEntries(formData));
+        if (result && result.success) {
             closeDoseModal();
             closeEditModal();
-            if (isRegistry) closeManageModal();
-            refreshData();
+            await loadState();
         }
-    }).catch(() => {
+    } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
-    });
+    }
 }
 
 /**
- * --- UI Rendering ---
+ * Handler for administrative registry modifications.
+ * 
+ * @async
+ * @param {Event} event - Triggering form event.
+ * @param {string} url - Target API endpoint.
+ * @returns {Promise<void>}
+ */
+async function handleRegistrySubmit(event, url) {
+    if (event) event.preventDefault();
+    const form = event.target;
+    const btn = document.getElementById('manageSaveBtn');
+    const formData = new FormData(form);
+
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+
+    try {
+        const result = await apiPost(url, Object.fromEntries(formData));
+        if (result && result.success) {
+            closeManageModal();
+            await loadState();
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+/**
+ * --- UI Rendering Engine ---
  */
 
 /**
- * Orchestrates the full UI refresh across all components.
+ * Orchestrates the full UI synchronization lifecycle.
+ * 
+ * @returns {void}
  */
 function renderUI() {
     renderGrid();
     renderDropdowns();
     renderRegistryTable();
+    renderActionButtons();
     updateAllIntervals();
 }
 
 /**
- * Generates the user-categorized medication dose grid.
- * Implements mobile-first accordion logic for dosage details.
+ * Generates the family-categorized medication dose grid.
+ * 
+ * @returns {void}
  */
 function renderGrid() {
     const grid = document.getElementById('medication-grid');
     if (!grid) return;
-    grid.innerHTML = '';
 
-    const members = Object.keys(appData.logs).sort();
-    const activeMembers = members.filter(m => appData.logs[m].length > 0);
+    const members = Object.keys(STATE.logs).sort();
+    const activeMembers = members.filter(m => STATE.logs[m].length > 0);
 
-    // Handle empty state
     if (activeMembers.length === 0) {
         grid.innerHTML = `<div class="empty-state"><p>📭 No active medication logs found.</p></div>`;
         return;
     }
 
-    // Iterate through members and build dosage cards
-    activeMembers.forEach(member => {
-        const logs = appData.logs[member];
-        const card = document.createElement('div');
-        card.className = 'medication-card glass-panel';
-        
-        let logsHtml = '';
-        logs.forEach(l => {
-            // Format datetime for display (HH:MM DD/MM/YYYY)
-            const parts = l.taken_at.split(' ');
-            let displayDt = l.taken_at;
-            if (parts.length === 2) {
-                const dateParts = parts[0].split('-');
-                const timeStr = parts[1].substring(0, 5);
-                displayDt = `${timeStr} ${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
-            }
-            
-            // Build dosage row fragment with expansion logic
-            logsHtml += `
-                <div class="med-item" data-id="${l.id}" onclick="toggleMedExpand(this)">
-                    <div class="med-item-main">
-                        <div class="med-item-info">
-                            <span class="med-name">${l.medication_name}</span>
-                            <span class="med-dosage-pill">${l.dosage} mg</span>
-                        </div>
-                        <div class="med-item-right">
-                            <div class="med-item-timer">
-                                <span class="interval-update" data-unix="${l.taken_at_unix}">...</span>
-                            </div>
-                            <span class="expand-icon">${getIcon('expand')}</span>
-                        </div>
-                    </div>
-                    <div class="med-item-details">
-                        <div class="med-item-footer">
-                            <span class="taken-at-label">${getIcon('clock')} ${displayDt}</span>
-                            <div class="med-item-actions" onclick="event.stopPropagation()">
-                                <button type="button" class="btn-icon-reset" onclick="confirmResetMedication(${l.id})">${getIcon('reset')}</button>
-                                <button type="button" class="btn-icon-edit" onclick='openEditModal(${JSON.stringify(l)})'>${getIcon('edit')}</button>
-                                <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, '${l.medication_name} for ${l.family_member}')">${getIcon('delete')}</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-            });
-
-        card.innerHTML = `
-            <div class="user-header">
-                <h2 class="user-name">
-                    <span class="user-icon">${getIcon(member)}</span>
-                    <span class="user-label">${member}</span>
-                </h2>
+    grid.innerHTML = activeMembers.map(member => {
+        const logs = STATE.logs[member];
+        return `
+            <div class="medication-card glass-panel">
+                <div class="user-header">
+                    <h2 class="user-name">
+                        <span class="user-icon">${getIcon(member)}</span>
+                        <span class="user-label">${member}</span>
+                    </h2>
+                </div>
+                <div class="user-med-list">
+                    ${logs.map(l => renderLogItem(l)).join('')}
+                </div>
             </div>
-            <div class="user-med-list">${logsHtml}</div>
         `;
-        grid.appendChild(card);
+    }).join('');
+}
+
+/**
+ * Generates the HTML fragment for a single medication dose.
+ * 
+ * @param {Object} l - Log record metadata.
+ * @returns {string} - Rendered HTML.
+ */
+function renderLogItem(l) {
+    const parts = l.taken_at.split(' ');
+    let displayDt = l.taken_at;
+    if (parts.length === 2) {
+        const dateParts = parts[0].split('-');
+        const timeStr = parts[1].substring(0, 5);
+        displayDt = `${timeStr} ${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+    }
+
+    return `
+        <div class="med-item" data-id="${l.id}" onclick="toggleMedExpand(this)">
+            <div class="med-item-main">
+                <div class="med-item-info">
+                    <span class="med-name">${escapeHtml(l.medication_name)}</span>
+                    <span class="med-dosage-pill">${l.dosage} mg</span>
+                </div>
+                <div class="med-item-right">
+                    <div class="med-item-timer">
+                        <span class="interval-update" data-unix="${l.taken_at_unix}">...</span>
+                    </div>
+                    <span class="expand-icon">${getIcon('expand')}</span>
+                </div>
+            </div>
+            <div class="med-item-details">
+                <div class="med-item-footer">
+                    <span class="taken-at-label">${getIcon('clock')} ${displayDt}</span>
+                    <div class="med-item-actions" onclick="event.stopPropagation()">
+                        <button type="button" class="btn-icon-reset" onclick="confirmResetMedication(${l.id})" title="Reset Time">${getIcon('reset')}</button>
+                        <button type="button" class="btn-icon-edit" onclick='openEditModal(${JSON.stringify(l)})' title="Edit Log">${getIcon('edit')}</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, '${escapeHtml(l.medication_name)} for ${escapeHtml(l.family_member)}')" title="Delete Log">${getIcon('delete')}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Populates all medication and family member dropdowns from state.
+ * 
+ * @returns {void}
+ */
+function renderDropdowns() {
+    // 1. Medication Registry Options
+    const regOptions = STATE.registry.map(m => 
+        `<option value="${escapeHtml(m.name)}" data-dosage="${m.default_dosage}">${escapeHtml(m.name)}</option>`
+    ).join('');
+    
+    const regPlaceholder = '<option value="" selected>-- Select existing --</option>';
+    document.querySelectorAll('.registry-dropdown').forEach(el => {
+        el.innerHTML = regPlaceholder + regOptions;
+    });
+
+    // 2. Family Member Options
+    const memberOptions = STATE.members.map(m => 
+        `<option value="${m.id}">${getIcon(m.username)} ${escapeHtml(m.username)}</option>`
+    ).join('');
+
+    const memPlaceholder = '<option value="" disabled selected>Select family member</option>';
+    document.querySelectorAll('.member-dropdown').forEach(el => {
+        el.innerHTML = memPlaceholder + memberOptions;
     });
 }
 
 /**
- * Searches local state for a specific log record.
+ * Manages the visibility of administrative action controls.
  * 
- * @param {number} id - Target record identifier
- * @returns {Object|null} - Log object or null if not found
+ * @returns {void}
  */
-function findLogById(id) {
-    for (const member in appData.logs) {
-        const found = appData.logs[member].find(l => l.id == id);
-        if (found) return found;
+function renderActionButtons() {
+    const adminPanel = document.getElementById('admin-actions');
+    const memberPanel = document.getElementById('member-actions');
+    
+    if (STATE.isAdmin) {
+        if (adminPanel) adminPanel.style.display = 'flex';
+        if (memberPanel) memberPanel.style.display = 'none';
+    } else {
+        if (adminPanel) adminPanel.style.display = 'none';
+        if (memberPanel) memberPanel.style.display = 'flex';
     }
-    return null;
-}
-
-/**
- * Populates form dropdowns from the global medication registry.
- */
-function renderDropdowns() {
-    const options = appData.registry.map(m => 
-        `<option value="${m.name}" data-dosage="${m.default_dosage}">${m.name}</option>`
-    ).join('');
-    
-    const placeholder = '<option value="" selected>-- Select existing --</option>';
-    const addSelect = document.getElementById('add_quick_select');
-    const editSelect = document.getElementById('edit_quick_select');
-    
-    if (addSelect) addSelect.innerHTML = placeholder + options;
-    if (editSelect) editSelect.innerHTML = placeholder + options;
 }
 
 /**
  * Generates the administrative registry management table.
- * Implements safety checks to prevent deletion of meds with active history.
+ * 
+ * @returns {void}
  */
 function renderRegistryTable() {
     const body = document.getElementById('registry-table-body');
     if (!body) return;
 
-    body.innerHTML = appData.registry.map(m => `
+    body.innerHTML = STATE.registry.map(m => `
         <tr>
-            <td><strong>${m.name}</strong></td>
+            <td><strong>${escapeHtml(m.name)}</strong></td>
             <td>${m.default_dosage} mg</td>
             <td>${m.usage_count}</td>
             <td class="col-actions">
                 <div class="action-buttons">
-                    <button type="button" class="btn-icon-edit" onclick="openManageModal('${m.id}', '${m.name}', '${m.default_dosage}')">${getIcon('edit')}</button>
-                    <button type="button" class="btn-icon-delete" onclick="confirmDeleteRegistry(${m.id}, '${m.name}')" 
-                            ${m.usage_count > 0 ? 'disabled style="opacity:0.3; cursor:not-allowed"' : ''}>${getIcon('delete')}</button>
+                    <button type="button" class="btn-icon-edit" onclick="openManageModal('${m.id}', '${escapeHtml(m.name)}', '${m.default_dosage}')" title="Edit Registry">${getIcon('edit')}</button>
+                    <button type="button" class="btn-icon-delete" onclick="confirmDeleteRegistry(${m.id}, '${escapeHtml(m.name)}')" 
+                            ${m.usage_count > 0 ? 'disabled style="opacity:0.3; cursor:not-allowed"' : ''} title="Remove Registry Item">${getIcon('delete')}</button>
                 </div>
             </td>
         </tr>
@@ -261,16 +320,16 @@ function renderRegistryTable() {
 }
 
 /**
- * --- Helpers & Utilities ---
+ * --- Interactive Logic ---
  */
 
 /**
- * Helper: fillForm
- * Pre-populates the dose form when a registry item is selected via quick-select.
+ * Pre-populates logging forms based on registry selection.
  * 
- * @param {string} mode - Interaction mode ('add' or 'edit')
- * @param {string} name - Medication name string
- * @param {number} dosage - Default dosage in milligrams
+ * @param {string} mode - Context ('add'|'edit')
+ * @param {string} name - Medication label
+ * @param {number} dosage - Default dosage mg
+ * @returns {void}
  */
 function fillForm(mode, name, dosage) {
     if (!name) return;
@@ -279,26 +338,25 @@ function fillForm(mode, name, dosage) {
 }
 
 /**
- * Logic: toggleMedExpand
- * Manages accordion-style expansion of medication log items.
- * Ensures only one item per user is expanded at a time for UI clarity.
+ * Orchestrates the expansion state of medication logs (Accordion pattern).
  * 
- * @param {HTMLElement} el - Triggering item element
+ * @param {HTMLElement} el - Triggering element.
+ * @returns {void}
  */
 function toggleMedExpand(el) {
     if (el.classList.contains('expanded')) {
         el.classList.remove('expanded');
     } else {
         const list = el.closest('.user-med-list');
-        // Logic: focus - close others in the same list to reduce visual noise
         list.querySelectorAll('.med-item.expanded').forEach(item => item !== el && item.classList.remove('expanded'));
         el.classList.add('expanded');
     }
 }
 
 /**
- * UI Refresh: updateAllIntervals
- * Re-calculates relative "time since" labels for all visible log entries.
+ * Refreshes relative time labels for all active log items.
+ * 
+ * @returns {void}
  */
 function updateAllIntervals() {
     document.querySelectorAll('.interval-update').forEach(el => {
@@ -308,10 +366,10 @@ function updateAllIntervals() {
 }
 
 /**
- * Logic: setNow
- * Synchronizes form date/time inputs with the current system clock.
+ * Synchronizes form temporal inputs with the current system time.
  * 
- * @param {string} mode - Interaction mode ('add' or 'edit')
+ * @param {string} mode - Context ('add'|'edit')
+ * @returns {void}
  */
 function setNow(mode) {
     const localISO = getLocalISOString();
@@ -328,60 +386,75 @@ function setNow(mode) {
  */
 
 /**
- * Interface: openDoseModal
- * Resets and displays the medication logging interface.
+ * Prepares and displays the dosage logging interface.
+ * 
+ * @returns {void}
  */
 function openDoseModal() {
     const modal = document.getElementById('doseModal');
-    if (modal) modal.style.display = 'block';
-    setNow('add');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+        setNow('add');
+    }
 }
 
 /**
  * Hides the logging interface.
+ * 
+ * @returns {void}
  */
 function closeDoseModal() { 
     const modal = document.getElementById('doseModal');
-    if (modal) modal.style.display = 'none'; 
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }
 }
 
 /**
- * Interface: openEditModal
- * Pre-fills the logging interface with existing record metadata.
+ * Pre-fills and displays the record editor.
  * 
- * @param {Object} data - Source log record object
+ * @param {Object} data - Source record metadata.
+ * @returns {void}
  */
 function openEditModal(data) {
     const form = document.getElementById('editForm');
     if (!form) return;
     
-    form.action = `/medication/edit/${data.id}`;
+    form.action = `/medication/api/edit/${data.id}`;
     document.getElementById('edit_member_select').value = data.family_member_id;
     document.getElementById('edit_med_name').value = data.medication_name;
     document.getElementById('edit_dosage').value = data.dosage;
     
-    // Logic: handle space-delimited MariaDB datetime format
     const parts = data.taken_at.split(' ');
     document.getElementById('edit_taken_at_date').value = parts[0];
     document.getElementById('edit_taken_at_time').value = parts[1].substring(0, 5);
     
-    document.getElementById('editModal').style.display = 'block';
+    const modal = document.getElementById('editModal');
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
 }
 
 /**
- * Hides the edit interface.
+ * Hides the record editor.
+ * 
+ * @returns {void}
  */
 function closeEditModal() { 
     const modal = document.getElementById('editModal');
-    if (modal) modal.style.display = 'none'; 
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }
 }
 
 /**
- * Action: confirmDeleteMedication
- * Orchestrates the Mandatory Action deletion flow for a specific log entry.
+ * Orchestrates the deletion flow for a log entry.
  * 
- * @param {number} id - Record identifier
- * @param {string} name - Medication/member descriptor for confirmation text
+ * @param {number} id - Target identifier.
+ * @param {string} name - Display label for context.
+ * @returns {void}
  */
 function confirmDeleteMedication(id, name) {
     showConfirmModal({
@@ -391,72 +464,63 @@ function confirmDeleteMedication(id, name) {
         confirmText: 'Delete',
         hideCancel: true,
         alignment: 'center',
-        loadingText: 'Deleting...',
         onConfirm: async () => {
-            const result = await apiPost(`/medication/delete/${id}`);
-            if (result) {
-                refreshData();
+            const result = await apiPost(`/medication/api/delete/${id}`);
+            if (result && result.success) {
+                // Local state reconciliation
+                for (const member in STATE.logs) {
+                    STATE.logs[member] = STATE.logs[member].filter(l => l.id != id);
+                }
+                renderUI();
             }
         }
     });
 }
 
 /**
- * Workflow: confirmResetMedication
- * Complex Mandatory Action workflow for retroactive dosage timestamping.
- * Integrates automated follow-up reminder scheduling into the confirmation step.
+ * Complex workflow for retroactive timestamp adjustment and reminder creation.
  * 
- * @param {number} id - Target log entry ID
+ * @param {number} id - Target identifier.
+ * @returns {void}
  */
 function confirmResetMedication(id) {
-    const l = findLogById(id);
-    if (!l) return;
-
-    const medName = l.medication_name;
-    const memberName = l.family_member;
-    const memberId = l.family_member_id;
+    let targetLog = null;
+    for (const member in STATE.logs) {
+        const found = STATE.logs[member].find(l => l.id == id);
+        if (found) { targetLog = found; break; }
+    }
+    if (!targetLog) return;
 
     const localISO = getLocalISOString();
     const [date, currentTime] = localISO.split('T');
     
-    // Logic: generate recipient picker from global family state
-    const recipientCheckboxes = appData.members.map(m => `
+    const recipientCheckboxes = STATE.members.map(m => `
         <label class="recipient-checkbox">
-            <input type="checkbox" name="reminder_recipients[]" value="${m.id}" ${m.id == memberId ? 'checked' : ''}>
+            <input type="checkbox" name="reminder_recipients[]" value="${m.id}" ${m.id == targetLog.family_member_id ? 'checked' : ''}>
             <span class="recipient-name">${m.username}</span>
         </label>
     `).join('');
 
     const resetHtml = `
-        <div class="reset-modal-text">
-            Reset timestamp for <strong>${medName}</strong> for <strong>${memberName}</strong>?
-        </div>
+        <div class="reset-modal-text">Reset timestamp for <strong>${escapeHtml(targetLog.medication_name)}</strong> for <strong>${escapeHtml(targetLog.family_member)}</strong>?</div>
         <div class="form-group reset-form-group">
             <label class="reset-label">Target Time (Today)</label>
             <input type="time" id="reset_time_input" class="game-input reset-time-input" value="${currentTime}">
         </div>
-
         <div class="reminder-box">
             <label class="reminder-toggle-label">
                 <input type="checkbox" id="enable_reminder" onchange="document.getElementById('reminder_options').style.display = this.checked ? 'block' : 'none'">
                 <span class="reminder-toggle-content">${getIcon('reminders')} Schedule Reminder</span>
             </label>
-            
-            <div id="reminder_options" class="reminder-options">
+            <div id="reminder_options" class="reminder-options" style="display:none;">
                 <label class="reminder-delay-label">Delay (Hours)</label>
                 <div class="reminder-delay-selector">
                     ${[1,2,3,4,5,6,7,8,9,10,12,24].map(h => `
-                        <label class="delay-pill">
-                            <input type="radio" name="reminder_delay" value="${h}" ${h==4 ? 'checked' : ''}>
-                            <span>${h}</span>
-                        </label>
+                        <label class="delay-pill"><input type="radio" name="reminder_delay" value="${h}" ${h==4 ? 'checked' : ''}><span>${h}</span></label>
                     `).join('')}
                 </div>
-                
                 <label class="reminder-recipients-label">Send To</label>
-                <div class="reminder-recipients-list">
-                    ${recipientCheckboxes}
-                </div>
+                <div class="reminder-recipients-list">${recipientCheckboxes}</div>
             </div>
         </div>
     `;
@@ -469,25 +533,23 @@ function confirmResetMedication(id) {
         confirmIcon: 'save',
         hideCancel: true,
         alignment: 'center',
-        loadingText: 'Resetting...',
         onConfirm: async () => {
             const selectedTime = document.getElementById('reset_time_input').value;
             const enableReminder = document.getElementById('enable_reminder').checked;
             const payload = { taken_at: `${date} ${selectedTime}` };
             
-            // Logic: integrate reminder subsystem if requested by user
             if (enableReminder) {
                 payload.create_reminder = 1;
                 payload.reminder_delay = document.querySelector('input[name="reminder_delay"]:checked').value;
                 const recipients = Array.from(document.querySelectorAll('input[name="reminder_recipients[]"]:checked')).map(cb => cb.value);
                 payload.reminder_recipients = recipients.join(',');
-                payload.reminder_title = `💊 Meds: ${medName} for ${memberName}`;
-                payload.reminder_desc = `Follow-up dose reminder created from Medication Tracker. http://rendler.org/medication`;
+                payload.reminder_title = `💊 Meds: ${targetLog.medication_name} for ${targetLog.family_member}`;
+                payload.reminder_desc = `Follow-up dose reminder. http://rendler.org/medication`;
             }
 
-            const result = await apiPost(`/medication/reset/${id}`, payload);
-            if (result) {
-                refreshData();
+            const result = await apiPost(`/medication/api/reset/${id}`, payload);
+            if (result && result.success) {
+                await loadState();
             }
         }
     });
@@ -498,67 +560,103 @@ function confirmResetMedication(id) {
  */
 
 /**
- * Interface: openRegistryModal
- * Displays the global medication catalog management interface.
- */
-function openRegistryModal() { document.getElementById('registryModal').style.display = 'block'; }
-
-/**
- * Hides the global medication catalog.
- */
-function closeRegistryModal() { document.getElementById('registryModal').style.display = 'none'; }
-
-/**
- * Interface: openManageModal
- * Prepares the specialized editor for registry metadata modification.
+ * Displays the administrative medication catalog.
  * 
- * @param {number} id - Registry record ID
- * @param {string} name - Medication name
- * @param {number} dosage - Default dosage
+ * @returns {void}
  */
-function openManageModal(id, name, dosage) {
-    document.getElementById('manageEditForm').action = `/medication/manage/update/${id}`;
-    document.getElementById('manage_id').value = id;
-    document.getElementById('manage_name').value = name;
-    document.getElementById('manage_dosage').value = dosage;
-    document.getElementById('manageEditModal').style.display = 'block';
+function openRegistryModal() { 
+    const modal = document.getElementById('registryModal');
+    if (modal) {
+        modal.style.display = 'flex'; 
+        document.body.classList.add('modal-open');
+    }
 }
 
 /**
- * Hides the registry item editor.
+ * Hides the medication catalog.
+ * 
+ * @returns {void}
  */
-function closeManageModal() { document.getElementById('manageEditModal').style.display = 'none'; }
+function closeRegistryModal() { 
+    const modal = document.getElementById('registryModal');
+    if (modal) {
+        modal.style.display = 'none'; 
+        document.body.classList.remove('modal-open');
+    }
+}
 
 /**
- * Action: confirmDeleteRegistry
- * Orchestrates the Mandatory Action removal of a medication from the global catalog.
+ * Prepares and displays the registry item editor.
  * 
- * @param {number} id - Record identifier
- * @param {string} name - Medication name for confirmation text
+ * @param {number} id - Target identifier.
+ * @param {string} name - Medication label.
+ * @param {number} dosage - Default dosage.
+ * @returns {void}
+ */
+function openManageModal(id, name, dosage) {
+    const form = document.getElementById('manageEditForm');
+    form.action = `/medication/api/manage/update/${id}`;
+    document.getElementById('manage_id').value = id;
+    document.getElementById('manage_name').value = name;
+    document.getElementById('manage_dosage').value = dosage;
+    
+    const modal = document.getElementById('manageEditModal');
+    modal.style.display = 'flex';
+}
+
+/**
+ * Hides the registry editor.
+ * 
+ * @returns {void}
+ */
+function closeManageModal() { 
+    const modal = document.getElementById('manageEditModal');
+    if (modal) modal.style.display = 'none'; 
+}
+
+/**
+ * Orchestrates the removal of a medication from the global catalog.
+ * 
+ * @param {number} id - Target identifier.
+ * @param {string} name - Display label for context.
+ * @returns {void}
  */
 function confirmDeleteRegistry(id, name) {
     showConfirmModal({
         title: 'Remove from Registry',
-        message: `Are you sure you want to remove <strong>${name}</strong> from the medication registry?`,
+        message: `Are you sure you want to remove <strong>${name}</strong> from the registry?`,
         danger: true,
         confirmText: 'Remove',
         hideCancel: true,
         alignment: 'center',
-        loadingText: 'Removing...',
         onConfirm: async () => {
-            const result = await apiPost(`/medication/manage/delete/${id}`);
-            if (result) {
-                refreshData();
+            const result = await apiPost(`/medication/api/manage/delete/${id}`);
+            if (result && result.success) {
+                STATE.registry = STATE.registry.filter(m => m.id != id);
+                renderUI();
             }
         }
     });
 }
 
 /**
- * Global Exposure
- * Required for inline event handlers in Mojolicious templates.
+ * Sanitizes input for safe DOM injection.
+ * 
+ * @param {string} text - Raw input string.
+ * @returns {string} - Escaped output.
  */
-window.submitForm = submitForm;
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * --- Global Exposure ---
+ */
+window.handleLogSubmit = handleLogSubmit;
+window.handleRegistrySubmit = handleRegistrySubmit;
 window.fillForm = fillForm;
 window.toggleMedExpand = toggleMedExpand;
 window.openDoseModal = openDoseModal;
@@ -572,4 +670,4 @@ window.closeRegistryModal = closeRegistryModal;
 window.openManageModal = openManageModal;
 window.closeManageModal = closeManageModal;
 window.confirmDeleteRegistry = confirmDeleteRegistry;
-window.refreshData = refreshData;
+window.loadState = loadState;
