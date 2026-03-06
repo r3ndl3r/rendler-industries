@@ -27,7 +27,7 @@ sub index {
 }
 
 # API Endpoint to retrieve quiz questions.
-# Route: GET /api/quiz/questions
+# Route: GET /quiz/api/questions
 # Parameters: 
 #   mode : string ('all' to skip 20-question limit)
 # Returns:
