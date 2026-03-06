@@ -58,7 +58,7 @@ sub api_state {
 }
 
 # Lazy-loads receipt metadata for pagination.
-# Route: GET /api/receipts/list
+# Route: GET /receipts/api/list
 # Parameters:
 #   offset : Integer pagination pointer.
 #   store, days, search, min_amount, ai_status, uploader : Filter params.
