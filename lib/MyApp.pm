@@ -316,8 +316,9 @@ sub startup {
     $auth->post('/clipboard/update')->to('root#copy_update');
     $auth->post('/clipboard/delete')->to('root#remove_message');
 
-    # --- User Administration Routes ---
+    # --- User Management Routes ---
     $admin->get('/users')->to('admin#user_list');
+    $admin->get('/users/api/state')->to('admin#api_state');
     $admin->post('/users/toggle_role')->to('admin#toggle_role');
     $admin->post('/users/delete/:id')->to('admin#delete_user');
     $admin->post('/users/approve/:id')->to('admin#approve_user');
