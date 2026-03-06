@@ -18,28 +18,26 @@ use Mojo::Util qw(trim);
 # Parameters: None
 sub index {
     my $c = shift;
-    $c->stash(title => 'Todo List');
     $c->render('todo');
 }
 
 # API: Get current state (Active + Completed tasks).
 # Route: GET /todo/api/state
 # Returns: JSON object { todos }
-sub get_state {
+sub api_state {
     my $c = shift;
     my $user_id = $c->current_user_id;
     
     my $todos = $c->db->get_user_todos($user_id);
     
-    $c->render(json => { todos => $todos });
+    $c->render(json => { 
+        success => 1,
+        todos   => $todos 
+    });
 }
 
 # Adds a new task to the user's private list.
-# Route: POST /todo/add
-# Parameters:
-#   task_name : Description of the task (String)
-# Returns:
-#   JSON: { success => 1, id => Int, task_name => String }
+# Route: POST /todo/api/add
 sub add {
     my $c = shift;
     my $user_id = $c->current_user_id;
@@ -49,13 +47,14 @@ sub add {
         return $c->render(json => { success => 0, error => 'Task cannot be empty' });
     }
     
-    if (length($task_name) > 10000) {
-        return $c->render(json => { success => 0, error => 'Task too long' });
-    }
-    
     eval {
         my $id = $c->db->add_todo($user_id, $task_name);
-        $c->render(json => { success => 1, id => $id, task_name => $task_name, message => "Task added!" });
+        $c->render(json => { 
+            success => 1, 
+            id => $id, 
+            task_name => $task_name, 
+            message => "Task added!" 
+        });
     };
     if ($@) {
         $c->app->log->error("Failed to add todo: $@");
@@ -64,11 +63,7 @@ sub add {
 }
 
 # Toggles the completion status of a todo item.
-# Route: POST /todo/toggle/:id
-# Parameters:
-#   id : Unique task identifier
-# Returns:
-#   JSON: { success => 1 } or error message
+# Route: POST /todo/api/toggle/:id
 sub toggle {
     my $c = shift;
     my $user_id = $c->current_user_id;
@@ -87,11 +82,7 @@ sub toggle {
 }
 
 # Permanently removes a task from the user's list.
-# Route: POST /todo/delete/:id
-# Parameters:
-#   id : Unique task identifier
-# Returns:
-#   JSON: { success => 1 } or error message
+# Route: POST /todo/api/delete/:id
 sub delete {
     my $c = shift;
     my $user_id = $c->current_user_id;
@@ -110,12 +101,7 @@ sub delete {
 }
 
 # Updates the text content of an existing task.
-# Route: POST /todo/edit/:id
-# Parameters:
-#   id        : Unique task identifier
-#   task_name : New description text
-# Returns:
-#   JSON: { success => 1 } or error message
+# Route: POST /todo/api/edit/:id
 sub edit {
     my $c = shift;
     my $user_id = $c->current_user_id;
@@ -139,10 +125,7 @@ sub edit {
 }
 
 # Bulk deletes all completed tasks for the current user.
-# Route: POST /todo/clear
-# Parameters: None
-# Returns:
-#   JSON response
+# Route: POST /todo/api/clear
 sub clear_completed {
     my $c = shift;
     my $user_id = $c->current_user_id;
