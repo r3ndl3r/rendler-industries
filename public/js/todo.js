@@ -1,39 +1,43 @@
 // /public/js/todo.js
 
 /**
- * Todo List Controller Module
+ * Todo List Controller
  * 
- * This module manages the 100% AJAX-based Task Management interface. 
- * It implements a state-driven architecture with optimistic UI updates
- * to ensure a seamless and responsive user experience.
+ * Manages the personal Task Management interface using a state-driven 
+ * architecture. It provides a 100% AJAX-driven SPA experience with 
+ * optimistic UI updates and real-time synchronization.
  * 
  * Features:
- * - Real-time task synchronization with server state
+ * - State-driven task rendering (Active vs. Completed)
  * - Optimistic UI updates for creation and completion
- * - Sorted view (Active first by date, then Completed)
- * - Mandatory Action pattern for editing and batch deletion (No Cancel buttons)
- * - Lifecycle-aware button state management to prevent "stuck" indicators
- * - Mobile-optimized touch targets for task toggling
+ * - Automatic background synchronization every 5 minutes
+ * - Mandatory Action pattern for modifications (No Cancel buttons)
+ * - Lifecycle-aware button state management for network flight indicators
+ * - Auto-expanding textareas for rapid multi-line entry
  * 
  * Dependencies:
- * - default.js: For apiPost, getLoadingHtml, getIcon, setupGlobalModalClosing, and modal helpers
+ * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
  * - toast.js: For notification feedback
  */
 
 /**
- * Application State
- * Master data store synchronized with the server-side source of truth
+ * --- Module Configuration & State ---
  */
-let appState = {
-    todos: []                       // Array of todo objects {id, task_name, is_completed, created_at}
+const CONFIG = {
+    SYNC_INTERVAL_MS: 300000         // Background synchronization frequency
+};
+
+let STATE = {
+    todos: []                       // Collection of {id, task_name, is_completed, created_at}
 };
 
 /**
- * Initialization System
- * Sets up initial state, event delegation, and global modal behavior
+ * Bootstraps the module state and establishes event delegation.
+ * 
+ * @returns {void}
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // Bootstrap initial data collection from server
+    // Initial fetch of the todo roster
     loadState();
 
     const taskInput = document.getElementById('taskInput');
@@ -41,81 +45,70 @@ document.addEventListener('DOMContentLoaded', () => {
         taskInput.focus();
 
         // Behavior: Auto-resize and key handlers for rapid task entry
-        taskInput.addEventListener('input', function() {
+        taskInput.oninput = function() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
-        });
+        };
 
-        taskInput.addEventListener('keydown', (e) => {
+        taskInput.onkeydown = (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                addTodo();
+                handleAddTodo(e);
             }
-        });
+        };
     }
 
     const editName = document.getElementById('editName');
     if (editName) {
-        editName.addEventListener('keydown', (e) => {
+        editName.onkeydown = (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                submitEdit();
+                handleEditSubmit(e);
             }
-        });
+        };
     }
 
-    // Attach form submission handler
-    const addForm = document.getElementById('addTodoForm');
-    if (addForm) {
-        addForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            addTodo();
-        });
-    }
+    // Global modal behavior
+    setupGlobalModalClosing(['modal-overlay'], [closeEditModal]);
 
-    // Configure unified modal closing behavior for all overlays
-    setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
-        closeEditModal, closeConfirmModal
-    ]);
+    // Background synchronization
+    setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
 });
 
 /**
- * State Management: loadState
- * Fetches the complete todo collection and triggers re-render.
+ * --- Logic & UI Operations ---
+ */
+
+/**
+ * Synchronizes the module state with the server (Single Source of Truth).
  * 
+ * @async
  * @returns {Promise<void>}
  */
 async function loadState() {
-    const container = document.getElementById('todoListContainer');
-    
-    // Display loading skeleton on initial fetch only to minimize UI jitter
-    if (container && appState.todos.length === 0) {
-        container.innerHTML = getLoadingHtml('Syncing tasks...');
-    }
-
     try {
         const response = await fetch('/todo/api/state');
         const data = await response.json();
         
-        // Update local state and refresh UI
-        appState.todos = data.todos;
-        renderTodoItems();
+        if (data && data.success) {
+            STATE.todos = data.todos;
+            renderTable();
+        }
     } catch (err) {
-        console.error('Failed to load todo state:', err);
-        showToast('Connection error. Failed to sync tasks.', 'error');
+        console.error('loadState failed:', err);
     }
 }
 
 /**
- * UI Engine: renderTodoItems
- * Orchestrates the sorting and generation of the todo list HTML.
+ * Orchestrates the sorting and generation of the todo list categories.
+ * 
+ * @returns {void}
  */
-function renderTodoItems() {
+function renderTable() {
     const container = document.getElementById('todoListContainer');
     if (!container) return;
 
-    // Handle empty list scenario
-    if (appState.todos.length === 0) {
+    if (STATE.todos.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <p>📭 Your todo list is empty!</p>
@@ -124,70 +117,66 @@ function renderTodoItems() {
         return;
     }
 
-    // Sorting Logic: 
-    // 1. Completion status (Incomplete first)
-    // 2. Creation date (Newest first)
-    const sortedTodos = [...appState.todos].sort((a, b) => {
+    // Sorting Logic: Incomplete first, then by creation date (newest first)
+    const sorted = [...STATE.todos].sort((a, b) => {
         if (a.is_completed !== b.is_completed) return a.is_completed - b.is_completed;
         return new Date(b.created_at || 0) - new Date(a.created_at || 0);
     });
 
-    const active = sortedTodos.filter(t => !t.is_completed);
-    const completed = sortedTodos.filter(t => t.is_completed);
+    const active = sorted.filter(t => !t.is_completed);
+    const completed = sorted.filter(t => t.is_completed);
 
     let html = '';
 
-    // Render Active Tasks section
+    // Active Section
     if (active.length > 0) {
         html += `<h3 class="section-title">Active Tasks</h3>`;
-        active.forEach(todo => {
-            html += renderTodoItem(todo);
-        });
+        html += active.map(todo => renderTodoRow(todo)).join('');
     }
 
-    // Render Completed section with batch clear action
+    // Completed Section
     if (completed.length > 0) {
         html += `
             <div class="completed-section">
                 <div class="completed-header">
                     <h3 class="section-title">Completed</h3>
                     <button type="button" class="btn-clear-all" onclick="openClearCompletedModal()">Clear All</button>
-                </div>`;
-        completed.forEach(todo => {
-            html += renderTodoItem(todo);
-        });
-        html += `</div>`;
+                </div>
+                ${completed.map(todo => renderTodoRow(todo)).join('')}
+            </div>`;
     }
 
     container.innerHTML = html;
 }
 
 /**
- * UI Component: renderTodoItem
  * Generates the HTML fragment for a single todo row.
  * 
- * @param {Object} todo - The task object to render
- * @returns {string} - Rendered HTML string
+ * @param {Object} todo - Task record metadata.
+ * @returns {string} - Rendered HTML row.
  */
-function renderTodoItem(todo) {
+function renderTodoRow(todo) {
     const isCompleted = !!todo.is_completed;
+    const nameEscaped = escapeHtml(todo.task_name);
+
     return `
         <div class="todo-item ${isCompleted ? 'completed' : ''}" data-id="${todo.id}">
             <div class="item-content">
-                <button class="checkbox-btn ${isCompleted ? 'completed' : ''}" onclick="toggleTodo(${todo.id})" title="${isCompleted ? 'Re-open Task' : 'Complete Task'}">
+                <button type="button" class="checkbox-btn ${isCompleted ? 'completed' : ''}" 
+                        onclick="toggleTodo(${todo.id})" title="${isCompleted ? 'Re-open Task' : 'Complete Task'}">
                     <span class="checkmark">${isCompleted ? '✓' : ''}</span>
                 </button>
                 <div class="item-details">
-                    <span class="item-name">${escapeHtml(todo.task_name)}</span>
+                    <span class="item-name">${nameEscaped}</span>
                 </div>
             </div>
             <div class="action-buttons">
                 ${!isCompleted ? `
-                    <button class="btn-icon-edit" onclick="openEditModal(${todo.id})" title="Edit">
+                    <button type="button" class="btn-icon-edit" onclick="openEditModal(${todo.id})" title="Edit Task">
                         ${getIcon('edit')}
                     </button>
                 ` : ''}
-                <button class="btn-icon-delete" onclick="deleteTodo(${todo.id})" title="Delete">
+                <button type="button" class="btn-icon-delete" onclick="confirmDeleteTodo(${todo.id}, \`${todo.task_name.replace(/`/g, "\\`")}\`)" title="Remove Task">
                     ${getIcon('delete')}
                 </button>
             </div>
@@ -196,185 +185,197 @@ function renderTodoItem(todo) {
 }
 
 /**
- * Action: addTodo
- * Submits a new task to the server and performs an optimistic UI update.
+ * --- Interactive Handlers ---
+ */
+
+/**
+ * Submits a new task to the collection.
+ * Performs an optimistic UI update upon success.
  * 
+ * @async
+ * @param {Event} event - Triggering form event.
  * @returns {Promise<void>}
  */
-async function addTodo() {
+async function handleAddTodo(event) {
+    if (event) event.preventDefault();
+
     const input = document.getElementById('taskInput');
     const task_name = input.value.trim();
     if (!task_name) return;
 
-    // UI Feedback: disable button and show loading state
-    const btn = document.querySelector('#addTodoForm .btn-blue-add');
+    const btn = document.getElementById('addTaskBtn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `${getIcon('waiting')} Adding...`;
 
-    const result = await apiPost('/todo/add', { task_name: task_name });
-    
-    // Lifecycle Cleanup: restore button state
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
-
-    if (result && result.success) {
-        input.value = '';
-        input.style.height = 'auto'; // Reset height for auto-expanding textarea
-        // Perform optimistic update to local state
-        appState.todos.unshift({
-            id: result.id,
-            task_name: result.task_name,
-            is_completed: 0,
-            created_at: new Date().toISOString()
-        });
-        renderTodoItems();
+    try {
+        const result = await apiPost('/todo/api/add', { task_name: task_name });
+        if (result && result.success) {
+            input.value = '';
+            input.style.height = 'auto';
+            // Optimistic update
+            STATE.todos.unshift({
+                id: result.id,
+                task_name: result.task_name,
+                is_completed: 0,
+                created_at: new Date().toISOString()
+            });
+            renderTable();
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     }
 }
 
 /**
- * Action: toggleTodo
- * Updates task completion status on server and local state.
+ * Updates task completion status.
+ * Reconciles local state immediately upon success.
  * 
- * @param {number} id - Target Task ID
+ * @async
+ * @param {number} id - Target identifier.
  * @returns {Promise<void>}
  */
 async function toggleTodo(id) {
-    const itemEl = document.querySelector(`.todo-item[data-id="${id}"]`);
-    if (itemEl) itemEl.classList.add('pending'); // Visual feedback during network flight
+    const row = document.querySelector(`.todo-item[data-id="${id}"]`);
+    if (row) row.classList.add('pending');
 
-    const result = await apiPost(`/todo/toggle/${id}`);
+    const result = await apiPost(`/todo/api/toggle/${id}`);
     if (result && result.success) {
-        const todo = appState.todos.find(t => t.id == id);
+        const todo = STATE.todos.find(t => t.id == id);
         if (todo) {
             todo.is_completed = !todo.is_completed;
-            renderTodoItems();
+            renderTable();
         }
-    } else if (itemEl) {
-        itemEl.classList.remove('pending');
+    } else if (row) {
+        row.classList.remove('pending');
     }
 }
 
 /**
- * Action: deleteTodo
- * Orchestrates the Mandatory Action deletion flow for a specific task.
+ * Pre-fills and displays the task editor.
  * 
- * @param {number} id - Target Task ID
+ * @param {number} id - Target identifier.
+ * @returns {void}
  */
-async function deleteTodo(id) {
-    const todo = appState.todos.find(t => t.id == id);
-    if (!todo) return;
-
-    showConfirmModal({
-        title: 'Delete Task',
-        message: `Are you sure you want to remove \"<strong>${escapeHtml(todo.task_name)}</strong>\"?`,
-        danger: true,
-        confirmText: 'Delete',
-        hideCancel: true,
-        alignment: 'center',
-        loadingText: 'Deleting...',
-        onConfirm: async () => {
-            const result = await apiPost(`/todo/delete/${id}`);
-            if (result && result.success) {
-                appState.todos = appState.todos.filter(t => t.id != id);
-                renderTodoItems();
-            }
-        }
-    });
-}
-
-/**
- * Modal: openEditModal
- * Pre-fills and displays the task editing interface.
- * 
- * @param {number} id - Target Task ID
- */
-window.openEditModal = function(id) {
-    const todo = appState.todos.find(t => t.id == id);
+function openEditModal(id) {
+    const todo = STATE.todos.find(t => t.id == id);
     if (!todo) return;
 
     document.getElementById('editId').value = id;
-    const editName = document.getElementById('editName');
-    if (editName) {
-        editName.value = todo.task_name;
-        document.getElementById('editModal').classList.add('show');
+    const input = document.getElementById('editName');
+    if (input) {
+        input.value = todo.task_name;
+        const modal = document.getElementById('editModal');
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
         
-        editName.focus();
-        // Logic: Auto-expand height to match existing multi-line content
-        editName.style.height = 'auto';
-        editName.style.height = (editName.scrollHeight) + 'px';
+        input.focus();
+        input.style.height = 'auto';
+        input.style.height = (input.scrollHeight) + 'px';
     }
-};
+}
 
 /**
- * Modal: closeEditModal
- * Hides the task editing interface.
- */
-window.closeEditModal = function() {
-    document.getElementById('editModal').classList.remove('show');
-};
-
-/**
- * Action: submitEdit
- * Submits modified task description to server.
+ * Hides the editor modal.
  * 
+ * @returns {void}
+ */
+function closeEditModal() {
+    const modal = document.getElementById('editModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }
+}
+
+/**
+ * Executes persistent modifications to a task description.
+ * 
+ * @async
+ * @param {Event} event - Triggering form event.
  * @returns {Promise<void>}
  */
-async function submitEdit() {
+async function handleEditSubmit(event) {
+    if (event) event.preventDefault();
+
     const id = document.getElementById('editId').value;
-    const nameInput = document.getElementById('editName');
-    const name = nameInput ? nameInput.value.trim() : '';
+    const input = document.getElementById('editName');
+    const name = input.value.trim();
     if (!name) return;
 
-    // UI Feedback: disable button during processing
-    const btn = document.querySelector('#editModal .btn-primary');
+    const btn = document.getElementById('editSaveBtn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
-    const result = await apiPost(`/todo/edit/${id}`, { task_name: name });
-    
-    // Lifecycle Cleanup: Restore state
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
-
-    if (result && result.success) {
-        const todo = appState.todos.find(t => t.id == id);
-        if (todo) todo.task_name = name;
-        closeEditModal();
-        renderTodoItems();
+    try {
+        const result = await apiPost(`/todo/api/edit/${id}`, { task_name: name });
+        if (result && result.success) {
+            const todo = STATE.todos.find(t => t.id == id);
+            if (todo) todo.task_name = name;
+            renderTable();
+            closeEditModal();
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     }
 }
 
 /**
- * Modal: openClearCompletedModal
- * Orchestrates the Mandatory Action batch deletion flow for completed tasks.
+ * Orchestrates the deletion flow for a specific task.
+ * 
+ * @param {number} id - Target identifier.
+ * @param {string} taskName - Display label for context.
+ * @returns {void}
  */
-window.openClearCompletedModal = function() {
+function confirmDeleteTodo(id, taskName) {
+    showConfirmModal({
+        title: 'Delete Task',
+        message: `Are you sure you want to remove \"<strong>${escapeHtml(taskName)}</strong>\"?`,
+        danger: true,
+        confirmText: 'Delete',
+        hideCancel: true,
+        alignment: 'center',
+        onConfirm: async () => {
+            const result = await apiPost(`/todo/api/delete/${id}`);
+            if (result && result.success) {
+                STATE.todos = STATE.todos.filter(t => t.id != id);
+                renderTable();
+            }
+        }
+    });
+}
+
+/**
+ * Orchestrates the batch deletion of completed tasks.
+ * 
+ * @returns {void}
+ */
+function openClearCompletedModal() {
     showConfirmModal({
         title: 'Clear Completed',
-        message: 'Are you sure you want to clear all completed tasks from the list?',
+        message: 'Are you sure you want to clear all completed tasks?',
         danger: true,
         confirmText: 'Clear All',
         hideCancel: true,
         alignment: 'center',
-        loadingText: 'Clearing...',
         onConfirm: async () => {
-            const result = await apiPost('/todo/clear');
+            const result = await apiPost('/todo/api/clear');
             if (result && result.success) {
-                appState.todos = appState.todos.filter(t => !t.is_completed);
-                renderTodoItems();
+                STATE.todos = STATE.todos.filter(t => !t.is_completed);
+                renderTable();
             }
         }
     });
-};
+}
 
 /**
- * Utility: escapeHtml
- * Prevents XSS by sanitizing dynamic text strings.
+ * Sanitizes input for safe DOM injection.
  * 
- * @param {string} text - Raw input string
- * @returns {string} - Sanitized HTML string
+ * @param {string} text - Raw input.
+ * @returns {string} - Escaped output.
  */
 function escapeHtml(text) {
     if (!text) return '';
@@ -384,9 +385,13 @@ function escapeHtml(text) {
 }
 
 /**
- * Global Exposure
- * Necessary for inline event handlers defined in server-rendered templates.
+ * --- Global Exposure ---
  */
+window.loadState = loadState;
 window.toggleTodo = toggleTodo;
-window.deleteTodo = deleteTodo;
-window.submitEdit = submitEdit;
+window.confirmDeleteTodo = confirmDeleteTodo;
+window.openEditModal = openEditModal;
+window.closeEditModal = closeEditModal;
+window.handleEditSubmit = handleEditSubmit;
+window.handleAddTodo = handleAddTodo;
+window.openClearCompletedModal = openClearCompletedModal;
