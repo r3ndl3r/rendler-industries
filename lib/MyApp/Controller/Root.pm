@@ -157,7 +157,7 @@ sub age {
 }
 
 # JSON API endpoint serving application source file list.
-# Route: GET /api/system/file_map
+# Route: GET /system/api/file_map
 # Parameters: None
 # Returns:
 #   JSON array of file paths
