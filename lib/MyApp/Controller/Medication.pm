@@ -8,7 +8,7 @@ use Mojo::Util qw(trim);
 # Manages medication logging, registry maintenance, and historical tracking.
 #
 # Features:
-#   - Single Page Application (SPA) architecture via AJAX data loading.
+#   - 100% SPA architecture with state-driven rendering.
 #   - Dynamic dose logging with real-time interval calculation.
 #   - Registry management for quick selection and dosage standardization.
 #   - Rapid "Reset to Now" functionality for quick repeat dosing.
@@ -16,32 +16,18 @@ use Mojo::Util qw(trim);
 # Integration Points:
 #   - DB::Medication for all persistence and interval logic.
 #   - MyApp::Plugin::Icons for semantic emoji representation.
-#   - Default Layout for global glassmorphic theming and navigation.
+#   - Default Layout for global glassmorphic theming.
 
-# Initial page load - Renders the SPA container.
+# Renders the SPA skeleton.
 # Route: GET /medication
-# Parameters: None
 sub index {
-    my $c = shift;
-    
-    my $logs     = $c->db->get_medication_logs_by_user();
-    my $registry = $c->db->get_registry_with_stats();
-    my $members  = $c->db->get_medication_members();
-    
-    $c->stash(
-        logs     => $logs,
-        registry => $registry,
-        members  => $members,
-        title    => 'Medication Tracker'
-    );
-    
-    $c->render('medication');
+    shift->render('medication');
 }
 
-# API: Get current state (Logs + Registry).
-# Route: GET /medication/api/data
-# Returns: JSON object { logs, registry, members }
-sub get_data {
+# Returns the consolidated state for the module.
+# Route: GET /medication/api/state
+# Returns: JSON object { logs, registry, members, is_admin, success }
+sub api_state {
     my $c = shift;
 
     my $logs     = $c->db->get_medication_logs_by_user();
@@ -49,19 +35,16 @@ sub get_data {
     my $members  = $c->db->get_medication_members();
     
     $c->render(json => {
+        success  => 1,
         logs     => $logs,
         registry => $registry,
-        members  => $members
+        members  => $members,
+        is_admin => $c->is_admin ? 1 : 0
     });
 }
 
-# API: Add Dose - Logs a new medication administration.
-# Route: POST /medication/add
-# Parameters:
-#   - medication_name: Name of the drug.
-#   - family_member_id: ID of the recipient.
-#   - dosage: Numeric value in mg.
-#   - taken_at: (Optional) YYYY-MM-DD HH:MM timestamp.
+# Logs a new medication administration.
+# Route: POST /medication/api/add
 sub add {
     my $c = shift;
     my $logged_by_id = $c->current_user_id;
@@ -86,11 +69,8 @@ sub add {
     }
 }
 
-# API: Edit Dose - Updates an existing log entry.
-# Route: POST /medication/edit/:id
-# Parameters:
-#   - id: Unique entry ID.
-#   - medication_name, family_member_id, dosage, taken_at (as above).
+# Updates an existing log entry.
+# Route: POST /medication/api/edit/:id
 sub edit {
     my $c = shift;
     my $id = $c->param('id');
@@ -110,16 +90,8 @@ sub edit {
     }
 }
 
-# API: Reset Dose Time to Now or Custom - Updates a previous dose time.
-# Route: POST /medication/reset/:id
-# Parameters:
-#   - id: Unique entry ID.
-#   - taken_at: (Optional) Full YYYY-MM-DD HH:MM timestamp.
-#   - create_reminder: (Optional) Boolean to create a follow-up reminder.
-#   - reminder_delay: (Optional) Hours to wait before reminder (1-24).
-#   - reminder_recipients: (Optional) Comma-separated list of User IDs.
-#   - reminder_title: (Optional) Text for the reminder title.
-#   - reminder_desc: (Optional) Text for the reminder description.
+# Updates a previous dose time and optionally schedules a reminder.
+# Route: POST /medication/api/reset/:id
 sub reset {
     my $c = shift;
     my $id = $c->param('id');
@@ -154,12 +126,11 @@ sub reset {
                     $dt->add(hours => $delay);
 
                     my $trigger_time = $dt->strftime('%H:%M:%S');
-                    my $trigger_day  = $dt->day_of_week; # 1=Mon, 7=Sun
+                    my $trigger_day  = $dt->day_of_week;
 
                     my @uids = split(',', $recipients);
                     my $creator_id = $c->current_user_id;
 
-                    # Create a one-off reminder rule
                     $c->db->create_reminder($title, $desc, $trigger_day, $trigger_time, $creator_id, \@uids, 1);
                 }
             }
@@ -178,10 +149,8 @@ sub reset {
     }
 }
 
-# API: Delete Dose - Removes a log entry from history.
-# Route: POST /medication/delete/:id
-# Parameters:
-#   - id: Unique entry ID.
+# Removes a log entry from history.
+# Route: POST /medication/api/delete/:id
 sub delete {
     my $c = shift;
     my $id = $c->param('id');
@@ -198,12 +167,8 @@ sub delete {
     }
 }
 
-# API: Update Registry - Updates standardized medication defaults.
-# Route: POST /medication/manage/update/:id
-# Parameters:
-#   - id: Registry ID.
-#   - name: New display name.
-#   - default_dosage: Default mg value.
+# Updates standardized medication defaults (Admin).
+# Route: POST /medication/api/manage/update/:id
 sub update_registry {
     my $c = shift;
     my $id = $c->param('id');
@@ -217,10 +182,8 @@ sub update_registry {
     }
 }
 
-# API: Delete Registry Item - Removes medication from registry if no logs exist.
-# Route: POST /medication/manage/delete/:id
-# Parameters:
-#   - id: Registry ID.
+# Removes medication from registry if no logs exist (Admin).
+# Route: POST /medication/api/manage/delete/:id
 sub delete_registry {
     my $c = shift;
     my $id = $c->param('id');
