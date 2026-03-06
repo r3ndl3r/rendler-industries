@@ -283,7 +283,9 @@ const MenuMgmt = {
             message: `Are you sure you want to delete "<strong>${escapeHtml(label)}</strong>"?`,
             subMessage: 'Warning: All nested sub-menu items will also be removed.',
             danger: true,
-            confirmText: 'Delete Everywhere',
+            confirmText: 'Delete',
+            hideCancel: true,
+            alignment: 'center',
             onConfirm: async () => {
                 const result = await apiPost('/menu/api/delete', { id });
                 if (result && result.success) {
