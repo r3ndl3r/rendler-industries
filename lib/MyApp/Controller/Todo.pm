@@ -7,15 +7,14 @@ use Mojo::Util qw(trim);
 # Controller for user-specific segregated Todo lists.
 # Features:
 #   - Personal list view with active/completed separation
-#   - AJAX-driven task management (Add, Toggle, Edit, Delete)
+#   - Task management (Add, Toggle, Edit, Delete)
 #   - Bulk cleanup of completed tasks
 # Integration points:
 #   - Scoped by current_user_id for strict privacy
 #   - Uses DB::Todo helpers for data persistence
 
-# Initial page load - Renders the SPA container.
+# Renders the task management interface.
 # Route: GET /todo
-# Parameters: None
 sub index {
     my $c = shift;
     $c->render('todo');
