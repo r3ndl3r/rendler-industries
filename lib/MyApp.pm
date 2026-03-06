@@ -293,19 +293,20 @@ sub startup {
     $r->get('/mobile')->to('root#p_page');
     $r->get('/this.is.totally.not.sus')->to('root#sus');
     $r->get('/system/api/file_map')->to('root#file_map_json');
-    $r->get('/menu/api/state')->to('menu#get_state');
     $r->get('/t')->to(cb => sub { shift->redirect_to('https://stash.rendler.org/stash?n=Movies&u=rendler') });
     $r->get('/quick')->to('root#quick');
     $auth->get('/chelsea')->to('chelsea#index');
     $admin->get('/restart')->to('system#restart');
 
-    # --- Menu Administration Routes ---
+    # --- Menu Management Routes ---
     $admin->get('/menu')->to('menu#manage');
-    $admin->post('/menu/add')->to('menu#add');
-    $admin->post('/menu/update')->to('menu#update');
-    $admin->post('/menu/delete')->to('menu#delete');
-    $admin->post('/menu/reorder')->to('menu#reorder');
-
+    $admin->get('/menu/api/state')->to('menu#api_state');
+    $admin->post('/menu/api/add')->to('menu#api_add');
+    $admin->post('/menu/api/update')->to('menu#api_update');
+    $admin->post('/menu/api/delete')->to('menu#api_delete');
+    $admin->post('/menu/api/reorder')->to('menu#api_reorder');
+    $r->get('/menu/api/menubar')->to('menu#get_state');
+    
     # --- Clipboard Routes ---
     $auth->get('/clipboard')->to('root#copy_get');
     $auth->get('/copy')->to('root#copy_get');
