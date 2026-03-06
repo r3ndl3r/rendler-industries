@@ -1,6 +1,6 @@
 /* /public/css/users.css */
 
-.users-container {
+.admin-container {
     padding: 2rem 1rem;
     padding-top: 0;
     max-width: 1400px;
@@ -108,6 +108,20 @@ input:checked + .slider:before {
 input:disabled + .slider {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Special Row States */
+.row-pending {
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.row-fade-out {
+    animation: row-fade-out 0.5s ease forwards;
+}
+
+@keyframes row-fade-out {
+    0% { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(30px); }
 }
 
 /* --- Action Buttons --- */
