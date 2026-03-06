@@ -418,10 +418,11 @@ sub startup {
 
     # --- Calendar Routes ---
     $family->get('/calendar')->to('calendar#index');
-    $family->get('/calendar/events')->to('calendar#get_events');
-    $family->post('/calendar/add')->to('calendar#add');
-    $family->post('/calendar/edit')->to('calendar#edit');
-    $family->post('/calendar/delete')->to('calendar#delete');
+    $family->get('/calendar/api/state')->to('calendar#api_state');
+    $family->get('/calendar/api/events')->to('calendar#get_events');
+    $family->post('/calendar/api/add')->to('calendar#add');
+    $family->post('/calendar/api/edit')->to('calendar#edit');
+    $family->post('/calendar/api/delete')->to('calendar#delete');
     $family->get('/calendar/manage')->to('calendar#manage');
 
     # --- Timer Routes ---
