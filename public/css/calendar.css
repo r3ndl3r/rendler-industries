@@ -1,0 +1,567 @@
+/* /public/css/calendar.css */
+
+/**
+ * Family Calendar Styles
+ * 
+ * Provides high-fidelity layout and thematic consistency for the 
+ * multi-view calendar system. It preserves the high-contrast 
+ * white-background grid aesthetic while leveraging platform-standard 
+ * variables for administrative components.
+ * 
+ * Sections:
+ * 1. Base Layout
+ * 2. Header & Controls
+ * 3. Calendar Grid (Month/Week/Day)
+ * 4. Events & Attendees
+ * 5. Modals & Dialogs
+ * 6. Management Ledger
+ * 7. Upcoming Widget
+ * 8. Mobile Responsiveness
+ */
+
+/* --- 1. Base Layout --- */
+
+.calendar-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 5px;
+}
+
+.calendar-view {
+    background: #ffffff;
+    border: 1px solid #dddddd;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+/* --- 2. Header & Controls --- */
+
+.calendar-header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.calendar-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.calendar-controls h2 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 1.1em;
+    text-align: center;
+    min-width: 180px;
+}
+
+.calendar-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.nav-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #374151;
+    color: #e5e7eb;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+.nav-btn:hover { background-color: #4b5563; }
+
+.view-toggle {
+    display: flex;
+    border: 1px solid #dddddd;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.view-btn {
+    padding: 8px 16px;
+    border: none;
+    background-color: #374151;
+    color: #e5e7eb;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+    border-right: 1px solid #1f2937;
+}
+
+.view-btn:last-child { border-right: none; }
+.view-btn:hover { background-color: #4b5563; }
+.view-btn.active { background-color: #3b82f6; color: #ffffff; }
+
+.calendar-filters {
+    margin-bottom: 6px;
+    padding: 8px;
+    background: #f9f9f9;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.calendar-filters label {
+    font-weight: bold;
+    color: #222222;
+    font-size: 0.85em;
+}
+
+.calendar-filters select {
+    padding: 5px 8px;
+    border: 1px solid #dddddd;
+    border-radius: 5px;
+    background: #ffffff;
+    font-size: 0.85em;
+    color: #222222;
+}
+
+/* --- 3. Calendar Grid --- */
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.calendar-day-header {
+    background: #f5f5f5;
+    padding: 6px;
+    text-align: center;
+    font-weight: bold;
+    border: 1px solid #dddddd;
+    color: #222222;
+    font-size: 0.85em;
+}
+
+.calendar-day-header .day-abbr { display: none; }
+
+.calendar-day {
+    height: calc((100vh - 240px) / 6);
+    min-height: 100px;
+    border: 1px solid #dddddd;
+    background: #ffffff;
+    cursor: pointer;
+    transition: background 0.2s;
+    color: #222222;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.calendar-day:hover { background: #f9f9f9; }
+.calendar-day.other-month { background: #f5f5f5; opacity: 0.6; }
+.calendar-day.today {
+    background: #e0e0e0 !important;
+    border: 1px solid #3b82f6 !important;
+    box-shadow: inset 0 0 0 2px #3b82f6 !important;
+}
+
+.calendar-day.today .day-number {
+    background: #e0e0e0 !important;
+    color: #0e00ab !important;
+    font-weight: 900 !important;
+}
+
+.day-number {
+    font-weight: bold;
+    padding: 4px;
+    color: #222222;
+    font-size: 0.85em;
+    flex-shrink: 0;
+    background: #ffffff;
+    z-index: 1;
+}
+
+.calendar-day.other-month .day-number { color: #666666; background: #f5f5f5; }
+
+.day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 2px 2px 2px;
+}
+
+.day-events::-webkit-scrollbar { width: 4px; }
+.day-events::-webkit-scrollbar-thumb { background: #cccccc; border-radius: 2px; }
+
+/* Week View */
+.calendar-view-week .calendar-day { height: calc(100vh - 180px); }
+
+/* Day View */
+.calendar-day-view-container {
+    height: calc(100vh - 150px);
+    overflow-y: auto;
+    border-radius: 8px;
+    border: 1px solid #dddddd;
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-hour-row { display: flex; border-bottom: 1px solid #f0f0f0; min-height: 60px; }
+.calendar-hour-label {
+    width: 80px; padding: 10px; text-align: right; color: #666666;
+    font-size: 0.85em; border-right: 1px solid #f0f0f0; font-weight: bold;
+}
+.calendar-hour-events { flex: 1; padding: 4px; position: relative; cursor: pointer; }
+
+/* --- 4. Events & Attendees --- */
+
+.event-item {
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-size: 0.7em;
+    cursor: pointer;
+    color: #ffffff;
+    transition: opacity 0.2s;
+    line-height: 1.3;
+    background-color: var(--event-color, #3788d8);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.event-item:hover { opacity: 0.8; }
+.event-item.all-day { font-weight: bold; }
+
+/* Week View Overrides */
+.calendar-view-week .event-item {
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+/* Day View Overrides */
+.calendar-day-view-container .event-item {
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    font-size: 0.9em;
+}
+
+.event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.event-attendees { display: flex; gap: 2px; flex-wrap: wrap; }
+
+.calendar-day.past-day .event-item { opacity: 0.5; filter: grayscale(0.8); }
+.calendar-day.past-day .event-item:hover { opacity: 1; filter: none; }
+
+.attendee-pill {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: bold;
+    color: #ffffff;
+    white-space: nowrap;
+    line-height: 1.2;
+    margin-right: 4px;
+    margin-bottom: 2px;
+}
+
+.attendee-pill:last-child { margin-right: 0; }
+
+.attendee-pills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.attendee-color-1 { background-color: #97133f; }
+.attendee-color-2 { background-color: #9c27b0; }
+.attendee-color-3 { background-color: #3f51b5; }
+.attendee-color-4 { background-color: #05353b; }
+.attendee-color-5 { background-color: #4caf50; }
+.attendee-color-6 { background-color: #ff9800; }
+.attendee-color-7 { background-color: #795548; }
+.attendee-color-8 { background-color: #05293a; }
+
+/* --- 5. Modals & Dialogs --- */
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 10001;
+    left: 0; top: 0; width: 100%; height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.6);
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 40px;
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-content {
+    background-color: #fefefe;
+    display: block;
+    margin: 0 auto 50px auto;
+    padding: 20px;
+    border: 1px solid #888888;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    width: 90%;
+    max-width: 500px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.close {
+    color: #aaaaaa;
+    float: right;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close:hover, .close:focus { color: #000000; }
+
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #222222;
+    font-size: 1.2em;
+}
+
+/* Form Styles inside Modals */
+.form-group { margin-bottom: 10px; }
+.form-group label {
+    display: block;
+    margin-bottom: 3px;
+    font-weight: bold;
+    color: #222222;
+    font-size: 0.85em;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group input[type="time"],
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #dddddd;
+    border-radius: 5px;
+    font-size: 0.9em;
+    box-sizing: border-box;
+    color: #222222;
+}
+
+.form-group textarea { resize: vertical; }
+.form-group input[type="color"] { width: 100%; height: 35px; border: 1px solid #dddddd; border-radius: 5px; cursor: pointer; }
+
+.checkbox-group { margin-bottom: 10px; }
+.checkbox-group label { display: flex; align-items: center; gap: 8px; font-weight: normal; color: #222222; }
+.checkbox-group input[type="checkbox"] { width: auto; cursor: pointer; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.btn-primary, .btn-secondary, .btn-clone, .btn-danger {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-size: 0.9em;
+}
+
+.btn-primary { background-color: #3b82f6; color: white; }
+.btn-secondary, .btn-clone { background-color: #6b7280; color: white; }
+.btn-danger { background-color: #ef4444; color: white; }
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+/* Event Details Layout */
+.event-details-header { border-bottom: 2px solid #3788d8; padding-bottom: 10px; margin-bottom: 15px; }
+.event-details-header h2 { margin: 0; font-size: 1.3em; display: flex; align-items: center; gap: 8px; }
+
+.event-detail-row { display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0; gap: 15px; }
+.event-detail-row:last-child { border-bottom: none; }
+.event-detail-row strong { min-width: 140px; color: #222222; font-size: 0.95em; }
+.event-detail-row span { flex: 1; color: #444444; font-size: 0.95em; }
+
+.event-detail-attendees { display: block !important; width: auto; }
+.event-detail-attendees .attendee-pill { display: inline-block !important; width: auto !important; margin-right: 5px; margin-bottom: 2px; }
+
+.attendees-select-container {
+    max-height: 200px; overflow-y: auto; border: 1px solid #dddddd;
+    border-radius: 5px; padding: 10px; background: #fafafa;
+}
+
+.attendee-checkbox { display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer; color: #222222; }
+.attendee-checkbox:hover { background: #f0f0f0; }
+
+/* --- 6. Management Ledger --- */
+
+.manage-container { max-width: 1200px; margin: 0 auto; padding: 12px; }
+
+.manage-container .header-bar h1 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.filter-section {
+    margin-bottom: 12px; 
+    padding: 10px; 
+    background: #f9f9f9;
+    border: 1px solid #dddddd;
+    border-radius: 5px; 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    flex-wrap: wrap;
+}
+
+.filter-section label {
+    font-weight: bold;
+    color: #222222;
+    font-size: 0.85em;
+}
+
+.filter-section select {
+    padding: 5px 8px;
+    border: 1px solid #dddddd;
+    border-radius: 5px;
+    background: #ffffff;
+    font-size: 0.85em;
+    color: #222222;
+}
+
+.section-header { margin-top: 20px; padding-bottom: 5px; color: #ffffff; border-bottom: 2px solid #3b82f6; }
+.section-header.past { margin-top: 40px; color: #e5e5e5; border-bottom-color: #6b7280; }
+
+.events-list { background: #ffffff; border-radius: 5px; overflow: hidden; }
+.events-table { width: 100%; border-collapse: collapse; color: #222222; }
+.events-table th { background: #f5f5f5; padding: 8px; text-align: left; border-bottom: 2px solid #dddddd; color: #222222; font-size: 0.85em; }
+.events-table th.col-title { width: 35%; }
+
+.events-table td { 
+    padding: 12px 10px; 
+    border-bottom: 1px solid #eeeeee; 
+    font-size: 0.9em; 
+    color: #222222;
+    vertical-align: top;
+    white-space: normal;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+.events-table tr:hover { background: #f9f9f9; }
+
+.event-desc {
+    font-size: 0.85em;
+    color: #666666;
+    font-style: italic;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+.action-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.event-color-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background-color: var(--event-color, #3788d8); }
+
+/* --- 7. Upcoming Widget --- */
+
+.upcoming-events-section { margin-top: 20px; background: #ffffff; border: 1px solid #dddddd; border-radius: 5px; padding: 15px; }
+.upcoming-events-section h3 { margin: 0 0 15px 0; color: #222222; font-size: 1.2em; border-bottom: 2px solid #3788d8; padding-bottom: 8px; }
+
+.upcoming-event-item { 
+    display: flex; 
+    align-items: center; 
+    padding: 12px; 
+    background: #f9f9f9; 
+    border-radius: 5px; 
+    border-left: 4px solid var(--event-color, #3788d8);
+    transition: background 0.2s; 
+    cursor: pointer; 
+    margin-bottom: 8px;
+}
+
+.upcoming-event-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 12px;
+    flex-shrink: 0;
+    background-color: var(--event-color, #3788d8);
+}
+
+.upcoming-event-item:hover { background: #f0f0f0; }
+
+.upcoming-event-details {
+    flex: 1;
+}
+
+.upcoming-event-title { 
+    font-weight: bold; 
+    color: #222222; 
+    margin-bottom: 4px; 
+}
+
+.upcoming-event-datetime {
+    font-size: 0.9em;
+    color: #444;
+    margin-bottom: 2px;
+}
+
+.upcoming-event-attendees {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+    margin-top: 4px;
+}
+
+.upcoming-event-countdown { font-size: 0.85em; color: #3788d8; font-weight: bold; }
+
+/* --- 8. Mobile Responsiveness --- */
+
+@media (max-width: 768px) {
+    .calendar-controls h2 { font-size: 0.95em; min-width: 120px; }
+    .calendar-day-header .day-full { display: none; }
+    .calendar-day-header .day-abbr { display: inline; }
+    .calendar-day { min-height: 55px; font-size: 0.75em; }
+    
+    .events-list {
+        background: transparent !important;
+        border: none !important;
+    }
+
+    .events-table, .events-table tbody, .events-table tr, .events-table td { display: block; width: 100%; }
+    .events-table thead { display: none; }
+    .events-table tr { margin-bottom: 15px; background: #ffffff; border: 1px solid #dddddd; border-radius: 8px; padding: 8px 12px; }
+    .events-table td { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eeeeee; text-align: right; }
+    .events-table td:nth-of-type(1) { display: block; text-align: left; border-bottom: 2px solid #3b82f6; }
+    
+    .events-table td:nth-of-type(2)::before { content: "Start"; font-weight: bold; }
+    .events-table td:nth-of-type(3)::before { content: "End"; font-weight: bold; }
+    .events-table td:nth-of-type(4)::before { content: "Category"; font-weight: bold; }
+    .events-table td:nth-of-type(5)::before { content: "Attendees"; font-weight: bold; }
+}
