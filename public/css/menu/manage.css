@@ -228,6 +228,28 @@
     justify-content: center !important;
 }
 
+.floating-save-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 999;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    padding: 12px 24px !important;
+    font-size: 1rem !important;
+    border-radius: 50px !important;
+    transform: scale(1);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.floating-save-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+}
+
+.floating-save-btn.hidden {
+    display: none !important;
+}
+
 .hint-text {
     font-size: 0.875rem;
     color: #94a3b8;
@@ -244,6 +266,20 @@
 .sortable-ghost {
     opacity: 0.4;
     background-color: #334155;
+}
+
+/* Table Column Widths */
+.col-drag { width: 5%; }
+.col-label { width: 25%; }
+.col-url { width: 25%; }
+.col-parent { width: 15%; }
+.col-perm { width: 10%; }
+.col-status { width: 10%; }
+.col-actions { width: 10%; }
+
+/* Modal Adjustments */
+.link-modal-content {
+    max-width: 600px !important;
 }
 
 /* Responsive */
