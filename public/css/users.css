@@ -152,13 +152,22 @@ input:disabled + .slider {
 
 /* --- Responsive --- */
 @media (max-width: 768px) {
+    .users-table {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
     .users-table thead { display: none; }
+    
     .users-table tr { 
         display: block; 
-        margin-bottom: 1.5rem; 
-        background: rgba(30, 41, 59, 0.6);
+        margin-bottom: 1.25rem; 
+        background: #1e293b;
         border-radius: 1rem;
         padding: 0.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     }
     .users-table td {
         display: flex;
