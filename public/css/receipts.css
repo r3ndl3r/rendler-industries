@@ -472,7 +472,7 @@
     flex: 1;
 }
 
-/* Mobile Responsiveness for Receipts Table (Gold Standard from files.css) */
+/* Mobile Responsiveness for Receipts Table */
 @media (max-width: 768px) {
     .spending-stats {
         grid-template-columns: 1fr;
