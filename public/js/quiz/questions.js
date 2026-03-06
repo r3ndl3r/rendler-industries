@@ -47,7 +47,7 @@ async function initQuiz() {
 
     // Context: detect "Study All" vs "Test Mode" from path
     const isAllMode = window.location.pathname.includes('/all');
-    const apiUrl = isAllMode ? '/api/quiz/questions?mode=all' : '/api/quiz/questions';
+    const apiUrl = isAllMode ? '/quiz/api/questions?mode=all' : '/quiz/api/questions';
 
     try {
         const response = await fetch(apiUrl);
