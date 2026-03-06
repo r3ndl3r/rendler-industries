@@ -4,14 +4,14 @@
  * Todo List Controller
  * 
  * Manages the personal Task Management interface using a state-driven 
- * architecture. It provides a 100% AJAX-driven SPA experience with 
+ * architecture. It provides a synchronized experience with 
  * optimistic UI updates and real-time synchronization.
  * 
  * Features:
  * - State-driven task rendering (Active vs. Completed)
  * - Optimistic UI updates for creation and completion
  * - Automatic background synchronization every 5 minutes
- * - Mandatory Action pattern for modifications (No Cancel buttons)
+ * - Standardized lifecycle for record modifications
  * - Lifecycle-aware button state management for network flight indicators
  * - Auto-expanding textareas for rapid multi-line entry
  * 
