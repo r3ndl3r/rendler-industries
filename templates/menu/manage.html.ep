@@ -13,7 +13,7 @@
     <div class="header-bar">
         <h1><%= icon('link') %> <span>Manage Menu Links</span></h1>
         <div class="manage-actions">
-            <button id="addLinkBtn" class="btn-primary"><%= icon('add') %> Add</button>
+            <button id="addLinkBtn" class="btn-primary" onclick="MenuMgmt.openAddModal()"><%= icon('add') %> Add</button>
         </div>
     </div>
 
@@ -21,74 +21,43 @@
         <table class="menu-table">
             <thead>
                 <tr>
-                    <th style="width: 5%"></th>
-                    <th style="width: 25%">Label</th>
-                    <th style="width: 25%">URL</th>
-                    <th style="width: 15%">Parent</th>
-                    <th style="width: 10%">Permission</th>
-                    <th style="width: 10%">Status</th>
-                    <th style="width: 10%">Actions</th>
+                    <th class="col-drag"></th>
+                    <th class="col-label">Label</th>
+                    <th class="col-url">URL</th>
+                    <th class="col-parent">Parent</th>
+                    <th class="col-perm">Permission</th>
+                    <th class="col-status">Status</th>
+                    <th class="col-actions">Actions</th>
                 </tr>
             </thead>
             <tbody id="menuTableBody">
-                % if (@$links) {
-                    % for my $link (@$links) {
-                        <tr data-id="<%= $link->{id} %>" class="<%= $link->{parent_id} ? 'child-row' : 'parent-row' %>">
-                            <td class="drag-handle"><%= icon('menu') %></td>
-                            <td data-label="Label">
-                                % if ($link->{is_separator}) {
-                                    <span class="separator-label">───── SEPARATOR ─────</span>
-                                % } else {
-                                    <span class="<%= $link->{css_class} %>"><strong><%= $link->{label} %></strong></span>
-                                % }
-                            </td>
-                            <td data-label="URL" class="<%= $link->{url} eq '#' ? 'empty-url' : '' %>"><code><%= $link->{url} %></code></td>
-                            <td data-label="Parent" class="<%= $link->{parent_label} ? '' : 'empty-parent' %>"><%= $link->{parent_label} || '-' %></td>
-                            <td data-label="Permission"><span class="permission-tag tag-<%= $link->{permission_level} %>"><%= ucfirst($link->{permission_level}) %></span></td>
-                            <td data-label="Status">
-                                <span class="status-pill <%= $link->{is_active} ? 'active' : 'inactive' %>">
-                                    <%= $link->{is_active} ? 'Active' : 'Hidden' %>
-                                </span>
-                            </td>
-                            <td class="actions-cell">
-                                <button class="btn-icon-edit btn-edit"
-                                    data-id="<%= $link->{id} %>"
-                                    data-label="<%= $link->{label} %>"
-                                    data-url="<%= $link->{url} %>"
-                                    data-parent="<%= $link->{parent_id} %>"
-                                    data-permission="<%= $link->{permission_level} %>"
-                                    data-class="<%= $link->{css_class} %>"
-                                    data-target="<%= $link->{target} %>"
-                                    data-active="<%= $link->{is_active} %>"
-                                    data-sort="<%= $link->{sort_order} %>"
-                                    data-separator="<%= $link->{is_separator} %>"><%= icon('edit') %></button>
-                                <button class="btn-icon-delete btn-delete"
-                                    data-id="<%= $link->{id} %>"
-                                    data-label="<%= $link->{label} %>"><%= icon('delete') %></button>
-                            </td>
-                        </tr>
-                    % }
-                % } else {
-                    <tr><td colspan="7" class="empty-state">No menu links found.</td></tr>
-                % }
+                <tr class="component-loading-row">
+                    <td colspan="7">
+                        <div class="component-loading">
+                            <div class="loading-scan-line"></div>
+                            <span class="loading-icon-pulse"><%= icon('link') %></span>
+                            <p class="loading-label">Synchronizing navigation links...</p>
+                        </div>
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
 
     <div class="manage-footer">
         <p class="hint-text"><%= icon('info') %> Tip: Drag and drop rows to reorder the menu items.</p>
-        <button id="saveOrderBtn" class="btn-success" style="display: none;"><%= icon('save') %> Save New Order</button>
+        <button id="saveOrderBtn" class="btn-success floating-save-btn hidden" onclick="MenuMgmt.handleReorder()"><%= icon('save') %> Save</button>
     </div>
 </div>
 
 <%# Add/Edit Modal (Admin) %>
 <div id="linkModal" class="delete-modal-overlay">
-    <div class="delete-modal-content" style="max-width: 600px;">
+    <div class="delete-modal-content link-modal-content">
         <div class="delete-modal-header">
             <h3 id="modalTitle"><%= icon('add') %> Add Menu Link</h3>
-            <span class="delete-modal-close" id="closeModalBtn">&times;</span>
+            <span class="delete-modal-close" onclick="MenuMgmt.closeModal()">&times;</span>
         </div>
-        <form id="linkForm">
+        <form id="linkForm" onsubmit="MenuMgmt.handleSubmit(event)">
             <input type="hidden" id="linkId" name="id">
             <input type="hidden" id="linkSort" name="sort_order">
 
@@ -108,9 +77,6 @@
                         <label>Parent Item</label>
                         <select id="linkParent" name="parent_id" class="game-input">
                             <option value="">None (Top Level)</option>
-                            % for my $p (@$parents) {
-                                <option value="<%= $p->{id} %>"><%= $p->{label} %></option>
-                            % }
                         </select>
                     </div>
                     <div class="form-group">
@@ -154,25 +120,8 @@
             </div>
 
             <div class="modal-actions delete-modal-actions">
-                <button type="submit" class="btn-success"><%= icon('save') %> Save Link</button>
+                <button type="submit" id="saveLinkBtn" class="btn-success"><%= icon('save') %> Save Link</button>
             </div>
         </form>
-    </div>
-</div>
-
-<%# Delete Confirmation Modal (Admin) %>
-<div id="deleteConfirmModal" class="delete-modal-overlay">
-    <div class="delete-modal-content">
-        <div class="delete-modal-header">
-            <h3><%= icon('delete') %> Confirm Deletion</h3>
-            <span class="delete-modal-close" onclick="closeDeleteConfirmModal()">&times;</span>
-        </div>
-        <div class="delete-modal-body">
-            <p>Are you sure you want to delete menu link "<strong id="deleteLinkLabel"></strong>"?</p>
-            <p style="color: #ef4444; font-size: 0.85rem; margin-top: 5px;"><%= icon('warning') %> Warning: All sub-menu items will also be deleted.</p>
-        </div>
-        <div class="delete-modal-actions">
-            <button type="button" class="btn-danger-confirm" id="finalDeleteBtn">Delete Everything</button>
-        </div>
     </div>
 </div>
