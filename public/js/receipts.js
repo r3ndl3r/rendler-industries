@@ -152,7 +152,7 @@ async function loadMore() {
     const params = new URLSearchParams({ ...filters, offset: STATE.offset });
 
     try {
-        const response = await fetch(`/api/receipts/list?${params.toString()}`);
+        const response = await fetch(`/receipts/api/list?${params.toString()}`);
         const data = await response.json();
 
         if (data.success && data.receipts) {
