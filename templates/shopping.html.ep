@@ -1,7 +1,7 @@
 <%# /templates/shopping.html.ep %>
 
-<% layout 'default'; %>
-<% title icon('shopping') . ' Shopping List'; %>
+% layout 'default';
+% title icon('shopping') . ' Shopping List';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/shopping.css?<%= time %>">
@@ -15,7 +15,7 @@
 
     <%# Add Item Form %>
     <div class="glass-panel add-item-panel">
-        <form id="addShoppingForm" class="add-item-form">
+        <form id="addShoppingForm" class="add-item-form" onsubmit="handleAddItem(event)">
             <div class="form-group flex-1 no-margin">
                 <input 
                     type="text" 
@@ -27,43 +27,47 @@
                     maxlength="255"
                 >
             </div>
-            <button type="submit" class="btn-blue-add">Add Item</button>
+            <button type="submit" id="addItemBtn" class="btn-blue-add">Add Item</button>
         </form>
     </div>
 
     <%# Shopping List Items %>
     <div id="shoppingListContainer" class="items-container">
-        <div class="loading-state">
-            <p>Loading shopping list...</p>
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse"><%= icon('shopping') %></span>
+            <p class="loading-label">Synchronizing shopping list...</p>
+            <p class="loading-sub">Retrieving latest items and shared family state</p>
         </div>
     </div>
 </div>
 
 <%# Edit Modal %>
-<div id="editModal" class="modal-overlay">
+<div id="editModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
             <h3><%= icon('edit') %> Edit Item</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
-        <div class="modal-body">
-            <div class="modal-group">
-                <label for="editName">Item Name</label>
-                <input 
-                    type="text" 
-                    id="editName" 
-                    name="item_name" 
-                    class="game-input" 
-                    required 
-                    maxlength="255"
-                    placeholder="e.g. Milk"
-                >
-                <input type="hidden" id="editId">
+        <form id="editForm" onsubmit="handleEditSubmit(event)">
+            <div class="modal-body">
+                <div class="modal-group">
+                    <label for="editName">Item Name</label>
+                    <input 
+                        type="text" 
+                        id="editName" 
+                        name="item_name" 
+                        class="game-input" 
+                        required 
+                        maxlength="255"
+                        placeholder="e.g. Milk"
+                    >
+                    <input type="hidden" id="editId" name="id">
+                </div>
             </div>
-        </div>
-        <div class="modal-actions modal-actions-center">
-            <button type="button" onclick="submitEdit()" class="btn-primary"><%= icon('save') %> Save</button>
-        </div>
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" id="editSaveBtn" class="btn-primary"><%= icon('save') %> Save changes</button>
+            </div>
+        </form>
     </div>
 </div>
-
