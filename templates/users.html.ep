@@ -8,7 +8,7 @@
     <script src="/js/users.js?<%= time %>"></script>
 % end
 
-<div class="users-container">
+<div class="admin-container">
     <div class="header-bar">
         <h1><%= icon('user') %> <span>Users Admin</span></h1>
     </div>
