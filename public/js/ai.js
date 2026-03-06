@@ -1,49 +1,138 @@
 // /public/js/ai.js
 
 /**
- * Family Pulse AI Controller Module
+ * Family Pulse AI Controller
  * 
- * This module manages the Conversational AI interface, facilitating the 
- * handshake between the dashboard UI and the Gemini 2.0 LLM engine.
+ * Manages the Conversational AI interface using a state-driven architecture. 
+ * Facilitates the handshake between the dashboard UI and the LLM engine
+ * with full conversational persistence.
  * 
  * Features:
- * - Real-time chat interactions with markdown rendering support
- * - Automatic "Scroll-to-Bottom" orchestration for conversational flow
- * - Multimodal attachment system (analyzing system files and receipts)
- * - Integrated "Quick Prompt" system for common family queries
- * - Administrative conversation history management (Clear History)
- * - Optimized visual feedback (Typing indicators and Toast notifications)
+ * - State-driven message history rendering
+ * - Multi-modal attachment system for file analysis
+ * - Dynamic markdown formatting for AI responses
+ * - Automatic scroll orchestration for dialogue flow
+ * - High-density JSDoc documentation
  * 
  * Dependencies:
  * - default.js: For getIcon, apiPost, and modal helpers
- * - toast.js: For system-level alerts
+ * - toast.js: For operation feedback
  */
 
 /**
- * Initialization System
- * Boots the chat interface and ensures correct viewport positioning.
+ * --- Module Configuration & State ---
+ */
+const CONFIG = {
+    MAX_HISTORY: 50,                 // Client-side message retention limit
+    SCROLL_DELAY_MS: 50              // UI timing for vertical alignment
+};
+
+let STATE = {
+    history: [],                    // Collection of {role, content, timestamp}
+    username: 'user'                // Active user for avatar resolution
+};
+
+/**
+ * Bootstraps the module state and establishes background lifecycles.
+ * 
+ * @returns {void}
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // UI: Ensure latest messages are visible on load
-    scrollToBottom();
+    // Initial fetch of the conversation history
+    loadState();
+
+    // Modal: Configure global click-outside-to-close behavior
+    setupGlobalModalClosing(['modal-overlay'], [closeConfirmModal]);
 });
 
 /**
- * UI Engine: scrollToBottom
- * Orchestrates vertical positioning within the message container.
+ * --- Logic & UI Operations ---
+ */
+
+/**
+ * Synchronizes the module state with the server.
+ * 
+ * @async
+ * @returns {Promise<void>}
+ */
+async function loadState() {
+    try {
+        const response = await fetch('/ai/api/state');
+        const data = await response.json();
+        
+        if (data && data.success) {
+            STATE.history = data.history;
+            STATE.username = data.username;
+            renderMessages();
+        }
+    } catch (err) {
+        console.error('loadState failed:', err);
+    }
+}
+
+/**
+ * Orchestrates the generation of message bubbles from state.
+ * 
+ * @returns {void}
+ */
+function renderMessages() {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    if (STATE.history.length === 0) {
+        container.innerHTML = `
+            <div class="welcome-hint">
+                <p>🧠 I'm your dashboard assistant. Ask me anything about your medications, shopping, or calendar.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = STATE.history.map(msg => renderMessageRow(msg)).join('');
+    scrollToBottom();
+}
+
+/**
+ * Generates the HTML fragment for a single message bubble.
+ * 
+ * @param {Object} msg - Message metadata.
+ * @returns {string} - Rendered HTML.
+ */
+function renderMessageRow(msg) {
+    const isUser = msg.role === 'user';
+    const iconHtml = getIcon(isUser ? STATE.username : 'ai');
+    const content = formatMarkdown(msg.content);
+
+    return `
+        <div class="message ${msg.role}">
+            <div class="message-bubble">
+                <span class="role-icon">${iconHtml}</span>
+                <div class="text-content">${content}</div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Vertical positioning orchestration.
+ * 
+ * @returns {void}
  */
 function scrollToBottom() {
     const container = document.getElementById('chat-messages');
     if (container) {
-        container.scrollTop = container.scrollHeight;
+        setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+        }, CONFIG.SCROLL_DELAY_MS);
     }
 }
 
 /**
  * Action: sendPrompt
- * Executes the AI handshake including UI updates and API transmission.
+ * Executes the AI handshake and reconciles state.
  * 
- * @param {Event|null} event - Triggering form event
+ * @async
+ * @param {Event} event - Triggering form event.
  * @returns {Promise<void>}
  */
 async function sendPrompt(event) {
@@ -56,77 +145,40 @@ async function sendPrompt(event) {
     
     if (!prompt) return;
 
-    // 1. UI: Capture intent and clear input immediately for responsiveness
-    appendMessage('user', prompt);
+    // 1. Optimistic Update: append user turn
+    STATE.history.push({ role: 'user', content: prompt });
     input.value = '';
+    renderMessages();
     
-    // 2. UI: Reveal asynchronous processing indicator
+    // 2. UI: reveal thinking indicator
     const typing = showTyping();
 
-    // 3. API Execution
+    // 3. API Dispatch
     try {
-        const response = await fetch('/ai/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                prompt: prompt,
-                file_id: fileId,
-                file_type: fileType
-            })
+        const result = await apiPost('/ai/api/chat', {
+            prompt: prompt,
+            file_id: fileId,
+            file_type: fileType
         });
         
-        const data = await response.json();
-        
-        // Logic: cleanup indicator before rendering response
         if (typing) typing.remove();
 
-        if (data.success) {
-            // Success: append generated content and clear multimodal state
-            appendMessage('model', data.content);
+        if (result && result.success) {
+            // Success: reconcile state with model response
+            STATE.history.push({ role: 'model', content: result.content });
             clearFile(); 
-        } else {
-            showToast(data.error || "AI error", "error");
+            renderMessages();
         }
     } catch (err) {
         if (typing) typing.remove();
-        console.error("sendPrompt failure:", err);
-        showToast("Network error", "error");
+        showToast("Neural link failure", "error");
     }
 }
 
 /**
- * UI Component: appendMessage
- * Generates and injects a message bubble into the conversation stream.
+ * Displays the pulse indicator while processing.
  * 
- * @param {string} role - 'user' or 'model'
- * @param {string} content - Message text (supports limited markdown)
- */
-function appendMessage(role, content) {
-    const container = document.getElementById('chat-messages');
-    if (!container) return;
-
-    const msgDiv = document.createElement('div');
-    msgDiv.className = `message ${role}`;
-    
-    // Icon Logic: resolve based on role context
-    const icon = getIcon(role === 'user' ? 'user' : 'ai');
-    
-    msgDiv.innerHTML = `
-        <div class="message-bubble">
-            <span class="role-icon">${icon}</span>
-            <div class="text-content">${formatMarkdown(content)}</div>
-        </div>
-    `;
-    
-    container.appendChild(msgDiv);
-    scrollToBottom();
-}
-
-/**
- * UI Component: showTyping
- * Displays the pulse indicator while AI response is in flight.
- * 
- * @returns {HTMLElement} - The created indicator element for later removal
+ * @returns {HTMLElement|null} - The indicator node.
  */
 function showTyping() {
     const container = document.getElementById('chat-messages');
@@ -141,31 +193,25 @@ function showTyping() {
 }
 
 /**
- * Logic: formatMarkdown
- * Lightweight formatter for Gemini response strings.
- * Transforms bold markers, bullet points, and newlines into HTML.
+ * Transforms raw markdown into sanitized HTML.
  * 
- * @param {string} text - Raw model response
- * @returns {string} - Formatted HTML string
+ * @param {string} text - Raw content.
+ * @returns {string} - Formatted HTML.
  */
 function formatMarkdown(text) {
     if (!text) return "";
     return text
-        // Bold: **text** -> <strong>text</strong>
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        // List: items at start of lines
         .replace(/^\s*[\*\-]\s+/gm, '• ')
-        // List: packing handling for inline bullets
         .replace(/ \*\s+/g, '<br>• ')
-        // Spacing: preserve manual line breaks
         .replace(/\n/g, '<br>');
 }
 
 /**
- * Interface: quickPrompt
- * Injects pre-defined text into the prompt system and triggers immediate execution.
+ * Injects a preset query and triggers transmission.
  * 
- * @param {string} text - The preset query
+ * @param {string} text - Preset prompt.
+ * @returns {void}
  */
 function quickPrompt(text) {
     const input = document.getElementById('prompt-input');
@@ -177,38 +223,36 @@ function quickPrompt(text) {
 
 /**
  * Action: clearChat
- * Triggers confirmation and purges the administrative chat log.
+ * Orchestrates the terminal history purge.
  * 
- * @returns {Promise<void>}
+ * @returns {void}
  */
-async function clearChat() {
+function clearChat() {
     showConfirmModal({
         title: 'Clear History',
         icon: 'delete',
-        message: 'Are you sure you want to clear your entire conversation history? This action is permanent and cannot be undone.',
+        message: 'Are you sure you want to clear your entire conversation history? This action is permanent.',
         danger: true,
         confirmText: 'Clear All',
         hideCancel: true,
         alignment: 'center',
-        loadingText: 'Clearing...',
         onConfirm: async () => {
-            const result = await apiPost('/ai/clear');
+            const result = await apiPost('/ai/api/clear');
             if (result && result.success) {
-                const container = document.getElementById('chat-messages');
-                if (container) container.innerHTML = '';
-                showToast('History cleared', 'success');
+                STATE.history = [];
+                renderMessages();
             }
         }
     });
 }
 
 /**
- * Interface: attachFile
- * Bridges system files into the AI context via multimodal hidden fields.
+ * Bridges files into AI context.
  * 
- * @param {number} id - Resource ID
- * @param {string} type - Resource type (receipt/file)
- * @param {string} label - Display filename
+ * @param {number} id - Resource ID.
+ * @param {string} type - Resource type.
+ * @param {string} label - File label.
+ * @returns {void}
  */
 function attachFile(id, type, label) {
     const idField = document.getElementById('file-id');
@@ -223,8 +267,9 @@ function attachFile(id, type, label) {
 }
 
 /**
- * Interface: clearFile
- * Resets the multimodal attachment state.
+ * Resets multimodal context.
+ * 
+ * @returns {void}
  */
 function clearFile() {
     const idField = document.getElementById('file-id');
@@ -237,12 +282,11 @@ function clearFile() {
 }
 
 /**
- * Global Exposure
- * Required for event handling in templates and external attachments.
+ * --- Global Exposure ---
  */
 window.sendPrompt = sendPrompt;
 window.quickPrompt = quickPrompt;
 window.clearChat = clearChat;
 window.attachFile = attachFile;
 window.clearFile = clearFile;
-window.formatMarkdown = formatMarkdown;
+window.loadState = loadState;
