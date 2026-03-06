@@ -463,11 +463,11 @@ sub startup {
 
     # --- Medication Tracker Routes ---
     $family->get('/medication')->to('medication#index');
-    $family->get('/medication/api/data')->to('medication#get_data');
-    $family->post('/medication/add')->to('medication#add');
-    $family->post('/medication/edit/:id')->to('medication#edit');
-    $family->post('/medication/reset/:id')->to('medication#reset');
-    $family->post('/medication/delete/:id')->to('medication#delete');
+    $family->get('/medication/api/state')->to('medication#api_state');
+    $family->post('/medication/api/add')->to('medication#add');
+    $family->post('/medication/api/edit/:id')->to('medication#edit');
+    $family->post('/medication/api/reset/:id')->to('medication#reset');
+    $family->post('/medication/api/delete/:id')->to('medication#delete');
 
     # --- Meal Planner Routes ---
     $family->get('/meals')->to('meals#index');
@@ -489,8 +489,8 @@ sub startup {
 
     # --- Medication Registry Management (Admin Only) ---
     my $med_admin = $family->under(sub { shift->is_admin || 0 });
-    $med_admin->post('/medication/manage/update/:id')->to('medication#update_registry');
-    $med_admin->post('/medication/manage/delete/:id')->to('medication#delete_registry');
+    $med_admin->post('/medication/api/manage/update/:id')->to('medication#update_registry');
+    $med_admin->post('/medication/api/manage/delete/:id')->to('medication#delete_registry');
 
         # --- Chess Routes ---
     $auth->get('/chess/lobby')->to('chess#lobby');
