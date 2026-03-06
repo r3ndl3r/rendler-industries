@@ -108,8 +108,19 @@
 }
 
 /* Administrative Management View */
+#admin-actions {
+    display: none;
+    gap: 0.75rem;
+}
+
 .manage-view {
+    display: none;
     margin-top: 1rem;
+}
+
+.manage-row .manage-actions {
+    display: flex;
+    gap: 0.5rem;
 }
 
 .manage-header {
