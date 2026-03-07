@@ -345,7 +345,7 @@ function renderDayView() {
  * @returns {string} - Rendered HTML.
  */
 function renderEventPill(e, compact) {
-    const timeStr = e.all_day ? '' : ` - ${formatTime(e.start_date)}`;
+    const timeStr = (e.all_day || compact) ? '' : ` - ${formatTime(e.start_date)}`;
     let attendeeHtml = '';
     
     if (e.attendee_names) {
