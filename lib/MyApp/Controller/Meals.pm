@@ -16,7 +16,7 @@ use Mojo::Util qw(trim);
 #   - Depends on DB::Meals for state persistence and aggregated voter data.
 #   - Coordinates with System::maintenance for 2PM auto-lock and Discord reminders.
 
-# Renders the main meal planner dashboard skeleton.
+# Renders the main meal planner dashboard interface.
 # Route: GET /meals
 # Parameters: None
 # Returns: Rendered HTML template 'meals'.
@@ -26,7 +26,7 @@ sub index {
     $c->render('meals');
 }
 
-# Returns the consolidated state for the module.
+# Returns the current state for the module.
 # Route: GET /meals/api/state
 # Parameters: None
 # Returns: JSON object { plan, vault, is_admin, current_user_id, success }
@@ -46,7 +46,7 @@ sub api_state {
 }
 
 # Submits a new meal suggestion for a specific plan day.
-# Route: POST /meals/suggest
+# Route: POST /meals/api/suggest
 # Parameters:
 #   plan_id   : Target day identifier
 #   meal_name : Name of the proposed meal
@@ -82,7 +82,7 @@ sub suggest {
 }
 
 # Toggles a user's vote for a specific suggestion.
-# Route: POST /meals/vote
+# Route: POST /meals/api/vote
 # Parameters:
 #   suggestion_id : Target suggestion identifier
 # Returns: JSON object { success, voted, removed_meal_name, message }
@@ -111,7 +111,7 @@ sub vote {
 }
 
 # Updates the metadata for an existing suggestion.
-# Route: POST /meals/edit_suggestion
+# Route: POST /meals/api/edit_suggestion
 # Parameters:
 #   suggestion_id : Target identifier
 #   meal_name     : Updated meal name
@@ -134,7 +134,7 @@ sub edit_suggestion {
 }
 
 # Permanently removes a meal suggestion.
-# Route: POST /meals/delete_suggestion
+# Route: POST /meals/api/delete_suggestion
 # Parameters:
 #   suggestion_id : Target identifier
 # Returns: JSON object { success, message, error }
@@ -155,7 +155,7 @@ sub delete_suggestion {
 }
 
 # Admin: Orchestrates lock-in or blackout events for specific days.
-# Route: POST /meals/admin/lock
+# Route: POST /meals/api/admin/lock
 # Parameters:
 #   plan_id       : Target day identifier
 #   suggestion_id : Winner identifier (Optional)
