@@ -30,9 +30,9 @@
     </div>
 
     <%# Calendar Filters %>
-    <div class="calendar-filters">
+    <div class="filter-section">
         <label>Filter by Category:</label>
-        <select id="categoryFilter">
+        <select id="categoryFilter" class="category-dropdown">
             <option value="">All Categories</option>
         </select>
     </div>
