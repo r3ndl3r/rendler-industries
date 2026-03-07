@@ -147,7 +147,7 @@ function openEditModal(id) {
     document.getElementById('editDescription').value = link.description || '';
     
     if (modal) {
-        modal.style.display = 'flex';
+        modal.classList.add('show');
         document.body.classList.add('modal-open');
     }
 }
@@ -160,7 +160,7 @@ function openEditModal(id) {
 function closeEditModal() {
     const modal = document.getElementById('editModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('show');
         document.body.classList.remove('modal-open');
     }
 }
@@ -179,7 +179,7 @@ async function submitEntry(event, isEdit = false) {
     const form = event.target;
     const btnId = isEdit ? 'editSaveBtn' : 'addBtn';
     const btn = document.getElementById(btnId);
-    const endpoint = isEdit ? '/go/edit' : '/go/add';
+    const endpoint = isEdit ? '/go/api/edit' : '/go/api/add';
     
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
@@ -218,7 +218,7 @@ function removeLink(id, keyword) {
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost('/go/delete', { id: id });
+            const result = await apiPost('/go/api/delete', { id: id });
             if (result && result.success) {
                 const row = document.getElementById(`link-row-${id}`);
                 if (row) {
