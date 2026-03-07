@@ -546,6 +546,14 @@ const GLOBAL_ICONS = {
     'reminders': '🔔',
     'medication': '💊',
     'ai': '🧠',
+
+    // Device Categories
+    'computer': '💻',
+    'phone': '📱',
+    'tablet': '📱',
+    'gaming-console': '🎮',
+    'tv': '📺',
+
     'file_image': '🖼️',
     'file_pdf': '📄',
     'file_text': '📃',
