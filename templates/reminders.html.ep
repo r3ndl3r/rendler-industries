@@ -28,7 +28,7 @@
 </div>
 
 <%# Add Reminder Modal %>
-<div id="addReminderModal" class="modal-overlay" style="display: none;">
+<div id="addReminderModal" class="modal-overlay">
     <div class="modal-content modal-reminders">
         <div class="modal-header">
             <h3><%= icon('add') %> New Recurring Reminder</h3>
@@ -81,7 +81,7 @@
 </div>
 
 <%# Edit Reminder Modal %>
-<div id="editReminderModal" class="modal-overlay" style="display: none;">
+<div id="editReminderModal" class="modal-overlay">
     <div class="modal-content modal-reminders">
         <div class="modal-header">
             <h3><%= icon('edit') %> Edit Recurring Reminder</h3>
