@@ -387,11 +387,11 @@ sub startup {
     # --- Todo List Routes ---
     $auth->get('/todo')->to('todo#index');
     $auth->get('/todo/api/state')->to('todo#api_state');
-    $auth->post('/todo/api/add')->to('todo#add');
-    $auth->post('/todo/api/toggle/:id')->to('todo#toggle');
-    $auth->post('/todo/api/delete/:id')->to('todo#delete');
-    $auth->post('/todo/api/edit/:id')->to('todo#edit');
-    $auth->post('/todo/api/clear')->to('todo#clear_completed');
+    $auth->post('/todo/api/add')->to('todo#api_add');
+    $auth->post('/todo/api/toggle/:id')->to('todo#api_toggle');
+    $auth->post('/todo/api/delete/:id')->to('todo#api_delete');
+    $auth->post('/todo/api/edit/:id')->to('todo#api_edit');
+    $auth->post('/todo/api/clear')->to('todo#api_clear');
 
     # --- Google Cloud API Routes ---
     $auth->post('/tts/api/synthesize')->to('TTS#synthesize');
