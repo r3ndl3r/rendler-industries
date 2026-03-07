@@ -13,7 +13,7 @@
         <h1><%= icon('meals') %> <span>Meal Planner</span></h1>
         <div class="header-meta">
             <%# Admin Management Actions %>
-            <div id="adminActions" style="display: none;">
+            <div id="adminActions" class="hidden">
                 <button class="btn-primary" onclick="openAddEditMealModal()"><%= icon('add') %> Add</button>
                 <button class="btn-secondary" onclick="openManageVaultModal()"><%= icon('settings') %> Manage</button>
             </div>
@@ -32,7 +32,7 @@
 </div>
 
 <%# Modal: Suggest Meal %>
-<div id="suggestModal" class="modal-overlay" style="display: none;">
+<div id="suggestModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
             <h3><%= icon('add') %> Suggest Meal</h3>
@@ -44,7 +44,7 @@
                 <label>Meal Name</label>
                 <div class="meal-input-wrapper">
                     <input type="text" id="mealInput" class="game-input" placeholder="Type a meal or pick from list..." autocomplete="off">
-                    <div id="mealDropdown" class="meal-dropdown" style="display:none;"></div>
+                    <div id="mealDropdown" class="meal-dropdown hidden"></div>
                 </div>
             </div>
         </div>
@@ -56,7 +56,7 @@
 </div>
 
 <%# Modal: Edit Suggestion %>
-<div id="editSuggestionModal" class="modal-overlay" style="display: none;">
+<div id="editSuggestionModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
             <h3><%= icon('edit') %> Edit Suggestion</h3>
@@ -67,7 +67,7 @@
                 <label>Meal Name</label>
                 <div class="meal-input-wrapper">
                     <input type="text" id="editMealInput" class="game-input" placeholder="Type a meal or pick from list..." autocomplete="off">
-                    <div id="editMealDropdown" class="meal-dropdown" style="display:none;"></div>
+                    <div id="editMealDropdown" class="meal-dropdown hidden"></div>
                 </div>
             </div>
         </div>
@@ -79,7 +79,7 @@
 </div>
 
 <%# Modal: Blackout Day (Admin) %>
-<div id="blackoutModal" class="modal-overlay" style="display: none;">
+<div id="blackoutModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
             <h3><%= icon('cancel') %> Blackout Day</h3>
@@ -104,7 +104,7 @@
 </div>
 
 <%# Manage Meals Modal (Admin) %>
-<div id="manageVaultModal" class="modal-overlay" style="display: none;">
+<div id="manageVaultModal" class="modal-overlay">
     <div class="modal-content modal-vault-manage">
         <div class="modal-header">
             <h3><%= icon('settings') %> Manage Meals</h3>
@@ -128,7 +128,7 @@
 </div>
 
 <%# Modal: Add/Edit Meal in Vault (Admin) %>
-<div id="addEditMealModal" class="modal-overlay" style="display: none;">
+<div id="addEditMealModal" class="modal-overlay">
     <div class="modal-content modal-vault-edit">
         <div class="modal-header">
             <h3 id="manageMealModalTitle"><%= icon('add') %> Add Meal</h3>
@@ -140,7 +140,7 @@
                 <label>Meal Name</label>
                 <div class="meal-input-wrapper">
                     <input type="text" id="manageMealName" class="game-input" placeholder="e.g. Tacos" autocomplete="off">
-                    <div id="manageMealDropdown" class="meal-dropdown" style="display:none;"></div>
+                    <div id="manageMealDropdown" class="meal-dropdown hidden"></div>
                 </div>
             </div>
         </div>
