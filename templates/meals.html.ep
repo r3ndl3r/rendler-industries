@@ -10,10 +10,10 @@
 
 <div class="meals-container">
     <div class="header-bar">
-        <h1><%= icon('meals') %> <span>Meal Planner</span></h1>
+        <h1><%= icon('meals') %> <span>Meals</span></h1>
         <div class="header-meta">
             <%# Admin Management Actions %>
-            <div id="adminActions" class="hidden">
+            <div id="adminActions" class="manage-actions hidden">
                 <button class="btn-primary" onclick="openAddEditMealModal()"><%= icon('add') %> Add</button>
                 <button class="btn-secondary" onclick="openManageVaultModal()"><%= icon('settings') %> Manage</button>
             </div>
