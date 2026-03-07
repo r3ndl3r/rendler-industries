@@ -551,7 +551,7 @@ function setupEventListeners() {
     if (allDayCb) {
         allDayCb.onchange = () => {
             const timeGroups = [document.getElementById('startTimeGroup'), document.getElementById('endTimeGroup')];
-            timeGroups.forEach(g => { if (g) g.style.display = allDayCb.checked ? 'none' : 'block'; });
+            timeGroups.forEach(g => { if (g) g.classList.toggle('hidden', allDayCb.checked); });
         };
     }
 }
@@ -662,7 +662,7 @@ function openAddEventModal(dateStr) {
         document.getElementById('eventEndDate').value = dateStr;
     }
 
-    modal.style.display = 'flex';
+    modal.classList.add('show');
     document.body.classList.add('modal-open');
 }
 
@@ -702,7 +702,7 @@ function openEditModalById(id) {
     document.getElementById('cloneEventBtn').onclick = () => cloneEvent(event);
 
     const modal = document.getElementById('eventModal');
-    modal.style.display = 'flex';
+    modal.classList.add('show');
     document.body.classList.add('modal-open');
 }
 
@@ -778,7 +778,7 @@ function showEventDetails(id) {
 
     document.getElementById('editFromDetailsBtn').onclick = () => { closeDetailsModal(); openEditModalById(event.id); };
     const modal = document.getElementById('eventDetailsModal');
-    modal.style.display = 'flex';
+    modal.classList.add('show');
     document.body.classList.add('modal-open');
 }
 
@@ -788,7 +788,7 @@ function showEventDetails(id) {
  * @returns {void}
  */
 function closeEventModal() {
-    document.getElementById('eventModal').style.display = 'none';
+    document.getElementById('eventModal').classList.remove('show');
     document.body.classList.remove('modal-open');
 }
 
@@ -798,7 +798,7 @@ function closeEventModal() {
  * @returns {void}
  */
 function closeDetailsModal() {
-    document.getElementById('eventDetailsModal').style.display = 'none';
+    document.getElementById('eventDetailsModal').classList.remove('show');
     document.body.classList.remove('modal-open');
 }
 
@@ -1054,6 +1054,7 @@ function escapeHtml(text) {
 window.handleEventSubmit = handleEventSubmit;
 window.openAddEventModal = openAddEventModal;
 window.openEditModalById = openEditModalById;
+window.confirmDeleteEvent = confirmDeleteEvent;
 window.showEventDetails = showEventDetails;
 window.closeEventModal = closeEventModal;
 window.closeDetailsModal = closeDetailsModal;
