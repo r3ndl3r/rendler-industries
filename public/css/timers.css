@@ -39,25 +39,28 @@
 
 .timer-card {
     width: 360px;
-    background: #ffffff;
-    border: 2px solid transparent;
-    border-radius: 1rem;
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.5rem;
     padding: 1.5rem;
     position: relative;
     transition: transform 0.3s var(--transition-bounce), box-shadow 0.3s ease;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 }
 
-.timer-card[data-status="green"] { border-color: #22c55e; }
-.timer-card[data-status="yellow"] { border-color: #eab308; }
-.timer-card[data-status="red"] { border-color: #ef4444; }
+.timer-card[data-status="green"] { border-color: rgba(34, 197, 94, 0.4); }
+.timer-card[data-status="yellow"] { border-color: rgba(234, 179, 8, 0.4); }
+.timer-card[data-status="red"] { border-color: rgba(239, 68, 68, 0.4); }
 
 .timer-card:hover {
     transform: translateY(-5px) scale(1.02);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    border-color: rgba(144, 202, 249, 0.3);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
 }
 
 .timer-card-header {
@@ -74,25 +77,26 @@
     align-items: center;
     justify-content: center;
     border-radius: 1rem;
+    background: rgba(0, 0, 0, 0.2);
 }
 
-.timer-icon.computer { background: #dbeafe; }
-.timer-icon.phone, .timer-icon.tablet { background: #fce7f3; }
-.timer-icon.gaming-console { background: #fef3c7; }
-.timer-icon.tv { background: #dcfce7; }
+.timer-icon.computer { color: #60a5fa; }
+.timer-icon.phone, .timer-icon.tablet { color: #f472b6; }
+.timer-icon.gaming-console { color: #fbbf24; }
+.timer-icon.tv { color: #4ade80; }
 
 .timer-title-group { flex: 1; }
 
 .timer-name {
     font-size: 1.25rem;
     font-weight: 600;
-    color: #111827;
+    color: #ffffff;
     margin: 0;
 }
 
 .timer-category {
     font-size: 0.75rem;
-    color: #6b7280;
+    color: #94a3b8;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     font-weight: 700;
@@ -101,7 +105,7 @@
 .timer-status-bar {
     width: 100%;
     height: 8px;
-    background: #f3f4f6;
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 100px;
     overflow: hidden;
 }
@@ -111,9 +115,9 @@
     transition: width 1s linear, background-color 0.5s ease;
 }
 
-.status-fill.green { background: #22c55e; }
-.status-fill.yellow { background: #eab308; }
-.status-fill.red { background: #ef4444; }
+.status-fill.green { background: #22c55e; box-shadow: 0 0 10px rgba(34, 197, 94, 0.4); }
+.status-fill.yellow { background: #eab308; box-shadow: 0 0 10px rgba(234, 179, 8, 0.4); }
+.status-fill.red { background: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
 
 .timer-stats {
     display: flex;
@@ -126,31 +130,31 @@
     justify-content: space-between;
     align-items: center;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .stat-row:last-child { border-bottom: none; }
 
 .stat-label {
     font-size: 0.875rem;
-    color: #6b7280;
+    color: #94a3b8;
 }
 
 .stat-value {
     font-family: var(--font-mono);
     font-size: 1.125rem;
     font-weight: 600;
-    color: #111827;
+    color: #ffffff;
 }
 
 .stat-value.expired { color: #ef4444; }
 
 .bonus-indicator {
-    background: #fef3c7;
+    background: rgba(245, 158, 11, 0.1);
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
-    border: 1px solid #fde68a;
-    color: #92400e;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
 }
 
 .timer-controls {
@@ -170,14 +174,14 @@
 
 .btn-start { background: #22c55e; color: #ffffff; }
 .btn-pause { background: #eab308; color: #ffffff; }
-.btn-pause.paused { background: #6b7280; color: #ffffff; }
+.btn-pause.paused { background: #64748b; color: #ffffff; }
 
 .running-indicator {
     text-align: center;
     margin-top: 0.5rem;
     padding: 0.5rem;
-    background: #dcfce7;
-    color: #166534;
+    background: rgba(34, 197, 94, 0.1);
+    color: #4ade80;
     border-radius: 0.5rem;
     font-weight: 700;
     font-size: 0.75rem;
@@ -190,7 +194,7 @@
 .pulse-dot {
     width: 8px;
     height: 8px;
-    background: #16a34a;
+    background: #22c55e;
     border-radius: 50%;
     animation: pulse 1.5s infinite;
 }
@@ -204,8 +208,9 @@
 .expired-overlay {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(239, 68, 68, 0.95);
-    border-radius: 1rem;
+    background: rgba(239, 68, 68, 0.9);
+    backdrop-filter: blur(4px);
+    border-radius: 1.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -220,26 +225,26 @@
 /* --- 3. Admin Management (Ledger) --- */
 
 .timers-table {
-    background: #ffffff !important;
-    color: #111827 !important;
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
 }
 
 .timers-table thead {
-    background: #f3f4f6 !important;
+    background: #0f172a !important;
 }
 
 .timers-table th {
-    color: #6b7280 !important;
-    border-bottom: 1px solid #e5e7eb !important;
+    color: #94a3b8 !important;
+    border-bottom: 1px solid #334155 !important;
 }
 
 .timers-table td {
-    border-top: 1px solid #f3f4f6 !important;
-    color: #111827 !important;
+    border-top: 1px solid #334155 !important;
+    color: #e2e8f0 !important;
 }
 
 .timers-table tbody tr:hover {
-    background: #f9fafb !important;
+    background: #334155 !important;
 }
 
 .manage-filters {
@@ -335,18 +340,18 @@
             "used remaining"
             "actions actions";
         gap: 0.75rem;
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 1rem;
         padding: 1.25rem;
         margin-bottom: 1rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
     }
 
     .timers-table td { padding: 0 !important; border: none !important; display: block; }
     .timers-table .user-cell { grid-area: user; font-size: 0.8rem; }
     .timers-table .category-cell { grid-area: category; justify-self: end; }
-    .timers-table .name-cell { grid-area: name; font-weight: 700; border-bottom: 1px solid #f3f4f6; padding-bottom: 0.5rem !important; }
+    .timers-table .name-cell { grid-area: name; font-weight: 700; border-bottom: 1px solid #334155; padding-bottom: 0.5rem !important; }
     .timers-table .status-cell { grid-area: status; }
     
     .timers-table .elapsed-cell,
@@ -355,12 +360,20 @@
         flex-direction: column;
         align-items: center;
         padding: 0.75rem !important;
-        background: #f9fafb;
         border-radius: 0.5rem;
     }
     
-    .timers-table .elapsed-cell { grid-area: used; }
-    .timers-table .remaining-cell { grid-area: remaining; }
+    .timers-table .elapsed-cell { 
+        grid-area: used; 
+        background: rgba(245, 158, 11, 0.1) !important;
+        border: 1px solid rgba(245, 158, 11, 0.2) !important;
+    }
+    
+    .timers-table .remaining-cell { 
+        grid-area: remaining; 
+        background: rgba(16, 185, 129, 0.1) !important;
+        border: 1px solid rgba(16, 185, 129, 0.2) !important;
+    }
     
     .timers-table .elapsed-cell::before { content: "USED"; font-size: 0.6rem; font-weight: 800; opacity: 0.6; }
     .timers-table .remaining-cell::before { content: "LEFT"; font-size: 0.6rem; font-weight: 800; opacity: 0.6; }
@@ -371,7 +384,7 @@
         justify-content: center;
         gap: 1rem;
         padding-top: 0.75rem !important;
-        border-top: 1px solid #f3f4f6;
+        border-top: 1px solid #334155;
     }
     
     .timers-table .limit-cell { display: none; }
