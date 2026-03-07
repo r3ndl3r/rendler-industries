@@ -12,7 +12,7 @@
     <%# Global Style Dependencies %>
     <link rel="stylesheet" href="/css/default.css?<%= time %>">
     <link rel="stylesheet" href="/css/emoji-picker.css?<%= time %>">
-    <link rel="stylesheet" href="/css/menu/menubar.css?<%= time %>">
+    <link rel="stylesheet" href="/css/menubar.css?<%= time %>">
 
     <%# Global Script Dependencies %>
     <script src="/js/jquery.js?<%= time %>"></script>
@@ -20,12 +20,12 @@
     <script src="/js/toast.js?<%= time %>"></script>
     <script src="/js/default.js?<%= time %>"></script>
     <script src="/js/emoji-picker.js?<%= time %>"></script>
-    <script src="/js/menu/menubar.js?<%= time %>"></script>
+    <script src="/js/menubar.js?<%= time %>"></script>
 <%= content_for 'head' %>
 </head>
 
 <body class="bg-gray-900 text-gray-200 font-sans">
-    <%= include 'menu/menubar' %>
+    <%= include 'menubar' %>
     
     <%# Main Content Area %>
     <%= content %>
