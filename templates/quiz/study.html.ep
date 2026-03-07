@@ -16,33 +16,33 @@
       </h1>
       <p class="thai-subtitle">คู่มือการศึกษา - คำถามและคำตอบทั้งหมด</p>
     </div>
-    <div style="margin-top: 1rem;">
-      <a href="/quiz" style="color: var(--aus-gold); text-decoration: none; margin-right: 1rem;"><%= icon('back') %> Back to Quiz</a>
-      <span id="total-questions" style="color: var(--text-secondary);"></span>
+    <div class="header-actions">
+      <a href="/quiz" class="back-link"><%= icon('back') %> Back to Quiz</a>
+      <span id="total-questions" class="total-count"></span>
     </div>
   </div>
 
   <%# Loading State %>
-  <div id="loading-state" class="text-center">
+  <div id="loading-state" class="state-container">
     <div class="spinner"></div>
-    <p style="color: var(--text-secondary);">Loading questions... กำลังโหลดคำถาม...</p>
+    <p class="text-secondary">Loading questions... กำลังโหลดคำถาม...</p>
   </div>
 
   <%# Error State %>
-  <div id="error-state" style="display:none;" class="text-center">
-    <p style="color: var(--danger-red);">Failed to load questions.</p>
+  <div id="error-state" class="state-container hidden">
+    <p class="text-danger">Failed to load questions.</p>
   </div>
 
   <%# Questions Container %>
-  <div id="questions-container" style="display:none;"></div>
+  <div id="questions-container" class="hidden"></div>
 
   <%# Pagination Controls %>
-  <div id="pagination-controls" class="controls-area" style="display: none; text-align: center; margin-top: 2rem; gap: 1rem; justify-content: center; align-items: center;">
-      <button id="prev-btn" class="btn-next" style="background: #334155; display: none;">
+  <div id="pagination-controls" class="controls-area study-pagination hidden">
+      <button id="prev-btn" class="btn-next btn-prev-manual hidden">
           <%= icon('back') %> Previous
       </button>
       
-      <span id="page-indicator" style="color: var(--text-secondary); font-weight: 600;"></span>
+      <span id="page-indicator" class="page-indicator"></span>
       
       <button id="next-btn" class="btn-next">
           Next ➜
