@@ -115,7 +115,7 @@ function updateNotificationOptions() {
     const toggle = (id, condition) => {
         const el = document.getElementById(id);
         if (el) {
-            el.style.display = condition ? 'flex' : 'none';
+            el.classList.toggle('hidden', !condition);
             if (condition) visibleCount++;
         }
     };
@@ -127,7 +127,7 @@ function updateNotificationOptions() {
 
     // Context: Hide the entire section if no channels are available for this user
     if (optionsSection) {
-        optionsSection.style.display = visibleCount > 0 ? 'block' : 'none';
+        optionsSection.classList.toggle('hidden', visibleCount === 0);
     }
 }
 
@@ -142,16 +142,17 @@ function openModal() {
     const idField = document.getElementById('messageId');
     const input = document.getElementById('paste');
     const modal = document.getElementById('contentModal');
+    const notifyOptions = document.getElementById('notification-options');
 
     if (title) title.textContent = 'Add New Content';
     if (idField) idField.value = '';
     if (input) input.value = '';
     
     // Default: show notification routing for new items
-    document.getElementById('notification-options').style.display = 'block';
+    if (notifyOptions) notifyOptions.classList.remove('hidden');
     
     if (modal) {
-        modal.style.display = 'flex';
+        modal.classList.add('show');
         document.body.classList.add('modal-open');
     }
 }
@@ -165,7 +166,7 @@ function openModal() {
 function closeModal() {
     const modal = document.getElementById('contentModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('show');
         document.body.classList.remove('modal-open');
     }
 }
@@ -184,16 +185,17 @@ function editMessage(id, base64Raw) {
     const idField = document.getElementById('messageId');
     const input = document.getElementById('paste');
     const modal = document.getElementById('contentModal');
+    const notifyOptions = document.getElementById('notification-options');
 
     if (title) title.textContent = 'Edit Content';
     if (idField) idField.value = id;
     if (input) input.value = raw;
     
     // Notifications are suppressed for existing records to minimize noise
-    document.getElementById('notification-options').style.display = 'none';
+    if (notifyOptions) notifyOptions.classList.add('hidden');
 
     if (modal) {
-        modal.style.display = 'flex';
+        modal.classList.add('show');
         document.body.classList.add('modal-open');
     }
 }
