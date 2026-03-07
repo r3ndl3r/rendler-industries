@@ -172,6 +172,14 @@ sub file_map_json {
 # Returns: Plain text path
 sub cwd { shift->render(text => "CWD: " . getcwd()) }
 
+# JSON API endpoint serving semantic icon mappings as a JS variable.
+# Route: GET /api/icons.js
+# Returns: JavaScript assignment window.GLOBAL_ICONS = { ... }
+sub get_icons_js {
+    my $c = shift;
+    $c->render(text => "window.GLOBAL_ICONS = " . $c->icons_json . ";", format => 'js');
+}
+
 # Static Page Renders
 sub t_page { shift->render('t') }
 sub p_page { shift->render('p') }
