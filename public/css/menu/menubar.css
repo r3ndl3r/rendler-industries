@@ -133,17 +133,8 @@ body {
     opacity: 0.9;
 }
 
-.modal-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    display: none; 
-    justify-content: center;
-    align-items: center;
-    z-index: 10005;
-    flex-direction: column;
-    color: white;
-    text-align: center;
+.modal-overlay.show {
+    display: flex !important;
 }
 
 .side-menu a, .side-menu button.menu-action {
@@ -227,5 +218,9 @@ body {
 .submenu-container {
     background-color: rgba(0, 0, 0, 0.2);
     border-left: 3px solid #546e7a;
-    display: none; /* Controlled by JS but set as default here */
+    display: none;
+}
+
+.submenu-container.open {
+    display: block;
 }
