@@ -7,7 +7,7 @@
             <%= title %>
         </div>
     </div>
-    <a href="/" class="navbar-home" title="Home">
+    <a href="<%= is_logged_in() ? '/quick' : '/' %>" class="navbar-home" title="Home">
         <img src="/files/serve/53" alt="Home">
     </a>
 </div>
