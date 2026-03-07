@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadState() {
     const container = document.getElementById('meals-timeline');
-    // Lifecycle: show loading skeleton if initial boot
+    // Lifecycle: show loading pulse if initial boot
     if (container && !container.querySelector('.component-loading') && STATE.plan.length === 0) {
         container.innerHTML = `
             <div class="component-loading">
@@ -90,7 +90,7 @@ async function loadState() {
             
             // UI: Handle visibility of admin-only controls
             const adminBar = document.getElementById('adminActions');
-            if (adminBar) adminBar.style.display = STATE.isAdmin ? 'block' : 'none';
+            if (adminBar) adminBar.classList.toggle('hidden', !STATE.isAdmin);
 
             renderTimeline();
         }
@@ -111,7 +111,7 @@ async function loadState() {
  */
 async function openManageVaultModal() {
     const modal = document.getElementById('manageVaultModal');
-    if (modal) modal.style.display = 'flex';
+    if (modal) modal.classList.add('show');
     
     try {
         const response = await fetch('/meals/api/vault');
@@ -131,7 +131,7 @@ async function openManageVaultModal() {
  */
 function closeManageVaultModal() {
     const modal = document.getElementById('manageVaultModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('show');
 }
 
 /**
@@ -177,10 +177,12 @@ function openAddEditMealModal(id = null, name = null) {
     
     document.getElementById('manageMealId').value = id || '';
     document.getElementById('manageMealName').value = name || '';
-    document.getElementById('manageMealDropdown').style.display = 'none';
+    
+    const dropdown = document.getElementById('manageMealDropdown');
+    if (dropdown) dropdown.classList.add('hidden');
 
     if (title) title.innerHTML = id ? `${getIcon('edit')} Edit Meal` : `${getIcon('add')} Add Meal`;
-    if (modal) modal.style.display = 'flex';
+    if (modal) modal.classList.add('show');
 }
 
 /**
@@ -190,7 +192,7 @@ function openAddEditMealModal(id = null, name = null) {
  */
 function closeAddEditMealModal() {
     const modal = document.getElementById('addEditMealModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('show');
 }
 
 /**
@@ -427,7 +429,7 @@ function setupMealAutocomplete(inputId, dropdownId) {
         const matches = query ? STATE.vault.filter(m => m.toLowerCase().includes(query)) : STATE.vault;
         
         if (!matches.length && !query) {
-            dropdown.style.display = 'none';
+            dropdown.classList.add('hidden');
             return;
         }
 
@@ -437,7 +439,7 @@ function setupMealAutocomplete(inputId, dropdownId) {
         }
 
         dropdown.innerHTML = html;
-        dropdown.style.display = html ? 'block' : 'none';
+        dropdown.classList.toggle('hidden', !html);
         
         // UI: Adjust positioning to avoid viewport overflow
         const rect = input.getBoundingClientRect();
@@ -455,11 +457,11 @@ function setupMealAutocomplete(inputId, dropdownId) {
         const opt = e.target.closest('.meal-option');
         if (opt) {
             input.value = opt.dataset.value;
-            dropdown.style.display = 'none';
+            dropdown.classList.add('hidden');
             input.focus();
         }
     });
-    document.addEventListener('click', (e) => { if (!input.contains(e.target) && !dropdown.contains(e.target)) dropdown.style.display = 'none'; });
+    document.addEventListener('click', (e) => { if (!input.contains(e.target) && !dropdown.contains(e.target)) dropdown.classList.add('hidden'); });
 }
 
 /**
@@ -484,7 +486,7 @@ async function submitSuggestion() {
     btn.innerHTML = `${getIcon('waiting')} Submitting...`;
 
     try {
-        const result = await apiPost('/meals/suggest', { plan_id: planId, meal_name: mealName });
+        const result = await apiPost('/meals/api/suggest', { plan_id: planId, meal_name: mealName });
         if (result && result.success) {
             closeSuggestModal();
             await loadState();
@@ -506,7 +508,7 @@ async function castVote(id) {
     const row = document.querySelector(`.suggestion-row[data-suggestion-id="${id}"]`);
     if (row) row.classList.add('vote-pop');
 
-    const result = await apiPost('/meals/vote', { suggestion_id: id });
+    const result = await apiPost('/meals/api/vote', { suggestion_id: id });
     if (result && result.success) {
         await loadState();
     } else {
@@ -532,7 +534,7 @@ async function submitEditSuggestion() {
     btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
     try {
-        const result = await apiPost('/meals/edit_suggestion', { suggestion_id: id, meal_name: name });
+        const result = await apiPost('/meals/api/edit_suggestion', { suggestion_id: id, meal_name: name });
         if (result && result.success) {
             closeEditSuggestionModal();
             await loadState();
@@ -559,7 +561,7 @@ function deleteSuggestion(id, name) {
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost('/meals/delete_suggestion', { suggestion_id: id });
+            const result = await apiPost('/meals/api/delete_suggestion', { suggestion_id: id });
             if (result && result.success) await loadState();
         }
     });
@@ -575,7 +577,7 @@ async function submitBlackout() {
     const id = document.getElementById('blackoutPlanId').value;
     const reason = document.getElementById('blackoutReason').value;
 
-    const result = await apiPost('/meals/admin/lock', { plan_id: id, blackout: reason });
+    const result = await apiPost('/meals/api/admin/lock', { plan_id: id, blackout: reason });
     if (result && result.success) {
         closeBlackoutModal();
         await loadState();
@@ -598,7 +600,7 @@ function adminLock(planId, suggestionId) {
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost('/meals/admin/lock', { plan_id: planId, suggestion_id: suggestionId });
+            const result = await apiPost('/meals/api/admin/lock', { plan_id: planId, suggestion_id: suggestionId });
             if (result && result.success) await loadState();
         }
     });
@@ -612,7 +614,7 @@ function adminLock(planId, suggestionId) {
  * @returns {Promise<void>}
  */
 async function adminUnlock(planId) {
-    const result = await apiPost('/meals/admin/lock', { plan_id: planId, unlock: 1 });
+    const result = await apiPost('/meals/api/admin/lock', { plan_id: planId, unlock: 1 });
     if (result && result.success) await loadState();
 }
 
@@ -625,35 +627,41 @@ function openSuggestModal(id, date) {
     document.getElementById('activePlanId').value = id;
     document.getElementById('suggestDateLabel').textContent = date;
     document.getElementById('mealInput').value = '';
-    document.getElementById('mealDropdown').style.display = 'none';
+    
+    const dropdown = document.getElementById('mealDropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+    
     const m = document.getElementById('suggestModal');
-    if (m) m.style.display = 'flex';
+    if (m) m.classList.add('show');
 }
 
 /** @returns {void} */
-function closeSuggestModal() { const m = document.getElementById('suggestModal'); if (m) m.style.display = 'none'; }
+function closeSuggestModal() { const m = document.getElementById('suggestModal'); if (m) m.classList.remove('show'); }
 
 /** @returns {void} */
 function openEditSuggestionModal(id, name) {
     document.getElementById('editSuggestionId').value = id;
     document.getElementById('editMealInput').value = name;
-    document.getElementById('editMealDropdown').style.display = 'none';
+    
+    const dropdown = document.getElementById('editMealDropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+    
     const m = document.getElementById('editSuggestionModal');
-    if (m) m.style.display = 'flex';
+    if (m) m.classList.add('show');
 }
 
 /** @returns {void} */
-function closeEditSuggestionModal() { const m = document.getElementById('editSuggestionModal'); if (m) m.style.display = 'none'; }
+function closeEditSuggestionModal() { const m = document.getElementById('editSuggestionModal'); if (m) m.classList.remove('show'); }
 
 /** @returns {void} */
 function openBlackoutModal(id) {
     document.getElementById('blackoutPlanId').value = id;
     const m = document.getElementById('blackoutModal');
-    if (m) m.style.display = 'flex';
+    if (m) m.classList.add('show');
 }
 
 /** @returns {void} */
-function closeBlackoutModal() { const m = document.getElementById('blackoutModal'); if (m) m.style.display = 'none'; }
+function closeBlackoutModal() { const m = document.getElementById('blackoutModal'); if (m) m.classList.remove('show'); }
 
 /**
  * Sanitizes input to prevent XSS.
