@@ -55,9 +55,9 @@ async function initQuiz() {
 
         questions = await response.json();
         
-        if (loadingState) loadingState.style.display = 'none';
+        if (loadingState) loadingState.classList.add('hidden');
         if (questions.length > 0) {
-            if (quizInterface) quizInterface.style.display = 'block';
+            if (quizInterface) quizInterface.classList.remove('hidden');
             startQuiz();
         } else {
             throw new Error('No questions received');
@@ -65,8 +65,8 @@ async function initQuiz() {
 
     } catch (error) {
         console.error('initQuiz failure:', error);
-        if (loadingState) loadingState.style.display = 'none';
-        if (errorState) errorState.style.display = 'block';
+        if (loadingState) loadingState.classList.add('hidden');
+        if (errorState) errorState.classList.remove('hidden');
     }
 }
 
@@ -136,12 +136,12 @@ function renderQuestion() {
     const hintImage = document.getElementById('hint-image');
 
     // Reset Hint Interface
-    if (hintContainer) hintContainer.style.display = 'none'; 
+    if (hintContainer) hintContainer.classList.add('hidden'); 
     if (hintBtn) hintBtn.classList.remove('active');
 
     // Context: resolve image-based hints
     if (currentQ.image && hintBtn && hintImage) {
-        hintBtn.style.display = 'flex'; 
+        hintBtn.classList.remove('hidden'); 
         hintImage.src = `/images/quiz/${currentQ.image}`; 
         
         // Interaction: attach toggle logic via cloning to purge previous listeners
@@ -149,16 +149,16 @@ function renderQuestion() {
         hintBtn.parentNode.replaceChild(newBtn, hintBtn);
         
         newBtn.onclick = function() {
-            if (hintContainer.style.display === 'none') {
-                hintContainer.style.display = 'block';
+            if (hintContainer.classList.contains('hidden')) {
+                hintContainer.classList.remove('hidden');
                 newBtn.classList.add('active'); 
             } else {
-                hintContainer.style.display = 'none';
+                hintContainer.classList.add('hidden');
                 newBtn.classList.remove('active');
             }
         };
     } else if (hintBtn) {
-        hintBtn.style.display = 'none';
+        hintBtn.classList.add('hidden');
     }
 
     // UI: Reset navigation and feedback states
@@ -166,8 +166,8 @@ function renderQuestion() {
     const feedback = document.getElementById('feedback-container');
     if (nextBtn) nextBtn.disabled = true;
     if (feedback) {
-        feedback.style.display = 'none';
-        feedback.className = 'feedback-box';
+        feedback.classList.add('hidden');
+        feedback.className = 'feedback-box hidden';
     }
     
     // UI: Update progress markers
@@ -217,9 +217,9 @@ function renderQuestion() {
             btn.dataset.correct = answer.is_correct; 
 
             btn.innerHTML = `
-                <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 4px;">${answer.text}</div>
-                <div style="color: var(--aus-gold); font-size: 0.9rem; font-style: italic; margin-bottom: 4px;">${answer.ph}</div>
-                <div class="thai-text" style="color: var(--text-secondary); font-size: 0.95rem;">${answer.th}</div>
+                <div class="answer-text-en">${answer.text}</div>
+                <div class="answer-text-ph">${answer.ph}</div>
+                <div class="thai-text answer-text-th">${answer.th}</div>
             `;
 
             btn.onclick = () => handleAnswer(btn, answer);
@@ -288,7 +288,7 @@ function handleAnswer(selectedBtn, answerObj) {
         }, 300); // 300ms delay for visual processing
     }
 
-    if (feedbackContainer) feedbackContainer.style.display = 'flex';
+    if (feedbackContainer) feedbackContainer.classList.remove('hidden');
     if (nextBtn) nextBtn.disabled = false;
     
     const scoreTracker = document.getElementById('score-tracker');
@@ -331,8 +331,8 @@ function finishQuiz() {
     const quizInt = document.getElementById('quiz-interface');
     const resInt = document.getElementById('results-interface');
     
-    if (quizInt) quizInt.style.display = 'none';
-    if (resInt) resInt.style.display = 'block';
+    if (quizInt) quizInt.classList.add('hidden');
+    if (resInt) resInt.classList.remove('hidden');
     
     const percentage = Math.round((score / questions.length) * 100);
     const scoreDisplay = document.getElementById('final-score-display');
@@ -343,18 +343,18 @@ function finishQuiz() {
         
         // Logic: set color based on 75% passing threshold
         if (percentage >= 75) {
-            scoreDisplay.style.color = 'var(--aus-green)';
+            scoreDisplay.className = 'final-score-circle score-pass';
             if (resultMsg) resultMsg.innerHTML = `
-                <h4 style="color: var(--aus-green); margin-bottom: 10px;">Congratulations!</h4>
+                <h4 class="result-header-pass">Congratulations!</h4>
                 <p>You passed the practice test.</p>
-                <p class="thai-text" style="color: var(--text-secondary); margin-bottom: 0;">ขอแสดงความยินดี! คุณสอบผ่านแบบทดสอบฝึกหัด</p>
+                <p class="thai-text result-text-th">ขอแสดงความยินดี! คุณสอบผ่านแบบทดสอบฝึกหัด</p>
             `;
         } else {
-            scoreDisplay.style.color = 'var(--danger-red)';
+            scoreDisplay.className = 'final-score-circle score-fail';
             if (resultMsg) resultMsg.innerHTML = `
-                <h4 style="color: var(--danger-red); margin-bottom: 10px;">Keep Practicing</h4>
+                <h4 class="result-header-fail">Keep Practicing</h4>
                 <p>You need 75% to pass.</p>
-                <p class="thai-text" style="color: var(--text-secondary); margin-bottom: 0;">ฝึกฝนต่อไป คุณต้องได้คะแนน 75% เพื่อสอบผ่าน</p>
+                <p class="thai-text result-text-th">ฝึกฝนต่อไป คุณต้องได้คะแนน 75% เพื่อสอบผ่าน</p>
             `;
         }
     }
@@ -375,8 +375,8 @@ document.addEventListener('DOMContentLoaded', function() {
         restartBtn.addEventListener('click', function() {
             const resInt = document.getElementById('results-interface');
             const loadInt = document.getElementById('loading-state');
-            if (resInt) resInt.style.display = 'none';
-            if (loadInt) loadInt.style.display = 'block';
+            if (resInt) resInt.classList.add('hidden');
+            if (loadInt) loadInt.classList.remove('hidden');
             initQuiz();
         });
     }
