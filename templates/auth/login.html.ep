@@ -8,38 +8,40 @@
     <script src="/js/auth.js?<%= time %>"></script>
 % end
 
-<div class="auth-container">
-    <h1 class="auth-header">Login</h1>
-    
-    <%# Authentication Alerts %>
-    % if (my $msg = param('msg')) {
-        <div class="alert">
-            % if ($msg eq 'invalid') {
-                Invalid username or password.
-            % } elsif ($msg eq 'pending') {
-                Account pending approval.
-            % }
-        </div>
-    % }
+<div class="auth-wrapper">
+    <div class="auth-container">
+        <h1 class="auth-header">Login</h1>
+        
+        <%# Authentication Alerts %>
+        % if (my $msg = param('msg')) {
+            <div class="alert">
+                % if ($msg eq 'invalid') {
+                    Invalid username or password.
+                % } elsif ($msg eq 'pending') {
+                    Account pending approval.
+                % }
+            </div>
+        % }
 
-    <%# Login Form %>
-    <form method="POST" action="/login">
-        <div class="form-group">
-            <label for="username">Username</label>
-            <input type="text" id="username" name="username" required autofocus>
-        </div>
+        <%# Login Form %>
+        <form method="POST" action="/login">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required autofocus>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            
+            <div class="button-container">
+                <input type="submit" value="Login">
+            </div>
+        </form>
         
-        <div class="form-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" required>
-        </div>
-        
-        <div class="button-container">
-            <input type="submit" value="Login">
-        </div>
-    </form>
-    
-    <p class="auth-footer">
-        Don't have an account? <a href="/register">Register here</a>
-    </p>
+        <p class="auth-footer">
+            Don't have an account? <a href="/register">Register here</a>
+        </p>
+    </div>
 </div>
