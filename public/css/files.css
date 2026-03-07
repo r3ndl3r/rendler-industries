@@ -41,6 +41,25 @@
     font-family: monospace;
 }
 
+.col-type-narrow {
+    width: 50px;
+    text-align: center;
+}
+
+.col-actions-narrow {
+    width: 140px;
+    text-align: center;
+}
+
+.col-type-cell {
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.col-downloads-cell {
+    text-align: center;
+}
+
 .col-downloads {
     color: #10b981;
     font-weight: 600;
