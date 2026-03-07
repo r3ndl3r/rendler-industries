@@ -14,7 +14,7 @@
 
 <div class="admin-container">
     <div class="header-bar">
-        <h1><%= icon('receipts') %> <span>Receipt Ledger</span></h1>
+        <h1><%= icon('receipts') %> <span>Receipts</span></h1>
         <div class="manage-actions">
             <button type="button" class="action-btn" onclick="openUploadModal()"><%= icon('upload') %> Upload</button>
         </div>
