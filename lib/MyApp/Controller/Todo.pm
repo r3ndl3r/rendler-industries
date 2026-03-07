@@ -15,14 +15,17 @@ use Mojo::Util qw(trim);
 
 # Renders the task management interface.
 # Route: GET /todo
+# Parameters: None
+# Returns: Rendered HTML template
 sub index {
     my $c = shift;
     $c->render('todo');
 }
 
-# API: Get current state (Active + Completed tasks).
+# Returns the current state of the user's todo list.
 # Route: GET /todo/api/state
-# Returns: JSON object { todos }
+# Parameters: None
+# Returns: JSON object { success, todos }
 sub api_state {
     my $c = shift;
     my $user_id = $c->current_user_id;
@@ -35,9 +38,11 @@ sub api_state {
     });
 }
 
-# Adds a new task to the user's private list.
+# Registers a new task to the user's list.
 # Route: POST /todo/api/add
-sub add {
+# Parameters: task_name (String)
+# Returns: JSON object { success, id, task_name, message }
+sub api_add {
     my $c = shift;
     my $user_id = $c->current_user_id;
     my $task_name = trim($c->param('task_name') // '');
@@ -61,9 +66,11 @@ sub add {
     }
 }
 
-# Toggles the completion status of a todo item.
+# Reverses the completion status of a specific task.
 # Route: POST /todo/api/toggle/:id
-sub toggle {
+# Parameters: id (Integer)
+# Returns: JSON object { success, message }
+sub api_toggle {
     my $c = shift;
     my $user_id = $c->current_user_id;
     my $id = $c->param('id');
@@ -80,9 +87,11 @@ sub toggle {
     }
 }
 
-# Permanently removes a task from the user's list.
+# Removes a task record from the database.
 # Route: POST /todo/api/delete/:id
-sub delete {
+# Parameters: id (Integer)
+# Returns: JSON object { success, message }
+sub api_delete {
     my $c = shift;
     my $user_id = $c->current_user_id;
     my $id = $c->param('id');
@@ -99,9 +108,11 @@ sub delete {
     }
 }
 
-# Updates the text content of an existing task.
+# Modifies the text content of an existing task.
 # Route: POST /todo/api/edit/:id
-sub edit {
+# Parameters: id (Integer), task_name (String)
+# Returns: JSON object { success, message }
+sub api_edit {
     my $c = shift;
     my $user_id = $c->current_user_id;
     my $id = $c->param('id');
@@ -123,9 +134,11 @@ sub edit {
     }
 }
 
-# Bulk deletes all completed tasks for the current user.
+# Removes all tasks marked as completed for the current user.
 # Route: POST /todo/api/clear
-sub clear_completed {
+# Parameters: None
+# Returns: JSON object { success, message }
+sub api_clear {
     my $c = shift;
     my $user_id = $c->current_user_id;
     
