@@ -3,50 +3,46 @@
 package MyApp::Controller::Go;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
-use HTML::Entities qw(encode_entities);
 
-# Controller for the internal "Go Links" URL shortener.
+# Controller for the Platform Short-Link management system.
 # Features:
-#   - Redirection engine for short keywords
-#   - Link lifecycle management (Add, Edit, Delete)
-#   - Visit tracking delegation
+#   - Automatic redirection via /g/:keyword
+#   - Real-time visit tracking and analytics
+#   - Administrative link management (Add, Edit, Delete)
 # Integration points:
-#   - Depends on authentication context for management actions
-#   - Uses DB::Go helpers for persistence
-#   - Handles dynamic routing via /g/:keyword
+#   - Depends on DB::Go for data persistence.
+#   - Accessible only to users with appropriate authorization.
 
-# Renders the go links management interface (Skeleton).
+# Renders the primary management interface.
 # Route: GET /go
 # Parameters: None
-# Returns: Rendered HTML template 'go'.
+# Returns: Rendered HTML template.
 sub index {
     my $c = shift;
-    
-    # Handle AJAX state request
-    if ($c->req->headers->header('X-Requested-With') && $c->req->headers->header('X-Requested-With') eq 'XMLHttpRequest') {
-        return $c->api_state();
-    }
-
+    $c->stash(title => 'Go Links');
     $c->render('go');
 }
 
-# Returns the complete state for the Go Links module.
+# Returns the complete state of the short-link collection.
 # Route: GET /go/api/state
 # Parameters: None
-# Returns: JSON object { success, items }
+# Returns: JSON object { items, success }
 sub api_state {
     my $c = shift;
     my $links = $c->db->get_go_links();
-    $c->render(json => { success => 1, items => $links });
+    
+    $c->render(json => { 
+        success => 1,
+        items   => $links 
+    });
 }
 
-# Resolves a keyword and redirects the user to the destination URL.
+# Resolves a short keyword and redirects to the target destination.
 # Route: GET /g/:keyword
 # Parameters:
-#   keyword : The short string mapped to the URL
+#   keyword : The unique identifier for the redirection
 # Returns:
-#   HTTP 302 Redirect to destination
-#   Redirects to management interface with error if not found
+#   302 Redirect to destination or Go dashboard on failure
 sub resolve {
     my $c = shift;
     my $keyword = lc(trim($c->param('keyword') // ''));
@@ -58,97 +54,86 @@ sub resolve {
         return $c->redirect_to($link->{url});
     }
     
-    # Fallback: Redirect to Go dashboard with error
-    $c->flash(error => "Go link 'go/$keyword' not found.");
-    $c->redirect_to('/go');
+    # Fallback: Return to dashboard with error flag
+    $c->redirect_to('/go?error=1');
 }
 
-# Adds a new go link to the system via AJAX.
+# Registers a new redirection mapping.
 # Route: POST /go/api/add
 # Parameters:
-#   keyword     : Short identifier
-#   url         : Destination URL
-#   description : Brief description
-# Returns: JSON object { success, message }
-sub add {
+#   keyword     : The short string
+#   url         : The destination URL
+#   description : Contextual notes (Optional)
+# Returns: JSON object { success, message, error }
+sub api_add {
     my $c = shift;
-    
-    my $keyword     = lc(trim($c->param('keyword') // ''));
-    my $url         = trim($c->param('url') // '');
+    my $keyword = lc(trim($c->param('keyword') // ''));
+    my $url = trim($c->param('url') // '');
     my $description = trim($c->param('description') // '');
-    my $added_by    = $c->session('user') || 'System';
-    
-    # Logic: normalize keyword for URL safety
-    $keyword =~ s/\s+/-/g;
-    $keyword = encode_entities($keyword);
-    $description = encode_entities($description);
-    
-    unless (length $keyword && length $url) {
+    my $user = $c->session('user') // 'Unknown';
+
+    unless ($keyword && $url) {
         return $c->render(json => { success => 0, error => "Keyword and URL are required" });
     }
-    
-    # Context: ensure URL has a protocol scheme
-    unless ($url =~ m{^https?://} || $url =~ m{^/}) {
-        $url = "http://$url";
+
+    eval {
+        $c->db->add_go_link($keyword, $url, $description, $user);
+        $c->render(json => { success => 1, message => "Go link created" });
+    };
+    if ($@) {
+        $c->app->log->error("Go addition failure: $@");
+        $c->render(json => { success => 0, error => "Database failure" });
     }
-    
-    if ($c->db->get_go_link($keyword)) {
-        return $c->render(json => { success => 0, error => "Keyword '$keyword' already exists" });
-    }
-    
-    $c->db->add_go_link($keyword, $url, $description, $added_by);
-    $c->render(json => { success => 1, message => "Go link '$keyword' created" });
 }
 
-# Updates an existing go link via AJAX.
+# Updates an existing redirection mapping.
 # Route: POST /go/api/edit
 # Parameters:
-#   id          : Unique Link ID
-#   keyword     : New short string
-#   url         : New destination URL
-#   description : New description
-# Returns: JSON object { success, message }
-sub edit {
-    my $c = shift;
-    
-    my $id          = $c->param('id');
-    my $keyword     = lc(trim($c->param('keyword') // ''));
-    my $url         = trim($c->param('url') // '');
-    my $description = trim($c->param('description') // '');
-    
-    unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render(json => { success => 0, error => "Invalid ID" });
-    }
-    
-    $keyword =~ s/\s+/-/g;
-    
-    unless (length $keyword && length $url) {
-        return $c->render(json => { success => 0, error => "Keyword and URL are required" });
-    }
-    
-    unless ($url =~ m{^https?://} || $url =~ m{^/}) {
-        $url = "http://$url";
-    }
-    
-    $c->db->update_go_link($id, $keyword, $url, $description);
-    $c->render(json => { success => 1, message => "Go link updated" });
-}
-
-# Removes a single go link via AJAX.
-# Route: POST /go/api/delete
-# Parameters:
-#   id : Unique ID of the link to delete
-# Returns: JSON object { success, message }
-sub delete {
+#   id          : Record identifier
+#   keyword     : The short string
+#   url         : The destination URL
+#   description : Contextual notes (Optional)
+# Returns: JSON object { success, message, error }
+sub api_edit {
     my $c = shift;
     my $id = $c->param('id');
-    
-    unless (defined $id && $id =~ /^\d+$/) {
-        return $c->render(json => { success => 0, error => "Invalid ID" });
+    my $keyword = lc(trim($c->param('keyword') // ''));
+    my $url = trim($c->param('url') // '');
+    my $description = trim($c->param('description') // '');
+
+    unless ($id) {
+        return $c->render(json => { success => 0, error => "ID is required" });
     }
+
+    my $success = $c->db->update_go_link($id, $keyword, $url, $description);
     
-    $c->db->delete_go_link($id);
-    $c->render(json => { success => 1, message => "Go link deleted" });
+    if ($success) {
+        $c->render(json => { success => 1, message => "Go link updated" });
+    } else {
+        $c->render(json => { success => 0, error => "Update failed" });
+    }
+}
+
+# Removes a redirection record from the system.
+# Route: POST /go/api/delete
+# Parameters:
+#   id : Record identifier
+# Returns: JSON object { success, message, error }
+sub api_delete {
+    my $c = shift;
+    my $id = $c->param('id');
+
+    unless ($id) {
+        return $c->render(json => { success => 0, error => "ID is required" });
+    }
+
+    my $success = $c->db->delete_go_link($id);
+    
+    if ($success) {
+        $c->render(json => { success => 1, message => "Go link removed" });
+    } else {
+        $c->render(json => { success => 0, error => "Deletion failed" });
+    }
 }
 
 1;
