@@ -84,7 +84,7 @@ function renderGrid() {
     if (STATE.timers.length === 0) {
         container.innerHTML = `
             <div class="no-timers">
-                <p>📱 You don't have any timers set up yet.</p>
+                <p>${getIcon('phone')} You don't have any timers set up yet.</p>
                 <p>Contact an admin to create timers for you.</p>
             </div>
         `;
@@ -106,15 +106,13 @@ function renderTimerCard(t) {
     
     let iconHtml = '';
     const cat = t.category || '';
-    if (cat === 'Computer') iconHtml = '💻';
-    else if (cat === 'Phone' || cat === 'Tablet') iconHtml = '📱';
-    else if (cat === 'Gaming Console') iconHtml = '🎮';
-    else if (cat === 'TV') iconHtml = '📺';
+    const catClass = cat.toLowerCase().replace(' ', '-');
+    const iconHtml = getIcon(catClass);
 
     return `
         <div class="timer-card" data-timer-id="${t.id}" data-status="${t.status_color}">
             <div class="timer-card-header">
-                <div class="timer-icon ${cat.toLowerCase().replace(' ', '-')}">
+                <div class="timer-icon ${catClass}">
                     ${iconHtml}
                 </div>
                 <div class="timer-title-group">
@@ -172,7 +170,7 @@ function renderTimerCard(t) {
             ${isExpired ? `
                 <div class="expired-overlay">
                     <div class="expired-message">
-                        <span class="expired-icon">🚫</span>
+                        <span class="expired-icon">${getIcon('cancel')}</span>
                         <p>Time's Up!</p>
                         <small>Ask an admin for more time</small>
                     </div>
