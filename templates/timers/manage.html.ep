@@ -11,8 +11,10 @@
 
 <div class="timers-manage-container">
     <div class="header-bar">
-        <h1>⏱️ <span>Timer Management</span></h1>
-        <button class="btn btn-primary" id="btn-create-timer"><%= icon('add') %> New</button>
+        <h1>⏱️ <span>Timers</span></h1>
+        <div class="manage-actions">
+            <button class="btn btn-primary" id="btn-create-timer"><%= icon('add') %> New</button>
+        </div>
     </div>
 
     <div class="manage-filters">
