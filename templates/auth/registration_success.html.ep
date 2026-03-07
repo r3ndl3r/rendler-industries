@@ -7,24 +7,26 @@
     <link rel="stylesheet" href="/css/auth.css?<%= time %>">
 % end
 
-<div class="auth-container">
-    <div class="header-bar">
-        <h1><%= icon('register') %> <span>Registration</span></h1>
-    </div>
+<div class="auth-wrapper">
+    <div class="auth-container">
+        <div class="header-bar">
+            <h1><%= icon('register') %> <span>Registration</span></h1>
+        </div>
 
-    <%# Success Message Card %>
-    <div class="glass-panel message-card" style="text-align: center; padding: 2rem;">
-        <div style="font-size: 4rem; margin-bottom: 1.5rem;">📬</div>
-        <h2 style="font-weight: 300; margin-bottom: 1rem; color: #ffffff;">Account Pending</h2>
-        <p style="color: #94a3b8; line-height: 1.6; margin-bottom: 2rem;">
-            Thank you for registering, <strong><%= $username %></strong>!<br>
-            Your account is currently <strong>awaiting approval</strong> by an administrator.
-        </p>
-        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">
-            An email has been sent to the admins to notify them of your request.
-        </p>
-        <div class="error-actions" style="display: flex; justify-content: center;">
-            <a href="/" class="btn-primary">Return to Homepage</a>
+        <%# Success Message Card %>
+        <div class="success-card">
+            <div class="success-icon">📬</div>
+            <h2>Account Pending</h2>
+            <p>
+                Thank you for registering, <strong><%= $username %></strong>!<br>
+                Your account is currently <strong>awaiting approval</strong> by an administrator.
+            </p>
+            <p class="small-text">
+                An email has been sent to the admins to notify them of your request.
+            </p>
+            <div class="success-actions">
+                <a href="/" class="btn-primary">Return to Homepage</a>
+            </div>
         </div>
     </div>
 </div>
