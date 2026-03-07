@@ -1,11 +1,11 @@
-<%# /templates/menu/manage.html.ep %>
+<%# /templates/menu.html.ep %>
 
 % layout 'default';
 % title icon('link') . ' Manage Menu Links';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/menu/manage.css?<%= time %>">
-    <script src="/js/menu/manage.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/menu.css?<%= time %>">
+    <script src="/js/menu.js?<%= time %>"></script>
     <script src="/js/vendor/sortable.min.js?<%= time %>"></script>
 % end
 
