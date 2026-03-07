@@ -11,7 +11,7 @@
 
 <div class="timers-manage-container">
     <div class="header-bar">
-        <h1>⏱️ <span>Timers</span></h1>
+        <h1><%= icon('timers') %> <span>Timers</span></h1>
         <div class="manage-actions">
             <button class="btn btn-primary" id="btn-create-timer"><%= icon('add') %> New</button>
         </div>
@@ -59,11 +59,11 @@
                     <label for="create-category">Category *</label>
                     <select id="create-category" name="category" class="game-input" required>
                         <option value="">Select Category...</option>
-                        <option value="Computer">💻 Computer</option>
-                        <option value="Phone">📱 Phone</option>
-                        <option value="Tablet">📱 Tablet</option>
-                        <option value="Gaming Console">🎮 Gaming Console</option>
-                        <option value="TV">📺 TV</option>
+                        <option value="Computer"><%= icon('computer') %> Computer</option>
+                        <option value="Phone"><%= icon('phone') %> Phone</option>
+                        <option value="Tablet"><%= icon('tablet') %> Tablet</option>
+                        <option value="Gaming Console"><%= icon('gaming-console') %> Gaming Console</option>
+                        <option value="TV"><%= icon('tv') %> TV</option>
                     </select>
                 </div>
 
@@ -105,13 +105,13 @@
                 <div class="form-group">
                     <label for="edit-category">Category *</label>
                     <select id="edit-category" name="category" class="game-input" required>
-                        <option value="Computer">💻 Computer</option>
-                        <option value="Phone">📱 Phone</option>
-                        <option value="Tablet">📱 Tablet</option>
-                        <option value="Gaming Console">🎮 Gaming Console</option>
-                        <option value="TV">📺 TV</option>
+                        <option value="">Select Category...</option>
+                        <option value="Computer"><%= icon('computer') %> Computer</option>
+                        <option value="Phone"><%= icon('phone') %> Phone</option>
+                        <option value="Tablet"><%= icon('tablet') %> Tablet</option>
+                        <option value="Gaming Console"><%= icon('gaming-console') %> Gaming Console</option>
+                        <option value="TV"><%= icon('tv') %> TV</option>
                     </select>
-                </div>
 
                 <div class="form-row">
                     <div class="form-group">
