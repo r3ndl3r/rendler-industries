@@ -51,13 +51,13 @@ async function initStudyMode() {
         
         questions = await response.json();
         
-        if (loadingState) loadingState.style.display = 'none';
+        if (loadingState) loadingState.classList.add('hidden');
         
         if (questions.length > 0) {
             // UI: Update metadata and show containers
             if (totalDisplay) totalDisplay.textContent = `${questions.length} Questions Total`;
-            if (questionsContainer) questionsContainer.style.display = 'block';
-            if (controlsContainer) controlsContainer.style.display = 'flex';
+            if (questionsContainer) questionsContainer.classList.remove('hidden');
+            if (controlsContainer) controlsContainer.classList.remove('hidden');
             
             // Initial Render
             renderPage();
@@ -66,8 +66,8 @@ async function initStudyMode() {
         }
     } catch (error) {
         console.error('initStudyMode failure:', error);
-        if (loadingState) loadingState.style.display = 'none';
-        if (errorState) errorState.style.display = 'block';
+        if (loadingState) loadingState.classList.add('hidden');
+        if (errorState) errorState.classList.remove('hidden');
     }
 }
 
@@ -146,30 +146,29 @@ function renderPage() {
 
         // UI Detail: Conditional image rendering
         const imageHtml = q.image 
-            ? `<div class="quiz-image-wrapper" style="margin: 1rem 0; text-align: center;">
+            ? `<div class="quiz-image-wrapper">
                  <img src="/images/quiz/${q.image}" 
                       alt="Question Illustration" 
                       loading="lazy"
-                      style="max-width: 100%; max-height: 300px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                      class="hint-image">
                </div>`
             : '';
         
         const card = document.createElement('div');
         card.className = 'question-card';
-        card.style.marginBottom = '2rem';
         
         // Template: Building card HTML fragment
         card.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-                <div style="flex: 1;">
-                    <div style="color: var(--aus-gold); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">
+            <div class="study-question-header">
+                <div class="flex-1">
+                    <div class="study-question-num">
                         Question ${absoluteIndex}
                     </div>
 
                     ${imageHtml}
 
-                    <div style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 0.75rem;">
-                        <div class="q-text-en" style="flex: 1;">${q.question}</div>
+                    <div class="study-question-row">
+                        <div class="q-text-en flex-1">${q.question}</div>
                         <button class="btn-tts tts-q-btn" aria-label="Read Question">${getIcon('audio')}</button>
                     </div>
 
@@ -178,34 +177,34 @@ function renderPage() {
                 </div>
             </div>
             
-            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--glass-border);">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
-                    <span style="font-size: 1.5rem;">${getIcon('success')}</span>
-                    <strong style="color: var(--aus-green);">Correct Answer:</strong>
+            <div class="study-answer-section">
+                <div class="study-answer-header">
+                    <span>${getIcon('success')}</span>
+                    <strong>Correct Answer:</strong>
                 </div>
                 
-                <div style="background: rgba(0, 200, 83, 0.1); border: 1px solid var(--aus-green); border-radius: 12px; padding: 1rem;">
-                    <div style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 0.5rem;">
-                        <div style="font-size: 1.1rem; font-weight: 600; flex: 1;">
+                <div class="study-answer-box">
+                    <div class="study-answer-text-row">
+                        <div class="study-answer-text flex-1">
                             ${correctAnswer.text}
                         </div>
                         <button class="btn-tts tts-a-btn" aria-label="Read Answer">${getIcon('audio')}</button>
                     </div>
 
-                    <div style="color: var(--aus-gold); font-size: 0.95rem; font-style: italic; margin-top: 0.5rem;">
+                    <div class="answer-text-ph">
                         ${correctAnswer.ph}
                     </div>
-                    <div class="thai-text" style="color: var(--text-secondary); margin-top: 0.5rem;">
+                    <div class="thai-text answer-text-th">
                         ${correctAnswer.th}
                     </div>
                 </div>
                 
                 ${correctAnswer.explanation ? `
-                    <div style="margin-top: 1rem; padding: 1rem; background: var(--glass-bg); border-radius: 12px; border-left: 3px solid var(--aus-gold);">
-                        <div style="color: var(--aus-gold); font-weight: 600; margin-bottom: 0.5rem;">${getIcon('idea')} Explanation:</div>
-                        <div style="line-height: 1.6;">${correctAnswer.explanation}</div>
+                    <div class="study-explanation-box">
+                        <div class="study-explanation-title">${getIcon('idea')} Explanation:</div>
+                        <div class="study-explanation-text">${correctAnswer.explanation}</div>
                         ${correctAnswer.explanation_th ? `
-                            <div class="thai-text" style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.9rem;">
+                            <div class="thai-text result-text-th">
                                 ${correctAnswer.explanation_th}
                             </div>
                         ` : ''}
@@ -248,8 +247,8 @@ function updateControls() {
     
     const totalPages = Math.ceil(questions.length / ITEMS_PER_PAGE);
     
-    if (prevBtn) prevBtn.style.display = currentPage > 0 ? 'block' : 'none';
-    if (nextBtn) nextBtn.style.display = currentPage < totalPages - 1 ? 'block' : 'none';
+    if (prevBtn) prevBtn.classList.toggle('hidden', currentPage === 0);
+    if (nextBtn) nextBtn.classList.toggle('hidden', currentPage >= totalPages - 1);
     if (pageIndicator) pageIndicator.textContent = `Page ${currentPage + 1} of ${totalPages}`;
 }
 
