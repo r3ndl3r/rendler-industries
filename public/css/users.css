@@ -52,6 +52,11 @@
     color: #475569;
 }
 
+.col-actions-narrow {
+    width: 120px;
+    text-align: center;
+}
+
 .text-small {
     font-size: 0.875rem;
 }
