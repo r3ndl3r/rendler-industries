@@ -78,6 +78,13 @@ sub register {
         'medication' => '💊',
         'ai'         => '🧠',
         
+        # Device Categories
+        'computer'       => '💻',
+        'phone'          => '📱',
+        'tablet'         => '📱',
+        'gaming-console' => '🎮',
+        'tv'             => '📺',
+        
         # File Types
         'file_image'   => '🖼️',
         'file_pdf'     => '📄',
