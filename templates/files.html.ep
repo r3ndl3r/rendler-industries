@@ -26,14 +26,14 @@
         <table class="data-table files-table">
             <thead>
                 <tr>
-                    <th style="width: 50px; text-align: center;">Type</th>
+                    <th class="col-type-narrow">Type</th>
                     <th>Filename</th>
                     <th>Uploader</th>
                     <th>Date</th>
                     <th>Size</th>
                     <th>Downloads</th>
                     <th>Access</th>
-                    <th style="width: 140px; text-align: center;">Actions</th>
+                    <th class="col-actions-narrow">Actions</th>
                 </tr>
             </thead>
             <tbody id="files-table-body">
@@ -64,7 +64,7 @@
                     <div class="file-drop-zone" id="dropZone">
                         <input type="file" id="file" name="file" required>
                         <p class="drop-text"><%= icon('files') %> Drag & drop source or click to browse</p>
-                        <p class="file-name" id="fileNameDisplay"></p>
+                        <p class="file-name hidden" id="fileNameDisplay"></p>
                     </div>
                 </div>
 
