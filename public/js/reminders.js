@@ -267,7 +267,7 @@ function openAddModal() {
     const modal = document.getElementById('addReminderModal');
     const form = document.getElementById('addReminderForm');
     if (form) form.reset();
-    if (modal) modal.style.display = 'block';
+    if (modal) modal.classList.add('show');
 }
 
 /**
@@ -277,7 +277,7 @@ function openAddModal() {
  */
 function closeAddModal() {
     const modal = document.getElementById('addReminderModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('show');
 }
 
 /**
@@ -314,7 +314,7 @@ function openEditModal(id) {
         });
     }
 
-    if (modal) modal.style.display = 'block';
+    if (modal) modal.classList.add('show');
 }
 
 /**
@@ -324,7 +324,7 @@ function openEditModal(id) {
  */
 function closeEditModal() {
     const modal = document.getElementById('editReminderModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('show');
 }
 
 /**
