@@ -63,10 +63,6 @@ body.modal-open {
     transform: translateX(20px);
 }
 
-.modal-overlay.show {
-    display: flex !important;
-}
-
 .form-group {
     margin-bottom: 1.5rem;
     display: flex;
@@ -426,11 +422,10 @@ body.modal-open {
     backdrop-filter: blur(4px);
     display: none;
     z-index: 10000;
-    overflow-y: auto; /* Enable scrolling on the overlay */
+    overflow-y: auto;
 }
 
-.modal-overlay[style*="display: flex"],
-.modal-overlay[style*="display: block"] {
+.modal-overlay.show {
     display: block !important;
 }
 
@@ -443,7 +438,7 @@ body.modal-open {
     width: 95%;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     color: #ffffff;
-    margin: 2rem auto; /* Horizontally centered and 2rem from top/bottom */
+    margin: 2rem auto;
     position: relative;
 }
 
