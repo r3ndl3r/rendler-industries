@@ -285,13 +285,8 @@ function renderActionButtons() {
     const adminPanel = document.getElementById('admin-actions');
     const memberPanel = document.getElementById('member-actions');
     
-    if (STATE.isAdmin) {
-        if (adminPanel) adminPanel.style.display = 'flex';
-        if (memberPanel) memberPanel.style.display = 'none';
-    } else {
-        if (adminPanel) adminPanel.style.display = 'none';
-        if (memberPanel) memberPanel.style.display = 'flex';
-    }
+    if (adminPanel) adminPanel.classList.toggle('hidden', !STATE.isAdmin);
+    if (memberPanel) memberPanel.classList.toggle('hidden', STATE.isAdmin);
 }
 
 /**
@@ -312,7 +307,7 @@ function renderRegistryTable() {
                 <div class="action-buttons">
                     <button type="button" class="btn-icon-edit" onclick="openManageModal('${m.id}', '${escapeHtml(m.name)}', '${m.default_dosage}')" title="Edit Registry">${getIcon('edit')}</button>
                     <button type="button" class="btn-icon-delete" onclick="confirmDeleteRegistry(${m.id}, '${escapeHtml(m.name)}')" 
-                            ${m.usage_count > 0 ? 'disabled style="opacity:0.3; cursor:not-allowed"' : ''} title="Remove Registry Item">${getIcon('delete')}</button>
+                            ${m.usage_count > 0 ? 'disabled' : ''} title="Remove Registry Item">${getIcon('delete')}</button>
                 </div>
             </td>
         </tr>
@@ -393,7 +388,7 @@ function setNow(mode) {
 function openDoseModal() {
     const modal = document.getElementById('doseModal');
     if (modal) {
-        modal.style.display = 'flex';
+        modal.classList.add('show');
         document.body.classList.add('modal-open');
         setNow('add');
     }
@@ -407,7 +402,7 @@ function openDoseModal() {
 function closeDoseModal() { 
     const modal = document.getElementById('doseModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('show');
         document.body.classList.remove('modal-open');
     }
 }
@@ -432,7 +427,7 @@ function openEditModal(data) {
     document.getElementById('edit_taken_at_time').value = parts[1].substring(0, 5);
     
     const modal = document.getElementById('editModal');
-    modal.style.display = 'flex';
+    modal.classList.add('show');
     document.body.classList.add('modal-open');
 }
 
@@ -444,7 +439,7 @@ function openEditModal(data) {
 function closeEditModal() { 
     const modal = document.getElementById('editModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('show');
         document.body.classList.remove('modal-open');
     }
 }
@@ -509,10 +504,10 @@ function confirmResetMedication(id) {
         </div>
         <div class="reminder-box">
             <label class="reminder-toggle-label">
-                <input type="checkbox" id="enable_reminder" onchange="document.getElementById('reminder_options').style.display = this.checked ? 'block' : 'none'">
+                <input type="checkbox" id="enable_reminder" onchange="toggleReminderOptions(this.checked)">
                 <span class="reminder-toggle-content">${getIcon('reminders')} Schedule Reminder</span>
             </label>
-            <div id="reminder_options" class="reminder-options" style="display:none;">
+            <div id="reminder_options" class="reminder-options hidden">
                 <label class="reminder-delay-label">Delay (Hours)</label>
                 <div class="reminder-delay-selector">
                     ${[1,2,3,4,5,6,7,8,9,10,12,24].map(h => `
@@ -556,6 +551,17 @@ function confirmResetMedication(id) {
 }
 
 /**
+ * Handles the display of reminder configuration options.
+ * 
+ * @param {boolean} show - Visibility flag.
+ * @returns {void}
+ */
+function toggleReminderOptions(show) {
+    const el = document.getElementById('reminder_options');
+    if (el) el.classList.toggle('hidden', !show);
+}
+
+/**
  * --- Registry Controls (Admin) ---
  */
 
@@ -567,7 +573,7 @@ function confirmResetMedication(id) {
 function openRegistryModal() { 
     const modal = document.getElementById('registryModal');
     if (modal) {
-        modal.style.display = 'flex'; 
+        modal.classList.add('show'); 
         document.body.classList.add('modal-open');
     }
 }
@@ -580,7 +586,7 @@ function openRegistryModal() {
 function closeRegistryModal() { 
     const modal = document.getElementById('registryModal');
     if (modal) {
-        modal.style.display = 'none'; 
+        modal.classList.remove('show'); 
         document.body.classList.remove('modal-open');
     }
 }
@@ -601,7 +607,7 @@ function openManageModal(id, name, dosage) {
     document.getElementById('manage_dosage').value = dosage;
     
     const modal = document.getElementById('manageEditModal');
-    modal.style.display = 'flex';
+    modal.classList.add('show');
 }
 
 /**
@@ -611,7 +617,7 @@ function openManageModal(id, name, dosage) {
  */
 function closeManageModal() { 
     const modal = document.getElementById('manageEditModal');
-    if (modal) modal.style.display = 'none'; 
+    if (modal) modal.classList.remove('show'); 
 }
 
 /**
@@ -669,5 +675,6 @@ window.openRegistryModal = openRegistryModal;
 window.closeRegistryModal = closeRegistryModal;
 window.openManageModal = openManageModal;
 window.closeManageModal = closeManageModal;
+window.toggleReminderOptions = toggleReminderOptions;
 window.confirmDeleteRegistry = confirmDeleteRegistry;
 window.loadState = loadState;
