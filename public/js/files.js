@@ -86,7 +86,7 @@ function renderTable() {
 
     tbody.innerHTML = moduleState.files.map(file => `
         <tr id="file-row-${file.id}">
-            <td data-label="Type" style="text-align: center; font-size: 1.2rem;">
+            <td data-label="Type" class="col-type-cell">
                 ${getFileEmoji(file.mime_type)}
             </td>
             <td data-label="Filename">
@@ -98,7 +98,7 @@ function renderTable() {
             <td data-label="Uploader">${file.uploaded_by}</td>
             <td data-label="Date"><span class="text-small">${file.uploaded_at}</span></td>
             <td data-label="Size"><span class="text-small">${(file.file_size / 1024 / 1024).toFixed(2)} MB</span></td>
-            <td data-label="Downloads" style="text-align: center;">${file.download_count || 0}</td>
+            <td data-label="Downloads" class="col-downloads-cell">${file.download_count || 0}</td>
             <td data-label="Access">
                 ${file.admin_only 
                     ? `<span class="badge badge-admin">Admin</span>` 
@@ -157,7 +157,7 @@ function openUploadModal() {
     if (modal) {
         document.getElementById('uploadForm').reset();
         document.getElementById('fileNameDisplay').textContent = '';
-        modal.style.display = 'flex';
+        modal.classList.add('show');
         document.body.classList.add('modal-open');
     }
 }
@@ -170,7 +170,7 @@ function openUploadModal() {
 function closeUploadModal() {
     const modal = document.getElementById('uploadModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('show');
         document.body.classList.remove('modal-open');
     }
 }
@@ -197,7 +197,7 @@ function openPermissionModal(id) {
     });
 
     if (modal) {
-        modal.style.display = 'flex';
+        modal.classList.add('show');
         document.body.classList.add('modal-open');
     }
 }
@@ -210,7 +210,7 @@ function openPermissionModal(id) {
 function closePermissionModal() {
     const modal = document.getElementById('permissionModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('show');
         document.body.classList.remove('modal-open');
     }
 }
@@ -387,14 +387,14 @@ function setupDropZone() {
         if (files.length) {
             input.files = files;
             display.textContent = files[0].name;
-            display.style.display = 'block';
+            display.classList.remove('hidden');
         }
     });
 
     input.addEventListener('change', () => {
         if (input.files.length) {
             display.textContent = input.files[0].name;
-            display.style.display = 'block';
+            display.classList.remove('hidden');
         }
     });
 }
