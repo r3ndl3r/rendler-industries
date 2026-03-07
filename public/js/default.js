@@ -582,6 +582,7 @@ const GLOBAL_ICONS = {
     'info': 'ℹ️',
     'success': '✅',
     'error': '❌',
+    'empty': '📭',
     'running': '▶️',
     'paused': '⏸️',
     'idle': '⏺️',
