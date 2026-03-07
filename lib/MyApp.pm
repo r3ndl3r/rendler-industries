@@ -475,11 +475,11 @@ sub startup {
     # --- Meal Planner Routes ---
     $family->get('/meals')->to('meals#index');
     $family->get('/meals/api/state')->to('meals#api_state');
-    $family->post('/meals/suggest')->to('meals#suggest');
-    $family->post('/meals/vote')->to('meals#vote');
-    $family->post('/meals/edit_suggestion')->to('meals#edit_suggestion');
-    $family->post('/meals/delete_suggestion')->to('meals#delete_suggestion');
-    $admin->post('/meals/admin/lock')->to('meals#admin_lock');
+    $family->post('/meals/api/suggest')->to('meals#suggest');
+    $family->post('/meals/api/vote')->to('meals#vote');
+    $family->post('/meals/api/edit_suggestion')->to('meals#edit_suggestion');
+    $family->post('/meals/api/delete_suggestion')->to('meals#delete_suggestion');
+    $admin->post('/meals/api/admin/lock')->to('meals#admin_lock');
     $admin->get('/meals/api/vault')->to('meals#get_vault_data');
     $admin->post('/meals/api/vault/add')->to('meals#add_meal_to_vault');
     $admin->post('/meals/api/vault/update')->to('meals#update_meal_in_vault');
