@@ -81,14 +81,14 @@
     </div>
         
     <div id="pagination-container" class="pagination-container">
-        <button id="loadMoreBtn" class="btn-primary btn-load-more" style="display: none;">
+        <button id="loadMoreBtn" class="btn-primary btn-load-more hidden">
             <%= icon('expand') %> Load More
         </button>
     </div>
 </div>
 
 <%# Metadata Editor Modal %>
-<div id="editModal" class="modal-overlay" style="display: none;">
+<div id="editModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
             <h3><%= icon('edit') %> Edit Receipt</h3>
@@ -117,7 +117,7 @@
                 <input type="text" name="description" id="editDescription" class="game-input">
             </div>
             <div class="modal-actions edit-modal-actions">
-                <button type="button" id="btnApplyAI" class="btn-ai-apply" style="display: none;" title="Apply AI-digitized data to these fields">
+                <button type="button" id="btnApplyAI" class="btn-ai-apply hidden" title="Apply AI-digitized data to these fields">
                     <%= icon('ai') %> Use AI Data
                 </button>
                 <button type="submit" class="btn-primary"><%= icon('save') %> Save</button>
@@ -127,7 +127,7 @@
 </div>
 
 <%# Post-Upload Refinement Modal %>
-<div id="cropModal" class="modal-overlay" style="display: none;">
+<div id="cropModal" class="modal-overlay">
     <div class="modal-content modal-large">
         <div class="modal-header">
             <h3><%= icon('crop') %> Crop Receipt</h3>
@@ -146,7 +146,7 @@
 </div>
 
 <%# Pre-Upload Refinement Modal %>
-<div id="preUploadCropModal" class="modal-overlay" style="display: none;">
+<div id="preUploadCropModal" class="modal-overlay">
     <div class="modal-content modal-large">
         <div class="modal-header">
             <h3><%= icon('edit') %> Refine Receipt Image</h3>
@@ -166,7 +166,7 @@
 </div>
 
 <%# Electronic Receipt Modal %>
-<div id="eReceiptModal" class="modal-overlay" style="display: none;" onclick="closeEReceiptModal()">
+<div id="eReceiptModal" class="modal-overlay" onclick="closeEReceiptModal()">
     <div class="modal-content ereceipt-modal-content" onclick="event.stopPropagation()">
         <div class="modal-header ereceipt-header">
             <h3><%= icon('ai') %> Electronic Receipt</h3>
@@ -189,7 +189,7 @@
 </div>
 
 <%# Receipt Modal %>
-<div id="receiptModal" class="modal-overlay" style="display: none;" onclick="closeReceiptModal()">
+<div id="receiptModal" class="modal-overlay" onclick="closeReceiptModal()">
     <div class="image-modal-content" onclick="event.stopPropagation()">
         <span class="close-btn" onclick="closeReceiptModal()"><%= icon('close') %></span>
         <img id="modalImg" src="" class="receipt-modal-img">
@@ -197,7 +197,7 @@
 </div>
 
 <%# Upload Receipt Modal %>
-<div id="uploadModal" class="modal-overlay receipt-upload-modal" style="display: none;">
+<div id="uploadModal" class="modal-overlay receipt-upload-modal">
     <div class="modal-content">
         <div class="modal-header">
             <h3><%= icon('upload') %> Upload Receipt</h3>
@@ -206,13 +206,13 @@
         <div class="modal-body">
             <form id="uploadForm" onsubmit="handleUpload(event)">
                 <div class="file-drop-area" id="dropZone" onclick="document.getElementById('file').click()">
-                    <input type="file" id="file" name="file" required accept="image/*,application/pdf" style="display: none;">
+                    <input type="file" id="file" name="file" required accept="image/*,application/pdf" class="hidden">
                     <p class="drop-hint">
                         <span><%= icon('receipts') %></span>
                         Drag & drop receipt here<br>
                         or click to browse
                     </p>
-                    <p class="file-name upload-file-name" id="fileName" style="display: none;"></p>
+                    <p class="file-name upload-file-name hidden" id="fileName"></p>
                 </div>
 
                 <div class="upload-actions">
