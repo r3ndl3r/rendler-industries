@@ -449,9 +449,9 @@ sub startup {
     $r->get('/g/:keyword')->to('go#resolve');
     $admin->get('/go')->to('go#index');
     $admin->get('/go/api/state')->to('go#api_state');
-    $admin->post('/go/api/add')->to('go#add');
-    $admin->post('/go/api/edit')->to('go#edit');
-    $admin->post('/go/api/delete')->to('go#delete');
+    $admin->post('/go/api/add')->to('go#api_add');
+    $admin->post('/go/api/edit')->to('go#api_edit');
+    $admin->post('/go/api/delete')->to('go#api_delete');
 
     # --- Receipts Management Routes ---
     $family->get('/receipts')->to('receipts#index');
