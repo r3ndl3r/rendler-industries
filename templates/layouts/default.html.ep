@@ -16,6 +16,7 @@
 
     <%# Global Script Dependencies %>
     <script src="/js/jquery.js?<%= time %>"></script>
+    <script src="/api/icons.js?<%= time %>"></script>
     <script src="/js/toast.js?<%= time %>"></script>
     <script src="/js/default.js?<%= time %>"></script>
     <script src="/js/emoji-picker.js?<%= time %>"></script>
