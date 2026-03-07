@@ -63,7 +63,7 @@
 </div>
 
 <%# Edit Link Modal (Mandatory Action Pattern) %>
-<div id="editModal" class="modal-overlay" style="display: none;">
+<div id="editModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
             <h3><%= icon('edit') %> Edit Link</h3>
