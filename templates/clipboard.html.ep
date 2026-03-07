@@ -29,7 +29,7 @@
 </div>
 
 <%# Add/Edit Content Modal %>
-<div id="contentModal" class="modal-overlay" style="display: none;">
+<div id="contentModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="modalTitle">Add New Content</h3>
@@ -44,31 +44,31 @@
                 </div>
 
                 <%# Dynamic Notification Options (Pattern C: Selector) %>
-                <div id="notification-options" class="notification-selector-section" style="display: none;">
+                <div id="notification-options" class="notification-selector-section hidden">
                     <p class="options-label">Send Notifications:</p>
                     <div class="notification-pills-grid">
-                        <label id="notify-discord-wrap" class="recipient-checkbox" style="display: none;">
+                        <label id="notify-discord-wrap" class="recipient-checkbox hidden">
                             <input type="checkbox" name="notify_discord" value="1">
                             <span class="recipient-pill">
                                 <span class="pill-icon"><%= icon('discord') %></span>
                                 <span class="pill-name">Discord</span>
                             </span>
                         </label>
-                        <label id="notify-email-wrap" class="recipient-checkbox" style="display: none;">
+                        <label id="notify-email-wrap" class="recipient-checkbox hidden">
                             <input type="checkbox" name="notify_email" value="1">
                             <span class="recipient-pill">
                                 <span class="pill-icon"><%= icon('email') %></span>
                                 <span class="pill-name">Email</span>
                             </span>
                         </label>
-                        <label id="notify-pushover-wrap" class="recipient-checkbox" style="display: none;">
+                        <label id="notify-pushover-wrap" class="recipient-checkbox hidden">
                             <input type="checkbox" name="notify_pushover" value="1">
                             <span class="recipient-pill">
                                 <span class="pill-icon"><%= icon('pushover') %></span>
                                 <span class="pill-name">Pushover</span>
                             </span>
                         </label>
-                        <label id="notify-gotify-wrap" class="recipient-checkbox" style="display: none;">
+                        <label id="notify-gotify-wrap" class="recipient-checkbox hidden">
                             <input type="checkbox" name="notify_gotify" value="1">
                             <span class="recipient-pill">
                                 <span class="pill-icon"><%= icon('gotify') %></span>
