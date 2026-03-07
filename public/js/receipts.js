@@ -127,7 +127,7 @@ async function loadState() {
             updateFilterDropdowns();
             
             const btn = document.getElementById('loadMoreBtn');
-            if (btn) btn.style.display = (data.has_more || STATE.receipts.length >= CONFIG.LIMIT) ? 'inline-block' : 'none';
+            if (btn) btn.classList.toggle('hidden', !(data.has_more || STATE.receipts.length >= CONFIG.LIMIT));
         }
     } catch (err) {
         console.error("loadState failure:", err);
@@ -158,8 +158,8 @@ async function loadMore() {
         if (data.success && data.receipts) {
             STATE.receipts = [...STATE.receipts, ...data.receipts];
             renderReceipts(true, data.receipts);
-            STATE.offset += data.receipts.length;
-            btn.style.display = data.has_more ? 'inline-block' : 'none';
+            STATE.offset = STATE.receipts.length;
+            btn.classList.toggle('hidden', !data.has_more);
         }
     } catch (err) {
         console.error("loadMore failure:", err);
@@ -301,7 +301,7 @@ async function handleUpload(e) {
         if (result && result.success) {
             form.reset();
             const display = document.getElementById('fileName');
-            if (display) display.style.display = 'none';
+            if (display) display.classList.add('hidden');
             closeUploadModal();
             
             STATE.receipts.unshift(result.receipt);
@@ -513,7 +513,7 @@ function getStoreLogoUrl(name) {
 function getStoreLogoHtml(name) {
     const url = getStoreLogoUrl(name);
     if (!url) return '';
-    return `<img src="${url}" class="store-logo" alt="" onerror="this.style.display='none'">`;
+    return `<img src="${url}" class="store-logo" alt="" onerror="this.classList.add('hidden')">`;
 }
 
 /**
@@ -563,7 +563,7 @@ async function initPreUploadCrop(file) {
     const url = URL.createObjectURL(source);
     img.onload = async () => {
         if (img.decode) await img.decode();
-        modal.style.display = 'flex';
+        modal.classList.add('show');
         STATE.cropper = new Cropper(img, { 
             viewMode: 1, 
             autoCropArea: 1, 
@@ -612,7 +612,7 @@ function applyPreUploadCrop() {
  */
 function updateFileName(name) {
     const el = document.getElementById('fileName');
-    if (el) { el.textContent = name; el.style.display = 'block'; }
+    if (el) { el.textContent = name; el.classList.remove('hidden'); }
 }
 
 /**
@@ -624,7 +624,7 @@ function updateFileName(name) {
 function openReceiptModal(id) {
     const img = document.getElementById('modalImg');
     const modal = document.getElementById('receiptModal');
-    if (img && modal) { img.src = '/receipts/serve/' + id; modal.style.display = 'flex'; }
+    if (img && modal) { img.src = '/receipts/serve/' + id; modal.classList.add('show'); }
 }
 
 /**
@@ -647,7 +647,7 @@ function openEditModal(rawJson) {
     document.getElementById('editDescription').value = r.description || '';
     
     if (btnAI) {
-        btnAI.style.display = r.ai_json ? 'flex' : 'none';
+        btnAI.classList.toggle('hidden', !r.ai_json);
         btnAI.onclick = () => {
             try {
                 const data = JSON.parse(r.ai_json);
@@ -665,7 +665,7 @@ function openEditModal(rawJson) {
             } catch (err) { console.error("AI apply error:", err); }
         };
     }
-    modal.style.display = 'flex';
+    modal.classList.add('show');
 }
 
 /**
@@ -679,7 +679,7 @@ async function openCropModal(id) {
     const modal = document.getElementById('cropModal');
     const img   = document.getElementById('cropImg');
     if (!modal || !img) return;
-    modal.style.display = 'flex';
+    modal.classList.add('show');
     
     try {
         const response = await fetch('/receipts/serve/' + id);
@@ -768,7 +768,7 @@ async function viewElectronicReceipt(id, force = 0, preLoaded = null, initialIco
     const content = document.getElementById('eReceiptContent');
     if (!modal || !content) return;
 
-    modal.style.display = 'flex';
+    modal.classList.add('show');
     modal.dataset.receiptId = id;
     modal.dataset.initialIcon = initialIcon || '';
 
@@ -859,7 +859,7 @@ function renderEReceipt(data, iconUrl = null) {
     content.innerHTML = `
         <div class="ereceipt-body">
             <div class="ereceipt-summary">
-                ${iconUrl ? `<img src="${iconUrl}" class="ereceipt-store-logo" onerror="this.style.display='none'">` : ''}
+                ${iconUrl ? `<img src="${iconUrl}" class="ereceipt-store-logo" onerror="this.classList.add('hidden')">` : ''}
                 <h2 class="ereceipt-store-name">${escapeHtml(data.store_name || 'Merchant')}</h2>
                 <p class="ereceipt-datetime">${d} ${displayTime}</p>
             </div>
@@ -902,52 +902,56 @@ async function reScanReceipt() {
  * 
  * @returns {void}
  */
-function closeReceiptModal() { const m = document.getElementById('receiptModal'); if (m) m.style.display = 'none'; }
+function closeReceiptModal() { const m = document.getElementById('receiptModal'); if (m) m.classList.remove('show'); }
 
 /**
  * Hides the metadata editor.
  * 
  * @returns {void}
  */
-function closeEditModal() { const m = document.getElementById('editModal'); if (m) m.style.display = 'none'; }
+function closeEditModal() { const m = document.getElementById('editModal'); if (m) m.classList.remove('show'); }
 
 /**
  * Hides the post-upload refinement interface.
  * 
  * @returns {void}
  */
-function closeCropModal() { const m = document.getElementById('cropModal'); if (m) m.style.display = 'none'; }
+function closeCropModal() { const m = document.getElementById('cropModal'); if (m) m.classList.remove('show'); }
 
 /**
  * Hides the AI-structured data view.
  * 
  * @returns {void}
  */
-function closeEReceiptModal() { const m = document.getElementById('eReceiptModal'); if (m) m.style.display = 'none'; }
+function closeEReceiptModal() { const m = document.getElementById('eReceiptModal'); if (m) m.classList.remove('show'); }
 
 /**
  * Displays the binary transfer interface.
  * 
  * @returns {void}
  */
-function openUploadModal() { const m = document.getElementById('uploadModal'); if (m) m.style.display = 'flex'; }
+function openUploadModal() { const m = document.getElementById('uploadModal'); if (m) m.classList.add('show'); }
 
 /**
  * Hides the binary transfer interface and clears pending state.
  * 
  * @returns {void}
  */
-function closeUploadModal() { const m = document.getElementById('uploadModal'); if (m) m.style.display = 'none'; STATE.refinedBlob = null; }
+function closeUploadModal() { 
+    const m = document.getElementById('uploadModal'); 
+    if (m) m.classList.remove('show'); 
+    STATE.refinedBlob = null; 
+}
 
 /**
- * Hides the pre-upload refinement interface and returns to queue.
+ * Hides the pre-upload image refinement modal.
  * 
  * @returns {void}
  */
 function closePreUploadCropModal() {
     const m = document.getElementById('preUploadCropModal');
-    if (m?.style.display !== 'none') {
-        m.style.display = 'none';
+    if (m && m.classList.contains('show')) {
+        m.classList.remove('show');
         if (STATE.cropper) { STATE.cropper.destroy(); STATE.cropper = null; }
         openUploadModal();
     }
