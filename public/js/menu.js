@@ -1,4 +1,4 @@
-// /public/js/menu/manage.js
+// /public/js/menu.js
 
 /**
  * Menu Management Controller
