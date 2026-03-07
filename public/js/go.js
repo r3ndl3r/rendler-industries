@@ -1,17 +1,15 @@
 // /public/js/go.js
 
 /**
- * Go Links Controller Module (SPA)
+ * Go Links Controller Module
  * 
- * This module manages the Platform Short-Link interface using a 100% AJAX-driven 
- * SPA architecture. It facilitates rapid redirection management and provides 
- * real-time link lifecycle orchestration.
+ * Manages the Platform Short-Link interface. It facilitates rapid 
+ * redirection management and provides real-time link lifecycle orchestration.
  * 
  * Features:
- * - State-driven ledger rendering from /go/api/state
- * - Clipboard integration for short-link sharing (g/keyword)
- * - Administrative CRUD operations with immediate UI reconciliation
- * - Pattern A (Ledger) implementation with glassmorphism cards
+ * - List rendering from centralized state
+ * - Clipboard integration for short-link sharing
+ * - Record creation, modification, and removal
  * 
  * Dependencies:
  * - default.js: For getIcon, apiPost, and showConfirmModal
@@ -21,17 +19,23 @@
  * --- Application State ---
  */
 let moduleState = {
-    items: [] // Collection of short-link records
+    items: [] 
 };
 
 /**
- * --- Initialization ---
+ * Initializes the module state and establishes global event behaviors.
+ * 
+ * @returns {void}
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // Initial fetch of the module state
     loadState();
 
-    // Configure global modal behavior
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('error')) {
+        showToast('The requested Go Link was not found or is inactive.', 'error');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     setupGlobalModalClosing(['modal-overlay'], [closeEditModal]);
 });
 
@@ -40,8 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 
 /**
- * Orchestrates the "Single Source of Truth" handshake.
- * Fetches all links from the API and triggers the rendering engine.
+ * Synchronizes the module state with the server.
  * 
  * @async
  * @returns {Promise<void>}
@@ -51,41 +54,36 @@ async function loadState() {
         const response = await fetch('/go/api/state');
         const data = await response.json();
         
-        if (data.success) {
+        if (data && data.success) {
             moduleState.items = data.items;
             renderList();
         }
     } catch (err) {
-        console.error('Go Links State Load Error:', err);
-        showToast('Failed to sync links', 'error');
+        console.error('loadState failed:', err);
     }
 }
 
 /**
- * UI Engine: renderList
- * Generates the glassmorphism ledger items.
- * Implements popularity-based sorting (DESC visits) as configured in the backend.
+ * Generates the link collection display.
  * 
  * @returns {void}
  */
 function renderList() {
-    const container = document.getElementById('go-list');
+    const container = document.getElementById('linksList');
     if (!container) return;
 
     if (moduleState.items.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <p>No Go Links configured yet!</p>
-                <p class="empty-hint">Create your first short link above.</p>
-            </div>
-        `;
+                <p>${getIcon('empty')} No Go links found.</p>
+            </div>`;
         return;
     }
 
     container.innerHTML = moduleState.items.map(link => {
         const safeKeyword = escapeHtml(link.keyword);
         const safeUrl = escapeHtml(link.url);
-        const safeDesc = link.description ? escapeHtml(link.description) : '';
+        const safeDesc = escapeHtml(link.description || '');
 
         return `
             <div class="go-item glass-panel" id="link-row-${link.id}">
@@ -113,26 +111,22 @@ function renderList() {
 }
 
 /**
- * --- Utilities ---
- */
-
-/**
- * Sanitizes strings for safe DOM injection.
+ * Encodes special characters for safe DOM injection.
  * 
- * @param {string} str - Unsafe input.
+ * @param {string} str - Raw input.
  * @returns {string} - Escaped output.
  */
 function escapeHtml(str) {
+    if (!str) return '';
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
 }
 
 /**
- * Interface: openEditModal
- * Pre-fills the modification interface with existing record data.
+ * Pre-fills and displays the record modification interface.
  * 
- * @param {number} id - Target database record ID.
+ * @param {number} id - Record identifier.
  * @returns {void}
  */
 function openEditModal(id) {
@@ -153,7 +147,7 @@ function openEditModal(id) {
 }
 
 /**
- * Hides the modification interface and restores scroll focus.
+ * Hides the record editor and restores scroll focus.
  * 
  * @returns {void}
  */
@@ -166,11 +160,11 @@ function closeEditModal() {
 }
 
 /**
- * Executes persistent storage operations (Add/Update) via AJAX.
+ * Executes persistent storage operations via the API.
  * 
  * @async
  * @param {Event} event - Triggering form event.
- * @param {boolean} isEdit - Flag determining the target endpoint.
+ * @param {boolean} isEdit - Target flag.
  * @returns {Promise<void>}
  */
 async function submitEntry(event, isEdit = false) {
@@ -202,11 +196,10 @@ async function submitEntry(event, isEdit = false) {
 }
 
 /**
- * Triggers the standardized confirmation workflow for link removal.
- * Implements the Mandatory Action pattern (No Cancel button).
+ * Initiates the deletion flow for a record.
  * 
- * @param {number} id - Unique record ID.
- * @param {string} keyword - Short identifier for confirmation context.
+ * @param {number} id - Record identifier.
+ * @param {string} keyword - Display label for context.
  * @returns {void}
  */
 function removeLink(id, keyword) {
@@ -233,30 +226,27 @@ function removeLink(id, keyword) {
 }
 
 /**
- * Action: copyGoLink
- * Orchestrates the transfer of the absolute short-link URL to the clipboard.
+ * Copies the short-link URL to the system clipboard.
  * 
- * @param {string} keyword - The short string used for resolution.
+ * @param {string} keyword - Redirection identifier.
  * @returns {void}
  */
 function copyGoLink(keyword) {
     const url = `${window.location.origin}/g/${keyword}`;
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(url).then(() => {
-            showToast('Link copied to clipboard!', 'success');
-        }).catch(err => {
-            console.error('Clipboard failure:', err);
-            showToast('Failed to copy link', 'error');
-        });
-    }
+    navigator.clipboard.writeText(url).then(() => {
+        showToast(`Link copied: g/${keyword}`, 'success');
+    }).catch(err => {
+        console.error('Clipboard failure:', err);
+        showToast('Failed to copy link.', 'error');
+    });
 }
 
 /**
  * --- Global Exposure ---
- * Necessary for server-rendered template event hooks.
  */
 window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
 window.submitEntry = submitEntry;
 window.removeLink = removeLink;
 window.copyGoLink = copyGoLink;
+window.loadState = loadState;
