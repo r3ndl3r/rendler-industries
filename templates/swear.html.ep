@@ -1,4 +1,4 @@
-<%# /templates/swear/swear.html.ep %>
+<%# /templates/swear.html.ep %>
 
 % layout 'default';
 % title icon('swear') . ' Swear Jar';
