@@ -156,6 +156,10 @@
     color: #fff;
 }
 
+.modal-overlay.show {
+    display: flex !important;
+}
+
 @media (max-width: 768px) {
     .add-item-form { flex-direction: column; }
 }
