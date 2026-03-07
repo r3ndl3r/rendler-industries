@@ -23,46 +23,46 @@
                     id="addKeyword"
                     class="game-input" 
                     placeholder="Keyword (e.g. plex)" 
+                    required 
                     autocomplete="off"
-                    required
-                    maxlength="50"
                 >
                 <input 
                     type="url" 
                     name="url" 
                     id="addUrl"
                     class="game-input" 
-                    placeholder="Target URL" 
+                    placeholder="Destination URL (https://...)" 
+                    required 
                     autocomplete="off"
-                    required
                 >
                 <input 
                     type="text" 
                     name="description" 
                     id="addDescription"
                     class="game-input" 
-                    placeholder="Description (Optional)" 
+                    placeholder="Notes (Optional)" 
                     autocomplete="off"
-                    maxlength="255"
                 >
             </div>
-            <button type="submit" id="addBtn" class="game-btn btn-blue">Add</button>
+            <div class="form-actions">
+                <button type="submit" id="addBtn" class="btn-primary">
+                    <%= icon('add') %> Add Link
+                </button>
+            </div>
         </form>
     </div>
 
-    <%# Active Links Container (Pattern A: Ledger) %>
-    <div class="items-container">
-        <h3 class="section-title">Active Links</h3>
-        <div id="go-list" class="go-list">
-            <div class="component-loading">
-                <span class="loading-icon-pulse"><%= icon('ai') %></span>
-                <p class="loading-label">Syncing links...</p>
-            </div>
+    <%# Dashboard Grid (Hydrated via JS) %>
+    <div id="linksList" class="links-grid">
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse"><%= icon('ai') %></span>
+            <p class="loading-label">Synchronizing short-links...</p>
         </div>
     </div>
 </div>
 
-<%# Edit Link Modal (Mandatory Action Pattern) %>
+<%# Edit Link Modal %>
 <div id="editModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
@@ -70,23 +70,21 @@
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
         <form id="editForm" onsubmit="submitEntry(event, true)">
-            <input type="hidden" id="editId" name="id">
-            
+            <input type="hidden" name="id" id="editId">
             <div class="modal-body">
                 <div class="form-group">
                     <label for="editKeyword">Keyword</label>
-                    <input type="text" id="editKeyword" name="keyword" class="game-input" required maxlength="50" placeholder="plex">
+                    <input type="text" name="keyword" id="editKeyword" class="game-input" required autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label for="editUrl">Target URL</label>
-                    <input type="url" id="editUrl" name="url" class="game-input" required placeholder="https://plex.example.com">
+                    <label for="editUrl">Destination URL</label>
+                    <input type="url" name="url" id="editUrl" class="game-input" required autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="editDescription">Description</label>
-                    <input type="text" id="editDescription" name="description" class="game-input" maxlength="255" placeholder="Home Media Server">
+                    <input type="text" name="description" id="editDescription" class="game-input" autocomplete="off">
                 </div>
             </div>
-            
             <div class="modal-actions modal-actions-center">
                 <button type="submit" id="editSaveBtn" class="btn-primary"><%= icon('save') %> Save Changes</button>
             </div>
