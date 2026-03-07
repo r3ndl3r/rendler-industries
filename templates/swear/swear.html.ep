@@ -9,19 +9,12 @@
 % end
 
 <div class="swear-container">
-    <%# Visual Reference: Rules Lightbox %>
-    <div class="harmony-jar-header">
-        <a href="javascript:void(0)" onclick="openImageModal('https://rendler.org/files/serve/6')" class="harmony-jar-link">
-            <img src="https://rendler.org/files/serve/6" alt="Family Harmony Jar Rules" class="harmony-jar-img">
-        </a>
-    </div>
-    
-    <div class="manage-header">
+    <div class="header-bar">
         <h1><%= icon('swear') %> <span>Swear Jar</span></h1>
         <div class="manage-actions">
-            <button class="action-btn toggle-view-btn" id="toggleViewBtn" onclick="SwearModule.toggleView()">
-                <span class="view-dashboard-text"><%= icon('settings') %> Manage Members</span>
-                <span class="view-manage-text hidden"><%= icon('back') %> Back to Jar</span>
+            <button class="btn-secondary toggle-view-btn" id="toggleViewBtn" onclick="SwearModule.toggleView()">
+                <span class="view-dashboard-text"><%= icon('settings') %> Manage</span>
+                <span class="view-manage-text hidden"><%= icon('back') %> Back</span>
             </button>
         </div>
     </div>
@@ -31,6 +24,13 @@
         <div class="jar-balance-card glass-panel">
             <div class="jar-label">Real World Jar</div>
             <div id="jarBalance" class="jar-amount">$0.00</div>
+        </div>
+
+        <%# Visual Reference: Rules Lightbox %>
+        <div class="harmony-jar-header">
+            <a href="javascript:void(0)" onclick="openImageModal('https://rendler.org/files/serve/6')" class="harmony-jar-link">
+                <img src="https://rendler.org/files/serve/6" alt="Family Harmony Jar Rules" class="harmony-jar-img">
+            </a>
         </div>
 
         <div class="glass-panel">
