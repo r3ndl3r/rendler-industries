@@ -64,7 +64,7 @@ sub resolve {
 }
 
 # Adds a new go link to the system via AJAX.
-# Route: POST /go/add
+# Route: POST /go/api/add
 # Parameters:
 #   keyword     : Short identifier
 #   url         : Destination URL
@@ -101,7 +101,7 @@ sub add {
 }
 
 # Updates an existing go link via AJAX.
-# Route: POST /go/edit
+# Route: POST /go/api/edit
 # Parameters:
 #   id          : Unique Link ID
 #   keyword     : New short string
@@ -135,7 +135,7 @@ sub edit {
 }
 
 # Removes a single go link via AJAX.
-# Route: POST /go/delete
+# Route: POST /go/api/delete
 # Parameters:
 #   id : Unique ID of the link to delete
 # Returns: JSON object { success, message }
