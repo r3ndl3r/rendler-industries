@@ -1,4 +1,4 @@
-/* /public/css/quiz.css */
+/* /public/css/quiz/questions.css */
 
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;600&family=Roboto:wght@400;500;700&display=swap');
 
@@ -74,6 +74,20 @@ body {
     background: linear-gradient(90deg, #fff, #cbd5e1);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+}
+
+.header-actions {
+    margin-top: 1rem;
+}
+
+.back-link {
+    color: var(--aus-gold);
+    text-decoration: none;
+    margin-right: 1rem;
+}
+
+.total-count {
+    color: var(--text-secondary);
 }
 
 /* Glassmorphism Card Core */
@@ -237,6 +251,15 @@ body {
     font-size: 2rem;
 }
 
+.feedback-msg-en {
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.feedback-msg-th {
+    opacity: 0.8;
+}
+
 .feedback-box.alert-success {
     border-color: var(--aus-green);
     background: rgba(0, 200, 83, 0.1);
@@ -273,6 +296,12 @@ body {
     cursor: not-allowed;
 }
 
+.btn-prev-manual {
+    background: #334155 !important;
+    color: white !important;
+    box-shadow: none !important;
+}
+
 .btn-study {
     display: inline-block;
     padding: 10px 24px;
@@ -297,6 +326,8 @@ body {
 .btn-study .thai-text {
     margin-left: 6px;
     font-weight: 400;
+    font-size: 0.85em;
+    opacity: 0.8;
 }
 
 /* Utility Animations */
@@ -321,6 +352,26 @@ body {
 }
 
 /* Results Screen */
+.results-card {
+    text-align: center;
+}
+
+.results-card h2 {
+    margin-bottom: 0.5rem;
+}
+
+.results-card .thai-subtitle {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+}
+
+.result-msg-box {
+    margin: 2rem 0;
+    padding: 1rem;
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+}
+
 .final-score-circle {
     width: 120px;
     height: 120px;
@@ -347,6 +398,18 @@ body {
     cursor: pointer;
 }
 
+.btn-restart-small {
+    margin-top: 1rem;
+    width: auto !important;
+    padding: 10px 30px !important;
+}
+
+.restart-btn-label {
+    display: block;
+    font-size: 0.8em;
+    font-weight: 400;
+}
+
 .quiz-image-wrapper {
     margin: 1rem 0;
     border-radius: 16px;
@@ -370,11 +433,33 @@ body {
     transform: scale(1.02);
 }
 
+.hint-image-container {
+    margin-top: 15px;
+    text-align: center;
+    width: 100%;
+}
+
+.hint-image {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    display: block;
+    margin: 0 auto;
+}
+
 .question-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 15px;
+}
+
+.question-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 10px;
 }
 
 .btn-tts {
@@ -437,6 +522,163 @@ body {
     background: var(--aus-gold);
     color: #000;
     box-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
+}
+
+/* Pagination & Controls */
+.study-pagination {
+    margin-top: 2rem;
+    gap: 1rem;
+    justify-content: center;
+    align-items: center;
+}
+
+.page-indicator {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+/* State Containers */
+.state-container {
+    text-align: center;
+}
+
+.error-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.text-secondary {
+    color: var(--text-secondary);
+}
+
+.text-danger {
+    color: var(--danger-red);
+}
+
+.next-label-small {
+    font-size: 0.8em;
+    opacity: 0.8;
+    margin-left: 5px;
+}
+
+.answer-text-en {
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+}
+
+.answer-text-ph {
+    color: var(--aus-gold);
+    font-size: 0.9rem;
+    font-style: italic;
+    margin-bottom: 4px;
+}
+
+.answer-text-th {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.result-header-pass {
+    color: var(--aus-green);
+    margin-bottom: 10px;
+}
+
+.result-header-fail {
+    color: var(--danger-red);
+    margin-bottom: 10px;
+}
+
+.result-text-th {
+    color: var(--text-secondary);
+    margin-bottom: 0;
+}
+
+.study-question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.study-question-num {
+    color: var(--aus-gold);
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.study-question-row {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.study-answer-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--glass-border);
+}
+
+.study-answer-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.study-answer-header span {
+    font-size: 1.5rem;
+}
+
+.study-answer-header strong {
+    color: var(--aus-green);
+}
+
+.study-answer-box {
+    background: rgba(0, 200, 83, 0.1);
+    border: 1px solid var(--aus-green);
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.study-answer-text-row {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.study-answer-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.study-explanation-box {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--glass-bg);
+    border-radius: 12px;
+    border-left: 3px solid var(--aus-gold);
+}
+
+.study-explanation-title {
+    color: var(--aus-gold);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.study-explanation-text {
+    line-height: 1.6;
+}
+
+.score-pass {
+    color: var(--aus-green) !important;
+}
+
+.score-fail {
+    color: var(--danger-red) !important;
 }
 
 /* Mobile Tweaks */
