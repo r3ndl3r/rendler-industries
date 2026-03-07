@@ -18,7 +18,7 @@ use Mojo::Util qw(trim);
 # Renders the main Swear Jar interface skeleton.
 # Route: GET /swear
 sub index {
-    shift->render('swear/swear');
+    shift->render('swear');
 }
 
 # API Endpoint: Returns the full synchronized state for the module.
