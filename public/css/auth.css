@@ -1,30 +1,31 @@
 /* /public/css/auth.css */
 
-body {
-    font-family: Arial, sans-serif;
-    background-color: #000000;
+.auth-wrapper {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    margin: 0;
+    min-height: calc(100vh - 100px); /* Adjust for menubar */
+    padding: 20px;
 }
 
 .auth-container {
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    background: rgba(30, 30, 30, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     padding: 30px;
     width: 100%;
-    max-width: 350px;
-    color: #333;
+    max-width: 400px;
+    color: var(--text-color);
 }
 
 .auth-header {
     text-align: center;
-    color: #333;
     margin-top: 0;
     margin-bottom: 20px;
+    color: #90caf9;
 }
 
 .form-group {
@@ -36,15 +37,24 @@ body {
     margin-bottom: 5px;
     font-weight: bold;
     font-size: 0.9rem;
+    color: #9ca3af;
 }
 
 .form-group input {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ddd;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 4px;
     box-sizing: border-box;
     font-size: 1rem;
+    color: #ffffff;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #64b5f6;
 }
 
 .button-container {
@@ -54,28 +64,32 @@ body {
 
 input[type="submit"] {
     padding: 12px 25px;
-    background-color: #4CAF50;
+    background: linear-gradient(135deg, #64b5f6, #1976d2);
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
+    font-weight: bold;
     width: 100%;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(25, 118, 210, 0.3);
 }
 
 input[type="submit"]:hover {
-    background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(25, 118, 210, 0.4);
 }
 
 .auth-footer {
     text-align: center;
     margin-top: 20px;
     font-size: 0.9rem;
+    color: #9ca3af;
 }
 
 .auth-footer a {
-    color: #4CAF50;
+    color: #64b5f6;
     text-decoration: none;
     font-weight: bold;
 }
@@ -84,13 +98,47 @@ input[type="submit"]:hover {
     text-decoration: underline;
 }
 
-/* Error Message Box (if needed) */
+/* Error Message Box */
 .alert {
     padding: 10px;
-    background-color: #f44336;
-    color: white;
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid #ef4444;
+    color: #fca5a5;
     margin-bottom: 15px;
-    border-radius: 4px;
+    border-radius: 8px;
     text-align: center;
     font-size: 0.9rem;
+}
+
+/* Success Card Styles */
+.success-card {
+    text-align: center;
+    padding: 1rem;
+}
+
+.success-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    line-height: 1;
+}
+
+.success-card h2 {
+    font-weight: 300;
+    margin-bottom: 1rem;
+    color: #ffffff;
+}
+
+.success-card p {
+    color: #94a3b8;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.success-card .small-text {
+    font-size: 0.9rem;
+}
+
+.success-actions {
+    display: flex;
+    justify-content: center;
 }
