@@ -170,7 +170,7 @@ function openEditUserModal(id) {
     document.getElementById('editPassword').value = '';
 
     const m = document.getElementById('editUserModal');
-    if (m) m.style.display = 'flex';
+    if (m) m.classList.add('show');
 }
 
 /**
@@ -180,7 +180,7 @@ function openEditUserModal(id) {
  */
 function closeEditModal() {
     const m = document.getElementById('editUserModal');
-    if (m) m.style.display = 'none';
+    if (m) m.classList.remove('show');
 }
 
 /**
