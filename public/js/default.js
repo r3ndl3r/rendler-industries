@@ -263,7 +263,7 @@ window.showConfirmModal = function(options) {
     if (text) text.innerHTML = options.message || 'Are you sure?';
     
     if (subText) {
-        subText.style.display = options.subMessage ? 'block' : 'none';
+        subText.classList.toggle('hidden', !options.subMessage);
         subText.innerHTML = options.subMessage || '';
     }
 
@@ -285,16 +285,16 @@ window.showConfirmModal = function(options) {
     btnConfirm.disabled = !!(options.input && options.input.requiredText);
 
     if (btnCancel) {
-        btnCancel.style.display = options.hideCancel ? 'none' : 'inline-flex';
+        btnCancel.classList.toggle('hidden', !!options.hideCancel);
         btnCancel.textContent = options.cancelText || 'Cancel';
     }
 
-    if (closeX) closeX.style.display = options.hideCloseX ? 'none' : 'block';
+    if (closeX) closeX.classList.toggle('hidden', !!options.hideCloseX);
 
     // 4. Prompt Logic
     if (promptContainer && promptInput) {
         if (options.input) {
-            promptContainer.style.display = 'block';
+            promptContainer.classList.remove('hidden');
             promptInput.type = options.input.type || 'text';
             promptInput.placeholder = options.input.placeholder || '';
             promptInput.value = '';
@@ -307,7 +307,7 @@ window.showConfirmModal = function(options) {
                 promptInput.oninput = null;
             }
         } else {
-            promptContainer.style.display = 'none';
+            promptContainer.classList.add('hidden');
         }
     }
 
@@ -331,7 +331,7 @@ window.showConfirmModal = function(options) {
     });
 
     // 6. Display & Focus
-    modal.style.display = 'flex';
+    modal.classList.add('show');
     document.body.classList.add('modal-open');
 
     if (options.autoFocus) {
@@ -344,7 +344,7 @@ window.showConfirmModal = function(options) {
  */
 window.closeConfirmModal = function() {
     const modal = document.getElementById('globalConfirmActionModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('show');
     document.body.classList.remove('modal-open');
 };
 
