@@ -26,7 +26,7 @@
                     <th>Approved</th>
                     <th>Admin</th>
                     <th>Family</th>
-                    <th style="width: 120px; text-align: center;">Actions</th>
+                    <th class="col-actions-narrow">Actions</th>
                 </tr>
             </thead>
             <tbody id="users-table-body">
@@ -46,7 +46,7 @@
 </div>
 
 <%# Edit User Modal %>
-<div id="editUserModal" class="modal-overlay" style="display: none;">
+<div id="editUserModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
             <h3><%= icon('edit') %> Edit User</h3>
