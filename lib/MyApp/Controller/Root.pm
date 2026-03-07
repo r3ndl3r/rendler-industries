@@ -177,7 +177,8 @@ sub cwd { shift->render(text => "CWD: " . getcwd()) }
 # Returns: JavaScript assignment window.GLOBAL_ICONS = { ... }
 sub get_icons_js {
     my $c = shift;
-    $c->render(text => "window.GLOBAL_ICONS = " . $c->icons_json . ";", format => 'js');
+    $c->res->headers->content_type('application/javascript;charset=UTF-8');
+    $c->render(text => "window.GLOBAL_ICONS = " . $c->icons_json . ";");
 }
 
 # Static Page Renders
