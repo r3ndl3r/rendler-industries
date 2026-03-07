@@ -44,17 +44,19 @@ function toggleMenu() {
  * Handles the expand/collapse logic for nested menu categories.
  * 
  * @param {string} id - Unique identifier for the submenu container
+ * @returns {void}
  */
 function toggleSubmenu(id) {
-    var submenu = document.getElementById('submenu-' + id);
-    var arrow = document.getElementById('arrow-' + id);
+    const submenu = document.getElementById('submenu-' + id);
+    const arrow = document.getElementById('arrow-' + id);
     
-    // Manual display toggle per layout standard
-    if (submenu.style.display !== 'block') {
-        submenu.style.display = 'block';
+    if (!submenu || !arrow) return;
+
+    if (!submenu.classList.contains('open')) {
+        submenu.classList.add('open');
         arrow.innerHTML = getIcon('collapse');
     } else {
-        submenu.style.display = 'none';
+        submenu.classList.remove('open');
         arrow.innerHTML = getIcon('expand');
     }
 }
@@ -64,22 +66,25 @@ function toggleSubmenu(id) {
  * Modifies the status and animation state of the restart overlay.
  * 
  * @param {string} status - Message to display
- * @param {boolean} isSpinning - Visibility flag for the loading spinner
+ * @param {boolean} [isSpinning=true] - Visibility flag for the loading spinner
+ * @returns {void}
  */
 function updateModal(status, isSpinning = true) {
     const statusText = document.getElementById('modal-status');
     const spinner = document.querySelector('#restart-modal .spinner');
     
     if (statusText) statusText.textContent = status;
-    if (spinner) spinner.style.display = isSpinning ? 'block' : 'none';
+    if (spinner) spinner.classList.toggle('hidden', !isSpinning);
 }
 
 /**
  * Hides the server restart feedback interface.
+ * 
+ * @returns {void}
  */
 function closeRestartModal() {
     const modal = document.getElementById('restart-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('show');
 }
 
 /**
@@ -88,13 +93,14 @@ function closeRestartModal() {
  * Implements automated reconnection/reload logic.
  * 
  * @param {Event} event - Triggering click event
+ * @returns {Promise<void>}
  */
 async function startRestartSequence(event) {
     event.preventDefault();
     toggleMenu(); // Close navigation before showing overlay
 
     const modal = document.getElementById('restart-modal');
-    if (modal) modal.style.display = 'flex';
+    if (modal) modal.classList.add('show');
     updateModal('Sending restart command to server...');
 
     try {
@@ -102,7 +108,7 @@ async function startRestartSequence(event) {
         if (!response.ok) {
             updateModal(`Restart failed (Status: ${response.status})`, false);
             // Self-dismiss after failure feedback
-            setTimeout(() => { if (modal) modal.style.display = 'none'; }, 2000);
+            setTimeout(() => { if (modal) modal.classList.remove('show'); }, 2000);
             return;
         }
 
