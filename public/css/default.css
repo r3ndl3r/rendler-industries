@@ -297,13 +297,14 @@ body.modal-open {
     background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(4px);
     display: none;
-    justify-content: center;
-    align-items: center;
     z-index: 13000;
+    overflow-y: auto;
+    padding: 2rem 1rem;
+    justify-content: center;
+    align-items: flex-start;
 }
 
-/* Maintain centering for delete modals */
-.delete-modal-overlay[style*="display: block"] {
+.delete-modal-overlay.show {
     display: flex !important;
 }
 
@@ -317,7 +318,9 @@ body.modal-open {
     color: white;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
     animation: deleteModalSlideDown 0.3s ease-out;
-    margin: 0; /* Reset margin to stay centered via flexbox */
+    margin: 0;
+    position: relative;
+    flex-shrink: 0;
 }
 
 @keyframes deleteModalSlideDown {
@@ -423,10 +426,13 @@ body.modal-open {
     display: none;
     z-index: 10000;
     overflow-y: auto;
+    padding: 2rem 1rem;
+    justify-content: center;
+    align-items: flex-start;
 }
 
 .modal-overlay.show {
-    display: block !important;
+    display: flex !important;
 }
 
 .modal-content {
@@ -435,11 +441,12 @@ body.modal-open {
     border-radius: 0.75rem;
     padding: 2rem;
     max-width: 500px;
-    width: 95%;
+    width: 100%;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     color: #ffffff;
-    margin: 2rem auto;
+    margin: 0;
     position: relative;
+    flex-shrink: 0;
 }
 
 .modal-header {
