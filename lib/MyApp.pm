@@ -50,13 +50,12 @@ sub startup {
     my $db = DB->new();
     my $secret = $db->get_app_secret();
     
-    # Load plugins
-    $self->plugin('MyApp::Plugin::Icons');
-    $self->plugin('MyApp::Plugin::Notifications');
-    $self->plugin('MyApp::Plugin::Tools');
-    $self->plugin('MyApp::Plugin::OCR');
-    $self->plugin('MyApp::Plugin::TTS');
-    $self->plugin('MyApp::Plugin::Translation');
+    # Dynamically load all custom application plugins
+    $self->home->child('lib', 'MyApp', 'Plugin')->list->sort->each(sub {
+        my $file = shift;
+        return unless $file->basename =~ /\.pm$/;
+        $self->plugin("MyApp::Plugin::" . $file->basename('.pm'));
+    });
 
     # Configure signed cookie secrets
     $self->secrets($config->{secrets} || [$secret]);
