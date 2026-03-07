@@ -121,6 +121,7 @@ sub register {
         'info'      => 'ℹ️',
         'success'   => '✅',
         'error'     => '❌',
+        'empty'     => '📭',
         'running'   => '▶️',
         'paused'    => '⏸️',
         'idle'      => '⏺️',
