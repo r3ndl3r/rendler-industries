@@ -278,6 +278,7 @@ sub startup {
     $r->post('/register')->to('auth#register');
     
     # --- Root / Utility / Misc Routes ---
+    $r->get('/api/icons.js')->to('root#get_icons_js');
     $r->get('/')->to('root#index');
     $r->get('/noperm')->to('root#no_permission');
     $r->get('/source')->to('root#view_source');
