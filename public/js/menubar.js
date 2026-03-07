@@ -1,4 +1,4 @@
-// /public/js/menu/menubar.js
+// /public/js/menubar.js
 
 /**
  * Global Navigation Controller Module
