@@ -94,6 +94,17 @@ body.modal-open {
     .header-bar h1 {
         font-size: 1.6rem;
     }
+
+    .manage-actions .btn-primary,
+    .manage-actions .btn-secondary,
+    .manage-actions .btn-danger,
+    .manage-actions .btn-success,
+    .manage-actions .action-btn,
+    .manage-actions .btn-save,
+    .manage-actions .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+    }
 }
 
 .header-bar h1 span {
