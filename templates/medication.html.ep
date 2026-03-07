@@ -10,10 +10,10 @@
 
 <div class="medication-container">
     <div class="header-bar">
-        <h1><%= icon('medication') %> <span>Family Medication</span></h1>
+        <h1><%= icon('medication') %> <span>Medication</span></h1>
         <div class="manage-actions" id="admin-actions">
-            <button class="action-btn registry-btn" onclick="openRegistryModal()"><%= icon('settings') %> Registry</button>
             <button class="btn-primary" onclick="openDoseModal()"><%= icon('add') %> Log</button>
+            <button class="action-btn registry-btn" onclick="openRegistryModal()"><%= icon('settings') %> Manage</button>
         </div>
         <div class="manage-actions" id="member-actions">
             <button class="btn-primary" onclick="openDoseModal()"><%= icon('add') %> Log</button>
