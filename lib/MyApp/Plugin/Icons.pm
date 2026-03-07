@@ -4,6 +4,7 @@ package MyApp::Plugin::Icons;
 use Mojo::Base 'Mojolicious::Plugin';
 use Mojo::JSON qw(decode_json);
 use Mojo::File qw(path);
+use Mojo::Util qw(decode);
 
 # Centralized Icon Management Plugin
 # Synchronizes semantic icon mappings between Perl and JavaScript using assets/emoji.json.
@@ -36,7 +37,8 @@ sub register {
     # 3. Register Injection Helper: icons_json
     # Returns the raw JSON string for frontend hydration.
     $app->helper(icons_json => sub {
-        return path($app->home, 'assets', 'emoji.json')->slurp;
+        my $bytes = path($app->home, 'assets', 'emoji.json')->slurp;
+        return decode('UTF-8', $bytes);
     });
 }
 
