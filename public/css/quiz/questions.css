@@ -270,7 +270,13 @@ body {
     background: rgba(255, 82, 82, 0.1);
 }
 
-/* Navigation Button */
+/* Navigation Button Area */
+.controls-area {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
 .btn-next {
     background: var(--aus-green);
     color: #000;
