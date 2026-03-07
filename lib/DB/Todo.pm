@@ -5,16 +5,16 @@ package DB::Todo;
 use strict;
 use warnings;
 
-# Database helper for user-specific Todo lists.
+# Database helper for user-specific segregated Todo lists.
 # Features:
 #   - User-scoped task segregation
-#   - Full CRUD operations (Add, Toggle, Delete, Update)
-#   - Batch cleanup of completed tasks
+#   - CRUD operations (Add, Toggle, Delete, Update)
+#   - Batch cleanup of completed records
 # Integration points:
 #   - Extends DB package via package injection
-#   - Scoped by user_id for all operations
+#   - Scoped by user_id for strict data privacy
 
-# Retrieves all todo items for a specific user.
+# Retrieves all todo records for a specific user.
 # Parameters:
 #   user_id : Unique identifier for the user
 # Returns:
@@ -34,7 +34,7 @@ sub DB::get_user_todos {
     return $sth->fetchall_arrayref({});
 }
 
-# Adds a new task to a user's todo list.
+# Registers a new task record.
 # Parameters:
 #   user_id   : Unique identifier for the user
 #   task_name : The content of the task
@@ -53,7 +53,7 @@ sub DB::add_todo {
     return $self->{dbh}->last_insert_id();
 }
 
-# Toggles the completion status of a todo item.
+# Updates the completion status of a task record.
 # Parameters:
 #   id      : Unique ID of the task
 #   user_id : User ID for ownership verification
@@ -71,7 +71,7 @@ sub DB::toggle_todo {
     return $sth->execute($id, $user_id) > 0;
 }
 
-# Removes a single task from the user's list.
+# Removes a specific task record.
 # Parameters:
 #   id      : Unique ID of the task
 #   user_id : User ID for ownership verification
@@ -85,7 +85,7 @@ sub DB::delete_todo {
     return $sth->execute($id, $user_id) > 0;
 }
 
-# Updates the text of an existing task.
+# Modifies the text description of an existing task.
 # Parameters:
 #   id        : Unique ID of the task
 #   user_id   : User ID for ownership verification
@@ -104,7 +104,7 @@ sub DB::update_todo {
     return $sth->execute($task_name, $id, $user_id) > 0;
 }
 
-# Removes all completed tasks for a specific user.
+# Bulk removes all completed records for a specific user.
 # Parameters:
 #   user_id : Unique identifier for the user
 # Returns:
