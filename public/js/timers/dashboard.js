@@ -104,7 +104,6 @@ function renderTimerCard(t) {
     const progress = t.limit_seconds > 0 ? (t.elapsed_seconds / t.limit_seconds * 100) : 0;
     const isExpired = t.remaining_seconds <= 0;
     
-    let iconHtml = '';
     const cat = t.category || '';
     const catClass = cat.toLowerCase().replace(' ', '-');
     const iconHtml = getIcon(catClass);
