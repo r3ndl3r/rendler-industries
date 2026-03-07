@@ -1,4 +1,4 @@
-<%# /templates/menu/menubar.html.ep %>
+<%# /templates/menubar.html.ep %>
 
 <div class="navbar">   
     <div class="navbar-brand">
