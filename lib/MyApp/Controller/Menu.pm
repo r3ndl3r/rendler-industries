@@ -18,7 +18,7 @@ use Mojo::Base 'Mojolicious::Controller';
 # Renders the menu management interface skeleton.
 # Route: GET /menu
 sub manage {
-    shift->render('menu/manage');
+    shift->render('menu');
 }
 
 # API Endpoint: Returns the full synchronized state for the menu module.
