@@ -23,7 +23,6 @@
     max-width: 1400px;
     margin: 0 auto;
     padding: 2rem 1rem;
-    padding-top: 0;
     min-height: 100vh;
 }
 
@@ -320,6 +319,11 @@
 /* --- 5. Mobile Responsiveness --- */
 
 @media (max-width: 768px) {
+    .timers-container,
+    .timers-manage-container {
+        padding: 1rem;
+    }
+    
     .timers-grid { grid-template-columns: 1fr; }
     
     .timers-table {
