@@ -42,9 +42,11 @@ function showToast(message, type = 'info', duration = 3000) {
     // Icon Logic: resolve symbol based on semantic type
     const icon = typeof getIcon === 'function' ? getIcon(type) : '';
     
-    toast.innerHTML = `
-        <span>${icon} ${message}</span>
-    `;
+    // Security: Use textContent instead of innerHTML to prevent XSS.
+    // This ensures that any HTML passed in the message is rendered as literal text.
+    const content = document.createElement('span');
+    content.textContent = `${icon} ${message}`;
+    toast.appendChild(content);
     
     container.appendChild(toast);
     
