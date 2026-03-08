@@ -207,6 +207,44 @@ function getLoadingHtml(text = 'Loading...', subtext = '', showScanner = false) 
 }
 
 /**
+ * Translates ISO day number (1-7) to human-readable full name.
+ * 
+ * @param {number} day - ISO index.
+ * @returns {string} - Full name.
+ */
+function getDayFullName(day) {
+    return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][day - 1];
+}
+
+/**
+ * Generates a grid of button-style checkboxes for dynamic forms.
+ * 
+ * @param {string} containerId - Target element ID.
+ * @param {Object[]} items - Collection of items {id, label}.
+ * @param {Object} options - Configuration {name, prefix, type}.
+ * @returns {void}
+ */
+function renderSelectorGrid(containerId, items, options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const name = options.name || 'items[]';
+    const prefix = options.prefix || 'item';
+    const className = options.type === 'day' ? 'day-checkbox' : 'recipient-checkbox';
+
+    container.innerHTML = items.map((item, i) => `
+        <label class="${className} selector-item">
+            <input type="checkbox" name="${name}" value="${item.id}" id="${prefix}${item.id}">
+            <span>${item.label}</span>
+        </label>
+    `).join('');
+}
+
+// Global Exposure
+window.getDayFullName = getDayFullName;
+window.renderSelectorGrid = renderSelectorGrid;
+
+/**
  * Themed Confirmation Modal Controller.
  * Leverages the global layout fragment defined in default.html.ep.
  *
