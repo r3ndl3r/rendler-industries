@@ -45,9 +45,18 @@ sub login {
     my $auth_result = $c->db->authenticate_user($username, $password);
 
     if ($auth_result == 1) {
-        # Establish session and log access
-        $c->session(user => $username); 
-        $c->app->log->info("User $username logged in from IP " . $c->tx->remote_address);
+        # Security: Rotate session on login to prevent fixation
+        my $old_session = $c->session;
+        $c->session(expires => 1); # Invalidate old session
+        
+        # Establish new session
+        $c->session(user => $username);
+        
+        # Regenerate CSRF token for the new session
+        # This ensures the post-login state uses a fresh token
+        $c->csrf_token;
+        
+        $c->app->log->info("User $username logged in (session rotated) from IP " . $c->tx->remote_address);
         return $c->redirect_to('/');
     } elsif ($auth_result == 2) {
         # Handle "Pending Approval" state
