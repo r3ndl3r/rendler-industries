@@ -1,8 +1,14 @@
 /* /public/css/index.css */
 
+/* 
+ * Index Page Specific Overrides
+ * These styles are unique to the home page layout and deviate from the 
+ * global app-container standard to maintain the original "Terminal" aesthetic.
+ */
+
 body {
     font-size: 160%;
-    background-color: black;
+    background-color: black !important;
     margin: 0;
     color: white;
     display: flex;
@@ -13,7 +19,6 @@ body {
 }
 
 div.main {
-    border: 2px solid white;
     width: 95%;
     max-width: 1200px;
     padding: 20px 30px;
@@ -24,9 +29,6 @@ div.main {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-}
-
-#box {
     position: relative;
 }
 
@@ -36,221 +38,126 @@ div.main {
     margin-bottom: 20px;
 }
 
-.info-card {
+/* Specific Card Overrides for Index Dashboard */
+.info-card.dashboard-tile {
     background-color: #1a1a1a;
     border: 1px solid #333;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
+    border-radius: 8px !important;
+    padding: 15px !important;
+    margin-bottom: 15px !important;
     text-align: center;
     width: 100%;
     max-width: 600px;
-    box-sizing: border-box;
+    box-shadow: none !important;
+    transform: none !important;
 }
 
-.label {
-    display: block;
+.info-card.dashboard-tile:hover {
+    border-color: #333 !important;
+}
+
+.label-caps {
+    color: #888 !important;
     font-size: 0.75rem;
-    color: #888;
     letter-spacing: 1.5px;
-    font-weight: bold;
-    margin-bottom: 8px;
-    text-transform: uppercase;
 }
 
-.data-text {
+.data-text-lg {
     font-size: 1.1rem;
-    line-height: 1.4;
-    color: white;
 }
 
-.age-text {
-    font-size: 1rem;
+.data-divider {
+    border-top: 1px solid #333 !important;
+    margin: 15px 0 !important;
 }
 
-.subtext {
-    margin-top: 8px;
+.data-subtext {
+    color: #aaa !important;
     font-size: 0.8rem;
-    color: #aaa;
-    border-top: 1px solid #333;
+    border-top: 1px solid #333 !important;
     padding-top: 8px;
+    margin-top: 8px;
 }
 
-.card-divider {
-    border-top: 1px solid #333;
-    margin: 15px 0;
+.platform-footer {
+    color: gray !important;
+    font-size: 60% !important;
+    margin-top: 1rem !important;
 }
 
-#time, #andrea, #nicky, #andreas, #nickys, #server, #servers {
-    color: red;
+.footer-link-standard {
+    color: #60a5fa !important;
 }
 
-p.time {
-    margin: auto;
-    text-align: center;
-}
-
-p.footer {
-    color: gray;
-    font-size: 60%;
-    text-align: center;
-}
-
-.footer-link:hover {
-    text-decoration: none;
-    color: white;
+.footer-link-standard:hover {
+    color: white !important;
     font-family: impact;
     font-size: 105%;
 }
 
-img {
-    border-radius: 4px;
-    height: 20px;
-}
-
-img:hover {
-    transform: scaleX(-1);
-}
-
-.debug-box {
-    position: fixed;
-    bottom: 10px;
-    right: 10px;
-    background-color: #f0f0f0;
-    padding: 5px;
-    border-radius: 5px;
-    font-size: 12px;
-    color: #000000;
-}
-
-.visit-box {
-    position: fixed;
-    bottom: 10px;
-    left: 10px;
-    background-color: #f0f0f0;
-    padding: 5px;
-    border-radius: 5px;
-    font-size: 12px;
-    color: #000000;
+.footer-img {
+    height: 20px !important;
 }
 
 .file-map-container {
-    display: none;
-    margin-top: 15px;
-    border: 1px dashed #444;
-    padding: 15px 15px 15px 0;
-    background: #0d0d0d;
-    width: 100%;
-    max-width: 500px;
-    text-align: left;
-    box-sizing: border-box;
-    border-radius: 8px;
+    margin-top: 15px !important;
+    padding: 15px !important; /* Symmetrical horizontal padding for true centering */
+    max-width: 400px !important;
+    background: #0d0d0d !important;
+    border: 1px dashed #444 !important;
+    text-align: left !important;
+    border-radius: 8px !important;
 }
 
 .file-tree, .file-tree ul {
     list-style-type: none;
-    padding-left: 20px;
+    padding-left: 5px !important; /* Keep left-alignment for the tree */
     margin: 0;
 }
 
 .file-tree li {
-    margin: 2px 0;
-    line-height: 1.4;
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
+    margin: 2px 0 !important;
+    line-height: 1.4 !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 0.9rem !important;
+    text-align: left !important;
+}
+
+.git-link-container {
+    margin-top: 15px !important;
+    padding-top: 10px !important;
+    border-top: 1px solid #333 !important;
+    text-align: center !important;
+    width: 100% !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 0.9rem !important;
+    display: block !important;
+}
+
+.git-link-container a {
+    color: #60a5fa !important;
+    text-decoration: none;
+}
+
+.git-link-container a:hover {
+    color: white !important;
+    text-decoration: underline;
 }
 
 .folder-name {
-    color: #f0ad4e;
-    font-weight: bold;
+    color: #f0ad4e !important;
 }
 
-.file-link {
-    color: #aaa;
-    text-decoration: none;
-    transition: color 0.2s;
+#listFilesLink {
+    color: #60a5fa !important;
 }
 
-.file-link:hover {
-    color: white;
-    text-decoration: underline;
+#listFilesLink:hover {
+    color: white !important;
 }
 
-.git-item {
-    margin-top: 15px;
-    padding-top: 10px;
-    border-top: 1px solid #333;
-    text-align: center;
-    list-style: none;
-}
-
-
-.redirect-splash {
-    position: fixed; inset: 0; z-index: 9999;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(6px);
-    display: flex; align-items: center; justify-content: center;
-}
-
-.redirect-splash-card {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 1.5rem;
-    padding: 2.5rem 3rem;
-    text-align: center;
-    max-width: 380px;
-    width: 90%;
-    box-shadow: 0 25px 60px rgba(0,0,0,0.6);
-}
-
-.redirect-splash-icon { font-size: 2.5rem; margin-bottom: 1rem; }
-
-.redirect-splash-card h2 {
-    font-size: 1.3rem; font-weight: 300;
-    color: #fff; margin: 0 0 0.5rem;
-}
-
-.redirect-splash-card p {
-    color: #94a3b8; font-size: 0.95rem; margin: 0 0 1.5rem;
-}
-
-.redirect-splash-card p a.redirect-link {
-    color: #90caf9;
-    text-decoration: none;
-    transition: all 0.2s;
-}
-
-.redirect-splash-card p a.redirect-link:hover {
-    color: #fff;
-    text-decoration: underline;
-    opacity: 0.8;
-}
-
-.redirect-splash-card p strong { color: inherit; }
-
-.redirect-progress-track {
-    background: rgba(255,255,255,0.08);
-    border-radius: 9999px; height: 4px;
-    overflow: hidden; margin-bottom: 1.5rem;
-}
-
-.redirect-progress-fill {
-    height: 100%; width: 0%;
-    background: linear-gradient(90deg, #3b82f6, #90caf9);
-    border-radius: 9999px;
-    transition: width 0.05s linear;
-}
-
-.btn-cancel-redirect {
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.15);
-    color: #94a3b8; font-size: 0.85rem;
-    padding: 0.5rem 1.25rem; border-radius: 0.5rem;
-    cursor: pointer; transition: all 0.2s;
-}
-
-.btn-cancel-redirect:hover {
-    border-color: rgba(255,255,255,0.3); color: #fff;
+#time, #andrea, #nicky, #andreas, #nickys, #server, #servers, #clock-prefix {
+    color: red !important;
 }
 
 .dashboard-clock-container {
@@ -260,11 +167,6 @@ img:hover {
     justify-content: center;
     gap: 15px;
     font-size: 1.6rem;
-}
-
-#clock-prefix {
-    color: red;
-    font-weight: 300;
 }
 
 #main-clock.flip-clock {
