@@ -186,15 +186,8 @@ function populateDropdowns() {
     }
 
     // 2. Attendee Checkboxes
-    const attendeeContainer = document.getElementById('attendees-container');
-    if (attendeeContainer) {
-        attendeeContainer.innerHTML = STATE.users.map(u => `
-            <label class="attendee-checkbox">
-                <input type="checkbox" name="attendees[]" value="${u.id}" class="attendee-checkbox-input">
-                <span>${escapeHtml(u.display_name || u.username)}</span>
-            </label>
-        `).join('');
-    }
+    const recipients = STATE.users.map(u => ({ id: u.id, label: escapeHtml(u.display_name || u.username) }));
+    renderSelectorGrid('attendees-container', recipients, { name: 'attendees[]', prefix: 'attendee', type: 'day' });
 }
 
 /**
@@ -427,7 +420,7 @@ function renderTable(events, emptyMsg) {
             html += `
                 <tr class="day-group-header ${groupClass}">
                     <td colspan="6">
-                        <div class="day-group-label">${getIcon('calendar')} ${formatDateWithOrdinal(currentDay)}</div>
+                        <div class="day-group-label">${window.getIcon('calendar')} ${formatDateWithOrdinal(currentDay)}</div>
                     </td>
                 </tr>
             `;
@@ -452,8 +445,8 @@ function renderTable(events, emptyMsg) {
                 <td>${escapeHtml(e.creator_name || 'Unknown')}</td>
                 <td class="actions-cell">
                     <div class="action-btns">
-                        <button type="button" class="btn-icon-edit" onclick="openEditModalById(${e.id})" title="Edit">${getIcon('edit')}</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteEvent(${e.id}, '${escapeHtml(e.title)}')" title="Delete">${getIcon('delete')}</button>
+                        <button type="button" class="btn-icon-edit" onclick="openEditModalById(${e.id})" title="Edit">${window.getIcon('edit')}</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteEvent(${e.id}, '${escapeHtml(e.title)}')" title="Delete">${window.getIcon('delete')}</button>
                     </div>
                 </td>
             </tr>
@@ -535,7 +528,7 @@ function renderUpcomingEvents() {
             lastDay = currentDay;
             html += `
                 <div class="upcoming-day-header">
-                    ${getIcon('calendar')} ${formatDateWithOrdinal(currentDay)}
+                    ${window.getIcon('calendar')} ${formatDateWithOrdinal(currentDay)}
                 </div>
             `;
         }
@@ -632,10 +625,10 @@ async function handleEventSubmit(event) {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `${window.getIcon('waiting')} Saving...`;
 
     try {
-        const result = await apiPost(url, Object.fromEntries(formData));
+        const result = await apiPost(url, formData);
         if (result && result.success) {
             closeEventModal();
             await loadEvents();
@@ -710,6 +703,12 @@ function openAddEventModal(dateStr) {
         document.getElementById('eventEndDate').value = dateStr;
     }
 
+    // UX: Pre-fill category if a filter is active
+    const activeFilter = document.getElementById('categoryFilter').value;
+    if (activeFilter) {
+        document.getElementById('eventCategory').value = activeFilter;
+    }
+
     modal.classList.add('show');
     document.body.classList.add('modal-open');
 }
@@ -739,7 +738,7 @@ function openEditModalById(id) {
     document.getElementById('eventEndTime').value = (eTime || '').substring(0, 5);
 
     const attendeeIds = (event.attendees || '').split(',');
-    document.querySelectorAll('.attendee-checkbox-input').forEach(cb => {
+    document.querySelectorAll('#attendees-container input[type="checkbox"]').forEach(cb => {
         cb.checked = attendeeIds.includes(cb.value);
     });
 
@@ -815,12 +814,12 @@ function showEventDetails(id) {
             <h2 style="color: ${event.color}">${escapeHtml(event.title)}</h2>
         </div>
         <div class="event-details-body">
-            <div class="event-detail-row"><strong>${getIcon('calendar')} Date:</strong> <span>${dateStr}</span></div>
-            <div class="event-detail-row"><strong>${getIcon('clock')} Time:</strong> <span>${timeInfo}</span></div>
-            ${event.category ? `<div class="event-detail-row"><strong>${getIcon('info')} Category:</strong> <span>${escapeHtml(event.category)}</span></div>` : ''}
-            ${event.description ? `<div class="event-detail-row"><strong>${getIcon('clipboard')} Description:</strong> <span>${escapeHtml(event.description)}</span></div>` : ''}
-            ${event.attendee_names ? `<div class="event-detail-row"><strong>${getIcon('family')} Attendees:</strong> <span>${renderAttendeePills(event.attendee_names, true)}</span></div>` : ''}
-            <div class="event-detail-row"><strong>${getIcon('user')} Created By:</strong> <span>${escapeHtml(event.creator_name || 'Unknown')}</span></div>
+            <div class="event-detail-row"><strong>${window.getIcon('calendar')} Date:</strong> <span>${dateStr}</span></div>
+            <div class="event-detail-row"><strong>${window.getIcon('clock')} Time:</strong> <span>${timeInfo}</span></div>
+            ${event.category ? `<div class="event-detail-row"><strong>${window.getIcon('info')} Category:</strong> <span>${escapeHtml(event.category)}</span></div>` : ''}
+            ${event.description ? `<div class="event-detail-row"><strong>${window.getIcon('clipboard')} Description:</strong> <span>${escapeHtml(event.description)}</span></div>` : ''}
+            ${event.attendee_names ? `<div class="event-detail-row"><strong>${window.getIcon('family')} Attendees:</strong> <span>${renderAttendeePills(event.attendee_names, true)}</span></div>` : ''}
+            <div class="event-detail-row"><strong>${window.getIcon('user')} Created By:</strong> <span>${escapeHtml(event.creator_name || 'Unknown')}</span></div>
         </div>
     `;
 
