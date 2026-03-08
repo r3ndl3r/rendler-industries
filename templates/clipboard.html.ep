@@ -46,34 +46,22 @@
                 <%# Dynamic Notification Options (Pattern C: Selector) %>
                 <div id="notification-options" class="notification-selector-section hidden">
                     <p class="options-label">Send Notifications:</p>
-                    <div class="notification-pills-grid">
-                        <label id="notify-discord-wrap" class="recipient-checkbox hidden">
+                    <div class="selector-grid">
+                        <label id="notify-discord-wrap" class="selector-item hidden">
                             <input type="checkbox" name="notify_discord" value="1">
-                            <span class="recipient-pill">
-                                <span class="pill-icon"><%= icon('discord') %></span>
-                                <span class="pill-name">Discord</span>
-                            </span>
+                            <span><%= icon('discord') %> Discord</span>
                         </label>
-                        <label id="notify-email-wrap" class="recipient-checkbox hidden">
+                        <label id="notify-email-wrap" class="selector-item hidden">
                             <input type="checkbox" name="notify_email" value="1">
-                            <span class="recipient-pill">
-                                <span class="pill-icon"><%= icon('email') %></span>
-                                <span class="pill-name">Email</span>
-                            </span>
+                            <span><%= icon('email') %> Email</span>
                         </label>
-                        <label id="notify-pushover-wrap" class="recipient-checkbox hidden">
+                        <label id="notify-pushover-wrap" class="selector-item hidden">
                             <input type="checkbox" name="notify_pushover" value="1">
-                            <span class="recipient-pill">
-                                <span class="pill-icon"><%= icon('pushover') %></span>
-                                <span class="pill-name">Pushover</span>
-                            </span>
+                            <span><%= icon('pushover') %> Pushover</span>
                         </label>
-                        <label id="notify-gotify-wrap" class="recipient-checkbox hidden">
+                        <label id="notify-gotify-wrap" class="selector-item hidden">
                             <input type="checkbox" name="notify_gotify" value="1">
-                            <span class="recipient-pill">
-                                <span class="pill-icon"><%= icon('gotify') %></span>
-                                <span class="pill-name">Gotify</span>
-                            </span>
+                            <span><%= icon('gotify') %> Gotify</span>
                         </label>
                     </div>
                 </div>
