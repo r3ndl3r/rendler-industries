@@ -433,7 +433,7 @@ function renderTable(events, emptyMsg) {
             `;
         }
 
-        const timeDisplay = e.all_day ? '(All day)' : `${formatTime(e.start_date)} - ${formatTime(e.end_date)}`;
+        const timeDisplay = e.all_day ? 'All Day' : `${formatTime(e.start_date)} - ${formatTime(e.end_date)}`;
 
         html += `
             <tr data-event-id="${e.id}" class="${groupClass}">
@@ -526,17 +526,36 @@ function renderUpcomingEvents() {
         return;
     }
 
-    container.innerHTML = upcoming.map(e => `
-        <div class="upcoming-event-item" style="--event-color: ${e.color}" onclick="showEventDetails(${e.id})">
-            <div class="upcoming-event-color"></div>
-            <div class="upcoming-event-details">
-                <div class="upcoming-event-title">${escapeHtml(e.title)}</div>
-                <div class="upcoming-event-datetime">${formatEventDateTime(e)}</div>
-                ${e.attendee_names ? `<div class="upcoming-event-attendees">${renderAttendeePills(e.attendee_names, true)}</div>` : ''}
-                <div class="upcoming-event-countdown">${getCountdown(e.parsedStart)}</div>
+    let lastDay = '';
+    let html = '';
+
+    upcoming.forEach(e => {
+        const currentDay = e.start_date.split(' ')[0];
+        if (currentDay !== lastDay) {
+            lastDay = currentDay;
+            html += `
+                <div class="upcoming-day-header">
+                    ${getIcon('calendar')} ${formatDateWithOrdinal(currentDay)}
+                </div>
+            `;
+        }
+
+        const timeInfo = e.all_day ? 'All Day' : `${formatTime(e.start_date)} - ${formatTime(e.end_date)}`;
+
+        html += `
+            <div class="upcoming-event-item" style="--event-color: ${e.color}" onclick="showEventDetails(${e.id})">
+                <div class="upcoming-event-color"></div>
+                <div class="upcoming-event-details">
+                    <div class="upcoming-event-title">${escapeHtml(e.title)}</div>
+                    <div class="upcoming-event-datetime">${timeInfo}</div>
+                    ${e.attendee_names ? `<div class="upcoming-event-attendees">${renderAttendeePills(e.attendee_names, true)}</div>` : ''}
+                    <div class="upcoming-event-countdown">${getCountdown(e.parsedStart)}</div>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    });
+
+    container.innerHTML = html;
 }
 
 /**
@@ -789,7 +808,7 @@ function showEventDetails(id) {
 
     const content = document.getElementById('eventDetailsContent');
     const dateStr = formatDateTimeFriendly(event.start_date, event.all_day);
-    const timeInfo = event.all_day ? 'All day event' : `${formatTime(event.start_date)} - ${formatTime(event.end_date)}`;
+    const timeInfo = event.all_day ? 'All Day' : `${formatTime(event.start_date)} - ${formatTime(event.end_date)}`;
 
     content.innerHTML = `
         <div class="event-details-header">
@@ -882,16 +901,6 @@ function formatDateTimeFriendly(dtStr, allDay) {
     const dateStr = formatDateWithOrdinal(datePart);
     if (allDay) return dateStr;
     return `${dateStr} at ${formatTime(dtStr)}`;
-}
-
-/**
- * Specific formatting for upcoming list item headers.
- * 
- * @param {Object} e - Event metadata.
- * @returns {string} - Date label.
- */
-function formatEventDateTime(e) {
-    return formatDateTimeFriendly(e.start_date, e.all_day);
 }
 
 /**
