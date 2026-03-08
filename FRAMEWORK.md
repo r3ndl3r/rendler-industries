@@ -37,33 +37,33 @@ To create a new application (e.g., "Tasks"), follow these steps:
 To keep the dashboard consistent, use these standard CSS classes defined in `default.css`:
 
 ### Containers & Panels
+*   `.app-container`: **Mandatory.** The root wrapper for every module. Enforces consistent vertical alignment and padding.
 *   `.glass-panel`: The standard frosted container with a subtle border.
-*   `.example-card`: A fixed-width (`360px`) glass tile used for dashboard views.
-*   `.header-bar`: Standard flex container for the top of a page (H1 + Action Buttons).
+*   `.header-bar`: Standard flex container for the top of a page (H1 + `.manage-actions`). Controls global page spacing.
 
 ### Buttons & Icons
+*   **Header Actions**: Place buttons inside `.manage-actions` to ensure they scale correctly on mobile.
 *   **Action Buttons**: `.btn-primary` (Blue), `.btn-secondary` (Slate), `.btn-danger` (Red).
 *   **Icon Buttons**: `.btn-icon-edit` (Sky Blue), `.btn-icon-delete` (Rose Red), `.btn-icon-ai` (Indigo).
-*   **Loading**: `.loading-scan-line` (the animated blue bar) and `.loading-icon-pulse`.
 
-### Badges & Status
-*   `.status-badge.active`: Green background for active items.
-*   `.status-badge.paused`: Slate/Grey background for inactive items.
+### Visibility & State
+*   **Standard**: Use `.classList.add('show')` or `.add('hidden')` exclusively. 
+*   **Prohibited**: Direct manipulation of `.style.display` is strictly forbidden.
 
 ---
 
-## 🏗 4. Architecture Patterns (A vs B)
+## 🏗 4. Architecture Patterns
 
-Choose the reference pattern that matches your data complexity. Copy structure from existing app for these.**
+Choose the reference pattern that matches your data complexity. Copy structure from existing apps for these.
 
 ### Pattern A: The Ledger (Table-based)
-*   **Best For**: Detailed logs, record management, and lists (e.g., Receipts, User Mgmt).
-*   **Implementation**: Wrap your `<table>` in a `.table-responsive` div. Use `.data-table` for styling.
-*   **Mobile**: Use the `data-label` pattern to stack rows into cards on small screens.
+*   **Best For**: Detailed logs and records (e.g., Receipts, User Mgmt).
+*   **Implementation**: Wrap `<table>` in `.table-responsive`. Use `.data-table`.
+*   **Mobile**: Use `transparent` table backgrounds to treat rows as distinct cards.
 
-### Pattern B: The Dashboard (Tile-based)
-*   **Best For**: High-level overviews and status tracking (e.g., Meals, Reminders).
-*   **Implementation**: Use a centered `flex-wrap` container with fixed-width tiles.
+### Pattern B: The Dashboard (Card-based)
+*   **Best For**: Status tracking and quick actions (e.g., Timers, Todo, Meals).
+*   **Implementation**: Use `.glass-panel` tiles within an `.app-container`.
 
 ---
 
@@ -72,18 +72,15 @@ Choose the reference pattern that matches your data complexity. Copy structure f
 Don't reinvent the wheel. Use these pre-built "Power Tools" for rapid development:
 
 ### Frontend (JavaScript - `public/js/default.js`)
-*   **Icons**: `getIcon('name')` returns the standardized emoji for the project.
+*   **Icons**: `getIcon('name')` returns symbols from the centralized `assets/emoji.json`.
 *   **AJAX**: `apiPost(url, data)` handles JSON POSTs with built-in CSRF and error handling.
 *   **Modals**: `showConfirmModal({ title, message, onConfirm })` is the primary tool for terminal actions.
-*   **AI/Voice**: `speakText('Hello')` for text-to-speech; `translateText(text, 'fr')` for translation.
 *   **UI**: `showToast('Saved!', 'success')` for notifications.
-*   **Timing**: `getTimeSince(unix)` and `formatCountdown(ms)` for friendly date labels.
 
-### Backend (Perl - `lib/MyApp.pm` Helpers)
-*   **Icons**: `<%= icon('edit') %>` for use in templates.
+### Backend (Perl - `Icons.pm` Helpers)
+*   **Icons**: `<%= icon('edit') %>` for use in templates. Draws from the same JSON source as JS.
 *   **Authorization**: `$c->is_admin`, `$c->is_family`, `$c->is_logged_in`.
-*   **Notifications**: `$c->notify_user($id, $msg, $subj)` sends Discord/Email alerts automatically.
-*   **OCR**: `$c->ocr_process($image_blob)` parses text from images using AI.
+*   **Centralized Registry**: Update `assets/emoji.json` to change icons application-wide.
 
 ---
 
@@ -98,9 +95,10 @@ If your app needs a background poller (e.g., checking for expiring timers every 
 
 ## 💡 7. Pro-Tips & Common Pitfalls
 
+*   **Visibility Toggling**: Never use `el.style.display = 'block'`. The global `.hidden` class uses `!important`, meaning inline styles will fail to override it. Always use `.classList.remove('hidden')`.
+*   **Header Spacing**: The space between the header and your content is managed by `default.css`. Do not add `margin-top` to your first content element; it will be stripped to maintain a uniform gap.
 *   **Checkbox Logic**: Browser `FormData` ignores unchecked boxes. In your JS, always explicitly set the value (`0` or `1`) before sending to the API.
-*   **Datetime Safety**: MariaDB is strict. If you're sending a date string (`2026-03-06`), append ` 00:00:00` before saving to a `datetime` column.
-*   **Atomic UI**: Always use `finally` blocks in async handlers to restore button states (`innerHTML`/`disabled`) to prevent buttons from getting "stuck" in a loading state.
+*   **Atomic UI**: Always use `finally` blocks in async handlers to restore button states to prevent buttons from getting "stuck" in a loading state.
 
 ---
 
