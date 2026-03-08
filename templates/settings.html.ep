@@ -8,7 +8,7 @@
   <script src="/js/settings.js?<%= time %>"></script>
 % end
 
-<div class="settings-container">
+<div class="settings-container app-container">
   <div class="header-bar">
     <h1><%= icon('settings') %> <span>Settings</span></h1>
   </div>
