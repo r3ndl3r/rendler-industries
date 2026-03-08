@@ -8,7 +8,7 @@
     <script src="/js/shopping.js?<%= time %>"></script>
 % end
 
-<div class="shopping-container">
+<div class="shopping-container app-container">
     <div class="header-bar">
         <h1><%= icon('shopping') %> <span>Shopping List</span></h1>
     </div>
