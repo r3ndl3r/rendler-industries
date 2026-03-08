@@ -146,18 +146,6 @@
     }
 
     /* Fix Permission Checkboxes in Mobile Cards */
-    .recipient-checkbox {
-        justify-content: center !important;
-    }
-
-    .recipient-checkbox::before {
-        content: none !important; /* Remove the "ALLOWED USERS" label from every single checkbox */
-    }
-
-    .recipient-checkbox span {
-        text-transform: none !important; /* Force lowercase/original casing */
-    }
-
     .edit-container { padding: 1rem 0; }
     .form-actions { flex-direction: column; }
 }
