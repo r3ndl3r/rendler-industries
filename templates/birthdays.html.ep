@@ -8,7 +8,7 @@
     <script src="/js/birthdays.js?<%= time %>"></script>
 % end
 
-<div class="birthday-container">
+<div class="birthday-container app-container">
     <div class="header-bar">
         <h1><%= icon('birthdays') %> <span>Birthdays</span></h1>
         <div class="manage-actions" id="admin-actions">
