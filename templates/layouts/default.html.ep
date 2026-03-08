@@ -7,6 +7,8 @@
 
     <title><%= title %> | Rendler Industries®</title>
 
+    <meta name="csrf-token" content="<%= csrf_token %>">
+
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
 
     <%# Global Style Dependencies %>

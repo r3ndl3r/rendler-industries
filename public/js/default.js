@@ -92,6 +92,16 @@ function getLocalISOString() {
  */
 
 /**
+ * Retrieves the CSRF token from the meta tag.
+ * 
+ * @returns {string|null} - Token or null if not found.
+ */
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : null;
+}
+
+/**
  * Universal Modal Closing Logic.
  * Attaches global listener to detect clicks on modal overlays.
  * 
@@ -119,16 +129,22 @@ function setupGlobalModalClosing(modalClasses = ['modal-overlay', 'delete-modal-
  */
 async function apiPost(url, data = {}) {
     try {
+        const csrfToken = getCsrfToken();
         const options = {
-            method: 'POST'
+            method: 'POST',
+            headers: {}
         };
+
+        if (csrfToken) {
+            options.headers['X-CSRF-Token'] = csrfToken;
+        }
 
         // Automatic content-type detection for binary vs form data
         if (data instanceof FormData) {
             options.body = data;
             // Note: browser manages boundary for FormData; do NOT set Content-Type
         } else {
-            options.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+            options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
             options.body = new URLSearchParams(data);
         }
 
@@ -538,9 +554,13 @@ async function speakText(text) {
     if (!text) return;
 
     try {
+        const csrfToken = getCsrfToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
         const response = await fetch('/tts/api/synthesize', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify({ text: text })
         });
 
@@ -575,9 +595,13 @@ async function translateText(text, target = 'th') {
     if (!text) return null;
 
     try {
+        const csrfToken = getCsrfToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
         const response = await fetch('/translation/api/translate', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify({ text: text, target: target })
         });
 
