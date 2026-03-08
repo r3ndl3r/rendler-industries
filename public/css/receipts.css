@@ -564,7 +564,8 @@
         margin-top: 0.5rem; 
         padding-top: 0.75rem; 
         border-top: 1px solid #334155;
-        margin-left: -3.5rem; /* Counteract parent padding to center globally */
+        margin-left: -3.5rem;
+        width: calc(100% + 3.5rem);
     }
     .col-actions::before { content: none !important; }
 
