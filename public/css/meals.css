@@ -1,7 +1,6 @@
 /* /public/css/meals.css */
 
 .meals-container {
-    padding: 2rem 1rem;
     max-width: 900px;
     margin: 0 auto;
     min-height: 100vh;
@@ -415,10 +414,6 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-    .meals-container {
-        padding: 1rem 0.75rem;
-    }
-
     .meals-timeline {
         grid-template-columns: 1fr;
         padding-bottom: 1rem;
