@@ -112,7 +112,7 @@
             
             <div class="form-group">
                 <label for="eventAttendees">Attendees</label>
-                <div class="attendees-select-container">
+                <div id="attendees-container" class="attendees-select-container">
                 </div>
             </div>
             
