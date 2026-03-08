@@ -9,7 +9,7 @@
     <script src="/js/vendor/sortable.min.js?<%= time %>"></script>
 % end
 
-<div class="manage-container">
+<div class="manage-container app-container">
     <div class="header-bar">
         <h1><%= icon('link') %> <span>Manage Menu Links</span></h1>
         <div class="manage-actions">
