@@ -123,27 +123,17 @@ function renderTable() {
 
 /**
  * UI Engine: renderRecipientSelectors
- * populates the whitelisting checkboxes in both modals.
+ * Populates the whitelisting checkboxes in both modals using the global selector grid.
  * 
  * @returns {void}
  */
 function renderRecipientSelectors() {
     const approvedUsers = moduleState.users.filter(u => u.status === 'approved');
-    const html = approvedUsers.map(user => `
-        <label class="recipient-checkbox">
-            <input type="checkbox" name="allowed_users[]" value="${user.username}" class="user-permission-checkbox" data-username="${user.username}">
-            <div class="recipient-pill">
-                <span class="pill-icon">${getIcon(user.username)}</span>
-                <span>${user.username}</span>
-            </div>
-        </label>
-    `).join('');
-
-    const uploadList = document.getElementById('uploadRecipientsList');
-    const permList = document.getElementById('permissionRecipientsList');
+    const recipients = approvedUsers.map(u => ({ id: u.username, label: u.username }));
     
-    if (uploadList) uploadList.innerHTML = html;
-    if (permList) permList.innerHTML = html;
+    // Render recipient grids for both Upload and Permission modals
+    renderSelectorGrid('uploadRecipientsList', recipients, { name: 'allowed_users[]', prefix: 'uploadUser' });
+    renderSelectorGrid('permissionRecipientsList', recipients, { name: 'allowed_users[]', prefix: 'permissionUser' });
 }
 
 /**
@@ -192,8 +182,10 @@ function openPermissionModal(id) {
 
     // Logic: Sync whitelisted user checkboxes
     const allowed = file.allowed_users ? file.allowed_users.split(',') : [];
-    document.querySelectorAll('#permissionRecipientsList .user-permission-checkbox').forEach(cb => {
-        cb.checked = allowed.includes(cb.dataset.username);
+    
+    // Reset all checkboxes first (Form.reset handles most but explicit sync is safer)
+    document.querySelectorAll('#permissionRecipientsList input[type="checkbox"]').forEach(cb => {
+        cb.checked = allowed.includes(cb.value);
     });
 
     if (modal) {
