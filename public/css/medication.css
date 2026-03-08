@@ -341,56 +341,28 @@
     text-align: center;
 }
 
-.reminder-delay-selector {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 1.25rem;
-    justify-content: center;
-}
-
-.delay-pill {
-    cursor: pointer;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: #1e293b !important;
-    padding: 0.4rem 0.8rem !important;
-    border-radius: 0.5rem !important;
-    border: 1px solid #334155 !important;
-    transition: all 0.2s !important;
-    min-width: 45px !important;
-    text-align: center !important;
-    margin: 0 !important;
-}
-
-.delay-pill input {
-    display: none !important;
-}
-
-.delay-pill span {
-    font-size: 0.9rem !important;
-    font-weight: 700 !important;
-    color: #94a3b8 !important;
-    line-height: 1 !important;
-}
-
-.delay-pill:has(input:checked) {
-    background: rgba(16, 185, 129, 0.2) !important;
-    border-color: #10b981 !important;
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2) !important;
-}
-
-.delay-pill:has(input:checked) span {
-    color: #ffffff !important;
-}
-
-.delay-pill:hover {
-    border-color: rgba(16, 185, 129, 0.5) !important;
-}
-
 .reminder-recipients-label {
     margin-top: 1.25rem;
+}
+
+/* Scoped Overrides for Medication Delay Grid */
+.reminder-options .selector-grid {
+    gap: 0.5rem;
+}
+
+.reminder-options .selector-item {
+    min-width: 45px;
+    padding: 0.4rem 0.8rem;
+}
+
+.reminder-options .selector-item span {
+    font-weight: 700;
+}
+
+.reminder-options .selector-item:has(input:checked) {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
 }
 
 .reminder-recipients-list {
