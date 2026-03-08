@@ -72,11 +72,36 @@ sub startup {
         $c->res->headers->header('Pragma' => 'no-cache');
         $c->res->headers->header('Expires' => '0');
     });
-    
-    # Helper: CSRF Token Generator
-    # Parameters: None (Uses context)
-    # Returns: Token string
-    $self->helper(csrf_token => sub { shift->csrf_token });
+
+    # Global Hook: CSRF Enforcement
+    # Protects all state-changing requests (POST, PUT, DELETE, PATCH)
+    $self->hook(before_dispatch => sub {
+        my $c = shift;
+
+        # Only enforce on state-changing methods
+        return if $c->req->method =~ /^(GET|HEAD|OPTIONS)$/i;
+
+        # Retrieve token from header or parameter
+        my $token = $c->req->headers->header('X-CSRF-Token') // $c->param('csrf_token');
+
+        # Validate token
+        if (!$token || $token ne $c->csrf_token) {
+            $c->app->log->warn(sprintf(
+                "CSRF failure: %s %s [IP: %s]",
+                $c->req->method,
+                $c->req->url->path,
+                $c->tx->remote_address
+            ));
+
+            # Return 403 Forbidden with appropriate response type
+            if (($c->req->headers->header('X-Requested-With') // '') eq 'XMLHttpRequest' || ($c->req->headers->accept // '') =~ /json/) {
+                $c->render(json => { error => 'Security token mismatch', success => 0 }, status => 403);
+            } else {
+                $c->render(text => 'Security token mismatch', status => 403);
+            }
+            return undef; # Halt dispatch
+        }
+    });
     
     # Helper: Check if user is logged in
     # Parameters: None (Uses session)
