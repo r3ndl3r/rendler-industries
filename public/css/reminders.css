@@ -293,57 +293,6 @@
     margin-bottom: 5px;
 }
 
-/* Modal Selector Overrides */
-.days-selector, .recipients-selector {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    background: #0f172a;
-    padding: 1.25rem;
-    border-radius: 0.75rem;
-    border: 1px solid #334155;
-    margin-top: 0.5rem;
-    margin-bottom: 1.5rem;
-    justify-content: center;
-}
-
-.day-checkbox, .recipient-checkbox {
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #1e293b;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    border: 1px solid #334155;
-    transition: all 0.2s;
-    min-width: 80px;
-    text-align: center;
-}
-
-.day-checkbox input, .recipient-checkbox input {
-    display: none;
-}
-
-.day-checkbox span, .recipient-checkbox span {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #94a3b8;
-    text-transform: none;
-    text-align: center;
-}
-
-.day-checkbox:has(input:checked), .recipient-checkbox:has(input:checked) {
-    background: rgba(59, 130, 246, 0.2);
-    border-color: #3b82f6;
-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
-}
-
-.day-checkbox:has(input:checked) span, .recipient-checkbox:has(input:checked) span {
-    color: #ffffff;
-}
-
 .reminder-footer-actions {
     display: flex;
     gap: 1rem;
