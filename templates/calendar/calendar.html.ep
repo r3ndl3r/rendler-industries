@@ -8,7 +8,7 @@
     <script src="/js/calendar.js?<%= time %>"></script>
 % end
 
-<div class="calendar-container">
+<div class="calendar-container app-container">
     <%# Calendar Header & Controls %>
     <div class="calendar-header">
         <div class="calendar-controls">
@@ -128,7 +128,7 @@
             
             <div class="form-group">
                 <label for="eventAttendees">Attendees</label>
-                <div id="attendees-container" class="attendees-select-container">
+                <div id="attendees-container" class="selector-grid">
                 </div>
             </div>
             
