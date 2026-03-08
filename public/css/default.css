@@ -20,6 +20,26 @@ body {
     overflow-x: hidden;
 }
 
+/* Global Module Container Standard */
+.app-container {
+    padding: 2rem 1rem;
+    padding-top: 0 !important;
+    margin: 0 auto;
+    min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+    .app-container {
+        padding: 1rem 0.75rem;
+        padding-top: 0 !important;
+    }
+}
+
+/* Eliminate excessive gap between header and content */
+.header-bar + * {
+    margin-top: 0 !important;
+}
+
 /* Global Form Elements */
 .game-input {
     width: 100%;
@@ -91,6 +111,11 @@ body.modal-open {
 }
 
 @media (max-width: 768px) {
+    .header-bar {
+        margin-bottom: 15px !important;
+        padding: 5px 0 !important;
+    }
+
     .header-bar h1 {
         font-size: 1.6rem;
     }
