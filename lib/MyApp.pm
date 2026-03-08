@@ -72,40 +72,6 @@ sub startup {
         $c->res->headers->header('Pragma' => 'no-cache');
         $c->res->headers->header('Expires' => '0');
     });
-
-    # Global Hook: CSRF Protection
-    # Validates the X-CSRF-Token header for all unsafe HTTP methods (POST, DELETE).
-    # Allows gradual per-module enforcement by checking if CSRF is required.
-    $self->hook(before_dispatch => sub {
-        my $c = shift;
-        
-        # Only validate unsafe methods
-        my $method = $c->req->method;
-        return if $method eq 'GET' || $method eq 'HEAD';
-
-        # Bypass auth routes as they handle their own validation or are the entry point
-        my $path = $c->req->url->path->to_string;
-        return if $path =~ m{^/(login|register)};
-
-        # Extract token from header (Standard for AJAX/SPA)
-        my $token = $c->req->headers->header('X-CSRF-Token');
-        
-        # Validate token against session
-        # If validation fails, we return a 403 Forbidden
-        if (!$c->is_csrf_authenticated($token)) {
-            $c->app->log->warn("CSRF validation failed for $path from " . $c->tx->remote_address);
-            
-            # For API/AJAX requests, return JSON
-            if ($path =~ m{/api/}) {
-                $c->render(json => { success => 0, error => 'Security token mismatch. Please refresh the page.' }, status => 403);
-            } else {
-                $c->render(text => 'CSRF Token Invalid', status => 403);
-            }
-            
-            # Stop the dispatch chain
-            return undef;
-        }
-    });
     
     # Helper: CSRF Token Generator
     # Parameters: None (Uses context)
