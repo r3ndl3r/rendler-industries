@@ -543,6 +543,22 @@
 
 .upcoming-event-item:hover { background: #f0f0f0; }
 
+.upcoming-day-header {
+    margin-top: 15px;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    font-weight: 800;
+    color: #1e40af;
+    font-size: 0.85em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.upcoming-day-header:first-child { margin-top: 0; }
+
 .upcoming-event-details {
     flex: 1;
 }
