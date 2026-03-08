@@ -82,7 +82,7 @@ The system features a redundant, priority-weighted alert engine:
 ![Reminders](public/images/screenshots/reminders.png)
 
 <p align="center">
-  <img src="public/images/screenshots/reminders_edit.png" width="98%" />
+  <img src="public/images/screenshots/reminders_edit.png" width="32%" />
 </p>
 
 ### 🛒 Collaborative Shopping & Todo (`/shopping`, `/todo`)
