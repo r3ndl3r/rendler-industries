@@ -24,7 +24,6 @@
 .calendar-container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 5px;
 }
 
 .calendar-view {
@@ -38,24 +37,28 @@
 
 .calendar-header {
     display: flex;
+    justify-content: center;
+    align-items: center;
     flex-direction: column;
-    gap: 6px;
-    margin-bottom: 6px;
+    margin-bottom: 25px;
+    padding: 10px 0;
+    gap: 15px;
 }
 
 .calendar-controls {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: 15px;
 }
 
 .calendar-controls h2 {
     margin: 0;
     color: #ffffff;
-    font-size: 1.1em;
+    font-size: 1.5rem;
+    font-weight: 300;
     text-align: center;
-    min-width: 180px;
+    min-width: 200px;
 }
 
 .calendar-actions {
@@ -67,17 +70,25 @@
 }
 
 .nav-btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    background-color: #374151;
-    color: #e5e7eb;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background: #1e293b;
+    color: #ffffff;
     cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.2s;
+    font-size: 14px;
+    transition: all 0.2s;
 }
 
-.nav-btn:hover { background-color: #4b5563; }
+.nav-btn:hover {
+    background: #334155;
+    border-color: #3b82f6;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
 
 .view-toggle {
     display: flex;
@@ -424,20 +435,7 @@
 .event-detail-attendees { display: block !important; width: auto; }
 .event-detail-attendees .attendee-pill { display: inline-block !important; width: auto !important; margin-right: 5px; margin-bottom: 2px; }
 
-.attendees-select-container {
-    max-height: 200px; 
-    overflow-y: auto; 
-    border: 1px solid #334155;
-    border-radius: 6px; 
-    padding: 10px; 
-    background: #0f172a;
-}
-
-.attendee-checkbox { display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer; color: #cbd5e1; }
-.attendee-checkbox:hover { background: #1e293b; color: #ffffff; }
-
 /* --- 6. Management Ledger --- */
-
 .manage-container { max-width: 1200px; margin: 0 auto; padding: 12px; }
 
 .manage-container .header-bar h1 {
@@ -789,11 +787,8 @@
        FORMS & DETAILS
        ========================================= */
 
-    .attendees-select-container {
-        max-height: 150px;
-    }
-    
     /* Stack label and value vertically in Event Details modal */
+
     .event-detail-row {
         flex-direction: column;
         gap: 5px;
