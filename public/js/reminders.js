@@ -224,34 +224,16 @@ function renderReminderCard(r) {
  * @returns {void}
  */
 function renderSelectors() {
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((name, i) => ({ id: i + 1, label: name }));
+    const recipients = STATE.recipients.map(u => ({ id: u.id, label: escapeHtml(u.username) }));
     
-    const renderDays = (prefix) => {
-        const container = document.getElementById(`${prefix}DaysSelector`);
-        if (!container) return;
-        container.innerHTML = dayNames.map((name, i) => `
-            <label class="day-checkbox">
-                <input type="checkbox" name="days[]" value="${i + 1}" id="${prefix}Day${i + 1}">
-                <span>${name}</span>
-            </label>
-        `).join('');
-    };
+    // Render Day Grids
+    renderSelectorGrid('addDaysSelector', days, { name: 'days[]', prefix: 'addDay', type: 'day' });
+    renderSelectorGrid('editDaysSelector', days, { name: 'days[]', prefix: 'editDay', type: 'day' });
 
-    const renderRecipients = (prefix) => {
-        const container = document.getElementById(`${prefix}RecipientsSelector`);
-        if (!container) return;
-        container.innerHTML = STATE.recipients.map(u => `
-            <label class="recipient-checkbox">
-                <input type="checkbox" name="recipients[]" value="${u.id}" id="${prefix}Recipient${u.id}">
-                <span>${escapeHtml(u.username)}</span>
-            </label>
-        `).join('');
-    };
-
-    renderDays('add');
-    renderDays('edit');
-    renderRecipients('add');
-    renderRecipients('edit');
+    // Render Recipient Grids
+    renderSelectorGrid('addRecipientsSelector', recipients, { name: 'recipients[]', prefix: 'addRecipient' });
+    renderSelectorGrid('editRecipientsSelector', recipients, { name: 'recipients[]', prefix: 'editRecipient' });
 }
 
 /**
@@ -571,17 +553,8 @@ function updateCountdowns() {
  */
 
 /**
- * Translates ISO day number to human-readable name.
- * 
- * @param {number} day - ISO day index (1-7).
- * @returns {string} - Full name.
- */
-function getDayFullName(day) {
-    return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][day - 1];
-}
-
-/**
  * Prevents XSS by sanitizing dynamic content.
+
  * 
  * @param {string} text - Raw input.
  * @returns {string} - Sanitized HTML.
