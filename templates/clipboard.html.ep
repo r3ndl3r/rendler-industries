@@ -8,7 +8,7 @@
     <script src="/js/clipboard.js?<%= time %>"></script>
 % end
 
-<div class="admin-container">
+<div class="admin-container app-container">
     <div class="header-bar">
         <h1><%= icon('copy') %> <span>Clipboard</span></h1>
         <div class="manage-actions">
