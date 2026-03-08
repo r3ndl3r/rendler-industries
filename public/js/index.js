@@ -118,8 +118,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     openDirs.pop();
                     html += '</ul></li>';
                 }
-                html += `<li class="git-item">[ <a href="https://git.rendler.org/" class="footer-link">git</a> ]</li>`;
                 tree.innerHTML = html;
+
+                // Clean Room Implementation: Standalone footer for perfect centering
+                const existingGit = box.querySelector('.git-link-container');
+                if (existingGit) existingGit.remove();
+
+                const gitContainer = document.createElement('div');
+                gitContainer.className = 'git-link-container';
+                gitContainer.innerHTML = '[ <a href="https://git.rendler.org/">git</a> ]';
+                box.appendChild(gitContainer);
             } catch (err) {
                 console.error('File map error:', err);
                 tree.innerHTML = '<li><span class="error-text">Failed to load file map.</span></li>';
