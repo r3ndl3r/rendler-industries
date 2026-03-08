@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="/css/quick.css?<%= time %>">
 % end
 
-<div class="quick-container">
+<div class="quick-container app-container">
     <div class="header-bar">
-        <h1><%= icon('quick') %> Quick Access</h1>
+        <h1><%= icon('quick') %> <span>Quick Access</span></h1>
     </div>
 
     <div class="tile-grid">
