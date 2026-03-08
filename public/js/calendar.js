@@ -186,15 +186,8 @@ function populateDropdowns() {
     }
 
     // 2. Attendee Checkboxes
-    const attendeeContainer = document.getElementById('attendees-container');
-    if (attendeeContainer) {
-        attendeeContainer.innerHTML = STATE.users.map(u => `
-            <label class="attendee-checkbox">
-                <input type="checkbox" name="attendees[]" value="${u.id}" class="attendee-checkbox-input">
-                <span>${escapeHtml(u.display_name || u.username)}</span>
-            </label>
-        `).join('');
-    }
+    const recipients = STATE.users.map(u => ({ id: u.id, label: escapeHtml(u.display_name || u.username) }));
+    renderSelectorGrid('attendees-container', recipients, { name: 'attendees[]', prefix: 'attendee' });
 }
 
 /**
@@ -635,7 +628,7 @@ async function handleEventSubmit(event) {
     btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
     try {
-        const result = await apiPost(url, Object.fromEntries(formData));
+        const result = await apiPost(url, formData);
         if (result && result.success) {
             closeEventModal();
             await loadEvents();
@@ -739,7 +732,7 @@ function openEditModalById(id) {
     document.getElementById('eventEndTime').value = (eTime || '').substring(0, 5);
 
     const attendeeIds = (event.attendees || '').split(',');
-    document.querySelectorAll('.attendee-checkbox-input').forEach(cb => {
+    document.querySelectorAll('#attendees-container input[type="checkbox"]').forEach(cb => {
         cb.checked = attendeeIds.includes(cb.value);
     });
 
