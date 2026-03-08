@@ -1082,3 +1082,204 @@ a:hover {
 .recipient-checkbox:has(input:checked) span {
     color: #ffffff;
 }
+
+/* --- Global Redirect & Splash Screens --- */
+.redirect-splash {
+    position: fixed; inset: 0; z-index: 15000;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+}
+
+.redirect-splash-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 1.5rem;
+    padding: 2.5rem 3rem;
+    text-align: center;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+}
+
+.redirect-splash-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+
+.redirect-splash-card h2 {
+    font-size: 1.3rem; font-weight: 300;
+    color: #fff; margin: 0 0 0.5rem;
+}
+
+.redirect-splash-card p {
+    color: #94a3b8; font-size: 0.95rem; margin: 0 0 1.5rem;
+}
+
+.redirect-splash-card p a.redirect-link {
+    color: #90caf9;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.redirect-splash-card p a.redirect-link:hover {
+    color: #fff;
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+.redirect-splash-card p strong { color: inherit; }
+
+.redirect-progress-track {
+    background: rgba(255,255,255,0.08);
+    border-radius: 9999px; height: 4px;
+    overflow: hidden; margin-bottom: 1.5rem;
+}
+
+.redirect-progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #3b82f6, #90caf9);
+    border-radius: 9999px;
+    transition: width 0.05s linear;
+}
+
+.btn-cancel-redirect {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #94a3b8; font-size: 0.85rem;
+    padding: 0.5rem 1.25rem; border-radius: 0.5rem;
+    cursor: pointer; transition: all 0.2s;
+}
+
+.btn-cancel-redirect:hover {
+    border-color: rgba(255,255,255,0.3); color: #fff;
+}
+
+/* --- Global Data Display Utilities --- */
+.label-caps {
+    display: block;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    letter-spacing: 1.5px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.data-text-lg {
+    font-size: 1.1rem;
+    line-height: 1.4;
+    color: white;
+}
+
+.data-divider {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 15px 0;
+}
+
+.data-subtext {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 8px;
+}
+
+/* --- Global Dashboard Tiles --- */
+.dashboard-tile {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.dashboard-tile:hover {
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Global Admin/Debug Boxes --- */
+.debug-box, .visit-box {
+    position: fixed;
+    bottom: 10px;
+    background: rgba(30, 41, 59, 0.9);
+    backdrop-filter: blur(4px);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 1000;
+}
+
+.debug-box { right: 10px; }
+.visit-box { left: 10px; }
+
+/* --- Global File Map / Tree --- */
+.file-map-container {
+    display: none;
+    margin-top: 20px;
+    border: 1px dashed #334155;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.8);
+    width: 100%;
+    max-width: 600px;
+    text-align: left;
+    box-sizing: border-box;
+    border-radius: 12px;
+}
+
+.file-tree, .file-tree ul {
+    list-style-type: none;
+    padding-left: 20px;
+    margin: 0;
+}
+
+.file-tree li {
+    margin: 4px 0;
+    line-height: 1.4;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+
+.folder-name {
+    color: #f59e0b;
+    font-weight: bold;
+}
+
+.file-link {
+    color: #94a3b8;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.file-link:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+/* --- Global Footer Styles --- */
+.platform-footer {
+    color: #64748b;
+    font-size: 0.75rem;
+    text-align: center;
+    margin-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+.footer-link-standard {
+    color: #64748b;
+    transition: all 0.2s;
+}
+
+.footer-link-standard:hover {
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.footer-img {
+    border-radius: 4px;
+    height: 18px;
+    vertical-align: middle;
+    margin: 0 2px;
+}
