@@ -29,60 +29,60 @@
     <img src="/files/serve/58" class="banner-logo" alt="Banner">
     
     <%# Local Time Card %>
-    <div class="info-card">
-        <span class="label">LOCAL TIME (AEST)</span>
-        <div class="data-text">
+    <div class="dashboard-tile info-card">
+        <span class="label-caps">LOCAL TIME (AEST)</span>
+        <div class="data-text-lg">
             <div class="dashboard-clock-container">
                 <span id="clock-prefix"></span>
                 <div id="main-clock" class="flip-clock"></div>
             </div>
         </div>
         
-        <div class="card-divider"></div>
-        <span class="label">SERVER UPTIME [KUMA]</span>
-        <div class="age-text">
+        <div class="data-divider"></div>
+        <span class="label-caps">SERVER UPTIME [KUMA]</span>
+        <div class="data-text-lg">
             <span id="server">Loading...</span>
         </div>
-        <div class="subtext">
+        <div class="data-subtext">
             Runtime: <span id="servers">Loading...</span> seconds
         </div>
     </div>
                 
     <%# Andrea Uptime Card %>
-    <div class="info-card">
-        <span class="label">ANDREA'S UPTIME</span>
-        <div class="age-text">
+    <div class="dashboard-tile info-card">
+        <span class="label-caps">ANDREA'S UPTIME</span>
+        <div class="data-text-lg">
             <span id="andrea">Loading...</span>
         </div>
-        <div class="subtext">
+        <div class="data-subtext">
             Runtime: <span id="andreas">Loading...</span> seconds
         </div>
     </div>
 
     <%# Nicky Uptime Card %>
-    <div class="info-card">
-        <span class="label">NICKY'S UPTIME</span>
-        <div class="age-text">
+    <div class="dashboard-tile info-card">
+        <span class="label-caps">NICKY'S UPTIME</span>
+        <div class="data-text-lg">
             <span id="nicky">Loading...</span>
         </div>
-        <div class="subtext">
+        <div class="data-subtext">
             Runtime: <span id="nickys">Loading...</span> seconds
         </div>
     </div>
 
     <%# Platform Footer %>
-    <p class="footer">
-        Powered by <a href="https://debian.org" class="footer-link"> Debian <img alt="debian" src="/files/serve/2"></a> || 
-        <a href="https://perl.org/" class="footer-link"> Perl <img alt="perl" src="/files/serve/4"></a> || 
-        <a href="http://mojolicious.org" class="footer-link"> Mojolicious <img alt="mojo" src="/files/serve/5"></a> ||
-        <a href="https://cloudflare.com/" class="footer-link"> Cloudflare <img alt="apache" src="/files/serve/65"></a> || 
-        <a href="https://mariadb.org" class="footer-link"> MariaDB <img alt="mariadb" src="/files/serve/3"></a>
+    <p class="platform-footer">
+        Powered by <a href="https://debian.org" class="footer-link-standard"> Debian <img alt="debian" src="/files/serve/2" class="footer-img"></a> || 
+        <a href="https://perl.org/" class="footer-link-standard"> Perl <img alt="perl" src="/files/serve/4" class="footer-img"></a> || 
+        <a href="http://mojolicious.org" class="footer-link-standard"> Mojolicious <img alt="mojo" src="/files/serve/5" class="footer-img"></a> || 
+        <a href="https://cloudflare.com/" class="footer-link-standard"> Cloudflare <img alt="apache" src="/files/serve/65" class="footer-img"></a> || 
+        <a href="https://mariadb.org" class="footer-link-standard"> MariaDB <img alt="mariadb" src="/files/serve/3" class="footer-img"></a>
     </p>
 
-    <p class="footer">
+    <p class="platform-footer">
         Made possible by:
         <a href="javascript:void(0);"
-           id="listFilesLink" class="footer-link">these thingies</a>
+           id="listFilesLink" class="footer-link-standard">these thingies</a>
     </p>
 
     <%# File Tree Overlay %>
