@@ -6,7 +6,6 @@
 
 .manage-container {
     padding: 2rem 1rem;
-    padding-top: 0;
     max-width: 1200px;
     margin: 0 auto;
     min-height: 100vh;
@@ -297,7 +296,6 @@
 
     .manage-container {
         padding: 0.5rem;
-        padding-top: 0;
         background-color: #0f172a;
     }
     
