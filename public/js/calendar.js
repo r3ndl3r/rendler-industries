@@ -401,13 +401,14 @@ function renderManagementTable() {
 function renderTable(events, emptyMsg) {
     if (events.length === 0) return `<div class="empty-state">${emptyMsg}</div>`;
 
-    return `
-        <table class="events-table">
+    let lastDay = '';
+    let groupClass = 'group-even';
+    let html = `
+        <table class="events-table grouped-table">
             <thead>
                 <tr>
                     <th class="col-title">Title</th>
-                    <th class="col-start">Start</th>
-                    <th class="col-end">End</th>
+                    <th class="col-time">Time</th>
                     <th class="col-category">Category</th>
                     <th class="col-attendees">Attendees</th>
                     <th class="col-creator">Created By</th>
@@ -415,65 +416,93 @@ function renderTable(events, emptyMsg) {
                 </tr>
             </thead>
             <tbody>
-                ${events.map(e => `
-                    <tr data-event-id="${e.id}">
-                        <td>
-                            <span class="event-color-dot" style="--event-color: ${e.color}"></span>
-                            <strong>${escapeHtml(e.title)}</strong>
-                            ${e.description ? `<div class="event-desc">${escapeHtml(e.description)}</div>` : ''}
-                        </td>
-                        <td class="date-cell">${formatDateTimeNumeric(e.start_date, e.all_day)}</td>
-                        <td class="date-cell">${formatDateTimeNumeric(e.end_date, e.all_day)}</td>
-                        <td>${escapeHtml(e.category || '-')}</td>
-                        <td class="attendees-cell">
-                            <div class="attendee-pills-container">
-                                ${renderAttendeePills(e.attendee_names, true)}
-                            </div>
-                        </td>
-                        <td>${escapeHtml(e.creator_name || 'Unknown')}</td>
-                        <td class="actions-cell">
-                            <div class="action-btns">
-                                <button type="button" class="btn-icon-edit" onclick="openEditModalById(${e.id})" title="Edit">${getIcon('edit')}</button>
-                                <button type="button" class="btn-icon-delete" onclick="confirmDeleteEvent(${e.id}, '${escapeHtml(e.title)}')" title="Delete">${getIcon('delete')}</button>
-                            </div>
-                        </td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
     `;
+
+    events.forEach(e => {
+        const currentDay = e.start_date.split(' ')[0];
+        if (currentDay !== lastDay) {
+            lastDay = currentDay;
+            groupClass = (groupClass === 'group-odd') ? 'group-even' : 'group-odd';
+            
+            html += `
+                <tr class="day-group-header ${groupClass}">
+                    <td colspan="6">
+                        <div class="day-group-label">${getIcon('calendar')} ${formatDateWithOrdinal(currentDay)}</div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        const timeDisplay = e.all_day ? '(All day)' : `${formatTime(e.start_date)} - ${formatTime(e.end_date)}`;
+
+        html += `
+            <tr data-event-id="${e.id}" class="${groupClass}">
+                <td>
+                    <span class="event-color-dot" style="--event-color: ${e.color}"></span>
+                    <strong>${escapeHtml(e.title)}</strong>
+                    ${e.description ? `<div class="event-desc">${escapeHtml(e.description)}</div>` : ''}
+                </td>
+                <td class="date-cell">${timeDisplay}</td>
+                <td>${escapeHtml(e.category || '-')}</td>
+                <td class="attendees-cell">
+                    <div class="attendee-pills-container">
+                        ${renderAttendeePills(e.attendee_names, true)}
+                    </div>
+                </td>
+                <td>${escapeHtml(e.creator_name || 'Unknown')}</td>
+                <td class="actions-cell">
+                    <div class="action-btns">
+                        <button type="button" class="btn-icon-edit" onclick="openEditModalById(${e.id})" title="Edit">${getIcon('edit')}</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteEvent(${e.id}, '${escapeHtml(e.title)}')" title="Delete">${getIcon('delete')}</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table>`;
+    return html;
 }
 
 /**
- * Formats time from SQL string to 12h AM/PM without spaces.
+ * Formats a date string into "Sunday, 8th March 2026" format.
+ * 
+ * @param {string} dateStr - YYYY-MM-DD string.
+ * @returns {string} - Formatted date.
+ */
+function formatDateWithOrdinal(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+    const day = d.getDate();
+    const month = d.toLocaleDateString('en-US', { month: 'long' });
+    const year = d.getFullYear();
+
+    const ordinal = (day) => {
+        if (day > 3 && day < 21) return 'th';
+        switch (day % 10) {
+            case 1:  return "st";
+            case 2:  return "nd";
+            case 3:  return "rd";
+            default: return "th";
+        }
+    };
+
+    return `${dayName}, ${day}${ordinal(day)} ${month} ${year}`;
+}
+
+/**
+ * Formats time from SQL string to 12h AM/PM (e.g. "12:00PM").
  * 
  * @param {string} dtStr - SQL datetime.
- * @returns {string} - Formatted time (e.g. "12:00PM").
+ * @returns {string} - Formatted time.
  */
-function formatTimeNumeric(dtStr) {
+function formatTime(dtStr) {
     const t = dtStr.split(' ')[1];
     if (!t) return '';
     const [h, m] = t.split(':');
     const hour = parseInt(h);
     const ampm = hour >= 12 ? 'PM' : 'AM';
     return `${hour % 12 || 12}:${m}${ampm}`;
-}
-
-/**
- * Generates a numerical DD/MM/YYYY date/time label for management.
- * 
- * @param {string} dtStr - SQL datetime.
- * @param {boolean} allDay - Flag for date-only focus.
- * @returns {string} - Friendly label.
- */
-function formatDateTimeNumeric(dtStr, allDay) {
-    if (!dtStr) return '-';
-    const [datePart] = dtStr.split(' ');
-    const [y, m, d] = datePart.split('-');
-    const dateFormatted = `${d}/${m}/${y}`;
-    
-    if (allDay) return `${dateFormatted} (All day)`;
-    return `${dateFormatted} - ${formatTimeNumeric(dtStr)}`;
 }
 
 /**
@@ -841,20 +870,6 @@ function formatDate(date) {
 }
 
 /**
- * Formats time from SQL string to 12h AM/PM.
- * 
- * @param {string} dtStr - SQL datetime.
- * @returns {string} - Formatted time.
- */
-function formatTime(dtStr) {
-    const t = dtStr.split(' ')[1];
-    if (!t) return '';
-    const [h, m] = t.split(':');
-    const hour = parseInt(h);
-    return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
-}
-
-/**
  * Generates a high-density descriptive date/time label.
  * 
  * @param {string} dtStr - SQL datetime.
@@ -863,10 +878,10 @@ function formatTime(dtStr) {
  */
 function formatDateTimeFriendly(dtStr, allDay) {
     if (!dtStr) return '-';
-    const d = new Date(dtStr.replace(' ', 'T'));
-    const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
-    if (allDay) return d.toLocaleDateString('en-US', options);
-    return d.toLocaleDateString('en-US', options) + ' ' + formatTime(dtStr);
+    const [datePart] = dtStr.split(' ');
+    const dateStr = formatDateWithOrdinal(datePart);
+    if (allDay) return dateStr;
+    return `${dateStr} at ${formatTime(dtStr)}`;
 }
 
 /**
@@ -876,16 +891,7 @@ function formatDateTimeFriendly(dtStr, allDay) {
  * @returns {string} - Date label.
  */
 function formatEventDateTime(e) {
-    const d = new Date(e.start_date.replace(' ', 'T'));
-    const dateStr = d.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
-    
-    if (e.all_day) return dateStr;
-    return `${dateStr} at ${formatTime(e.start_date)}`;
+    return formatDateTimeFriendly(e.start_date, e.all_day);
 }
 
 /**
