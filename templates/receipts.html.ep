@@ -1,7 +1,7 @@
 <%# /templates/receipts.html.ep %>
 
 % layout 'default';
-% title icon('receipts') . ' Receipts';
+% title icon('receipts') . ' Shopping Receipts Ledger';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/files.css?<%= time %>">
@@ -12,7 +12,7 @@
     <script src="/js/vendor/heic2any.min.js?<%= time %>"></script>
 % end
 
-<div class="admin-container">
+<div class="admin-container app-container">
     <div class="header-bar">
         <h1><%= icon('receipts') %> <span>Receipts</span></h1>
         <div class="manage-actions">
