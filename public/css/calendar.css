@@ -461,6 +461,7 @@
 .events-table { width: 100%; border-collapse: collapse; color: #222222; }
 .events-table th { background: #f5f5f5; padding: 8px; text-align: left; border-bottom: 2px solid #dddddd; color: #222222; font-size: 0.85em; }
 .events-table th.col-title { width: 35%; }
+.events-table th.col-time { width: 180px; }
 
 .events-table td { 
     padding: 12px 10px; 
@@ -471,6 +472,29 @@
     white-space: normal;
     word-wrap: break-word;
     word-break: break-word;
+}
+
+.date-cell {
+    white-space: nowrap;
+}
+
+/* Grouped Table Layout */
+.events-table tr.group-odd { background-color: #ffffff; }
+.events-table tr.group-even { background-color: #cbd5e1; }
+.events-table tr.group-odd:hover { background-color: #f1f5f9; }
+.events-table tr.group-even:hover { background-color: #94a3b8; }
+
+.day-group-header td {
+    padding: 12px 15px !important;
+}
+
+.day-group-label {
+    font-weight: 800;
+    color: #1e40af;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1rem;
 }
 
 .events-table tr:hover { background: #f9f9f9; }
@@ -533,6 +557,7 @@
     font-size: 0.9em;
     color: #444;
     margin-bottom: 2px;
+    white-space: nowrap;
 }
 
 .upcoming-event-attendees {
@@ -713,6 +738,7 @@
     
     .upcoming-event-datetime {
         font-size: 0.8em;
+        white-space: nowrap;
     }
     
     .upcoming-event-attendees .attendee-pill {
@@ -793,8 +819,7 @@
     /* Force table elements to behave like block elements */
     .events-table, 
     .events-table tbody, 
-    .events-table tr, 
-    .events-table td {
+    .events-table tr {
         display: block;
         width: 100%;
         box-sizing: border-box;
@@ -813,6 +838,22 @@
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         padding: 8px 12px;
+    }
+
+    .events-table tr.group-even {
+        background: #f5f5f5;
+    }
+
+    .events-table tr.day-group-header {
+        margin-bottom: 5px;
+        padding: 5px 12px;
+    }
+
+    .events-table tr.day-group-header td {
+        display: block !important;
+        text-align: left !important;
+        border-bottom: none !important;
+        padding: 5px 0 !important;
     }
 
     /* Style each cell to be a row inside the card */
@@ -836,7 +877,7 @@
     }
 
     /* FIRST COLUMN (Title): Style it as a card header */
-    .events-table td:nth-of-type(1) {
+    .events-table tr:not(.day-group-header) td:nth-of-type(1) {
         display: block;
         text-align: left;
         border-bottom: 2px solid #3b82f6;
@@ -850,12 +891,11 @@
         margin-bottom: 4px;
     }
 
-    /* INJECT LABELS: Uses CSS 'content' to add labels (Start, End, etc.) before the value */
-    .events-table td:nth-of-type(2)::before { content: "Start"; font-weight: bold; color: #666; float: left; }
-    .events-table td:nth-of-type(3)::before { content: "End"; font-weight: bold; color: #666; float: left; }
-    .events-table td:nth-of-type(4)::before { content: "Category"; font-weight: bold; color: #666; float: left; }
-    .events-table td:nth-of-type(5)::before { content: "Attendees"; font-weight: bold; color: #666; float: left; }
-    .events-table td:nth-of-type(6)::before { content: "Created By"; font-weight: bold; color: #666; float: left; }
+    /* INJECT LABELS: Uses CSS 'content' to add labels before the value */
+    .events-table td:nth-of-type(2)::before { content: "Time"; font-weight: bold; color: #666; float: left; }
+    .events-table td:nth-of-type(3)::before { content: "Category"; font-weight: bold; color: #666; float: left; }
+    .events-table td:nth-of-type(4)::before { content: "Attendees"; font-weight: bold; color: #666; float: left; }
+    .events-table td:nth-of-type(5)::before { content: "Created By"; font-weight: bold; color: #666; float: left; }
 
     /* Touch-friendly buttons */
     .actions-cell button {
