@@ -8,7 +8,7 @@
     <script src="/js/reminders.js?<%= time %>"></script>
 % end
 
-<div class="reminders-container">
+<div class="reminders-container app-container">
     <div class="header-bar">
         <h1><%= icon('reminders') %> <span>Reminders</span></h1>
         <div class="manage-actions">
