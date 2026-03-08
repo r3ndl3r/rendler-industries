@@ -771,7 +771,7 @@ function showEventDetails(id) {
             <div class="event-detail-row"><strong>${getIcon('clock')} Time:</strong> <span>${timeInfo}</span></div>
             ${event.category ? `<div class="event-detail-row"><strong>${getIcon('info')} Category:</strong> <span>${escapeHtml(event.category)}</span></div>` : ''}
             ${event.description ? `<div class="event-detail-row"><strong>${getIcon('clipboard')} Description:</strong> <span>${escapeHtml(event.description)}</span></div>` : ''}
-            ${event.attendee_names ? `<div class="event-detail-row"><strong>${getIcon('family')} Attendees:</strong> <span>${renderAttendeePills(event.attendee_names)}</span></div>` : ''}
+            ${event.attendee_names ? `<div class="event-detail-row"><strong>${getIcon('family')} Attendees:</strong> <span>${renderAttendeePills(event.attendee_names, true)}</span></div>` : ''}
             <div class="event-detail-row"><strong>${getIcon('user')} Created By:</strong> <span>${escapeHtml(event.creator_name || 'Unknown')}</span></div>
         </div>
     `;
