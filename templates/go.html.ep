@@ -8,7 +8,7 @@
     <script src="/js/go.js?<%= time %>"></script>
 % end
 
-<div class="go-container">
+<div class="go-container app-container">
     <div class="header-bar">
         <h1><%= icon('link') %> <span>Go Links</span></h1>
     </div>
