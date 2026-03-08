@@ -111,6 +111,78 @@ function setupGlobalModalClosing(modalClasses = ['modal-overlay', 'delete-modal-
 }
 
 /**
+ * --- Global Security Helpers (CSRF) ---
+ * 
+ * Automatically synchronizes the CSRF token from the meta tag to all 
+ * outgoing state-changing requests (POST, PUT, DELETE, PATCH).
+ * 
+ * This ensures platform-wide security without manual boilerplate.
+ */
+(function() {
+    const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    // 1. Fetch API Hook: Injects token into headers for native fetch calls
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+        const token = getCsrfToken();
+        const method = (options.method || 'GET').toUpperCase();
+        
+        // Security: Only inject token for state-changing, same-origin requests
+        // This prevents leaking the token to external domains.
+        const isSameOrigin = (url) => {
+            if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) return true;
+            try {
+                const target = new URL(url, window.location.origin);
+                return target.origin === window.location.origin;
+            } catch (e) {
+                return false;
+            }
+        };
+
+        if (token && !['GET', 'HEAD', 'OPTIONS'].includes(method) && isSameOrigin(url.toString())) {
+            options.headers = options.headers || {};
+            if (options.headers instanceof Headers) {
+                if (!options.headers.has('X-CSRF-Token')) options.headers.append('X-CSRF-Token', token);
+            } else if (Array.isArray(options.headers)) {
+                if (!options.headers.some(h => h[0].toLowerCase() === 'x-csrf-token')) options.headers.push(['X-CSRF-Token', token]);
+            } else {
+                if (!options.headers['X-CSRF-Token']) options.headers['X-CSRF-Token'] = token;
+            }
+        }
+        return originalFetch(url, options);
+    };
+
+    // 2. jQuery AJAX Hook: Injects token into all jQuery-based requests
+    if (window.jQuery) {
+        window.jQuery.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                const token = getCsrfToken();
+                if (token && !['GET', 'HEAD', 'OPTIONS'].includes(settings.type.toUpperCase())) {
+                    xhr.setRequestHeader('X-CSRF-Token', token);
+                }
+            }
+        });
+    }
+
+    // 3. Form Submission Hook: Injects hidden input into standard POST forms
+    document.addEventListener('submit', function(e) {
+        if (e.target.tagName === 'FORM') {
+            const method = (e.target.getAttribute('method') || 'GET').toUpperCase();
+            if (method !== 'GET') {
+                const token = getCsrfToken();
+                if (token && !e.target.querySelector('input[name="csrf_token"]')) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'csrf_token';
+                    input.value = token;
+                    e.target.prepend(input);
+                }
+            }
+        }
+    });
+})();
+
+/**
  * Standard AJAX POST wrapper with integrated feedback.
  * 
  * @param {string} url - Target API endpoint.
@@ -123,10 +195,11 @@ async function apiPost(url, data = {}) {
             method: 'POST'
         };
 
+        // Note: CSRF token is automatically injected by the global fetch hook above.
+
         // Automatic content-type detection for binary vs form data
         if (data instanceof FormData) {
             options.body = data;
-            // Note: browser manages boundary for FormData; do NOT set Content-Type
         } else {
             options.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
             options.body = new URLSearchParams(data);
