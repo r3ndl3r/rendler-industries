@@ -8,7 +8,7 @@
     <script src="/js/ai.js?<%= time %>"></script>
 % end
 
-<div class="ai-container">
+<div class="ai-container app-container">
     <div class="header-bar">
         <h1><%= icon('ai') %> <span>Family Pulse AI</span></h1>
         <div class="manage-actions">
