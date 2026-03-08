@@ -8,7 +8,7 @@
     <script src="/js/swear.js?<%= time %>"></script>
 % end
 
-<div class="swear-container">
+<div class="swear-container app-container">
     <div class="header-bar">
         <h1><%= icon('swear') %> <span>Swear Jar</span></h1>
         <div class="manage-actions">
