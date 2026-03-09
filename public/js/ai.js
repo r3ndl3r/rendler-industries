@@ -24,7 +24,7 @@
  */
 const CONFIG = {
     MAX_HISTORY: 50,                 // Client-side message retention limit
-    SCROLL_DELAY_MS: 50              // UI timing for vertical alignment
+    SCROLL_DELAY_MS: 100             // UI timing for vertical alignment
 };
 
 let STATE = {
