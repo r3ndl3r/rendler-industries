@@ -254,7 +254,7 @@ function openEditModal(id) {
     if (input) {
         input.value = todo.task_name;
         const modal = document.getElementById('editModal');
-        modal.classList.add('show');
+        modal.classList.add('active');
         document.body.classList.add('modal-open');
         
         input.focus();
@@ -271,7 +271,7 @@ function openEditModal(id) {
 function closeEditModal() {
     const modal = document.getElementById('editModal');
     if (modal) {
-        modal.classList.remove('show');
+        modal.classList.remove('active');
         document.body.classList.remove('modal-open');
     }
 }
