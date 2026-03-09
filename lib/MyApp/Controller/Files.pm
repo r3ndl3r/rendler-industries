@@ -26,6 +26,9 @@ sub index {
 
     # Handle AJAX state request (Single Source of Truth)
     if ($c->req->headers->header('X-Requested-With') && $c->req->headers->header('X-Requested-With') eq 'XMLHttpRequest') {
+        # Security: Early exit if session lost
+        return $c->render(json => { success => 0, error => "Not logged in" }, status => 403) unless $c->is_logged_in;
+        
         my $files = $c->db->get_all_files_metadata;
         my $users = $c->db->get_all_users;
         
