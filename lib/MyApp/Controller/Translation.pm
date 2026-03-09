@@ -36,22 +36,30 @@ sub translate {
         return $c->render(json => { error => 'Missing text parameter' }, status => 400);
     }
 
-    my $result = $c->translate_text(
+    $c->render_later;
+
+    $c->translate_text(
         text   => $text,
         target => $target,
         source => $source || undef
-    );
+    )->then(sub {
+        my $result = shift;
+        
+        if (ref $result eq 'HASH' && $result->{error}) {
+            return $c->render(json => { error => $result->{error} }, status => 500);
+        }
 
-    if ($result->{error}) {
-        return $c->render(json => { error => $result->{error} }, status => 500);
-    }
-
-    # Standard JSON response
-    $c->render(json => {
-        success              => 1,
-        translated_text      => $result->{translated_text},
-        detected_source_lang => $result->{detected_source_lang},
-        cached               => $result->{cached}
+        # Standard JSON response
+        $c->render(json => {
+            success              => 1,
+            translated_text      => $result->{translated_text},
+            detected_source_lang => $result->{detected_source_lang},
+            cached               => $result->{cached}
+        });
+    })->catch(sub {
+        my $err = shift;
+        my $err_msg = ref $err eq 'HASH' ? $err->{error} : $err;
+        $c->render(json => { error => $err_msg }, status => 500);
     });
 }
 
