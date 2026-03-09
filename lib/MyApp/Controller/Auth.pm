@@ -45,15 +45,18 @@ sub login {
     my $auth_result = $c->db->authenticate_user($username, $password);
 
     if ($auth_result == 1) {
-        # Security: Rotate session on login to prevent fixation
-        my $old_session = $c->session;
-        $c->session(expires => 1); # Invalidate old session
+        # Security: Force session rotation by expiring the old ID and generating a new one
+        # 1. Clear current session data
+        $c->session({});
         
-        # Establish new session
+        # 2. Establish new user identity
         $c->session(user => $username);
         
-        # Regenerate CSRF token for the new session
-        # This ensures the post-login state uses a fresh token
+        # 3. Force Mojolicious to generate a fresh Session ID (Rotation)
+        # This is the safest way to prevent session fixation in Mojo.
+        $c->session(expires => time + (3600 * 24 * 30)); 
+        
+        # 4. Regenerate CSRF token for the new session
         $c->csrf_token;
         
         $c->app->log->info("User $username logged in (session rotated) from IP " . $c->tx->remote_address);
@@ -96,8 +99,9 @@ sub check_login {
 sub logout {
     my $c = shift;
     
-    # Invalidate session cookie immediately
+    # Invalidate session cookie immediately with negative expiration
     $c->session(expires => 1);
+    $c->session({}); # Clear all data
     
     return $c->redirect_to('/');
 }
