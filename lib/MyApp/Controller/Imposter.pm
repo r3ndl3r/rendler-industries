@@ -206,24 +206,30 @@ sub start_game {
     # Select random word and generate image
     my $selected = $pool[rand @pool];
     my $search_term = $selected->{search_term} || $selected->{en}->{word};
-    my $image_id = $c->fetch_and_store_image($search_term);
+    
+    $c->render_later;
+    $c->fetch_and_store_image_p($search_term)->then(sub {
+        my $image_id = shift;
+        
+        # Generate serve URL if image generation succeeded
+        my $image_url = $image_id ? "/files/serve/$image_id" : undef;
 
-    # Generate serve URL if image generation succeeded
-    my $image_url = $image_id ? "/files/serve/$image_id" : undef;
-
-    # Initialize game session
-    $c->session(imposter_game => {
-        players       => $players,
-        imposter      => $players->[rand @$players],
-        word_data     => $selected,
-        image_url     => $image_url,
-        image_file_id => $image_id,  # Stored for later cleanup
-        current_index => 0,
-        show_secret   => 0,
-        status        => 'passing',
-        timer_seconds => $minutes * 60
+        # Initialize game session
+        $c->session(imposter_game => {
+            players       => $players,
+            imposter      => $players->[rand @$players],
+            word_data     => $selected,
+            image_url     => $image_url,
+            image_file_id => $image_id,  # Stored for later cleanup
+            current_index => 0,
+            show_secret   => 0,
+            status        => 'passing',
+            timer_seconds => $minutes * 60
+        });
+        $c->redirect_to('/imposter');
+    })->catch(sub {
+        $c->redirect_to('/imposter');
     });
-    return $c->redirect_to('/imposter');
 }
 
 # Toggles the visibility of the secret word/role for the current player.
@@ -309,80 +315,82 @@ sub reveal_results {
 #   search_term : Term to query Unsplash API
 # Returns:
 #   file_id : ID of the stored file in DB, or undef on failure
-sub fetch_and_store_image {
+sub fetch_and_store_image_p {
     my ($c, $search_term) = @_;
     
     my $api_key = $c->db->get_unsplash_key() || '';
     my $image_url;
-    my $is_fallback = 0;
+    my $promise = Mojo::Promise->new;
 
-    # Attempt Unsplash API call if key is present
+    # Step 1: Get Image URL
+    my $get_url_p;
     if ($api_key && $api_key ne '') {
         my $api_url = "https://api.unsplash.com/photos/random?query=" 
                       . Mojo::Util::url_escape($search_term) 
                       . "&orientation=landscape&content_filter=high&client_id=$api_key";
         
-        # Use timeout to prevent server hanging on slow API
-        my $tx = $c->ua->request_timeout(5)->get($api_url);
-        if ($tx->result->is_success) {
-            $image_url = $tx->result->json->{urls}->{regular};
-        } else {
-            $c->app->log->warn("Unsplash API failed, using fallback.");
-            $is_fallback = 1;
-        }
+        $get_url_p = $c->ua->request_timeout(5)->get_p($api_url)->then(sub {
+            my $tx = shift;
+            if ($tx->result->is_success) {
+                return $tx->result->json->{urls}->{regular};
+            } else {
+                $c->app->log->warn("Unsplash API failed, using fallback.");
+                return "https://picsum.photos/800/600?random=" . time();
+            }
+        })->catch(sub {
+            $c->app->log->warn("Unsplash API exception, using fallback.");
+            return "https://picsum.photos/800/600?random=" . time();
+        });
     } else {
-        $is_fallback = 1;
+        $get_url_p = Mojo::Promise->resolve("https://picsum.photos/800/600?random=" . time());
     }
 
-    # Use Lorem Picsum if API fails or no key provided
-    if ($is_fallback) {
-        $image_url = "https://picsum.photos/800/600?random=" . time();
-    }
+    # Step 2: Download Image
+    $get_url_p->then(sub {
+        my $url = shift;
+        return Mojo::Promise->resolve(undef) unless $url;
+        
+        return $c->ua->request_timeout(5)->get_p($url)->then(sub {
+            my $img_tx = shift;
+            my $img_res = $img_tx->result;
 
-    return undef unless $image_url;
+            if ($img_res && $img_res->is_success) {
+                my $data = $img_res->body;
+                my $size = length($data);
+                my $mime = $img_res->headers->content_type || 'image/jpeg';
+                
+                my $ext = 'jpg';
+                $ext = 'png' if $mime =~ /png/i;
+                $ext = 'gif' if $mime =~ /gif/i;
+                
+                my $filename = "imposter_" . time() . "_" . int(rand(10000)) . ".$ext";
+                
+                my $file_id = eval {
+                    $c->db->store_file(
+                        $filename, $filename, $mime, $size, $data, 'system', undef
+                    );
+                };
+                
+                if ($@) {
+                    $c->app->log->error("Failed to store imposter image: $@");
+                    return undef;
+                }
+                return $file_id;
+            } else {
+                $c->app->log->error("Failed to download imposter image.");
+                return undef;
+            }
+        });
+    })->then(sub {
+        my $file_id = shift;
+        $promise->resolve($file_id);
+    })->catch(sub {
+        my $err = shift;
+        $c->app->log->error("Image fetch pipeline error: $err");
+        $promise->resolve(undef);
+    });
 
-    # Download image content
-    my $img_tx = $c->ua->request_timeout(5)->get($image_url);
-    my $img_res = $img_tx->result;
-
-    if ($img_res && $img_res->is_success) {
-        my $data = $img_res->body;
-        my $size = length($data);
-        my $mime = $img_res->headers->content_type || 'image/jpeg';
-        
-        # Determine file extension based on MIME
-        my $ext = 'jpg';
-        $ext = 'png' if $mime =~ /png/i;
-        $ext = 'gif' if $mime =~ /gif/i;
-        
-        # Generate unique internal filename to avoid collisions
-        my $filename = "imposter_" . time() . "_" . int(rand(10000)) . ".$ext";
-        
-        # Store metadata and content in database
-        my $file_id = eval {
-            $c->db->store_file(
-                $filename,                  # Saved filename
-                $filename,                  # Original filename
-                $mime,                      # Mime Type
-                $size,                      # File Size
-                $data,                      # Blob Data
-                'system',                   # Uploaded By
-                0,                          # Admin Only (False)
-                undef,                      # Allowed Users (Public)
-                "Imposter Image: $search_term" # Description
-            );
-        };
-        
-        if ($@) {
-            $c->app->log->error("Failed to store imposter image in DB: $@");
-            return undef;
-        }
-        
-        return $file_id;
-    }
-    
-    $c->app->log->warn("Failed to download image content from $image_url");
-    return undef;
+    return $promise;
 }
 
 # Internal Helper: Deletes the game image from the database.
