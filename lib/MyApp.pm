@@ -370,11 +370,11 @@ sub startup {
     # --- Reminders Administration Routes ---
     $family->get('/reminders')->to('reminders#index');
     $family->get('/reminders/api/state')->to('reminders#api_state');
-    $family->post('/reminders/add')->to('reminders#add');
-    $family->post('/reminders/update/:id')->to('reminders#update');
-    $family->post('/reminders/delete/:id')->to('reminders#delete');
-    $family->post('/reminders/toggle/:id')->to('reminders#toggle');
-    $family->post('/reminders/toggle_day')->to('reminders#toggle_day');
+    $family->post('/reminders/api/add')->to('reminders#api_add');
+    $family->post('/reminders/api/update/:id')->to('reminders#api_update');
+    $family->post('/reminders/api/delete/:id')->to('reminders#api_delete');
+    $family->post('/reminders/api/toggle/:id')->to('reminders#api_toggle');
+    $family->post('/reminders/api/toggle_day')->to('reminders#api_toggle_day');
     
     # --- Imposter Game Routes ---
     $family->get('/imposter')->to('imposter#index');
@@ -422,11 +422,11 @@ sub startup {
     # --- Shopping List Routes ---
     $family->get('/shopping')->to('shopping#index');
     $family->get('/shopping/api/state')->to('shopping#api_state');
-    $family->post('/shopping/api/add')->to('shopping#add');
-    $family->post('/shopping/api/toggle/:id')->to('shopping#toggle');
-    $family->post('/shopping/api/delete/:id')->to('shopping#delete');
-    $family->post('/shopping/api/clear')->to('shopping#clear_checked');
-    $family->post('/shopping/api/edit/:id')->to('shopping#edit');
+    $family->post('/shopping/api/add')->to('shopping#api_add');
+    $family->post('/shopping/api/toggle/:id')->to('shopping#api_toggle');
+    $family->post('/shopping/api/delete/:id')->to('shopping#api_delete');
+    $family->post('/shopping/api/clear')->to('shopping#api_clear');
+    $family->post('/shopping/api/edit/:id')->to('shopping#api_edit');
 
     # --- Todo List Routes ---
     $auth->get('/todo')->to('todo#index');
