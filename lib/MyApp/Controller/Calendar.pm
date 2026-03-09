@@ -13,6 +13,7 @@ use utf8;
 #   - Administrative event management with upcoming/past filtering.
 #   - Automated email notifications for new/updated events.
 #   - Attendee tracking and category color-coding.
+#   - Strict Privacy Support: Events only visible to owner/admin.
 #
 # Integration Points:
 #   - DB::Calendar for all persistence and category management.
@@ -20,82 +21,71 @@ use utf8;
 #   - FullCalendar.js implementation via synchronized JSON handshakes.
 
 # Renders the main calendar interface.
-# Route: GET /calendar
 sub index {
     my $c = shift;
-    
-    # Preserving original view/date params for initial JS focus
-    my $view = $c->param('view') || 'month';
-    my $date = $c->param('date') || '';
-    
-    $c->stash(
-        view => $view,
-        date => $date
-    );
-    
+    $c->stash(view => $c->param('view') || 'month', date => $c->param('date') || '');
     $c->render('calendar/calendar');
 }
 
 # API Endpoint: Retrieves structural metadata for UI bootstrapping.
 # Route: GET /calendar/api/state
-# Returns: JSON object { categories, users, is_admin, success }
 sub api_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     
     my $categories = $c->db->get_calendar_categories();
     my $all_users = $c->db->get_all_users();
-    
-    # Filter to only family members for attendee selection
     my $users = [ grep { $c->db->is_family($_->{username}) } @$all_users ];
     
     $c->render(json => {
         success    => 1,
         categories => $categories,
         users      => $users,
-        is_admin   => $c->is_admin ? 1 : 0
+        is_admin   => $c->is_admin ? 1 : 0,
+        current_user_id => $c->current_user_id
     });
 }
 
-# API Endpoint: Retrieves events for the interface.
+# API Endpoint: Retrieves events for the interface with STRICT PRIVACY.
 # Route: GET /calendar/api/events
-# Parameters:
-#   - start : ISO date string (YYYY-MM-DD) for range start.
-#   - end   : ISO date string (YYYY-MM-DD) for range end.
-# Returns:
-#   JSON: { success, events }
-sub get_events {
+sub api_events {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     
     my $start = $c->param('start');
     my $end   = $c->param('end');
     
-    my $events = $c->db->get_calendar_events($start, $end);
-    
-    # Preserve original chronological sorting
-    my @sorted = sort { $a->{start_date} cmp $b->{start_date} } @$events;
+    # Pass user context to DB for SQL-level strict filtering
+    my $events = $c->db->get_calendar_events(
+        $c->current_user_id, 
+        $c->is_admin ? 1 : 0, 
+        $start, 
+        $end
+    );
     
     $c->render(json => {
         success => 1,
-        events  => \@sorted
+        events  => $events
     });
 }
 
 # Renders the administrative management interface.
-# Route: GET /calendar/manage
 sub manage {
     shift->render('calendar/manage');
 }
 
 # API Endpoint: Validates and creates a new calendar event.
 # Route: POST /calendar/api/add
-sub add {
+sub api_add {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     
     my $title = trim($c->param('title') // '');
     my $description = trim($c->param('description') // '');
     my $start_date = $c->param('start_date');
     my $end_date = $c->param('end_date');
     my $all_day = $c->param('all_day') ? 1 : 0;
+    my $is_private = $c->param('is_private') ? 1 : 0;
     my $send_notifications = $c->param('send_notifications');
     
     $send_notifications = (defined($send_notifications) && $send_notifications eq '0') ? 0 : 1;
@@ -120,11 +110,11 @@ sub add {
     eval {
         my $event_id = $c->db->add_calendar_event(
             $title, $description, $start_date, $end_date,
-            $all_day, $category, $color, $attendees, $user_id
+            $all_day, $category, $color, $attendees, $user_id, $is_private
         );
         
-        if ($send_notifications) {
-            # Background notification logic preserved from original
+        # Only notify others if the event is NOT private
+        if ($send_notifications && !$is_private) {
             my $all_users = $c->db->get_all_users();
             my @family_emails = grep { $_->{email} && $c->db->is_family($_->{username}) } @$all_users;
             
@@ -146,8 +136,9 @@ sub add {
 
 # API Endpoint: Updates an existing calendar event.
 # Route: POST /calendar/api/edit
-sub edit {
+sub api_edit {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     
     my $id = $c->param('id');
     my $title = trim($c->param('title') // '');
@@ -155,6 +146,7 @@ sub edit {
     my $start_date = $c->param('start_date');
     my $end_date = $c->param('end_date');
     my $all_day = $c->param('all_day') ? 1 : 0;
+    my $is_private = $c->param('is_private') ? 1 : 0;
     my $category = trim($c->param('category') // '');
     my $color = trim($c->param('color') // '#3788d8');
     
@@ -171,7 +163,7 @@ sub edit {
     eval {
         $c->db->update_calendar_event(
             $id, $title, $description, $start_date, $end_date,
-            $all_day, $category, $color, $attendees
+            $all_day, $category, $color, $attendees, $is_private
         );
         $c->render(json => { success => 1, message => "Event updated" });
     };
@@ -184,8 +176,9 @@ sub edit {
 
 # API Endpoint: Deletes a calendar event.
 # Route: POST /calendar/api/delete
-sub delete {
+sub api_delete {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $id = $c->param('id');
     
     return $c->render(json => { success => 0, error => 'Event ID is required' }) unless $id;
