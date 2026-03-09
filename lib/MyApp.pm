@@ -400,12 +400,12 @@ sub startup {
     $family->post('/swear/api/member/delete')->to('swear#delete_member');
     
     # --- Birthday Calendar Routes ---
-    # --- Birthday Routes ---
+    # --- Birthday Calendar Routes ---
     $family->get('/birthdays')->to('birthdays#index');
     $family->get('/birthdays/api/state')->to('birthdays#api_state');
-    $admin->post('/birthdays/api/add')->to('birthdays#add');
-    $admin->post('/birthdays/api/edit/:id')->to('birthdays#edit');
-    $admin->post('/birthdays/api/delete/:id')->to('birthdays#delete');
+    $admin->post('/birthdays/api/add')->to('birthdays#api_add');
+    $admin->post('/birthdays/api/edit/:id')->to('birthdays#api_edit');
+    $admin->post('/birthdays/api/delete/:id')->to('birthdays#api_delete');
 
     # --- Admin Settings Routes ---
     $admin->get('/settings')->to('settings#index');
