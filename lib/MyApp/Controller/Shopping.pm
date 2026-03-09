@@ -10,19 +10,24 @@ use Mojo::Util qw(trim);
 #   - Item lifecycle management (Add, Edit, Delete, Toggle)
 #   - Bulk cleanup of completed items
 # Integration points:
-#   - Depends on authentication context
-#   - Uses DB::ShoppingList helpers for persistence
+#   - Depends on authentication context via $c->is_logged_in
+#   - Uses DB::Shopping helpers for persistence
 
 # Renders the shopping list interface.
 # Route: GET /shopping
 sub index {
-    shift->render('shopping');
+    my $c = shift;
+    $c->render('shopping');
 }
 
 # Returns all shopping list items as JSON for synchronization.
 # Route: GET /shopping/api/state
 sub api_state {
     my $c = shift;
+    
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     my $items = $c->db->get_shopping_items();
     $c->render(json => { 
         success => 1, 
@@ -33,8 +38,12 @@ sub api_state {
 
 # Adds a new item to the list.
 # Route: POST /shopping/api/add
-sub add {
+sub api_add {
     my $c = shift;
+    
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     my $item_name = trim($c->param('item_name') // '');
     my $added_by = $c->session('user');
     
@@ -60,8 +69,12 @@ sub add {
 
 # Toggles the completion status of an item.
 # Route: POST /shopping/api/toggle/:id
-sub toggle {
+sub api_toggle {
     my $c = shift;
+    
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     my $id = $c->param('id');
     
     eval {
@@ -75,8 +88,12 @@ sub toggle {
 
 # Permanently removes an item.
 # Route: POST /shopping/api/delete/:id
-sub delete {
+sub api_delete {
     my $c = shift;
+    
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     my $id = $c->param('id');
     
     eval {
@@ -90,8 +107,12 @@ sub delete {
 
 # Updates an item description.
 # Route: POST /shopping/api/edit/:id
-sub edit {
+sub api_edit {
     my $c = shift;
+    
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     my $id = $c->param('id');
     my $item_name = trim($c->param('item_name') // '');
     
@@ -110,9 +131,12 @@ sub edit {
 
 # Bulk deletes all completed items.
 # Route: POST /shopping/api/clear
-sub clear_checked {
+sub api_clear {
     my $c = shift;
     
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     eval {
         $c->db->clear_checked_items();
     };
