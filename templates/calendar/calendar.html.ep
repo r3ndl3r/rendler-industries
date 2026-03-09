@@ -91,6 +91,13 @@
                     </label>
                 </div>
             </div>
+
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="eventIsPrivate" name="is_private"> 
+                    <%= icon('lock') %> Private Event (Only you can see this)
+                </label>
+            </div>
             
             <div class="form-row">
                 <div class="form-group">
