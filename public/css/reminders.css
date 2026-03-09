@@ -32,7 +32,7 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+    background: linear-gradient(90deg, transparent, var(--accent-color, #3b82f6), transparent);
     opacity: 0.3;
 }
 
@@ -72,7 +72,7 @@
 .reminder-time {
     font-size: 2.2rem;
     font-weight: 700;
-    color: #90caf9;
+    color: var(--accent-light, #90caf9);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -225,8 +225,8 @@
 }
 
 .day-dot.active {
-    background: #3b82f6;
-    border-color: #60a5fa;
+    background: var(--accent-color, #3b82f6);
+    border-color: var(--accent-light, #60a5fa);
     color: white;
     box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
 }
@@ -269,7 +269,7 @@
 
 .recipient-badge {
     background: rgba(59, 130, 246, 0.1);
-    color: #93c5fd;
+    color: var(--accent-light, #93c5fd);
     padding: 0.25rem 0.75rem;
     border-radius: 2rem;
     font-size: 0.75rem;
@@ -304,7 +304,7 @@
 .due-badge {
     width: 100% !important;
     min-width: 100px !important;
-    background: #ef4444 !important;
+    background: var(--danger-color, #ef4444) !important;
     color: white !important;
     font-size: 0.8rem !important;
 }
@@ -323,6 +323,15 @@
 
 .form-group-time {
     max-width: 200px !important;
+}
+
+/* Visibility Toggling */
+.modal-overlay {
+    display: none;
+}
+
+.modal-overlay.active {
+    display: flex;
 }
 
 /* Row Fade Out Animation (Matched to 0.8s JS delay) */
