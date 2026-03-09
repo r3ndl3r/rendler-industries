@@ -59,7 +59,7 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+    background: linear-gradient(90deg, transparent, var(--accent-color, #3b82f6), transparent);
     opacity: 0.3;
 }
 
@@ -86,6 +86,10 @@
     font-size: 1.5rem;
     font-weight: 600;
     color: #f8fafc;
+}
+
+.status-icon {
+    color: var(--success-color, #10b981);
 }
 
 .day-content {
@@ -159,18 +163,16 @@
 
 .suggestion-body {
     padding: 1rem;
-}
-
-.suggestion-footer-actions {
     display: flex;
-    gap: 0.75rem;
-    justify-content: center;
-    padding: 0.6rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    justify-content: space-between;
+    align-items: flex-start;
 }
 
 .suggestion-info {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
 .meal-name {
@@ -200,6 +202,9 @@
     font-size: 0.7rem;
     font-weight: 600;
     border: 1px solid rgba(59, 130, 246, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 /* Winner Card */
@@ -211,13 +216,16 @@
     text-align: center;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .winner-badge {
     position: absolute;
     top: 0;
     right: 0;
-    background: #3b82f6;
+    background: var(--accent-color, #3b82f6);
     color: white;
     font-size: 0.6rem;
     font-weight: 800;
@@ -247,39 +255,22 @@
     display: block;
 }
 
-.header-meta {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-/* Modal layers for nested modals */
-#addEditMealModal,
-#manageDeleteConfirmModal {
-    z-index: 11000 !important;
-}
-
-#addEditMealModal .modal-content,
-#manageDeleteConfirmModal .delete-modal-content {
-    margin-top: 5rem; /* Give some visual separation */
-}
-
 /* Vault Management Styles */
-#manageVaultModal .table-responsive {
+.modal-vault-manage .table-responsive {
     max-height: 400px;
     overflow-y: auto;
     border-radius: 0.75rem;
     background: rgba(0, 0, 0, 0.2);
 }
 
-#manageVaultModal .data-table {
+.modal-vault-manage .data-table {
     width: 100%;
     background: transparent;
     margin: 0;
     border-collapse: collapse;
 }
 
-#manageVaultModal .data-table th {
+.modal-vault-manage .data-table th {
     background: rgba(15, 23, 42, 0.8);
     color: #94a3b8;
     font-size: 0.75rem;
@@ -292,44 +283,40 @@
     border: none;
 }
 
-#manageVaultModal .data-table td {
+.modal-vault-manage .data-table td {
     padding: 0.75rem 1rem;
     color: #f1f5f9;
     border: none;
 }
 
-#manageVaultModal .data-table tbody tr:hover {
+.modal-vault-manage .data-table tbody tr:hover {
     background: rgba(255, 255, 255, 0.03);
 }
 
-#manageVaultModal .data-table th:last-child,
-#manageVaultModal .data-table td:last-child {
+.modal-vault-manage .data-table th:last-child,
+.modal-vault-manage .data-table td:last-child {
     width: 100px;
-    text-align: center;
 }
 
-#manageVaultModal .action-buttons {
+.modal-vault-manage .action-buttons {
     justify-content: center;
     gap: 0.5rem;
+    display: flex;
 }
 
-#manageVaultModal .btn-icon-edit,
-#manageVaultModal .btn-icon-delete {
+.modal-vault-manage .btn-icon-edit,
+.modal-vault-manage .btn-icon-delete {
     width: 32px;
     height: 32px;
     font-size: 0.9rem;
 }
 
-#manageVaultModal .btn-icon-delete.disabled {
+.modal-vault-manage .btn-icon-delete.disabled {
     background: rgba(255, 255, 255, 0.05) !important;
     color: rgba(255, 255, 255, 0.2) !important;
     cursor: not-allowed;
     filter: grayscale(1);
     opacity: 0.5;
-}
-
-#manageVaultModal .data-table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.03);
 }
 
 /* Modal Subtext */
@@ -341,10 +328,10 @@
 
 /* Day Actions */
 .day-actions {
+    margin-top: auto;
     display: flex;
     flex-direction: row;
     gap: 0.75rem;
-    margin-top: auto;
     justify-content: center;
 }
 
@@ -368,7 +355,7 @@
 
 .meal-dropdown {
     position: absolute;
-    top: calc(100% + 5px); 
+    top: calc(100% + 5px);
     left: 0;
     right: 0;
     background: #1e293b;
@@ -377,7 +364,7 @@
     max-height: 200px;
     overflow-y: auto;
     z-index: 1000;
-    margin-top: 0.25rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
 }
 
 .meal-dropdown.drop-up {
@@ -385,11 +372,16 @@
     bottom: calc(100% + 5px);
 }
 
+.meal-dropdown.hidden {
+    display: none;
+}
+
 .meal-option {
     padding: 0.6rem 0.75rem;
     color: #f1f5f9;
     cursor: pointer;
     font-size: 0.95rem;
+    transition: background 0.2s;
 }
 
 .meal-option:hover {
@@ -410,6 +402,28 @@
     border-radius: 3px;
     margin-right: 6px;
     vertical-align: middle;
+}
+
+/* Visibility Standard Helpers */
+.manage-actions {
+    display: none;
+    gap: 0.75rem;
+}
+
+.manage-actions.active {
+    display: flex;
+}
+
+.modal-overlay {
+    display: none;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.hidden {
+    display: none;
 }
 
 /* Responsive */
@@ -443,36 +457,31 @@
 
 /* Vote Button Overrides */
 .btn-icon-vote {
-    background: rgba(255, 255, 255, 0.05) !important;
-    color: #64748b !important;
-    filter: grayscale(1);
-    opacity: 0.6;
-    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #64748b;
+    padding: 0.4rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
 .btn-icon-vote:hover {
-    background: rgba(59, 130, 246, 0.1) !important;
-    color: #60a5fa !important;
-    filter: grayscale(0);
-    opacity: 1;
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
 }
 
 .btn-icon-vote.is-voted {
-    background: rgba(59, 130, 246, 0.2) !important;
-    border-color: rgba(59, 130, 246, 0.4) !important;
-    color: #60a5fa !important;
-    filter: grayscale(0);
-    opacity: 1;
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.2) !important;
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #60a5fa;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
 }
 
-/* Voting Animations */
-.vote-pop {
-    animation: votePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-@keyframes votePop {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.15); box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
-    100% { transform: scale(1); }
+.suggestion-footer-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    padding: 0.6rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
