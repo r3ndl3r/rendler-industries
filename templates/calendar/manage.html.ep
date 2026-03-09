@@ -1,7 +1,7 @@
 <%# /templates/calendar/manage.html.ep %>
 
 % layout 'default';
-% title icon('calendar') . ' Manage Calendar Events';
+% title icon('settings') . ' Calendar Management';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/calendar.css?<%= time %>">
@@ -10,9 +10,12 @@
 
 <div class="manage-container app-container">
     <div class="header-bar">
-        <h1><%= icon('calendar') %> <span>Manage Events</span></h1>
-        <div class="manage-actions">
-            <a href="/calendar" class="btn-back"><%= icon('back') %> Back</a>
+        <h1><%= icon('settings') %> <span>Manage Events</span></h1>
+        
+        <div class="header-meta">
+            <div class="manage-actions active">
+                <a href="/calendar" class="btn-back"><%= icon('calendar') %> Back</a>
+            </div>
         </div>
     </div>
 
@@ -47,7 +50,7 @@
 <div id="eventModal" class="modal">
     <div class="modal-content">
         <span class="close" onclick="closeEventModal()">&times;</span>
-        <h2 id="modalTitle">Add Event</h2>
+        <h2 id="modalTitle">Edit Event</h2>
         
         <form id="eventForm" onsubmit="handleEventSubmit(event)">
             <input type="hidden" id="eventId" name="id">
@@ -74,6 +77,13 @@
                         <input type="checkbox" id="sendNotifications" name="send_notifications" checked value="1"> Send email notifications to family
                     </label>
                 </div>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="eventIsPrivate" name="is_private"> 
+                    <%= icon('lock') %> Private Event (Only you can see this)
+                </label>
             </div>
             
             <div class="form-row">
