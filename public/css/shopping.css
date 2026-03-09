@@ -20,7 +20,7 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, #64b5f6, transparent);
+    background: linear-gradient(90deg, transparent, var(--accent-color, #3b82f6), transparent);
     opacity: 0.5;
 }
 
@@ -63,7 +63,7 @@
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 4px;
-    background: linear-gradient(180deg, #64b5f6, #42a5f5);
+    background: linear-gradient(180deg, var(--accent-color, #3b82f6), var(--accent-light, #60a5fa));
     opacity: 0;
     transition: opacity 0.3s ease;
 }
@@ -86,7 +86,7 @@
 }
 
 .shopping-item.checked::before {
-    background: linear-gradient(180deg, #66bb6a, #43a047);
+    background: linear-gradient(180deg, var(--success-color, #10b981), #059669);
 }
 
 .item-content {
@@ -162,8 +162,17 @@
 }
 
 .item-link:hover .item-name {
-    color: #64b5f6;
+    color: var(--accent-color, #3b82f6);
     text-decoration: underline;
+}
+
+/* Modal Visibility Toggling */
+.modal-overlay {
+    display: none;
+}
+
+.modal-overlay.active {
+    display: flex;
 }
 
 @media (max-width: 768px) {
