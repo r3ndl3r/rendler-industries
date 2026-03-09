@@ -17,7 +17,8 @@
  * - Mandatory Action pattern for secure record deletion
  * 
  * Dependencies:
- * - default.js: For FlipClockManager, apiPost, getIcon, and modal helpers
+ * - default.js: For FlipClockManager, apiPost, getIcon, setupGlobalModalClosing, and modal helpers
+ * - toast.js: For notification feedback
  */
 
 /**
@@ -67,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadState() {
     // Lifecycle: inhibit background sync if user is actively interacting with forms
-    const anyModalOpen = document.querySelector('.modal-overlay[style*="display: block"]');
+    const anyModalOpen = document.querySelector('.modal-overlay.active');
     if (anyModalOpen && STATE.reminders.length > 0) return;
 
     try {
@@ -249,7 +250,10 @@ function openAddModal() {
     const modal = document.getElementById('addReminderModal');
     const form = document.getElementById('addReminderForm');
     if (form) form.reset();
-    if (modal) modal.classList.add('show');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.classList.add('modal-open');
+    }
 }
 
 /**
@@ -259,7 +263,10 @@ function openAddModal() {
  */
 function closeAddModal() {
     const modal = document.getElementById('addReminderModal');
-    if (modal) modal.classList.remove('show');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.classList.remove('modal-open');
+    }
 }
 
 /**
@@ -296,7 +303,10 @@ function openEditModal(id) {
         });
     }
 
-    if (modal) modal.classList.add('show');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.classList.add('modal-open');
+    }
 }
 
 /**
@@ -306,7 +316,10 @@ function openEditModal(id) {
  */
 function closeEditModal() {
     const modal = document.getElementById('editReminderModal');
-    if (modal) modal.classList.remove('show');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.classList.remove('modal-open');
+    }
 }
 
 /**
@@ -330,7 +343,7 @@ async function handleAdd(e) {
     btn.innerHTML = `${getIcon('waiting')} Creating...`;
 
     try {
-        const result = await apiPost('/reminders/add', new FormData(form));
+        const result = await apiPost('/reminders/api/add', new FormData(form));
         if (result && result.success) {
             closeAddModal();
             await loadState();
@@ -359,7 +372,7 @@ async function handleEdit(e) {
     btn.innerHTML = `${getIcon('waiting')} Saving...`;
 
     try {
-        const result = await apiPost(`/reminders/update/${id}`, new FormData(form));
+        const result = await apiPost(`/reminders/api/update/${id}`, new FormData(form));
         if (result && result.success) {
             closeEditModal();
             await loadState();
@@ -380,13 +393,13 @@ async function handleEdit(e) {
 function confirmDeleteReminder(id, title) {
     showConfirmModal({
         title: 'Delete Reminder',
-        message: `Permanently remove schedule for \"<strong>${title}</strong>\"?`,
+        message: `Permanently remove schedule for \"<strong>${escapeHtml(title)}</strong>\"?`,
         danger: true,
         confirmText: 'Delete',
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost(`/reminders/delete/${id}`);
+            const result = await apiPost(`/reminders/api/delete/${id}`);
             if (result && result.success) {
                 STATE.reminders = STATE.reminders.filter(r => r.id != id);
                 renderReminders();
@@ -404,7 +417,7 @@ function confirmDeleteReminder(id, title) {
  * @returns {Promise<void>}
  */
 async function toggleReminder(id, active) {
-    const result = await apiPost(`/reminders/toggle/${id}`, { active: active ? 1 : 0 });
+    const result = await apiPost(`/reminders/api/toggle/${id}`, { active: active ? 1 : 0 });
     if (result && result.success) {
         const r = STATE.reminders.find(item => item.id == id);
         if (r) {
@@ -435,7 +448,7 @@ async function toggleReminder(id, active) {
  * @returns {Promise<void>}
  */
 async function toggleDay(reminderId, day, active) {
-    const result = await apiPost('/reminders/toggle_day', { id: reminderId, day: day, active: active });
+    const result = await apiPost('/reminders/api/toggle_day', { id: reminderId, day: day, active: active });
     if (result && result.success) {
         const r = STATE.reminders.find(item => item.id == reminderId);
         if (r) {
@@ -554,7 +567,6 @@ function updateCountdowns() {
 
 /**
  * Prevents XSS by sanitizing dynamic content.
-
  * 
  * @param {string} text - Raw input.
  * @returns {string} - Sanitized HTML.
