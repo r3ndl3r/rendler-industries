@@ -8,17 +8,17 @@
  * management through a synchronized interface.
  * 
  * Features:
- * - Multi-view rendering for Month, Week, and Day modes
- * - Real-time synchronization with event roster
- * - Optimized local scheduling workflows
- * - High-resolution upcoming event widget with automatic countdowns
- * - Administrative management ledger with category filtering
- * - Synchronized stream for metadata and event payloads
- * - Strict Privacy: Private events visible only to owner/admin.
+ * - Multi-view rendering for Month, Week, and Day modes.
+ * - Real-time synchronization with event roster.
+ * - Optimized local scheduling workflows.
+ * - High-resolution upcoming event widget with automatic countdowns.
+ * - Administrative management ledger with category filtering.
+ * - Synchronized stream for metadata and event payloads.
+ * - Strict Privacy Mandate: Private events visible only to owner/admin.
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
- * - toast.js: For operation feedback
+ * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers.
+ * - toast.js: For operation feedback.
  */
 
 /**
@@ -62,15 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(renderUpcomingEvents, CONFIG.COUNTDOWN_TICK_MS);
 
     // 5. Global modal closure configuration
-    setupGlobalModalClosing(['modal-overlay', 'modal'], [closeEventModal, closeDetailsModal]);
-
-    // 6. Restore original close button hooks
-    document.querySelectorAll('.close').forEach(btn => {
-        btn.onclick = () => {
-            closeEventModal();
-            closeDetailsModal();
-        };
-    });
+    setupGlobalModalClosing(['modal-overlay'], [closeEventModal, closeDetailsModal]);
 });
 
 /**
@@ -98,7 +90,10 @@ async function loadState() {
             populateDropdowns();
             
             const notifyGroup = document.getElementById('notificationGroup');
-            if (notifyGroup) notifyGroup.classList.toggle('hidden', !STATE.isAdmin);
+            if (notifyGroup) {
+                if (STATE.isAdmin) notifyGroup.classList.remove('hidden');
+                else notifyGroup.classList.add('hidden');
+            }
             
             if (!STATE.isManagementPage) {
                 initializeViewFromUrl();
@@ -118,6 +113,10 @@ async function loadState() {
  * @returns {Promise<void>}
  */
 async function loadEvents() {
+    // Lifecycle: inhibit background sync if user is actively interacting with forms
+    const anyModalOpen = document.querySelector('.modal-overlay.active');
+    if (anyModalOpen && STATE.events.length > 0) return;
+
     let start, end;
     
     if (STATE.isManagementPage) {
@@ -129,7 +128,15 @@ async function loadEvents() {
     }
 
     const container = document.getElementById('calendarView');
-    if (container) container.classList.add('loading-data');
+    // Show initial pulse if collection is empty
+    if (container && !container.querySelector('.component-loading') && STATE.events.length === 0) {
+        container.innerHTML = `
+            <div class="component-loading">
+                <div class="loading-scan-line"></div>
+                <span class="loading-icon-pulse">${window.getIcon('calendar')}</span>
+                <p class="loading-label">Synchronizing...</p>
+            </div>`;
+    }
 
     try {
         const response = await fetch(`/calendar/api/events?start=${start}&end=${end}`);
@@ -142,8 +149,6 @@ async function loadEvents() {
         }
     } catch (err) {
         console.error('loadEvents failed:', err);
-    } finally {
-        if (container) container.classList.remove('loading-data');
     }
 }
 
@@ -188,8 +193,8 @@ function populateDropdowns() {
     }
 
     // 2. Attendee Checkboxes
-    const recipients = STATE.users.map(u => ({ id: u.id, label: escapeHtml(u.display_name || u.username) }));
-    renderSelectorGrid('attendees-container', recipients, { name: 'attendees[]', prefix: 'attendee', type: 'day' });
+    const recipients = STATE.users.map(u => ({ id: u.id, label: escapeHtml(u.username) }));
+    window.renderSelectorGrid('attendees-container', recipients, { name: 'attendees[]', prefix: 'attendee', type: 'day' });
 }
 
 /**
@@ -593,7 +598,12 @@ function setupEventListeners() {
     if (allDayCb) {
         allDayCb.onchange = () => {
             const timeGroups = [document.getElementById('startTimeGroup'), document.getElementById('endTimeGroup')];
-            timeGroups.forEach(g => { if (g) g.classList.toggle('hidden', allDayCb.checked); });
+            timeGroups.forEach(g => { 
+                if (g) {
+                    if (allDayCb.checked) g.classList.add('hidden');
+                    else g.classList.remove('hidden');
+                }
+            });
         };
     }
 }
@@ -630,7 +640,7 @@ async function handleEventSubmit(event) {
     btn.innerHTML = `${window.getIcon('waiting')} Saving...`;
 
     try {
-        const result = await apiPost(url, formData);
+        const result = await window.apiPost(url, formData);
         if (result && result.success) {
             closeEventModal();
             await loadEvents();
@@ -710,7 +720,7 @@ function openAddEventModal(dateStr) {
         document.getElementById('eventCategory').value = activeFilter;
     }
 
-    modal.classList.add('show');
+    modal.classList.add('active');
     document.body.classList.add('modal-open');
 }
 
@@ -745,13 +755,21 @@ function openEditModalById(id) {
     });
 
     document.getElementById('modalTitle').innerHTML = `Edit Event`;
-    document.getElementById('deleteEventBtn').classList.remove('hidden');
-    document.getElementById('cloneEventBtn').classList.remove('hidden');
-    document.getElementById('deleteEventBtn').onclick = () => confirmDeleteEvent(event.id, event.title);
-    document.getElementById('cloneEventBtn').onclick = () => cloneEvent(event);
+    
+    // Authorization: Only owner or admin can see action buttons
+    const canManage = (STATE.currentUserId == event.created_by || STATE.isAdmin);
+    if (canManage) {
+        document.getElementById('deleteEventBtn').classList.remove('hidden');
+        document.getElementById('cloneEventBtn').classList.remove('hidden');
+        document.getElementById('deleteEventBtn').onclick = () => confirmDeleteEvent(event.id, event.title);
+        document.getElementById('cloneEventBtn').onclick = () => cloneEvent(event);
+    } else {
+        document.getElementById('deleteEventBtn').classList.add('hidden');
+        document.getElementById('cloneEventBtn').classList.add('hidden');
+    }
 
     const modal = document.getElementById('eventModal');
-    modal.classList.add('show');
+    modal.classList.add('active');
     document.body.classList.add('modal-open');
 }
 
@@ -769,7 +787,10 @@ function cloneEvent(event) {
     document.getElementById('cloneEventBtn').classList.add('hidden');
 
     const notifyGroup = document.getElementById('notificationGroup');
-    if (notifyGroup) notifyGroup.classList.toggle('hidden', !STATE.isAdmin);
+    if (notifyGroup) {
+        if (STATE.isAdmin) notifyGroup.classList.remove('hidden');
+        else notifyGroup.classList.add('hidden');
+    }
 }
 
 /**
@@ -780,7 +801,7 @@ function cloneEvent(event) {
  * @returns {void}
  */
 function confirmDeleteEvent(id, title) {
-    showConfirmModal({
+    window.showConfirmModal({
         title: 'Delete Event',
         message: `Are you sure you want to remove \"<strong>${escapeHtml(title)}</strong>\"?`,
         danger: true,
@@ -788,7 +809,7 @@ function confirmDeleteEvent(id, title) {
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost('/calendar/api/delete', { id: id });
+            const result = await window.apiPost('/calendar/api/delete', { id: id });
             if (result && result.success) {
                 closeEventModal();
                 await loadEvents();
@@ -830,8 +851,16 @@ function showEventDetails(id) {
     `;
 
     document.getElementById('editFromDetailsBtn').onclick = () => { closeDetailsModal(); openEditModalById(event.id); };
+    
+    // Hide Edit button if user cannot manage the event
+    const editBtn = document.getElementById('editFromDetailsBtn');
+    if (editBtn) {
+        if (STATE.currentUserId == event.created_by || STATE.isAdmin) editBtn.classList.remove('hidden');
+        else editBtn.classList.add('hidden');
+    }
+
     const modal = document.getElementById('eventDetailsModal');
-    modal.classList.add('show');
+    modal.classList.add('active');
     document.body.classList.add('modal-open');
 }
 
@@ -841,8 +870,11 @@ function showEventDetails(id) {
  * @returns {void}
  */
 function closeEventModal() {
-    document.getElementById('eventModal').classList.remove('show');
-    document.body.classList.remove('modal-open');
+    const modal = document.getElementById('eventModal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.classList.remove('modal-open');
+    }
 }
 
 /**
@@ -851,8 +883,11 @@ function closeEventModal() {
  * @returns {void}
  */
 function closeDetailsModal() {
-    document.getElementById('eventDetailsModal').classList.remove('show');
-    document.body.classList.remove('modal-open');
+    const modal = document.getElementById('eventDetailsModal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.classList.remove('modal-open');
+    }
 }
 
 /**
