@@ -12,7 +12,7 @@
     <div class="header-bar">
         <h1><%= icon('reminders') %> <span>Reminders</span></h1>
         <div class="manage-actions">
-            <button class="btn-primary" onclick="openAddModal()"><%= icon('add') %> New</button>
+            <button type="button" class="btn-primary" onclick="openAddModal()"><%= icon('add') %> New</button>
         </div>
     </div>
 
