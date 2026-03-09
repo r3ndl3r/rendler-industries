@@ -86,8 +86,9 @@ sub chat {
     my $active_model = $c->db->get_gemini_active_model();
     my $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$active_model:generateContent";
 
-    my $ua = Mojo::UserAgent->new;
-    my $tx = $ua->post("$endpoint?key=$api_key" => json => {
+    $c->render_later;
+
+    $c->ua->post_p("$endpoint?key=$api_key" => json => {
         contents => \@contents,
         system_instruction => { parts => [{ text => $system_instructions }] },
         tools => [{ google_search => {} }], 
@@ -95,30 +96,36 @@ sub chat {
             temperature => 0.7,
             maxOutputTokens => 1000,
         }
-    });
+    })->then(sub {
+        my $tx = shift;
 
-    # 4. Process Model Output and Persist History
-    if (my $res = $tx->result) {
-        if ($res->is_success) {
-            my $data = $res->json;
-            my $ai_text = $data->{candidates}[0]{content}{parts}[0]{text} // "I'm not sure how to respond to that.";
-            
-            # Persist both user and model turns
-            $c->db->save_ai_message($user_id, 'user', $prompt, $file_id ? { file_id => $file_id, file_type => $file_type } : undef);
-            $c->db->save_ai_message($user_id, 'model', $ai_text);
-            
-            return $c->render(json => { 
-                success => 1, 
-                content => $ai_text,
-                role    => 'model'
-            });
+        # 4. Process Model Output and Persist History
+        if (my $res = $tx->result) {
+            if ($res->is_success) {
+                my $data = $res->json;
+                my $ai_text = $data->{candidates}[0]{content}{parts}[0]{text} // "I'm not sure how to respond to that.";
+                
+                # Persist both user and model turns
+                $c->db->save_ai_message($user_id, 'user', $prompt, $file_id ? { file_id => $file_id, file_type => $file_type } : undef);
+                $c->db->save_ai_message($user_id, 'model', $ai_text);
+                
+                $c->render(json => { 
+                    success => 1, 
+                    content => $ai_text,
+                    role    => 'model'
+                });
+            } else {
+                $c->app->log->error("Gemini API Error: " . $res->body);
+                $c->render(json => { success => 0, error => "AI service unavailable." });
+            }
         } else {
-            $c->app->log->error("Gemini API Error: " . $res->body);
-            return $c->render(json => { success => 0, error => "AI service unavailable." });
+             $c->render(json => { success => 0, error => "Network failure." });
         }
-    }
-    
-    return $c->render(json => { success => 0, error => "Network failure." });
+    })->catch(sub {
+        my $err = shift;
+        $c->app->log->error("Gemini API Exception: $err");
+        $c->render(json => { success => 0, error => "Network failure." });
+    });
 }
 
 # Permanently removes all chat history for the current user.
