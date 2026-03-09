@@ -7,15 +7,17 @@ use warnings;
 use Mojo::Util qw(trim);
 
 # Database Helper for Family Calendar Management.
+#
 # Features:
-#   - Event CRUD operations with timezone awareness
-#   - Category/tag support for event classification
-#   - All-day vs timed event handling
-#   - User tagging via attendees field (comma-separated user IDs)
-#   - Strict Privacy: Private events visible only to owner/admin.
+#   - Event CRUD operations with timezone awareness.
+#   - Category/tag support for event classification.
+#   - All-day vs timed event handling.
+#   - User tagging via attendees field (comma-separated user IDs).
+#   - Strict Privacy Mandate: Private events visible only to owner/admin.
+#
 # Integration points:
-#   - Extends DB package for database access
-#   - Used by Calendar controller for all data operations
+#   - Extends DB package for database access.
+#   - Used by Calendar controller for all data operations.
 
 # Retrieves calendar events within a date range with strict privacy filtering.
 # Parameters:
@@ -73,7 +75,7 @@ sub DB::get_calendar_events {
     my $events = $sth->fetchall_arrayref({});
     
     my $all_users = $self->get_all_users();
-    my %user_map = map { $_->{id} => ($_->{displayname} || $_->{username}) } @$all_users;
+    my %user_map = map { $_->{id} => $_->{username} } @$all_users;
 
     for my $event (@$events) {
         if ($event->{attendees}) {
@@ -112,7 +114,7 @@ sub DB::get_calendar_event_by_id {
     
     if ($event->{attendees}) {
         my $all_users = $self->get_all_users();
-        my %user_map = map { $_->{id} => ($_->{displayname} || $_->{username}) } @$all_users;
+        my %user_map = map { $_->{id} => $_->{username} } @$all_users;
         my @names = map { $user_map{trim($_)} // () } split(',', $event->{attendees});
         $event->{attendee_names} = join(', ', @names);
     }
@@ -121,6 +123,10 @@ sub DB::get_calendar_event_by_id {
 }
 
 # Creates a new calendar event.
+# Parameters:
+#   title, description, start_date, end_date, all_day, category, color, attendees, created_by, is_private
+# Returns:
+#   Last inserted ID (Integer).
 sub DB::add_calendar_event {
     my ($self, $title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $created_by, $is_private) = @_;
     $self->ensure_connection;
@@ -144,6 +150,10 @@ sub DB::add_calendar_event {
 }
 
 # Updates an existing calendar event.
+# Parameters:
+#   id, title, description, start_date, end_date, all_day, category, color, attendees, is_private
+# Returns:
+#   Success flag (Boolean).
 sub DB::update_calendar_event {
     my ($self, $id, $title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $is_private) = @_;
     $self->ensure_connection;
@@ -170,6 +180,10 @@ sub DB::update_calendar_event {
 }
 
 # Deletes a calendar event.
+# Parameters:
+#   id : Unique Event ID (Integer)
+# Returns:
+#   Success flag (Boolean).
 sub DB::delete_calendar_event {
     my ($self, $id) = @_;
     $self->ensure_connection;
@@ -179,6 +193,9 @@ sub DB::delete_calendar_event {
 }
 
 # Retrieves all unique categories from existing events.
+# Parameters: None.
+# Returns:
+#   ArrayRef of category strings.
 sub DB::get_calendar_categories {
     my ($self) = @_;
     $self->ensure_connection;
