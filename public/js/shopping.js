@@ -196,7 +196,7 @@ async function handleAddItem(event) {
     try {
         const result = await apiPost('/shopping/api/add', { item_name: name });
         if (result && result.success) {
-            input.value = '';
+            form.reset(); 
             // Optimistic update
             STATE.items.unshift({
                 id: result.id,
@@ -251,9 +251,11 @@ function openEditModal(id) {
     if (input) {
         input.value = item.item_name;
         const modal = document.getElementById('editModal');
-        modal.style.display = 'flex';
-        document.body.classList.add('modal-open');
-        input.focus();
+        if (modal) {
+            modal.classList.add('active');
+            document.body.classList.add('modal-open');
+            input.focus();
+        }
     }
 }
 
@@ -264,8 +266,9 @@ function openEditModal(id) {
  */
 function closeEditModal() {
     const modal = document.getElementById('editModal');
+    // Clear all inputs and validation states
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('active');
         document.body.classList.remove('modal-open');
     }
 }
