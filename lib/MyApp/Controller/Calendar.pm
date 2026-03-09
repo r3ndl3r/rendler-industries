@@ -6,23 +6,25 @@ use Mojo::Util qw(trim);
 use utf8;
 
 # Controller for the Family Calendar.
-# Manages event scheduling, invitations, and chronological data visualization.
 #
 # Features:
 #   - Multi-view calendar interface (Month, Week, Day).
 #   - Administrative event management with upcoming/past filtering.
-#   - Automated email notifications for new/updated events.
+#   - Automated email notifications for new/public events.
 #   - Attendee tracking and category color-coding.
-#   - Strict Privacy Support: Events only visible to owner/admin.
+#   - Strict Privacy Mandate: Events only visible to owner/admin.
 #
 # Integration Points:
 #   - DB::Calendar for all persistence and category management.
 #   - MyApp::Plugin::Email for automated notification delivery.
-#   - FullCalendar.js implementation via synchronized JSON handshakes.
+#   - FullCalendar-style data architecture via JSON state-driven handshakes.
 
 # Renders the main calendar interface.
+# Route: GET /calendar
 sub index {
     my $c = shift;
+    return $c->redirect_to('/auth') unless $c->is_logged_in;
+    
     $c->stash(view => $c->param('view') || 'month', date => $c->param('date') || '');
     $c->render('calendar/calendar');
 }
@@ -70,8 +72,11 @@ sub api_events {
 }
 
 # Renders the administrative management interface.
+# Route: GET /calendar/manage
 sub manage {
-    shift->render('calendar/manage');
+    my $c = shift;
+    return $c->redirect_to('/auth') unless $c->is_logged_in;
+    $c->render('calendar/manage');
 }
 
 # API Endpoint: Validates and creates a new calendar event.
@@ -141,6 +146,15 @@ sub api_edit {
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     
     my $id = $c->param('id');
+    my $user_id = $c->current_user_id;
+    my $is_admin = $c->is_admin ? 1 : 0;
+    
+    # MANDATE: Verify ownership or admin status before edit
+    my $event = $c->db->get_calendar_event_by_id($id, $user_id, $is_admin);
+    unless ($event && ($event->{created_by} == $user_id || $is_admin)) {
+        return $c->render(json => { success => 0, error => 'Forbidden: You do not own this event' }, status => 403);
+    }
+    
     my $title = trim($c->param('title') // '');
     my $description = trim($c->param('description') // '');
     my $start_date = $c->param('start_date');
@@ -179,7 +193,16 @@ sub api_edit {
 sub api_delete {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    
     my $id = $c->param('id');
+    my $user_id = $c->current_user_id;
+    my $is_admin = $c->is_admin ? 1 : 0;
+    
+    # MANDATE: Verify ownership or admin status before delete
+    my $event = $c->db->get_calendar_event_by_id($id, $user_id, $is_admin);
+    unless ($event && ($event->{created_by} == $user_id || $is_admin)) {
+        return $c->render(json => { success => 0, error => 'Forbidden: You do not own this event' }, status => 403);
+    }
     
     return $c->render(json => { success => 0, error => 'Event ID is required' }) unless $id;
     
