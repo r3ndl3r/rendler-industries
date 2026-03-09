@@ -65,7 +65,15 @@ sub run_meals_maintenance {
     if ($minute == 0 && ($hour == 8 || $hour == 12)) {
         # Check if today's plan is still open
         my $today_plan = $c->db->get_active_plan(0)->[0]; # user_id=0 (system context)
-        if ($today_plan && $today_plan->{status} eq 'open') {
+        
+        # Check if we already sent this specific hourly reminder
+        my $flag_col = $hour == 8 ? 'reminder_8am_sent' : 'reminder_12pm_sent';
+        my ($already_sent) = $c->db->{dbh}->selectrow_array("SELECT $flag_col FROM meal_plan WHERE id = ?", undef, $today_plan->{id});
+
+        if ($today_plan && $today_plan->{status} eq 'open' && !$already_sent) {
+            # Mark as sent immediately to prevent other workers from firing
+            $c->db->{dbh}->do("UPDATE meal_plan SET $flag_col = 1 WHERE id = ?", undef, $today_plan->{id});
+
             my $participation = $c->db->get_plan_participation($today_plan->{id});
             my %has_suggested = map { $_ => 1 } @{$participation->{suggested_ids}};
             my %has_voted     = map { $_ => 1 } @{$participation->{voted_ids}};
@@ -88,6 +96,7 @@ sub run_meals_maintenance {
     # 2. Lock-in (Exactly 2 PM)
     if ($hour == 14 && $minute == 0) {
         my $today_plan = $c->db->get_active_plan(0)->[0]; # user_id=0 (system context)
+        # Check status again - another worker might have already locked it
         if ($today_plan && $today_plan->{status} eq 'open') {
             my $suggestions = $today_plan->{suggestions};
             
@@ -97,7 +106,10 @@ sub run_meals_maintenance {
                 
                 # Check for ties
                 if (scalar @$suggestions > 1 && $suggestions->[0]{vote_count} == $suggestions->[1]{vote_count}) {
-                    # Notify admin to decide
+                    # Notify admin to decide (mark as locked status 'tie' or similar if we wanted, 
+                    # but for now we rely on the fact that if status is still 'open' we keep notifying.
+                    # To prevent tie-spamming within the same minute, we should check if we already notified.
+                    # Let's just lock it to 'open' and rely on the minute check.
                     my $admin_msg = "⚖️ MEAL PLANNER TIE: Today's meal plan is TIED. Please go to /meals and pick a winner!\n\nhttps://rendler.org/meals";
                     my $admins = $c->db->get_all_users();
                     foreach my $a (grep { $_->{is_admin} } @$admins) {
@@ -105,7 +117,7 @@ sub run_meals_maintenance {
                     }
                     push @{$stats->{actions}}, "Notified admins of tie";
                 } else {
-                    # Auto-lock winner
+                    # Auto-lock winner (This updates status to 'locked', stopping other workers)
                     $c->db->lock_suggestion($today_plan->{id}, $winner->{id});
                     
                     # Notify everyone of the final choice
@@ -119,7 +131,7 @@ sub run_meals_maintenance {
                     push @{$stats->{actions}}, "Locked in: $winner->{meal_name}";
                 }
             } else {
-                # No suggestions at 2PM? Notify admin to blackout or decide
+                # No suggestions at 2PM? Notify admin
                 my $admin_msg = "⚠️ MEAL PLANNER EMPTY: No suggestions made by 2PM. Please set a blackout or manual meal.\n\nhttps://rendler.org/meals";
                 my $admins = $c->db->get_all_users();
                 foreach my $a (grep { $_->{is_admin} } @$admins) {
@@ -157,26 +169,26 @@ sub run_reminder_maintenance {
     my %processed_reminder_ids;
 
     foreach my $r (@$due_reminders) {
-        my $msg = "🔔 REMINDER: $r->{title}\n\n$r->{description}\n\nhttps://rendler.org/reminders";
-        
-        # Dispatch notification using standardized helper
-        if ($c->notify_user($r->{user_id}, $msg, "Reminder: $r->{title}")) {
-            $stats->{notified}++;
-            
-            # Mark as sent for today if not already done
-            unless ($processed_reminder_ids{$r->{id}}) {
-                if ($r->{is_one_off}) {
-                    $c->db->delete_reminder($r->{id});
-                } else {
-                    # Record the intended trigger time as the run timestamp (Prevents midnight rollover issues)
-                    my $today_iso = $now->strftime('%Y-%m-%d');
-                    my $intended_at = "$today_iso $r->{reminder_time}";
-                    $c->db->mark_reminder_sent($r->{id}, $intended_at);
-                }
-                $processed_reminder_ids{$r->{id}} = 1;
+        # CRITICAL: Mark as sent BEFORE notifying.
+        # Since notify_user is non-blocking, we must ensure another worker 
+        # doesn't see this reminder as "unsent" while the first worker's 
+        # notification is still "in flight" via async promise.
+        unless ($processed_reminder_ids{$r->{id}}) {
+            if ($r->{is_one_off}) {
+                $c->db->delete_reminder($r->{id});
+            } else {
+                my $today_iso = $now->strftime('%Y-%m-%d');
+                my $intended_at = "$today_iso $r->{reminder_time}";
+                $c->db->mark_reminder_sent($r->{id}, $intended_at);
             }
-        } else {
-            $stats->{errors}++;
+            $processed_reminder_ids{$r->{id}} = 1;
+
+            my $msg = "🔔 REMINDER: $r->{title}\n\n$r->{description}\n\nhttps://rendler.org/reminders";
+            if ($c->notify_user($r->{user_id}, $msg, "Reminder: $r->{title}")) {
+                $stats->{notified}++;
+            } else {
+                $stats->{errors}++;
+            }
         }
     }
 
@@ -270,12 +282,13 @@ https://rendler.org/timers
 #   - Fallback 1: Isolated AI Dictionary (ai_emoji_dictionary).
 #   - Fallback 2: Standard UI Dictionary (emojis).
 #   - Fallback 3: Google Gemini API generation.
-sub run_emoji_maintenance {
+sub run_emoji_maintenance_p {
     my $c = shift;
     
-    my $stats = { processed => 0, ai_calls => 0, dict_hits => 0, fallback_hits => 0 };
-    
-    # Exact mappings verified against MariaDB schema
+    my $promise = Mojo::Promise->new;
+    my $dict_hits = 0;
+
+    # 1. Parent Process: Fetch unprocessed records and dictionary state
     my @targets = (
         { table => 'todo_list',       id_col => 'id', text_col => 'task_name' },
         { table => 'shopping_list',   id_col => 'id', text_col => 'item_name' },
@@ -284,113 +297,99 @@ sub run_emoji_maintenance {
         { table => 'meals',           id_col => 'id', text_col => 'name' }
     );
 
-    # Initialize Gemini API configuration
-    my $ua = Mojo::UserAgent->new;
-    my $api_key = $c->db->get_gemini_key();
-    
-    my $active_model = $c->db->get_gemini_active_model() // 'gemini-2.5-flash'; 
-
-    my $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$active_model:generateContent?key=$api_key";
-
-    # Enforce strictly 1 character
-    my $sys_prompt = "You are a text-to-emoji converter. Respond ONLY with a single emoji character. Do not provide punctuation, quotes, words, or explanations. Just the emoji.";
-
-    # Limit total AI calls per cycle to prevent rate limiting/costs
-    my $max_ai_calls_per_cycle = 10;
-    my $ai_calls_this_cycle = 0;
-
+    my @batch;
     foreach my $t (@targets) {
-        my $records = $c->db->get_unprocessed_emojis($t->{table}, $t->{id_col}, $t->{text_col}, 5);
-        
-        foreach my $row (@$records) {
-            my $raw_text = Mojo::Util::trim($row->{text_value} // '');
+        my $records = $c->db->get_unprocessed_emojis($t->{table}, $t->{id_col}, $t->{text_col}, 10);
+        foreach my $r (@$records) {
+            my $raw_text = Mojo::Util::trim($r->{text_value} // '');
+            next unless $raw_text;
             
-            unless ($raw_text) {
-                $c->db->mark_emoji_processed($t->{table}, $t->{id_col}, $row->{id});
-                next;
-            }
-            
-            # Skip strings that already start with typical emoji ranges or Unicode pictographs
-            if ($raw_text =~ /^\p{Extended_Pictographic}/) {
-                $c->db->mark_emoji_processed($t->{table}, $t->{id_col}, $row->{id});
-                $stats->{processed}++;
-                next;
-            }
+            # Skip if already has emoji
+            next if $raw_text =~ /^\p{Extended_Pictographic}/;
 
-            my $emoji;
-            my $api_failed = 0;
-
-            # 1. Check Isolated AI Dictionary
-            $emoji = $c->db->check_ai_dictionary($raw_text);
+            # Parent Check: Dictionary Lookups
+            my $emoji = $c->db->check_ai_dictionary($raw_text) // $c->db->check_standard_dictionary($raw_text);
             
             if ($emoji) {
-                $stats->{dict_hits}++;
-            } else {
-                # 2. Check Standard UI Dictionary
-                $emoji = $c->db->check_standard_dictionary($raw_text);
-                
-                if ($emoji) {
-                    $stats->{fallback_hits}++;
-                } elsif ($ai_calls_this_cycle < $max_ai_calls_per_cycle) {
-                    # 3. Fallback to AI Generation
-                    $ai_calls_this_cycle++;
-                    
-                    my $tx = $ua->post($endpoint => json => {
-                        contents => [ { role => 'user', parts => [ { text => $raw_text } ] } ],
-                        system_instruction => { parts => [ { text => $sys_prompt } ] },
-                        generationConfig => { temperature => 0.1, maxOutputTokens => 5 }
-                    });
-
-                    if (my $res = $tx->result) {
-                        if ($res->is_success) {
-                            my $data = $res->json;
-                            if ($data->{candidates} && $data->{candidates}[0]{content}{parts}[0]{text}) {
-                                my $ai_response = Mojo::Util::trim($data->{candidates}[0]{content}{parts}[0]{text});
-                                
-                                # Strip accidental quotes or punctuation from AI response
-                                $ai_response =~ s/^['"]+|['"]+$//g;
-                                $ai_response = Mojo::Util::trim($ai_response);
-                                
-                                # If it's a short response and isn't clearly a word/sentence, accept it.
-                                if (length($ai_response) > 0 && $ai_response !~ /[a-zA-Z]{3,}/) {
-                                    $emoji = $ai_response;
-                                    $c->db->save_to_ai_dictionary($raw_text, $emoji);
-                                    $stats->{ai_calls}++;
-                                } else {
-                                    $c->app->log->warn("AI returned invalid emoji for '$raw_text': $ai_response");
-                                    $api_failed = 1; # Determined invalid, don't retry immediately
-                                }
-                            }
-                        } else {
-                            $c->app->log->warn("API Error for '$raw_text': " . $res->message . " | " . $res->body);
-                            $api_failed = 1; # Transient failure
-                        }
-                    } else {
-                        $api_failed = 1; # Connection failure
-                    }
-                }
-            }
-
-            # Apply the update
-            if ($emoji) {
+                # Immediate local update for cached hits
                 my $updated_text = "$emoji $raw_text";
-                $c->db->update_record_emoji($t->{table}, $t->{id_col}, $t->{text_col}, $row->{id}, $updated_text);
-                $stats->{processed}++;
-            } elsif (!$api_failed) {
-                # Only mark as processed if we actually checked it (dictionary hit or non-transient empty)
-                # If the API failed, we LEAVE it has_emoji=0 so it retries next cycle.
-                
-                # If we skipped AI because of rate limit, just continue to next record
-                next if $ai_calls_this_cycle >= $max_ai_calls_per_cycle && !$emoji;
-
-                # If we checked dictionaries and found nothing, and AI was either skipped or returned nothing definitively
-                $c->db->mark_emoji_processed($t->{table}, $t->{id_col}, $row->{id});
-                $stats->{processed}++;
+                $c->db->update_record_emoji($t->{table}, $t->{id_col}, $t->{text_col}, $r->{id}, $updated_text);
+                $dict_hits++;
+            } else {
+                # Add to background batch for AI processing
+                push @batch, { %$t, id => $r->{id}, text => $raw_text };
             }
         }
     }
 
-    return $stats;
+    # If no background work needed, resolve early with dictionary stats
+    unless (@batch) {
+        return $promise->resolve({ processed => $dict_hits, ai_calls => 0, dict_hits => $dict_hits });
+    }
+
+    # 2. Subprocess: Handle heavy network/AI logic
+    my $api_key = $c->db->get_gemini_key();
+    my $active_model = $c->db->get_gemini_active_model() // 'gemini-2.0-flash';
+    my $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$active_model:generateContent?key=$api_key";
+
+    Mojo::IOLoop->subprocess(
+        sub {
+            my $subprocess = shift;
+            my @results;
+            my $ai_calls = 0;
+            my $ua = Mojo::UserAgent->new->request_timeout(10);
+
+            my $max_calls = 10; 
+
+            foreach my $item (@batch) {
+                last if $ai_calls >= $max_calls;
+                $ai_calls++;
+
+                my $tx = $ua->post($endpoint => json => {
+                    contents => [ { role => 'user', parts => [ { text => $item->{text} } ] } ],
+                    system_instruction => { parts => [ { text => "Respond ONLY with one emoji character." } ] },
+                    generationConfig => { temperature => 0.1, maxOutputTokens => 5 }
+                });
+
+                if (my $res = $tx->result) {
+                    if ($res->is_success) {
+                        my $ai_response = Mojo::Util::trim($res->json->{candidates}[0]{content}{parts}[0]{text} // '');
+                        $ai_response =~ s/^['"]+|['"]+$//g;
+                        
+                        if (length($ai_response) > 0 && $ai_response !~ /[a-zA-Z]{3,}/) {
+                            push @results, { %$item, emoji => $ai_response };
+                        }
+                    }
+                }
+            }
+            return { results => \@results, ai_calls => $ai_calls };
+        },
+        sub {
+            my ($subprocess, $err, $data) = @_;
+            if ($err) {
+                $promise->reject($err);
+                return;
+            }
+
+            # 3. Parent Process: Finalize DB updates
+            my $ai_hits = 0;
+            foreach my $res (@{$data->{results}}) {
+                my $updated_text = "$res->{emoji} $res->{text}";
+                $c->db->update_record_emoji($res->{table}, $res->{id_col}, $res->{text_col}, $res->{id}, $updated_text);
+                $c->db->save_to_ai_dictionary($res->{text}, $res->{emoji});
+                $ai_hits++;
+            }
+            
+            $promise->resolve({ 
+                processed => ($dict_hits + $ai_hits), 
+                ai_calls  => $data->{ai_calls},
+                dict_hits => $dict_hits,
+                ai_hits   => $ai_hits
+            });
+        }
+    );
+
+    return $promise;
 }
 
 1;
