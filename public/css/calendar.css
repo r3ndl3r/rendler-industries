@@ -31,6 +31,7 @@
     border: 1px solid #dddddd;
     border-radius: 5px;
     overflow: hidden;
+    position: relative;
 }
 
 /* --- 2. Header & Controls --- */
@@ -61,12 +62,16 @@
     min-width: 200px;
 }
 
-.calendar-actions {
-    display: flex;
+.calendar-actions, .manage-actions {
+    display: none;
     gap: 10px;
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
+}
+
+.calendar-actions.active, .manage-actions.active {
+    display: flex;
 }
 
 .nav-btn {
@@ -110,9 +115,9 @@
 
 .view-btn:last-child { border-right: none; }
 .view-btn:hover { background-color: #4b5563; }
-.view-btn.active { background-color: #3b82f6; color: #ffffff; }
+.view-btn.active { background-color: var(--accent-color, #3b82f6); color: #ffffff; }
 
-.calendar-filters {
+.filter-section {
     margin-bottom: 6px;
     padding: 8px;
     background: #f9f9f9;
@@ -122,13 +127,13 @@
     gap: 8px;
 }
 
-.calendar-filters label {
+.filter-section label {
     font-weight: bold;
     color: #222222;
     font-size: 0.85em;
 }
 
-.calendar-filters select {
+.filter-section select {
     padding: 5px 8px;
     border: 1px solid #dddddd;
     border-radius: 5px;
@@ -349,7 +354,7 @@
     animation: fadeIn 0.3s;
 }
 
-.modal.show {
+.modal.show, .modal.active {
     display: flex !important;
 }
 
@@ -435,7 +440,7 @@
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-.btn-primary, .btn-secondary, .btn-clone, .btn-danger {
+.btn-primary, .btn-secondary, .btn-clone, .btn-danger, .btn-small {
     padding: 8px 16px;
     border-radius: 6px;
     font-weight: 600;
@@ -444,9 +449,10 @@
     font-size: 0.9em;
 }
 
-.btn-primary { background-color: #3b82f6; color: white; }
+.btn-primary { background-color: var(--accent-color, #3b82f6); color: white; }
 .btn-secondary, .btn-clone { background-color: #334155; color: white; }
 .btn-danger { background-color: #ef4444; color: white; }
+.btn-small { padding: 5px 10px; font-size: 0.8em; }
 
 .modal-actions {
     display: flex;
@@ -474,33 +480,6 @@
     display: flex;
     align-items: center;
     gap: 12px;
-}
-
-.filter-section {
-    margin-bottom: 12px; 
-    padding: 10px; 
-    background: #f9f9f9;
-    border: 1px solid #dddddd;
-    border-radius: 5px; 
-    display: flex; 
-    align-items: center; 
-    gap: 10px; 
-    flex-wrap: wrap;
-}
-
-.filter-section label {
-    font-weight: bold;
-    color: #222222;
-    font-size: 0.85em;
-}
-
-.filter-section select {
-    padding: 5px 8px;
-    border: 1px solid #dddddd;
-    border-radius: 5px;
-    background: #ffffff;
-    font-size: 0.85em;
-    color: #222222;
 }
 
 .section-header { margin-top: 20px; padding-bottom: 5px; color: #1e40af; border-bottom: 2px solid #3b82f6; }
@@ -635,6 +614,9 @@
 
 .upcoming-event-countdown { font-size: 0.85em; color: #3788d8; font-weight: bold; }
 
+/* Visibility Standard Helpers */
+.hidden { display: none !important; }
+
 /* --- 8. Mobile Responsiveness --- */
 
 @media (max-width: 768px) {
@@ -685,7 +667,7 @@
         font-size: 0.85em;
     }
     
-    .calendar-actions {
+    .calendar-actions, .manage-actions {
         justify-content: center;
         gap: 4px;
     }
@@ -707,17 +689,17 @@
     }
     
     /* Compact filter bar */
-    .calendar-filters {
+    .filter-section {
         padding: 6px;
         margin-bottom: 5px;
         font-size: 0.8em;
     }
     
-    .calendar-filters label {
+    .filter-section label {
         font-size: 0.75em;
     }
     
-    .calendar-filters select {
+    .filter-section select {
         font-size: 0.75em;
         padding: 4px 6px;
     }
@@ -861,10 +843,6 @@
     .manage-header {
         flex-direction: column;
         align-items: stretch;
-    }
-    
-    .manage-actions {
-        flex-direction: column;
     }
     
     /* =========================================
