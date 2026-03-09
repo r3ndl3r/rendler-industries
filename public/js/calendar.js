@@ -14,6 +14,7 @@
  * - High-resolution upcoming event widget with automatic countdowns
  * - Administrative management ledger with category filtering
  * - Synchronized stream for metadata and event payloads
+ * - Strict Privacy: Private events visible only to owner/admin.
  * 
  * Dependencies:
  * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
@@ -26,7 +27,7 @@
 const CONFIG = {
     SYNC_INTERVAL_MS: 300000,        // Background server sync (5 min)
     COUNTDOWN_TICK_MS: 60000,       // Relative time update frequency (1 min)
-    SCROLL_DELAY_MS: 50             // UI timing for vertical alignment
+    SCROLL_DELAY_MS: 100            // UI timing for vertical alignment
 };
 
 let STATE = {
@@ -35,6 +36,7 @@ let STATE = {
     categories: [],                 // List of unique event category labels
     users: [],                      // Family roster for attendee selection
     isAdmin: false,                 // Authorization gate for administrative actions
+    currentUserId: null,            // ID of currently logged-in user
     currentDate: new Date(),        // Active temporal pointer
     currentView: 'month',           // Current display mode (month|week|day)
     isManagementPage: false         // Context flag for administrative view
@@ -90,6 +92,7 @@ async function loadState() {
             STATE.categories = data.categories || [];
             STATE.users = data.users || [];
             STATE.isAdmin = !!data.is_admin;
+            STATE.currentUserId = data.current_user_id;
             
             // UI Setup based on state
             populateDropdowns();
@@ -118,7 +121,6 @@ async function loadEvents() {
     let start, end;
     
     if (STATE.isManagementPage) {
-        // Management fetches a broad range for filtering
         start = '2020-01-01';
         end = '2030-12-31';
     } else {
@@ -213,7 +215,6 @@ function renderMonthView() {
     container.innerHTML = '<div class="calendar-grid"></div>';
     const grid = container.querySelector('.calendar-grid');
     
-    // Header labels
     ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].forEach(day => {
         const header = document.createElement('div');
         header.className = 'calendar-day-header';
@@ -321,6 +322,7 @@ function renderDayView() {
             <div class="calendar-hour-events" onclick="openAddEventModal('${dateStr}')">
                 ${getEventsForHour(dateStr, h).map(e => `
                     <div class="event-item" style="--event-color: ${e.color};" onclick="event.stopPropagation(); showEventDetails(${e.id})">
+                        ${e.is_private ? window.getIcon('lock') : ''}
                         <strong>${escapeHtml(e.title)}</strong> ${e.all_day ? '(All Day)' : ''}
                     </div>
                 `).join('')}
@@ -350,9 +352,12 @@ function renderEventPill(e, compact) {
     }
 
     return `
-        <div class="event-item ${e.all_day ? 'all-day' : ''}" style="--event-color: ${e.color};" onclick="event.stopPropagation(); showEventDetails(${e.id})">
+        <div class="event-item ${e.all_day ? 'all-day' : ''} ${e.is_private ? 'private-event' : ''}" style="--event-color: ${e.color};" onclick="event.stopPropagation(); showEventDetails(${e.id})">
             <div class="event-item-content">
-                <span class="event-title">${escapeHtml(e.title)}${timeStr}</span>
+                <span class="event-title">
+                    ${e.is_private ? window.getIcon('lock') : ''}
+                    ${escapeHtml(e.title)}${timeStr}
+                </span>
                 ${attendeeHtml}
             </div>
         </div>
@@ -379,13 +384,6 @@ function renderManagementTable() {
 
 /**
  * Internal table generator for management views.
- * 
- * @param {Object[]} events - Record collection.
- * @param {string} emptyMsg - Label for zero-record states.
- * @returns {string} - Rendered HTML table.
- */
-/**
- * Generates the administrative management table from state.
  * 
  * @param {Object[]} events - Record collection.
  * @param {string} emptyMsg - Label for zero-record states.
@@ -429,9 +427,10 @@ function renderTable(events, emptyMsg) {
         const timeDisplay = e.all_day ? 'All Day' : `${formatTime(e.start_date)} - ${formatTime(e.end_date)}`;
 
         html += `
-            <tr data-event-id="${e.id}" class="${groupClass}">
+            <tr data-event-id="${e.id}" class="${groupClass} ${e.is_private ? 'table-row-private' : ''}">
                 <td>
                     <span class="event-color-dot" style="--event-color: ${e.color}"></span>
+                    ${e.is_private ? window.getIcon('lock') : ''}
                     <strong>${escapeHtml(e.title)}</strong>
                     ${e.description ? `<div class="event-desc">${escapeHtml(e.description)}</div>` : ''}
                 </td>
@@ -536,10 +535,13 @@ function renderUpcomingEvents() {
         const timeInfo = e.all_day ? 'All Day' : `${formatTime(e.start_date)} - ${formatTime(e.end_date)}`;
 
         html += `
-            <div class="upcoming-event-item" style="--event-color: ${e.color}" onclick="showEventDetails(${e.id})">
+            <div class="upcoming-event-item ${e.is_private ? 'private-event' : ''}" style="--event-color: ${e.color}" onclick="showEventDetails(${e.id})">
                 <div class="upcoming-event-color"></div>
                 <div class="upcoming-event-details">
-                    <div class="upcoming-event-title">${escapeHtml(e.title)}</div>
+                    <div class="upcoming-event-title">
+                        ${e.is_private ? window.getIcon('lock') : ''}
+                        ${escapeHtml(e.title)}
+                    </div>
                     <div class="upcoming-event-datetime">${timeInfo}</div>
                     ${e.attendee_names ? `<div class="upcoming-event-attendees">${renderAttendeePills(e.attendee_names, true)}</div>` : ''}
                     <div class="upcoming-event-countdown">${getCountdown(e.parsedStart)}</div>
@@ -581,7 +583,6 @@ function setupEventListeners() {
         };
     });
 
-    // Date follow-through behavior
     const startInput = document.getElementById('eventStartDate');
     const endInput = document.getElementById('eventEndDate');
     if (startInput && endInput) {
@@ -612,7 +613,6 @@ async function handleEventSubmit(event) {
     const id = document.getElementById('eventId').value;
     const url = id ? '/calendar/api/edit' : '/calendar/api/add';
     
-    // Consolidation: date + time ➔ YYYY-MM-DD HH:MM:SS
     const formData = new FormData(form);
     const start = `${formData.get('start_date')} ${formData.get('start_time') || '00:00'}:00`;
     const end = `${formData.get('end_date')} ${formData.get('end_time') || '23:59'}:59`;
@@ -620,6 +620,8 @@ async function handleEventSubmit(event) {
     formData.set('end_date', end);
 
     formData.set('all_day', document.getElementById('eventAllDay').checked ? 1 : 0);
+    formData.set('is_private', document.getElementById('eventIsPrivate').checked ? 1 : 0);
+    
     const notifyCb = document.getElementById('sendNotifications');
     if (notifyCb) formData.set('send_notifications', notifyCb.checked ? 1 : 0);
 
@@ -703,7 +705,6 @@ function openAddEventModal(dateStr) {
         document.getElementById('eventEndDate').value = dateStr;
     }
 
-    // UX: Pre-fill category if a filter is active
     const activeFilter = document.getElementById('categoryFilter').value;
     if (activeFilter) {
         document.getElementById('eventCategory').value = activeFilter;
@@ -729,6 +730,7 @@ function openEditModalById(id) {
     document.getElementById('eventCategory').value = event.category || '';
     document.getElementById('eventColor').value = event.color || '#3788d8';
     document.getElementById('eventAllDay').checked = !!event.all_day;
+    document.getElementById('eventIsPrivate').checked = !!event.is_private;
     
     const [sDate, sTime] = event.start_date.split(' ');
     const [eDate, eTime] = event.end_date.split(' ');
@@ -811,9 +813,13 @@ function showEventDetails(id) {
 
     content.innerHTML = `
         <div class="event-details-header">
-            <h2 style="color: ${event.color}">${escapeHtml(event.title)}</h2>
+            <h2 style="--header-color: ${event.color}; color: var(--header-color)">
+                ${event.is_private ? window.getIcon('lock') : ''}
+                ${escapeHtml(event.title)}
+            </h2>
         </div>
         <div class="event-details-body">
+            ${event.is_private ? `<div class="event-detail-row status-private"><strong>${window.getIcon('lock')} Status:</strong> <span class="badge-private">Private Event</span></div>` : ''}
             <div class="event-detail-row"><strong>${window.getIcon('calendar')} Date:</strong> <span>${dateStr}</span></div>
             <div class="event-detail-row"><strong>${window.getIcon('clock')} Time:</strong> <span>${timeInfo}</span></div>
             ${event.category ? `<div class="event-detail-row"><strong>${window.getIcon('info')} Category:</strong> <span>${escapeHtml(event.category)}</span></div>` : ''}
