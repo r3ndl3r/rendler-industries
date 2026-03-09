@@ -249,6 +249,38 @@
 .event-item:hover { opacity: 0.8; }
 .event-item.all-day { font-weight: bold; }
 
+/* Privacy Styling */
+.event-item.private-event {
+    opacity: 0.85;
+    border: 1px dashed rgba(255, 255, 255, 0.4);
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 5px,
+        rgba(255, 255, 255, 0.05) 5px,
+        rgba(255, 255, 255, 0.05) 10px
+    );
+}
+
+.table-row-private {
+    opacity: 0.9;
+    font-style: italic;
+}
+
+.badge-private {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: bold;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.status-private {
+    background: rgba(239, 68, 68, 0.05);
+}
+
 /* Week View Overrides */
 .calendar-view-week .event-item {
     padding: 6px;
