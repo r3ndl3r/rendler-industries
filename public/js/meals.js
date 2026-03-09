@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadState();
 
     // Modal: Configure unified closure behavior
-    setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
+    setupGlobalModalClosing(['modal-overlay'], [
         closeSuggestModal, closeBlackoutModal, closeEditSuggestionModal, closeConfirmModal,
         closeManageVaultModal, closeAddEditMealModal
     ]);
@@ -53,6 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setupMealAutocomplete('mealInput', 'mealDropdown');
     setupMealAutocomplete('editMealInput', 'editMealDropdown');
     setupMealAutocomplete('manageMealName', 'manageMealDropdown');
+
+    // Background Synchronization
+    setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
 });
 
 /**
@@ -66,15 +69,18 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>}
  */
 async function loadState() {
+    // Lifecycle: inhibit background sync if user is actively interacting with forms
+    const anyModalOpen = document.querySelector('.modal-overlay.active');
+    if (anyModalOpen && STATE.plan.length > 0) return;
+
     const container = document.getElementById('meals-timeline');
     // Lifecycle: show loading pulse if initial boot
     if (container && !container.querySelector('.component-loading') && STATE.plan.length === 0) {
         container.innerHTML = `
             <div class="component-loading">
                 <div class="loading-scan-line"></div>
-                <span class="loading-icon-pulse">${getIcon('meals')}</span>
-                <p class="loading-label">Synchronizing meal plan...</p>
-                <p class="loading-sub">Retrieving active suggestions and voting data</p>
+                <span class="loading-icon-pulse">${window.getIcon('meals')}</span>
+                <p class="loading-label">Synchronizing...</p>
             </div>`;
     }
 
@@ -90,7 +96,13 @@ async function loadState() {
             
             // UI: Handle visibility of admin-only controls
             const adminBar = document.getElementById('adminActions');
-            if (adminBar) adminBar.classList.toggle('hidden', !STATE.isAdmin);
+            if (adminBar) {
+                if (STATE.isAdmin) {
+                    adminBar.classList.add('active');
+                } else {
+                    adminBar.classList.remove('active');
+                }
+            }
 
             renderTimeline();
         }
@@ -111,7 +123,10 @@ async function loadState() {
  */
 async function openManageVaultModal() {
     const modal = document.getElementById('manageVaultModal');
-    if (modal) modal.classList.add('show');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.classList.add('modal-open');
+    }
     
     try {
         const response = await fetch('/meals/api/vault');
@@ -131,7 +146,10 @@ async function openManageVaultModal() {
  */
 function closeManageVaultModal() {
     const modal = document.getElementById('manageVaultModal');
-    if (modal) modal.classList.remove('show');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.classList.remove('modal-open');
+    }
 }
 
 /**
@@ -149,14 +167,14 @@ function renderVaultTable(meals) {
             <td><strong>${escapeHtml(m.name)}</strong></td>
             <td class="col-actions">
                 <div class="action-buttons">
-                    <button class="btn-icon-edit" onclick="openAddEditMealModal(${m.id}, '${escapeHtml(m.name).replace(/'/g, "\\'")}')" title="Edit Name">
-                        ${getIcon('edit')}
+                    <button type="button" class="btn-icon-edit" onclick="openAddEditMealModal(${m.id}, '${escapeHtml(m.name).replace(/'/g, "\\'")}')" title="Edit Name">
+                        ${window.getIcon('edit')}
                     </button>
-                    <button class="btn-icon-delete ${m.is_used ? 'disabled' : ''}" 
+                    <button type="button" class="btn-icon-delete ${m.is_used ? 'disabled' : ''}" 
                             ${m.is_used ? 'disabled' : ''} 
                             onclick="deleteManageMeal(${m.id}, '${escapeHtml(m.name).replace(/'/g, "\\'")}')"
                             title="${m.is_used ? 'Cannot delete: Meal is part of a plan' : 'Remove from Vault'}">
-                        ${getIcon('delete')}
+                        ${window.getIcon('delete')}
                     </button>
                 </div>
             </td>
@@ -181,8 +199,11 @@ function openAddEditMealModal(id = null, name = null) {
     const dropdown = document.getElementById('manageMealDropdown');
     if (dropdown) dropdown.classList.add('hidden');
 
-    if (title) title.innerHTML = id ? `${getIcon('edit')} Edit Meal` : `${getIcon('add')} Add Meal`;
-    if (modal) modal.classList.add('show');
+    if (title) title.innerHTML = id ? `${window.getIcon('edit')} Edit Meal` : `${window.getIcon('add')} Add Meal`;
+    if (modal) {
+        modal.classList.add('active');
+        document.body.classList.add('modal-open');
+    }
 }
 
 /**
@@ -192,7 +213,10 @@ function openAddEditMealModal(id = null, name = null) {
  */
 function closeAddEditMealModal() {
     const modal = document.getElementById('addEditMealModal');
-    if (modal) modal.classList.remove('show');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.classList.remove('modal-open');
+    }
 }
 
 /**
@@ -210,11 +234,11 @@ async function submitManageMeal() {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `${window.getIcon('waiting')} Saving...`;
 
     try {
         const endpoint = id ? '/meals/api/vault/update' : '/meals/api/vault/add';
-        const result = await apiPost(endpoint, { id, name });
+        const result = await window.apiPost(endpoint, { id, name });
 
         if (result && result.success) {
             closeAddEditMealModal();
@@ -235,7 +259,7 @@ async function submitManageMeal() {
  * @returns {void}
  */
 function deleteManageMeal(id, name) {
-    showConfirmModal({
+    window.showConfirmModal({
         title: 'Remove from Vault',
         message: `Permanently remove \"<strong>${escapeHtml(name)}</strong>\" from the registry?`,
         danger: true,
@@ -243,7 +267,7 @@ function deleteManageMeal(id, name) {
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost('/meals/api/vault/delete', { id });
+            const result = await window.apiPost('/meals/api/vault/delete', { id });
             if (result && result.success) {
                 openManageVaultModal();
                 await loadState();
@@ -283,7 +307,7 @@ function renderDayColumn(day, index) {
     
     let lockPill = '';
     if (index === 0 && !blackout && !day.final_suggestion_id) {
-        const icon = isPast2PM ? getIcon('lock') : getIcon('clock');
+        const icon = isPast2PM ? window.getIcon('lock') : window.getIcon('clock');
         const text = isPast2PM ? 'Locked' : 'Will Lock @ 2PM';
         lockPill = `<span class="lock-info inline">${icon} ${text}</span>`;
     }
@@ -293,12 +317,12 @@ function renderDayColumn(day, index) {
     if (blackout) {
         contentHtml = `
             <div class="blackout-state">
-                <span class="blackout-icon">${getIcon('cancel')}</span>
+                <span class="blackout-icon">${window.getIcon('cancel')}</span>
                 <p>${escapeHtml(blackout)}</p>
                 ${STATE.isAdmin ? `
                     <div class="day-actions mt-4">
-                        <button class="btn-secondary btn-small" onclick="adminUnlock(${day.id})">
-                            ${getIcon('lock')} Unlock Day
+                        <button type="button" class="btn-secondary btn-small" onclick="adminUnlock(${day.id})">
+                            ${window.getIcon('lock')} Unlock Day
                         </button>
                     </div>` : ''}
             </div>`;
@@ -311,8 +335,8 @@ function renderDayColumn(day, index) {
                 <small>Suggested by ${escapeHtml(winner.suggested_by_name)}</small>
                 ${STATE.isAdmin ? `
                     <div class="mt-4">
-                        <button class="btn-secondary btn-small" onclick="adminUnlock(${day.id})">
-                            ${getIcon('lock')} Unlock Day
+                        <button type="button" class="btn-secondary btn-small" onclick="adminUnlock(${day.id})">
+                            ${window.getIcon('lock')} Unlock Day
                         </button>
                     </div>` : ''}
             </div>` : '<p>Decision pending.</p>';
@@ -324,13 +348,13 @@ function renderDayColumn(day, index) {
         if (leaders.length > 1) {
             leaderBanner = `
                 <div class="leader-banner is-tie">
-                    <span class="leader-label">${getIcon('vote')} TIE</span>
+                    <span class="leader-label">${window.getIcon('vote')} TIE</span>
                     <span class="leader-meal">${leaders.map(l => escapeHtml(l.meal_name)).join(' / ')}</span>
                 </div>`;
         } else if (leaders.length === 1) {
             leaderBanner = `
                 <div class="leader-banner">
-                    <span class="leader-label">${getIcon('trophy')} LEADER</span>
+                    <span class="leader-label">${window.getIcon('trophy')} LEADER</span>
                     <span class="leader-meal">${escapeHtml(leaders[0].meal_name)}</span>
                 </div>`;
         }
@@ -346,21 +370,21 @@ function renderDayColumn(day, index) {
                 </div>
                 ${!isLocked ? `
                 <div class="suggestion-footer-actions">
-                    <button class="btn-icon-vote ${s.user_voted ? 'is-voted' : ''}" 
+                    <button type="button" class="btn-icon-vote ${s.user_voted ? 'is-voted' : ''}" 
                             onclick="castVote(${s.id})" 
                             title="${s.user_voted ? 'Remove vote' : 'Vote for this meal'}">
-                        ${getIcon('vote')}
+                        ${window.getIcon('vote')}
                     </button>
                     ${(STATE.isAdmin || s.suggested_by_id == STATE.currentUserId) ? `
-                        <button class="btn-icon-edit" onclick="openEditSuggestionModal(${s.id}, '${s.meal_name.replace(/'/g, "\\'")}')" title="Edit suggestion">
-                            ${getIcon('edit')}
+                        <button type="button" class="btn-icon-edit" onclick="openEditSuggestionModal(${s.id}, '${s.meal_name.replace(/'/g, "\\'")}')" title="Edit suggestion">
+                            ${window.getIcon('edit')}
                         </button>
-                        <button class="btn-icon-delete" onclick="deleteSuggestion(${s.id}, '${s.meal_name.replace(/'/g, "\\'")}')" title="Remove suggestion">
-                            ${getIcon('delete')}
+                        <button type="button" class="btn-icon-delete" onclick="deleteSuggestion(${s.id}, '${s.meal_name.replace(/'/g, "\\'")}')" title="Remove suggestion">
+                            ${window.getIcon('delete')}
                         </button>` : ''}
                     ${STATE.isAdmin ? `
-                        <button class="btn-icon-bonus" onclick="adminLock(${day.id}, ${s.id})" title="Manual Lock-in">
-                            ${getIcon('check')}
+                        <button type="button" class="btn-icon-bonus" onclick="adminLock(${day.id}, ${s.id})" title="Manual Lock-in">
+                            ${window.getIcon('check')}
                         </button>` : ''}
                 </div>` : ''}
             </div>`).join('');
@@ -368,12 +392,12 @@ function renderDayColumn(day, index) {
         const dayActions = isLocked ? '' : `
             <div class="day-actions">
                 ${(!day.user_has_suggested) ? `
-                    <button class="btn-primary" onclick="openSuggestModal(${day.id}, '${day.formatted_date}')">
-                        ${getIcon('add')} Suggest
+                    <button type="button" class="btn-primary" onclick="openSuggestModal(${day.id}, '${day.formatted_date}')">
+                        ${window.getIcon('add')} Suggest
                     </button>` : ''}
                 ${STATE.isAdmin ? `
-                    <button class="btn-danger" onclick="openBlackoutModal(${day.id})">
-                        ${getIcon('cancel')} Blackout
+                    <button type="button" class="btn-danger" onclick="openBlackoutModal(${day.id})">
+                        ${window.getIcon('cancel')} Blackout
                     </button>` : ''}
             </div>`;
 
@@ -388,7 +412,7 @@ function renderDayColumn(day, index) {
             <div class="day-header">
                 <span class="day-name">${day.formatted_date}</span>
                 ${lockPill}
-                ${isLocked && index !== 0 ? `<span class="status-icon" title="Locked">${getIcon('check')}</span>` : ''}
+                ${isLocked && index !== 0 ? `<span class="status-icon" title="Locked">${window.getIcon('check')}</span>` : ''}
             </div>
             <div class="day-content">${contentHtml}</div>
         </div>`;
@@ -404,7 +428,7 @@ function renderVoterPills(voters) {
     if (!voters || !voters.length) return '';
     return `
         <div class="voter-pills">
-            ${voters.map(v => `<span class="voter-badge">${getIcon('vote')} ${escapeHtml(v)}</span>`).join('')}
+            ${voters.map(v => `<span class="voter-badge">${window.getIcon('vote')} ${escapeHtml(v)}</span>`).join('')}
         </div>`;
 }
 
@@ -483,10 +507,10 @@ async function submitSuggestion() {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Submitting...`;
+    btn.innerHTML = `${window.getIcon('waiting')} Submitting...`;
 
     try {
-        const result = await apiPost('/meals/api/suggest', { plan_id: planId, meal_name: mealName });
+        const result = await window.apiPost('/meals/api/suggest', { plan_id: planId, meal_name: mealName });
         if (result && result.success) {
             closeSuggestModal();
             await loadState();
@@ -508,7 +532,7 @@ async function castVote(id) {
     const row = document.querySelector(`.suggestion-row[data-suggestion-id="${id}"]`);
     if (row) row.classList.add('vote-pop');
 
-    const result = await apiPost('/meals/api/vote', { suggestion_id: id });
+    const result = await window.apiPost('/meals/api/vote', { suggestion_id: id });
     if (result && result.success) {
         await loadState();
     } else {
@@ -531,10 +555,10 @@ async function submitEditSuggestion() {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `${window.getIcon('waiting')} Saving...`;
 
     try {
-        const result = await apiPost('/meals/api/edit_suggestion', { suggestion_id: id, meal_name: name });
+        const result = await window.apiPost('/meals/api/edit_suggestion', { suggestion_id: id, meal_name: name });
         if (result && result.success) {
             closeEditSuggestionModal();
             await loadState();
@@ -553,7 +577,7 @@ async function submitEditSuggestion() {
  * @returns {void}
  */
 function deleteSuggestion(id, name) {
-    showConfirmModal({
+    window.showConfirmModal({
         title: 'Remove Suggestion',
         message: `Are you sure you want to remove \"<strong>${escapeHtml(name)}</strong>\"?`,
         danger: true,
@@ -561,7 +585,7 @@ function deleteSuggestion(id, name) {
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost('/meals/api/delete_suggestion', { suggestion_id: id });
+            const result = await window.apiPost('/meals/api/delete_suggestion', { suggestion_id: id });
             if (result && result.success) await loadState();
         }
     });
@@ -577,7 +601,7 @@ async function submitBlackout() {
     const id = document.getElementById('blackoutPlanId').value;
     const reason = document.getElementById('blackoutReason').value;
 
-    const result = await apiPost('/meals/api/admin/lock', { plan_id: id, blackout: reason });
+    const result = await window.apiPost('/meals/api/admin/lock', { plan_id: id, blackout: reason });
     if (result && result.success) {
         closeBlackoutModal();
         await loadState();
@@ -593,14 +617,14 @@ async function submitBlackout() {
  * @returns {void}
  */
 function adminLock(planId, suggestionId) {
-    showConfirmModal({
+    window.showConfirmModal({
         title: 'Lock Decision',
         message: 'Manually lock in this suggestion as the final meal for the day?',
         confirmText: 'Lock In',
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost('/meals/api/admin/lock', { plan_id: planId, suggestion_id: suggestionId });
+            const result = await window.apiPost('/meals/api/admin/lock', { plan_id: planId, suggestion_id: suggestionId });
             if (result && result.success) await loadState();
         }
     });
@@ -614,7 +638,7 @@ function adminLock(planId, suggestionId) {
  * @returns {Promise<void>}
  */
 async function adminUnlock(planId) {
-    const result = await apiPost('/meals/api/admin/lock', { plan_id: planId, unlock: 1 });
+    const result = await window.apiPost('/meals/api/admin/lock', { plan_id: planId, unlock: 1 });
     if (result && result.success) await loadState();
 }
 
@@ -632,11 +656,20 @@ function openSuggestModal(id, date) {
     if (dropdown) dropdown.classList.add('hidden');
     
     const m = document.getElementById('suggestModal');
-    if (m) m.classList.add('show');
+    if (m) {
+        m.classList.add('active');
+        document.body.classList.add('modal-open');
+    }
 }
 
 /** @returns {void} */
-function closeSuggestModal() { const m = document.getElementById('suggestModal'); if (m) m.classList.remove('show'); }
+function closeSuggestModal() { 
+    const m = document.getElementById('suggestModal'); 
+    if (m) {
+        m.classList.remove('active');
+        document.body.classList.remove('modal-open');
+    }
+}
 
 /** @returns {void} */
 function openEditSuggestionModal(id, name) {
@@ -647,21 +680,39 @@ function openEditSuggestionModal(id, name) {
     if (dropdown) dropdown.classList.add('hidden');
     
     const m = document.getElementById('editSuggestionModal');
-    if (m) m.classList.add('show');
+    if (m) {
+        m.classList.add('active');
+        document.body.classList.add('modal-open');
+    }
 }
 
 /** @returns {void} */
-function closeEditSuggestionModal() { const m = document.getElementById('editSuggestionModal'); if (m) m.classList.remove('show'); }
+function closeEditSuggestionModal() { 
+    const m = document.getElementById('editSuggestionModal'); 
+    if (m) {
+        m.classList.remove('active');
+        document.body.classList.remove('modal-open');
+    }
+}
 
 /** @returns {void} */
 function openBlackoutModal(id) {
     document.getElementById('blackoutPlanId').value = id;
     const m = document.getElementById('blackoutModal');
-    if (m) m.classList.add('show');
+    if (m) {
+        m.classList.add('active');
+        document.body.classList.add('modal-open');
+    }
 }
 
 /** @returns {void} */
-function closeBlackoutModal() { const m = document.getElementById('blackoutModal'); if (m) m.classList.remove('show'); }
+function closeBlackoutModal() { 
+    const m = document.getElementById('blackoutModal'); 
+    if (m) {
+        m.classList.remove('active');
+        document.body.classList.remove('modal-open');
+    }
+}
 
 /**
  * Sanitizes input to prevent XSS.
