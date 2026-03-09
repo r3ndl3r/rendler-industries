@@ -120,7 +120,7 @@ sub startup {
         is_admin => sub {
             my $c = shift;
             return 0 unless $c->session('user');
-            return $db->is_admin($c->session('user'));
+            return $c->db->is_admin($c->session('user'));
         }
     );
 
@@ -132,8 +132,8 @@ sub startup {
             my $c = shift;
             return 0 unless $c->session('user');
             my $username = $c->session('user');
-            return 1 if $db->is_admin($username);
-            return $db->is_family($username);
+            return 1 if $c->db->is_admin($username);
+            return $c->db->is_family($username);
         }
     );
     
@@ -214,15 +214,23 @@ sub startup {
         }
     );
     
-    # Helper: Singleton Database Connection
+    # Helper: Singleton Database Connection with Reconnection logic
     # Parameters: None
     # Returns: DB object instance
-    $self->helper(db => sub { state $db = DB->new(app => $self); return $db });
+    $self->helper(db => sub { 
+        state $db = DB->new(app => $self); 
+        # Check if handle is still alive, reconnect if needed
+        unless ($db->{dbh} && $db->{dbh}->ping) {
+            $self->app->log->info("Database connection lost. Reconnecting...");
+            $db = DB->new(app => $self);
+        }
+        return $db;
+    });
 
     # Helper: Native Background Maintenance Runner
     # Parameters: None
-    # Behavior: 
-    #   Attempts to acquire a MariaDB global lock. If successful, executes 
+    # Behavior:
+    #   Attempts to acquire a MariaDB global lock. If successful, executes
     #   Timer, Reminder, and Meal Planner automation tasks.
     $self->helper(
         run_maintenance => sub {
@@ -231,45 +239,56 @@ sub startup {
             my ($lock) = $c->db->{dbh}->selectrow_array("SELECT GET_LOCK('mojo_maintenance', 0)");
             return unless $lock;
 
-            $c->app->log->info("Background maintenance: Lock acquired. Starting tasks...");
+            $c->log->info("Background maintenance: Lock acquired. Starting tasks...");
 
             eval {
                 my $now = DateTime->now(time_zone => 'Australia/Melbourne');
-                
+
                 require MyApp::Controller::System;
                 my $sys = MyApp::Controller::System->new(app => $c->app, tx => $c->tx);
-                
+
                 $sys->run_timer_maintenance();
                 $sys->run_reminder_maintenance($now);
                 $sys->run_meals_maintenance($now);
-                my $emoji_stats = $sys->run_emoji_maintenance();
-                if ($emoji_stats->{processed} > 0) {
-                    $c->app->log->info(sprintf(
-                        "Emoji Maintenance: Processed %d items (AI: %d, Dict: %d, Fallback: %d)",
-                        $emoji_stats->{processed},
-                        $emoji_stats->{ai_calls},
-                        $emoji_stats->{dict_hits},
-                        $emoji_stats->{fallback_hits}
-                    ));
-                }
+
+                # Asynchronous Emoji Task: Correct lock release chain
+                $sys->run_emoji_maintenance_p()->then(sub {
+                    my $emoji_stats = shift;
+                    if ($emoji_stats->{processed} > 0) {
+                        $c->log->info(sprintf(
+                            "Emoji Maintenance: Processed %d items (AI Hits: %d, Dict Hits: %d). System sync complete.",
+                            $emoji_stats->{processed},
+                            $emoji_stats->{ai_hits} // 0,
+                            $emoji_stats->{dict_hits} // 0
+                        ));
+                    } else {
+                        $c->log->debug("Emoji Maintenance: No new items found this cycle.");
+                    }
+                })->catch(sub {
+                    my $err = shift;
+                    $c->log->error("Emoji Maintenance Failed: $err");
+                })->finally(sub {
+                    # RELEASE LOCK only after the async part is fully done or failed
+                    $c->db->{dbh}->do("SELECT RELEASE_LOCK('mojo_maintenance')");
+                    $c->log->info("Background maintenance: Lock released.");
+                });
             };
 
             if ($@) {
-                $c->app->log->error("Background maintenance failed: $@");
+                $c->log->error("Background maintenance critical failure: $@");
+                $c->db->{dbh}->do("SELECT RELEASE_LOCK('mojo_maintenance')");
             }
-
-            $c->db->{dbh}->do("SELECT RELEASE_LOCK('mojo_maintenance')");
-            $c->app->log->info("Background maintenance: Lock released.");
         }
     );
 
-    # Start the Native Background Poller (Every 60 seconds)
+    # Start the Native Background Poller
+    # 1. Trigger immediate first run
+    Mojo::IOLoop->next_tick(sub { $self->run_maintenance() });
+
+    # 2. Schedule recurring runs (Every 60 seconds)
     Mojo::IOLoop->recurring(60 => sub {
-        my $loop = shift;
-        # We use next_tick to ensure we have a fresh controller-like context if needed
         $self->run_maintenance();
     });
-
     # Define Application Routes
     my $r = $self->routes;
 
