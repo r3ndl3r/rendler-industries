@@ -29,54 +29,63 @@ sub index {
     my $self = shift;
 
     my $url = 'https://www.windfinder.com/forecast/chelsea';
-    my $ua  = Mojo::UserAgent->new;
-    $ua->transactor->name('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    my $custom_ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-    # 1. Fetch Remote Content
-    my $tx = $ua->get($url);
-    return $self->render(template => 'chelsea', forecast => []) if $tx->result->is_error;
+    $self->render_later;
 
-    my $html = $tx->result->body;
-    my $weather_data = [];
-
-    # 2. Extract Base Wind/Wave JSON (fcData)
-    if ($html =~ /fcData\s*:\s*(\[\{.*?\}\])\s*,/s) {
-        $weather_data = eval { decode_json($1) } // [];
-    }
-
-    # 3. Synchronize HTML-specific data (Row-by-Row parsing)
-    # Extracts individual table rows to prevent array offset errors for Rain and Temp.
-    my @html_rows = ($html =~ /<div class="weathertable__row.*?>(.*?)<\/div>\s+<span class="ws-gradient"><\/span>/gs);
-
-    for my $i (0 .. $#$weather_data) {
-        my $row_content = $html_rows[$i] // '';
-        
-        # Extract Temperature
-        my ($temp) = ($row_content =~ /<span class="units-at">(-?\d+)<\/span>/);
-        $weather_data->[$i]{temp} = $temp // 0;
-
-        # Extract Rainfall (Defaults to 0.0 if tag is missing in current row)
-        my ($rain) = ($row_content =~ /<span class="units-pr">([\d\.]+)<\/span>/);
-        $weather_data->[$i]{rain} = $rain // '0.0';
-
-        # Extract Condition Icon class
-        my ($icon) = ($row_content =~ /class="data-cover__symbol\s+(icon-[nd]-[a-z0-9]+)/);
-        $weather_data->[$i]{icon} = $icon // 'skc';
-        
-        # Sanitize ISO8601 offset for Time::Piece compatibility (+11:00 -> +1100)
-        if (my $dt = $weather_data->[$i]{dtl}) {
-            $dt =~ s/(\+\d{2}):(\d{2})$/$1$2/;
-            $weather_data->[$i]{dtl_fixed} = $dt;
+    # 1. Fetch Remote Content Non-Blocking using persistent UA
+    $self->ua->get_p($url => { 'User-Agent' => $custom_ua })->then(sub {
+        my $tx = shift;
+        if ($tx->result->is_error) {
+            return $self->render(template => 'chelsea', forecast => []);
         }
-    }
 
-    # 4. Prepare Interpolated Dataset
-    my $interpolated = _process_forecast($weather_data);
+        my $html = $tx->result->body;
+        my $weather_data = [];
 
-    $self->render(
-        template => 'chelsea',
-        forecast => $interpolated
-    );
+        # 2. Extract Base Wind/Wave JSON (fcData)
+        if ($html =~ /fcData\s*:\s*(\[\{.*?\}\])\s*,/s) {
+            $weather_data = eval { decode_json($1) } // [];
+        }
+
+        # 3. Synchronize HTML-specific data (Row-by-Row parsing)
+        # Extracts individual table rows to prevent array offset errors for Rain and Temp.
+        my @html_rows = ($html =~ /<div class="weathertable__row.*?>(.*?)<\/div>\s+<span class="ws-gradient"><\/span>/gs);
+
+        for my $i (0 .. $#$weather_data) {
+            my $row_content = $html_rows[$i] // '';
+            
+            # Extract Temperature
+            my ($temp) = ($row_content =~ /<span class="units-at">(-?\d+)<\/span>/);
+            $weather_data->[$i]{temp} = $temp // 0;
+
+            # Extract Rainfall (Defaults to 0.0 if tag is missing in current row)
+            my ($rain) = ($row_content =~ /<span class="units-pr">([\d\.]+)<\/span>/);
+            $weather_data->[$i]{rain} = $rain // '0.0';
+
+            # Extract Condition Icon class
+            my ($icon) = ($row_content =~ /class="data-cover__symbol\s+(icon-[nd]-[a-z0-9]+)/);
+            $weather_data->[$i]{icon} = $icon // 'skc';
+            
+            # Sanitize ISO8601 offset for Time::Piece compatibility (+11:00 -> +1100)
+            if (my $dt = $weather_data->[$i]{dtl}) {
+                $dt =~ s/(\+\d{2}):(\d{2})$/$1$2/;
+                $weather_data->[$i]{dtl_fixed} = $dt;
+            }
+        }
+
+        # 4. Prepare Interpolated Dataset
+        my $interpolated = _process_forecast($weather_data);
+
+        $self->render(
+            template => 'chelsea',
+            forecast => $interpolated
+        );
+    })->catch(sub {
+        my $err = shift;
+        $self->app->log->error("Windfinder fetch failed: $err");
+        $self->render(template => 'chelsea', forecast => []);
+    });
 }
 
 # Helper: Performs linear interpolation and grouping for the forecast data.
