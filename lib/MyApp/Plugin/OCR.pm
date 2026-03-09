@@ -26,36 +26,53 @@ sub register {
     $app->helper(ocr_process => sub {
         my ($c, $image_data) = @_;
 
-        # 1. Create temporary files for processing
-        my ($fh_in, $fname_in)   = tempfile(UNLINK => 1);
-        my ($fh_out, $fname_out) = tempfile(SUFFIX => '.jpg', UNLINK => 1);
-        
-        binmode($fh_in);
-        print $fh_in $image_data;
-        close($fh_in);
-    
-        # 2. Pre-process and OCR with primary method (Sharpened)
-        my $ocr_base = $fname_out;
-        $ocr_base =~ s/\.jpg$//;
+        my $promise = Mojo::Promise->new;
 
-        my $data = $self->_execute_ocr($c, $fname_in, $fname_out, $ocr_base, 
-            ["-colorspace", "gray", "-unsharp", "0x5+1.0+0.05", "-deskew", "40%", "-threshold", "50%"]);
+        Mojo::IOLoop->subprocess(
+            sub {
+                my $subprocess = shift;
 
-        # 3. Fallback: If critical data is missing, try secondary method (Resized)
-        if (!$data->{receipt_date} || !$data->{total_amount}) {
-            my $fallback_data = $self->_execute_ocr($c, $fname_in, $fname_out, $ocr_base,
-                ["-resize", "200%", "-colorspace", "gray", "-deskew", "40%", "-threshold", "50%"]);
-            
-            # Merge results: only fill in missing fields
-            $data->{store_name}   ||= $fallback_data->{store_name};
-            $data->{receipt_date} ||= $fallback_data->{receipt_date};
-            $data->{total_amount} ||= $fallback_data->{total_amount};
-            $data->{raw_text} .= "
---- FALLBACK OCR OUTPUT ---
-" . $fallback_data->{raw_text};
-        }
+                # 1. Create temporary files for processing
+                my ($fh_in, $fname_in)   = tempfile(UNLINK => 1);
+                my ($fh_out, $fname_out) = tempfile(SUFFIX => '.jpg', UNLINK => 1);
 
-        return $data;
+                binmode($fh_in);
+                print $fh_in $image_data;
+                close($fh_in);
+
+                # 2. Pre-process and OCR with primary method (Sharpened)
+                my $ocr_base = $fname_out;
+                $ocr_base =~ s/\.jpg$//;
+
+                my $data = $self->_execute_ocr($c, $fname_in, $fname_out, $ocr_base, 
+                    ["-colorspace", "gray", "-unsharp", "0x5+1.0+0.05", "-deskew", "40%", "-threshold", "50%"]);
+
+                # 3. Fallback: If critical data is missing, try secondary method (Resized)
+                if (!$data->{receipt_date} || !$data->{total_amount}) {
+                    my $fallback_data = $self->_execute_ocr($c, $fname_in, $fname_out, $ocr_base,
+                        ["-resize", "200%", "-colorspace", "gray", "-deskew", "40%", "-threshold", "50%"]);
+
+                    # Merge results: only fill in missing fields
+                    $data->{store_name}   ||= $fallback_data->{store_name};
+                    $data->{receipt_date} ||= $fallback_data->{receipt_date};
+                    $data->{total_amount} ||= $fallback_data->{total_amount};
+                    $data->{raw_text} .= "\n--- FALLBACK OCR OUTPUT ---\n" . $fallback_data->{raw_text};
+                }
+
+                return $data;
+            },
+            sub {
+                my ($subprocess, $err, $data) = @_;
+                if ($err) {
+                    $c->app->log->error("OCR Subprocess error: $err");
+                    $promise->reject($err);
+                } else {
+                    $promise->resolve($data);
+                }
+            }
+        );
+
+        return $promise;
     });
 }
 
