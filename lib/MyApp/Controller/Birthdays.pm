@@ -17,7 +17,8 @@ use Mojo::Util qw(trim);
 # Renders the birthday interface.
 # Route: GET /birthdays
 sub index {
-    shift->render('birthdays');
+    my $c = shift;
+    $c->render('birthdays');
 }
 
 # Returns all birthday records with enriched metadata.
@@ -25,6 +26,10 @@ sub index {
 # Returns: JSON object { birthdays, is_admin, success }
 sub api_state {
     my $c = shift;
+    
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     my @birthdays = $c->db->get_all_birthdays();
     
     # Enrich with zodiac emojis and formatted dates
@@ -44,8 +49,11 @@ sub api_state {
 
 # Processes the creation of a new birthday record.
 # Route: POST /birthdays/api/add
-sub add {
+sub api_add {
     my $c = shift;
+    
+    # Ensure session is active and user has administrative privileges
+    return unless $c->is_logged_in;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $name       = trim($c->param('name') // '');
@@ -55,8 +63,11 @@ sub add {
         return $c->render(json => { success => 0, error => 'Name and Date are required' });
     }
     
-    eval { $c->db->add_birthday($name, $birth_date); };
+    eval { 
+        $c->db->add_birthday($name, $birth_date); 
+    };
     if ($@) {
+        $c->app->log->error("Failed to add birthday: $@");
         return $c->render(json => { success => 0, error => "Database error occurred" });
     }
     
@@ -65,8 +76,11 @@ sub add {
 
 # Updates an existing birthday record.
 # Route: POST /birthdays/api/edit/:id
-sub edit {
+sub api_edit {
     my $c = shift;
+    
+    # Ensure session is active and user has administrative privileges
+    return unless $c->is_logged_in;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $id         = $c->param('id');
@@ -77,8 +91,11 @@ sub edit {
         return $c->render(json => { success => 0, error => 'All fields are required' });
     }
     
-    eval { $c->db->update_birthday($id, $name, $birth_date); };
+    eval { 
+        $c->db->update_birthday($id, $name, $birth_date); 
+    };
     if ($@) {
+        $c->app->log->error("Failed to update birthday $id: $@");
         return $c->render(json => { success => 0, error => "Database update failed" });
     }
     
@@ -87,13 +104,20 @@ sub edit {
 
 # Permanently removes a birthday record.
 # Route: POST /birthdays/api/delete/:id
-sub delete {
+sub api_delete {
     my $c = shift;
+    
+    # Ensure session is active and user has administrative privileges
+    return unless $c->is_logged_in;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $id = $c->param('id');
-    eval { $c->db->delete_birthday($id); };
+    
+    eval { 
+        $c->db->delete_birthday($id); 
+    };
     if ($@) {
+        $c->app->log->error("Failed to delete birthday $id: $@");
         return $c->render(json => { success => 0, error => "Database deletion failed" });
     }
     
