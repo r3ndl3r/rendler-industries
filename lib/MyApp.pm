@@ -400,7 +400,6 @@ sub startup {
     $family->post('/swear/api/member/delete')->to('swear#delete_member');
     
     # --- Birthday Calendar Routes ---
-    # --- Birthday Calendar Routes ---
     $family->get('/birthdays')->to('birthdays#index');
     $family->get('/birthdays/api/state')->to('birthdays#api_state');
     $admin->post('/birthdays/api/add')->to('birthdays#api_add');
@@ -520,15 +519,15 @@ sub startup {
     # --- Meal Planner Routes ---
     $family->get('/meals')->to('meals#index');
     $family->get('/meals/api/state')->to('meals#api_state');
-    $family->post('/meals/api/suggest')->to('meals#suggest');
-    $family->post('/meals/api/vote')->to('meals#vote');
-    $family->post('/meals/api/edit_suggestion')->to('meals#edit_suggestion');
-    $family->post('/meals/api/delete_suggestion')->to('meals#delete_suggestion');
-    $admin->post('/meals/api/admin/lock')->to('meals#admin_lock');
-    $admin->get('/meals/api/vault')->to('meals#get_vault_data');
-    $admin->post('/meals/api/vault/add')->to('meals#add_meal_to_vault');
-    $admin->post('/meals/api/vault/update')->to('meals#update_meal_in_vault');
-    $admin->post('/meals/api/vault/delete')->to('meals#delete_meal_from_vault');
+    $family->post('/meals/api/suggest')->to('meals#api_suggest');
+    $family->post('/meals/api/vote')->to('meals#api_vote');
+    $family->post('/meals/api/edit_suggestion')->to('meals#api_edit_suggestion');
+    $family->post('/meals/api/delete_suggestion')->to('meals#api_delete_suggestion');
+    $admin->post('/meals/api/admin/lock')->to('meals#api_admin_lock');
+    $admin->get('/meals/api/vault')->to('meals#api_get_vault_data');
+    $admin->post('/meals/api/vault/add')->to('meals#api_add_meal_to_vault');
+    $admin->post('/meals/api/vault/update')->to('meals#api_update_meal_in_vault');
+    $admin->post('/meals/api/vault/delete')->to('meals#api_delete_meal_from_vault');
 
     # --- Family Pulse AI Routes ---
     $family->get('/ai')->to('AI#index');
