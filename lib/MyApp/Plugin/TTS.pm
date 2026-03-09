@@ -53,11 +53,11 @@ sub register {
         # --- Cache System: Check for existing synthesis ---
         if (my $cached_audio = $c->db->get_tts_cache($args{text}, $language_code)) {
             $c->app->log->info("TTS Cache: Hit for '$language_code' (" . length($args{text}) . " chars)");
-            return {
+            return Mojo::Promise->resolve({
                 audio         => $cached_audio,
                 language_code => $language_code,
                 cached        => 1
-            };
+            });
         }
 
         $c->app->log->info("TTS Cache: Miss. Synthesizing in '$language_code' (" . length($args{text}) . " chars)");
@@ -75,29 +75,36 @@ sub register {
         my $ua  = $c->app->ua;
         my $url = "https://texttospeech.googleapis.com/v1/text:synthesize?key=$api_key";
 
-        my $tx = $ua->post($url => json => $payload);
+        # Return a promise for the non-blocking request
+        return $ua->post_p($url => json => $payload)->then(sub {
+            my $tx = shift;
+            
+            if (my $err = $tx->error) {
+                $c->app->log->error("TTS: API request failed: " . $err->{message});
+                return Mojo::Promise->reject($err->{message});
+            }
 
-        if (my $err = $tx->error) {
-            $c->app->log->error("TTS: API request failed: " . $err->{message});
-            return { error => $err->{message} };
-        }
+            my $audio_b64 = $tx->result->json->{audioContent};
+            unless ($audio_b64) {
+                $c->app->log->error('TTS: API returned no audioContent');
+                return Mojo::Promise->reject('No audio content returned from API');
+            }
 
-        my $audio_b64 = $tx->result->json->{audioContent};
-        unless ($audio_b64) {
-            $c->app->log->error('TTS: API returned no audioContent');
-            return { error => 'No audio content returned from API' };
-        }
+            my $audio_blob = decode_base64($audio_b64);
 
-        my $audio_blob = decode_base64($audio_b64);
+            # --- Cache System: Save new synthesis ---
+            $c->db->save_tts_cache($args{text}, $language_code, $audio_blob);
 
-        # --- Cache System: Save new synthesis ---
-        $c->db->save_tts_cache($args{text}, $language_code, $audio_blob);
-
-        return {
-            audio         => $audio_blob,
-            language_code => $language_code,
-            cached        => 0
-        };
+            return {
+                audio         => $audio_blob,
+                language_code => $language_code,
+                cached        => 0
+            };
+        })->catch(sub {
+            my $err = shift;
+            $c->app->log->error("TTS: Exception: $err");
+            return Mojo::Promise->reject($err);
+        });
     });
 }
 
