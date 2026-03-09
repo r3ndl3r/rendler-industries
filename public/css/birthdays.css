@@ -12,6 +12,10 @@
     gap: 20px;
 }
 
+.birthdays-grid.hidden {
+    display: none;
+}
+
 @media (min-width: 769px) {
     .birthdays-grid {
         grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
@@ -19,7 +23,7 @@
 }
 
 .birthday-card {
-    background: rgba(30, 30, 30, 0.6);
+    background: var(--card-bg, rgba(30, 41, 59, 0.6));
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -32,6 +36,17 @@
     text-align: center;
     gap: 15px;
     transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.birthday-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-color, #3b82f6), transparent);
+    opacity: 0.3;
 }
 
 .birthday-card:hover {
@@ -59,7 +74,7 @@
     font-size: 1.8rem;
     font-weight: 600;
     margin: 0 0 5px 0;
-    color: #64b5f6;
+    color: var(--accent-color, #3b82f6);
 }
 
 .birthday-date {
@@ -75,8 +90,8 @@
 }
 
 .countdown-days {
-    color: #69f0ae;
-    text-shadow: 0 0 10px rgba(105, 240, 174, 0.5);
+    color: var(--success-color, #10b981);
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
 }
 
 .countdown-text {
@@ -101,6 +116,10 @@
     animation: pulse 2s infinite;
 }
 
+.birthday-card.today::before {
+    background: linear-gradient(90deg, transparent, #ffd740, transparent);
+}
+
 @keyframes pulse {
     0%, 100% { box-shadow: 0 8px 32px 0 rgba(255, 215, 64, 0.3); }
     50% { box-shadow: 0 8px 32px 0 rgba(255, 215, 64, 0.6); }
@@ -112,9 +131,17 @@
     gap: 0.75rem;
 }
 
+#admin-actions.active {
+    display: flex;
+}
+
 .manage-view {
     display: none;
     margin-top: 1rem;
+}
+
+.manage-view.active {
+    display: block;
 }
 
 .manage-row .manage-actions {
@@ -134,7 +161,7 @@
 .manage-header h2 {
     margin: 0;
     font-weight: 300;
-    color: #90caf9;
+    color: var(--accent-light, #93c5fd);
 }
 
 .manage-row {
@@ -175,6 +202,15 @@
     font-size: 1.5rem;
     cursor: pointer;
     line-height: 1;
+}
+
+/* Modal Visibility Toggling */
+.modal-overlay {
+    display: none;
+}
+
+.modal-overlay.active {
+    display: flex;
 }
 
 @media (max-width: 768px) {
