@@ -63,6 +63,10 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>}
  */
 async function loadState() {
+    // Lifecycle: inhibit background sync if user is actively interacting with forms
+    const anyModalOpen = document.querySelector('.modal-overlay.active');
+    if (anyModalOpen && STATE.birthdays.length > 0) return;
+
     try {
         const response = await fetch('/birthdays/api/state');
         const data = await response.json();
@@ -227,7 +231,11 @@ function renderManageList() {
 function renderActionButtons() {
     const adminActions = document.getElementById('admin-actions');
     if (adminActions) {
-        adminActions.style.display = STATE.isAdmin ? 'flex' : 'none';
+        if (STATE.isAdmin) {
+            adminActions.classList.add('active');
+        } else {
+            adminActions.classList.remove('active');
+        }
     }
 }
 
@@ -289,12 +297,12 @@ function toggleManageMode() {
     const btn = document.getElementById('manageBtn');
 
     if (STATE.manageMode) {
-        if (manageView) manageView.style.display = 'block';
-        if (grid) grid.style.display = 'none';
+        if (manageView) manageView.classList.add('active');
+        if (grid) grid.classList.add('hidden');
         if (btn) btn.classList.add('active');
     } else {
-        if (manageView) manageView.style.display = 'none';
-        if (grid) grid.style.display = 'grid';
+        if (manageView) manageView.classList.remove('active');
+        if (grid) grid.classList.remove('hidden');
         if (btn) btn.classList.remove('active');
     }
 }
@@ -311,7 +319,10 @@ function openAddModal() {
     document.getElementById('field_date').value = '';
     
     const modal = document.getElementById('birthdayModal');
-    if (modal) modal.style.display = 'flex';
+    if (modal) {
+        modal.classList.add('active');
+        document.body.classList.add('modal-open');
+    }
 }
 
 /**
@@ -330,7 +341,10 @@ function openEditModal(id) {
     document.getElementById('field_date').value = b.birth_date;
     
     const modal = document.getElementById('birthdayModal');
-    if (modal) modal.style.display = 'flex';
+    if (modal) {
+        modal.classList.add('active');
+        document.body.classList.add('modal-open');
+    }
 }
 
 /**
@@ -340,7 +354,10 @@ function openEditModal(id) {
  */
 function closeModal() {
     const modal = document.getElementById('birthdayModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.classList.remove('modal-open');
+    }
 }
 
 /**
