@@ -28,8 +28,11 @@ sub index {
 # Returns: JSON object { success, todos }
 sub api_state {
     my $c = shift;
-    my $user_id = $c->current_user_id;
     
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
+    my $user_id = $c->current_user_id;
     my $todos = $c->db->get_user_todos($user_id);
     
     $c->render(json => { 
@@ -44,6 +47,10 @@ sub api_state {
 # Returns: JSON object { success, id, task_name, message }
 sub api_add {
     my $c = shift;
+    
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     my $user_id = $c->current_user_id;
     my $task_name = trim($c->param('task_name') // '');
     
@@ -72,6 +79,10 @@ sub api_add {
 # Returns: JSON object { success, message }
 sub api_toggle {
     my $c = shift;
+    
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     my $user_id = $c->current_user_id;
     my $id = $c->param('id');
     
@@ -93,6 +104,10 @@ sub api_toggle {
 # Returns: JSON object { success, message }
 sub api_delete {
     my $c = shift;
+    
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     my $user_id = $c->current_user_id;
     my $id = $c->param('id');
     
@@ -114,6 +129,10 @@ sub api_delete {
 # Returns: JSON object { success, message }
 sub api_edit {
     my $c = shift;
+    
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     my $user_id = $c->current_user_id;
     my $id = $c->param('id');
     my $task_name = trim($c->param('task_name') // '');
@@ -140,6 +159,10 @@ sub api_edit {
 # Returns: JSON object { success, message }
 sub api_clear {
     my $c = shift;
+    
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     my $user_id = $c->current_user_id;
     
     eval {
