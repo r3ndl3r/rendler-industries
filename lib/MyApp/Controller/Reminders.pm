@@ -32,6 +32,9 @@ sub index {
 sub api_state {
     my $c = shift;
     
+    # Ensure session is active before state retrieval
+    return unless $c->is_logged_in;
+
     my $state = {
         reminders    => $c->db->get_all_reminders(),
         recipients   => [ grep { 
@@ -47,7 +50,7 @@ sub api_state {
 }
 
 # Processes the creation of a new recurring reminder rule.
-# Route: POST /reminders/add
+# Route: POST /reminders/api/add
 # Parameters:
 #   title         : Main heading for the reminder
 #   description   : Detailed notes/context (Optional)
@@ -56,9 +59,12 @@ sub api_state {
 #   recipients[]  : Array of target User IDs
 #   is_one_off    : Boolean flag for single-use reminders
 # Returns: JSON object { success, message, error }
-sub add {
+sub api_add {
     my $c = shift;
     
+    # Ensure session is active before processing
+    return unless $c->is_logged_in;
+
     my $title = trim($c->param('title') // '');
     my $desc  = trim($c->param('description') // '');
     my $time  = trim($c->param('reminder_time') // '');
@@ -94,7 +100,7 @@ sub add {
 }
 
 # Processes updates to an existing reminder.
-# Route: POST /reminders/update/:id
+# Route: POST /reminders/api/update/:id
 # Parameters:
 #   id            : Target Reminder ID
 #   title         : Updated heading
@@ -104,9 +110,12 @@ sub add {
 #   recipients[]  : Updated target users
 #   is_one_off    : Boolean flag
 # Returns: JSON object { success, message, error }
-sub update {
+sub api_update {
     my $c = shift;
     
+    # Ensure session is active before processing
+    return unless $c->is_logged_in;
+
     my $id    = $c->param('id');
     my $title = trim($c->param('title') // '');
     my $desc  = trim($c->param('description') // '');
@@ -141,12 +150,16 @@ sub update {
 }
 
 # Permanently removes a reminder rule and its mappings.
-# Route: POST /reminders/delete/:id
+# Route: POST /reminders/api/delete/:id
 # Parameters:
 #   id : Unique Reminder ID
 # Returns: JSON object { success, message, error }
-sub delete {
+sub api_delete {
     my $c = shift;
+    
+    # Ensure session is active before processing
+    return unless $c->is_logged_in;
+
     my $id = $c->param('id');
     
     # Validate ID format before processing
@@ -155,6 +168,7 @@ sub delete {
             $c->db->delete_reminder($id);
         };
         if ($@) {
+            $c->app->log->error("Failed to delete reminder $id: $@");
             return $c->render(json => { success => 0, error => "Failed to delete reminder." });
         }
         return $c->render(json => { success => 1, message => "Reminder deleted." });
@@ -164,18 +178,28 @@ sub delete {
 }
 
 # Toggles the operational status of a reminder rule.
-# Route: POST /reminders/toggle/:id
+# Route: POST /reminders/api/toggle/:id
 # Parameters:
 #   id     : Unique Reminder ID
 #   active : Target status (1 or 0)
 # Returns: JSON object { success, message, error }
-sub toggle {
+sub api_toggle {
     my $c = shift;
+    
+    # Ensure session is active before processing
+    return unless $c->is_logged_in;
+
     my $id = $c->param('id');
     my $active = $c->param('active') ? 1 : 0;
     
     if ($id && $id =~ /^\d+$/) {
-        $c->db->toggle_reminder_status($id, $active);
+        eval {
+            $c->db->toggle_reminder_status($id, $active);
+        };
+        if ($@) {
+            $c->app->log->error("Failed to toggle reminder $id status: $@");
+            return $c->render(json => { success => 0, error => "Database error" });
+        }
         return $c->render(json => { 
             success => 1, 
             message => ($active ? "Reminder resumed" : "Reminder paused") 
@@ -186,20 +210,30 @@ sub toggle {
 }
 
 # Toggles a specific day for a reminder rule schedule.
-# Route: POST /reminders/toggle_day
+# Route: POST /reminders/api/toggle_day
 # Parameters:
 #   id     : Unique Reminder ID
 #   day    : Day number (1-7)
 #   active : Target status (1 or 0)
 # Returns: JSON object { success, message, error }
-sub toggle_day {
+sub api_toggle_day {
     my $c = shift;
+    
+    # Ensure session is active before processing
+    return unless $c->is_logged_in;
+
     my $id = $c->param('id');
     my $day = $c->param('day');
     my $active = $c->param('active') ? 1 : 0;
     
     if ($id && $id =~ /^\d+$/ && $day && $day =~ /^[1-7]$/) {
-        $c->db->toggle_reminder_day($id, $day, $active);
+        eval {
+            $c->db->toggle_reminder_day($id, $day, $active);
+        };
+        if ($@) {
+            $c->app->log->error("Failed to toggle reminder $id day $day: $@");
+            return $c->render(json => { success => 0, error => "Database error" });
+        }
         return $c->render(json => { success => 1, message => "Schedule updated" });
     }
     
