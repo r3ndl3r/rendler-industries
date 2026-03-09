@@ -39,18 +39,27 @@ sub synthesize {
         return $c->render(json => { error => 'Text too long (max 5,000 chars)' }, status => 400);
     }
 
-    my $result = $c->tts_synthesize(
+    $c->render_later;
+
+    $c->tts_synthesize(
         text          => $text,
         language_code => $lang
-    );
+    )->then(sub {
+        my $result = shift;
+        
+        if (ref $result eq 'HASH' && $result->{error}) {
+            return $c->render(json => { error => $result->{error} }, status => 500);
+        }
 
-    if ($result->{error}) {
-        return $c->render(json => { error => $result->{error} }, status => 500);
-    }
-
-    # Stream the raw audio data to the client with explicit MIME
-    $c->res->headers->content_type('audio/mpeg');
-    return $c->render(data => $result->{audio});
+        # Stream the raw audio data to the client with explicit MIME
+        $c->res->headers->content_type('audio/mpeg');
+        $c->render(data => $result->{audio});
+    })->catch(sub {
+        my $err = shift;
+        # Check if error is a hash (handled by plugin) or a string
+        my $err_msg = ref $err eq 'HASH' ? $err->{error} : $err;
+        $c->render(json => { error => $err_msg }, status => 500);
+    });
 }
 
 1;
