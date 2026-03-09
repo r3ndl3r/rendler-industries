@@ -3,7 +3,7 @@
 .ai-container {
     max-width: 900px;
     margin: 0 auto;
-    min-height: 100vh;
+    height: 90vh; /* Fixed height for the entire component */
     display: flex;
     flex-direction: column;
 }
@@ -14,7 +14,8 @@
     flex-direction: column;
     padding: 0;
     overflow: hidden;
-    height: 65vh;
+    height: 100%; /* Fill the container */
+    margin-bottom: 1rem;
 }
 
 .chat-messages {
