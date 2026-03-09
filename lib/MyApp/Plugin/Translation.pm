@@ -46,11 +46,11 @@ sub register {
         # --- Cache System: Check for existing translation ---
         if (my $cached = $c->db->get_translation_cache($text, $target)) {
             $c->app->log->info("Translation Cache: Hit for '$target' (" . length($text) . " chars)");
-            return {
+            return Mojo::Promise->resolve({
                 translated_text      => $cached->{translated_text},
                 detected_source_lang => $cached->{source_lang},
                 cached               => 1
-            };
+            });
         }
 
         $c->app->log->info("Translation Cache: Miss. Requesting '$target' (" . length($text) . " chars)");
@@ -66,31 +66,37 @@ sub register {
         my $ua  = $c->app->ua;
         my $url = "https://translation.googleapis.com/language/translate/v2?key=$api_key";
 
-        my $tx = $ua->post($url => json => $payload);
+        return $ua->post_p($url => json => $payload)->then(sub {
+            my $tx = shift;
 
-        if (my $err = $tx->error) {
-            $c->app->log->error("Translation: API request failed: " . $err->{message});
-            return { error => $err->{message} };
-        }
+            if (my $err = $tx->error) {
+                $c->app->log->error("Translation: API request failed: " . $err->{message});
+                return Mojo::Promise->reject($err->{message});
+            }
 
-        my $data = $tx->result->json->{data};
-        unless ($data && $data->{translations} && @{$data->{translations}}) {
-            $c->app->log->error('Translation: API returned no data');
-            return { error => 'No translation returned from API' };
-        }
+            my $data = $tx->result->json->{data};
+            unless ($data && $data->{translations} && @{$data->{translations}}) {
+                $c->app->log->error('Translation: API returned no data');
+                return Mojo::Promise->reject('No translation returned from API');
+            }
 
-        my $result = $data->{translations}[0];
-        my $translated_text = $result->{translatedText};
-        my $source_lang = $result->{detectedSourceLanguage} // $args{source};
+            my $result = $data->{translations}[0];
+            my $translated_text = $result->{translatedText};
+            my $source_lang = $result->{detectedSourceLanguage} // $args{source};
 
-        # --- Cache System: Save new translation ---
-        $c->db->save_translation_cache($text, $translated_text, $target, $source_lang);
+            # --- Cache System: Save new translation ---
+            $c->db->save_translation_cache($text, $translated_text, $target, $source_lang);
 
-        return {
-            translated_text      => $translated_text,
-            detected_source_lang => $source_lang,
-            cached               => 0
-        };
+            return {
+                translated_text      => $translated_text,
+                detected_source_lang => $source_lang,
+                cached               => 0
+            };
+        })->catch(sub {
+            my $err = shift;
+            $c->app->log->error("Translation: Exception: $err");
+            return Mojo::Promise->reject($err);
+        });
     });
 }
 
