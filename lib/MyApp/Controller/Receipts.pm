@@ -116,12 +116,27 @@ sub upload {
     # Attempt OCR for metadata suggestion ONLY if fields are blank
     if (!$store_name || !$receipt_date || !$total_amount) {
         if ($mime_type =~ /^image/) {
-            my $ocr_data = $c->ocr_process($file_data);
-            $store_name   ||= $ocr_data->{store_name};
-            $receipt_date ||= $ocr_data->{receipt_date};
-            $total_amount ||= $ocr_data->{total_amount};
+            $c->render_later;
+            $c->ocr_process($file_data)->then(sub {
+                my $ocr_data = shift;
+                $store_name   ||= $ocr_data->{store_name};
+                $receipt_date ||= $ocr_data->{receipt_date};
+                $total_amount ||= $ocr_data->{total_amount};
+                _finalize_upload($c, $original_filename, $mime_type, $file_size, $file_data, $username, $store_name, $receipt_date, $total_amount, $description);
+            })->catch(sub {
+                my $err = shift;
+                $c->app->log->error("OCR process failed during upload: $err");
+                _finalize_upload($c, $original_filename, $mime_type, $file_size, $file_data, $username, $store_name, $receipt_date, $total_amount, $description);
+            });
+            return;
         }
     }
+
+    _finalize_upload($c, $original_filename, $mime_type, $file_size, $file_data, $username, $store_name, $receipt_date, $total_amount, $description);
+}
+
+sub _finalize_upload {
+    my ($c, $original_filename, $mime_type, $file_size, $file_data, $username, $store_name, $receipt_date, $total_amount, $description) = @_;
 
     unless ($receipt_date) {
         require DateTime;
@@ -279,38 +294,46 @@ sub trigger_ocr {
         return $c->render(json => { success => 0, error => "Only images supported for OCR" });
     }
 
-    eval {
-        my $ocr_data = $c->ocr_process($receipt->{file_data});
-        # Only update if we found something useful
-        if ($ocr_data->{store_name} || $ocr_data->{total_amount}) {
-            $c->db->update_receipt_data(
-                $id, 
-                $ocr_data->{store_name} || $receipt->{store_name}, 
-                $ocr_data->{receipt_date} || $receipt->{receipt_date}, 
-                $ocr_data->{total_amount} || $receipt->{total_amount}, 
-                $receipt->{description},
-                $receipt->{ai_json}
-            );
-        }
-        
-        # Cleanup: Don't return binary in response
-        delete $receipt->{file_data};
+    $c->render_later;
 
-        $c->render(json => {
-            success      => 1,
-            message      => "OCR extraction complete.",
-            store_name   => $ocr_data->{store_name},
-            receipt_date => $ocr_data->{receipt_date},
-            total_amount => $ocr_data->{total_amount},
-            description  => $receipt->{description},
-            raw_text     => $ocr_data->{raw_text}
-        });
-    };
-    
-    if ($@) {
-        $c->app->log->error("OCR Trigger Failed for receipt $id: $@");
+    $c->ocr_process($receipt->{file_data})->then(sub {
+        my $ocr_data = shift;
+        
+        eval {
+            # Only update if we found something useful
+            if ($ocr_data->{store_name} || $ocr_data->{total_amount}) {
+                $c->db->update_receipt_data(
+                    $id, 
+                    $ocr_data->{store_name} || $receipt->{store_name}, 
+                    $ocr_data->{receipt_date} || $receipt->{receipt_date}, 
+                    $ocr_data->{total_amount} || $receipt->{total_amount}, 
+                    $receipt->{description},
+                    $receipt->{ai_json}
+                );
+            }
+            
+            # Cleanup: Don't return binary in response
+            delete $receipt->{file_data};
+
+            $c->render(json => {
+                success      => 1,
+                message      => "OCR extraction complete.",
+                store_name   => $ocr_data->{store_name},
+                receipt_date => $ocr_data->{receipt_date},
+                total_amount => $ocr_data->{total_amount},
+                description  => $receipt->{description},
+                raw_text     => $ocr_data->{raw_text}
+            });
+        };
+        if ($@) {
+            $c->app->log->error("OCR Trigger DB Failed for receipt $id: $@");
+            $c->render(json => { success => 0, error => "Database update failed." });
+        }
+    })->catch(sub {
+        my $err = shift;
+        $c->app->log->error("OCR Trigger Failed for receipt $id: $err");
         $c->render(json => { success => 0, error => "OCR engine failed." });
-    }
+    });
 }
 
 # Performs AI-powered structured receipt digitization.
@@ -349,38 +372,46 @@ sub ai_analyze {
     my $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$active_model:generateContent";
     my $system_prompt = "You are a professional receipt digitizer. Analyze the image and extract data into a JSON object. Include: store_name, location, date, time, items (array of {desc, qty, unit_price, line_total}), total_amount, currency, payment_method. ONLY return valid JSON.";
 
-    my $ua = Mojo::UserAgent->new->request_timeout(45);
-    my $tx = $ua->post("$endpoint?key=$api_key" => json => {
+    $c->render_later;
+
+    $c->ua->request_timeout(60)->post_p("$endpoint?key=$api_key" => json => {
         contents => [{
             role => 'user',
             parts => [{ text => "Digitize this receipt accurately." }, { inlineData => { mimeType => $receipt->{mime_type}, data => b64_encode($receipt->{file_data}, '') } }]
         }],
         system_instruction => { parts => [{ text => $system_prompt }] },
         generationConfig => { temperature => 0.1, response_mime_type => "application/json" }
-    });
+    })->then(sub {
+        my $tx = shift;
 
-    # 3. Process Response
-    my $res = $tx->res;
-    my $data = $res->json;
-    if ($data && $data->{candidates} && @{$data->{candidates}}) {
-        my $json_text = $data->{candidates}[0]{content}{parts}[0]{text};
-        
-        # Strip markdown wrapping if present
-        if ($json_text =~ /```json\s*(.*?)\s*```/s) { $json_text = $1; }
-        elsif ($json_text =~ /^\s*(\{.*?\})\s*$/s) { $json_text = $1; }
+        # 3. Process Response
+        my $res = $tx->res;
+        my $data = $res->json;
+        if ($data && $data->{candidates} && @{$data->{candidates}}) {
+            my $json_text = $data->{candidates}[0]{content}{parts}[0]{text};
+            
+            # Strip markdown wrapping if present
+            if ($json_text =~ /```json\s*(.*?)\s*```/s) { $json_text = $1; }
+            elsif ($json_text =~ /^\s*(\{.*?\})\s*$/s) { $json_text = $1; }
 
-        my $extracted;
-        eval { $extracted = decode_json($json_text); };
-        
-        if ($extracted && ref($extracted) eq 'HASH') {
-            # Update ai_json column only; metadata columns remain untouched
-            eval { $c->db->update_receipt_ai_json($id, $json_text); };
-            return $c->render(json => { success => 1, message => "AI Digitization successful.", cached => 0, data => $extracted });
+            my $extracted;
+            eval { $extracted = decode_json($json_text); };
+            
+            if ($extracted && ref($extracted) eq 'HASH') {
+                # Update ai_json column only; metadata columns remain untouched
+                eval { $c->db->update_receipt_ai_json($id, $json_text); };
+                $c->render(json => { success => 1, message => "AI Digitization successful.", cached => 0, data => $extracted });
+                return;
+            }
         }
-    }
 
-    $c->app->log->error("AI Parsing Failed. Status: " . ($res->code // 0) . ". Body: " . $res->body);
-    return $c->render(json => { success => 0, error => "AI failed to parse image." });
+        $c->app->log->error("AI Parsing Failed. Status: " . ($res->code // 0) . ". Body: " . $res->body);
+        $c->render(json => { success => 0, error => "AI failed to parse image." });
+    })->catch(sub {
+        my $err = shift;
+        $c->app->log->error("Receipt AI Exception: $err");
+        $c->render(json => { success => 0, error => "AI API connection failed" });
+    });
 }
 
 1;
