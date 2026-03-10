@@ -18,7 +18,10 @@ use Mojo::Base 'Mojolicious::Controller';
 # Renders the menu management interface skeleton.
 # Route: GET /menu
 sub manage {
-    shift->render('menu');
+    my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_admin;
+    $c->render('menu');
 }
 
 # API Endpoint: Returns the full synchronized state for the menu module.
@@ -26,6 +29,7 @@ sub manage {
 # Returns: JSON object { success, links, parents, is_admin }
 sub api_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     
     my $links = $c->db->get_all_menu_links();
     
@@ -44,6 +48,7 @@ sub api_state {
 # Route: POST /menu/api/add
 sub api_add {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     
     my $data = {
         label            => $c->param('label'),
@@ -74,6 +79,7 @@ sub api_add {
 # Route: POST /menu/api/update
 sub api_update {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     my $id = $c->param('id');
     
     unless ($id) {
@@ -109,6 +115,7 @@ sub api_update {
 # Route: POST /menu/api/delete
 sub api_delete {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     my $id = $c->param('id');
 
     unless ($id) {
@@ -131,6 +138,7 @@ sub api_delete {
 # Route: POST /menu/api/reorder
 sub api_reorder {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     my $json = $c->req->json;
     my $orders = $json ? $json->{orders} : undef;
 
