@@ -332,23 +332,26 @@ sub run_emoji_maintenance_p {
     }
 
     # 2. Subprocess: Handle heavy network/AI logic
-    my $api_key = $c->db->get_gemini_key();
-    my $active_model = $c->db->get_gemini_active_model() // 'gemini-2.0-flash';
-    my $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$active_model:generateContent?key=$api_key";
-
     Mojo::IOLoop->subprocess(
         sub {
             my $subprocess = shift;
             my @results;
             my $ai_calls = 0;
-            my $ua = Mojo::UserAgent->new->request_timeout(10);
-
             my $max_calls = 10; 
 
             foreach my $item (@batch) {
                 last if $ai_calls >= $max_calls;
                 $ai_calls++;
 
+                # We call the helper via the controller instance passed into the subprocess
+                # or replicate the logic if the instance is not safely shared.
+                # In Mojo subprocesses, we should use a fresh UA and the logic from the plugin.
+                my $api_key = $c->db->get_gemini_key();
+                my $active_model = $c->db->get_gemini_active_model();
+                my $api_version = ($active_model =~ /preview|exp|2\.[05]|3\./) ? 'v1beta' : 'v1';
+                my $endpoint = "https://generativelanguage.googleapis.com/$api_version/models/$active_model:generateContent?key=$api_key";
+
+                my $ua = Mojo::UserAgent->new->request_timeout(10);
                 my $tx = $ua->post($endpoint => json => {
                     contents => [ { role => 'user', parts => [ { text => $item->{text} } ] } ],
                     system_instruction => { parts => [ { text => "Respond ONLY with one emoji character." } ] },
@@ -359,7 +362,6 @@ sub run_emoji_maintenance_p {
                     if ($res->is_success) {
                         my $ai_response = Mojo::Util::trim($res->json->{candidates}[0]{content}{parts}[0]{text} // '');
                         $ai_response =~ s/^['"]+|['"]+$//g;
-                        
                         if (length($ai_response) > 0 && $ai_response !~ /[a-zA-Z]{3,}/) {
                             push @results, { %$item, emoji => $ai_response };
                         }
