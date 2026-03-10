@@ -27,6 +27,7 @@ use Time::Piece;
 #   Rendered HTML template 'chelsea' with grouped forecast rows.
 sub index {
     my $self = shift;
+    return $self->redirect_to('/login') unless $self->is_logged_in;
 
     my $url = 'https://www.windfinder.com/forecast/chelsea';
     my $custom_ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
