@@ -26,13 +26,10 @@ sub index {
 # Route: GET /shopping/api/state
 sub api_state {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_family;
 
     my $items = $c->db->get_shopping_items();
-    $c->render(json => { 
+    return $c->render(json => { 
         success => 1, 
         items   => $items,
         is_admin => $c->is_admin ? 1 : 0
@@ -43,10 +40,7 @@ sub api_state {
 # Route: POST /shopping/api/add
 sub api_add {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_family;
 
     my $item_name = trim($c->param('item_name') // '');
     my $added_by = $c->session('user');
@@ -62,12 +56,12 @@ sub api_add {
             id => $id, 
             item_name => $item_name, 
             added_by => $added_by, 
-            message => "Item added!" 
+            message => "Item successfully registered." 
         });
     };
     if ($@) {
         $c->app->log->error("Shopping Add Error: $@");
-        $c->render(json => { success => 0, error => 'Database error' });
+        $c->render(json => { success => 0, error => 'Database synchronization failure' });
     }
 }
 
@@ -75,19 +69,16 @@ sub api_add {
 # Route: POST /shopping/api/toggle/:id
 sub api_toggle {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_family;
 
     my $id = $c->param('id');
     
     eval {
         $c->db->toggle_shopping_item($id);
-        $c->render(json => { success => 1, message => "Item updated" });
+        $c->render(json => { success => 1, message => "Item status synchronized." });
     };
     if ($@) {
-        $c->render(json => { success => 0, error => 'Database error' });
+        $c->render(json => { success => 0, error => 'Database integrity error' });
     }
 }
 
@@ -95,10 +86,7 @@ sub api_toggle {
 # Route: POST /shopping/api/delete/:id
 sub api_delete {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_family;
 
     my $id = $c->param('id');
     
@@ -107,7 +95,7 @@ sub api_delete {
         $c->render(json => { success => 1, message => "Item removed" });
     };
     if ($@) {
-        $c->render(json => { success => 0, error => 'Database error' });
+        $c->render(json => { success => 0, error => 'Database integrity error' });
     }
 }
 
@@ -115,10 +103,7 @@ sub api_delete {
 # Route: POST /shopping/api/edit/:id
 sub api_edit {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_family;
 
     my $id = $c->param('id');
     my $item_name = trim($c->param('item_name') // '');
@@ -129,10 +114,10 @@ sub api_edit {
     
     eval {
         $c->db->update_shopping_item($id, $item_name);
-        $c->render(json => { success => 1, message => "Item updated" });
+        $c->render(json => { success => 1, message => "Item description updated." });
     };
     if ($@) {
-        $c->render(json => { success => 0, error => 'Database error' });
+        $c->render(json => { success => 0, error => 'Database integrity error' });
     }
 }
 
@@ -140,16 +125,13 @@ sub api_edit {
 # Route: POST /shopping/api/clear
 sub api_clear {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_family;
 
     eval {
         $c->db->clear_checked_items();
     };
     if ($@) {
-        return $c->render(json => { success => 0, error => 'Database error' });
+        return $c->render(json => { success => 0, error => 'Batch cleanup failure' });
     }
     
     return $c->render(json => { success => 1, message => "Cleared completed items" });
