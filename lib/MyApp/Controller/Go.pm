@@ -15,20 +15,19 @@ use Mojo::Util qw(trim);
 
 # Renders the primary management interface.
 # Route: GET /go
-# Parameters: None
-# Returns: Rendered HTML template.
 sub index {
     my $c = shift;
+    return $c->redirect_to('/auth') unless $c->is_admin;
     $c->stash(title => 'Go Links');
     $c->render('go');
 }
 
 # Returns the complete state of the short-link collection.
 # Route: GET /go/api/state
-# Parameters: None
-# Returns: JSON object { items, success }
 sub api_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    
     my $links = $c->db->get_go_links();
     
     $c->render(json => { 
@@ -39,10 +38,7 @@ sub api_state {
 
 # Resolves a short keyword and redirects to the target destination.
 # Route: GET /g/:keyword
-# Parameters:
-#   keyword : The unique identifier for the redirection
-# Returns:
-#   302 Redirect to destination or Go dashboard on failure
+# Public Route: No authentication required.
 sub resolve {
     my $c = shift;
     my $keyword = lc(trim($c->param('keyword') // ''));
@@ -57,29 +53,26 @@ sub resolve {
     # Fallback: Return to dashboard with error flag
     $c->redirect_to('/go?error=1');
 }
-
 # Registers a new redirection mapping.
 # Route: POST /go/api/add
-# Parameters:
-#   keyword     : The short string
-#   url         : The destination URL
-#   description : Contextual notes (Optional)
-# Returns: JSON object { success, message, error }
 sub api_add {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
     my $keyword = lc(trim($c->param('keyword') // ''));
     my $url = trim($c->param('url') // '');
     my $description = trim($c->param('description') // '');
-    my $user = $c->session('user') // 'Unknown';
+    my $user_id = $c->current_user_id;
 
     unless ($keyword && $url) {
         return $c->render(json => { success => 0, error => "Keyword and URL are required" });
     }
 
     eval {
-        $c->db->add_go_link($keyword, $url, $description, $user);
+        $c->db->add_go_link($keyword, $url, $description, $user_id);
         $c->render(json => { success => 1, message => "Go link created" });
     };
+
     if ($@) {
         $c->app->log->error("Go addition failure: $@");
         $c->render(json => { success => 0, error => "Database failure" });
@@ -88,14 +81,10 @@ sub api_add {
 
 # Updates an existing redirection mapping.
 # Route: POST /go/api/edit
-# Parameters:
-#   id          : Record identifier
-#   keyword     : The short string
-#   url         : The destination URL
-#   description : Contextual notes (Optional)
-# Returns: JSON object { success, message, error }
 sub api_edit {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    
     my $id = $c->param('id');
     my $keyword = lc(trim($c->param('keyword') // ''));
     my $url = trim($c->param('url') // '');
@@ -116,11 +105,10 @@ sub api_edit {
 
 # Removes a redirection record from the system.
 # Route: POST /go/api/delete
-# Parameters:
-#   id : Record identifier
-# Returns: JSON object { success, message, error }
 sub api_delete {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    
     my $id = $c->param('id');
 
     unless ($id) {

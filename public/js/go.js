@@ -18,7 +18,7 @@
 /**
  * --- Application State ---
  */
-let moduleState = {
+let STATE = {
     items: [] 
 };
 
@@ -55,7 +55,7 @@ async function loadState() {
         const data = await response.json();
         
         if (data && data.success) {
-            moduleState.items = data.items;
+            STATE.items = data.items;
             renderList();
         }
     } catch (err) {
@@ -72,7 +72,7 @@ function renderList() {
     const container = document.getElementById('linksList');
     if (!container) return;
 
-    if (moduleState.items.length === 0) {
+    if (STATE.items.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <p>${getIcon('empty')} No Go links found.</p>
@@ -80,7 +80,7 @@ function renderList() {
         return;
     }
 
-    container.innerHTML = moduleState.items.map(link => {
+    container.innerHTML = STATE.items.map(link => {
         const safeKeyword = escapeHtml(link.keyword);
         const safeUrl = escapeHtml(link.url);
         const safeDesc = escapeHtml(link.description || '');
@@ -97,6 +97,7 @@ function renderList() {
                     <div class="item-meta">
                         <i class="url-text">→ ${safeUrl}</i>
                         ${safeDesc ? `<span class="description-text">${safeDesc}</span>` : ''}
+                        <span class="added-by">${getIcon('user')} ${escapeHtml(link.username || 'Unknown')}</span>
                     </div>
                 </div>
                 
@@ -130,7 +131,7 @@ function escapeHtml(str) {
  * @returns {void}
  */
 function openEditModal(id) {
-    const link = moduleState.items.find(i => i.id == id);
+    const link = STATE.items.find(i => i.id == id);
     if (!link) return;
 
     const modal = document.getElementById('editModal');
@@ -160,7 +161,7 @@ function closeEditModal() {
 }
 
 /**
- * Executes persistent storage operations via the API.
+ * Executes persistent storage operations via the API and updates local state.
  * 
  * @async
  * @param {Event} event - Triggering form event.
@@ -184,10 +185,22 @@ async function submitEntry(event, isEdit = false) {
         const result = await apiPost(endpoint, formData);
 
         if (result && result.success) {
-            if (isEdit) closeEditModal();
-            else form.reset();
-            
-            loadState();
+            if (isEdit) {
+                // Manually update local state to ensure instant UI response
+                const id = formData.get('id');
+                const idx = STATE.items.findIndex(i => i.id == id);
+                if (idx !== -1) {
+                    STATE.items[idx].keyword = (formData.get('keyword') || '').toLowerCase();
+                    STATE.items[idx].url = formData.get('url');
+                    STATE.items[idx].description = formData.get('description');
+                    renderList();
+                }
+                closeEditModal();
+            } else {
+                form.reset();
+                // For additions, full sync is preferred to obtain the new record identifier
+                await loadState();
+            }
         }
     } finally {
         btn.disabled = false;
@@ -196,7 +209,7 @@ async function submitEntry(event, isEdit = false) {
 }
 
 /**
- * Initiates the deletion flow for a record.
+ * Initiates the deletion flow for a record and updates local state.
  * 
  * @param {number} id - Record identifier.
  * @param {string} keyword - Display label for context.
@@ -213,12 +226,15 @@ function removeLink(id, keyword) {
         onConfirm: async () => {
             const result = await apiPost('/go/api/delete', { id: id });
             if (result && result.success) {
+                // Manually remove from local state to ensure instant UI response
+                STATE.items = STATE.items.filter(i => i.id != id);
+                
                 const row = document.getElementById(`link-row-${id}`);
                 if (row) {
                     row.classList.add('row-fade-out');
-                    setTimeout(() => loadState(), 500);
+                    setTimeout(() => renderList(), 500);
                 } else {
-                    loadState();
+                    renderList();
                 }
             }
         }
