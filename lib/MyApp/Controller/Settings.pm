@@ -20,7 +20,8 @@ use Mojo::Util qw(trim);
 # Returns: Rendered HTML template 'settings'.
 sub index {
     my $c = shift;
-    $c->stash(title => 'Settings');
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_admin;
     $c->render('settings');
 }
 
@@ -30,6 +31,7 @@ sub index {
 # Returns: JSON object { settings, email_settings, timer_reset_hour, gemini, google_cloud, success }
 sub api_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     
     my $state = {
         settings         => $c->db->get_all_settings(),
@@ -56,6 +58,7 @@ sub api_state {
 # Returns: JSON object { success, message, error }
 sub update {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     my $section = $c->param('section') // '';
     
     if ($section eq 'pushover') {
