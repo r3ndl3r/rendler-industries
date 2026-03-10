@@ -18,6 +18,8 @@ use Mojo::Util qw(trim);
 # Route: GET /birthdays
 sub index {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_family;
     $c->render('birthdays');
 }
 
@@ -26,9 +28,7 @@ sub index {
 # Returns: JSON object { birthdays, is_admin, success }
 sub api_state {
     my $c = shift;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my @birthdays = $c->db->get_all_birthdays();
     
@@ -51,9 +51,6 @@ sub api_state {
 # Route: POST /birthdays/api/add
 sub api_add {
     my $c = shift;
-    
-    # Ensure session is active and user has administrative privileges
-    return unless $c->is_logged_in;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $name       = trim($c->param('name') // '');
@@ -78,9 +75,6 @@ sub api_add {
 # Route: POST /birthdays/api/edit/:id
 sub api_edit {
     my $c = shift;
-    
-    # Ensure session is active and user has administrative privileges
-    return unless $c->is_logged_in;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $id         = $c->param('id');
@@ -106,9 +100,6 @@ sub api_edit {
 # Route: POST /birthdays/api/delete/:id
 sub api_delete {
     my $c = shift;
-    
-    # Ensure session is active and user has administrative privileges
-    return unless $c->is_logged_in;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $id = $c->param('id');
