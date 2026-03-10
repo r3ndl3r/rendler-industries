@@ -79,6 +79,10 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>}
  */
 async function loadState() {
+    // Skip background refresh if a modal is active to prevent overwriting user input.
+    const anyModalOpen = document.querySelector('.modal-overlay.active');
+    if (anyModalOpen && STATE.todos.length > 0) return;
+
     try {
         const response = await fetch('/todo/api/state');
         const data = await response.json();
