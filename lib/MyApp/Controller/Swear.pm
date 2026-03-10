@@ -18,7 +18,10 @@ use Mojo::Util qw(trim);
 # Renders the main Swear Jar interface skeleton.
 # Route: GET /swear
 sub index {
-    shift->render('swear');
+    my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_family;
+    $c->render('swear');
 }
 
 # API Endpoint: Returns the full synchronized state for the module.
@@ -26,6 +29,7 @@ sub index {
 # Returns: JSON object { success, leaderboard, balance, history, members, is_admin, current_user }
 sub api_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $leaderboard = $c->db->get_swear_leaderboard();
     my $balance     = $c->db->get_jar_balance();
@@ -47,6 +51,7 @@ sub api_state {
 # Route: POST /api/swear/add
 sub add_fine {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $name   = trim($c->param('perpetrator') // '');
     my $amount = trim($c->param('amount') // '');
@@ -71,6 +76,7 @@ sub add_fine {
 # Route: POST /api/swear/pay
 sub pay_debt {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $name = trim($c->param('perpetrator') // '');
     my $amount = trim($c->param('amount') // '');
@@ -100,6 +106,7 @@ sub pay_debt {
 # Route: POST /api/swear/spend
 sub spend {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $amount = trim($c->param('amount') // '');
     my $reason = trim($c->param('reason') // '');
@@ -123,6 +130,7 @@ sub spend {
 # Route: POST /api/swear/member/add
 sub add_member {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $name = trim($c->param('name') // '');
     my $def  = trim($c->param('default_fine') // '2.00');
@@ -146,6 +154,7 @@ sub add_member {
 # Route: POST /api/swear/member/delete
 sub delete_member {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $id = $c->param('id');
     
