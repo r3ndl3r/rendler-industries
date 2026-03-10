@@ -29,14 +29,12 @@ sub index {
 # Returns: JSON object { success, todos }
 sub api_state {
     my $c = shift;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_logged_in;
 
     my $user_id = $c->current_user_id;
     my $todos = $c->db->get_user_todos($user_id);
     
-    $c->render(json => { 
+    return $c->render(json => { 
         success => 1,
         todos   => $todos 
     });
@@ -48,15 +46,13 @@ sub api_state {
 # Returns: JSON object { success, id, task_name, message }
 sub api_add {
     my $c = shift;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_logged_in;
 
     my $user_id = $c->current_user_id;
     my $task_name = trim($c->param('task_name') // '');
     
     unless ($task_name) {
-        return $c->render(json => { success => 0, error => 'Task cannot be empty' });
+        return $c->render(json => { success => 0, error => 'Task description cannot be empty' });
     }
     
     eval {
@@ -65,12 +61,12 @@ sub api_add {
             success => 1, 
             id => $id, 
             task_name => $task_name, 
-            message => "Task added!" 
+            message => "Task successfully registered." 
         });
     };
     if ($@) {
         $c->app->log->error("Failed to add todo: $@");
-        $c->render(json => { success => 0, error => 'Database error' });
+        $c->render(json => { success => 0, error => 'Database synchronization failure' });
     }
 }
 
@@ -80,22 +76,20 @@ sub api_add {
 # Returns: JSON object { success, message }
 sub api_toggle {
     my $c = shift;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_logged_in;
 
     my $user_id = $c->current_user_id;
     my $id = $c->param('id');
     
     eval {
         if ($c->db->toggle_todo($id, $user_id)) {
-            $c->render(json => { success => 1, message => "Task updated" });
+            $c->render(json => { success => 1, message => "Task status synchronized." });
         } else {
-            $c->render(json => { success => 0, error => 'Not found or unauthorized' });
+            $c->render(json => { success => 0, error => 'Record not found or access denied' });
         }
     };
     if ($@) {
-        $c->render(json => { success => 0, error => 'Database error' });
+        $c->render(json => { success => 0, error => 'Database integrity error' });
     }
 }
 
@@ -105,22 +99,20 @@ sub api_toggle {
 # Returns: JSON object { success, message }
 sub api_delete {
     my $c = shift;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_logged_in;
 
     my $user_id = $c->current_user_id;
     my $id = $c->param('id');
     
     eval {
         if ($c->db->delete_todo($id, $user_id)) {
-            $c->render(json => { success => 1, message => "Task deleted" });
+            $c->render(json => { success => 1, message => "Task permanently removed." });
         } else {
-            $c->render(json => { success => 0, error => 'Not found or unauthorized' });
+            $c->render(json => { success => 0, error => 'Record not found or access denied' });
         }
     };
     if ($@) {
-        $c->render(json => { success => 0, error => 'Database error' });
+        $c->render(json => { success => 0, error => 'Resource locked or database failure' });
     }
 }
 
@@ -130,27 +122,25 @@ sub api_delete {
 # Returns: JSON object { success, message }
 sub api_edit {
     my $c = shift;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_logged_in;
 
     my $user_id = $c->current_user_id;
     my $id = $c->param('id');
     my $task_name = trim($c->param('task_name') // '');
     
     unless ($task_name) {
-        return $c->render(json => { success => 0, error => 'Task cannot be empty' });
+        return $c->render(json => { success => 0, error => 'Task description cannot be empty' });
     }
     
     eval {
         if ($c->db->update_todo($id, $user_id, $task_name)) {
-            $c->render(json => { success => 1, message => "Task updated" });
+            $c->render(json => { success => 1, message => "Task description updated." });
         } else {
-            $c->render(json => { success => 0, error => 'Not found or unauthorized' });
+            $c->render(json => { success => 0, error => 'Record not found or access denied' });
         }
     };
     if ($@) {
-        $c->render(json => { success => 0, error => 'Database error' });
+        $c->render(json => { success => 0, error => 'Database integrity error' });
     }
 }
 
@@ -160,9 +150,7 @@ sub api_edit {
 # Returns: JSON object { success, message }
 sub api_clear {
     my $c = shift;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_logged_in;
 
     my $user_id = $c->current_user_id;
     
@@ -170,7 +158,7 @@ sub api_clear {
         $c->db->clear_completed_todos($user_id);
     };
     if ($@) {
-        return $c->render(json => { success => 0, error => 'Failed to clear tasks' });
+        return $c->render(json => { success => 0, error => 'Batch cleanup failure' });
     }
     
     return $c->render(json => { success => 1, message => "Cleared all completed tasks." });
