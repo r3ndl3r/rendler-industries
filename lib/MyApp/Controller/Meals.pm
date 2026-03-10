@@ -21,7 +21,9 @@ use Mojo::Util qw(trim);
 # Route: GET /meals
 sub index {
     my $c = shift;
-    $c->stash(title => 'Meal Planner');
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_family;
+
     $c->render('meals');
 }
 
@@ -30,9 +32,7 @@ sub index {
 # Returns: JSON object { plan, vault, is_admin, current_user_id, success }
 sub api_state {
     my $c = shift;
-    
-    # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $uid = $c->current_user_id;
     
@@ -60,8 +60,7 @@ sub api_state {
 sub api_suggest {
     my $c         = shift;
     
-    # Ensure session is active
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $plan_id   = $c->param('plan_id');
     my $meal_name = trim($c->param('meal_name') // '');
@@ -121,8 +120,7 @@ sub api_suggest {
 sub api_vote {
     my $c             = shift;
     
-    # Ensure session is active
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $suggestion_id = $c->param('suggestion_id');
     my $uid           = $c->current_user_id;
@@ -159,8 +157,7 @@ sub api_vote {
 sub api_edit_suggestion {
     my $c             = shift;
     
-    # Ensure session is active
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $suggestion_id = $c->param('suggestion_id');
     my $meal_name     = trim($c->param('meal_name') // '');
@@ -191,8 +188,7 @@ sub api_edit_suggestion {
 sub api_delete_suggestion {
     my $c             = shift;
     
-    # Ensure session is active
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $suggestion_id = $c->param('suggestion_id');
     my $uid           = $c->current_user_id;
@@ -222,9 +218,7 @@ sub api_delete_suggestion {
 sub api_admin_lock {
     my $c             = shift;
     
-    # Ensure session is active and user is admin
-    return unless $c->is_logged_in;
-    return $c->render(json => { error => 'Forbidden' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $plan_id       = $c->param('plan_id');
     my $suggestion_id = $c->param('suggestion_id');
@@ -258,9 +252,7 @@ sub api_admin_lock {
 sub api_get_vault_data {
     my $c = shift;
     
-    # Ensure session is active and user is admin
-    return unless $c->is_logged_in;
-    return $c->render(json => { error => 'Forbidden' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     
     my $meals;
     eval {
@@ -280,9 +272,7 @@ sub api_get_vault_data {
 sub api_add_meal_to_vault {
     my $c     = shift;
     
-    # Ensure session is active and user is admin
-    return unless $c->is_logged_in;
-    return $c->render(json => { error => 'Forbidden' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $name  = trim($c->param('name') // '');
     
@@ -309,9 +299,7 @@ sub api_add_meal_to_vault {
 sub api_update_meal_in_vault {
     my $c     = shift;
     
-    # Ensure session is active and user is admin
-    return unless $c->is_logged_in;
-    return $c->render(json => { error => 'Forbidden' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $id    = $c->param('id');
     my $name  = trim($c->param('name') // '');
@@ -335,9 +323,7 @@ sub api_update_meal_in_vault {
 sub api_delete_meal_from_vault {
     my $c  = shift;
     
-    # Ensure session is active and user is admin
-    return unless $c->is_logged_in;
-    return $c->render(json => { error => 'Forbidden' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
     my $id = $c->param('id');
     
