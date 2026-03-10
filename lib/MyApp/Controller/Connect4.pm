@@ -23,6 +23,7 @@ use Mojo::Base 'Mojolicious::Controller';
 #   Rendered HTML template 'connect4/lobby' with list of open games.
 sub lobby {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     my $lobbies = $c->db->get_open_connect4_lobbies();
     $c->render('connect4/lobby', lobbies => $lobbies);
 }
@@ -34,6 +35,7 @@ sub lobby {
 #   Redirects to the play screen for the new game ID.
 sub create {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     my $uid = $c->current_user_id;
     my $game_id = $c->db->create_connect4_lobby($uid);
     $c->redirect_to("/connect4/play/$game_id");
@@ -48,6 +50,7 @@ sub create {
 #   Redirects to lobby with error flash on failure.
 sub join {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     my $uid = $c->current_user_id;
     my $game_id = $c->param('id');
     
@@ -68,6 +71,7 @@ sub join {
 #   JSON object { board, turn, status, winner, player_role, ... } (AJAX request).
 sub play {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     my $game_id = $c->param('id');
     my $uid = $c->current_user_id;
     
@@ -82,6 +86,7 @@ sub play {
 
     # API Mode: Return JSON for AJAX polling
     if ($c->req->headers->header('X-Requested-With')) {
+        return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
         return $c->render(json => {
             board       => $game->{board},
             turn        => $game->{current_turn},
@@ -107,6 +112,7 @@ sub play {
 #   JSON object { success => 1/0 }.
 sub move {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $game_id = $c->param('id');
     my $col = $c->param('col');
     my $uid = $c->current_user_id;
@@ -124,6 +130,7 @@ sub move {
 #   JSON success status.
 sub restart {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $game_id = $c->param('id');
     
     # In a real app, you might want to check if the user is part of the game
