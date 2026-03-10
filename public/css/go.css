@@ -168,6 +168,20 @@
     font-size: 0.9rem;
 }
 
+.added-by {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.added-by i {
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
 .item-actions {
     display: flex;
     gap: 10px;

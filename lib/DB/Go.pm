@@ -20,20 +20,22 @@ use warnings;
 #   - Integrated with search/dashboard for rapid navigation.
 
 # Retrieves all registered go links.
+# Includes join with users table for human-readable attribution.
 # Parameters: None
 # Returns:
-#   ArrayRef of HashRefs: [ {id, keyword, url, description, visits, created_at}, ... ]
+#   ArrayRef of HashRefs: [ {id, keyword, url, description, owner_id, username, visits, created_at}, ... ]
 sub DB::get_go_links {
     my ($self) = @_;
     
     # Verify database connectivity
     $self->ensure_connection;
     
-    # Fetch sorted list
+    # Fetch sorted list with join for username mapping
     my $sth = $self->{dbh}->prepare("
-        SELECT id, keyword, url, description, added_by, visits, created_at 
-        FROM go_links 
-        ORDER BY visits DESC, keyword ASC
+        SELECT g.id, g.keyword, g.url, g.description, g.owner_id, u.username, g.visits, g.created_at 
+        FROM go_links g
+        LEFT JOIN users u ON g.owner_id = u.id
+        ORDER BY g.visits DESC, g.keyword ASC
     ");
     $sth->execute();
     
@@ -52,7 +54,7 @@ sub DB::get_go_link {
     $self->ensure_connection;
     
     my $sth = $self->{dbh}->prepare("
-        SELECT id, keyword, url, description, added_by, visits 
+        SELECT id, keyword, url, description, owner_id, visits 
         FROM go_links 
         WHERE keyword = ?
     ");
@@ -66,21 +68,21 @@ sub DB::get_go_link {
 #   keyword     : The short string for the URL (String).
 #   url         : The destination URL (String).
 #   description : What the link points to (String).
-#   added_by    : Name of the user adding the link (String).
+#   owner_id    : Numeric ID of the user adding the link (Int).
 # Returns:
 #   Result of execute().
 sub DB::add_go_link {
-    my ($self, $keyword, $url, $description, $added_by) = @_;
+    my ($self, $keyword, $url, $description, $owner_id) = @_;
     
     # Verify database connectivity
     $self->ensure_connection;
     
     # Insert new record, initializing visits to 0
     my $sth = $self->{dbh}->prepare("
-        INSERT INTO go_links (keyword, url, description, added_by, visits) 
+        INSERT INTO go_links (keyword, url, description, owner_id, visits) 
         VALUES (?, ?, ?, ?, 0)
     ");
-    return $sth->execute($keyword, $url, $description, $added_by);
+    return $sth->execute($keyword, $url, $description, $owner_id);
 }
 
 # Updates an existing go link.
