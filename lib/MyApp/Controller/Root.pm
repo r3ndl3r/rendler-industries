@@ -177,6 +177,7 @@ sub cwd { shift->render(text => "CWD: " . getcwd()) }
 # Returns: JavaScript assignment window.GLOBAL_ICONS = { ... }
 sub get_icons_js {
     my $c = shift;
+    # Public resource for UI icons
     $c->res->headers->content_type('application/javascript;charset=UTF-8');
     $c->render(text => "window.GLOBAL_ICONS = " . $c->icons_json . ";");
 }
@@ -203,6 +204,7 @@ sub quick {
 #   Rendered HTML template 'contact' with list of QR code images
 sub contact {
     my $c = shift;
+
     my @qr_images = qw(discord.png email.png line.jpg messenger.png);
     $c->render(template => 'contact', qr_images => \@qr_images);
 }
@@ -213,6 +215,8 @@ sub contact {
 # Returns: Rendered HTML template 'clipboard'.
 sub copy_get {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+
     $c->render('clipboard');
 }
 
@@ -222,6 +226,8 @@ sub copy_get {
 # Returns: JSON object { success, messages, is_admin, user_config }
 sub copy_api_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
     my $user_id = $c->current_user_id;
     my $user = $c->db->get_user_by_id($user_id);
     my @msgs = $c->db->get_pasted($user_id);
@@ -250,6 +256,8 @@ sub copy_api_state {
 # Returns: JSON object { success, message }
 sub copy_post {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
     my $user_id = $c->current_user_id;
     my $text = trim($c->param('paste') // '');
 
@@ -296,6 +304,8 @@ sub copy_post {
 # Returns: JSON object { success, message }
 sub copy_update {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
     my $id = $c->param('id');
     my $user_id = $c->current_user_id;
     my $text = trim($c->param('paste') // '');
@@ -317,6 +327,8 @@ sub copy_update {
 # Returns: JSON object { success, message }
 sub remove_message {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
     my $id = $c->param('id');
     my $user_id = $c->current_user_id;
 
