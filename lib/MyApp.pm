@@ -414,10 +414,10 @@ sub startup {
     # --- File Management Routes ---
     $r->get('/files/serve/:id')->to('files#serve');
     $admin->get('/files')->to('files#index');
-    $admin->post('/files')->to('files#upload'); 
-    $admin->post('/files/delete/:id')->to('files#delete_file');
-    $admin->post('/files/permissions/:id')->to('files#edit_permissions');
-
+    $admin->get('/files/api/state')->to('files#api_state');
+    $admin->post('/files/api/upload')->to('files#api_upload');
+    $admin->post('/files/api/delete/:id')->to('files#api_delete');
+    $admin->post('/files/api/permissions/:id')->to('files#api_permissions');
     # --- Shopping List Routes ---
     $family->get('/shopping')->to('shopping#index');
     $family->get('/shopping/api/state')->to('shopping#api_state');
