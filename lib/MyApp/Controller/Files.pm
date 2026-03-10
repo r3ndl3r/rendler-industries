@@ -25,36 +25,39 @@ sub index {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_admin;
-
-    # Handle AJAX state request (Single Source of Truth)
-    if ($c->req->headers->header('X-Requested-With') && $c->req->headers->header('X-Requested-With') eq 'XMLHttpRequest') {
-        # Security: Early exit if session lost
-        return $c->render(json => { success => 0, error => "Not logged in" }, status => 403) unless $c->is_logged_in;
-        
-        my $files = $c->db->get_all_files_metadata;
-        my $users = $c->db->get_all_users;
-        
-        return $c->render(json => { 
-            success  => 1, 
-            files    => $files,
-            users    => $users,
-            is_admin => $c->is_admin ? 1 : 0
-        });
-    }
-
-    $c->stash(is_admin => $c->is_admin);
     $c->render('files');
 }
 
+# Returns the consolidated state for the file vault.
+# Route: GET /files/api/state
+# Returns: JSON object { success, files, users, is_admin }
+sub api_state {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_admin;
+    
+    my $username = $c->session('user');
+    my $is_admin = $c->is_admin;
+    
+    my $files = $c->db->get_all_files_metadata($username, $is_admin);
+    my $users = $c->db->get_all_users;
+    
+    return $c->render(json => { 
+        success  => 1, 
+        files    => $files,
+        users    => $users,
+        is_admin => $is_admin ? 1 : 0
+    });
+}
+
 # Processes a new binary upload via AJAX.
-# Route: POST /files
+# Route: POST /files/api/upload
 # Parameters:
 #   file          : The multipart binary object (max 1GB)
 #   description   : Optional context string (String)
 #   admin_only    : Restriction flag (Boolean)
 #   allowed_users : Whitelisted usernames (ArrayRef[String])
 # Returns: JSON object { success, message }
-sub upload {
+sub api_upload {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     
@@ -160,11 +163,11 @@ sub serve {
 }
 
 # Permanently removes a file resource via AJAX.
-# Route: POST /files/delete/:id
+# Route: POST /files/api/delete/:id
 # Parameters:
 #   id : Unique File ID (Integer)
 # Returns: JSON object { success, message }
-sub delete_file {
+sub api_delete {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     my $id = $c->param('id');
@@ -190,13 +193,13 @@ sub delete_file {
 }
 
 # Updates ACL permissions for a specific resource via AJAX.
-# Route: POST /files/permissions/:id
+# Route: POST /files/api/permissions/:id
 # Parameters:
 #   id            : Unique File ID (Integer)
 #   admin_only    : Restriction flag (Boolean)
 #   allowed_users : Whitelisted usernames (ArrayRef[String])
 # Returns: JSON object { success, message }
-sub edit_permissions {
+sub api_permissions {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     my $id = $c->param('id');
