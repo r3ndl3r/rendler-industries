@@ -23,6 +23,7 @@ use Mojo::Base 'Mojolicious::Controller';
 #   Rendered HTML template 'chess/lobby' with waiting and active games.
 sub lobby {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     my $user_id = $c->current_user_id;
     my $lobbies = $c->db->get_open_chess_lobbies();
     my $user_games = $c->db->get_user_chess_games($user_id);
@@ -43,6 +44,7 @@ sub lobby {
 #   JSON object { open_games, user_games }
 sub lobby_status {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $user_id = $c->current_user_id;
     my $lobbies = $c->db->get_open_chess_lobbies();
     my $user_games = $c->db->get_user_chess_games($user_id);
@@ -62,6 +64,7 @@ sub lobby_status {
 #   Redirects to the play screen for the new game ID.
 sub create {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     my $uid = $c->current_user_id;
     my $game_id = $c->db->create_chess_lobby($uid);
     $c->redirect_to("/chess/play/$game_id");
@@ -75,6 +78,7 @@ sub create {
 #   Redirects to play screen on success.
 sub join_game {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     my $uid = $c->current_user_id;
     my $game_id = $c->param('game_id');
     
@@ -94,6 +98,7 @@ sub join_game {
 #   Rendered template 'chess/chess'.
 sub play {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     my $game_id = $c->param('id');
     my $user_id = $c->current_user_id;
     
@@ -115,6 +120,7 @@ sub play {
 #   JSON success/error status.
 sub move {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $game_id = $c->param('game_id');
     my $move = $c->param('move');
     my $user_id = $c->current_user_id;
@@ -136,6 +142,7 @@ sub move {
 #   JSON object with full game state.
 sub poll_status {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $game_id = $c->param('id');
     my $game = $c->db->get_chess_game($game_id);
     $c->render(json => $game);
@@ -147,6 +154,7 @@ sub poll_status {
 #   - id : Game session ID.
 sub offer_draw {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $game_id = $c->param('id');
     my $user_id = $c->current_user_id;
     
@@ -164,6 +172,7 @@ sub offer_draw {
 #   - accept : Boolean (1 to accept).
 sub respond_draw {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $game_id = $c->param('id');
     my $accept = $c->param('accept');
     my $user_id = $c->current_user_id;
