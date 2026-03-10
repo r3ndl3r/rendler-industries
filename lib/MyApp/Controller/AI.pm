@@ -20,14 +20,18 @@ use Mojo::JSON qw(encode_json decode_json);
 # Renders the message interface.
 # Route: GET /ai
 sub index {
-    shift->render('ai');
+    my $c = shift;
+    return $c->redirect_to('/auth') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_family;
+    $c->render('ai');
 }
 
 # Returns the consolidated state for the AI module.
 # Route: GET /ai/api/state
-# Returns: JSON object { history, username, success }
 sub api_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     my $user_id = $c->current_user_id;
     my $history = $c->db->get_ai_history($user_id, 20);
     
@@ -42,6 +46,8 @@ sub api_state {
 # Route: POST /ai/api/chat
 sub chat {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     my $user_id = $c->current_user_id;
     my $prompt  = trim($c->param('prompt') // '');
     my $file_id = $c->param('file_id');
@@ -82,49 +88,37 @@ sub chat {
     push @contents, { role => 'user', parts => \@user_parts };
 
     # 3. Dispatch to Gemini
-    my $api_key = $c->db->get_gemini_key();
-    my $active_model = $c->db->get_gemini_active_model();
-    my $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$active_model:generateContent";
-
     $c->render_later;
 
-    $c->ua->post_p("$endpoint?key=$api_key" => json => {
+    $c->gemini_prompt(
         contents => \@contents,
-        system_instruction => { parts => [{ text => $system_instructions }] },
-        tools => [{ google_search => {} }], 
-        generationConfig => {
-            temperature => 0.7,
-            maxOutputTokens => 1000,
-        }
-    })->then(sub {
-        my $tx = shift;
+        system   => $system_instructions,
+        timeout  => 45,
+        # Specialized Search config preserved for chat
+        tools    => [{ google_search => {} }]
+    )->then(sub {
+        my $data = shift;
 
         # 4. Process Model Output and Persist History
-        if (my $res = $tx->result) {
-            if ($res->is_success) {
-                my $data = $res->json;
-                my $ai_text = $data->{candidates}[0]{content}{parts}[0]{text} // "I'm not sure how to respond to that.";
-                
-                # Persist both user and model turns
-                $c->db->save_ai_message($user_id, 'user', $prompt, $file_id ? { file_id => $file_id, file_type => $file_type } : undef);
-                $c->db->save_ai_message($user_id, 'model', $ai_text);
-                
-                $c->render(json => { 
-                    success => 1, 
-                    content => $ai_text,
-                    role    => 'model'
-                });
-            } else {
-                $c->app->log->error("Gemini API Error: " . $res->body);
-                $c->render(json => { success => 0, error => "AI service unavailable." });
-            }
+        if ($data && $data->{candidates} && @{$data->{candidates}}) {
+            my $ai_text = $data->{candidates}[0]{content}{parts}[0]{text} // "I'm not sure how to respond to that.";
+            
+            # Persist both user and model turns
+            $c->db->save_ai_message($user_id, 'user', $prompt, $file_id ? { file_id => $file_id, file_type => $file_type } : undef);
+            $c->db->save_ai_message($user_id, 'model', $ai_text);
+            
+            $c->render(json => { 
+                success => 1, 
+                content => $ai_text,
+                role    => 'model'
+            });
         } else {
-             $c->render(json => { success => 0, error => "Network failure." });
+            die "Empty response from AI";
         }
     })->catch(sub {
         my $err = shift;
         $c->app->log->error("Gemini API Exception: $err");
-        $c->render(json => { success => 0, error => "Network failure." });
+        $c->render(json => { success => 0, error => "AI service error: $err" });
     });
 }
 
@@ -132,6 +126,8 @@ sub chat {
 # Route: POST /ai/api/clear
 sub clear {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     $c->db->clear_ai_history($c->current_user_id);
     $c->render(json => { success => 1 });
 }
