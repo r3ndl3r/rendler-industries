@@ -515,6 +515,8 @@ sub startup {
     $family->post('/medication/api/edit/:id')->to('medication#edit');
     $family->post('/medication/api/reset/:id')->to('medication#reset');
     $family->post('/medication/api/delete/:id')->to('medication#delete');
+    $admin->post('/medication/api/manage/update/:id')->to('medication#update_registry');
+    $admin->post('/medication/api/manage/delete/:id')->to('medication#delete_registry');
 
     # --- Meal Planner Routes ---
     $family->get('/meals')->to('meals#index');
@@ -534,11 +536,6 @@ sub startup {
     $family->get('/ai/api/state')->to('AI#api_state');
     $family->post('/ai/api/chat')->to('AI#chat');
     $family->post('/ai/api/clear')->to('AI#clear');
-
-    # --- Medication Registry Management (Admin Only) ---
-    my $med_admin = $family->under(sub { shift->is_admin || 0 });
-    $med_admin->post('/medication/api/manage/update/:id')->to('medication#update_registry');
-    $med_admin->post('/medication/api/manage/delete/:id')->to('medication#delete_registry');
 
         # --- Chess Routes ---
     $auth->get('/chess/lobby')->to('chess#lobby');
