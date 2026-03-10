@@ -17,8 +17,8 @@ use Mojo::Util qw(trim);
 # Route: GET /go
 sub index {
     my $c = shift;
-    return $c->redirect_to('/auth') unless $c->is_admin;
-    $c->stash(title => 'Go Links');
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_admin;
     $c->render('go');
 }
 
