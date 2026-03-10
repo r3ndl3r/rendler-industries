@@ -21,7 +21,7 @@ use Mojo::JSON qw(encode_json decode_json);
 # Route: GET /ai
 sub index {
     my $c = shift;
-    return $c->redirect_to('/auth') unless $c->is_logged_in;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_family;
     $c->render('ai');
 }
