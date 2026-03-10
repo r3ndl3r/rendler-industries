@@ -8,7 +8,7 @@
  * state-driven ledger rendering, and granular ACL synchronization.
  * 
  * Features:
- * - Single Source of Truth state-driven rendering from /files (AJAX state)
+ * - Single Source of Truth state-driven rendering from /files/api/state
  * - Drag-and-drop orchestration with 1GB binary threshold validation
  * - Dynamic ACL management (Admin Only vs. Whitelisted Recipients)
  * - High-density JSDoc documentation for behavioral transparency
@@ -49,8 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>}
  */
 async function loadState() {
+    // Inhibit background sync if user is interacting with a modal
+    if (document.querySelector('.modal-overlay.active')) return;
+
     try {
-        const response = await fetch('/files', {
+        const response = await fetch('/files/api/state', {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
         const data = await response.json();
@@ -95,7 +98,7 @@ function renderTable() {
                     ${file.description ? `<br><small class="file-desc">${escapeHtml(file.description)}</small>` : ''}
                 </div>
             </td>
-            <td data-label="Uploader">${file.uploaded_by}</td>
+            <td data-label="Uploader">${escapeHtml(file.uploaded_by)}</td>
             <td data-label="Date"><span class="text-small">${file.uploaded_at}</span></td>
             <td data-label="Size"><span class="text-small">${(file.file_size / 1024 / 1024).toFixed(2)} MB</span></td>
             <td data-label="Downloads" class="col-downloads-cell">${file.download_count || 0}</td>
@@ -233,7 +236,13 @@ async function submitFileUpload(event) {
 
     try {
         const formData = new FormData(form);
-        const result = await apiPost('/files', formData);
+        
+        // Standardized Checkbox Check: ensure 0 is sent if unchecked
+        if (!formData.has('admin_only')) {
+            formData.set('admin_only', 0);
+        }
+
+        const result = await apiPost('/files/api/upload', formData);
 
         if (result && result.success) {
             closeUploadModal();
@@ -266,7 +275,13 @@ async function submitPermissions(event) {
 
     try {
         const formData = new FormData(form);
-        const result = await apiPost(`/files/permissions/${id}`, formData);
+        
+        // Standardized Checkbox Check: ensure 0 is sent if unchecked
+        if (!formData.has('admin_only')) {
+            formData.set('admin_only', 0);
+        }
+
+        const result = await apiPost(`/files/api/permissions/${id}`, formData);
 
         if (result && result.success) {
             closePermissionModal();
@@ -295,7 +310,7 @@ function confirmDeleteFile(id, filename) {
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost(`/files/delete/${id}`);
+            const result = await apiPost(`/files/api/delete/${id}`);
             if (result && result.success) {
                 const row = document.getElementById(`file-row-${id}`);
                 if (row) {
