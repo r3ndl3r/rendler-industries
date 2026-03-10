@@ -21,7 +21,9 @@ use Mojo::Util qw(trim);
 # Returns: Rendered HTML template 'users'.
 sub user_list {
     my $c = shift;
-    $c->stash(title => 'User Management');
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_admin;
+
     $c->render('users');
 }
 
@@ -31,6 +33,7 @@ sub user_list {
 # Returns: JSON object { users, is_admin, success }
 sub api_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     
     my $state = {
         users           => $c->db->get_all_users(),
@@ -49,6 +52,8 @@ sub api_state {
 # Returns: JSON object { success, message, error }
 sub delete_user {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
     my $id = $c->param('id');
     
     unless (defined $id && $id =~ /^\d+$/) {
@@ -72,6 +77,8 @@ sub delete_user {
 # Returns: JSON object { success, message, error }
 sub approve_user {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
     my $id = $c->param('id');
     
     unless (defined $id && $id =~ /^\d+$/) {
@@ -116,6 +123,8 @@ sub approve_user {
 # Returns: JSON object { success, message, error }
 sub edit_user {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
     my $id = $c->param('id');
     my $username = trim($c->param('username') // '');
     my $email = trim($c->param('email') // '');
@@ -170,6 +179,8 @@ sub edit_user {
 # Returns: JSON object { success, message, error }
 sub toggle_role {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
     my $id = $c->param('id');
     my $role = $c->param('role');
     my $value = $c->param('value');
