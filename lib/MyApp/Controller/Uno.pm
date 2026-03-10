@@ -23,6 +23,7 @@ use Mojo::Base 'Mojolicious::Controller';
 #   Rendered HTML template 'uno/lobby' with waiting lobbies.
 sub lobby {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     # UPDATED: Specific method call
     my $lobbies = $c->db->get_open_uno_lobbies();
     $c->render('uno/lobby', lobbies => $lobbies);
@@ -35,6 +36,7 @@ sub lobby {
 #   Redirects to the play screen for the new game ID.
 sub create {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     my $uid = $c->current_user_id;
     # UPDATED: Specific method call
     my $game_id = $c->db->create_uno_lobby($uid);
@@ -50,6 +52,7 @@ sub create {
 #   Redirects to lobby with error flash on failure.
 sub join {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     my $uid = $c->current_user_id;
     my $game_id = $c->param('id');
     
@@ -72,6 +75,7 @@ sub join {
 #   JSON object { myhand, players, topcard, turn, status, etc } (AJAX request).
 sub play {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     my $game_id = $c->param('id');
     my $uid = $c->current_user_id;
     
@@ -132,6 +136,7 @@ sub play {
 #   JSON: { success => 1/0 }
 sub play_card {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $game_id = $c->param('id');
     my $idx = $c->param('idx');
     my $color = $c->param('color'); # Optional, for Wilds
@@ -151,6 +156,7 @@ sub play_card {
 #   JSON: { success => 1/0, playable => 1/0 }
 sub draw_card {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $game_id = $c->param('id');
     my $uid = $c->current_user_id;
     
@@ -168,6 +174,7 @@ sub draw_card {
 #   JSON: { success => 1/0 }
 sub shout_uno {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $game_id = $c->param('id');
     my $uid = $c->current_user_id;
     
@@ -184,6 +191,7 @@ sub shout_uno {
 #   JSON: { status => 'waiting'/'active' }
 sub toggle_ready {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $game_id = $c->param('id');
     my $uid = $c->current_user_id;
     
@@ -201,6 +209,7 @@ sub toggle_ready {
 #   JSON: { success => 1/0, message => '...' }
 sub start {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     my $game_id = $c->param('id');
     my $uid = $c->current_user_id;
     
