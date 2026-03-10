@@ -17,6 +17,8 @@ use Mojo::Util qw(trim);
 # Route: GET /shopping
 sub index {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_family;
     $c->render('shopping');
 }
 
@@ -24,6 +26,7 @@ sub index {
 # Route: GET /shopping/api/state
 sub api_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     # Ensure session is active before state retrieval
     return unless $c->is_logged_in;
@@ -40,6 +43,7 @@ sub api_state {
 # Route: POST /shopping/api/add
 sub api_add {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     # Ensure session is active before state retrieval
     return unless $c->is_logged_in;
@@ -71,6 +75,7 @@ sub api_add {
 # Route: POST /shopping/api/toggle/:id
 sub api_toggle {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     # Ensure session is active before state retrieval
     return unless $c->is_logged_in;
@@ -90,6 +95,7 @@ sub api_toggle {
 # Route: POST /shopping/api/delete/:id
 sub api_delete {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     # Ensure session is active before state retrieval
     return unless $c->is_logged_in;
@@ -109,6 +115,7 @@ sub api_delete {
 # Route: POST /shopping/api/edit/:id
 sub api_edit {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     # Ensure session is active before state retrieval
     return unless $c->is_logged_in;
@@ -133,6 +140,7 @@ sub api_edit {
 # Route: POST /shopping/api/clear
 sub api_clear {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     # Ensure session is active before state retrieval
     return unless $c->is_logged_in;
