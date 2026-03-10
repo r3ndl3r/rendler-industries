@@ -28,6 +28,7 @@ use DateTime;
 #   - Executes 'hypnotoad -s' followed by a fresh start.
 sub restart {
     my $c = shift;
+    return $c->render('noperm') unless $c->is_admin;
     
     # Fork a child process to handle the blocking system command
     my $pid = fork();
