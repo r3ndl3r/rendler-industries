@@ -7,12 +7,13 @@ use warnings;
 
 # Database helper for the shared Shopping List feature.
 # Features:
-#   - Retrieve active and completed shopping items
-#   - CRUD operations (Create, Read, Update, Delete)
-#   - Batch cleanup of completed items
+#   - Centralized state management for collaborative shopping rosters
+#   - Atomic status toggling with automatic timestamping
+#   - Batch synchronization and cleanup for family-wide shared access
 # Integration points:
-#   - Extends DB package via package injection
-#   - Direct DBI usage for SQL operations
+#   - Extends the core DB package via direct method injection
+#   - Utilizes persistent DBI handles from the parent context
+#   - Supports MVC separation by isolating SQL logic from controller actions
 
 # Inject methods into the main DB package
 
