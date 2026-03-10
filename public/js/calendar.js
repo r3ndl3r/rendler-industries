@@ -113,7 +113,7 @@ async function loadState() {
  * @returns {Promise<void>}
  */
 async function loadEvents() {
-    // Lifecycle: inhibit background sync if user is actively interacting with forms
+    // Skip background refresh if a modal is active to prevent overwriting user input.
     const anyModalOpen = document.querySelector('.modal-overlay.active');
     if (anyModalOpen && STATE.events.length > 0) return;
 
