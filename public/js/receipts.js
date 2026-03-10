@@ -792,10 +792,15 @@ async function viewElectronicReceipt(id, force = 0, preLoaded = null, initialIco
             loadState();
             renderEReceipt(res.data, initialIcon);
         } else {
-            content.innerHTML = `<div class="alert alert-error">AI Analysis failed</div>`;
+            const errorMsg = res.error || 'AI Analysis failed';
+            content.innerHTML = `
+                <div class="alert alert-error">
+                    <p>${getIcon('error')} <strong>Analysis Failed</strong></p>
+                    <p class="error-detail">${errorMsg}</p>
+                </div>`;
         }
     } catch (err) {
-        content.innerHTML = `<div class="alert alert-error">Network error</div>`;
+        content.innerHTML = `<div class="alert alert-error">${getIcon('error')} Network error</div>`;
     }
 }
 
