@@ -19,6 +19,7 @@ use Mojo::Util qw(trim);
 # Returns: Rendered HTML template
 sub index {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     $c->render('todo');
 }
 
