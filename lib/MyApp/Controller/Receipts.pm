@@ -11,28 +11,27 @@ use Mojo::JSON qw(decode_json encode_json);
 #   - Binary upload and persistent storage of receipt images
 #   - Metadata tagging (Store, Date, Total) with OCR assistance
 #   - Pagination for large ledgers
-#   - Gemini 2.0 AI integration for high-fidelity electronic receipts
+#   - Gemini AI integration for high-fidelity electronic receipts via AI Plugin
 #   - Client-side image cropping and refinement
 # Integration points:
 #   - Restricted to family members via router bridge
 #   - Depends on DB::Receipts for binary and structured storage
-#   - Leverages global Gemini API configuration from Settings
+#   - Leverages global AI service helpers ($c->gemini_*)
 
 # Renders the main receipt ledger skeleton.
 # Route: GET /receipts
-# Parameters: None
-# Returns: Rendered HTML template 'receipts'.
 sub index {
-    shift->render('receipts');
+    my $c = shift;
+    return $c->redirect_to('/auth') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_family;
+    $c->render('receipts');
 }
 
 # Returns the consolidated state for the module.
 # Route: GET /receipts/api/state
-# Parameters:
-#   store, days, search, min_amount, ai_status, uploader : Filter params.
-# Returns: JSON object { receipts, store_names, uploaders, summary, breakdown, is_admin, current_user }
 sub api_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $f = {
         store      => $c->param('store'),
@@ -59,12 +58,10 @@ sub api_state {
 
 # Lazy-loads receipt metadata for pagination.
 # Route: GET /receipts/api/list
-# Parameters:
-#   offset : Integer pagination pointer.
-#   store, days, search, min_amount, ai_status, uploader : Filter params.
-# Returns: JSON object { success, receipts, has_more }
 sub api_list {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     my $offset = int($c->param('offset') // 0);
     my $limit  = 10;
     
@@ -88,12 +85,9 @@ sub api_list {
 
 # Processes a new binary receipt upload.
 # Route: POST /receipts/api/upload
-# Parameters:
-#   file : Multipart binary object (Max 1GB).
-#   store_name, receipt_date, total_amount, description : Metadata fields.
-# Returns: JSON object { success, message, receipt, summary, breakdown }
 sub upload {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $upload = $c->param('file');
     unless ($upload) { return $c->render(json => { success => 0, error => "No file uploaded" }); }
@@ -169,12 +163,10 @@ sub _finalize_upload {
 
 # Updates metadata for an existing receipt record.
 # Route: POST /receipts/api/update/:id
-# Parameters:
-#   id : Unique Receipt ID.
-#   store_name, receipt_date, total_amount, description : Metadata fields.
-# Returns: JSON object { success, message, receipt, summary, breakdown }
 sub update {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     my $id = $c->param('id');
     my $receipt = $c->db->get_receipt_by_id($id);
     return $c->render(json => { success => 0, error => "Receipt not found" }) unless $receipt;
@@ -209,12 +201,10 @@ sub update {
 
 # Processes a client-side cropped image update.
 # Route: POST /receipts/api/crop/:id
-# Parameters:
-#   id : Unique Receipt ID.
-#   cropped_image : Binary file object.
-# Returns: JSON object { success }
 sub crop {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     my $id = $c->param('id');
     my $receipt = $c->db->get_receipt_by_id($id);
     return $c->render(json => { success => 0, error => "Receipt not found" }, status => 404) unless $receipt;
@@ -237,11 +227,10 @@ sub crop {
 
 # Permanently removes a receipt resource.
 # Route: POST /receipts/api/delete/:id
-# Parameters:
-#   id : Unique Receipt ID.
-# Returns: JSON object { success, message, summary, breakdown }
 sub delete {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     my $id = $c->param('id');
     my $receipt = $c->db->get_receipt_by_id($id);
     return $c->render(json => { success => 0, error => "Receipt not found" }) unless $receipt;
@@ -265,11 +254,10 @@ sub delete {
 
 # Serves raw binary content with correct MIME headers.
 # Route: GET /receipts/serve/:id
-# Parameters:
-#   id : Unique Receipt ID.
-# Returns: Binary stream.
 sub serve {
     my $c = shift;
+    return $c->render_error("Unauthorized", 403) unless $c->is_family;
+
     my $id = $c->param('id');
     my $receipt = $c->db->get_receipt_by_id($id);
     return $c->render_error("Receipt not found", 404) unless $receipt;
@@ -280,13 +268,11 @@ sub serve {
 
 # Extracts metadata from an existing image via AI OCR.
 # Route: POST /receipts/api/ocr/:id
-# Parameters:
-#   id : Unique Receipt ID.
-# Returns: JSON object { success, store_name, receipt_date, total_amount, raw_text }
 sub trigger_ocr {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     my $id = $c->param('id');
-    
     my $receipt = $c->db->get_receipt_by_id($id);
     return $c->render(json => { success => 0, error => "Receipt not found" }, status => 404) unless $receipt;
     
@@ -338,12 +324,10 @@ sub trigger_ocr {
 
 # Performs AI-powered structured receipt digitization.
 # Route: POST /receipts/api/ai_analyze/:id
-# Parameters:
-#   id    : Unique Receipt ID.
-#   force : Force rescan (Boolean).
-# Returns: JSON object { success, cached, data }
 sub ai_analyze {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     my $id = $c->param('id');
     my $force = $c->param('force') || 0;
     
@@ -364,29 +348,18 @@ sub ai_analyze {
         return $c->render(json => { success => 0, error => "Only images supported" }, status => 400);
     }
 
-    # 2. Dispatch to Gemini 2.0
-    my $api_key = $c->db->get_gemini_key();
-    my $active_model = $c->db->get_gemini_active_model();
-    unless ($api_key) { return $c->render(json => { success => 0, error => "AI key missing" }); }
-
-    my $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$active_model:generateContent";
     my $system_prompt = "You are a professional receipt digitizer. Analyze the image and extract data into a JSON object. Include: store_name, location, date, time, items (array of {desc, qty, unit_price, line_total}), total_amount, currency, payment_method. ONLY return valid JSON.";
 
     $c->render_later;
 
-    $c->ua->request_timeout(60)->post_p("$endpoint?key=$api_key" => json => {
-        contents => [{
-            role => 'user',
-            parts => [{ text => "Digitize this receipt accurately." }, { inlineData => { mimeType => $receipt->{mime_type}, data => b64_encode($receipt->{file_data}, '') } }]
-        }],
-        system_instruction => { parts => [{ text => $system_prompt }] },
-        generationConfig => { temperature => 0.1, response_mime_type => "application/json" }
-    })->then(sub {
-        my $tx = shift;
+    $c->gemini_analyze_image(
+        image  => $receipt->{file_data},
+        mime   => $receipt->{mime_type},
+        system => $system_prompt
+    )->then(sub {
+        my $data = shift;
 
         # 3. Process Response
-        my $res = $tx->res;
-        my $data = $res->json;
         if ($data && $data->{candidates} && @{$data->{candidates}}) {
             my $json_text = $data->{candidates}[0]{content}{parts}[0]{text};
             
@@ -405,12 +378,12 @@ sub ai_analyze {
             }
         }
 
-        $c->app->log->error("AI Parsing Failed. Status: " . ($res->code // 0) . ". Body: " . $res->body);
+        $c->app->log->error("AI Parsing Failed: Invalid response structure");
         $c->render(json => { success => 0, error => "AI failed to parse image." });
     })->catch(sub {
         my $err = shift;
         $c->app->log->error("Receipt AI Exception: $err");
-        $c->render(json => { success => 0, error => "AI API connection failed" });
+        $c->render(json => { success => 0, error => "AI API error: $err" });
     });
 }
 
