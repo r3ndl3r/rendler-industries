@@ -75,7 +75,7 @@
         Powered by <a href="https://debian.org" class="footer-link-standard"> Debian <img alt="debian" src="/files/serve/2" class="footer-img"></a> || 
         <a href="https://perl.org/" class="footer-link-standard"> Perl <img alt="perl" src="/files/serve/4" class="footer-img"></a> || 
         <a href="http://mojolicious.org" class="footer-link-standard"> Mojolicious <img alt="mojo" src="/files/serve/5" class="footer-img"></a> || 
-        <a href="https://cloudflare.com/" class="footer-link-standard"> Cloudflare <img alt="apache" src="/files/serve/65" class="footer-img"></a> || 
+        <a href="https://cloudflare.com/" class="footer-link-standard"> Cloudflare <img alt="cloudflare" src="/files/serve/65" class="footer-img"></a> || 
         <a href="https://mariadb.org" class="footer-link-standard"> MariaDB <img alt="mariadb" src="/files/serve/3" class="footer-img"></a>
     </p>
 
