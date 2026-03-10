@@ -49,7 +49,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setupGlobalModalClosing(['modal-overlay'], [closeEditModal]);
 
     // Background synchronization
-    setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
+    setInterval(() => {
+        if (document.querySelector('.modal-overlay.active')) return;
+        loadState();
+    }, CONFIG.SYNC_INTERVAL_MS);
 });
 
 /**
@@ -63,6 +66,10 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>}
  */
 async function loadState() {
+    // Skip background refresh if a modal is active to prevent overwriting user input.
+    const anyModalOpen = document.querySelector('.modal-overlay.active');
+    if (anyModalOpen && STATE.items.length > 0) return;
+
     try {
         const response = await fetch('/shopping/api/state');
         const data = await response.json();
@@ -71,9 +78,11 @@ async function loadState() {
             STATE.items = data.items;
             STATE.isAdmin = !!data.is_admin;
             renderTable();
+        } else if (data && data.error) {
+            console.error('State Synchronization Error:', data.error);
         }
     } catch (err) {
-        console.error('loadState failed:', err);
+        console.error('Network failure during state synchronization:', err);
     }
 }
 
@@ -205,6 +214,8 @@ async function handleAddItem(event) {
                 is_checked: 0
             });
             renderTable();
+        } else {
+            toast('error', result.error || 'Failed to add item');
         }
     } finally {
         btn.disabled = false;
@@ -231,8 +242,9 @@ async function toggleItem(id) {
             item.is_checked = !item.is_checked;
             renderTable();
         }
-    } else if (row) {
-        row.classList.remove('pending');
+    } else {
+        if (row) row.classList.remove('pending');
+        toast('error', result.error || 'Failed to update item');
     }
 }
 
@@ -300,6 +312,8 @@ async function handleEditSubmit(event) {
             if (item) item.item_name = name;
             renderTable();
             closeEditModal();
+        } else {
+            toast('error', result.error || 'Failed to update item description');
         }
     } finally {
         btn.disabled = false;
@@ -327,6 +341,8 @@ function confirmDeleteItem(id, itemName) {
             if (result && result.success) {
                 STATE.items = STATE.items.filter(i => i.id != id);
                 renderTable();
+            } else {
+                toast('error', result.error || 'Failed to remove item');
             }
         }
     });
@@ -350,6 +366,8 @@ function openClearAllModal() {
             if (result && result.success) {
                 STATE.items = STATE.items.filter(i => !i.is_checked);
                 renderTable();
+            } else {
+                toast('error', result.error || 'Failed to clear items');
             }
         }
     });
