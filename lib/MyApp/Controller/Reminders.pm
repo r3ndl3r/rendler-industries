@@ -21,9 +21,12 @@ use Mojo::Util qw(trim);
 # Returns: Rendered HTML template 'reminders'.
 sub index {
     my $c = shift;
-    $c->stash(title => 'Manage Reminders');
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_family;
+
     $c->render('reminders');
 }
+
 
 # Returns the consolidated state for the module.
 # Route: GET /reminders/api/state
@@ -33,7 +36,7 @@ sub api_state {
     my $c = shift;
     
     # Ensure session is active before state retrieval
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $state = {
         reminders    => $c->db->get_all_reminders(),
@@ -63,7 +66,7 @@ sub api_add {
     my $c = shift;
     
     # Ensure session is active before processing
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $title = trim($c->param('title') // '');
     my $desc  = trim($c->param('description') // '');
@@ -114,7 +117,7 @@ sub api_update {
     my $c = shift;
     
     # Ensure session is active before processing
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $id    = $c->param('id');
     my $title = trim($c->param('title') // '');
@@ -158,7 +161,7 @@ sub api_delete {
     my $c = shift;
     
     # Ensure session is active before processing
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $id = $c->param('id');
     
@@ -187,7 +190,7 @@ sub api_toggle {
     my $c = shift;
     
     # Ensure session is active before processing
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $id = $c->param('id');
     my $active = $c->param('active') ? 1 : 0;
@@ -220,7 +223,7 @@ sub api_toggle_day {
     my $c = shift;
     
     # Ensure session is active before processing
-    return unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $id = $c->param('id');
     my $day = $c->param('day');
