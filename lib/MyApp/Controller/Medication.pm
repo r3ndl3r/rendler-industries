@@ -21,14 +21,20 @@ use Mojo::Util qw(trim);
 # Renders the SPA skeleton.
 # Route: GET /medication
 sub index {
-    shift->render('medication');
+    my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_family;
+
+    $c->render('medication');
 }
+
 
 # Returns the consolidated state for the module.
 # Route: GET /medication/api/state
 # Returns: JSON object { logs, registry, members, is_admin, success }
 sub api_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $logs     = $c->db->get_medication_logs_by_user();
     my $registry = $c->db->get_registry_with_stats();
@@ -47,8 +53,9 @@ sub api_state {
 # Route: POST /medication/api/add
 sub add {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     my $logged_by_id = $c->current_user_id;
-    
     my $medication_name  = trim($c->param('medication_name') // '');
     my $family_member_id = $c->param('family_member_id');
     my $dosage           = trim($c->param('dosage') // 0);
@@ -73,6 +80,8 @@ sub add {
 # Route: POST /medication/api/edit/:id
 sub edit {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     my $id = $c->param('id');
     my $medication_name  = trim($c->param('medication_name') // '');
     my $family_member_id = $c->param('family_member_id');
@@ -94,6 +103,8 @@ sub edit {
 # Route: POST /medication/api/reset/:id
 sub reset {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     my $id = $c->param('id');
     my $taken_at = trim($c->param('taken_at') // '');
     
@@ -153,6 +164,8 @@ sub reset {
 # Route: POST /medication/api/delete/:id
 sub delete {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
     my $id = $c->param('id');
     
     eval {
@@ -171,6 +184,8 @@ sub delete {
 # Route: POST /medication/api/manage/update/:id
 sub update_registry {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
     my $id = $c->param('id');
     my $name = trim($c->param('name'));
     my $dosage = $c->param('default_dosage');
@@ -186,6 +201,8 @@ sub update_registry {
 # Route: POST /medication/api/manage/delete/:id
 sub delete_registry {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
     my $id = $c->param('id');
     
     my ($success, $error) = $c->db->delete_registry_item($id);
