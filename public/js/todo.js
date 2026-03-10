@@ -90,9 +90,11 @@ async function loadState() {
         if (data && data.success) {
             STATE.todos = data.todos;
             renderTable();
+        } else if (data && data.error) {
+            console.error('State Synchronization Error:', data.error);
         }
     } catch (err) {
-        console.error('loadState failed:', err);
+        console.error('Network failure during state synchronization:', err);
     }
 }
 
