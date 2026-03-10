@@ -22,6 +22,8 @@ use List::Util qw(shuffle);
 #   Rendered HTML template with current game state and lobby roster
 sub index {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_family;
     
     # Retrieve current game state or initialize default
     my $game = $c->session('imposter_game') // { status => 'lobby' };
@@ -44,6 +46,7 @@ sub index {
 #   Redirects to game page
 sub set_language {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     my $lang = $c->param('lang');
     
     # Validate supported languages before saving to session
@@ -61,6 +64,7 @@ sub set_language {
 #   Redirects to game page
 sub add_custom_player {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     my $name = Mojo::Util::trim($c->param('player_name') // '');
     
     # Validate name format for security and consistency
@@ -79,6 +83,7 @@ sub add_custom_player {
 #   Redirects to game page
 sub edit_player {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     my $old_name = Mojo::Util::trim($c->param('old_name') // '');
     my $new_name = Mojo::Util::trim($c->param('new_name') // '');
 
@@ -99,6 +104,7 @@ sub edit_player {
 #   Redirects to game page
 sub remove_player {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     my $target = Mojo::Util::trim($c->param('player_name') // '');
     
     # Remove from database
@@ -114,6 +120,7 @@ sub remove_player {
 #   Redirects to game page
 sub clear_lobby {
     my $c = shift;
+    return $c->redirect_to('/imposter') unless $c->is_family;
     
     # Clean up generated image files to save space
     $c->_delete_previous_image();
@@ -131,6 +138,7 @@ sub clear_lobby {
 #   Redirects to game page
 sub play_again {
     my $c = shift;
+    return $c->redirect_to('/imposter') unless $c->is_family;
     
     # Clean up generated image files
     $c->_delete_previous_image();
@@ -148,6 +156,7 @@ sub play_again {
 #   Redirects to game page
 sub start_game {
     my $c = shift;
+    return $c->redirect_to('/imposter') unless $c->is_family;
     
     # Ensure no lingering images from previous interrupted sessions
     $c->_delete_previous_image();
@@ -239,6 +248,7 @@ sub start_game {
 #   Redirects to game page
 sub toggle_view {
     my $c = shift;
+    return $c->redirect_to('/imposter') unless $c->is_family;
     my $game = $c->session('imposter_game');
     
     # Only allow toggling during the "passing" phase
@@ -256,6 +266,7 @@ sub toggle_view {
 #   Redirects to game page
 sub next_player {
     my $c = shift;
+    return $c->redirect_to('/imposter') unless $c->is_family;
     my $game = $c->session('imposter_game');
     return $c->redirect_to('/imposter') unless $game->{status} eq 'passing';
     
@@ -285,6 +296,7 @@ sub next_player {
 #   Redirects to game page
 sub end_game_early {
     my $c = shift;
+    return $c->redirect_to('/imposter') unless $c->is_family;
     my $game = $c->session('imposter_game');
     
     if ($game && $game->{status} eq 'timer') {
@@ -303,6 +315,7 @@ sub end_game_early {
 #   Redirects to game page
 sub reveal_results {
     my $c = shift;
+    return $c->redirect_to('/imposter') unless $c->is_family;
     my $game = $c->session('imposter_game');
     
     $game->{status} = 'finished';
