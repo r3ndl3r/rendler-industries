@@ -24,6 +24,7 @@ use utf8;
 #   - 400/500 Error: JSON object with error message
 sub synthesize {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
     
     # Logic: Safe extraction from both form-params and JSON body
     my $json = $c->req->json || {};
