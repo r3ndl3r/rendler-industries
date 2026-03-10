@@ -23,6 +23,8 @@ use Digest::SHA qw(sha256_hex);
 # Returns: Rendered HTML template 'files'.
 sub index {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_admin;
 
     # Handle AJAX state request (Single Source of Truth)
     if ($c->req->headers->header('X-Requested-With') && $c->req->headers->header('X-Requested-With') eq 'XMLHttpRequest') {
@@ -54,6 +56,7 @@ sub index {
 # Returns: JSON object { success, message }
 sub upload {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     
     # Validate binary presence
     my $upload = $c->param('file');
@@ -163,6 +166,7 @@ sub serve {
 # Returns: JSON object { success, message }
 sub delete_file {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     my $id = $c->param('id');
     
     unless (defined $id && $id =~ /^\d+$/) {
@@ -194,6 +198,7 @@ sub delete_file {
 # Returns: JSON object { success, message }
 sub edit_permissions {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     my $id = $c->param('id');
 
     unless (defined $id && $id =~ /^\d+$/) {
