@@ -57,40 +57,34 @@ sub DB::store_file {
     return $self->{dbh}->last_insert_id(undef, undef, 'files', 'id');
 }
 
-# Retrieves full file record by system filename.
+# Retrieves metadata for files based on user access levels.
 # Parameters:
-#   filename : System identifier
+#   username : Current user identifier
+#   is_admin : Boolean flag (1/0)
 # Returns:
-#   HashRef containing all fields including binary data, or undef if not found
-sub DB::get_file_by_filename {
-    my ($self, $filename) = @_;
-    
-    $self->ensure_connection;
-    
-    my $sth = $self->{dbh}->prepare("SELECT * FROM files WHERE filename = ?");
-    $sth->execute($filename);
-    
-    return $sth->fetchrow_hashref();
-}
-
-# Retrieves metadata for all files.
-# Parameters: None
-# Returns:
-#   ArrayRef of HashRefs containing file details (excluding binary content)
+#   ArrayRef of HashRefs containing accessible file details (excluding binary content)
 sub DB::get_all_files_metadata {
-    my ($self) = @_;
+    my ($self, $username, $is_admin) = @_;
     
     $self->ensure_connection;
     
-    # Fetch lightweight columns only; exclude 'file_data' BLOB for performance
-    my $sth = $self->{dbh}->prepare(
-        "SELECT id, filename, original_filename, mime_type, file_size, uploaded_by, 
-        DATE_FORMAT(uploaded_at, '%d-%m-%Y %h:%i %p') AS uploaded_at, 
-        admin_only, allowed_users, description, download_count
-        FROM files ORDER BY id DESC"
-    );
+    # Base query: Fetch lightweight columns only; exclude 'file_data' BLOB
+    my $sql = "SELECT id, filename, original_filename, mime_type, file_size, uploaded_by, 
+               DATE_FORMAT(uploaded_at, '%d-%m-%Y %h:%i %p') AS uploaded_at, 
+               admin_only, allowed_users, description, download_count
+               FROM files";
     
-    $sth->execute();
+    # Strict Privacy: Admins see all; users see public, their own, or whitelisted files
+    my @params;
+    unless ($is_admin) {
+        $sql .= " WHERE admin_only = 0 AND (allowed_users IS NULL OR allowed_users = '' OR FIND_IN_SET(?, allowed_users) OR uploaded_by = ?)";
+        push @params, $username, $username;
+    }
+    
+    $sql .= " ORDER BY id DESC";
+    
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute(@params);
     
     return $sth->fetchall_arrayref({});
 }
