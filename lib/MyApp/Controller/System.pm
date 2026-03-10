@@ -304,8 +304,12 @@ sub run_emoji_maintenance_p {
             my $raw_text = Mojo::Util::trim($r->{text_value} // '');
             next unless $raw_text;
             
-            # Skip if already has emoji
-            next if $raw_text =~ /^\p{Extended_Pictographic}/;
+            # Skip if already has emoji, but ensure we mark it as processed in DB
+            if ($raw_text =~ /^\p{Extended_Pictographic}/) {
+                $c->db->update_record_emoji($t->{table}, $t->{id_col}, $t->{text_col}, $r->{id}, $raw_text);
+                $dict_hits++;
+                next;
+            }
 
             # Parent Check: Dictionary Lookups
             my $emoji = $c->db->check_ai_dictionary($raw_text) // $c->db->check_standard_dictionary($raw_text);
