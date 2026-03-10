@@ -24,7 +24,8 @@ use utf8;
 # Route: GET /calendar
 sub index {
     my $c = shift;
-    return $c->redirect_to('/auth') unless $c->is_logged_in;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_family;
     
     $c->stash(view => $c->param('view') || 'month', date => $c->param('date') || '');
     $c->render('calendar/calendar');
@@ -34,7 +35,7 @@ sub index {
 # Route: GET /calendar/api/state
 sub api_state {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $categories = $c->db->get_calendar_categories();
     my $all_users = $c->db->get_all_users();
@@ -53,7 +54,7 @@ sub api_state {
 # Route: GET /calendar/api/events
 sub api_events {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $start = $c->param('start');
     my $end   = $c->param('end');
@@ -76,7 +77,8 @@ sub api_events {
 # Route: GET /calendar/manage
 sub manage {
     my $c = shift;
-    return $c->redirect_to('/auth') unless $c->is_logged_in;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_family;
     $c->render('calendar/manage');
 }
 
@@ -84,7 +86,7 @@ sub manage {
 # Route: POST /calendar/api/add
 sub api_add {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $title = trim($c->param('title') // '');
     my $description = trim($c->param('description') // '');
@@ -233,7 +235,7 @@ sub _format_datetime {
 # Route: POST /calendar/api/edit
 sub api_edit {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $id = $c->param('id');
     my $user_id = $c->current_user_id;
@@ -282,7 +284,7 @@ sub api_edit {
 # Route: POST /calendar/api/delete
 sub api_delete {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $id = $c->param('id');
     my $user_id = $c->current_user_id;
