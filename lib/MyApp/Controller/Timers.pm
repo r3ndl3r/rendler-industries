@@ -22,6 +22,8 @@ use Mojo::Util qw(trim);
 # Route: GET /timers
 sub dashboard {
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_family;
     
     # Redirection: admins utilize the unified management interface
     return $c->redirect_to('/timers/manage') if $c->is_admin;
@@ -32,7 +34,10 @@ sub dashboard {
 # Renders the administrative management skeleton.
 # Route: GET /timers/manage
 sub manage {
-    shift->render('timers/manage');
+    my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_admin;
+    $c->render('timers/manage');
 }
 
 # Returns the consolidated state for the active user's timers.
@@ -40,6 +45,7 @@ sub manage {
 # Returns: JSON object { timers, success }
 sub api_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     my $user_id = $c->current_user_id;
     
     # Maintenance: ensure all running intervals are reconciled before fetch
@@ -60,6 +66,7 @@ sub api_state {
 # Returns: JSON object { timers, users, success }
 sub api_manage_state {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     
     my $filter_user_id = $c->param('user_id');
     my $timers = $c->db->get_all_timers($filter_user_id);
@@ -76,6 +83,8 @@ sub api_manage_state {
 # Route: POST /timers/api/start
 sub start_timer {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    
     my $timer_id = $c->param('timer_id');
     my $user_id  = $c->current_user_id;
     
@@ -94,6 +103,8 @@ sub start_timer {
 # Route: POST /timers/api/stop
 sub stop_timer {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    
     my $timer_id = $c->param('timer_id');
     my $user_id  = $c->current_user_id;
     
@@ -112,6 +123,8 @@ sub stop_timer {
 # Route: POST /timers/api/pause
 sub toggle_pause {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    
     my $timer_id = $c->param('timer_id');
     my $user_id  = $c->current_user_id;
     
@@ -130,6 +143,7 @@ sub toggle_pause {
 # Route: POST /timers/api/create
 sub create {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
     
     my $user_id         = $c->param('user_id');
     my $name            = trim($c->param('name') // '');
@@ -157,6 +171,8 @@ sub create {
 # Route: POST /timers/api/update/:id
 sub update {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    
     my $id              = $c->param('id');
     my $name            = trim($c->param('name') // '');
     my $category        = $c->param('category');
@@ -181,6 +197,8 @@ sub update {
 # Route: POST /timers/api/delete/:id
 sub delete {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    
     my $id = $c->param('id');
     
     eval {
@@ -201,6 +219,8 @@ sub delete {
 # Route: POST /timers/api/bonus
 sub grant_bonus {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    
     my $timer_id      = $c->param('timer_id');
     my $bonus_minutes = $c->param('bonus_minutes');
     
