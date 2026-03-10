@@ -3,6 +3,7 @@
 package MyApp::Controller::Calendar;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
+use Time::Piece;
 use utf8;
 
 # Controller for the Family Calendar.
@@ -124,8 +125,55 @@ sub api_add {
             my @family_emails = grep { $_->{email} && $c->db->is_family($_->{username}) } @$all_users;
             
             if (@family_emails) {
-                my $subject = "New Calendar Event: $title";
-                my $body = "A new event has been added to the calendar by $creator_name\n\nTitle: $title\nStart: $start_date\nEnd: $end_date";
+                my $attendee_names = '';
+                if ($attendees) {
+                    my @attendee_ids = split(',', $attendees);
+                    my @names;
+                    for my $uid (@attendee_ids) {
+                        my $user = $c->db->get_user_by_id($uid);
+                        push @names, $user->{username} if $user;
+                    }
+                    $attendee_names = join(', ', @names) if @names;
+                }
+                
+                my $formatted_start = _format_datetime($start_date, $all_day);
+                my $formatted_end = _format_datetime($end_date, $all_day);
+                
+                my $subject = "New Calendar Event / เหตุการณ์ปฏิทินใหม่: $title";
+                my $body = qq{A new event has been added to the calendar by $creator_name
+มีเหตุการณ์ใหม่ถูกเพิ่มในปฏิทินโดย $creator_name
+
+
+Event Details / รายละเอียดเหตุการณ์:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Title / หัวข้อ: $title};
+
+                $body .= qq{
+Description / คำอธิบาย: $description} if $description;
+
+                $body .= qq{
+
+
+Start / เริ่ม: $formatted_start
+End / สิ้นสุด: $formatted_end};
+
+                $body .= qq{
+Category / หมวดหมู่: $category} if $category;
+
+                $body .= qq{
+Participants / ผู้เข้าร่วม: $attendee_names} if $attendee_names;
+
+                $body .= qq{
+
+
+
+View the calendar / ดูปฏิทิน: } . $c->url_for('/calendar')->to_abs . qq{
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This notification was sent to family members.
+การแจ้งเตือนนี้ถูกส่งถึงสมาชิกครอบครัว};
+
                 $c->send_email_via_gmail([ map { $_->{email} } @family_emails ], $subject, $body);
             }
         }
@@ -137,6 +185,48 @@ sub api_add {
         $c->app->log->error("Failed to add calendar event: $@");
         $c->render(json => { success => 0, error => "Database error occurred" });
     }
+}
+
+# Helper: Formats a SQL datetime string into a user-friendly display string.
+sub _format_datetime {
+    my ($dt, $all_day) = @_;
+    return '' unless $dt;
+    
+    my $t;
+    eval {
+        if ($dt =~ /^\d{4}-\d{2}-\d{2}$/) {
+            $t = Time::Piece->strptime($dt, "%Y-%m-%d");
+        } else {
+            # Normalize seconds if missing or partial
+            my $clean_dt = $dt;
+            $clean_dt .= ":00" if $dt =~ /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+            $t = Time::Piece->strptime($clean_dt, "%Y-%m-%d %H:%M:%S");
+        }
+    };
+    return $dt if $@ || !$t;
+
+    my $day = $t->mday;
+    my $suffix = 'th';
+    if ($day !~ /^1[123]$/) {
+        my $last_digit = $day % 10;
+        $suffix = 'st' if $last_digit == 1;
+        $suffix = 'nd' if $last_digit == 2;
+        $suffix = 'rd' if $last_digit == 3;
+    }
+
+    if ($all_day) {
+        return sprintf("%s, %d%s %s %d (All day)", $t->full_day, $day, $suffix, $t->full_month, $t->year);
+    }
+
+    my $h = $t->hour;
+    my $ampm = $h >= 12 ? 'PM' : 'AM';
+    $h = $h % 12;
+    $h = 12 if $h == 0;
+    
+    return sprintf("%s, %d%s %s %d - %02d:%02d%s", 
+        $t->full_day, $day, $suffix, $t->full_month, $t->year,
+        $h, $t->min, $ampm
+    );
 }
 
 # API Endpoint: Updates an existing calendar event.
