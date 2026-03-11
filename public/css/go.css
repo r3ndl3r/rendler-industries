@@ -15,6 +15,10 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
+.modal-overlay.active {
+    display: flex !important;
+}
+
 .add-item-panel {
     padding: 20px;
     margin-bottom: 30px;
