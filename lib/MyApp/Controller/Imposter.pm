@@ -6,204 +6,188 @@ use Mojo::File 'path';
 use List::Util qw(shuffle); 
 
 # Controller for the "Imposter" party game.
+# 
 # Features:
-#   - Manage persistent player lobby (add/edit/remove via DB)
-#   - Game flow control (start, next turn, reveal, timer)
-#   - Dynamic image generation via Unsplash API with DB storage
-# Integration points:
-#   - Depends on authentication context
-#   - Uses DB helpers for player roster and file storage
-#   - Connects to Unsplash API for game assets
+# - Persistent player lobby management via MariaDB.
+# - Dynamic session-based game state orchestration.
+# - AI-powered visual asset generation via Unsplash API.
+# - Multi-language support (English/Thai).
+# - Real-time discussion timer orchestration.
 
-# Renders the main game interface.
-# Route: GET /imposter
-# Parameters: None
-# Returns:
-#   Rendered HTML template with current game state and lobby roster
+# Interface: index
+# Serves the primary SPA skeleton for the Imposter game.
+# 
+# @returns {Template} Rendered imposter.html.ep
 sub index {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_family;
     
-    # Retrieve current game state or initialize default
-    my $game = $c->session('imposter_game') // { status => 'lobby' };
-    
-    # Fetch persistent player list from database
-    my $lobby = $c->db->get_all_players(); 
-    
-    # Handle language preference (default to English)
-    my $lang = $c->session('lang') // 'en'; 
-    $c->session(lang => $lang);
-    
-    $c->render('imposter/imposter', game => $game, lobby => $lobby, lang => $lang);
+    return $c->render('imposter');
 }
 
-# Updates the game language preference.
-# Route: POST /imposter/language
-# Parameters:
-#   lang : Language code ('en' or 'th')
-# Returns:
-#   Redirects to game page
-sub set_language {
+# API: api_state
+# Retrieves the unified source of truth for the current game state.
+# 
+# @returns {JSON} { success, game, lobby, lang }
+sub api_state {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
-    my $lang = $c->param('lang');
+
+    my $game_orig = $c->session('imposter_game') // { status => 'lobby' };
+    my $lobby = $c->db->get_all_players(); 
+    my $lang = $c->session('lang') // 'en'; 
+    $c->session(lang => $lang);
+
+    # Security: Mask sensitive information unless game is finished
+    my $game = { %$game_orig }; # Shallow clone
+    if ($game->{status} && $game->{status} ne 'finished') {
+        delete $game->{imposter};
+        delete $game->{word_data} if $game->{status} eq 'lobby';
+    }
+
+    # Identify if current passing player is the imposter without leaking the full identity
+    if ($game->{status} && $game->{status} eq 'passing' && $game->{show_secret}) {
+        my $current_player = $game->{players}->[$game->{current_index}];
+        $game->{is_current_imposter} = ($current_player eq $game_orig->{imposter}) ? 1 : 0;
+    }
+
+    return $c->render(json => {
+        success => 1,
+        game    => $game,
+        lobby   => $lobby,
+        lang    => $lang,
+        now     => time()
+    });
+}
+
+# API: api_set_lang
+# Updates the game language preference in the user session.
+# 
+# @param {string} lang - Language code ('en' or 'th')
+# @returns {JSON} { success }
+sub api_set_lang {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
-    # Validate supported languages before saving to session
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $lang = $data->{lang} // 'en';
+    
     if ($lang eq 'en' || $lang eq 'th') {
         $c->session(lang => $lang);
     }
-    return $c->redirect_to('/imposter');
+
+    return $c->render(json => { success => 1 });
 }
 
+# API: api_add_player
 # Adds a new player to the persistent roster.
-# Route: POST /imposter/player/add
-# Parameters:
-#   player_name : Name of the player (1-40 chars, alphanumeric/symbols)
-# Returns:
-#   Redirects to game page
-sub add_custom_player {
+# 
+# @param {string} player_name - Name of the player
+# @returns {JSON} { success }
+sub api_add_player {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
-    my $name = Mojo::Util::trim($c->param('player_name') // '');
     
-    # Validate name format for security and consistency
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $name = trim($data->{player_name} // '');
+    
     if ($name =~ /^[\p{L}\p{N}\p{M}\p{S}\p{P}\s]{1,40}$/) {
         $c->db->add_imposter_player($name);
     }
-    return $c->redirect_to('/imposter');
-}
-
-# Edits an existing player's name in the roster.
-# Route: POST /imposter/player/edit
-# Parameters:
-#   old_name : Current name of the player
-#   new_name : Desired new name
-# Returns:
-#   Redirects to game page
-sub edit_player {
-    my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
-    my $old_name = Mojo::Util::trim($c->param('old_name') // '');
-    my $new_name = Mojo::Util::trim($c->param('new_name') // '');
-
-    # Validate new name format
-    if ($new_name =~ /^[\p{L}\p{N}\p{M}\p{S}\p{P}\s]{1,40}$/) {
-        # Perform atomic-like swap: remove old, add new
-        $c->db->remove_imposter_player($old_name);
-        $c->db->add_imposter_player($new_name);
-    }
-    return $c->redirect_to('/imposter');
-}
-
-# Removes a player from the persistent roster.
-# Route: POST /imposter/player/remove
-# Parameters:
-#   player_name : Name of the player to remove
-# Returns:
-#   Redirects to game page
-sub remove_player {
-    my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
-    my $target = Mojo::Util::trim($c->param('player_name') // '');
     
-    # Remove from database
+    return $c->render(json => { success => 1 });
+}
+
+# API: api_edit_player
+# Edits an existing player's name in the roster.
+# 
+# @param {string} old_name - Current name
+# @param {string} new_name - New name
+# @returns {JSON} { success }
+sub api_edit_player {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $old_name = trim($data->{old_name} // '');
+    my $new_name = trim($data->{new_name} // '');
+
+    if ($new_name =~ /^[\p{L}\p{N}\p{M}\p{S}\p{P}\s]{1,40}$/) {
+        $c->db->update_imposter_player($old_name, $new_name);
+    }
+    
+    return $c->render(json => { success => 1 });
+}
+
+# API: api_remove_player
+# Removes a player from the persistent roster.
+# 
+# @param {string} player_name - Name to remove
+# @returns {JSON} { success }
+sub api_remove_player {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $target = trim($data->{player_name} // '');
+    
     $c->db->remove_imposter_player($target);
     
-    return $c->redirect_to('/imposter');
+    return $c->render(json => { success => 1 });
 }
 
+# API: api_reset
 # Resets the game state and returns to the lobby.
-# Route: POST /imposter/reset
-# Parameters: None
-# Returns:
-#   Redirects to game page
-sub clear_lobby {
+# 
+# @returns {JSON} { success }
+sub api_reset {
     my $c = shift;
-    return $c->redirect_to('/imposter') unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
-    # Clean up generated image files to save space
     $c->_delete_previous_image();
-    
-    # Reset session state
     $c->session(imposter_game => { status => 'lobby' });
     
-    return $c->redirect_to('/imposter');
+    return $c->render(json => { success => 1 });
 }
 
-# Resets game state for a new round (keeping roster).
-# Route: POST /imposter/play_again
-# Parameters: None
-# Returns:
-#   Redirects to game page
-sub play_again {
+# API: api_start
+# Initializes a new game round with randomized turn order and assets.
+# 
+# @param {number} timer_duration - Discussion phase length (1-5 minutes)
+# @returns {JSON} { success }
+sub api_start {
     my $c = shift;
-    return $c->redirect_to('/imposter') unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
-    # Clean up generated image files
-    $c->_delete_previous_image();
-    
-    # Reset session state
-    $c->session(imposter_game => { status => 'lobby' });
-    return $c->redirect_to('/imposter');
-}
-
-# Initializes a new game round with randomized turn order.
-# Route: POST /imposter/start
-# Parameters:
-#   timer_duration : Length of discussion phase in minutes (1-5)
-# Returns:
-#   Redirects to game page
-sub start_game {
-    my $c = shift;
-    return $c->redirect_to('/imposter') unless $c->is_family;
-    
-    # Ensure no lingering images from previous interrupted sessions
-    $c->_delete_previous_image();
-
-    # Retrieve current roster from DB
-    my $players = $c->db->get_all_players();
-    
-    # Validate input: timer duration
-    my $minutes = int($c->param('timer_duration') // 1);
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $minutes = int($data->{timer_duration} // 1);
     $minutes = 1 if $minutes < 1 || $minutes > 5;
-    
-    # Validate game rules: minimum 3 players required
-    return $c->redirect_to('/imposter') unless scalar @$players >= 3;
 
-    # Randomize turn order so the starting player varies
+    $c->_delete_previous_image();
+    my $players = $c->db->get_all_players();
+    return $c->render(json => { success => 0, error => 'At least 3 players required' }) unless scalar @$players >= 3;
+
     my @shuffled_players = shuffle(@$players);
     $players = \@shuffled_players;
-
-    # Reset language to English for standard game start
     $c->session(lang => 'en');
     
-    # Load word pool from asset file
     my $word_file = $c->app->home->child('assets', 'imposter_words.txt');
     my @pool;
     if (-e $word_file) {
-        my $content = Mojo::Util::decode('UTF-8', Mojo::File::path($word_file)->slurp);
+        my $content = decode('UTF-8', path($word_file)->slurp);
         for my $line (split "\n", $content) {
             chomp $line;
-            # Parse valid lines (format: en|hint|th|hint|search)
             next if $line =~ /^\s*#/ || $line !~ /\|/;
-            
             my ($we, $he, $wt, $ht, $search) = split /\|/, $line, 5;
             push @pool, { 
-                en => { 
-                    word => Mojo::Util::trim($we // ''), 
-                    hint => Mojo::Util::trim($he // '') 
-                },
-                th => { 
-                    word => Mojo::Util::trim($wt // ''), 
-                    hint => Mojo::Util::trim($ht // '') 
-                },
-                search_term => Mojo::Util::trim($search // $we)
+                en => { word => trim($we // ''), hint => trim($he // '') },
+                th => { word => trim($wt // ''), hint => trim($ht // '') },
+                search_term => trim($search // $we)
             };
         }
     }
 
-    # Handle missing word file graceful failure
     unless (@pool) {
         @pool = ({ 
             en => { word => "Error", hint => "File Missing" }, 
@@ -212,153 +196,134 @@ sub start_game {
         });
     }
 
-    # Select random word and generate image
     my $selected = $pool[rand @pool];
     my $search_term = $selected->{search_term} || $selected->{en}->{word};
     
     $c->render_later;
     $c->fetch_and_store_image_p($search_term)->then(sub {
         my $image_id = shift;
-        
-        # Generate serve URL if image generation succeeded
         my $image_url = $image_id ? "/files/serve/$image_id" : undef;
 
-        # Initialize game session
         $c->session(imposter_game => {
             players       => $players,
             imposter      => $players->[rand @$players],
             word_data     => $selected,
             image_url     => $image_url,
-            image_file_id => $image_id,  # Stored for later cleanup
+            image_file_id => $image_id,
             current_index => 0,
             show_secret   => 0,
             status        => 'passing',
-            timer_seconds => $minutes * 60
+            timer_duration_seconds => $minutes * 60
         });
-        $c->redirect_to('/imposter');
+        $c->render(json => { success => 1 });
     })->catch(sub {
-        $c->redirect_to('/imposter');
+        $c->render(json => { success => 0, error => 'Failed to initialize game assets' });
     });
 }
 
-# Toggles the visibility of the secret word/role for the current player.
-# Route: POST /imposter/toggle
-# Parameters: None
-# Returns:
-#   Redirects to game page
-sub toggle_view {
+# API: api_toggle_view
+# Toggles the visibility of the secret word/role.
+# 
+# @returns {JSON} { success }
+sub api_toggle_view {
     my $c = shift;
-    return $c->redirect_to('/imposter') unless $c->is_family;
-    my $game = $c->session('imposter_game');
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
-    # Only allow toggling during the "passing" phase
-    return $c->redirect_to('/imposter') unless $game->{status} eq 'passing';
+    my $game = $c->session('imposter_game');
+    return $c->render(json => { success => 0, error => 'Game not in passing phase' }) unless $game->{status} eq 'passing';
 
     $game->{show_secret} = $game->{show_secret} ? 0 : 1;
     $c->session(imposter_game => $game);
-    return $c->redirect_to('/imposter');
+    
+    return $c->render(json => { success => 1 });
 }
 
-# Advances the game to the next player.
-# Route: POST /imposter/next
-# Parameters: None
-# Returns:
-#   Redirects to game page
-sub next_player {
+# API: api_next_player
+# Advances the game to the next player in sequence.
+# 
+# @returns {JSON} { success }
+sub api_next_player {
     my $c = shift;
-    return $c->redirect_to('/imposter') unless $c->is_family;
-    my $game = $c->session('imposter_game');
-    return $c->redirect_to('/imposter') unless $game->{status} eq 'passing';
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
-    # Advance index and hide secret immediately
+    my $game = $c->session('imposter_game');
+    return $c->render(json => { success => 0, error => 'Game not in passing phase' }) unless $game->{status} eq 'passing';
+    
     $game->{current_index}++;
     $game->{show_secret} = 0;
-
-    # Reset language to prevents cues from previous player
     $c->session(lang => 'en');
 
-    # Check if all players have seen their role
     if ($game->{current_index} >= scalar @{$game->{players}}) {
         $game->{status} = 'timer';
-        # Pick a random player to start the discussion
         my @p = @{$game->{players}};
         $game->{starter} = $p[rand @p];
+        # Set absolute end time for the timer
+        $game->{timer_ends_at} = time() + ($game->{timer_duration_seconds} || 60);
     }
 
     $c->session(imposter_game => $game);
-    return $c->redirect_to('/imposter');
+    return $c->render(json => { success => 1 });
 }
 
-# Skips the countdown timer and ends the game immediately.
-# Route: POST /imposter/end_timer
-# Parameters: None
-# Returns:
-#   Redirects to game page
-sub end_game_early {
+# API: api_end_early
+# Skips the discussion phase and proceeds to reveal.
+# 
+# @returns {JSON} { success }
+sub api_end_early {
     my $c = shift;
-    return $c->redirect_to('/imposter') unless $c->is_family;
-    my $game = $c->session('imposter_game');
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
+    my $game = $c->session('imposter_game');
     if ($game && $game->{status} eq 'timer') {
-        $game->{timer_seconds} = 0;
         $game->{status} = 'finished';
         $c->session(imposter_game => $game);
-        return $c->redirect_to('/imposter'); 
+        return $c->render(json => { success => 1 });
     }
-    return $c->redirect_to('/imposter');
+    
+    return $c->render(json => { success => 0, error => 'Not in timer phase' });
 }
 
-# Transitions game to result screen.
-# Route: POST /imposter/reveal
-# Parameters: None
-# Returns:
-#   Redirects to game page
-sub reveal_results {
+# API: api_reveal
+# Transitions the game to the result screen.
+# 
+# @returns {JSON} { success }
+sub api_reveal {
     my $c = shift;
-    return $c->redirect_to('/imposter') unless $c->is_family;
-    my $game = $c->session('imposter_game');
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
+    my $game = $c->session('imposter_game');
     $game->{status} = 'finished';
     $c->session(imposter_game => $game);
-    return $c->redirect_to('/imposter');
+    
+    return $c->render(json => { success => 1 });
 }
 
-# Internal Helper: Fetches image from API and stores in DB.
-# Parameters:
-#   search_term : Term to query Unsplash API
-# Returns:
-#   file_id : ID of the stored file in DB, or undef on failure
+# Helper: fetch_and_store_image_p
+# Asynchronously downloads an image and stores it in the platform file vault.
+# 
+# @param {string} search_term - Query for the Unsplash API
+# @returns {Promise} Resolves to file_id or undef
 sub fetch_and_store_image_p {
     my ($c, $search_term) = @_;
-    
     my $api_key = $c->db->get_unsplash_key() || '';
-    my $image_url;
     my $promise = Mojo::Promise->new;
 
-    # Step 1: Get Image URL
     my $get_url_p;
     if ($api_key && $api_key ne '') {
         my $api_url = "https://api.unsplash.com/photos/random?query=" 
-                      . Mojo::Util::url_escape($search_term) 
+                      . url_escape($search_term) 
                       . "&orientation=landscape&content_filter=high&client_id=$api_key";
         
         $get_url_p = $c->ua->request_timeout(5)->get_p($api_url)->then(sub {
             my $tx = shift;
-            if ($tx->result->is_success) {
-                return $tx->result->json->{urls}->{regular};
-            } else {
-                $c->app->log->warn("Unsplash API failed, using fallback.");
-                return "https://picsum.photos/800/600?random=" . time();
-            }
+            return $tx->result->is_success ? $tx->result->json->{urls}->{regular} : "https://picsum.photos/800/600?random=" . time();
         })->catch(sub {
-            $c->app->log->warn("Unsplash API exception, using fallback.");
             return "https://picsum.photos/800/600?random=" . time();
         });
     } else {
         $get_url_p = Mojo::Promise->resolve("https://picsum.photos/800/600?random=" . time());
     }
 
-    # Step 2: Download Image
     $get_url_p->then(sub {
         my $url = shift;
         return Mojo::Promise->resolve(undef) unless $url;
@@ -369,56 +334,30 @@ sub fetch_and_store_image_p {
 
             if ($img_res && $img_res->is_success) {
                 my $data = $img_res->body;
-                my $size = length($data);
                 my $mime = $img_res->headers->content_type || 'image/jpeg';
-                
-                my $ext = 'jpg';
-                $ext = 'png' if $mime =~ /png/i;
-                $ext = 'gif' if $mime =~ /gif/i;
-                
+                my $ext = $mime =~ /png/i ? 'png' : $mime =~ /gif/i ? 'gif' : 'jpg';
                 my $filename = "imposter_" . time() . "_" . int(rand(10000)) . ".$ext";
                 
-                my $file_id = eval {
-                    $c->db->store_file(
-                        $filename, $filename, $mime, $size, $data, 'system', undef
-                    );
-                };
-                
-                if ($@) {
-                    $c->app->log->error("Failed to store imposter image: $@");
-                    return undef;
-                }
-                return $file_id;
-            } else {
-                $c->app->log->error("Failed to download imposter image.");
-                return undef;
+                return eval { $c->db->store_file($filename, $filename, $mime, length($data), $data, 'system', undef) };
             }
+            return undef;
         });
     })->then(sub {
-        my $file_id = shift;
-        $promise->resolve($file_id);
+        $promise->resolve(shift);
     })->catch(sub {
-        my $err = shift;
-        $c->app->log->error("Image fetch pipeline error: $err");
         $promise->resolve(undef);
     });
 
     return $promise;
 }
 
-# Internal Helper: Deletes the game image from the database.
-# Parameters: None (Uses session data)
-# Returns: Void
+# Helper: _delete_previous_image
+# Deletes transient game assets to preserve storage quota.
 sub _delete_previous_image {
     my $c = shift;
     my $game = $c->session('imposter_game');
-    
     if ($game && $game->{image_file_id}) {
-        # Execute DB deletion to prevent storage bloat
-        eval {
-            $c->db->delete_file_record($game->{image_file_id});
-            $c->app->log->info("Deleted old imposter image ID: " . $game->{image_file_id});
-        };
+        eval { $c->db->delete_file_record($game->{image_file_id}) };
     }
 }
 
