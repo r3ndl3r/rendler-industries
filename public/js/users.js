@@ -49,11 +49,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Synchronizes the module state with the server (Single Source of Truth).
+ * Skips the refresh cycle if the user is currently interacting with a modal
+ * or has an active cursor in an input field, unless 'force' is true.
  * 
  * @async
+ * @param {boolean} force - If true, bypasses inhibition checks (e.g., after save).
  * @returns {Promise<void>}
  */
-async function loadState() {
+async function loadState(force = false) {
+    // Skip background refresh if a modal is active OR the user is typing in an input field.
+    // This prevents overwriting user input or causing focus-loss jumps.
+    const anyModalOpen = document.querySelector('.modal-overlay.show') || document.querySelector('.delete-modal-overlay.show');
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+    
+    if (!force && (anyModalOpen || inputFocused) && STATE.users.length > 0) return;
+
     try {
         const response = await fetch('/users/api/state');
         const data = await response.json();
@@ -208,7 +218,7 @@ async function handleEditSubmit(event) {
         const result = await apiPost(`/users/update/${userId}`, new FormData(form));
         if (result && result.success) {
             closeEditModal();
-            await loadState();
+            await loadState(true);
         }
     } finally {
         btn.disabled = false;
@@ -296,7 +306,7 @@ function confirmDeleteUser(id, username) {
                         renderTable();
                     }, 500);
                 } else {
-                    await loadState();
+                    await loadState(true);
                 }
             }
         }
