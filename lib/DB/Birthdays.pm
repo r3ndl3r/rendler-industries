@@ -5,26 +5,22 @@ package DB::Birthdays;
 use strict;
 use warnings;
 
-# Database helper for managing user birthdays.
-# Handles chronological sorting and lifecycle management of birthday metadata.
+# Database Library for the Family Birthday Tracker.
 #
 # Features:
 #   - Intelligent "Next Upcoming" sorting (Cyclical year-aware ordering).
-#   - Full AJAX-ready CRUD operations.
+#   - Full AJAX-ready CRUD operations for record management.
 #   - Metadata-rich record retrieval (Zodiac calculation support).
+#   - Privacy Mandate: Family-level resource; records are shared across all authorized family members.
 #
 # Integration Points:
-#   - Extends DB package via package injection.
-#   - Used by Birthdays controller for dashboard and management APIs.
-#   - Provides data source for Dashboard upcoming alerts.
+#   - Extends the core DB package via package injection.
+#   - Acts as the primary data source for the Birthdays controller.
+#   - Provides data payloads for SPA state-driven synchronization.
+#   - Provides data source for global Dashboard upcoming alerts.
 
 # Retrieves all birthday records sorted by the nearest upcoming date.
-# Parameters: None.
-# Returns:
-#   Array of HashRefs: [ {id, name, birth_date}, ... ]
-# Behavior:
-#   - Items occurring later this year are ranked first.
-#   - Items already passed this year are ranked second (Next year).
+# Returns: ArrayRef of HashRefs [ {id, name, birth_date}, ... ]
 sub DB::get_all_birthdays {
     my $self = shift;
     
