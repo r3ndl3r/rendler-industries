@@ -1,0 +1,110 @@
+<%# /templates/chess.html.ep %>
+
+% layout 'default';
+% title icon('chess') . ' Chess Online';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/chess.css?<%= time %>">
+    <script src="/js/vendor/chess.min.js?<%= time %>"></script>
+    <script src="/js/chess.js?<%= time %>"></script>
+% end
+
+<div id="chess-app" class="chess-container app-container" data-user-id="<%= current_user_id() %>">
+    
+    <%# --- View: Lobby --- %>
+    <div id="view-lobby" class="spa-view active">
+        <div class="lobby-header">
+            <h1 class="lobby-title"><%= icon('chess') %> Chess Lobby</h1>
+            <p style="color: #94a3b8;">Master the art of strategy in a game of Chess!</p>
+        </div>
+
+        <div class="action-card">
+            <h2 style="margin-top: 0; margin-bottom: 1.5rem;">Ready to play?</h2>
+            <button type="button" class="btn-create" onclick="ChessApp.createGame()">Create New Game</button>
+        </div>
+
+        <div id="user-games-section" class="hidden">
+            <h3 style="margin-left: 0.5rem; margin-bottom: 1rem;">Your Active Games</h3>
+            <div id="user-game-list" class="game-list" style="margin-bottom: 2rem;">
+                <%# Hydrated via JS %>
+            </div>
+        </div>
+
+        <h3 style="margin-left: 0.5rem; margin-bottom: 1rem;">Open Games</h3>
+        <div id="open-game-list" class="game-list">
+            <div class="component-loading">
+                <div class="loading-scan-line"></div>
+                <span class="loading-icon-pulse"><%= icon('chess') %></span>
+                <p class="loading-label">Synchronizing Lobby...</p>
+            </div>
+        </div>
+    </div>
+
+    <%# --- View: Active Game --- %>
+    <div id="view-game" class="spa-view hidden">
+        <div class="header-bar">
+            <h1><%= icon('chess') %> <span id="game-title">Chess</span></h1>
+            <div class="manage-actions">
+                <button type="button" class="btn-secondary" onclick="ChessApp.showLobby()"><%= icon('logout') %> Lobby</button>
+            </div>
+        </div>
+
+        <div class="game-viewport">
+            <div class="board-relative-frame">
+                <div id="chess-board" class="chess-board-grid">
+                    <%# Hydrated via JS %>
+                </div>
+                
+                <%# Interaction Overlays %>
+                <div id="draw-offer-overlay" class="game-overlay">
+                    <div class="glass-panel overlay-content">
+                        <p>Opponent has offered a draw.</p>
+                        <div class="modal-actions modal-actions-center">
+                            <button id="acceptDrawBtn" class="btn-success">Accept</button>
+                            <button id="refuseDrawBtn" class="btn-danger">Refuse</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="promotion-modal" class="game-overlay">
+                    <div class="glass-panel overlay-content">
+                        <p class="promo-label">Promote your pawn:</p>
+                        <div class="promotion-choices">
+                            <button class="promo-btn" data-piece="q">♛</button>
+                            <button class="promo-btn" data-piece="r">♜</button>
+                            <button class="promo-btn" data-piece="b">♝</button>
+                            <button class="promo-btn" data-piece="n">♞</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="game-over-modal" class="game-overlay">
+                    <div class="glass-panel overlay-content game-over-panel">
+                        <div id="game-over-icon" class="game-over-icon"></div>
+                        <h2 id="game-over-title">Game Over</h2>
+                        <p id="game-over-msg"></p>
+                        <div class="modal-actions modal-actions-center">
+                            <button type="button" class="btn-primary" onclick="ChessApp.showLobby()">Return to Lobby</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <%# Status & Operations Panel %>
+            <div class="glass-panel status-panel">
+                <h3 id="game-status-text" class="status-indicator">
+                    <%= icon('waiting') %> Initializing...
+                </h3>
+
+                <div class="operation-controls">
+                    <button id="offerDrawBtn" class="btn-secondary"><%= icon('draw') %> Offer Draw</button>
+                    <button id="resignBtn" class="btn-danger"><%= icon('logout') %> Resign</button>
+                </div>
+
+                <div id="fen-display" class="debug-fen">
+                    FEN: 
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
