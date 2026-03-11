@@ -71,11 +71,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Synchronizes structural metadata and initiates event fetching.
+ * Skips the refresh cycle if the user is currently interacting with a modal
+ * or has an active cursor in an input field, unless 'force' is true.
  * 
  * @async
+ * @param {boolean} force - If true, bypasses inhibition checks (e.g., after save).
  * @returns {Promise<void>}
  */
-async function loadState() {
+async function loadState(force = false) {
+    // Skip background refresh if a modal is active OR the user is typing in an input field.
+    // This prevents overwriting user input or causing focus-loss jumps.
+    const anyModalOpen = document.querySelector('.modal-overlay.active') || document.querySelector('.delete-modal-overlay.active');
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+    
+    if (!force && (anyModalOpen || inputFocused) && (STATE.events.length > 0 || STATE.users.length > 0)) return;
+
     try {
         const response = await fetch('/calendar/api/state');
         const data = await response.json();
@@ -108,14 +118,20 @@ async function loadState() {
 
 /**
  * Fetches events within the current viewport range and triggers redraw.
+ * Skips the refresh cycle if the user is currently interacting with a modal
+ * or has an active cursor in an input field, unless 'force' is true.
  * 
  * @async
+ * @param {boolean} force - If true, bypasses inhibition checks (e.g., after save).
  * @returns {Promise<void>}
  */
-async function loadEvents() {
-    // Skip background refresh if a modal is active to prevent overwriting user input.
-    const anyModalOpen = document.querySelector('.modal-overlay.active');
-    if (anyModalOpen && STATE.events.length > 0) return;
+async function loadEvents(force = false) {
+    // Skip background refresh if a modal is active OR the user is typing in an input field.
+    // This prevents overwriting user input or causing focus-loss jumps.
+    const anyModalOpen = document.querySelector('.modal-overlay.active') || document.querySelector('.delete-modal-overlay.active');
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+
+    if (!force && (anyModalOpen || inputFocused) && STATE.events.length > 0) return;
 
     let start, end;
     
@@ -643,7 +659,7 @@ async function handleEventSubmit(event) {
         const result = await window.apiPost(url, formData);
         if (result && result.success) {
             closeEventModal();
-            await loadEvents();
+            await loadEvents(true);
         }
     } finally {
         btn.disabled = false;
@@ -812,7 +828,7 @@ function confirmDeleteEvent(id, title) {
             const result = await window.apiPost('/calendar/api/delete', { id: id });
             if (result && result.success) {
                 closeEventModal();
-                await loadEvents();
+                await loadEvents(true);
             }
         }
     });
