@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadState(force = false) {
     // Skip background refresh if a modal is active OR the user is typing in an input field.
     // This prevents overwriting user input or causing focus-loss jumps.
-    const anyModalOpen = document.querySelector('.modal-overlay.active') || document.querySelector('.delete-modal-overlay.active');
+    const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
     const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
     
     if (!force && (anyModalOpen || inputFocused) && (STATE.events.length > 0 || STATE.users.length > 0)) return;
@@ -128,7 +128,7 @@ async function loadState(force = false) {
 async function loadEvents(force = false) {
     // Skip background refresh if a modal is active OR the user is typing in an input field.
     // This prevents overwriting user input or causing focus-loss jumps.
-    const anyModalOpen = document.querySelector('.modal-overlay.active') || document.querySelector('.delete-modal-overlay.active');
+    const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
     const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
 
     if (!force && (anyModalOpen || inputFocused) && STATE.events.length > 0) return;
@@ -677,7 +677,10 @@ async function handleEventSubmit(event) {
  * @returns {void}
  */
 function navigatePrevious() {
-    if (STATE.currentView === 'month') STATE.currentDate.setMonth(STATE.currentDate.getMonth() - 1);
+    if (STATE.currentView === 'month') {
+        STATE.currentDate.setDate(1);
+        STATE.currentDate.setMonth(STATE.currentDate.getMonth() - 1);
+    }
     else if (STATE.currentView === 'week') STATE.currentDate.setDate(STATE.currentDate.getDate() - 7);
     else STATE.currentDate.setDate(STATE.currentDate.getDate() - 1);
     loadEvents();
@@ -689,7 +692,10 @@ function navigatePrevious() {
  * @returns {void}
  */
 function navigateNext() {
-    if (STATE.currentView === 'month') STATE.currentDate.setMonth(STATE.currentDate.getMonth() + 1);
+    if (STATE.currentView === 'month') {
+        STATE.currentDate.setDate(1);
+        STATE.currentDate.setMonth(STATE.currentDate.getMonth() + 1);
+    }
     else if (STATE.currentView === 'week') STATE.currentDate.setDate(STATE.currentDate.getDate() + 7);
     else STATE.currentDate.setDate(STATE.currentDate.getDate() + 1);
     loadEvents();
@@ -1102,7 +1108,12 @@ function updatePeriodTitle() {
 function initializeViewFromUrl() {
     const p = new URLSearchParams(window.location.search);
     if (p.get('view')) STATE.currentView = p.get('view');
-    if (p.get('date')) STATE.currentDate = new Date(p.get('date'));
+    if (p.get('date')) {
+        const urlDate = new Date(p.get('date'));
+        if (!isNaN(urlDate.getTime())) {
+            STATE.currentDate = urlDate;
+        }
+    }
     updateViewButtons();
 }
 
