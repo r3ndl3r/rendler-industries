@@ -5,23 +5,21 @@ package DB::Reminders;
 use strict;
 use warnings;
 
-# Database helper for Recurring Reminders and Notifications.
+# Database Library for Recurring Reminders and Notifications.
 #
 # Features:
 #   - Rule-based management of weekly recurring reminders.
-#   - Dynamic multi-user recipient mapping.
+#   - Dynamic multi-user recipient mapping for targeted alerts.
 #   - One-off vs Recurring reminder lifecycle logic.
-#   - Support for Discord and Email notification triggers.
+#   - Privacy Mandate: Family-level resource; reminders are shared across authorized recipients.
 #
 # Integration Points:
-#   - Extends DB package via package injection.
-#   - Used by Reminders controller for dashboard and management.
-#   - Coordinates with System::maintenance for automated dispatch.
+#   - Extends the core DB package via package injection.
+#   - Acts as the primary data source for the Reminders controller.
+#   - Coordinates with global maintenance API for automated dispatch triggers.
 
 # Retrieves all reminders with their associated recipient data.
-# Parameters: None
-# Returns:
-#   ArrayRef of HashRefs containing reminder rules and comma-separated recipient metadata.
+# Returns: ArrayRef of HashRefs containing reminder rules and metadata.
 sub DB::get_all_reminders {
     my ($self) = @_;
     $self->ensure_connection;
