@@ -56,14 +56,15 @@ document.addEventListener('DOMContentLoaded', () => {
  * Synchronizes the module state with the server.
  * 
  * @async
+ * @param {boolean} force - Whether to bypass interaction-aware inhibition.
  * @returns {Promise<void>}
  */
-async function loadState() {
-    // Skip background refresh if a modal is active OR the user is typing in an input field.
-    // This prevents overwriting user input or causing focus-loss jumps.
-    const anyModalOpen = document.querySelector('.modal-overlay.active') || document.querySelector('.delete-modal-overlay.active');
+async function loadState(force = false) {
+    // Skip background refresh if a modal is active or the user is typing
+    const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
     const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
-    if ((anyModalOpen || inputFocused) && STATE.timers.length > 0) return;
+
+    if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
         const response = await fetch('/timers/api/state');
