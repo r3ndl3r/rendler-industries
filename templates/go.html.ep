@@ -56,7 +56,7 @@
     <div id="linksList" class="links-grid">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('ai') %></span>
+            <span class="loading-icon-pulse"><%= icon('link') %></span>
             <p class="loading-label">Synchronizing short-links...</p>
         </div>
     </div>
