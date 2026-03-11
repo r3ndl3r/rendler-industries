@@ -74,6 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>}
  */
 async function loadState() {
+    // Skip background refresh if a modal is active OR the user is typing in an input field.
+    // This prevents overwriting user input or causing focus-loss jumps.
+    const anyModalOpen = document.querySelector('.modal-overlay.active') || document.querySelector('.delete-modal-overlay.active');
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+    if ((anyModalOpen || inputFocused) && STATE.timers.length > 0) return;
+
     try {
         const response = await fetch(`/timers/api/manage/state${STATE.filterUserId ? `?user_id=${STATE.filterUserId}` : ''}`);
         const data = await response.json();
