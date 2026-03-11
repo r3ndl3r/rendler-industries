@@ -64,12 +64,15 @@ document.addEventListener('DOMContentLoaded', () => {
  * Synchronizes the module state with the server (Single Source of Truth).
  * 
  * @async
+ * @param {boolean} [force=false] - If true, bypasses interaction guards (modals/focus).
  * @returns {Promise<void>}
  */
-async function loadState() {
+async function loadState(force = false) {
     // Lifecycle: inhibit background sync if user is actively interacting with forms
-    const anyModalOpen = document.querySelector('.modal-overlay.active');
-    if (anyModalOpen && STATE.reminders.length > 0) return;
+    const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+
+    if (!force && (anyModalOpen || inputFocused) && STATE.reminders.length > 0) return;
 
     try {
         const response = await fetch('/reminders/api/state');
@@ -346,7 +349,7 @@ async function handleAdd(e) {
         const result = await apiPost('/reminders/api/add', new FormData(form));
         if (result && result.success) {
             closeAddModal();
-            await loadState();
+            await loadState(true);
         }
     } finally {
         btn.disabled = false;
@@ -375,7 +378,7 @@ async function handleEdit(e) {
         const result = await apiPost(`/reminders/api/update/${id}`, new FormData(form));
         if (result && result.success) {
             closeEditModal();
-            await loadState();
+            await loadState(true);
         }
     } finally {
         btn.disabled = false;
@@ -401,8 +404,7 @@ function confirmDeleteReminder(id, title) {
         onConfirm: async () => {
             const result = await apiPost(`/reminders/api/delete/${id}`);
             if (result && result.success) {
-                STATE.reminders = STATE.reminders.filter(r => r.id != id);
-                renderReminders();
+                await loadState(true);
             }
         }
     });
@@ -419,22 +421,7 @@ function confirmDeleteReminder(id, title) {
 async function toggleReminder(id, active) {
     const result = await apiPost(`/reminders/api/toggle/${id}`, { active: active ? 1 : 0 });
     if (result && result.success) {
-        const r = STATE.reminders.find(item => item.id == id);
-        if (r) {
-            r.is_active = active ? 1 : 0;
-            
-            // UI: If pausing, apply fade-out animation before re-sorting
-            if (!active) {
-                const card = document.querySelector(`.reminder-card[data-id="${id}"]`);
-                if (card) {
-                    card.classList.add('row-fade-out');
-                    setTimeout(() => renderReminders(), 800); // Match CSS transition
-                    return;
-                }
-            }
-            
-            renderReminders();
-        }
+        await loadState(true);
     }
 }
 
@@ -450,17 +437,7 @@ async function toggleReminder(id, active) {
 async function toggleDay(reminderId, day, active) {
     const result = await apiPost('/reminders/api/toggle_day', { id: reminderId, day: day, active: active });
     if (result && result.success) {
-        const r = STATE.reminders.find(item => item.id == reminderId);
-        if (r) {
-            let days = (r.days_of_week || '').split(',').filter(d => d).map(Number);
-            if (active) {
-                if (!days.includes(day)) days.push(day);
-            } else {
-                days = days.filter(d => d !== day);
-            }
-            r.days_of_week = days.sort((a, b) => a - b).join(',');
-            renderReminders(); // Re-render locally
-        }
+        await loadState(true);
     }
 }
 
