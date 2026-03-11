@@ -80,14 +80,14 @@
             
             <div class="form-group checkbox-group">
                 <label>
-                    <input type="checkbox" id="eventAllDay" name="all_day"> All-day event
+                    <input type="checkbox" id="eventAllDay" name="all_day"> <%= icon('pin') %> All-day event
                 </label>
             </div>
 
             <div id="notificationGroup" class="hidden">
                 <div class="form-group checkbox-group">
                     <label>
-                        <input type="checkbox" id="sendNotifications" name="send_notifications" checked value="1"> Send email notifications to family
+                        <input type="checkbox" id="sendNotifications" name="send_notifications" checked value="1"> <%= icon('email') %> Send email notifications to family
                     </label>
                 </div>
             </div>
@@ -97,6 +97,20 @@
                     <input type="checkbox" id="eventIsPrivate" name="is_private"> 
                     <%= icon('lock') %> Private Event (Only you can see this)
                 </label>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="eventNotify" name="event_notify"> 
+                    <%= icon('reminders') %> Send notification (1 hour before event)
+                </label>
+            </div>
+            <input type="hidden" id="notificationMinutes" name="notification_minutes" value="0">
+
+            <div id="notificationChannelsGroup" class="form-group hidden">
+                <label>Notification Channels</label>
+                <div id="channels-container" class="selector-grid">
+                </div>
             </div>
             
             <div class="form-row">
