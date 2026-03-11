@@ -6,8 +6,8 @@ use Mojo::Base 'Mojolicious::Controller';
 # Controller for managing the hierarchical navigation menu.
 #
 # Features:
-#   - Synchronized state-driven interface for link management.
-#   - Real-time drag-and-drop reordering with sort_order persistence.
+#   - Automated link management and configuration.
+#   - Drag-and-drop reordering with persistent sequencing.
 #   - Role-based visibility and permission-level configuration.
 #   - Cascaded deletion support for nested structures.
 #
@@ -17,6 +17,7 @@ use Mojo::Base 'Mojolicious::Controller';
 
 # Renders the menu management interface skeleton.
 # Route: GET /menu
+# Returns: Template (menu.html.ep)
 sub manage {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
@@ -46,6 +47,7 @@ sub api_state {
 
 # API Endpoint: Creates a new menu link.
 # Route: POST /menu/api/add
+# Returns: JSON object { success, message, error }
 sub api_add {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
@@ -77,6 +79,7 @@ sub api_add {
 
 # API Endpoint: Updates an existing menu link.
 # Route: POST /menu/api/update
+# Returns: JSON object { success, message, error }
 sub api_update {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
@@ -113,6 +116,7 @@ sub api_update {
 
 # API Endpoint: Permanently removes a menu link.
 # Route: POST /menu/api/delete
+# Returns: JSON object { success, message, error }
 sub api_delete {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
@@ -136,6 +140,7 @@ sub api_delete {
 
 # API Endpoint: Bulk updates sort order.
 # Route: POST /menu/api/reorder
+# Returns: JSON object { success, message, error }
 sub api_reorder {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
@@ -192,6 +197,9 @@ sub get_state {
 }
 
 # Recursively enrich menu items with icons and metadata for frontend rendering.
+# Parameters:
+#   - item: HashRef of the menu item
+# Returns: Void (modifies in-place)
 sub _enrich_menu_item {
     my $item = shift;
     
