@@ -66,9 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>}
  */
 async function loadState() {
-    // Skip background refresh if a modal is active to prevent overwriting user input.
+    // Skip background refresh if a modal is active OR the user is typing in an input field.
+    // This prevents overwriting user input or causing focus-loss jumps.
     const anyModalOpen = document.querySelector('.modal-overlay.active');
-    if (anyModalOpen && STATE.items.length > 0) return;
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+    if ((anyModalOpen || inputFocused) && STATE.items.length > 0) return;
 
     try {
         const response = await fetch('/shopping/api/state');
@@ -214,8 +216,6 @@ async function handleAddItem(event) {
                 is_checked: 0
             });
             renderTable();
-        } else {
-            toast('error', result.error || 'Failed to add item');
         }
     } finally {
         btn.disabled = false;
@@ -244,7 +244,6 @@ async function toggleItem(id) {
         }
     } else {
         if (row) row.classList.remove('pending');
-        toast('error', result.error || 'Failed to update item');
     }
 }
 
@@ -312,8 +311,6 @@ async function handleEditSubmit(event) {
             if (item) item.item_name = name;
             renderTable();
             closeEditModal();
-        } else {
-            toast('error', result.error || 'Failed to update item description');
         }
     } finally {
         btn.disabled = false;
@@ -341,8 +338,6 @@ function confirmDeleteItem(id, itemName) {
             if (result && result.success) {
                 STATE.items = STATE.items.filter(i => i.id != id);
                 renderTable();
-            } else {
-                toast('error', result.error || 'Failed to remove item');
             }
         }
     });
@@ -366,8 +361,6 @@ function openClearAllModal() {
             if (result && result.success) {
                 STATE.items = STATE.items.filter(i => !i.is_checked);
                 renderTable();
-            } else {
-                toast('error', result.error || 'Failed to clear items');
             }
         }
     });
