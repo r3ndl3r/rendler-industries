@@ -71,14 +71,15 @@ document.addEventListener('DOMContentLoaded', () => {
  * Synchronizes the administrative state with the server.
  * 
  * @async
+ * @param {boolean} force - Whether to bypass interaction-aware inhibition.
  * @returns {Promise<void>}
  */
-async function loadState() {
-    // Skip background refresh if a modal is active OR the user is typing in an input field.
-    // This prevents overwriting user input or causing focus-loss jumps.
-    const anyModalOpen = document.querySelector('.modal-overlay.active') || document.querySelector('.delete-modal-overlay.active');
+async function loadState(force = false) {
+    // Skip background refresh if a modal is active or the user is typing
+    const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
     const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
-    if ((anyModalOpen || inputFocused) && STATE.timers.length > 0) return;
+
+    if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
         const response = await fetch(`/timers/api/manage/state${STATE.filterUserId ? `?user_id=${STATE.filterUserId}` : ''}`);
@@ -281,10 +282,10 @@ async function handleCreateSubmit(event) {
         const formData = new FormData(form);
         const result = await apiPost('/timers/api/create', Object.fromEntries(formData));
         if (result && result.success) {
-            closeModals();
-            await loadState();
-        }
-    } finally {
+            closeEditModal();
+            await loadState(true);
+            }
+            } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
@@ -311,10 +312,10 @@ async function handleEditSubmit(event) {
         const formData = new FormData(form);
         const result = await apiPost(`/timers/api/update/${id}`, Object.fromEntries(formData));
         if (result && result.success) {
-            closeModals();
-            await loadState();
-        }
-    } finally {
+            closeEditModal();
+            await loadState(true);
+            }
+            } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
@@ -340,10 +341,10 @@ async function handleBonusSubmit(event) {
         const formData = new FormData(form);
         const result = await apiPost('/timers/api/bonus', Object.fromEntries(formData));
         if (result && result.success) {
-            closeModals();
-            await loadState();
-        }
-    } finally {
+            closeEditModal();
+            await loadState(true);
+            }
+            } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
