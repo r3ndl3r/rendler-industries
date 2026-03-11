@@ -4,6 +4,14 @@
     box-sizing: border-box;
 }
 
+.delete-modal-overlay.active {
+    display: flex !important;
+}
+
+.modal-open {
+    overflow: hidden !important;
+}
+
 .manage-container {
     padding: 2rem 1rem;
     max-width: 1200px;
