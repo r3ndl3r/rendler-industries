@@ -4,29 +4,36 @@ package MyApp::Controller::Go;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
-# Controller for the Platform Short-Link management system.
+# Controller for the internal Platform Short-Link management system.
+#
 # Features:
-#   - Automatic redirection via /g/:keyword
-#   - Real-time visit tracking and analytics
-#   - Administrative link management (Add, Edit, Delete)
-# Integration points:
-#   - Depends on DB::Go for data persistence.
-#   - Accessible only to users with appropriate authorization.
+#   - Automatic redirection via /g/:keyword.
+#   - Real-time visit analytics and popularity tracking.
+#   - Administrative link management (Add, Edit, Delete).
+#
+# Integration Points:
+#   - Depends on DB::Go for all persistent data operations.
+#   - Restricted to system administrators for management functions.
+#   - Resolution endpoint (/g/) is public by design.
 
-# Renders the primary management interface.
+# Renders the primary short-link management dashboard.
 # Route: GET /go
+# Returns: Template (go.html.ep)
 sub index {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_admin;
+    
     $c->render('go');
 }
 
-# Returns the complete state of the short-link collection.
+# Returns the complete state of the short-link registry.
 # Route: GET /go/api/state
+# Returns: JSON object { items, success }
 sub api_state {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_admin;
     
     my $links = $c->db->get_go_links();
     
@@ -36,9 +43,9 @@ sub api_state {
     });
 }
 
-# Resolves a short keyword and redirects to the target destination.
+# Resolves a short keyword and orchestrates the redirection.
 # Route: GET /g/:keyword
-# Public Route: No authentication required.
+# Returns: Redirect or Dashboard fallback
 sub resolve {
     my $c = shift;
     my $keyword = lc(trim($c->param('keyword') // ''));
@@ -50,14 +57,17 @@ sub resolve {
         return $c->redirect_to($link->{url});
     }
     
-    # Fallback: Return to dashboard with error flag
+    # Fallback: Return to management view with error context
     $c->redirect_to('/go?error=1');
 }
-# Registers a new redirection mapping.
+
+# Registers a new short-link redirection mapping.
 # Route: POST /go/api/add
+# Returns: JSON object { success, message, error }
 sub api_add {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_admin;
 
     my $keyword = lc(trim($c->param('keyword') // ''));
     my $url = trim($c->param('url') // '');
@@ -68,22 +78,26 @@ sub api_add {
         return $c->render(json => { success => 0, error => "Keyword and URL are required" });
     }
 
-    eval {
-        $c->db->add_go_link($keyword, $url, $description, $user_id);
-        $c->render(json => { success => 1, message => "Go link created" });
-    };
+    # Verify keyword uniqueness
+    my $existing = $c->db->get_go_link($keyword);
+    if ($existing) {
+        return $c->render(json => { success => 0, error => "Keyword 'g/$keyword' is already in use" });
+    }
 
-    if ($@) {
-        $c->app->log->error("Go addition failure: $@");
+    if ($c->db->add_go_link($keyword, $url, $description, $user_id)) {
+        $c->render(json => { success => 1, message => "Go link created" });
+    } else {
         $c->render(json => { success => 0, error => "Database failure" });
     }
 }
 
-# Updates an existing redirection mapping.
+# Updates the metadata for an existing short-link record.
 # Route: POST /go/api/edit
+# Returns: JSON object { success, message, error }
 sub api_edit {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_admin;
     
     my $id = $c->param('id');
     my $keyword = lc(trim($c->param('keyword') // ''));
@@ -94,20 +108,26 @@ sub api_edit {
         return $c->render(json => { success => 0, error => "ID is required" });
     }
 
-    my $success = $c->db->update_go_link($id, $keyword, $url, $description);
-    
-    if ($success) {
+    # Verify keyword uniqueness (excluding the current record)
+    my $existing = $c->db->get_go_link($keyword);
+    if ($existing && $existing->{id} != $id) {
+        return $c->render(json => { success => 0, error => "Keyword 'g/$keyword' is already in use" });
+    }
+
+    if ($c->db->update_go_link($id, $keyword, $url, $description)) {
         $c->render(json => { success => 1, message => "Go link updated" });
     } else {
         $c->render(json => { success => 0, error => "Update failed" });
     }
 }
 
-# Removes a redirection record from the system.
+# Permanently removes a short-link record from the system.
 # Route: POST /go/api/delete
+# Returns: JSON object { success, message, error }
 sub api_delete {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_admin;
     
     my $id = $c->param('id');
 
@@ -115,9 +135,7 @@ sub api_delete {
         return $c->render(json => { success => 0, error => "ID is required" });
     }
 
-    my $success = $c->db->delete_go_link($id);
-    
-    if ($success) {
+    if ($c->db->delete_go_link($id)) {
         $c->render(json => { success => 1, message => "Go link removed" });
     } else {
         $c->render(json => { success => 0, error => "Deletion failed" });
