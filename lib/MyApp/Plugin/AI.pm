@@ -86,14 +86,30 @@ sub register {
         );
     });
 
-    # Specialized: Receipt Analysis
+    # Specialized: Receipt Analysis (Restored Old Style)
+    # Parameters: Binary image data, MIME type
+    # Returns: Promise (JSON payload following the legacy extraction schema)
+    $app->helper(gemini_analyze_receipt => sub {
+        my ($c, $image, $mime) = @_;
+        
+        my $system = "You are a professional receipt digitizer. Analyze the image and extract data into a JSON object. Include: store_name, location, date, time, items (array of {desc, qty, unit_price, line_total}), total_amount, currency, payment_method. CRITICAL: In the 'desc' field, provide ONLY the item name. EXCLUDE any SKU numbers, internal item codes, or long numeric prefixes. ONLY return valid JSON.";
+
+        return $c->gemini_analyze_image(
+            image  => $image,
+            mime   => $mime,
+            system => $system,
+            prompt => "Digitize this receipt accurately."
+        );
+    });
+
+    # Specialized: Generic Image Analysis
     $app->helper(gemini_analyze_image => sub {
         my ($c, %args) = @_;
         
         my $payload_contents = [{
             role => 'user',
             parts => [
-                { text => $args{prompt} || "Digitize this receipt." },
+                { text => $args{prompt} || "Digitize this image." },
                 { inlineData => { 
                     mimeType => $args{mime}, 
                     data     => b64_encode($args{image}, '') 
