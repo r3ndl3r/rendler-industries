@@ -4,20 +4,26 @@
  * Go Links Controller Module
  * 
  * Manages the Platform Short-Link interface. It facilitates rapid 
- * redirection management and provides real-time link lifecycle orchestration.
+ * redirection management and provides real-time link lifecycle orchestration
+ * using a state-driven architecture for multi-user synchronization.
  * 
  * Features:
- * - List rendering from centralized state
- * - Clipboard integration for short-link sharing
- * - Record creation, modification, and removal
+ * - List rendering from centralized Single Source of Truth
+ * - Clipboard integration for rapid short-link distribution
+ * - Administrative record lifecycle management (CRUD)
+ * - Atomic UI reconciliation via background sync guards
  * 
  * Dependencies:
  * - default.js: For getIcon, apiPost, and showConfirmModal
  */
 
 /**
- * --- Application State ---
+ * --- Module Configuration & State ---
  */
+const CONFIG = {
+    SYNC_INTERVAL_MS: 300000        // Background refresh frequency (5 mins)
+};
+
 let STATE = {
     items: [] 
 };
@@ -32,24 +38,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('error')) {
-        showToast('The requested Go Link was not found or is inactive.', 'error');
+        window.showToast('The requested Go Link was not found or is inactive.', 'error');
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    setupGlobalModalClosing(['modal-overlay'], [closeEditModal]);
+    // Modal: Configure unified closure behavior
+    window.setupGlobalModalClosing(['modal-overlay'], [closeEditModal]);
+
+    // Background Synchronization
+    setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
 });
 
 /**
- * --- Logic & UI Operations ---
+ * --- Core Data Management ---
  */
 
 /**
  * Synchronizes the module state with the server.
  * 
  * @async
+ * @param {boolean} [force=false] - If true, bypasses interaction guards.
  * @returns {Promise<void>}
  */
-async function loadState() {
+async function loadState(force = false) {
+    // Lifecycle: inhibit background sync if user is actively interacting with forms
+    const anyModalOpen = document.querySelector('.modal-overlay.active, .delete-modal-overlay.active');
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+
+    if (!force && (anyModalOpen || inputFocused) && STATE.items.length > 0) return;
+
+    const container = document.getElementById('linksList');
+    // Lifecycle: show loading pulse if initial boot
+    if (container && !container.querySelector('.component-loading') && STATE.items.length === 0) {
+        container.innerHTML = `
+            <div class="component-loading">
+                <div class="loading-scan-line"></div>
+                <span class="loading-icon-pulse">${window.getIcon('link')}</span>
+                <p class="loading-label">Synchronizing short-links...</p>
+            </div>`;
+    }
+
     try {
         const response = await fetch('/go/api/state');
         const data = await response.json();
@@ -75,7 +103,7 @@ function renderList() {
     if (STATE.items.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <p>${getIcon('empty')} No Go links found.</p>
+                <p>${window.getIcon('empty')} No Go links found.</p>
             </div>`;
         return;
     }
@@ -97,19 +125,23 @@ function renderList() {
                     <div class="item-meta">
                         <i class="url-text">→ ${safeUrl}</i>
                         ${safeDesc ? `<span class="description-text">${safeDesc}</span>` : ''}
-                        <span class="added-by">${getIcon('user')} ${escapeHtml(link.username || 'Unknown')}</span>
+                        <span class="added-by">${window.getIcon('user')} ${escapeHtml(link.username || 'Unknown')}</span>
                     </div>
                 </div>
                 
                 <div class="item-actions">
-                    <button type="button" class="btn-icon-copy" onclick="copyGoLink('${safeKeyword}')" title="Copy Link">${getIcon('copy')}</button>
-                    <button type="button" class="btn-icon-edit" onclick="openEditModal(${link.id})" title="Edit">${getIcon('edit')}</button>
-                    <button type="button" class="btn-icon-delete" onclick="removeLink(${link.id}, '${safeKeyword}')" title="Delete">${getIcon('delete')}</button>
+                    <button type="button" class="btn-icon-copy" onclick="copyGoLink('${safeKeyword}')" title="Copy Link">${window.getIcon('copy')}</button>
+                    <button type="button" class="btn-icon-edit" onclick="openEditModal(${link.id})" title="Edit">${window.getIcon('edit')}</button>
+                    <button type="button" class="btn-icon-delete" onclick="removeLink(${link.id}, '${safeKeyword}')" title="Delete">${window.getIcon('delete')}</button>
                 </div>
             </div>
         `;
     }).join('');
 }
+
+/**
+ * --- UI & Interaction Logic ---
+ */
 
 /**
  * Encodes special characters for safe DOM injection.
@@ -142,7 +174,7 @@ function openEditModal(id) {
     document.getElementById('editDescription').value = link.description || '';
     
     if (modal) {
-        modal.classList.add('show');
+        modal.classList.add('active');
         document.body.classList.add('modal-open');
     }
 }
@@ -155,13 +187,13 @@ function openEditModal(id) {
 function closeEditModal() {
     const modal = document.getElementById('editModal');
     if (modal) {
-        modal.classList.remove('show');
+        modal.classList.remove('active');
         document.body.classList.remove('modal-open');
     }
 }
 
 /**
- * Executes persistent storage operations via the API and updates local state.
+ * Executes persistent storage operations via the API and synchronizes state.
  * 
  * @async
  * @param {Event} event - Triggering form event.
@@ -178,29 +210,20 @@ async function submitEntry(event, isEdit = false) {
     
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} ${isEdit ? 'Saving...' : 'Adding...'}`;
+    btn.innerHTML = `${window.getIcon('waiting')} ${isEdit ? 'Saving...' : 'Adding...'}`;
 
     try {
         const formData = new FormData(form);
-        const result = await apiPost(endpoint, formData);
+        const result = await window.apiPost(endpoint, formData);
 
         if (result && result.success) {
             if (isEdit) {
-                // Manually update local state to ensure instant UI response
-                const id = formData.get('id');
-                const idx = STATE.items.findIndex(i => i.id == id);
-                if (idx !== -1) {
-                    STATE.items[idx].keyword = (formData.get('keyword') || '').toLowerCase();
-                    STATE.items[idx].url = formData.get('url');
-                    STATE.items[idx].description = formData.get('description');
-                    renderList();
-                }
                 closeEditModal();
             } else {
                 form.reset();
-                // For additions, full sync is preferred to obtain the new record identifier
-                await loadState();
             }
+            // Lifecycle: Trigger atomic reconciliation
+            await loadState(true);
         }
     } finally {
         btn.disabled = false;
@@ -216,7 +239,7 @@ async function submitEntry(event, isEdit = false) {
  * @returns {void}
  */
 function removeLink(id, keyword) {
-    showConfirmModal({
+    window.showConfirmModal({
         title: 'Delete Link',
         message: `Are you sure you want to permanently delete the link for <strong>g/${keyword}</strong>?`,
         danger: true,
@@ -224,17 +247,14 @@ function removeLink(id, keyword) {
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost('/go/api/delete', { id: id });
+            const result = await window.apiPost('/go/api/delete', { id: id });
             if (result && result.success) {
-                // Manually remove from local state to ensure instant UI response
-                STATE.items = STATE.items.filter(i => i.id != id);
-                
                 const row = document.getElementById(`link-row-${id}`);
                 if (row) {
                     row.classList.add('row-fade-out');
-                    setTimeout(() => renderList(), 500);
+                    setTimeout(() => loadState(true), 500);
                 } else {
-                    renderList();
+                    await loadState(true);
                 }
             }
         }
@@ -250,10 +270,10 @@ function removeLink(id, keyword) {
 function copyGoLink(keyword) {
     const url = `${window.location.origin}/g/${keyword}`;
     navigator.clipboard.writeText(url).then(() => {
-        showToast(`Link copied: g/${keyword}`, 'success');
+        window.showToast(`Link copied: g/${keyword}`, 'success');
     }).catch(err => {
         console.error('Clipboard failure:', err);
-        showToast('Failed to copy link.', 'error');
+        window.showToast('Failed to copy link.', 'error');
     });
 }
 
