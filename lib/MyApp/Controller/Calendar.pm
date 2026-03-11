@@ -40,11 +40,24 @@ sub api_state {
     my $categories = $c->db->get_calendar_categories();
     my $all_users = $c->db->get_all_users();
     my $users = [ grep { $c->db->is_family($_->{username}) } @$all_users ];
+
+    # Determine available notification channels
+    my @channels = (
+        { id => 'email', label => 'Email', icon => 'email' },
+        { id => 'discord', label => 'Discord', icon => 'discord' }
+    );
+
+    # Admin-only channels
+    if ($c->is_admin) {
+        push @channels, { id => 'gotify', label => 'Gotify', icon => 'gotify' };
+        push @channels, { id => 'pushover', label => 'Pushover', icon => 'pushover' };
+    }
     
     $c->render(json => {
         success    => 1,
         categories => $categories,
         users      => $users,
+        channels   => \@channels,
         is_admin   => $c->is_admin ? 1 : 0,
         current_user_id => $c->current_user_id
     });
@@ -103,10 +116,19 @@ sub api_add {
     
     my $attendee_ids = $c->every_param('attendees[]');
     my $attendees = ($attendee_ids && @$attendee_ids) ? join(',', @$attendee_ids) : '';
+
+    my $notification_minutes = $c->param('notification_minutes') // 0;
+    my $channel_list = $c->every_param('notification_channels[]');
+    my $notification_channels = ($channel_list && @$channel_list) ? join(',', @$channel_list) : '';
     
     return $c->render(json => { success => 0, error => 'Title is required' }) unless $title;
     return $c->render(json => { success => 0, error => 'Start date is required' }) unless $start_date;
     return $c->render(json => { success => 0, error => 'End date is required' }) unless $end_date;
+
+    # Ensure at least one attendee is selected if notifications are enabled.
+    if ($notification_minutes > 0 && !$attendees) {
+        return $c->render(json => { success => 0, error => 'Please select at least one attendee for notifications' });
+    }
 
     if ($end_date lt $start_date) {
         return $c->render(json => { success => 0, error => 'End date cannot be before start date' });
@@ -118,7 +140,8 @@ sub api_add {
     eval {
         my $event_id = $c->db->add_calendar_event(
             $title, $description, $start_date, $end_date,
-            $all_day, $category, $color, $attendees, $user_id, $is_private
+            $all_day, $category, $color, $attendees, $user_id, $is_private,
+            $notification_minutes, $notification_channels
         );
         
         # Only notify others if the event is NOT private
@@ -138,8 +161,8 @@ sub api_add {
                     $attendee_names = join(', ', @names) if @names;
                 }
                 
-                my $formatted_start = _format_datetime($start_date, $all_day);
-                my $formatted_end = _format_datetime($end_date, $all_day);
+                my $formatted_start = $c->format_datetime($start_date, $all_day);
+                my $formatted_end = $c->format_datetime($end_date, $all_day);
                 
                 my $subject = "New Calendar Event / เหตุการณ์ปฏิทินใหม่: $title";
                 my $body = qq{A new event has been added to the calendar by $creator_name
@@ -189,48 +212,6 @@ This notification was sent to family members.
     }
 }
 
-# Helper: Formats a SQL datetime string into a user-friendly display string.
-sub _format_datetime {
-    my ($dt, $all_day) = @_;
-    return '' unless $dt;
-    
-    my $t;
-    eval {
-        if ($dt =~ /^\d{4}-\d{2}-\d{2}$/) {
-            $t = Time::Piece->strptime($dt, "%Y-%m-%d");
-        } else {
-            # Normalize seconds if missing or partial
-            my $clean_dt = $dt;
-            $clean_dt .= ":00" if $dt =~ /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
-            $t = Time::Piece->strptime($clean_dt, "%Y-%m-%d %H:%M:%S");
-        }
-    };
-    return $dt if $@ || !$t;
-
-    my $day = $t->mday;
-    my $suffix = 'th';
-    if ($day !~ /^1[123]$/) {
-        my $last_digit = $day % 10;
-        $suffix = 'st' if $last_digit == 1;
-        $suffix = 'nd' if $last_digit == 2;
-        $suffix = 'rd' if $last_digit == 3;
-    }
-
-    if ($all_day) {
-        return sprintf("%s, %d%s %s %d (All day)", $t->full_day, $day, $suffix, $t->full_month, $t->year);
-    }
-
-    my $h = $t->hour;
-    my $ampm = $h >= 12 ? 'PM' : 'AM';
-    $h = $h % 12;
-    $h = 12 if $h == 0;
-    
-    return sprintf("%s, %d%s %s %d - %02d:%02d%s", 
-        $t->full_day, $day, $suffix, $t->full_month, $t->year,
-        $h, $t->min, $ampm
-    );
-}
-
 # API Endpoint: Updates an existing calendar event.
 # Route: POST /calendar/api/edit
 sub api_edit {
@@ -241,7 +222,7 @@ sub api_edit {
     my $user_id = $c->current_user_id;
     my $is_admin = $c->is_admin ? 1 : 0;
     
-    # MANDATE: Verify ownership or admin status before edit
+    # Verify ownership or admin status before allowing the edit.
     my $event = $c->db->get_calendar_event_by_id($id, $user_id, $is_admin);
     unless ($event && ($event->{created_by} == $user_id || $is_admin)) {
         return $c->render(json => { success => 0, error => 'Forbidden: You do not own this event' }, status => 403);
@@ -258,18 +239,32 @@ sub api_edit {
     
     my $attendee_ids = $c->every_param('attendees[]');
     my $attendees = ($attendee_ids && @$attendee_ids) ? join(',', @$attendee_ids) : '';
+
+    my $notification_minutes = $c->param('notification_minutes') // 0;
+    my $channel_list = $c->every_param('notification_channels[]');
+    my $notification_channels = ($channel_list && @$channel_list) ? join(',', @$channel_list) : '';
     
     return $c->render(json => { success => 0, error => 'Event ID is required' }) unless $id;
     return $c->render(json => { success => 0, error => 'Title is required' }) unless $title;
 
+    # Ensure at least one attendee is selected if notifications are enabled.
+    if ($notification_minutes > 0 && !$attendees) {
+        return $c->render(json => { success => 0, error => 'Please select at least one attendee for notifications' });
+    }
+
     if ($end_date lt $start_date) {
         return $c->render(json => { success => 0, error => 'End date cannot be before start date' });
     }
+
+    # Reset notification status if the start time is modified to ensure 
+    # the reminder fires for the new scheduled time.
+    my $reset_notification = ($event->{start_date} ne $start_date) ? 1 : 0;
     
     eval {
         $c->db->update_calendar_event(
             $id, $title, $description, $start_date, $end_date,
-            $all_day, $category, $color, $attendees, $is_private
+            $all_day, $category, $color, $attendees, $is_private,
+            $notification_minutes, $notification_channels, $reset_notification
         );
         $c->render(json => { success => 1, message => "Event updated" });
     };
@@ -290,7 +285,7 @@ sub api_delete {
     my $user_id = $c->current_user_id;
     my $is_admin = $c->is_admin ? 1 : 0;
     
-    # MANDATE: Verify ownership or admin status before delete
+    # Verify ownership or admin status before allowing deletion.
     my $event = $c->db->get_calendar_event_by_id($id, $user_id, $is_admin);
     unless ($event && ($event->{created_by} == $user_id || $is_admin)) {
         return $c->render(json => { success => 0, error => 'Forbidden: You do not own this event' }, status => 403);
