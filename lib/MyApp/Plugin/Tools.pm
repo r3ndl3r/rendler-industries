@@ -8,6 +8,7 @@ use strict;
 use warnings;
 use utf8;
 use Mojo::JSON qw(to_json);
+use Time::Piece;
 
 # General Utility Plugin.
 # Features:
@@ -119,6 +120,49 @@ sub register {
             is_one_off    => $r->{is_one_off}    // 0,
             is_active     => $r->{is_active}     // 1,
         });
+    });
+
+    # --- High-Fidelity DateTime Formatter ---
+    # Formats a SQL datetime string into a user-friendly display string.
+    $app->helper(format_datetime => sub {
+        my ($c, $dt, $all_day) = @_;
+        return '' unless $dt;
+        
+        my $t;
+        eval {
+            if ($dt =~ /^\d{4}-\d{2}-\d{2}$/) {
+                $t = Time::Piece->strptime($dt, "%Y-%m-%d");
+            } else {
+                # Normalize seconds if missing or partial
+                my $clean_dt = $dt;
+                $clean_dt .= ":00" if $dt =~ /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+                $t = Time::Piece->strptime($clean_dt, "%Y-%m-%d %H:%M:%S");
+            }
+        };
+        return $dt if $@ || !$t;
+
+        my $day = $t->mday;
+        my $suffix = 'th';
+        if ($day !~ /^1[123]$/) {
+            my $last_digit = $day % 10;
+            $suffix = 'st' if $last_digit == 1;
+            $suffix = 'nd' if $last_digit == 2;
+            $suffix = 'rd' if $last_digit == 3;
+        }
+
+        if ($all_day) {
+            return sprintf("%s, %d%s %s %d (All day)", $t->fullday, $day, $suffix, $t->fullmonth, $t->year);
+        }
+
+        my $h = $t->hour;
+        my $ampm = $h >= 12 ? 'PM' : 'AM';
+        $h = $h % 12;
+        $h = 12 if $h == 0;
+        
+        return sprintf("%s, %d%s %s %d - %02d:%02d%s", 
+            $t->fullday, $day, $suffix, $t->fullmonth, $t->year,
+            $h, $t->min, $ampm
+        );
     });
 }
 
