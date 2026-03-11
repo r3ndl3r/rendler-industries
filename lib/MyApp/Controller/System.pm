@@ -2,6 +2,7 @@
 
 package MyApp::Controller::System;
 use Mojo::Base 'Mojolicious::Controller';
+use Mojo::Util qw(trim);
 
 # Controller for System-level operations and maintenance.
 # Handles high-privilege tasks related to server health and automation triggers.
@@ -273,6 +274,133 @@ https://rendler.org/timers
     return $stats;
 }
 
+# Internal helper to handle impending calendar notifications.
+# Parameters:
+#   - now : DateTime object representing the current minute.
+# Returns:
+#   Stats HashRef { checked_time, notifications_sent, errors }
+sub run_calendar_notifications {
+    my ($c, $now) = @_;
+    
+    my $stats = {
+        checked_time => $now->strftime('%H:%M'),
+        notifications_sent => 0,
+        errors => 0
+    };
+
+    # Select events that need notification within the next minute.
+    # We use a 2-minute window (NOW to NOW + notification_minutes + 2) 
+    # to catch up on any missed checks without double-firing (due to last_notified_at check).
+    my $sql = qq{
+        SELECT * FROM calendar_events 
+        WHERE notification_minutes > 0 
+        AND last_notified_at IS NULL
+        AND start_date <= DATE_ADD(?, INTERVAL notification_minutes MINUTE)
+        AND start_date > ?
+    };
+    
+    my $query_now = $now->strftime('%Y-%m-%d %H:%M:%S');
+    my $sth = $c->db->{dbh}->prepare($sql);
+    $sth->execute($query_now, $query_now);
+    
+    my $events = $sth->fetchall_arrayref({});
+    
+    foreach my $event (@$events) {
+        # 1. ATOMIC MARK: Update last_notified_at immediately
+        $c->db->{dbh}->do("UPDATE calendar_events SET last_notified_at = NOW() WHERE id = ?", undef, $event->{id});
+        
+        # 2. RESOLVE RECIPIENTS & DATA
+        my $attendee_ids = $event->{attendees} // '';
+        next unless $attendee_ids;
+        
+        my @uids = split(',', $attendee_ids);
+        my @attendee_names;
+        foreach my $uid (map { trim($_) } @uids) {
+            my $user = $c->db->get_user_by_id($uid);
+            push @attendee_names, $user->{username} if $user;
+        }
+        my $attendees_str = join(', ', @attendee_names);
+        
+        my $channels = $event->{notification_channels} // 'email';
+        my $formatted_start = $c->format_datetime($event->{start_date}, $event->{all_day});
+        my $formatted_end   = $c->format_datetime($event->{end_date}, $event->{all_day});
+        my $time_label      = $event->{notification_minutes} == 60 ? "1 hour" : "$event->{notification_minutes} minutes";
+        
+        # --- Channel Specific Formatting ---
+        
+        # A. EMAIL FORMAT (Full Fidelity)
+        my $email_subject = "🔔 Upcoming Event Reminder: $event->{title} 🔔\n";
+        my $email_body = qq{🔔 Upcoming Event Reminder 🔔
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The following event is starting in $time_label:
+
+Title: $event->{title}};
+        $email_body .= "\nDescription: $event->{description}" if $event->{description};
+        $email_body .= qq{
+
+Start: $formatted_start
+End: $formatted_end};
+        $email_body .= "\nCategory: $event->{category}" if $event->{category};
+        $email_body .= "\n\nAttendees: $attendees_str" if $attendees_str;
+        $email_body .= qq{
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+View Calendar: https://rendler.org/calendar};
+
+        # B. DISCORD FORMAT (Markdown Enhanced)
+        my $discord_msg = qq{🔔 **Upcoming Event Reminder** 🔔
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**$event->{title}** is starting in **$time_label**!};
+        $discord_msg .= "\n\n> $event->{description}" if $event->{description};
+        $discord_msg .= "\n\n📅 **Start:** $formatted_start";
+        $discord_msg .= "\n📍 **Category:** $event->{category}" if $event->{category};
+        $discord_msg .= "\n\n👥 **Attendees:** $attendees_str" if $attendees_str;
+        $discord_msg .= "\n\n🔗 https://rendler.org/calendar";
+
+        # C. PUSH FORMAT (Mobile Optimized - Gotify/Pushover)
+        my $push_msg = qq{🔔 **Upcoming Event Reminder** 🔔
+━━━━━━━━━━━━━━━━━━━━━━━
+
+$event->{title} starts in $time_label!
+
+Start: $formatted_start
+
+};
+        $push_msg .= "\nCategory: $event->{category}" if $event->{category};
+        $push_msg .= "\nAttendees: $attendees_str" if $attendees_str;
+
+        # 3. DISPATCH
+        foreach my $uid (map { trim($_) } @uids) {
+            my $user = $c->db->get_user_by_id($uid);
+            next unless $user;
+            
+            # Email
+            if ($channels =~ /email/) {
+                $c->send_email_via_gmail([$user->{email}], $email_subject, $email_body) if $user->{email};
+            }
+            
+            # Discord
+            if ($channels =~ /discord/) {
+                if ($user->{discord_id}) {
+                    $c->send_discord_dm($user->{discord_id}, $discord_msg);
+                } elsif ($user->{email} && $channels !~ /email/) {
+                    # Fallback to email if discord_id is missing
+                    $c->send_email_via_gmail([$user->{email}], "[Discord Fallback] $email_subject", $email_body);
+                }
+            }
+        }
+        
+        # 4. ADMIN CHANNELS
+        $c->push_pushover($push_msg) if $channels =~ /pushover/;
+        $c->push_gotify($push_msg, $email_subject) if $channels =~ /gotify/;
+        
+        $stats->{notifications_sent}++;
+    }
+
+    return $stats;
+}
+
 # Internal helper to handle asynchronous emoji prepending across all modules.
 # Parameters: None
 # Returns:
@@ -363,6 +491,8 @@ sub run_emoji_maintenance_p {
                     if ($res->is_success) {
                         my $ai_response = Mojo::Util::trim($res->json->{candidates}[0]{content}{parts}[0]{text} // '');
                         $ai_response =~ s/^['"]+|['"]+$//g;
+                        # Truncate AI response to prevent log bloat if it returns a paragraph
+                        $ai_response = substr($ai_response, 0, 10) if length($ai_response) > 10;
                         if (length($ai_response) > 0 && $ai_response !~ /[a-zA-Z]{3,}/) {
                             push @results, { %$item, emoji => $ai_response };
                         }
