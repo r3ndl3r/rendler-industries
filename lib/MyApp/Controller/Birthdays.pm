@@ -5,21 +5,26 @@ use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
 # Controller for the Birthday Calendar feature.
+#
 # Features:
-#   - Automated countdown to upcoming birthdays
-#   - Zodiac and Chinese Zodiac metadata enrichment
-#   - Full AJAX CRUD operations for administrative management
-# Integration points:
-#   - Uses DB::Birthdays for data persistence
-#   - Restricted administrative actions via backend is_admin checks
-#   - Standardized JSON responses for interface synchronization
+#   - Automated countdown to upcoming birthdays.
+#   - Zodiac and Chinese Zodiac metadata enrichment.
+#   - Full AJAX CRUD operations for administrative management.
+#
+# Integration Points:
+#   - Uses DB::Birthdays for data persistence.
+#   - Restricted administrative actions via backend is_admin checks.
+#   - Standardized JSON responses for interface synchronization.
 
 # Renders the birthday interface.
 # Route: GET /birthdays
+# Returns: Template (birthdays.html.ep)
 sub index {
     my $c = shift;
+    
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_family;
+
     $c->render('birthdays');
 }
 
@@ -28,7 +33,9 @@ sub index {
 # Returns: JSON object { birthdays, is_admin, success }
 sub api_state {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_family;
 
     my @birthdays = $c->db->get_all_birthdays();
     
@@ -49,9 +56,12 @@ sub api_state {
 
 # Processes the creation of a new birthday record.
 # Route: POST /birthdays/api/add
+# Returns: JSON object { success, message/error }
 sub api_add {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_admin;
 
     my $name       = trim($c->param('name') // '');
     my $birth_date = trim($c->param('birth_date') // '');
@@ -73,9 +83,12 @@ sub api_add {
 
 # Updates an existing birthday record.
 # Route: POST /birthdays/api/edit/:id
+# Returns: JSON object { success, message/error }
 sub api_edit {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_admin;
 
     my $id         = $c->param('id');
     my $name       = trim($c->param('name') // '');
@@ -98,9 +111,12 @@ sub api_edit {
 
 # Permanently removes a birthday record.
 # Route: POST /birthdays/api/delete/:id
+# Returns: JSON object { success, message/error }
 sub api_delete {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_admin;
 
     my $id = $c->param('id');
     
