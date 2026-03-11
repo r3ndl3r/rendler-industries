@@ -5,38 +5,38 @@ use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
 # Controller for managing recurring reminders and notification rules.
+#
 # Features:
-#   - CRUD operations for weekly recurring tasks
-#   - Multi-recipient selection for targeted notifications
-#   - Real-time status toggling (Pause/Resume)
-#   - Integration with Discord and Email dispatch systems
-# Integration points:
-#   - Restricted to family/admin members via router bridge
-#   - Depends on DB::Reminders for data persistence
-#   - Coordinates with global maintenance API for execution triggers
+#   - Synchronized state-driven interface for task awareness.
+#   - CRUD operations for weekly recurring tasks via JSON API.
+#   - Multi-recipient selection for targeted notifications.
+#   - Real-time status toggling with instant reconciliation.
+#
+# Integration Points:
+#   - Depends on DB::Reminders for data persistence.
+#   - Coordinates with global maintenance API for execution triggers.
+#   - Integrates with Discord and Email dispatch systems.
 
 # Renders the main reminders management dashboard skeleton.
 # Route: GET /reminders
-# Parameters: None
-# Returns: Rendered HTML template 'reminders'.
+# Returns: Template (reminders.html.ep)
 sub index {
     my $c = shift;
+    
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_family;
 
     $c->render('reminders');
 }
 
-
 # Returns the consolidated state for the module.
 # Route: GET /reminders/api/state
-# Parameters: None
 # Returns: JSON object { reminders, recipients, is_admin, current_user, success }
 sub api_state {
     my $c = shift;
     
-    # Ensure session is active before state retrieval
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_family;
 
     my $state = {
         reminders    => $c->db->get_all_reminders(),
@@ -54,19 +54,12 @@ sub api_state {
 
 # Processes the creation of a new recurring reminder rule.
 # Route: POST /reminders/api/add
-# Parameters:
-#   title         : Main heading for the reminder
-#   description   : Detailed notes/context (Optional)
-#   reminder_time : Target trigger time (HH:MM)
-#   days[]        : Array of active day numbers (1=Mon, 7=Sun)
-#   recipients[]  : Array of target User IDs
-#   is_one_off    : Boolean flag for single-use reminders
 # Returns: JSON object { success, message, error }
 sub api_add {
     my $c = shift;
     
-    # Ensure session is active before processing
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_family;
 
     my $title = trim($c->param('title') // '');
     my $desc  = trim($c->param('description') // '');
@@ -104,20 +97,12 @@ sub api_add {
 
 # Processes updates to an existing reminder.
 # Route: POST /reminders/api/update/:id
-# Parameters:
-#   id            : Target Reminder ID
-#   title         : Updated heading
-#   description   : Updated notes
-#   reminder_time : Updated trigger time
-#   days[]        : Updated active days
-#   recipients[]  : Updated target users
-#   is_one_off    : Boolean flag
 # Returns: JSON object { success, message, error }
 sub api_update {
     my $c = shift;
     
-    # Ensure session is active before processing
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_family;
 
     my $id    = $c->param('id');
     my $title = trim($c->param('title') // '');
@@ -154,14 +139,12 @@ sub api_update {
 
 # Permanently removes a reminder rule and its mappings.
 # Route: POST /reminders/api/delete/:id
-# Parameters:
-#   id : Unique Reminder ID
 # Returns: JSON object { success, message, error }
 sub api_delete {
     my $c = shift;
     
-    # Ensure session is active before processing
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_family;
 
     my $id = $c->param('id');
     
@@ -182,15 +165,12 @@ sub api_delete {
 
 # Toggles the operational status of a reminder rule.
 # Route: POST /reminders/api/toggle/:id
-# Parameters:
-#   id     : Unique Reminder ID
-#   active : Target status (1 or 0)
 # Returns: JSON object { success, message, error }
 sub api_toggle {
     my $c = shift;
     
-    # Ensure session is active before processing
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_family;
 
     my $id = $c->param('id');
     my $active = $c->param('active') ? 1 : 0;
@@ -214,16 +194,12 @@ sub api_toggle {
 
 # Toggles a specific day for a reminder rule schedule.
 # Route: POST /reminders/api/toggle_day
-# Parameters:
-#   id     : Unique Reminder ID
-#   day    : Day number (1-7)
-#   active : Target status (1 or 0)
 # Returns: JSON object { success, message, error }
 sub api_toggle_day {
     my $c = shift;
     
-    # Ensure session is active before processing
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_family;
 
     my $id = $c->param('id');
     my $day = $c->param('day');
