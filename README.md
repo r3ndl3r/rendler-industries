@@ -15,15 +15,16 @@ A hyper-integrated, full-stack home laboratory and family management ecosystem. 
 *   **Framework:** [Mojolicious](https://mojolicious.org/) - Utilizing Non-blocking I/O, WebSockets, and a modular Controller-Model-Plugin architecture.
 *   **Web Server:** `Hypnotoad` - Enabling zero-downtime hot-reloads and multi-process worker management.
 *   **Database:** **MariaDB 10.x** - Relational storage with strict foreign keys and polymorphic ledger tables.
+*   **Native Orchestration:** Background maintenance loops handling temporal state tracking, idempotency, and proactive system-wide synchronization.
 *   **Security:** 
     *   Tiered RBAC (Guest → User → Family → Admin).
     *   Manual admin approval workflow for new registrations.
 
 ### **📡 The Multi-Channel Notification Hub**
-The system features a redundant, priority-weighted alert engine:
+The system features a redundant, priority-weighted alert engine for real-time and scheduled notifications:
 1.  **Discord (Primary):** Real-time DMs via local API integration for immediate action.
 2.  **Gotify:** Self-hosted push notifications for system-level alerts and infrastructure monitoring.
-3.  **Gmail/SMTP:** Redundant email delivery for complex data (like Calendar invitations, receipt exports, or account approval confirmations).
+3.  **Gmail/SMTP:** Redundant email delivery for complex data (like Calendar invitations, impending event reminders, or receipt exports).
 4.  **Pushover:** Mobile-first emergency alerts for critical infrastructure events.
 
 ---
@@ -54,7 +55,8 @@ The system features a redundant, priority-weighted alert engine:
 *   **Event Intelligence:** 
     *   **Cloning:** One-click duplication of existing events for fast scheduling.
     *   **Attendee Tagging:** Tag specific family members to personalize their views and notify them.
-    *   **Automated Emailing:** System-wide broadcast to all family members when high-priority events are added.
+    *   **Automated Broadcasting:** System-wide email alerts to all family members when new events are added.
+    *   **Proactive Reminders:** Multi-channel alerting (Discord, Email, Gotify, Pushover) triggered before event start times for specific attendees.
     *   **Color Coding:** Categorize events (Doctor, School, Social) with dynamic hex-code styling.
 
 ![Calendar Main View](public/images/screenshots/calendar_main.png)
