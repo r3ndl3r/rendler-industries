@@ -5,32 +5,32 @@ package DB::Go;
 use strict;
 use warnings;
 
-# Database helper for the internal "Go Links" URL shortener.
-# Handles high-speed redirection mapping and link lifecycle management.
+# Database Library for the internal Platform Short-Link management system.
 #
 # Features:
-#   - Fast keyword-to-URL resolution.
-#   - Redirect visit counter tracking.
-#   - Multi-user link CRUD operations.
-#   - Alphabetical and popularity-based listing.
+#   - High-speed keyword-to-URL redirection mapping.
+#   - Real-time visit analytics and popularity tracking.
+#   - Multi-user administrative CRUD operations for link lifecycle.
+#   - Alphabetical and popularity-based link discovery.
+#
+# Privacy Mandate:
+#   - Administrative resource; link management is restricted to authorized 
+#     system administrators. Short-link resolution is public by design.
 #
 # Integration Points:
-#   - Extends DB package via package injection.
-#   - Used by Go controller for redirection and administration.
-#   - Integrated with search/dashboard for rapid navigation.
+#   - Extends the core DB package via package injection.
+#   - Acts as the primary data source for the Go controller.
+#   - Provides data payloads for state-driven synchronization.
+#   - Integrated with global search for rapid system navigation.
 
-# Retrieves all registered go links.
-# Includes join with users table for human-readable attribution.
+# Retrieves the complete registry of registered short-links.
+# Includes owner attribution via user table join.
 # Parameters: None
-# Returns:
-#   ArrayRef of HashRefs: [ {id, keyword, url, description, owner_id, username, visits, created_at}, ... ]
+# Returns: ArrayRef of HashRefs [ {id, keyword, url, description, visits, username...}, ... ]
 sub DB::get_go_links {
     my ($self) = @_;
-    
-    # Verify database connectivity
     $self->ensure_connection;
     
-    # Fetch sorted list with join for username mapping
     my $sth = $self->{dbh}->prepare("
         SELECT g.id, g.keyword, g.url, g.description, g.owner_id, u.username, g.visits, g.created_at 
         FROM go_links g
@@ -42,15 +42,12 @@ sub DB::get_go_links {
     return $sth->fetchall_arrayref({});
 }
 
-# Retrieves a single go link by its keyword.
+# Resolves a single short-link by its unique keyword identifier.
 # Parameters:
-#   keyword : String short identifier.
-# Returns:
-#   HashRef of the link details, or undef if not found.
+#   - keyword: String short identifier.
+# Returns: HashRef of link metadata or undef.
 sub DB::get_go_link {
     my ($self, $keyword) = @_;
-    
-    # Verify database connectivity
     $self->ensure_connection;
     
     my $sth = $self->{dbh}->prepare("
@@ -63,21 +60,17 @@ sub DB::get_go_link {
     return $sth->fetchrow_hashref();
 }
 
-# Adds a new go link to the database.
+# Registers a new short-link redirection mapping.
 # Parameters:
-#   keyword     : The short string for the URL (String).
-#   url         : The destination URL (String).
-#   description : What the link points to (String).
-#   owner_id    : Numeric ID of the user adding the link (Int).
-# Returns:
-#   Result of execute().
+#   - keyword: The redirection identifier (String).
+#   - url: The target destination (String).
+#   - description: Administrative context/notes (String).
+#   - owner_id: Numeric identifier of the creating administrator (Int).
+# Returns: Result of execute().
 sub DB::add_go_link {
     my ($self, $keyword, $url, $description, $owner_id) = @_;
-    
-    # Verify database connectivity
     $self->ensure_connection;
     
-    # Insert new record, initializing visits to 0
     my $sth = $self->{dbh}->prepare("
         INSERT INTO go_links (keyword, url, description, owner_id, visits) 
         VALUES (?, ?, ?, ?, 0)
@@ -85,18 +78,15 @@ sub DB::add_go_link {
     return $sth->execute($keyword, $url, $description, $owner_id);
 }
 
-# Updates an existing go link.
+# Updates the metadata for an existing short-link mapping.
 # Parameters:
-#   id          : Unique ID of the link (Int).
-#   keyword     : New short string (String).
-#   url         : New destination URL (String).
-#   description : New description (String).
-# Returns:
-#   Result of execute().
+#   - id: Unique record identifier (Int).
+#   - keyword: New redirection identifier (String).
+#   - url: New destination target (String).
+#   - description: New administrative notes (String).
+# Returns: Result of execute().
 sub DB::update_go_link {
     my ($self, $id, $keyword, $url, $description) = @_;
-    
-    # Verify database connectivity
     $self->ensure_connection;
     
     my $sth = $self->{dbh}->prepare("
@@ -107,30 +97,24 @@ sub DB::update_go_link {
     return $sth->execute($keyword, $url, $description, $id);
 }
 
-# Removes a go link from the database.
+# Permanently removes a short-link mapping from the system.
 # Parameters:
-#   id : Unique ID of the link to delete.
-# Returns:
-#   Result of execute().
+#   - id: Unique record identifier.
+# Returns: Result of execute().
 sub DB::delete_go_link {
     my ($self, $id) = @_;
-    
-    # Verify database connectivity
     $self->ensure_connection;
     
     my $sth = $self->{dbh}->prepare("DELETE FROM go_links WHERE id = ?");
     return $sth->execute($id);
 }
 
-# Increments the visit counter for a specific go link.
+# Atomically increments the visit analytics for a specific mapping.
 # Parameters:
-#   id : Unique ID of the link.
-# Returns:
-#   Result of execute().
+#   - id: Unique record identifier.
+# Returns: Result of execute().
 sub DB::increment_go_link_visits {
     my ($self, $id) = @_;
-    
-    # Verify database connectivity
     $self->ensure_connection;
     
     my $sth = $self->{dbh}->prepare("
