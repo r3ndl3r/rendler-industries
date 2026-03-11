@@ -1,0 +1,81 @@
+<%# /templates/connect4.html.ep %>
+
+% layout 'default';
+% title icon('connect4') . ' Connect 4 Online';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/connect4.css?<%= time %>">
+    <script src="/js/connect4.js?<%= time %>"></script>
+% end
+
+<div id="connect4-app" class="connect-container app-container" data-user-id="<%= current_user_id() %>">
+    
+    <%# --- View: Lobby --- %>
+    <div id="view-lobby" class="spa-view active">
+        <div class="lobby-header">
+            <h1 class="lobby-title"><%= icon('connect4') %> Connect 4 Lobby</h1>
+            <p style="color: #94a3b8;">Challenge a friend to a battle of strategy!</p>
+        </div>
+
+        <div class="action-card">
+            <h2 style="margin-top: 0; margin-bottom: 1.5rem;">Ready to play?</h2>
+            <button type="button" class="btn-create" onclick="Connect4App.createGame()">Create New Game</button>
+        </div>
+
+        <div id="user-games-section" class="hidden">
+            <h3 style="margin-left: 0.5rem; margin-bottom: 1rem;">Your Active Games</h3>
+            <div id="user-game-list" class="game-list" style="margin-bottom: 2rem;">
+                <%# Hydrated via JS %>
+            </div>
+        </div>
+
+        <h3 style="margin-left: 0.5rem; margin-bottom: 1rem;">Open Games</h3>
+        <div id="open-game-list" class="game-list">
+            <div class="component-loading">
+                <div class="loading-scan-line"></div>
+                <span class="loading-icon-pulse"><%= icon('connect4') %></span>
+                <p class="loading-label">Synchronizing Lobby...</p>
+            </div>
+        </div>
+    </div>
+
+    <%# --- View: Active Game --- %>
+    <div id="view-game" class="spa-view hidden">
+        <div class="header-bar">
+            <h1><%= icon('connect4') %> <span id="game-title">Connect 4</span></h1>
+            <div class="manage-actions">
+                <button type="button" class="btn-secondary" onclick="Connect4App.showLobby()"><%= icon('logout') %> Lobby</button>
+            </div>
+        </div>
+
+        <div class="game-viewport">
+            <%# Status Banners %>
+            <div class="glass-panel status-card">
+                <h2 id="status-message" class="status-title">Synchronizing...</h2>
+                <div id="turn-indicator" class="status-subtitle">Establishing connection...</div>
+                <button id="btn-restart" class="btn-success btn-restart-fixed hidden"><%= icon('reset') %> Play Again</button>
+            </div>
+
+            <%# Interaction Board %>
+            <div class="board-viewport">
+                <div class="board-frame">
+                    <div id="board" class="board-grid">
+                        <%# Hydrated via JS %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <%# Game Over Modal %>
+        <div id="game-over-modal" class="game-overlay">
+            <div class="glass-panel overlay-content game-over-panel">
+                <div id="game-over-icon" class="game-over-icon"></div>
+                <h2 id="game-over-title">Game Over</h2>
+                <p id="game-over-msg"></p>
+                <div class="modal-actions modal-actions-center">
+                    <button type="button" class="btn-primary" onclick="Connect4App.showLobby()">Return to Lobby</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
