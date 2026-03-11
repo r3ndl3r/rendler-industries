@@ -4,10 +4,10 @@
  * Menu Management Controller
  * 
  * Orchestrates the administrative interface for hierarchical navigation. 
- * Implements a state-driven ledger with real-time drag-and-drop reordering.
+ * Facilitates the management of navigation links with sortable sequencing.
  * 
  * Features:
- * - Synchronized state management via /menu/api/state
+ * - State retrieval from authoritative source
  * - Drag-and-drop link reordering using SortableJS
  * - Hierarchical parent/child relationship management
  * - Themed confirmation workflows for destructive removal
@@ -22,7 +22,8 @@
  * Global Configuration & Persistent State
  */
 const CONFIG = {
-    REORDER_STAGGER: 10             // Incremental step for sort_order persistence
+    REORDER_STAGGER: 10,            // Incremental step for sort_order persistence
+    SYNC_INTERVAL_MS: 300000        // Background refresh frequency (5 mins)
 };
 
 let STATE = {
@@ -42,16 +43,26 @@ const MenuMgmt = {
         this.initSortable();
         
         // Global modal behavior
-        setupGlobalModalClosing(['delete-modal-overlay'], [() => this.closeModal(), closeConfirmModal]);
+        window.setupGlobalModalClosing(['delete-modal-overlay', 'modal-overlay'], [() => this.closeModal()]);
+        
+        // Background Synchronization
+        setInterval(() => this.loadState(), CONFIG.SYNC_INTERVAL_MS);
     },
 
     /**
      * Synchronizes module state with the server.
      * 
      * @async
+     * @param {boolean} [force=false] - If true, bypasses interaction guards.
      * @returns {Promise<void>}
      */
-    loadState: async function() {
+    loadState: async function(force = false) {
+        // Lifecycle: inhibit background sync if user is actively interacting with forms
+        const anyModalOpen = document.querySelector('.modal-overlay.active, .delete-modal-overlay.active, .modal-overlay.show, .delete-modal-overlay.show');
+        const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT');
+
+        if (!force && (anyModalOpen || inputFocused) && STATE.links.length > 0) return;
+
         try {
             const response = await fetch('/menu/api/state');
             const data = await response.json();
@@ -93,7 +104,7 @@ const MenuMgmt = {
 
         tbody.innerHTML = STATE.links.map(link => `
             <tr data-id="${link.id}" class="${link.parent_id ? 'child-row' : 'parent-row'}">
-                <td class="drag-handle">${getIcon('menu')}</td>
+                <td class="drag-handle">${window.getIcon('menu')}</td>
                 <td data-label="Label">
                     ${link.is_separator ? 
                         '<span class="separator-label">───── SEPARATOR ─────</span>' : 
@@ -118,8 +129,8 @@ const MenuMgmt = {
                 </td>
                 <td class="actions-cell">
                     <div class="action-buttons">
-                        <button type="button" class="btn-icon-edit" onclick="MenuMgmt.openEditModal(${link.id})" title="Edit">${getIcon('edit')}</button>
-                        <button type="button" class="btn-icon-delete" onclick="MenuMgmt.confirmDelete(${link.id}, '${escapeHtml(link.label)}')" title="Delete">${getIcon('delete')}</button>
+                        <button type="button" class="btn-icon-edit" onclick="MenuMgmt.openEditModal(${link.id})" title="Edit">${window.getIcon('edit')}</button>
+                        <button type="button" class="btn-icon-delete" onclick="MenuMgmt.confirmDelete(${link.id}, '${escapeHtml(link.label)}')" title="Delete">${window.getIcon('delete')}</button>
                     </div>
                 </td>
             </tr>
@@ -176,7 +187,7 @@ const MenuMgmt = {
      */
     openAddModal: function() {
         const titleEl = document.getElementById('modalTitle');
-        if (titleEl) titleEl.innerHTML = `${getIcon('add')} Add Menu Link`;
+        if (titleEl) titleEl.innerHTML = `${window.getIcon('add')} Add Menu Link`;
         
         const form = document.getElementById('linkForm');
         if (form) form.reset();
@@ -187,7 +198,7 @@ const MenuMgmt = {
         document.getElementById('linkSeparator').checked = false;
         
         const modal = document.getElementById('linkModal');
-        if (modal) modal.style.display = 'flex';
+        if (modal) modal.classList.add('active');
         document.body.classList.add('modal-open');
     },
 
@@ -202,7 +213,7 @@ const MenuMgmt = {
         if (!link) return;
 
         const titleEl = document.getElementById('modalTitle');
-        if (titleEl) titleEl.innerHTML = `${getIcon('edit')} Edit Menu Link`;
+        if (titleEl) titleEl.innerHTML = `${window.getIcon('edit')} Edit Menu Link`;
 
         document.getElementById('linkId').value = link.id;
         document.getElementById('linkSort').value = link.sort_order || '0';
@@ -216,7 +227,7 @@ const MenuMgmt = {
         document.getElementById('linkSeparator').checked = link.is_separator == 1;
 
         const modal = document.getElementById('linkModal');
-        if (modal) modal.style.display = 'flex';
+        if (modal) modal.classList.add('active');
         document.body.classList.add('modal-open');
     },
 
@@ -227,7 +238,7 @@ const MenuMgmt = {
      */
     closeModal: function() {
         const modal = document.getElementById('linkModal');
-        if (modal) modal.style.display = 'none';
+        if (modal) modal.classList.remove('active');
         document.body.classList.remove('modal-open');
     },
 
@@ -247,19 +258,19 @@ const MenuMgmt = {
         const url = id ? '/menu/api/update' : '/menu/api/add';
 
         btn.disabled = true;
-        btn.innerHTML = `${getIcon('waiting')} Saving...`;
+        btn.innerHTML = `${window.getIcon('waiting')} Saving...`;
 
         try {
             const formData = new FormData(e.target);
             
-            // Logic: Explicitly set checkbox fallbacks
+            // Ensure checkbox values are correctly represented
             formData.set('is_active', document.getElementById('linkActive').checked ? 1 : 0);
             formData.set('is_separator', document.getElementById('linkSeparator').checked ? 1 : 0);
 
-            const result = await apiPost(url, Object.fromEntries(formData));
+            const result = await window.apiPost(url, formData);
             if (result && result.success) {
                 this.closeModal();
-                await this.loadState();
+                await this.loadState(true);
                 
                 // Sidebar Reconciliation: Force menu refresh if global menubar exists
                 if (window.loadMenu) window.loadMenu();
@@ -278,7 +289,7 @@ const MenuMgmt = {
      * @returns {void}
      */
     confirmDelete: function(id, label) {
-        showConfirmModal({
+        window.showConfirmModal({
             title: 'Delete Menu Link',
             message: `Are you sure you want to delete "<strong>${escapeHtml(label)}</strong>"?`,
             subMessage: 'Warning: All nested sub-menu items will also be removed.',
@@ -287,14 +298,18 @@ const MenuMgmt = {
             hideCancel: true,
             alignment: 'center',
             onConfirm: async () => {
-                const result = await apiPost('/menu/api/delete', { id });
+                const result = await window.apiPost('/menu/api/delete', { id });
                 if (result && result.success) {
-                    // Local Reconciliation: Optimistically remove from state and re-render
+                    // Update local registry to reflect removal immediately
                     STATE.links = STATE.links.filter(l => l.id != id && l.parent_id != id);
                     STATE.parents = STATE.parents.filter(p => p.id != id);
                     this.renderUI();
                     
+                    // Refresh navigation sidebar if component is present
                     if (window.loadMenu) window.loadMenu();
+                    
+                    // Verify state with server authority
+                    await this.loadState(true);
                 }
             }
         });
@@ -312,34 +327,38 @@ const MenuMgmt = {
         const orders = {};
 
         btn.disabled = true;
-        btn.innerHTML = `${getIcon('waiting')} Updating...`;
+        btn.innerHTML = `${window.getIcon('waiting')} Updating...`;
 
         try {
-            // Logic: Resolve sequence and apply staggered ordering
+            // Calculate new sequence positions
             document.querySelectorAll('#menuTableBody tr').forEach((row, index) => {
                 if (row.dataset.id) {
                     orders[row.dataset.id] = (index + 1) * CONFIG.REORDER_STAGGER;
                 }
             });
 
+            // Transmit sequence data as a structured payload
             const response = await fetch('/menu/api/reorder', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+                },
                 body: JSON.stringify({ orders })
             });
             const result = await response.json();
 
             if (result && result.success) {
-                if (result.message) showToast(result.message, 'success');
+                if (result.message) window.showToast(result.message, 'success');
                 btn.classList.add('hidden');
-                await this.loadState();
+                await this.loadState(true);
                 if (window.loadMenu) window.loadMenu();
             } else {
-                showToast(result.error || 'Reorder failed', 'error');
+                window.showToast(result.error || 'Reorder failed', 'error');
             }
         } catch (err) {
             console.error('handleReorder failed:', err);
-            showToast('Network error', 'error');
+            window.showToast('Network error', 'error');
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalHtml;
