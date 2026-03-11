@@ -441,12 +441,14 @@ sub startup {
     $auth->post('/translation/api/translate')->to('Translation#translate');
 
     # --- Connect 4 Routes ---
-    $auth->get('/connect4/lobby')->to('connect4#lobby');
-    $auth->get('/connect4/create')->to('connect4#create');
-    $auth->get('/connect4/play/:id')->to('connect4#play');
-    $auth->post('/connect4/join')->to('connect4#join');
-    $auth->post('/connect4/move')->to('connect4#move');
-    $auth->post('/connect4/restart')->to('connect4#restart');
+    $auth->get('/connect4')->to('connect4#index');
+    $auth->get('/connect4/play/:id')->to('connect4#index');
+    $auth->get('/connect4/api/lobby')->to('connect4#api_lobby');
+    $auth->post('/connect4/api/create')->to('connect4#api_create');
+    $auth->post('/connect4/api/join')->to('connect4#api_join');
+    $auth->get('/connect4/api/game/:id')->to('connect4#api_game');
+    $auth->post('/connect4/api/move')->to('connect4#api_move');
+    $auth->post('/connect4/api/restart')->to('connect4#api_restart');
 
     # --- UNO Routes ---
     $auth->get('/uno/lobby')->to('uno#lobby');
@@ -537,16 +539,16 @@ sub startup {
     $family->post('/ai/api/chat')->to('AI#chat');
     $family->post('/ai/api/clear')->to('AI#clear');
 
-        # --- Chess Routes ---
-    $auth->get('/chess/lobby')->to('chess#lobby');
-    $auth->get('/chess/lobby_status')->to('chess#lobby_status');
-    $auth->post('/chess/create')->to('chess#create');
-    $auth->post('/chess/join')->to('chess#join_game');
-    $auth->get('/chess/play/:id')->to('chess#play');
-    $auth->post('/chess/move')->to('chess#move');
-    $auth->get('/chess/status/:id')->to('chess#poll_status');
-    $auth->post('/chess/offer_draw/:id')->to('chess#offer_draw');
-    $auth->post('/chess/respond_draw/:id')->to('chess#respond_draw');
+    # --- Chess Routes ---
+    $auth->get('/chess')->to('chess#index');
+    $auth->get('/chess/play/:id')->to('chess#index');
+    $auth->get('/chess/api/lobby')->to('chess#api_lobby');
+    $auth->post('/chess/api/create')->to('chess#api_create');
+    $auth->post('/chess/api/join')->to('chess#api_join');
+    $auth->get('/chess/api/game/:id')->to('chess#api_game');
+    $auth->post('/chess/api/move')->to('chess#api_move');
+    $auth->post('/chess/api/offer_draw/:id')->to('chess#api_offer_draw');
+    $auth->post('/chess/api/respond_draw/:id')->to('chess#api_respond_draw');
 }
 
 1;
