@@ -60,12 +60,15 @@ document.addEventListener('DOMContentLoaded', () => {
  * Synchronizes the module state with the server.
  * 
  * @async
+ * @param {boolean} [force=false] - If true, bypasses interaction guards (modals/focus).
  * @returns {Promise<void>}
  */
-async function loadState() {
+async function loadState(force = false) {
     // Lifecycle: inhibit background sync if user is actively interacting with forms
-    const anyModalOpen = document.querySelector('.modal-overlay.active');
-    if (anyModalOpen && STATE.birthdays.length > 0) return;
+    const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+    
+    if (!force && (anyModalOpen || inputFocused) && STATE.birthdays.length > 0) return;
 
     try {
         const response = await fetch('/birthdays/api/state');
@@ -108,7 +111,7 @@ async function handleBirthdaySubmit(event) {
 
         if (result && result.success) {
             closeModal();
-            await loadState();
+            await loadState(true);
         }
     } finally {
         btn.disabled = false;
@@ -135,8 +138,7 @@ function confirmDelete(id, name) {
         onConfirm: async () => {
             const result = await apiPost(`/birthdays/api/delete/${id}`);
             if (result && result.success) {
-                STATE.birthdays = STATE.birthdays.filter(b => b.id != id);
-                renderUI();
+                await loadState(true);
             }
         }
     });
