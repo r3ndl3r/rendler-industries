@@ -21,6 +21,11 @@
     </div>
 
     <div id="spendingSummaryContainer" class="spending-stats">
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse"><%= icon('receipts') %></span>
+            <p class="loading-label">Calculating Aggregates...</p>
+        </div>
     </div>
 
     <div class="ledger-filters">
@@ -76,6 +81,15 @@
                 </tr>
             </thead>
             <tbody id="receiptsTableBody">
+                <tr>
+                    <td colspan="7">
+                        <div class="component-loading">
+                            <div class="loading-scan-line"></div>
+                            <span class="loading-icon-pulse"><%= icon('waiting') %></span>
+                            <p class="loading-label">Synchronizing Ledger...</p>
+                        </div>
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
