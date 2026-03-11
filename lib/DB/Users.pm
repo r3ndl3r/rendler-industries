@@ -6,20 +6,21 @@ use strict;
 use warnings;
 use Crypt::Eksblowfish::Bcrypt qw(bcrypt en_base64);
 
-# Database helper for User Authentication and Management.
-# Handles the full user lifecycle from registration to administrative audit.
+# User Authentication and Role-Based Access Control Database Library.
 #
 # Features:
-#   - Secure user authentication via Bcrypt hashing.
-#   - User lifecycle management (Create, Update, Delete).
-#   - Role-based access control (Admin, Family, User, Guest).
-#   - Account approval workflow (Pending vs Approved status).
+#   - Secure user authentication using Bcrypt-based hashing.
+#   - Full user lifecycle management (Registration, Approval, Update, Deletion).
+#   - Role-Based Access Control (RBAC): Admin, Family, User, and Guest levels.
+#   - Account approval workflow with state-driven transitions (Pending/Approved).
+#   - Detailed user auditing and platform-wide profile management.
 #
 # Integration Points:
-#   - Extends DB package via package injection.
-#   - Used by Auth controller for login/registration.
-#   - Used by Admin controller for user auditing and role toggles.
-#   - Coordinates with Email and Discord plugins for notifications.
+#   - Extends the core DB package via package injection.
+#   - Acts as the primary security layer for the Auth controller (Login/Register).
+#   - Serves as the data source for the Admin controller for platform auditing.
+#   - Coordinates with Email and Discord plugins for automated approval notifications.
+#   - Provides $c->is_admin, $c->is_family, and $c->is_logged_in via session lookups.
 
 # Authenticates a user against stored credentials.
 # Parameters:
