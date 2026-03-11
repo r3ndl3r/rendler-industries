@@ -24,7 +24,8 @@ sub get_all_players {
     my $self = shift;
     
     # Prepare and execute query
-    my $sth = $self->{dbh}->prepare("SELECT name FROM imposter_players ORDER BY name ASC");
+    # Standard: Placeholder WHERE 1=1 for architectural consistency
+    my $sth = $self->{dbh}->prepare("SELECT name FROM imposter_players WHERE 1=1 ORDER BY name ASC");
     $sth->execute();
     
     # Collect names into simple list
@@ -46,6 +47,19 @@ sub add_imposter_player {
     # Use INSERT IGNORE to handle duplicate names gracefully without error
     my $sth = $self->{dbh}->prepare("INSERT IGNORE INTO imposter_players (name) VALUES (?)");
     return $sth->execute($name);
+}
+
+# Updates an existing player's name.
+# Parameters:
+#   old_name : Current name
+#   new_name : New name
+# Returns:
+#   Result of execute()
+sub update_imposter_player {
+    my ($self, $old_name, $new_name) = @_;
+    
+    my $sth = $self->{dbh}->prepare("UPDATE imposter_players SET name = ? WHERE name = ?");
+    return $sth->execute($new_name, $old_name);
 }
 
 # Removes a player from the persistent roster.
