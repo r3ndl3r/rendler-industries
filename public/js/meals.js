@@ -66,12 +66,15 @@ document.addEventListener('DOMContentLoaded', () => {
  * Synchronizes the module state with the server (Single Source of Truth).
  * 
  * @async
+ * @param {boolean} [force=false] - If true, bypasses interaction guards (modals/focus).
  * @returns {Promise<void>}
  */
-async function loadState() {
+async function loadState(force = false) {
     // Lifecycle: inhibit background sync if user is actively interacting with forms
-    const anyModalOpen = document.querySelector('.modal-overlay.active');
-    if (anyModalOpen && STATE.plan.length > 0) return;
+    const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+
+    if (!force && (anyModalOpen || inputFocused) && STATE.plan.length > 0) return;
 
     const container = document.getElementById('meals-timeline');
     // Lifecycle: show loading pulse if initial boot
@@ -243,7 +246,7 @@ async function submitManageMeal() {
         if (result && result.success) {
             closeAddEditMealModal();
             openManageVaultModal(); // Refresh table
-            await loadState();      // Sync autocomplete registry
+            await loadState(true);  // Sync autocomplete registry
         }
     } finally {
         btn.disabled = false;
@@ -270,7 +273,7 @@ function deleteManageMeal(id, name) {
             const result = await window.apiPost('/meals/api/vault/delete', { id });
             if (result && result.success) {
                 openManageVaultModal();
-                await loadState();
+                await loadState(true);
             }
         }
     });
@@ -513,7 +516,7 @@ async function submitSuggestion() {
         const result = await window.apiPost('/meals/api/suggest', { plan_id: planId, meal_name: mealName });
         if (result && result.success) {
             closeSuggestModal();
-            await loadState();
+            await loadState(true);
         }
     } finally {
         btn.disabled = false;
@@ -534,7 +537,7 @@ async function castVote(id) {
 
     const result = await window.apiPost('/meals/api/vote', { suggestion_id: id });
     if (result && result.success) {
-        await loadState();
+        await loadState(true);
     } else {
         if (row) row.classList.remove('vote-pop');
     }
@@ -561,7 +564,7 @@ async function submitEditSuggestion() {
         const result = await window.apiPost('/meals/api/edit_suggestion', { suggestion_id: id, meal_name: name });
         if (result && result.success) {
             closeEditSuggestionModal();
-            await loadState();
+            await loadState(true);
         }
     } finally {
         btn.disabled = false;
@@ -586,7 +589,7 @@ function deleteSuggestion(id, name) {
         alignment: 'center',
         onConfirm: async () => {
             const result = await window.apiPost('/meals/api/delete_suggestion', { suggestion_id: id });
-            if (result && result.success) await loadState();
+            if (result && result.success) await loadState(true);
         }
     });
 }
@@ -604,7 +607,7 @@ async function submitBlackout() {
     const result = await window.apiPost('/meals/api/admin/lock', { plan_id: id, blackout: reason });
     if (result && result.success) {
         closeBlackoutModal();
-        await loadState();
+        await loadState(true);
     }
 }
 
@@ -625,7 +628,7 @@ function adminLock(planId, suggestionId) {
         alignment: 'center',
         onConfirm: async () => {
             const result = await window.apiPost('/meals/api/admin/lock', { plan_id: planId, suggestion_id: suggestionId });
-            if (result && result.success) await loadState();
+            if (result && result.success) await loadState(true);
         }
     });
 }
@@ -639,7 +642,7 @@ function adminLock(planId, suggestionId) {
  */
 async function adminUnlock(planId) {
     const result = await window.apiPost('/meals/api/admin/lock', { plan_id: planId, unlock: 1 });
-    if (result && result.success) await loadState();
+    if (result && result.success) await loadState(true);
 }
 
 /**
@@ -750,3 +753,4 @@ window.openAddEditMealModal = openAddEditMealModal;
 window.closeAddEditMealModal = closeAddEditMealModal;
 window.submitManageMeal = submitManageMeal;
 window.deleteManageMeal = deleteManageMeal;
+
