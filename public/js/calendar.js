@@ -35,6 +35,7 @@ let STATE = {
     filteredEvents: [],             // Active view filtered collection
     categories: [],                 // List of unique event category labels
     users: [],                      // Family roster for attendee selection
+    channels: [],                   // Available notification channels
     isAdmin: false,                 // Authorization gate for administrative actions
     currentUserId: null,            // ID of currently logged-in user
     currentDate: new Date(),        // Active temporal pointer
@@ -93,6 +94,7 @@ async function loadState(force = false) {
         if (data && data.success) {
             STATE.categories = data.categories || [];
             STATE.users = data.users || [];
+            STATE.channels = data.channels || [];
             STATE.isAdmin = !!data.is_admin;
             STATE.currentUserId = data.current_user_id;
             
@@ -211,6 +213,12 @@ function populateDropdowns() {
     // 2. Attendee Checkboxes
     const recipients = STATE.users.map(u => ({ id: u.id, label: escapeHtml(u.username) }));
     window.renderSelectorGrid('attendees-container', recipients, { name: 'attendees[]', prefix: 'attendee', type: 'day' });
+
+    // 3. Notification Channel Checkboxes
+    if (STATE.channels.length > 0) {
+        const channelOptions = STATE.channels.map(c => ({ id: c.id, label: `${window.getIcon(c.icon)} ${escapeHtml(c.label)}` }));
+        window.renderSelectorGrid('channels-container', channelOptions, { name: 'notification_channels[]', prefix: 'channel', type: 'day' });
+    }
 }
 
 /**
@@ -622,6 +630,28 @@ function setupEventListeners() {
             });
         };
     }
+
+    const notifyCb = document.getElementById('eventNotify');
+    const channelGroup = document.getElementById('notificationChannelsGroup');
+    const notifyMinutesInput = document.getElementById('notificationMinutes');
+    if (notifyCb && channelGroup) {
+        notifyCb.onchange = () => {
+            if (notifyCb.checked) {
+                channelGroup.classList.remove('hidden');
+                notifyMinutesInput.value = 60;
+                
+                // Select Email by default if nothing selected
+                const checked = document.querySelectorAll('#channels-container input:checked');
+                if (checked.length === 0) {
+                    const emailCb = document.querySelector('#channels-container input[value="email"]');
+                    if (emailCb) emailCb.checked = true;
+                }
+            } else {
+                channelGroup.classList.add('hidden');
+                notifyMinutesInput.value = 0;
+            }
+        };
+    }
 }
 
 /**
@@ -640,16 +670,30 @@ async function handleEventSubmit(event) {
     const url = id ? '/calendar/api/edit' : '/calendar/api/add';
     
     const formData = new FormData(form);
+    
+    // VALIDATION: If notifications are enabled, at least one attendee MUST be selected
+    const notifyMins = parseInt(document.getElementById('notificationMinutes').value || 0);
+    const attendeesCount = document.querySelectorAll('#attendees-container input:checked').length;
+    
+    if (notifyMins > 0 && attendeesCount === 0) {
+        window.showToast('Please select at least one attendee to receive notifications', 'error');
+        return;
+    }
+
     const start = `${formData.get('start_date')} ${formData.get('start_time') || '00:00'}:00`;
     const end = `${formData.get('end_date')} ${formData.get('end_time') || '23:59'}:59`;
     formData.set('start_date', start);
     formData.set('end_date', end);
 
+    // Explicitly set checkbox values to ensure they are captured in FormData.
     formData.set('all_day', document.getElementById('eventAllDay').checked ? 1 : 0);
     formData.set('is_private', document.getElementById('eventIsPrivate').checked ? 1 : 0);
     
-    const notifyCb = document.getElementById('sendNotifications');
-    if (notifyCb) formData.set('send_notifications', notifyCb.checked ? 1 : 0);
+    const sendNotifyCb = document.getElementById('sendNotifications');
+    if (sendNotifyCb) formData.set('send_notifications', sendNotifyCb.checked ? 1 : 0);
+
+    const eventNotifyCb = document.getElementById('eventNotify');
+    if (eventNotifyCb) formData.set('event_notify', eventNotifyCb.checked ? 1 : 0);
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
@@ -731,6 +775,16 @@ function openAddEventModal(dateStr) {
     document.getElementById('modalTitle').innerHTML = `Add Event`;
     document.getElementById('deleteEventBtn').classList.add('hidden');
     document.getElementById('cloneEventBtn').classList.add('hidden');
+
+    // Reset Notifications
+    const notifyCb = document.getElementById('eventNotify');
+    if (notifyCb) {
+        notifyCb.checked = false;
+        const channelGroup = document.getElementById('notificationChannelsGroup');
+        if (channelGroup) channelGroup.classList.add('hidden');
+        document.getElementById('notificationMinutes').value = 0;
+        document.querySelectorAll('#channels-container input').forEach(cb => cb.checked = false);
+    }
     
     if (dateStr) {
         document.getElementById('eventStartDate').value = dateStr;
@@ -775,6 +829,24 @@ function openEditModalById(id) {
     document.querySelectorAll('#attendees-container input[type="checkbox"]').forEach(cb => {
         cb.checked = attendeeIds.includes(cb.value);
     });
+
+    // Populate Notifications
+    const notifyCb = document.getElementById('eventNotify');
+    const minsInput = document.getElementById('notificationMinutes');
+    const channelGroup = document.getElementById('notificationChannelsGroup');
+    if (notifyCb && minsInput && channelGroup) {
+        const mins = parseInt(event.notification_minutes || 0);
+        notifyCb.checked = mins > 0;
+        minsInput.value = mins;
+        
+        if (mins > 0) channelGroup.classList.remove('hidden');
+        else channelGroup.classList.add('hidden');
+        
+        const channelList = (event.notification_channels || '').split(',');
+        document.querySelectorAll('#channels-container input').forEach(cb => {
+            cb.checked = channelList.includes(cb.value);
+        });
+    }
 
     document.getElementById('modalTitle').innerHTML = `Edit Event`;
     
