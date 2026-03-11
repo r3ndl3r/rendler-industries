@@ -3,48 +3,35 @@
 package MyApp::Controller::Chess;
 use Mojo::Base 'Mojolicious::Controller';
 
-# Controller for the Chess Online multiplayer game.
-# Handles game routing, lobby management, and move processing.
+# Controller for the Chess multiplayer interface.
 #
 # Features:
-#   - Lobby management (Waiting games list).
-#   - Active game tracking and state polling.
-#   - Move processing with validation delegation.
-#   - Draw offer and response logic.
+#   - Unified application entry point (/chess).
+#   - JSON APIs for lobby discovery and active game synchronization.
+#   - Validation-integrated move processing and FEN state management.
+#   - Collaborative draw negotiation and resignation logic.
 #
 # Integration Points:
-#   - DB::Chess for persistence and move validation.
-#   - Router: Restricted to authenticated users via bridge.
+#   - Depends on DB::Chess for all game state persistence.
+#   - Restricted to authenticated users via global session bridge.
 
-# Renders the chess lobby showing available games to join.
-# Route: GET /chess/lobby
-# Parameters: None
-# Returns:
-#   Rendered HTML template 'chess/lobby' with waiting and active games.
-sub lobby {
+# Entry Point: Serves the base skeleton for both lobby and active games.
+# Route: GET /chess and GET /chess/play/:id
+# Returns: Template (chess.html.ep)
+sub index {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
-    my $user_id = $c->current_user_id;
-    my $lobbies = $c->db->get_open_chess_lobbies();
-    my $user_games = $c->db->get_user_chess_games($user_id);
-    
-    # Filter out user's own games from the general "Open Games" list
-    my @filtered_lobbies = grep { $_->{player1_id} != $user_id } @$lobbies;
-    
-    $c->render('chess/lobby', 
-        lobbies => \@filtered_lobbies,
-        user_games => $user_games
-    );
+    $c->render('chess');
 }
 
-# API Endpoint: Returns current lobby status as JSON.
-# Route: GET /chess/lobby_status
-# Parameters: None
-# Returns:
-#   JSON object { open_games, user_games }
-sub lobby_status {
+# API Endpoint: Retrieves current lobby status for matchmaking.
+# Route: GET /chess/api/lobby
+# Returns: JSON object { success, open_games, user_games }
+sub api_lobby {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+        
     my $user_id = $c->current_user_id;
     my $lobbies = $c->db->get_open_chess_lobbies();
     my $user_games = $c->db->get_user_chess_games($user_id);
@@ -52,136 +39,136 @@ sub lobby_status {
     my @filtered_lobbies = grep { $_->{player1_id} != $user_id } @$lobbies;
     
     $c->render(json => {
+        success => 1,
         open_games => \@filtered_lobbies,
         user_games => $user_games
     });
 }
 
-# Creates a new chess game session.
-# Route: POST /chess/create
-# Parameters: None
-# Returns:
-#   Redirects to the play screen for the new game ID.
-sub create {
+# API Endpoint: Initializes a fresh game session.
+# Route: POST /chess/api/create
+# Returns: JSON object { success, game_id }
+sub api_create {
     my $c = shift;
-    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+
     my $uid = $c->current_user_id;
     my $game_id = $c->db->create_chess_lobby($uid);
-    $c->redirect_to("/chess/play/$game_id");
+
+    $c->render(json => { success => 1, game_id => $game_id });
 }
 
-# Joins an existing chess lobby as player 2.
-# Route: POST /chess/join
-# Parameters:
-#   - game_id : Unique ID of the lobby.
-# Returns:
-#   Redirects to play screen on success.
-sub join_game {
+# API Endpoint: Registers the current user as the second participant.
+# Route: POST /chess/api/join
+# Returns: JSON object { success, game_id, error }
+sub api_join {
     my $c = shift;
-    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+
     my $uid = $c->current_user_id;
-    my $game_id = $c->param('game_id');
     
-    if ($c->db->join_chess_lobby($game_id, $uid)) {
-        $c->redirect_to("/chess/play/$game_id");
-    } else {
-        $c->flash(error => 'Could not join game.');
-        $c->redirect_to('/chess/lobby');
-    }
-}
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $game_id = $data->{id};
 
-# Renders the chess board and game interface.
-# Route: GET /chess/play/:id
-# Parameters:
-#   - id : Game session ID.
-# Returns:
-#   Rendered template 'chess/chess'.
-sub play {
-    my $c = shift;
-    return $c->redirect_to('/login') unless $c->is_logged_in;
-    my $game_id = $c->param('id');
-    my $user_id = $c->current_user_id;
-    
-    my $game = $c->db->get_chess_game($game_id);
-    return $c->render_error('Game not found', 404) unless $game;
-    
-    # Verify participation
-    return $c->render('noperm') unless $game->{player1_id} == $user_id || $game->{player2_id} == $user_id;
-    
-    $c->render('chess/chess', game => $game, game_id => $game_id);
-}
+    my $success = $c->db->join_chess_lobby($game_id, $uid);
 
-# Processes a player move.
-# Route: POST /chess/move
-# Parameters:
-#   - game_id : Session ID.
-#   - move    : SAN or LAN move string.
-# Returns:
-#   JSON success/error status.
-sub move {
-    my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
-    my $game_id = $c->param('game_id');
-    my $move = $c->param('move');
-    my $user_id = $c->current_user_id;
-    
-    my ($success, $error) = $c->db->process_chess_move($game_id, $user_id, $move);
-    
     if ($success) {
-        $c->render(json => { success => 1 });
+        return $c->render(json => { success => 1, game_id => $game_id });
     } else {
-        $c->render(json => { success => 0, error => $error });
+        return $c->render(json => { success => 0, error => "Could not join game" });
     }
 }
 
-# API Endpoint: Returns the latest game state for long-polling.
-# Route: GET /chess/status/:id
-# Parameters:
-#   - id : Game session ID.
-# Returns:
-#   JSON object with full game state.
-sub poll_status {
+# API Endpoint: Retrieves full game metadata and FEN state.
+# Route: GET /chess/api/game/:id
+# Returns: JSON object { success, game, error }
+sub api_game {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
-    my $game_id = $c->param('id');
-    my $game = $c->db->get_chess_game($game_id);
-    $c->render(json => $game);
-}
-
-# Issues a draw offer to the opponent.
-# Route: POST /chess/offer_draw/:id
-# Parameters:
-#   - id : Game session ID.
-sub offer_draw {
-    my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+        
     my $game_id = $c->param('id');
     my $user_id = $c->current_user_id;
     
-    if ($c->db->offer_chess_draw($game_id, $user_id)) {
-        $c->render(json => { success => 1 });
-    } else {
-        $c->render(json => { success => 0 });
+    my $game = $c->db->get_chess_game_state($game_id);
+    
+    unless ($game) {
+        return $c->render(json => { success => 0, error => 'Game not found' }, status => 404);
     }
+    
+    # Security: Verify participation (spectators currently disabled)
+    unless ($game->{player1_id} == $user_id || ($game->{player2_id} && $game->{player2_id} == $user_id)) {
+        return $c->render(json => { success => 0, error => 'Not a participant' }, status => 403);
+    }
+    
+    $c->render(json => { success => 1, game => $game });
 }
 
-# Responds to a pending draw offer.
-# Route: POST /chess/respond_draw/:id
-# Parameters:
-#   - id     : Game session ID.
-#   - accept : Boolean (1 to accept).
-sub respond_draw {
+# API Endpoint: Processes a validated move from the client engine.
+# Route: POST /chess/api/move
+# Returns: JSON object { success, error }
+sub api_move {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+        
+    my $data = $c->req->json || $c->req->params->to_hash;
+    unless ($data && $data->{game_id}) {
+        return $c->render(json => { success => 0, error => 'Invalid payload' });
+    }
+
+    my $game_id      = $data->{game_id};
+    my $new_fen      = $data->{fen};
+    my $next_turn_id = $data->{next_turn_id} // 0;
+    my $status       = $data->{status} // 'active';
+    my $winner_id    = $data->{winner_id};
+    my $last_move    = $data->{last_move};
+
+    # Transform serialized "null", "NaN", or empty strings to Perl undef for nullable columns.
+    $winner_id = undef if !defined $winner_id || $winner_id eq 'null' || $winner_id eq 'NaN' || $winner_id eq '';
+    $last_move = undef if !defined $last_move || $last_move eq 'null' || $last_move eq 'NaN' || $last_move eq '';
+    
+    # Ensure next_turn_id defaults to 0 for non-nullable integer constraints.
+    $next_turn_id = 0 if !defined $next_turn_id || $next_turn_id eq 'null' || $next_turn_id eq 'NaN' || $next_turn_id eq '';
+
+    my $success = $c->db->update_chess_game_state(
+        $game_id, $next_turn_id, $new_fen, $status, $winner_id, $last_move
+    );
+    
+    $c->render(json => { success => $success });
+}
+
+# API Endpoint: Issues a draw offer to the opposing participant.
+# Route: POST /chess/api/offer_draw/:id
+# Returns: JSON object { success }
+sub api_offer_draw {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+        
     my $game_id = $c->param('id');
-    my $accept = $c->param('accept');
     my $user_id = $c->current_user_id;
     
-    if ($c->db->respond_chess_draw($game_id, $user_id, $accept)) {
-        $c->render(json => { success => 1 });
-    } else {
-        $c->render(json => { success => 0 });
-    }
+    my $success = $c->db->offer_chess_draw($game_id, $user_id);
+    $c->render(json => { success => $success });
+}
+
+# API Endpoint: Processes the resolution of an inbound draw offer.
+# Route: POST /chess/api/respond_draw/:id
+# Returns: JSON object { success }
+sub api_respond_draw {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+        
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $game_id = $c->param('id');
+    my $accept = $data->{accept} // $c->param('accept');
+    
+    my $success = $c->db->respond_chess_draw($game_id, $accept);
+    $c->render(json => { success => $success });
 }
 
 1;
