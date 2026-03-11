@@ -6,33 +6,37 @@ use strict;
 use warnings;
 use Mojo::JSON qw(encode_json decode_json);
 
-# Database helper for Connect 4 Game Logic.
+# Database Library for the Connect 4 multiplayer game engine.
+#
 # Features:
-#   - Lobby management (Create, Join, List)
-#   - Game State management (Move validation, Gravity logic)
-#   - Win detection (Horizontal, Vertical, Diagonal)
-# Integration points:
-#   - Extends DB package via package injection
-#   - Uses Mojo::JSON for board state serialization
+#   - Lobby orchestration (Creation, joining, and discovery).
+#   - Game state management with JSON board serialization.
+#   - Real-time move validation and gravity-based piece placement.
+#   - Automated win detection (Horizontal, Vertical, and Diagonal vectors).
+#
+# Privacy Mandate:
+#   - Game-scoped isolation; players can only interact with sessions they are 
+#     actively participating in. Public data is restricted to the lobby list.
+#
+# Integration Points:
+#   - Extends the core DB package via package injection.
+#   - Provides state payloads for real-time polling synchronization.
+#   - Coordinates with user systems for participant attribution.
 
-# Creates a new game lobby for the user.
+# Creates a new game lobby for the host user.
 # Parameters:
-#   user_id : Unique ID of the host player
-# Returns:
-#   Integer ID of the newly created game session
+#   - user_id: Unique identifier of the host player (Int).
+# Returns: Integer ID of the newly created game session.
 sub DB::create_connect4_lobby {
     my ($self, $user_id) = @_;
-    
-    # Verify database connectivity
     $self->ensure_connection;
     
     # Initialize empty 6x7 board (0 = empty)
-    # 6 Rows (0-5), 7 Columns (0-6)
     my @board;
     for (1..6) { push @board, [0,0,0,0,0,0,0]; }
     my $json_board = encode_json(\@board);
     
-    # Cleanup: Delete old "waiting" lobbies by this user to maintain hygiene
+    # Cleanup: Maintain hygiene by removing old stagnant lobbies
     $self->{dbh}->do("DELETE FROM connect4_sessions WHERE player1_id = ? AND status = 'waiting'", undef, $user_id);
 
     my $sth = $self->{dbh}->prepare(
@@ -40,16 +44,14 @@ sub DB::create_connect4_lobby {
     );
     $sth->execute($user_id, $user_id, $json_board);
     
-    return $self->{dbh}->last_insert_id(undef, undef, undef, undef);
+    return $self->{dbh}->last_insert_id();
 }
 
-# Retrieves a list of all games currently in 'waiting' status.
+# Retrieves all game sessions currently awaiting an opponent.
 # Parameters: None
-# Returns:
-#   ArrayRef of HashRefs containing open game details (id, host_name, created_at)
+# Returns: ArrayRef of HashRefs [ {id, host_name, created_at}, ... ]
 sub DB::get_open_connect4_lobbies {
     my $self = shift;
-    
     $self->ensure_connection;
     
     return $self->{dbh}->selectall_arrayref(
@@ -62,18 +64,38 @@ sub DB::get_open_connect4_lobbies {
     );
 }
 
-# Adds a second player to an existing lobby.
+# Retrieves all active or waiting games involving a specific user.
 # Parameters:
-#   game_id : Target game ID
-#   user_id : ID of the joining player
-# Returns:
-#   Result of execute() (true on success, 0 on failure)
-sub DB::join_connect4_lobby {
-    my ($self, $game_id, $user_id) = @_;
-    
+#   - user_id: Unique identifier of the user (Int).
+# Returns: ArrayRef of HashRefs containing game summaries.
+sub DB::get_user_connect4_games {
+    my ($self, $user_id) = @_;
     $self->ensure_connection;
     
-    # Prevent user from joining their own game
+    my $sql = "
+        SELECT g.id, u1.username as p1_name, u2.username as p2_name, g.status, g.created_at
+        FROM connect4_sessions g
+        JOIN users u1 ON g.player1_id = u1.id
+        LEFT JOIN users u2 ON g.player2_id = u2.id
+        WHERE (g.player1_id = ? OR g.player2_id = ?)
+          AND g.status IN ('waiting', 'active')
+          AND g.game_type = 'connect4'
+        ORDER BY g.created_at DESC
+    ";
+    
+    return $self->{dbh}->selectall_arrayref($sql, { Slice => {} }, $user_id, $user_id);
+}
+
+# Adds a second participant to an established lobby.
+# Parameters:
+#   - game_id: Target session identifier (Int).
+#   - user_id: Identifier of the joining player (Int).
+# Returns: Boolean success.
+sub DB::join_connect4_lobby {
+    my ($self, $game_id, $user_id) = @_;
+    $self->ensure_connection;
+    
+    # Validation: Prevent self-play
     my ($p1) = $self->{dbh}->selectrow_array("SELECT player1_id FROM connect4_sessions WHERE id = ?", undef, $game_id);
     return 0 if ($p1 && $p1 == $user_id);
 
@@ -83,17 +105,14 @@ sub DB::join_connect4_lobby {
     return $sth->execute($user_id, $game_id);
 }
 
-# Retrieves full game record and deserializes the board state.
+# Retrieves full game metadata and deserializes the board matrix.
 # Parameters:
-#   game_id : Unique game ID
-# Returns:
-#   HashRef containing full game record with decoded 'board' field, or undef if not found
+#   - game_id: Unique session identifier (Int).
+# Returns: HashRef of game state or undef.
 sub DB::get_connect4_game_state {
     my ($self, $game_id) = @_;
-    
     $self->ensure_connection;
     
-    # Joins users table to get names
     my $sql = "
         SELECT g.*, 
                u1.username as p1_name, 
@@ -111,20 +130,18 @@ sub DB::get_connect4_game_state {
     return $game;
 }
 
-# Processes a player move, updates board, and checks win conditions.
+# Processes a column selection, updates the board, and evaluates win conditions.
 # Parameters:
-#   game_id : Unique game ID
-#   user_id : Player making the move
-#   col     : Column index (0-6)
-# Returns:
-#   Boolean (1 for success/valid move, 0 for invalid move or failure)
+#   - game_id: Session identifier (Int).
+#   - user_id: Player performing the action (Int).
+#   - col: Target column index (0-6).
+# Returns: Boolean success.
 sub DB::make_connect4_move {
     my ($self, $game_id, $user_id, $col) = @_;
     
-    # Retrieve current state to validate move
     my $game = $self->get_connect4_game_state($game_id);
     
-    # Validation Checks
+    # Interaction Guards
     return 0 unless $game && $game->{status} eq 'active';
     return 0 unless $game->{current_turn} == $user_id;
     return 0 if $col < 0 || $col > 6;
@@ -133,8 +150,7 @@ sub DB::make_connect4_move {
     my $player_num = ($game->{player1_id} == $user_id) ? 1 : 2;
     my $placed_row = -1;
 
-    # Gravity Logic: Find lowest empty spot in column
-    # Iterate from bottom (row 5) to top (row 0)
+    # Logic: Gravity resolution
     for (my $row = 5; $row >= 0; $row--) {
         if ($board->[$row][$col] == 0) {
             $board->[$row][$col] = $player_num;
@@ -142,22 +158,18 @@ sub DB::make_connect4_move {
             last;
         }
     }
-    return 0 if $placed_row == -1; # Column is full
+    return 0 if $placed_row == -1;
 
-    # Check Win Condition
+    # Lifecycle: evaluate game termination
     my $winner = _check_win($board, $player_num);
-    
-    # Determine next state
     my $next_turn = ($winner) ? 0 : ($player_num == 1 ? $game->{player2_id} : $game->{player1_id});
     my $status = ($winner) ? 'finished' : 'active';
     
-    # Check for Draw (Board full)
     if (!$winner && _is_board_full($board)) {
         $status = 'finished';
-        $winner = 0; # 0 indicates draw
+        $winner = 0; 
     }
     
-    # Persist updates to database
     my $sth = $self->{dbh}->prepare(
         "UPDATE connect4_sessions SET board_state = ?, current_turn = ?, status = ?, winner_id = ? WHERE id = ?"
     );
@@ -165,54 +177,50 @@ sub DB::make_connect4_move {
     return 1;
 }
 
-# Internal Helper: Checks if the board has no empty slots left.
+# Verifies if any empty slots remain on the board.
 # Parameters:
-#   board : 2D Array Reference
-# Returns:
-#   Boolean (1 if full, 0 if space remains)
+#   - board: 2D matrix reference.
+# Returns: Boolean (1 if full).
 sub _is_board_full {
     my $board = shift;
-    
-    # Check top row. If all filled, board is full.
     for my $c (0..6) {
         return 0 if $board->[0][$c] == 0;
     }
     return 1;
 }
 
-# Internal Helper: Checks all possible win vectors (Horizontal, Vertical, Diagonal).
+# Scans for four consecutive pieces along all valid vectors.
 # Parameters:
-#   board : 2D Array Reference
-#   p     : Player number (1 or 2)
-# Returns:
-#   Boolean (1 if winner, 0 otherwise)
+#   - board: 2D matrix reference.
+#   - p: Player identifier (1 or 2).
+# Returns: Boolean (1 if win detected).
 sub _check_win {
     my ($board, $p) = @_;
     my $rows = 6;
     my $cols = 7;
 
-    # 1. Horizontal Check (-)
+    # Vector A: Horizontal
     for my $r (0 .. $rows-1) {
         for my $c (0 .. $cols-4) {
             return 1 if ($board->[$r][$c] == $p && $board->[$r][$c+1] == $p && $board->[$r][$c+2] == $p && $board->[$r][$c+3] == $p);
         }
     }
 
-    # 2. Vertical Check (|)
+    # Vector B: Vertical
     for my $r (0 .. $rows-4) {
         for my $c (0 .. $cols-1) {
             return 1 if ($board->[$r][$c] == $p && $board->[$r+1][$c] == $p && $board->[$r+2][$c] == $p && $board->[$r+3][$c] == $p);
         }
     }
 
-    # 3. Diagonal Up-Right (/)
+    # Vector C: Diagonal (Up-Right)
     for my $r (3 .. $rows-1) {
         for my $c (0 .. $cols-4) {
             return 1 if ($board->[$r][$c] == $p && $board->[$r-1][$c+1] == $p && $board->[$r-2][$c+2] == $p && $board->[$r-3][$c+3] == $p);
         }
     }
 
-    # 4. Diagonal Down-Right (\)
+    # Vector D: Diagonal (Down-Right)
     for my $r (0 .. $rows-4) {
         for my $c (0 .. $cols-4) {
             return 1 if ($board->[$r][$c] == $p && $board->[$r+1][$c+1] == $p && $board->[$r+2][$c+2] == $p && $board->[$r+3][$c+3] == $p);
@@ -222,21 +230,18 @@ sub _check_win {
     return 0;
 }
 
-# Resets the game board for a rematch.
+# Resets the session board for a consecutive round.
 # Parameters:
-#   game_id : Unique Game ID
-# Returns:
-#   1 on success
+#   - game_id: Unique session identifier (Int).
+# Returns: Boolean success.
 sub DB::reset_connect4_game {
     my ($self, $game_id) = @_;
     $self->ensure_connection;
     
-    # Create fresh empty board
     my @board;
     for (1..6) { push @board, [0,0,0,0,0,0,0]; }
     my $json_board = encode_json(\@board);
     
-    # Reset status to 'active', clear winner, keep players
     my $sth = $self->{dbh}->prepare(
         "UPDATE connect4_sessions SET board_state = ?, status = 'active', winner_id = NULL WHERE id = ?"
     );
