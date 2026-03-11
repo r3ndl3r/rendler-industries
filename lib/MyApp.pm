@@ -249,6 +249,7 @@ sub startup {
 
                 $sys->run_timer_maintenance();
                 $sys->run_reminder_maintenance($now);
+                $sys->run_calendar_notifications($now);
                 $sys->run_meals_maintenance($now);
 
                 # Asynchronous Emoji Task: Correct lock release chain
