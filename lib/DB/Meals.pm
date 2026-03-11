@@ -5,17 +5,19 @@ package DB::Meals;
 use strict;
 use warnings;
 
-# Database helper for Family Meal Planner.
+# Database Library for the Family Meal Planner.
 #
 # Features:
 #   - Meal vault management (unique meal names for autocomplete).
 #   - 4-day rolling meal plan schedule with automated window generation.
 #   - Collaborative suggestion and vote tracking with toggled state.
 #   - Admin lock-in and blackout day management.
+#   - Privacy Mandate: Family-level resource; plans and suggestions are shared across authorized members.
 #
-# Integration points:
-#   - Extends DB package via package injection.
-#   - Used by Meals controller for all CRUD and SPA data fetching.
+# Integration Points:
+#   - Extends the core DB package via package injection.
+#   - Acts as the primary data source for the Meals controller.
+#   - Provides data payloads for SPA state-driven synchronization.
 #   - Coordinates with System controller for maintenance-driven automation.
 
 # Ensures the meal plan entries exist for today and the next 3 days.
@@ -251,6 +253,20 @@ sub DB::unlock_day {
 
     my $sql = "UPDATE meal_plan SET status = 'open', final_suggestion_id = NULL, blackout_reason = NULL, locked_at = NULL WHERE id = ?";
     return $self->{dbh}->do($sql, undef, $plan_id);
+}
+
+# Retrieves metadata for a specific plan day, typically for notifications.
+# Parameters:
+#   - plan_id: Target day ID.
+# Returns: HashRef { diff (days from today), formatted_date }.
+sub DB::get_plan_day_metadata {
+    my ($self, $plan_id) = @_;
+    $self->ensure_connection;
+
+    return $self->{dbh}->selectrow_hashref(
+        "SELECT DATEDIFF(plan_date, CURDATE()) as diff, DATE_FORMAT(plan_date, '%W, %b %D') as formatted_date FROM meal_plan WHERE id = ?",
+        undef, $plan_id
+    );
 }
 
 # Updates the meal name on an existing suggestion. Verified for ownership or admin.
