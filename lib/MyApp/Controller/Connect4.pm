@@ -3,91 +3,116 @@
 package MyApp::Controller::Connect4;
 use Mojo::Base 'Mojolicious::Controller';
 
-# Controller for the Connect 4 Online multiplayer game.
-# Handles lobby orchestration, board state management, and move processing.
+# Controller for the Connect 4 multiplayer interface.
 #
 # Features:
-#   - Lobby management (List, Create, Join).
-#   - Game interface rendering with real-time state synchronization.
-#   - AJAX-based move processing and win detection.
-#   - Game restart and session cleanup logic.
+#   - Unified application entry point (/connect4).
+#   - JSON APIs for lobby discovery and active game synchronization.
+#   - Real-time move processing with gravity-based placement.
+#   - Session lifecycle management (Restart/Cleanup).
 #
 # Integration Points:
-#   - DB::Connect4 for game logic, board persistence, and state retrieval.
-#   - Router: Restricted to authenticated users via bridge.
+#   - Depends on DB::Connect4 for all game state persistence.
+#   - Restricted to authenticated users via global session bridge.
 
-# Renders the lobby list showing waiting games.
-# Route: GET /connect4/lobby
-# Parameters: None
-# Returns:
-#   Rendered HTML template 'connect4/lobby' with list of open games.
-sub lobby {
+# Entry Point: Serves the base skeleton for both lobby and active games.
+# Route: GET /connect4 and GET /connect4/play/:id
+# Returns: Template (connect4.html.ep)
+sub index {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
-    my $lobbies = $c->db->get_open_connect4_lobbies();
-    $c->render('connect4/lobby', lobbies => $lobbies);
+    $c->render('connect4');
 }
 
-# Initializes a new game session as the host.
-# Route: GET /connect4/create
-# Parameters: None
-# Returns:
-#   Redirects to the play screen for the new game ID.
-sub create {
+# API Endpoint: Retrieves current lobby status for matchmaking.
+# Route: GET /connect4/api/lobby
+# Returns: JSON object { success, open_games, user_games }
+sub api_lobby {
     my $c = shift;
-    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+        
+    my $user_id = $c->current_user_id;
+    my $lobbies = $c->db->get_open_connect4_lobbies();
+    
+    # Filter out games where the user is already player1
+    my @filtered_lobbies = grep { $_->{player1_id} != $user_id } @$lobbies;
+    
+    # Connect4 doesn't have a dedicated "get_user_games" in DB yet, 
+    # but we can filter from all or add it. Let's assume we want to show 
+    # their active games for resumption.
+    my $user_games = $c->db->get_user_connect4_games($user_id);
+    
+    $c->render(json => {
+        success => 1,
+        open_games => \@filtered_lobbies,
+        user_games => $user_games
+    });
+}
+
+# API Endpoint: Initializes a fresh game session.
+# Route: POST /connect4/api/create
+# Returns: JSON object { success, game_id }
+sub api_create {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+
     my $uid = $c->current_user_id;
     my $game_id = $c->db->create_connect4_lobby($uid);
-    $c->redirect_to("/connect4/play/$game_id");
+
+    $c->render(json => { success => 1, game_id => $game_id });
 }
 
-# Adds the current user to an existing lobby as player 2.
-# Route: POST /connect4/join
-# Parameters:
-#   - id : Unique Game ID to join.
-# Returns:
-#   Redirects to play screen on success.
-#   Redirects to lobby with error flash on failure.
-sub join {
+# API Endpoint: Registers the current user as the second participant.
+# Route: POST /connect4/api/join
+# Returns: JSON object { success, game_id, error }
+sub api_join {
     my $c = shift;
-    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+
     my $uid = $c->current_user_id;
-    my $game_id = $c->param('id');
-    
-    if ($c->db->join_connect4_lobby($game_id, $uid)) {
-        $c->redirect_to("/connect4/play/$game_id");
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $game_id = $data->{id};
+
+    # Transform serialized "null", "NaN", or empty strings to valid integers.
+    $game_id = 0 if !defined $game_id || $game_id eq 'null' || $game_id eq 'NaN' || $game_id eq '';
+
+    my $success = $c->db->join_connect4_lobby($game_id, $uid);
+
+    if ($success) {
+        $c->render(json => { success => 1, game_id => $game_id });
     } else {
-        $c->flash(error => "Could not join game (It might be full or closed).");
-        $c->redirect_to('/connect4/lobby');
+        $c->render(json => { success => 0, error => "Could not join game" });
     }
 }
 
-# Renders the main game board or returns JSON state for polling.
-# Route: GET /connect4/play/:id
-# Parameters:
-#   - id : Unique Game ID.
-# Returns:
-#   Rendered HTML template 'connect4/connect4' (Standard request).
-#   JSON object { board, turn, status, winner, player_role, ... } (AJAX request).
-sub play {
+# API Endpoint: Retrieves full game metadata and board state.
+# Route: GET /connect4/api/game/:id
+# Returns: JSON object { success, game, error }
+sub api_game {
     my $c = shift;
-    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+        
     my $game_id = $c->param('id');
     my $uid = $c->current_user_id;
     
     my $game = $c->db->get_connect4_game_state($game_id);
-    return $c->redirect_to('/connect4/lobby') unless $game;
+    unless ($game) {
+        return $c->render(json => { success => 0, error => 'Game not found' }, status => 404);
+    }
 
-    # Identify Player Roles
-    # 0 = Spectator, 1 = Host, 2 = Joiner
+    # Resolve participant roles
     my $player_role = 0; 
     if ($game->{player1_id} == $uid) { $player_role = 1; }
     elsif ($game->{player2_id} && $game->{player2_id} == $uid) { $player_role = 2; }
 
-    # API Mode: Return JSON for AJAX polling
-    if ($c->req->headers->header('X-Requested-With')) {
-        return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
-        return $c->render(json => {
+    $c->render(json => {
+        success     => 1,
+        game        => {
+            id          => $game->{id},
             board       => $game->{board},
             turn        => $game->{current_turn},
             status      => $game->{status},
@@ -97,44 +122,45 @@ sub play {
             p2_id       => $game->{player2_id},
             p1_name     => $game->{p1_name} // 'Player 1',
             p2_name     => $game->{p2_name} // 'Player 2'
-        });
-    }
-
-    $c->render('connect4/connect4', game => $game, my_id => $uid, player_role => $player_role);
+        }
+    });
 }
 
-# Processes a player's attempt to drop a disc into a column.
-# Route: POST /connect4/move
-# Parameters:
-#   - id  : Unique Game ID.
-#   - col : Column index (0-6).
-# Returns:
-#   JSON object { success => 1/0 }.
-sub move {
+# API Endpoint: Processes a column selection.
+# Route: POST /connect4/api/move
+# Returns: JSON object { success, error }
+sub api_move {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
-    my $game_id = $c->param('id');
-    my $col = $c->param('col');
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+        
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $game_id = $data->{id};
+    my $col = $data->{col};
     my $uid = $c->current_user_id;
     
+    # Transform serialized "null", "NaN", or empty strings to valid integers or undef.
+    $game_id = 0 if !defined $game_id || $game_id eq 'null' || $game_id eq 'NaN' || $game_id eq '';
+    $col = 0 if !defined $col || $col eq 'null' || $col eq 'NaN' || $col eq '';
+
     my $success = $c->db->make_connect4_move($game_id, $uid, $col);
-    
     $c->render(json => { success => $success });
 }
 
-# Resets the game board to start a new round.
-# Route: POST /connect4/restart
-# Parameters:
-#   - id : Unique Game ID.
-# Returns:
-#   JSON success status.
-sub restart {
+# API Endpoint: Resets the game board for a consecutive round.
+# Route: POST /connect4/api/restart
+# Returns: JSON object { success, error }
+sub api_restart {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
-    my $game_id = $c->param('id');
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in;
+        
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $game_id = $data->{id};
     
-    # In a real app, you might want to check if the user is part of the game
-    # But for now, we allow any participant to trigger the restart
+    # Transform serialized "null", "NaN", or empty strings to valid integers.
+    $game_id = 0 if !defined $game_id || $game_id eq 'null' || $game_id eq 'NaN' || $game_id eq '';
+
     my $success = $c->db->reset_connect4_game($game_id);
     
     $c->render(json => { success => $success });
