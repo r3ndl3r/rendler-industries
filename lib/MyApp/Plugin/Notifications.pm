@@ -121,7 +121,9 @@ sub register {
             if ($tx->result->is_success) {
                 $c->app->log->info("Pushover alert sent: " . substr($message, 0, 30) . "...");
             } else {
-                $c->app->log->error("Pushover failed: " . $tx->result->body);
+                my $body = $tx->result->body // '';
+                $body = substr($body, 0, 200) . '...' if length($body) > 200;
+                $c->app->log->error("Pushover failed: $body");
             }
         })->catch(sub {
             my $err = shift;
@@ -147,7 +149,9 @@ sub register {
             if ($tx->result->is_success) {
                 $c->app->log->info("Gotify alert sent: " . ($title // 'No Title'));
             } else {
-                $c->app->log->error("Gotify failed: " . $tx->result->body);
+                my $body = $tx->result->body // '';
+                $body = substr($body, 0, 200) . '...' if length($body) > 200;
+                $c->app->log->error("Gotify failed: $body");
             }
         })->catch(sub {
             my $err = shift;
