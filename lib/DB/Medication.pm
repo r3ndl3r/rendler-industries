@@ -5,18 +5,20 @@ package DB::Medication;
 use strict;
 use warnings;
 
-# Database helper for medication tracking and management.
+# Medication Management Database Library.
 #
 # Features:
 #   - Common medication registry (Standardized drug names and dosages).
 #   - Multi-user dosage logging with real-time interval calculation.
 #   - Family member participation tracking.
 #   - Historical record management with "Reset to Now" functionality.
+#   - Automatic dosage logs cleanup (older than 30 days) during maintenance.
 #
 # Integration Points:
-#   - Extends DB package via package injection.
-#   - Used by Medication controller for all CRUD operations.
-#   - Integrated with Family Pulse AI for health context snapshots.
+#   - Extends the core DB package via package injection.
+#   - Relies on persistent DBI handles from the parent context.
+#   - Coordinates with Family Pulse AI for health context snapshots.
+#   - Supports MVC separation by isolating SQL logic from controller actions.
 
 # Retrieves all medication log entries grouped by family member.
 # Parameters: None
