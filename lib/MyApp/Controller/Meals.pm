@@ -5,22 +5,24 @@ use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
 # Controller for the Family Meal Planner.
-# 
+#
 # Features:
 #   - 4-day rolling meal plan schedule with automated window generation.
 #   - Collaborative meal suggestions with integrated vault autocomplete.
 #   - Toggled per-day voting with strict "one vote per user" enforcement.
 #   - Ownership-based suggestion management (Edit/Delete).
 #   - Admin-level overrides for lock-ins, blackouts, and global vault management.
-# Integration points:
-#   - Restricted to authenticated family members via bridge logic.
+#
+# Integration Points:
 #   - Depends on DB::Meals for state persistence and aggregated voter data.
-#   - Coordinates with System::maintenance for 2PM auto-lock and Discord reminders.
+#   - Coordinates with global maintenance API for 2PM auto-lock and Discord reminders.
 
 # Renders the main meal planner dashboard interface.
 # Route: GET /meals
+# Returns: Template (meals.html.ep)
 sub index {
     my $c = shift;
+    
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_family;
 
@@ -32,7 +34,9 @@ sub index {
 # Returns: JSON object { plan, vault, is_admin, current_user_id, success }
 sub api_state {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_family;
     
     my $uid = $c->current_user_id;
     
@@ -57,10 +61,12 @@ sub api_state {
 
 # Submits a new meal suggestion for a specific plan day.
 # Route: POST /meals/api/suggest
+# Returns: JSON object { success, message, error }
 sub api_suggest {
     my $c         = shift;
     
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_family;
 
     my $plan_id   = $c->param('plan_id');
     my $meal_name = trim($c->param('meal_name') // '');
@@ -89,10 +95,7 @@ sub api_suggest {
         my $username = $user ? $user->{username} : 'Someone';
         
         # Determine descriptive day for the notification
-        my $day_info = $c->db->{dbh}->selectrow_hashref(
-            "SELECT DATEDIFF(plan_date, CURDATE()) as diff, DATE_FORMAT(plan_date, '%W, %b %D') as formatted_date FROM meal_plan WHERE id = ?",
-            undef, $plan_id
-        );
+        my $day_info = $c->db->get_plan_day_metadata($plan_id);
 
         my $day_text = $day_info->{formatted_date};
         if ($day_info->{diff} == 0) {
@@ -117,10 +120,12 @@ sub api_suggest {
 
 # Toggles a user's vote for a specific suggestion.
 # Route: POST /meals/api/vote
+# Returns: JSON object { success, message, error }
 sub api_vote {
     my $c             = shift;
     
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_family;
 
     my $suggestion_id = $c->param('suggestion_id');
     my $uid           = $c->current_user_id;
@@ -154,10 +159,12 @@ sub api_vote {
 
 # Updates the metadata for an existing suggestion.
 # Route: POST /meals/api/edit_suggestion
+# Returns: JSON object { success, message, error }
 sub api_edit_suggestion {
     my $c             = shift;
     
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_family;
 
     my $suggestion_id = $c->param('suggestion_id');
     my $meal_name     = trim($c->param('meal_name') // '');
@@ -185,10 +192,12 @@ sub api_edit_suggestion {
 
 # Permanently removes a meal suggestion.
 # Route: POST /meals/api/delete_suggestion
+# Returns: JSON object { success, message, error }
 sub api_delete_suggestion {
     my $c             = shift;
     
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_family;
 
     my $suggestion_id = $c->param('suggestion_id');
     my $uid           = $c->current_user_id;
@@ -215,10 +224,12 @@ sub api_delete_suggestion {
 
 # Admin: Orchestrates lock-in or blackout events for specific days.
 # Route: POST /meals/api/admin/lock
+# Returns: JSON object { success, message, error }
 sub api_admin_lock {
     my $c             = shift;
     
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_admin;
 
     my $plan_id       = $c->param('plan_id');
     my $suggestion_id = $c->param('suggestion_id');
@@ -249,10 +260,12 @@ sub api_admin_lock {
 
 # Admin API: Retrieves the high-density meal registry.
 # Route: GET /meals/api/vault
+# Returns: JSON object { meals }
 sub api_get_vault_data {
     my $c = shift;
     
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_admin;
     
     my $meals;
     eval {
@@ -269,10 +282,12 @@ sub api_get_vault_data {
 
 # Admin API: Direct registration of a meal into the global vault.
 # Route: POST /meals/api/vault/add
+# Returns: JSON object { success, message, error }
 sub api_add_meal_to_vault {
     my $c     = shift;
     
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_admin;
 
     my $name  = trim($c->param('name') // '');
     
@@ -296,10 +311,12 @@ sub api_add_meal_to_vault {
 
 # Admin API: Modification of vault entry metadata.
 # Route: POST /meals/api/vault/update
+# Returns: JSON object { success, message, error }
 sub api_update_meal_in_vault {
     my $c     = shift;
     
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_admin;
 
     my $id    = $c->param('id');
     my $name  = trim($c->param('name') // '');
@@ -320,10 +337,12 @@ sub api_update_meal_in_vault {
 
 # Admin API: Permanent removal of a meal from the global registry.
 # Route: POST /meals/api/vault/delete
+# Returns: JSON object { success, message, error }
 sub api_delete_meal_from_vault {
     my $c  = shift;
     
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
+        unless $c->is_logged_in && $c->is_admin;
 
     my $id = $c->param('id');
     
