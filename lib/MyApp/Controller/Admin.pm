@@ -142,7 +142,7 @@ sub edit_user {
     my $is_admin = defined $c->param('is_admin') ? ($c->param('is_admin') ? 1 : 0) : $current_user->{is_admin};
     my $is_family = defined $c->param('is_family') ? ($c->param('is_family') ? 1 : 0) : $current_user->{is_family};
     my $status = $c->param('status') // $current_user->{status} // 'pending';
-    my $password = $c->param('password');
+    my $password = trim($c->param('password') // '');
     
     unless ($username =~ /^[a-zA-Z0-9_]{3,20}$/) {
         return $c->render(json => { success => 0, error => 'Invalid username (3-20 chars, alphanumeric/underscore)' });
@@ -152,7 +152,7 @@ sub edit_user {
     }
     
     eval {
-        if (defined $password && length $password > 0) {
+        if (length $password > 0) {
             if (length($password) < 8) {
                 die "Password too short (min 8 chars)";
             }
