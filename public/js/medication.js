@@ -64,14 +64,15 @@ document.addEventListener('DOMContentLoaded', () => {
  * Synchronizes the module state with the server (Single Source of Truth).
  * 
  * @async
+ * @param {boolean} force - Whether to bypass interaction-aware inhibition.
  * @returns {Promise<void>}
  */
-async function loadState() {
-    // Skip background refresh if a modal is active OR the user is typing in an input field.
-    // This prevents overwriting user input or causing focus-loss jumps.
-    const anyModalOpen = document.querySelector('.modal-overlay.active');
+async function loadState(force = false) {
+    // Skip background refresh if a modal is active or the user is typing
+    const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
     const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
-    if ((anyModalOpen || inputFocused) && Object.keys(STATE.logs).length > 0) return;
+
+    if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
         const response = await fetch('/medication/api/state');
@@ -121,7 +122,7 @@ async function handleLogSubmit(event, url) {
         if (result && result.success) {
             closeDoseModal();
             closeEditModal();
-            await loadState();
+            await loadState(true);
         }
     } finally {
         btn.disabled = false;
@@ -151,7 +152,7 @@ async function handleRegistrySubmit(event, url) {
         const result = await apiPost(url, Object.fromEntries(formData));
         if (result && result.success) {
             closeManageModal();
-            await loadState();
+            await loadState(true);
         }
     } finally {
         btn.disabled = false;
@@ -549,7 +550,7 @@ function confirmResetMedication(id) {
 
             const result = await apiPost(`/medication/api/reset/${id}`, payload);
             if (result && result.success) {
-                await loadState();
+                await loadState(true);
             }
         }
     });
