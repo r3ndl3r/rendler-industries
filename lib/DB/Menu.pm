@@ -6,22 +6,27 @@ use strict;
 use warnings;
 use utf8;
 
-# Database helper for Dynamic Menu Management.
+# Database Library for Dynamic Menu Management.
+#
 # Features:
 #   - Hierarchical menu structure (Parent/Child)
 #   - Role-based visibility filtering
 #   - Custom sorting and CSS class injection
-#   - AJAX-ready reordering support
-# Integration points:
-#   - Extends DB package via package injection
-#   - Used by menubar.html.ep for rendering
-#   - Used by Controller/Menu.pm for administration
+#   - Support for custom sequencing
+#
+# Privacy Mandate:
+#   - System configuration resource; visibility is filtered based on user roles 
+#     (guest, user, family, admin). All data logic correctly checks user_id/roles.
+#
+# Integration Points:
+#   - Extends the core DB package via package injection.
+#   - Used by menubar.html.ep for rendering global navigation.
+#   - Used by Controller/Menu.pm for administration interfaces.
 
 # Retrieves the hierarchical menu structure filtered by permission.
 # Parameters:
-#   $permission : Current user level ('guest', 'user', 'admin')
-# Returns:
-#   ArrayRef of HashRefs containing nested menu items
+#   - permission: Current user level ('guest', 'user', 'admin')
+# Returns: ArrayRef of HashRefs containing nested menu items
 sub DB::get_menu_tree {
     my ($self, $permission) = @_;
     $self->ensure_connection;
@@ -71,8 +76,7 @@ sub DB::get_menu_tree {
 # Retrieves all menu links in a flat list for management.
 # Child items are sorted directly under their parents.
 # Parameters: None
-# Returns:
-#   ArrayRef of HashRefs
+# Returns: ArrayRef of HashRefs
 sub DB::get_all_menu_links {
     my ($self) = @_;
     $self->ensure_connection;
@@ -101,9 +105,8 @@ sub DB::get_all_menu_links {
 
 # Adds a new menu link entry.
 # Parameters:
-#   $data : HashRef containing link attributes
-# Returns:
-#   Last inserted ID
+#   - data: HashRef containing link attributes
+# Returns: Last inserted ID
 sub DB::add_menu_link {
     my ($self, $data) = @_;
     $self->ensure_connection;
@@ -131,8 +134,8 @@ sub DB::add_menu_link {
 
 # Updates an existing menu link.
 # Parameters:
-#   $id   : Record ID
-#   $data : HashRef of updated attributes
+#   - id: Record ID
+#   - data: HashRef of updated attributes
 # Returns: Void
 sub DB::update_menu_link {
     my ($self, $id, $data) = @_;
@@ -162,7 +165,7 @@ sub DB::update_menu_link {
 
 # Deletes a menu link (Child links cascade delete via DB constraint).
 # Parameters:
-#   $id : Record ID
+#   - id: Record ID
 # Returns: Void
 sub DB::delete_menu_link {
     my ($self, $id) = @_;
@@ -173,8 +176,8 @@ sub DB::delete_menu_link {
 
 # Quickly updates the sort order of a link (for drag-and-drop).
 # Parameters:
-#   $id    : Record ID
-#   $order : New sort position
+#   - id: Record ID
+#   - order: New sort position
 # Returns: Void
 sub DB::update_menu_order {
     my ($self, $id, $order) = @_;
