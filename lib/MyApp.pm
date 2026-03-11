@@ -501,12 +501,12 @@ sub startup {
     $family->get('/receipts/api/state')->to('receipts#api_state');
     $family->get('/receipts/api/list')->to('receipts#api_list');
     $family->post('/receipts/api/upload')->to('receipts#upload');
-    $family->post('/receipts/api/update/:id')->to('receipts#update');
-    $family->post('/receipts/api/delete/:id')->to('receipts#delete');
+    $family->post('/receipts/api/update/:id')->to('receipts#api_update');
+    $family->post('/receipts/api/delete/:id')->to('receipts#api_delete');
     $family->get('/receipts/serve/:id')->to('receipts#serve');
-    $family->post('/receipts/api/crop/:id')->to('receipts#crop');
-    $family->post('/receipts/api/ocr/:id')->to('receipts#trigger_ocr');
-    $family->post('/receipts/api/ai_analyze/:id')->to('receipts#ai_analyze');
+    $family->post('/receipts/api/crop/:id')->to('receipts#api_crop');
+    $family->post('/receipts/api/ocr/:id')->to('receipts#api_ocr');
+    $family->post('/receipts/api/ai_analyze/:id')->to('receipts#api_ai_analyze');
 
     # --- Medication Tracker Routes ---
     $family->get('/medication')->to('medication#index');
