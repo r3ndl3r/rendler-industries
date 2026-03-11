@@ -19,8 +19,12 @@
  */
 
 /**
- * --- Application State ---
+ * --- Application Configuration & State ---
  */
+const CONFIG = {
+    SYNC_INTERVAL_MS: 300000         // Background synchronization frequency
+};
+
 let moduleState = {
     files: [],      // Metadata-only file records
     users: [],      // Full roster for permission whitelisting
@@ -39,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize the Drop Zone orchestration
     setupDropZone();
+
+    // Background synchronization
+    setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
 });
 
 /**
@@ -46,11 +53,15 @@ document.addEventListener('DOMContentLoaded', () => {
  * Fetches vault metadata and triggers the rendering engine.
  * 
  * @async
+ * @param {boolean} force - Whether to bypass interaction-aware inhibition.
  * @returns {Promise<void>}
  */
-async function loadState() {
-    // Inhibit background sync if user is interacting with a modal
-    if (document.querySelector('.modal-overlay.active')) return;
+async function loadState(force = false) {
+    // Inhibit background sync if user is interacting with a modal or typing
+    const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+
+    if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
         const response = await fetch('/files/api/state', {
@@ -245,10 +256,9 @@ async function submitFileUpload(event) {
         const result = await apiPost('/files/api/upload', formData);
 
         if (result && result.success) {
-            closeUploadModal();
-            loadState();
-        }
-    } finally {
+        closeUploadModal();
+        loadState(true);
+        }    } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
@@ -285,7 +295,7 @@ async function submitPermissions(event) {
 
         if (result && result.success) {
             closePermissionModal();
-            loadState();
+            loadState(true);
         }
     } finally {
         btn.disabled = false;
@@ -315,9 +325,9 @@ function confirmDeleteFile(id, filename) {
                 const row = document.getElementById(`file-row-${id}`);
                 if (row) {
                     row.classList.add('row-fade-out');
-                    setTimeout(() => loadState(), 500);
+                    setTimeout(() => loadState(true), 500);
                 } else {
-                    loadState();
+                    loadState(true);
                 }
             }
         }
