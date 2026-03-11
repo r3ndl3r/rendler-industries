@@ -92,5 +92,6 @@
     "empty": "📭",
     "running": "▶️",
     "paused": "⏸️",
-    "idle": "⏺️"
+    "idle": "⏺️",
+    "pin": "📌"
 }
