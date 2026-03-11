@@ -67,10 +67,16 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>}
  */
 async function loadState() {
+    // Skip background refresh if a modal is active OR the user is typing in an input field.
+    // This prevents overwriting user input or causing focus-loss jumps.
+    const anyModalOpen = document.querySelector('.modal-overlay.active');
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+    if ((anyModalOpen || inputFocused) && Object.keys(STATE.logs).length > 0) return;
+
     try {
         const response = await fetch('/medication/api/state');
         const data = await response.json();
-        
+
         if (data && data.success) {
             STATE.logs = data.logs;
             STATE.registry = data.registry;
@@ -82,7 +88,6 @@ async function loadState() {
         console.error('loadState failed:', err);
     }
 }
-
 /**
  * Universal handler for log-related form submissions.
  * Performs date/time consolidation before transmission.
