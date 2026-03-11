@@ -378,17 +378,18 @@ sub startup {
     
     # --- Imposter Game Routes ---
     $family->get('/imposter')->to('imposter#index');
-    $family->post('/imposter/add_player')->to('imposter#add_custom_player');
-    $family->post('/imposter/edit_player')->to('imposter#edit_player');
-    $family->post('/imposter/remove_player')->to('imposter#remove_player');
-    $family->post('/imposter/clear_lobby')->to('imposter#clear_lobby');
-    $family->post('/imposter/start')->to('imposter#start_game');
-    $family->post('/imposter/toggle_view')->to('imposter#toggle_view');
-    $family->post('/imposter/set_lang')->to('imposter#set_language');
-    $family->post('/imposter/next_player')->to('imposter#next_player');
-    $family->post('/imposter/end_game_early')->to('imposter#end_game_early');
-    $family->post('/imposter/reveal')->to('imposter#reveal_results');
-    $family->post('/imposter/play_again')->to('imposter#play_again');
+    $family->get('/imposter/api/state')->to('imposter#api_state');
+    $family->post('/imposter/api/add_player')->to('imposter#api_add_player');
+    $family->post('/imposter/api/edit_player')->to('imposter#api_edit_player');
+    $family->post('/imposter/api/remove_player')->to('imposter#api_remove_player');
+    $family->post('/imposter/api/clear_lobby')->to('imposter#api_reset');
+    $family->post('/imposter/api/start')->to('imposter#api_start');
+    $family->post('/imposter/api/toggle_view')->to('imposter#api_toggle_view');
+    $family->post('/imposter/api/set_lang')->to('imposter#api_set_lang');
+    $family->post('/imposter/api/next_player')->to('imposter#api_next_player');
+    $family->post('/imposter/api/end_game_early')->to('imposter#api_end_early');
+    $family->post('/imposter/api/reveal')->to('imposter#api_reveal');
+    $family->post('/imposter/api/play_again')->to('imposter#api_reset');
     
     # --- Swear Jar Routes ---
     $family->get('/swear')->to('swear#index');
@@ -451,15 +452,17 @@ sub startup {
     $auth->post('/connect4/api/restart')->to('connect4#api_restart');
 
     # --- UNO Routes ---
-    $auth->get('/uno/lobby')->to('uno#lobby');
-    $auth->get('/uno/create')->to('uno#create');
-    $auth->post('/uno/join')->to('uno#join');
-    $auth->get('/uno/play/:id')->to('uno#play');
-    $auth->post('/uno/ready')->to('uno#toggle_ready');
-    $auth->post('/uno/start')->to('uno#start');
-    $auth->post('/uno/play_card')->to('uno#play_card');
-    $auth->post('/uno/draw_card')->to('uno#draw_card');
-    $auth->post('/uno/shout')->to('uno#shout_uno');
+    $auth->get('/uno')->to('uno#index');
+    $auth->get('/uno/play/:id')->to('uno#index');
+    $auth->get('/uno/api/lobby')->to('uno#api_lobby');
+    $auth->post('/uno/api/create')->to('uno#api_create');
+    $auth->post('/uno/api/join')->to('uno#api_join');
+    $auth->get('/uno/api/game/:id')->to('uno#api_game');
+    $auth->post('/uno/api/ready')->to('uno#api_ready');
+    $auth->post('/uno/api/start')->to('uno#api_start');
+    $auth->post('/uno/api/play_card')->to('uno#api_play_card');
+    $auth->post('/uno/api/draw_card')->to('uno#api_draw_card');
+    $auth->post('/uno/api/shout')->to('uno#api_shout');
 
     # --- Calendar Routes ---
     $family->get('/calendar')->to('calendar#index');
