@@ -7,18 +7,21 @@ use warnings;
 use DateTime;
 use DateTime::Duration;
 
-# Timer Management Database Helper.
-# Responsibilities:
-#   - CRUD operations for user timers and daily sessions
-#   - Real-time session state tracking (start/stop/pause)
-#   - Automatic daily session initialization at configured reset time
-#   - Weekday vs Weekend limit calculation
-#   - Quiet hours enforcement (9 PM - 7 AM)
-#   - Admin bonus time grants and audit logging
-# Integration points:
-#   - Uses Australia/Melbourne timezone for all date/time operations
-#   - Coordinates with Settings module for daily reset time configuration
-#   - Triggers email notifications via Email plugin helper
+# Device Usage Timer Management Database Library.
+#
+# Features:
+#   - CRUD operations for user-specific timer definitions and daily sessions.
+#   - Real-time session state tracking (Start, Pause, Stop, Expiry).
+#   - Automatic daily session initialization at configured reset hours.
+#   - Weekday vs. Weekend limit calculation and dynamic enforcement.
+#   - Quiet hours enforcement (e.g., 9 PM - 7 AM).
+#   - Administrative bonus time grants and audit logging.
+#
+# Integration Points:
+#   - Extends the core DB package via package injection.
+#   - Coordinates with Settings module for platform-wide reset time configuration.
+#   - Acts as the data source for Singleton-managed maintenance (scripts/timer_maintenance.pl).
+#   - Supports MVC separation by isolating complex interval logic from controller actions.
 
 # Retrieve all active timers for a specific user.
 # Parameters:
