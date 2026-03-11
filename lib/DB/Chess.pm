@@ -5,30 +5,35 @@ package DB::Chess;
 use strict;
 use warnings;
 
-# Database helper for Chess Game Logic.
+# Database Library for the Chess multiplayer game engine.
+#
 # Features:
-#   - Lobby management (Create, Join, List)
-#   - Game State management (FEN string serialization)
-# Integration points:
-#   - Extends DB package via package injection
-#   - Uses standard FEN (Forsyth-Edwards Notation) strings to maintain board state
+#   - Lobby orchestration (Discovery, Creation, and Re-joining).
+#   - Game state management using standard FEN (Forsyth-Edwards Notation).
+#   - Real-time move history tracking and turn sequencing.
+#   - Collaborative draw negotiation and resignation workflows.
+#
+# Privacy Mandate:
+#   - Session-scoped isolation; users can only interact with sessions they are 
+#     participants of. Active state is restricted to authorized players.
+#
+# Integration Points:
+#   - Extends the core DB package via package injection.
+#   - Provides FEN state payloads for the frontend chess.js engine.
+#   - Coordinates with the user registry for identity resolution.
 
-# Creates a new game lobby for the user.
-# Uses FEN strings to represent the initial standard chess board state.
+# Creates a new game lobby initialized with the standard starting position.
 # Parameters:
-#   user_id : Unique ID of the host player
-# Returns:
-#   Integer ID of the newly created game session
+#   - user_id: Unique identifier of the host player (Int).
+# Returns: Integer ID of the newly created game session.
 sub DB::create_chess_lobby {
     my ($self, $user_id) = @_;
-    
-    # Verify database connectivity
     $self->ensure_connection;
     
-    # Standard chess starting position FEN string
+    # Forsyth-Edwards Notation: Standard starting position
     my $initial_fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
     
-    # Cleanup: Delete old "waiting" lobbies by this user to maintain hygiene
+    # Cleanup: remove stagnant waiting sessions by this user
     $self->{dbh}->do("DELETE FROM chess_sessions WHERE player1_id = ? AND status = 'waiting'", undef, $user_id);
 
     my $sth = $self->{dbh}->prepare(
@@ -36,16 +41,14 @@ sub DB::create_chess_lobby {
     );
     $sth->execute($user_id, $user_id, $initial_fen);
     
-    return $self->{dbh}->last_insert_id(undef, undef, undef, undef);
+    return $self->{dbh}->last_insert_id();
 }
 
-# Retrieves a list of all games currently in 'waiting' status.
+# Retrieves all game sessions currently awaiting an opponent.
 # Parameters: None
-# Returns:
-#   ArrayRef of HashRefs containing open game details (id, host_name, player1_id, created_at)
+# Returns: ArrayRef of HashRefs [ {id, host_name, player1_id, created_at}, ... ]
 sub DB::get_open_chess_lobbies {
     my $self = shift;
-    
     $self->ensure_connection;
     
     return $self->{dbh}->selectall_arrayref(
@@ -58,14 +61,12 @@ sub DB::get_open_chess_lobbies {
     );
 }
 
-# Retrieves all games (active or waiting) involving the specified user.
+# Retrieves all active or waiting games involving a specific user.
 # Parameters:
-#   user_id : Unique ID of the user
-# Returns:
-#   ArrayRef of HashRefs containing game details
+#   - user_id: Unique identifier of the user (Int).
+# Returns: ArrayRef of HashRefs containing game summaries.
 sub DB::get_user_chess_games {
     my ($self, $user_id) = @_;
-    
     $self->ensure_connection;
     
     my $sql = "
@@ -82,30 +83,26 @@ sub DB::get_user_chess_games {
     return $self->{dbh}->selectall_arrayref($sql, { Slice => {} }, $user_id, $user_id);
 }
 
-# Adds a second player to an existing lobby or allows a player to re-join an active one.
+# Registers a participant in a waiting lobby or facilitates session re-joining.
 # Parameters:
-#   game_id : Target game ID
-#   user_id : ID of the joining/re-joining player
-# Returns:
-#   Result of execute() (true on success, 0 on failure)
+#   - game_id: Session identifier (Int).
+#   - user_id: Participant identifier (Int).
+# Returns: Boolean success.
 sub DB::join_chess_lobby {
     my ($self, $game_id, $user_id) = @_;
-    
     $self->ensure_connection;
     
-    # Retrieve existing participants
     my $game = $self->{dbh}->selectrow_hashref("SELECT player1_id, player2_id, status FROM chess_sessions WHERE id = ?", undef, $game_id);
     return 0 unless $game;
 
-    # Allow re-joining if already a player
+    # Scenario: User is already a participant
     if (($game->{player1_id} && $game->{player1_id} == $user_id) || ($game->{player2_id} && $game->{player2_id} == $user_id)) {
         return 1;
     }
 
-    # Prevent host from joining as player 2
+    # Validation: Prevent host from filling both slots
     return 0 if ($game->{player1_id} && $game->{player1_id} == $user_id);
 
-    # Standard join for player 2 if game is still waiting
     if ($game->{status} eq 'waiting') {
         my $sth = $self->{dbh}->prepare(
             "UPDATE chess_sessions SET player2_id = ?, status = 'active' WHERE id = ? AND status = 'waiting'"
@@ -116,19 +113,16 @@ sub DB::join_chess_lobby {
     return 0;
 }
 
-# Retrieves full game record including the current FEN state.
+# Retrieves full game record and current board state.
 # Parameters:
-#   game_id : Unique game ID
-# Returns:
-#   HashRef containing full game record, or undef if not found
+#   - game_id: Unique session identifier (Int).
+# Returns: HashRef of game metadata or undef.
 sub DB::get_chess_game_state {
     my ($self, $game_id) = @_;
-    
     $self->ensure_connection;
     
-    # Joins users table to get names
     my $sql = "
-        SELECT g.*, 
+        SELECT g.id, g.player1_id, g.player2_id, g.current_turn, g.fen_state, g.status, g.winner_id, g.draw_offered_by, g.last_move, g.created_at,
                u1.username as p1_name, 
                u2.username as p2_name
         FROM chess_sessions g
@@ -140,11 +134,11 @@ sub DB::get_chess_game_state {
     return $self->{dbh}->selectrow_hashref($sql, undef, $game_id);
 }
 
-# Records a draw offer from a specific user.
+# Initiates a draw request from a specific participant.
 # Parameters:
-#   game_id : Unique game ID
-#   user_id : ID of the user offering the draw
-# Returns: Boolean success
+#   - game_id: Session identifier (Int).
+#   - user_id: Requesting participant identifier (Int).
+# Returns: Boolean success.
 sub DB::offer_chess_draw {
     my ($self, $game_id, $user_id) = @_;
     $self->ensure_connection;
@@ -153,13 +147,11 @@ sub DB::offer_chess_draw {
     return $sth->execute($user_id, $game_id);
 }
 
-# Processes a response to a draw offer.
-# If accepted, status becomes 'finished' and winner_id is 0 (draw).
-# If refused, draw_offered_by is cleared.
+# Processes the resolution of a pending draw offer.
 # Parameters:
-#   game_id : Unique game ID
-#   accepted: Boolean (1 for accept, 0 for refuse)
-# Returns: Boolean success
+#   - game_id: Session identifier (Int).
+#   - accepted: Boolean (1 for resolution, 0 for refusal).
+# Returns: Boolean success.
 sub DB::respond_chess_draw {
     my ($self, $game_id, $accepted) = @_;
     $self->ensure_connection;
@@ -173,22 +165,20 @@ sub DB::respond_chess_draw {
     }
 }
 
-# Processes a board state update after a move is verified.
+# Atomically updates the FEN state and sequences the next turn.
 # Parameters:
-#   game_id      : Unique game ID
-#   next_turn_id : User ID of the player whose turn is next
-#   new_fen      : The updated FEN string after the move
-#   status       : Game status string ('active', 'finished')
-#   winner_id    : User ID of winner (if finished), 0 for draw, undef otherwise
-#   last_move    : String representing the move (e.g., "e2-e4")
-# Returns:
-#   Boolean (1 for success, 0 for failure)
+#   - game_id: Unique session identifier (Int).
+#   - next_turn_id: Identifier of the next active player (Int).
+#   - new_fen: Forsyth-Edwards Notation string of the new state (String).
+#   - status: Current game phase (active, finished).
+#   - winner_id: Victor identifier or 0 for draw (Int/undef).
+#   - last_move: Coordinates of the executed move (String).
+# Returns: Boolean success.
 sub DB::update_chess_game_state {
     my ($self, $game_id, $next_turn_id, $new_fen, $status, $winner_id, $last_move) = @_;
-    
     $self->ensure_connection;
     
-    # We clear draw_offered_by on any move to ensure the offer doesn't persist past a turn
+    # Lifecycle: Clear draw offers on any valid board movement
     my $sth = $self->{dbh}->prepare(
         "UPDATE chess_sessions SET fen_state = ?, current_turn = ?, status = ?, winner_id = ?, draw_offered_by = NULL, last_move = ? WHERE id = ?"
     );
