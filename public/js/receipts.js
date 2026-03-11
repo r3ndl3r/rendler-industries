@@ -48,7 +48,7 @@ let STATE = {
  */
 document.addEventListener('DOMContentLoaded', () => {
     // Initial state synchronization
-    loadState();
+    loadState(true);
 
     // Event Delegation: Real-time Ledger Filtering
     const filterIds = ['filterSearch', 'filterStore', 'filterTime', 'filterAI', 'filterUploader', 'filterMinAmount'];
@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 STATE.offset = 0;
-                loadState();
+                loadState(true);
             }, CONFIG.DEBOUNCE_MS);
         });
     });
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (el) el.value = '';
             });
             STATE.offset = 0;
-            loadState();
+            loadState(true);
         };
     }
 
@@ -102,9 +102,14 @@ document.addEventListener('DOMContentLoaded', () => {
  * Synchronizes the module state with the server (Single Source of Truth).
  * 
  * @async
+ * @param {boolean} force - Whether to bypass sync inhibition guards.
  * @returns {Promise<void>}
  */
-async function loadState() {
+async function loadState(force = false) {
+    const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
+    const inputFocused = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA';
+    if (!force && (anyModalOpen || inputFocused)) return;
+
     const filters = getActiveFilters();
     const params = new URLSearchParams(filters);
     
@@ -143,6 +148,9 @@ async function loadState() {
 async function loadMore() {
     const btn = document.getElementById('loadMoreBtn');
     if (!btn) return;
+
+    const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
+    if (anyModalOpen) return;
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
@@ -303,20 +311,8 @@ async function handleUpload(e) {
             const display = document.getElementById('fileName');
             if (display) display.classList.add('hidden');
             closeUploadModal();
-            
-            STATE.receipts.unshift(result.receipt);
-            STATE.summary = result.summary;
-            STATE.breakdown = result.breakdown;
-            
-            // Re-sync store list if uploader added a new merchant
-            if (result.receipt.store_name && !STATE.stores.includes(result.receipt.store_name)) {
-                STATE.stores.push(result.receipt.store_name);
-                STATE.stores.sort();
-            }
-
-            renderStats();
-            renderReceipts(false);
-            updateFilterDropdowns();
+            loadState(true);
+            showToast('Receipt uploaded successfully', 'success');
         }
     } finally {
         hideLoadingOverlay();
@@ -345,20 +341,8 @@ async function handleEditSubmit(e) {
         const result = await apiPost(`/receipts/api/update/${id}`, formData);
         if (result && result.success) {
             closeEditModal();
-            const index = STATE.receipts.findIndex(r => r.id == id);
-            if (index !== -1) STATE.receipts[index] = result.receipt;
-            STATE.summary = result.summary;
-            STATE.breakdown = result.breakdown;
-
-            // Re-sync store list if edit added a new merchant
-            if (result.receipt.store_name && !STATE.stores.includes(result.receipt.store_name)) {
-                STATE.stores.push(result.receipt.store_name);
-                STATE.stores.sort();
-            }
-
-            renderStats();
-            renderReceipts(false);
-            updateFilterDropdowns();
+            loadState(true);
+            showToast('Record updated', 'success');
         }
     } finally {
         btn.disabled = false;
@@ -384,11 +368,8 @@ function confirmDeleteReceipt(id, name) {
         onConfirm: async () => {
             const result = await apiPost(`/receipts/api/delete/${id}`);
             if (result && result.success) {
-                STATE.receipts = STATE.receipts.filter(r => r.id != id);
-                STATE.summary = result.summary;
-                STATE.breakdown = result.breakdown;
-                renderStats();
-                renderReceipts(false);
+                loadState(true);
+                showToast('Record permanently removed', 'success');
             }
         }
     });
@@ -713,7 +694,7 @@ async function openCropModal(id) {
                 if (res && res.success) {
                     showToast('Optimized', 'success');
                     closeCropModal();
-                    loadState();
+                    loadState(true);
                 }
                 btn.disabled = false;
                 btn.innerHTML = original;
@@ -742,10 +723,8 @@ async function triggerOCR(id) {
     try {
         const data = await apiPost('/receipts/api/ocr/' + id);
         if (data && data.success) {
-            openEditModal(JSON.stringify({
-                id: id, store_name: data.store_name, receipt_date: data.receipt_date,
-                total_amount: data.total_amount, description: data.description
-            }));
+            loadState(true);
+            showToast('Scan complete', 'success');
         }
     } finally {
         btn.disabled = false;
@@ -789,7 +768,7 @@ async function viewElectronicReceipt(id, force = 0, preLoaded = null, initialIco
     try {
         const res = await apiPost(`/receipts/api/ai_analyze/${id}`, new URLSearchParams({ force: force }));
         if (res && res.success) {
-            loadState();
+            loadState(true);
             renderEReceipt(res.data, initialIcon);
         } else {
             const errorMsg = res.error || 'AI Analysis failed';
