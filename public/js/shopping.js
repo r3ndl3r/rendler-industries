@@ -68,7 +68,7 @@ async function loadState(force = false) {
     const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
     const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
 
-    if (!force && (anyModalOpen || inputFocused)) return;
+    if (!force && (anyModalOpen || inputFocused) && STATE.items.length > 0) return;
 
     try {
         const response = await fetch('/shopping/api/state');
