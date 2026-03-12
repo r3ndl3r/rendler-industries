@@ -1,0 +1,25 @@
+<%# /templates/broadcast.html.ep %>
+
+% layout 'default';
+% title icon('warning') . ' System Broadcast';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/broadcast.css?<%= time %>">
+    <script src="/js/broadcast.js?<%= time %>"></script>
+% end
+
+<div class="broadcast-container app-container">
+    <div class="header-bar">
+        <h1><%= icon('warning') %> <span>System Broadcast</span></h1>
+    </div>
+
+    <%# Module Content Section %>
+    <div id="broadcast-content" class="section">
+        <%# Loading State Pattern %>
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse"><%= icon('waiting') %></span>
+            <p class="loading-label">Synchronizing system state...</p>
+        </div>
+    </div>
+</div>
