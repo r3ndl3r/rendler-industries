@@ -4,7 +4,7 @@ package MyApp::Controller::Root;
 use Mojo::Base 'Mojolicious::Controller';
 use Cwd qw(abs_path getcwd);
 use Mojo::File 'path';
-use HTML::Entities qw(encode_entities);
+use HTML::Entities qw(encode_entities decode_entities);
 use Mojo::Util qw(trim);
 
 # Controller for core application logic and utility pages.
@@ -231,6 +231,13 @@ sub copy_api_state {
     my $user_id = $c->current_user_id;
     my $user = $c->db->get_user_by_id($user_id);
     my @msgs = $c->db->get_pasted($user_id);
+
+    # Decodes HTML entities in the raw content field to provide the original 
+    # text for clipboard and editor functionality, while preserving the 
+    # encoded 'text' field for XSS-safe display.
+    for my $msg (@msgs) {
+        $msg->{raw} = decode_entities($msg->{raw});
+    }
 
     $c->render(json => {
         success  => 1,
