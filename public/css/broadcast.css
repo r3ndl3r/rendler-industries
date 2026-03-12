@@ -1,0 +1,149 @@
+/* /public/css/broadcast.css */
+
+/**
+ * Broadcast Module Styles (Emergency/Urgent Aesthetic)
+ * 
+ * Implements a high-alert visual language using deep reds, glowing 
+ * borders, and pulsing animations to emphasize the priority of 
+ * multi-channel administrator notifications.
+ */
+
+.broadcast-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding-bottom: 50px;
+}
+
+/* --- Emergency Warning Banner --- */
+.emergency-banner {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--danger);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+    animation: border-glow 2s infinite alternate;
+}
+
+.banner-icon {
+    font-size: 2.5rem;
+    color: var(--danger);
+    filter: drop-shadow(0 0 5px var(--danger));
+}
+
+.banner-text h3 {
+    color: var(--danger);
+    margin: 0 0 5px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.banner-text p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #cbd5e1;
+    line-height: 1.4;
+}
+
+/* --- Broadcast Input Area --- */
+.broadcast-form-card {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 30px;
+}
+
+.broadcast-textarea {
+    width: 100%;
+    min-height: 150px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #f8fafc;
+    padding: 15px;
+    font-size: 1.1rem;
+    resize: vertical;
+    transition: all 0.3s ease;
+    margin-bottom: 25px;
+}
+
+.broadcast-textarea:focus {
+    outline: none;
+    border-color: var(--danger);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+    background: rgba(15, 23, 42, 0.8);
+}
+
+/* --- Action Buttons --- */
+.broadcast-actions {
+    display: flex;
+    justify-content: center;
+}
+
+.btn-broadcast-send {
+    background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-broadcast-send:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+    filter: brightness(1.1);
+}
+
+.btn-broadcast-send:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+}
+
+.btn-broadcast-send:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: grayscale(0.5);
+}
+
+/* --- Animations --- */
+@keyframes border-glow {
+    from { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 10px rgba(239, 68, 68, 0.1); }
+    to { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 25px rgba(239, 68, 68, 0.3); }
+}
+
+.pulse-animation {
+    animation: button-pulse 1.5s infinite;
+}
+
+@keyframes button-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .emergency-banner {
+        flex-direction: column;
+        text-align: center;
+        padding: 15px;
+    }
+    
+    .btn-broadcast-send {
+        width: 100%;
+        justify-content: center;
+    }
+}
