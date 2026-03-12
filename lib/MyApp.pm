@@ -537,6 +537,10 @@ sub startup {
     $admin->post('/meals/api/vault/update')->to('meals#api_update_meal_in_vault');
     $admin->post('/meals/api/vault/delete')->to('meals#api_delete_meal_from_vault');
 
+    # --- Broadcast Routes ---
+    $family->get('/broadcast')->to('broadcast#index');
+    $family->post('/broadcast/api/send')->to('broadcast#api_send');
+
     # --- Family Pulse AI Routes ---
     $family->get('/ai')->to('AI#index');
     $family->get('/ai/api/state')->to('AI#api_state');
