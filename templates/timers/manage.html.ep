@@ -112,6 +112,7 @@
                         <option value="Gaming Console"><%= icon('gaming-console') %> Gaming Console</option>
                         <option value="TV"><%= icon('tv') %> TV</option>
                     </select>
+                </div>
 
                 <div class="form-row">
                     <div class="form-group">
@@ -152,7 +153,7 @@
             </div>
 
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="bonusSaveBtn" class="btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" id="bonusSaveBtn" class="btn btn-primary"><%= icon('save') %> Save</button>
             </div>
         </form>
     </div>

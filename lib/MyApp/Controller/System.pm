@@ -86,7 +86,7 @@ sub run_meals_maintenance {
                 # Target family/admins with Discord who have NOT suggested AND have NOT voted
                 if ($u->{discord_id} && ($u->{is_family} || $u->{is_admin})) {
                     if (!$has_suggested{$u->{id}} && !$has_voted{$u->{id}}) {
-                        my $msg = "🍳 MEAL PLANNER REMINDER: You haven't added a suggestion or voted for today's meal yet! Lock-in is at 2PM.\n\nhttps://rendler.org/meals";
+                        my $msg = "🍳 MEAL PLANNER REMINDER 🍳\n\nYou haven't added a suggestion or voted for today's meal yet! Lock-in is at 2PM.\n\nhttps://rendler.org/meals";
                         $c->send_discord_dm($u->{discord_id}, $msg);
                     }
                 }
@@ -185,7 +185,7 @@ sub run_reminder_maintenance {
             }
             $processed_reminder_ids{$r->{id}} = 1;
 
-            my $msg = "🔔 REMINDER: $r->{title}\n\n$r->{description}\n\nhttps://rendler.org/reminders";
+            my $msg = "🔔 REMINDER 🔔\n\n$r->{title}\n\n$r->{description}\n\nhttps://rendler.org/reminders";
             if ($c->notify_user($r->{user_id}, $msg, "Reminder: $r->{title}")) {
                 $stats->{notified}++;
             } else {

@@ -204,10 +204,10 @@ function renderReminderCard(r) {
             </div>
 
             <div class="reminder-footer-actions">
-                <button class="btn-icon-${isActive ? 'view' : 'copy'}"
+                <button class="btn-icon-${isActive ? 'copy' : 'view'}"
                         onclick="toggleReminder(${r.id}, ${isActive ? 0 : 1})"
                         title="${isActive ? 'Pause Reminder' : 'Resume Reminder'}">
-                    ${getIcon(isActive ? 'running' : 'paused')}
+                    ${getIcon(isActive ? 'paused' : 'running')}
                 </button>
                 <button class="btn-icon-edit"
                         onclick="openEditModal(${r.id})"
