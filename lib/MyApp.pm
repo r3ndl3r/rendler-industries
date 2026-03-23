@@ -338,7 +338,6 @@ sub startup {
     $r->get('/mobile')->to('root#p_page');
     $r->get('/this.is.totally.not.sus')->to('root#sus');
     $r->get('/system/api/file_map')->to('root#file_map_json');
-    $r->get('/t')->to(cb => sub { shift->redirect_to('https://stash.rendler.org/stash?n=Movies&u=rendler') });
     $r->get('/quick')->to('root#quick');
     $auth->get('/chelsea')->to('chelsea#index');
     $admin->get('/restart')->to('system#restart');

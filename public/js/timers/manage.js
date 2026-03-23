@@ -217,7 +217,7 @@ function openCreateModal() {
     
     const modal = document.getElementById('modal-create-timer');
     if (modal) {
-        modal.style.display = 'flex';
+        modal.classList.add('show');
         document.body.classList.add('modal-open');
     }
 }
@@ -240,7 +240,7 @@ function openEditModal(id) {
 
     const modal = document.getElementById('modal-edit-timer');
     if (modal) {
-        modal.style.display = 'flex';
+        modal.classList.add('show');
         document.body.classList.add('modal-open');
     }
 }
@@ -257,7 +257,7 @@ function openBonusModal(id) {
 
     const modal = document.getElementById('modal-bonus-time');
     if (modal) {
-        modal.style.display = 'flex';
+        modal.classList.add('show');
         document.body.classList.add('modal-open');
     }
 }
@@ -280,12 +280,12 @@ async function handleCreateSubmit(event) {
 
     try {
         const formData = new FormData(form);
-        const result = await apiPost('/timers/api/create', Object.fromEntries(formData));
+        const result = await apiPost('/timers/api/create', formData);
         if (result && result.success) {
-            closeEditModal();
+            closeModals();
             await loadState(true);
-            }
-            } finally {
+        }
+    } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
@@ -310,12 +310,12 @@ async function handleEditSubmit(event) {
 
     try {
         const formData = new FormData(form);
-        const result = await apiPost(`/timers/api/update/${id}`, Object.fromEntries(formData));
+        const result = await apiPost(`/timers/api/update/${id}`, formData);
         if (result && result.success) {
-            closeEditModal();
+            closeModals();
             await loadState(true);
-            }
-            } finally {
+        }
+    } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
@@ -339,12 +339,12 @@ async function handleBonusSubmit(event) {
 
     try {
         const formData = new FormData(form);
-        const result = await apiPost('/timers/api/bonus', Object.fromEntries(formData));
+        const result = await apiPost('/timers/api/bonus', formData);
         if (result && result.success) {
-            closeEditModal();
+            closeModals();
             await loadState(true);
-            }
-            } finally {
+        }
+    } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
@@ -390,7 +390,7 @@ function confirmDeleteTimer(id, name) {
  * @returns {void}
  */
 function closeModals() {
-    document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+    document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show'));
     document.body.classList.remove('modal-open');
 }
 
