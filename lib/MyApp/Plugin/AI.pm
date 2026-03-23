@@ -92,7 +92,13 @@ sub register {
     $app->helper(gemini_analyze_receipt => sub {
         my ($c, $image, $mime) = @_;
         
-        my $system = "You are a professional receipt digitizer. Analyze the image and extract data into a JSON object. Include: store_name, location, date, time, items (array of {desc, qty, unit_price, line_total}), total_amount, currency, payment_method. CRITICAL: In the 'desc' field, provide ONLY the item name. EXCLUDE any SKU numbers, internal item codes, or long numeric prefixes. ONLY return valid JSON.";
+        my $now = DateTime->now(time_zone => 'Australia/Melbourne')->strftime('%Y-%m-%d');
+        my $system = "You are a professional receipt digitizer. Current system date: $now. Use this to help resolve ambiguous characters and verify plausibility. "
+                   . "Analyze the image and extract data into a JSON object. "
+                   . "Include: store_name, location, date (formatted as YYYY-MM-DD), time, items (array of {desc, qty, unit_price, line_total}), total_amount, currency, payment_method. "
+                   . "CRITICAL: The 'date' field MUST be in YYYY-MM-DD format. "
+                   . "In the 'desc' field, provide ONLY the item name. EXCLUDE any SKU numbers, internal item codes, or long numeric prefixes. "
+                   . "ONLY return valid JSON.";
 
         return $c->gemini_analyze_image(
             image  => $image,

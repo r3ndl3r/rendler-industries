@@ -636,9 +636,17 @@ function openEditModal(rawJson) {
                 if (data.total_amount) document.getElementById('editAmount').value = data.total_amount;
                 if (data.date) {
                     let d = data.date;
-                    if (d.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-                        const parts = d.split('/');
+                    // Handle DD/MM/YYYY or DD-MM-YYYY
+                    if (d.match(/^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/)) {
+                        const parts = d.split(/[/-]/);
                         d = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                    // Handle YY.MM.DD or YYYY.MM.DD
+                    else if (d.match(/^\d{2,4}\.\d{1,2}\.\d{1,2}$/)) {
+                        const parts = d.split('.');
+                        let y = parts[0];
+                        if (y.length === 2) y = '20' + y;
+                        d = `${y}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
                     }
                     document.getElementById('editDate').value = d;
                 }
