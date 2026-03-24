@@ -46,6 +46,107 @@ sub DB::get_unprocessed_emojis {
     return $sth->fetchall_arrayref({});
 }
 
+# Retrieves system-wide emoji processing statistics for the management dashboard.
+# Parameters: None
+# Returns:
+#   HashRef { total_pending, learned_count, module_stats }
+sub DB::get_emoji_stats {
+    my ($self) = @_;
+    $self->ensure_connection;
+    
+    my %stats = (
+        total_pending => 0,
+        learned_count => 0,
+        module_stats  => []
+    );
+    
+    # 1. Gather pending counts per whitelisted module
+    my %targets = (
+        'Todo Tasks'     => { table => 'todo_list' },
+        'Shopping Items' => { table => 'shopping_list' },
+        'Calendar Events'=> { table => 'calendar_events' },
+        'Reminders'      => { table => 'reminders' },
+        'Meal Plans'     => { table => 'meals' }
+    );
+    
+    foreach my $label (sort keys %targets) {
+        my $table = $targets{$label}{table};
+        my ($count) = $self->{dbh}->selectrow_array("SELECT COUNT(*) FROM $table WHERE has_emoji = 0");
+        $stats{total_pending} += $count;
+        push @{$stats{module_stats}}, { label => $label, count => $count };
+    }
+    
+    # 2. Gather dictionary metrics
+    ($stats{learned_count}) = $self->{dbh}->selectrow_array("SELECT COUNT(*) FROM ai_emoji_dictionary");
+    
+    return \%stats;
+}
+
+# Retrieves paginated and searchable entries from the AI learned dictionary.
+# Parameters:
+#   limit  : Max records (Integer)
+#   offset : Starting point (Integer)
+#   search : Keyword filter (Optional String)
+# Returns:
+#   ArrayRef of HashRefs { keyword, emoji, created_at }
+sub DB::get_emoji_dictionary_list {
+    my ($self, $limit, $offset, $search) = @_;
+    $self->ensure_connection;
+    
+    my $sql = "SELECT keyword, emoji, created_at FROM ai_emoji_dictionary";
+    my @params;
+    
+    if ($search) {
+        $sql .= " WHERE keyword LIKE ?";
+        push @params, "%$search%";
+    }
+    
+    $sql .= " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+    push @params, (int($limit || 20), int($offset || 0));
+    
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute(@params);
+    
+    return $sth->fetchall_arrayref({});
+}
+
+# Updates or inserts an explicit mapping into the AI dictionary.
+# Parameters:
+#   keyword : The trigger phrase (String)
+#   emoji   : The replacement character (String)
+# Returns:
+#   Boolean : Success status
+sub DB::update_dictionary_entry {
+    my ($self, $keyword, $emoji) = @_;
+    $self->ensure_connection;
+    
+    return 0 unless $keyword && $emoji;
+    
+    # Keyword is the Primary Key: Use UPSERT
+    my $sql = "INSERT INTO ai_emoji_dictionary (keyword, emoji) VALUES (?, ?) "
+            . "ON DUPLICATE KEY UPDATE emoji = ?";
+    my $sth = $self->{dbh}->prepare($sql);
+    
+    return $sth->execute(lc($keyword), $emoji, $emoji) > 0;
+}
+
+# Removes a specific learning mapping from the dictionary.
+# Parameters:
+#   keyword : The trigger phrase (String)
+# Returns:
+#   Boolean : Success status
+sub DB::delete_dictionary_entry {
+    my ($self, $keyword) = @_;
+    $self->ensure_connection;
+    
+    return 0 unless $keyword;
+    
+    my $sql = "DELETE FROM ai_emoji_dictionary WHERE keyword = ?";
+    my $sth = $self->{dbh}->prepare($sql);
+    
+    return $sth->execute(lc($keyword)) > 0;
+}
+
 # Updates a specific record with its new emojified text and flags it as processed.
 # Parameters:
 #   table    : Target table name (String)
