@@ -1,0 +1,127 @@
+<%# /templates/emojis.html.ep %>
+
+% layout 'default';
+% title icon('settings') . ' Emoji Management';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/emojis.css?<%= time %>">
+    <script src="/js/emojis.js?<%= time %>"></script>
+% end
+
+<div class="app-container">
+    <%# Standard module header with title and contextual actions %>
+    <div class="header-bar">
+        <div class="header-info">
+            <h1><%= icon('settings') %> Emoji Management</h1>
+        </div>
+        <div class="manage-actions">
+            <button class="btn-primary" onclick="openAddEntryModal()">
+                <%= icon('add') %> Add Entry
+            </button>
+        </div>
+    </div>
+
+    <%# Initial loading state skeleton for AJAX synchronization %>
+    <div id="mainLoadingState" class="component-loading">
+        <div class="loading-scan-line"></div>
+        <span class="loading-icon-pulse"><%= icon('settings') %></span>
+        <p class="loading-label">Synchronizing Emoji Engine...</p>
+    </div>
+
+    <div id="mainContent" class="hidden">
+        <%# --- System Status Dashboard --- %>
+        <div class="stats-grid" id="statsContainer">
+            <%# Populated by JS %>
+        </div>
+
+        <div class="management-layout">
+            <%# --- Left: Dictionary Ledger (Pattern A) --- %>
+            <div class="ledger-section card">
+                <div class="section-header">
+                    <h2><%= icon('view') %> Learned Dictionary</h2>
+                    <div class="header-actions">
+                        <div class="search-box">
+                            <input type="text" id="dictSearch" placeholder="Search keywords..." autocomplete="off">
+                            <span class="search-icon"><%= icon('search') %></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Keyword</th>
+                                <th class="col-icon">Emoji</th>
+                                <th>Learned At</th>
+                                <th class="col-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dictionaryTableBody">
+                            <%# Content populated by AJAX %>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="paginationContainer" class="pagination-footer hidden">
+                    <button id="loadMoreBtn" class="btn-secondary">Load More Mappings</button>
+                </div>
+            </div>
+
+            <%# --- Right: Training Sandbox --- %>
+            <div class="sandbox-section card">
+                <div class="section-header">
+                    <h2><%= icon('ai') %> AI Learning Sandbox</h2>
+                </div>
+                <p class="help-text">Test how the AI would emojify a specific phrase. Save successful tests to the permanent dictionary.</p>
+                
+                <div class="sandbox-controls">
+                    <div class="form-group">
+                        <label for="sandboxText">Test Phrase</label>
+                        <input type="text" id="sandboxText" class="game-input" placeholder="e.g., Take out the recycling" autocomplete="off">
+                    </div>
+                    
+                    <div id="sandboxResult" class="sandbox-result-area empty">
+                        <span class="placeholder-text">Prediction will appear here...</span>
+                    </div>
+
+                    <div class="sandbox-actions modal-actions-center">
+                        <button id="btnTestAI" class="btn-secondary" onclick="testAI()">
+                            <%= icon('ai') %> Predict Emoji
+                        </button>
+                        <button id="btnSaveSandbox" class="btn-primary hidden" onclick="saveSandboxResult()">
+                            <%= icon('save') %> Save to Dictionary
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%# --- Modal: Add/Edit Entry --- %>
+<div id="entryModal" class="modal-overlay">
+    <div class="modal-content card shadow-lg">
+        <div class="modal-header">
+            <h3 id="modalTitle">Add Dictionary Entry</h3>
+            <button class="close-btn" onclick="closeEntryModal()">&times;</button>
+        </div>
+        <form id="entryForm" onsubmit="handleEntrySubmit(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="entryKeyword">Keyword / Phrase</label>
+                    <input type="text" id="entryKeyword" name="keyword" class="game-input" required placeholder="e.g., Laundry" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="entryEmoji">Emoji Character</label>
+                    <input type="text" id="entryEmoji" name="emoji" class="game-input" required placeholder="e.g., 🧺" autocomplete="off" maxlength="10">
+                </div>
+            </div>
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" class="btn-primary">
+                    <%= icon('save') %> Save Mapping
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
