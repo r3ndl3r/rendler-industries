@@ -274,7 +274,7 @@ body.modal-open {
     background: #059669; 
 }
 
-.btn-icon-view, .btn-icon-copy, .btn-icon-edit, .btn-icon-delete, .btn-icon-bonus, .btn-icon-crop, .btn-icon-ai, .btn-icon-reset, .btn-icon-vote {
+.btn-icon-view, .btn-icon-copy, .btn-icon-edit, .btn-icon-delete, .btn-icon-bonus, .btn-icon-crop, .btn-icon-ai, .btn-icon-reset, .btn-icon-vote, .btn-icon-transfer {
     width: 32px;
     height: 32px;
     padding: 0;
@@ -313,6 +313,9 @@ body.modal-open {
 .btn-icon-vote { background: #14b8a6; }
 .btn-icon-vote:hover { background: #0d9488; }
 .btn-icon-vote.is-voted { background: #0f766e; box-shadow: 0 0 10px rgba(20, 184, 166, 0.5); }
+
+.btn-icon-transfer { background: #a855f7; }
+.btn-icon-transfer:hover { background: #9333ea; }
 
 /* Disabled states */
 .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled, .btn-success:disabled {
