@@ -177,6 +177,9 @@ function renderTableRow(t) {
             <td class="actions-cell" data-label="Actions">
                 <div class="action-buttons">
                     <button class="btn-icon-bonus" onclick="openBonusModal(${t.id})" title="Grant Bonus Time">${getIcon('bonus')}</button>
+                    ${remaining > 0 ? `
+                        <button class="btn-icon-transfer" onclick="showTransferModal(${t.id})" title="Transfer Time">${getIcon('transfer')}</button>
+                    ` : ''}
                     <button class="btn-icon-edit" onclick="openEditModal(${t.id})" title="Edit Timer">${getIcon('edit')}</button>
                     <button class="btn-icon-delete" onclick="confirmDeleteTimer(${t.id}, '${escapeHtml(t.name)}')" title="Delete Timer">${getIcon('delete')}</button>
                 </div>
@@ -385,6 +388,101 @@ function confirmDeleteTimer(id, name) {
 }
 
 /**
+ * Displays a modal to select a target timer for time transfer.
+ * 
+ * @param {number} fromId - Source timer identifier.
+ * @returns {void}
+ */
+function showTransferModal(fromId) {
+    const source = STATE.timers.find(t => t.id == fromId);
+    if (!source) return;
+
+    // Filter for other timers belonging to the SAME user
+    const targets = STATE.timers.filter(t => t.id != fromId && t.user_id == source.user_id);
+    
+    if (targets.length === 0) {
+        alert('No other active timers available for this user to receive time.');
+        return;
+    }
+
+    const modalHtml = `
+        <div class="transfer-modal-content">
+            <p>Transfer remaining time from <strong>${escapeHtml(source.name)}</strong> to another device for <strong>${escapeHtml(source.username)}</strong>:</p>
+            <div class="transfer-targets-list">
+                ${targets.map(t => `
+                    <div class="transfer-target-item" onclick="handleTransfer(${fromId}, ${t.id})">
+                        <div class="target-icon ${t.category.toLowerCase().replace(' ', '-')}">
+                            ${getIcon(t.category.toLowerCase().replace(' ', '-'))}
+                        </div>
+                        <div class="target-info">
+                            <div class="target-name">${escapeHtml(t.name)}</div>
+                            <div class="target-remaining">${Math.floor((t.remaining_seconds || 0) / 60)}m remaining</div>
+                        </div>
+                        <div class="target-arrow">
+                            ${getIcon('chevron-right')}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    // showConfirmModal is the standard way to show a dynamic modal in this project
+    showConfirmModal({
+        title: 'Transfer Time',
+        icon: 'transfer',
+        message: modalHtml,
+        hideCancel: false,
+        cancelText: 'Cancel',
+        hideCloseX: false,
+        alignment: 'center',
+        confirmText: 'Select Target...',
+        onConfirm: () => { /* No-op, selection happens via onclick */ }
+    });
+    
+    // Hide the default confirm button because we use items in the list to trigger the action
+    const btn = document.getElementById('globalConfirmModalBtn');
+    if (btn) btn.classList.add('hidden');
+}
+
+/**
+ * Executes the time transfer via API.
+ * 
+ * @async
+ * @param {number} fromId - Source identifier.
+ * @param {number} toId - Target identifier.
+ * @returns {Promise<void>}
+ */
+async function handleTransfer(fromId, toId) {
+    const targetItem = document.querySelector(`.transfer-target-item[onclick*="${toId}"]`);
+    if (targetItem) {
+        targetItem.style.pointerEvents = 'none';
+        targetItem.innerHTML = `<div class="loading-spinner">${getIcon('waiting')} Transferring...</div>`;
+    }
+
+    try {
+        const result = await apiPost('/timers/api/transfer', {
+            from_timer_id: fromId,
+            to_timer_id: toId
+        });
+
+        if (result && result.success) {
+            closeConfirmModal();
+            await loadState(true);
+        } else {
+            alert(result.error || 'Transfer failed');
+            if (targetItem) {
+                targetItem.style.pointerEvents = 'auto';
+                // Reset content
+                renderUI(); 
+            }
+        }
+    } catch (err) {
+        console.error("Transfer Error:", err);
+    }
+}
+
+/**
  * Hides all active administrative modals.
  * 
  * @returns {void}
@@ -416,6 +514,8 @@ window.handleBonusSubmit = handleBonusSubmit;
 window.openCreateModal = openCreateModal;
 window.openEditModal = openEditModal;
 window.openBonusModal = openBonusModal;
+window.showTransferModal = showTransferModal;
+window.handleTransfer = handleTransfer;
 window.confirmDeleteTimer = confirmDeleteTimer;
 window.closeModals = closeModals;
 window.loadState = loadState;
