@@ -236,4 +236,27 @@ sub grant_bonus {
     }
 }
 
+# Transfers remaining time between user timers (Admin Only).
+# Route: POST /timers/api/transfer
+sub api_transfer {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    
+    my $from_id = $c->param('from_timer_id');
+    my $to_id   = $c->param('to_timer_id');
+    my $user_id = $c->current_user_id;
+    
+    unless ($from_id && $to_id) {
+        return $c->render(json => { success => 0, error => 'Missing transfer identification' });
+    }
+    
+    my ($success, $message) = $c->db->transfer_timer_time($from_id, $to_id, $user_id);
+    
+    if ($success) {
+        $c->render(json => { success => 1, message => $message });
+    } else {
+        $c->render(json => { success => 0, error => $message });
+    }
+}
+
 1;
