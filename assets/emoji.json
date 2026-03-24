@@ -93,5 +93,7 @@
     "running": "▶️",
     "paused": "⏸️",
     "idle": "⏺️",
-    "pin": "📌"
+    "pin": "📌",
+    "transfer": "↔️",
+    "chevron-right": "▶️"
 }
