@@ -412,6 +412,14 @@ sub startup {
     $admin->get('/settings/api/state')->to('settings#api_state');
     $admin->post('/settings/update')->to('settings#update');
 
+    # --- Emoji Management Routes ---
+    $admin->get('/emojis')->to('emoji#index');
+    $admin->get('/emojis/api/state')->to('emoji#api_state');
+    $admin->get('/emojis/api/list')->to('emoji#api_list');
+    $admin->post('/emojis/api/update')->to('emoji#api_update');
+    $admin->post('/emojis/api/delete')->to('emoji#api_delete');
+    $admin->post('/emojis/api/test')->to('emoji#api_test');
+
     # --- File Management Routes ---
     $r->get('/files/serve/:id')->to('files#serve');
     $admin->get('/files')->to('files#index');
