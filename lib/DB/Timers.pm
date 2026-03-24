@@ -422,6 +422,76 @@ sub DB::grant_bonus_time {
     return 0;
 }
 
+# Transfer remaining time from one timer to another.
+# Parameters:
+#   from_id  : Source timer ID
+#   to_id    : Target timer ID
+#   admin_id : Admin user ID (for logging)
+# Returns:
+#   (Boolean success, String message)
+sub DB::transfer_timer_time {
+    my ($self, $from_id, $to_id, $admin_id) = @_;
+    
+    $self->ensure_connection();
+    
+    my $today = $self->_get_current_date();
+    
+    # 1. Update running timers to get absolute current elapsed time
+    $self->update_running_timers();
+    
+    # 2. Ensure sessions exist
+    $self->_initialize_session($from_id, $today);
+    $self->_initialize_session($to_id, $today);
+    
+    # 3. Get session data and timer info (ensuring they are active)
+    my $from_session = $self->_get_session($from_id, $today);
+    my $from_timer   = $self->{dbh}->selectrow_hashref("SELECT * FROM timers WHERE id = ? AND is_active = 1", undef, $from_id);
+    my $to_timer     = $self->{dbh}->selectrow_hashref("SELECT * FROM timers WHERE id = ? AND is_active = 1", undef, $to_id);
+    
+    # 4. Validations
+    return (0, "invalid source timer") unless $from_timer;
+    return (0, "invalid target timer") unless $to_timer;
+    return (0, "cannot transfer between different users") if $from_timer->{user_id} != $to_timer->{user_id};
+    return (0, "cannot transfer to the same timer") if $from_id == $to_id;
+    
+    my $user_id = $from_timer->{user_id};
+    my $transfer_seconds = $from_session->{remaining_seconds};
+    return (0, "no remaining time to transfer") if $transfer_seconds <= 0;
+    
+    # 5. Atomic Transfer Transaction
+    $self->{dbh}->begin_work;
+    eval {
+        # Stop source if running
+        if ($from_session->{is_running}) {
+            $self->stop_timer($from_id, $user_id);
+        }
+        # Consume source time: Decrease bonus_seconds instead of increasing elapsed_seconds.
+        # This keeps the 'Used Today' (elapsed_seconds) stat accurate while reducing allowance.
+        my $sql_consume = "UPDATE timer_sessions SET bonus_seconds = bonus_seconds - ? WHERE timer_id = ? AND session_date = ?";
+        $self->{dbh}->do($sql_consume, undef, $transfer_seconds, $from_id, $today);
+
+        # Grant target time: Add the consumed time to bonus_seconds
+        my $sql_grant = "UPDATE timer_sessions SET bonus_seconds = bonus_seconds + ? WHERE timer_id = ? AND session_date = ?";
+
+        $self->{dbh}->do($sql_grant, undef, $transfer_seconds, $to_id, $today);
+        
+        # Audit Logs (logged against the performing admin)
+        my $mins = int($transfer_seconds / 60);
+        $self->_log_timer_action($from_id, $admin_id, 'force_stop', "transferred ${mins}m to $to_timer->{name}");
+        $self->_log_timer_action($to_id, $admin_id, 'bonus_granted', "received ${mins}m from $from_timer->{name}");
+        
+        $self->{dbh}->commit;
+    };
+    
+    if ($@) {
+        $self->{dbh}->rollback;
+        $self->{app}->log->error("Transfer Error: $@") if $self->{app};
+        return (0, "Database transaction failed");
+    }
+    
+    return (1, "Transferred " . int($transfer_seconds / 60) . " minutes successfully");
+}
+
 # Update elapsed time for all running timers (called by cron or polling).
 # Parameters: None
 # Returns:
