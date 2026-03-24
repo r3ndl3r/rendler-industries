@@ -433,6 +433,12 @@ sub run_emoji_maintenance_p {
             my $raw_text = Mojo::Util::trim($r->{text_value} // '');
             next unless $raw_text;
             
+            # Skip paragraphs/long blocks (Max 200 chars for emojis)
+            if (length($raw_text) > 200) {
+                $c->db->mark_emoji_processed($t->{table}, $t->{id_col}, $r->{id});
+                next;
+            }
+            
             # Skip if already has emoji, but ensure we mark it as processed in DB
             if ($raw_text =~ /^\p{Extended_Pictographic}/) {
                 $c->db->update_record_emoji($t->{table}, $t->{id_col}, $t->{text_col}, $r->{id}, $raw_text);
