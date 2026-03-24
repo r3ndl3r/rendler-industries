@@ -302,6 +302,62 @@
 .status-badge.paused { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
 .status-badge.idle { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
 
+.expired-text {
+    color: #ef4444;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+/* --- Transfer Modal (Admin Context) --- */
+
+.transfer-modal-content {
+    text-align: left;
+}
+
+.transfer-targets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.transfer-target-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.transfer-target-item:hover {
+    background: rgba(168, 85, 247, 0.1);
+    border-color: rgba(168, 85, 247, 0.4);
+    transform: translateX(5px);
+}
+
+.target-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.target-info { flex: 1; }
+.target-name { font-weight: 700; color: #ffffff; }
+.target-remaining { font-size: 0.75rem; color: #94a3b8; font-family: var(--font-mono); }
+.target-arrow { color: rgba(255, 255, 255, 0.2); }
+
 /* --- 4. Modals & Forms --- */
 
 .timer-form .modal-body {
