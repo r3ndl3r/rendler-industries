@@ -1,17 +1,13 @@
 // /public/js/timers/utils.js
 
 /**
- * Timer Utility Module
- * 
- * Centralizes duration calculations and visual reconciliation logic 
- * for the timer system. It provides standardized formatting and status 
- * resolution used across both user and administrative interfaces.
+ * Logic for duration calculations and visual status resolution.
  * 
  * Features:
- * - High-density time formatting (HH:MM:SS)
+ * - Time formatting (HH:MM:SS)
  * - Over-limit and expiry aware duration strings
  * - Semantic status color resolution (Green/Yellow/Red)
- * - Atomic progress bar synchronization
+ * - Progress bar synchronization
  * 
  * Dependencies:
  * - None
@@ -25,7 +21,7 @@ const TimerUtils = {
      * @returns {string} - Formatted duration label.
      */
     formatTime: function(seconds) {
-        if (seconds === 0) return 'EXPIRED';
+        if (seconds === 0) return '0:00:00';
         
         // Scenario: Negative Duration (Over daily limit)
         if (seconds < 0) {
