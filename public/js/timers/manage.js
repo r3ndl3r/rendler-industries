@@ -3,12 +3,12 @@
 /**
  * Timer Management Controller
  * 
- * Manages the administrative interface for device usage timers using a 
- * state-driven architecture. It facilitates the creation, modification, 
- * and deletion of user-specific time limits and bonus time grants.
+ * Manages the administrative interface for device usage timers.
+ * It facilitates the creation, modification, and deletion of 
+ * user-specific time limits and bonus time grants.
  * 
  * Features:
- * - State-driven ledger rendering with user-based filtering
+ * - Ledger rendering with user-based filtering
  * - Interactive definition creation and modification workflows
  * - Integrated bonus time grant system with instant reconciliation
  * - Standardized lifecycle for destructive removal operations
@@ -23,7 +23,8 @@
  * --- Module Configuration & State ---
  */
 const CONFIG = {
-    SYNC_INTERVAL_MS: 300000         // Background synchronization frequency
+    SYNC_INTERVAL_MS: 60000,          // Server synchronization frequency
+    TICK_INTERVAL_MS: 1000           // Local UI resolution
 };
 
 let STATE = {
@@ -59,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Global modal behavior
     setupGlobalModalClosing(['modal-overlay'], [closeModals]);
 
+    // High-resolution local UI loop
+    setInterval(updateLocalTimers, CONFIG.TICK_INTERVAL_MS);
+
     // Background synchronization
     setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
 });
@@ -68,6 +72,49 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 
 /**
+ * High-resolution background loop for local time increments.
+ * 
+ * @returns {void}
+ */
+function updateLocalTimers() {
+    let changed = false;
+    STATE.timers.forEach(t => {
+        if (t.is_running && !t.is_paused) {
+            t.elapsed_seconds++;
+            t.remaining_seconds = Math.max(-36000, t.remaining_seconds - 1);
+            changed = true;
+        }
+    });
+
+    if (changed) {
+        // Update row labels directly to reflect real-time increments.
+        STATE.timers.forEach(t => {
+            if (t.is_running && !t.is_paused) {
+                const row = document.querySelector(`tr[data-timer-id="${t.id}"]`);
+                if (row) {
+                    const elapsedEl = row.querySelector('.elapsed-cell');
+                    const remainingEl = row.querySelector('.remaining-cell');
+                    
+                    if (elapsedEl) elapsedEl.textContent = `${Math.floor(t.elapsed_seconds / 60)}m`;
+                    if (remainingEl) {
+                        if (t.remaining_seconds > 0) {
+                            remainingEl.textContent = `${Math.floor(t.remaining_seconds / 60)}m`;
+                        } else {
+                            remainingEl.innerHTML = '<span class="expired-text">EXPIRED</span>';
+                        }
+                    }
+
+                    if (t.remaining_seconds <= 0) {
+                        // Force a server state refresh once the timer reaches zero.
+                        loadState(true);
+                    }
+                }
+            }
+        });
+    }
+}
+
+/**
  * Synchronizes the administrative state with the server.
  * 
  * @async
@@ -75,9 +122,10 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>}
  */
 async function loadState(force = false) {
-    // Skip background refresh if a modal is active or the user is typing
+    // Skip background refresh if a modal is active or the user is typing/interacting with filters
     const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
-    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+    const activeEl = document.activeElement;
+    const inputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.id === 'user-filter' || activeEl.classList.contains('user-dropdown'));
 
     if (!force && (anyModalOpen || inputFocused)) return;
 
@@ -401,7 +449,7 @@ function showTransferModal(fromId) {
     const targets = STATE.timers.filter(t => t.id != fromId && t.user_id == source.user_id);
     
     if (targets.length === 0) {
-        alert('No other active timers available for this user to receive time.');
+        showToast('No other active timers available for this user', 'info');
         return;
     }
 
@@ -456,7 +504,7 @@ function showTransferModal(fromId) {
 async function handleTransfer(fromId, toId) {
     const targetItem = document.querySelector(`.transfer-target-item[onclick*="${toId}"]`);
     if (targetItem) {
-        targetItem.style.pointerEvents = 'none';
+        targetItem.classList.add('pending');
         targetItem.innerHTML = `<div class="loading-spinner">${getIcon('waiting')} Transferring...</div>`;
     }
 
@@ -470,10 +518,10 @@ async function handleTransfer(fromId, toId) {
             closeConfirmModal();
             await loadState(true);
         } else {
-            alert(result.error || 'Transfer failed');
+            // Error is automatically toasted by apiPost
             if (targetItem) {
-                targetItem.style.pointerEvents = 'auto';
-                // Reset content
+                targetItem.classList.remove('pending');
+                // Reset content via local render if needed
                 renderUI(); 
             }
         }
@@ -500,9 +548,7 @@ function closeModals() {
  */
 function escapeHtml(text) {
     if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /**
