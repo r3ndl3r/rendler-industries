@@ -242,7 +242,7 @@ function renderReceipts(append = false, batch = null) {
                     <div class="receipt-thumbnail-wrapper" onclick="openReceiptModal('${r.id}')">
                         <img src="/receipts/serve/${r.id}" class="receipt-thumb">
                     </div>
-                ` : `<span style="font-size: 1.5rem;">${getIcon('receipts')}</span>`}
+                ` : `<span class="receipt-fallback-icon">${getIcon('receipts')}</span>`}
             </td>
             <td data-label="Filename"><small>${escapeHtml(r.original_filename)}</small></td>
             <td data-label="Store">
@@ -296,11 +296,17 @@ async function handleUpload(e) {
     if (e) e.preventDefault();
     const form = document.getElementById('uploadForm');
     const formData = new FormData(form);
+    const btn = document.getElementById('uploadSubmitBtn');
     
     if (STATE.refinedBlob) {
         formData.delete('file');
         formData.append('file', STATE.refinedBlob, STATE.refinedName || 'receipt.png');
     }
+
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Uploading...`;
+    btn.classList.add('receipt-btn-waiting');
 
     showLoadingOverlay('Processing receipt...', 'Performing binary scan and OCR extraction.');
     
@@ -316,6 +322,9 @@ async function handleUpload(e) {
         }
     } finally {
         hideLoadingOverlay();
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        btn.classList.remove('receipt-btn-waiting');
     }
 }
 
@@ -409,7 +418,9 @@ function setupUploadOrchestration() {
             STATE.refinedBlob = null;
             const low = file.name.toLowerCase();
             if (file.type.startsWith('image/') || low.endsWith('.heic') || low.endsWith('.heif')) {
-                closeUploadModal();
+                // Hide modal manually instead of calling closeUploadModal() to preserve form state
+                const m = document.getElementById('uploadModal');
+                if (m) m.classList.remove('show');
                 initPreUploadCrop(file);
             }
         }
@@ -594,6 +605,9 @@ function applyPreUploadCrop() {
 function updateFileName(name) {
     const el = document.getElementById('fileName');
     if (el) { el.textContent = name; el.classList.remove('hidden'); }
+    
+    const btn = document.getElementById('uploadSubmitBtn');
+    if (btn) btn.classList.remove('hidden');
 }
 
 /**
@@ -932,6 +946,16 @@ function openUploadModal() { const m = document.getElementById('uploadModal'); i
 function closeUploadModal() { 
     const m = document.getElementById('uploadModal'); 
     if (m) m.classList.remove('show'); 
+    
+    const form = document.getElementById('uploadForm');
+    if (form) form.reset();
+
+    const display = document.getElementById('fileName');
+    if (display) display.classList.add('hidden');
+
+    const btn = document.getElementById('uploadSubmitBtn');
+    if (btn) btn.classList.add('hidden');
+
     STATE.refinedBlob = null; 
 }
 
