@@ -404,6 +404,8 @@
 
 /* UI Utility Classes for Receipts */
 .receipt-col-preview { text-align: center; }
+.receipt-fallback-icon { font-size: 1.5rem; }
+.receipt-btn-waiting { opacity: 0.7; pointer-events: none; }
 .ai-badge { font-size: 0.8rem; margin-left: 5px; }
 .receipt-description { color: rgba(255, 255, 255, 0.4); }
 .receipt-total-value { color: #69f0ae; font-weight: bold; }
