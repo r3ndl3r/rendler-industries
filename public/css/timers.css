@@ -3,10 +3,7 @@
 /**
  * Timer Module Styles
  * 
- * Provides high-fidelity styling for both the user dashboard and 
- * administrative management interfaces. It preserves the original 
- * high-contrast aesthetic (white background, dark text) while 
- * maintaining project-standard structure.
+ * Styling for user dashboard and administrative management interfaces.
  * 
  * Sections:
  * 1. Base Layout
@@ -18,8 +15,7 @@
 
 /* --- 1. Base Layout --- */
 
-.timers-container,
-.timers-manage-container {
+.timers-container {
     max-width: 1400px;
     margin: 0 auto;
     padding: 2rem 1rem;
@@ -224,26 +220,26 @@
 /* --- 3. Admin Management (Ledger) --- */
 
 .timers-table {
-    background: #1e293b !important;
-    color: #e2e8f0 !important;
+    background: #1e293b;
+    color: #e2e8f0;
 }
 
 .timers-table thead {
-    background: #0f172a !important;
+    background: #0f172a;
 }
 
 .timers-table th {
-    color: #94a3b8 !important;
-    border-bottom: 1px solid #334155 !important;
+    color: #94a3b8;
+    border-bottom: 1px solid #334155;
 }
 
 .timers-table td {
-    border-top: 1px solid #334155 !important;
-    color: #e2e8f0 !important;
+    border-top: 1px solid #334155;
+    color: #e2e8f0;
 }
 
 .timers-table tbody tr:hover {
-    background: #334155 !important;
+    background: #334155;
 }
 
 .manage-filters {
