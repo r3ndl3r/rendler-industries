@@ -12,7 +12,7 @@
     <script src="/js/vendor/heic2any.min.js?<%= time %>"></script>
 % end
 
-<div class="admin-container app-container">
+<div class="app-container">
     <div class="header-bar">
         <h1><%= icon('receipts') %> <span>Receipts</span></h1>
         <div class="manage-actions">
@@ -230,7 +230,7 @@
                 </div>
 
                 <div class="upload-actions">
-                    <button type="submit" class="btn-primary">
+                    <button type="submit" id="uploadSubmitBtn" class="btn-primary hidden">
                         <%= icon('upload') %> Upload
                     </button>
                 </div>
