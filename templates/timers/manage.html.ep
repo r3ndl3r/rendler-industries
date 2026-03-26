@@ -64,18 +64,21 @@
                         <option value="Tablet">Tablet</option>
                         <option value="Gaming Console">Gaming Console</option>
                         <option value="TV">TV</option>
+                        <option value="Unlimited">Unlimited</option>
                     </select>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="create-weekday">Weekday Limit (minutes) *</label>
-                        <input type="number" id="create-weekday" name="weekday_minutes" class="game-input" min="0" required value="60">
+                        <input type="number" id="create-weekday" name="weekday_minutes" class="game-input" min="-1" required value="60">
+                        <small>(-1 for Unlimited)</small>
                     </div>
 
                     <div class="form-group">
                         <label for="create-weekend">Weekend Limit (minutes) *</label>
-                        <input type="number" id="create-weekend" name="weekend_minutes" class="game-input" min="0" required value="120">
+                        <input type="number" id="create-weekend" name="weekend_minutes" class="game-input" min="-1" required value="120">
+                        <small>(-1 for Unlimited)</small>
                     </div>
                 </div>
             </div>
@@ -111,18 +114,21 @@
                         <option value="Tablet">Tablet</option>
                         <option value="Gaming Console">Gaming Console</option>
                         <option value="TV">TV</option>
+                        <option value="Unlimited">Unlimited</option>
                     </select>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="edit-weekday">Weekday Limit (minutes) *</label>
-                        <input type="number" id="edit-weekday" name="weekday_minutes" class="game-input" min="0" required>
+                        <input type="number" id="edit-weekday" name="weekday_minutes" class="game-input" min="-1" required>
+                        <small>(-1 for Unlimited)</small>
                     </div>
 
                     <div class="form-group">
                         <label for="edit-weekend">Weekend Limit (minutes) *</label>
-                        <input type="number" id="edit-weekend" name="weekend_minutes" class="game-input" min="0" required>
+                        <input type="number" id="edit-weekend" name="weekend_minutes" class="game-input" min="-1" required>
+                        <small>(-1 for Unlimited)</small>
                     </div>
                 </div>
             </div>
