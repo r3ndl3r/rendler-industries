@@ -79,9 +79,14 @@ document.addEventListener('DOMContentLoaded', () => {
 function updateLocalTimers() {
     let changed = false;
     STATE.timers.forEach(t => {
-        if (t.is_running && !t.is_paused) {
+        // Only tick if it's a metered timer that is running and not paused
+        if (t.is_running && !t.is_paused && t.limit_seconds !== -1) {
             t.elapsed_seconds++;
             t.remaining_seconds = Math.max(-36000, t.remaining_seconds - 1);
+            changed = true;
+        } else if (t.is_running && !t.is_paused && t.limit_seconds === -1) {
+            // Still track elapsed time for unlimited timers
+            t.elapsed_seconds++;
             changed = true;
         }
     });
@@ -96,15 +101,18 @@ function updateLocalTimers() {
                     const remainingEl = row.querySelector('.remaining-cell');
                     
                     if (elapsedEl) elapsedEl.textContent = `${Math.floor(t.elapsed_seconds / 60)}m`;
+                    
                     if (remainingEl) {
-                        if (t.remaining_seconds > 0) {
+                        if (t.limit_seconds === -1) {
+                            remainingEl.textContent = '-';
+                        } else if (t.remaining_seconds > 0) {
                             remainingEl.textContent = `${Math.floor(t.remaining_seconds / 60)}m`;
                         } else {
                             remainingEl.innerHTML = '<span class="expired-text">EXPIRED</span>';
                         }
                     }
 
-                    if (t.remaining_seconds <= 0) {
+                    if (t.limit_seconds !== -1 && t.remaining_seconds <= 0) {
                         // Force a server state refresh once the timer reaches zero.
                         loadState(true);
                     }
@@ -206,6 +214,11 @@ function renderTableRow(t) {
     const remaining = t.remaining_seconds || 0;
     const catClass = (t.category || '').toLowerCase().replace(' ', '-');
     
+    // Determine specific display values
+    const weekdayDisplay = t.weekday_minutes === -1 ? 'Unlimited' : `${t.weekday_minutes}m`;
+    const weekendDisplay = t.weekend_minutes === -1 ? 'Unlimited' : `${t.weekend_minutes}m`;
+    const remainingDisplay = t.limit_seconds === -1 ? '-' : (remaining > 0 ? `${Math.floor(remaining / 60)}m` : '<span class="expired-text">EXPIRED</span>');
+
     return `
         <tr data-timer-id="${t.id}">
             <td class="user-cell" data-label="User">${escapeHtml(t.username)}</td>
@@ -213,20 +226,20 @@ function renderTableRow(t) {
             <td class="category-cell" data-label="Category">
                 <span class="category-badge ${catClass}">${escapeHtml(t.category)}</span>
             </td>
-            <td class="limit-cell" data-label="Weekday Limit">${t.weekday_minutes}m</td>
-            <td class="limit-cell" data-label="Weekend Limit">${t.weekend_minutes}m</td>
+            <td class="limit-cell" data-label="Weekday Limit">${weekdayDisplay}</td>
+            <td class="limit-cell" data-label="Weekend Limit">${weekendDisplay}</td>
             <td class="elapsed-cell" data-label="Used Today">${Math.floor((t.elapsed_seconds || 0) / 60)}m</td>
-            <td class="remaining-cell" data-label="Remaining">
-                ${remaining > 0 ? `${Math.floor(remaining / 60)}m` : '<span class="expired-text">EXPIRED</span>'}
-            </td>
+            <td class="remaining-cell" data-label="Remaining">${remainingDisplay}</td>
             <td class="status-cell" data-label="Status">
                 ${t.is_running ? `<span class="status-badge running">${getIcon('running')} Running</span>` : (t.is_paused ? `<span class="status-badge paused">${getIcon('paused')} Paused</span>` : `<span class="status-badge idle">${getIcon('idle')} Idle</span>`)}
             </td>
             <td class="actions-cell" data-label="Actions">
                 <div class="action-buttons">
-                    <button class="btn-icon-bonus" onclick="openBonusModal(${t.id})" title="Grant Bonus Time">${getIcon('bonus')}</button>
-                    ${remaining > 0 ? `
-                        <button class="btn-icon-transfer" onclick="showTransferModal(${t.id})" title="Transfer Time">${getIcon('transfer')}</button>
+                    ${t.limit_seconds !== -1 ? `
+                        <button class="btn-icon-bonus" onclick="openBonusModal(${t.id})" title="Grant Bonus Time">${getIcon('bonus')}</button>
+                        ${remaining > 0 ? `
+                            <button class="btn-icon-transfer" onclick="showTransferModal(${t.id})" title="Transfer Time">${getIcon('transfer')}</button>
+                        ` : ''}
                     ` : ''}
                     <button class="btn-icon-edit" onclick="openEditModal(${t.id})" title="Edit Timer">${getIcon('edit')}</button>
                     <button class="btn-icon-delete" onclick="confirmDeleteTimer(${t.id}, '${escapeHtml(t.name)}')" title="Delete Timer">${getIcon('delete')}</button>
