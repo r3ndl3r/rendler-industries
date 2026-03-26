@@ -108,15 +108,16 @@ function renderGrid() {
  * @returns {string} - Rendered HTML.
  */
 function renderTimerCard(t) {
-    const progress = t.limit_seconds > 0 ? (t.elapsed_seconds / t.limit_seconds * 100) : 0;
-    const isExpired = t.remaining_seconds <= 0;
+    const isUnlimited = t.limit_seconds === -1;
+    const progress = (isUnlimited || t.limit_seconds <= 0) ? 0 : (t.elapsed_seconds / t.limit_seconds * 100);
+    const isExpired = !isUnlimited && t.remaining_seconds <= 0;
     
     const cat = t.category || '';
     const catClass = cat.toLowerCase().replace(' ', '-');
     const iconHtml = getIcon(catClass);
 
     return `
-        <div class="timer-card" data-timer-id="${t.id}" data-status="${t.status_color}">
+        <div class="timer-card" data-timer-id="${t.id}" data-status="${isUnlimited ? 'green' : t.status_color}">
             <div class="timer-card-header">
                 <div class="timer-icon ${catClass}">
                     ${iconHtml}
@@ -128,7 +129,7 @@ function renderTimerCard(t) {
             </div>
 
             <div class="timer-status-bar">
-                <div class="status-fill ${t.status_color}" style="width: ${progress}%"></div>
+                <div class="status-fill ${isUnlimited ? 'green' : t.status_color}" style="width: ${progress}%"></div>
             </div>
 
             <div class="timer-stats">
@@ -141,14 +142,14 @@ function renderTimerCard(t) {
                 <div class="stat-row">
                     <span class="stat-label">Remaining:</span>
                     <span class="stat-value remaining-time ${isExpired ? 'expired' : ''}" data-seconds="${t.remaining_seconds}">
-                        ${t.remaining_seconds > 0 ? TimerUtils.formatTime(t.remaining_seconds) : (t.remaining_seconds < 0 ? `<span class="over-time">-${TimerUtils.formatTime(Math.abs(t.remaining_seconds))} OVER</span>` : 'EXPIRED')}
+                        ${isUnlimited ? '-' : (t.remaining_seconds > 0 ? TimerUtils.formatTime(t.remaining_seconds) : (t.remaining_seconds < 0 ? `<span class="over-time">-${TimerUtils.formatTime(Math.abs(t.remaining_seconds))} OVER</span>` : 'EXPIRED'))}
                     </span>
                 </div>
                 <div class="stat-row">
                     <span class="stat-label">Daily Limit:</span>
-                    <span class="stat-value">${Math.floor(t.limit_seconds / 60)} minutes</span>
+                    <span class="stat-value">${isUnlimited ? 'Unlimited' : `${Math.floor(t.limit_seconds / 60)} minutes`}</span>
                 </div>
-                ${t.bonus_seconds > 0 ? `
+                ${t.bonus_seconds > 0 && !isUnlimited ? `
                     <div class="stat-row bonus-indicator">
                         <span class="stat-label">${getIcon('bonus')} Bonus Time:</span>
                         <span class="stat-value">+${Math.floor(t.bonus_seconds / 60)} minutes</span>
@@ -250,7 +251,9 @@ function updateLocalTimers() {
     STATE.timers.forEach(t => {
         if (t.is_running && !t.is_paused) {
             t.elapsed_seconds++;
-            t.remaining_seconds = Math.max(-36000, t.remaining_seconds - 1);
+            if (t.limit_seconds !== -1) {
+                t.remaining_seconds = Math.max(-36000, t.remaining_seconds - 1);
+            }
             changed = true;
         }
     });
@@ -267,7 +270,9 @@ function updateLocalTimers() {
 
                     if (elapsedEl) elapsedEl.textContent = TimerUtils.formatTime(t.elapsed_seconds);
                     if (remainingEl) {
-                        if (t.remaining_seconds > 0) {
+                        if (t.limit_seconds === -1) {
+                            remainingEl.textContent = '-';
+                        } else if (t.remaining_seconds > 0) {
                             remainingEl.textContent = TimerUtils.formatTime(t.remaining_seconds);
                         } else {
                             remainingEl.innerHTML = `<span class="over-time">-${TimerUtils.formatTime(Math.abs(t.remaining_seconds))} OVER</span>`;
@@ -279,7 +284,7 @@ function updateLocalTimers() {
                         progressBar.style.width = `${progress}%`;
                     }
 
-                    if (t.remaining_seconds <= 0 && !card.querySelector('.expired-overlay')) {
+                    if (t.limit_seconds !== -1 && t.remaining_seconds <= 0 && !card.querySelector('.expired-overlay')) {
                         renderGrid(); // Trigger full render for overlay
                     }
                 }
