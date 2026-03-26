@@ -60,7 +60,14 @@ sub login {
         $c->csrf_token;
         
         $c->app->log->info("User $username logged in (session rotated) from IP " . $c->tx->remote_address);
-        return $c->redirect_to('/');
+        
+        # Determine destination: prioritizes the 'redirect' parameter for deep linking
+        my $redirect = $c->param('redirect') || '/';
+        
+        # Security: Prevent Open Redirect attacks by enforcing local relative paths
+        $redirect = '/' unless $redirect =~ m{^/};
+        
+        return $c->redirect_to($redirect);
     } elsif ($auth_result == 2) {
         # Handle "Pending Approval" state
         $c->app->log->warn("Pending approval login attempt for user $username from IP " . $c->tx->remote_address);
@@ -86,8 +93,10 @@ sub check_login {
         return 1;
     }
     
-    # Authentication failed: Redirect and halt the chain
-    $self->redirect_to('/login');
+    # Authentication failed: Capture the current request path and redirect to login
+    # This enables seamless return to the intended page after successful login.
+    my $path = $self->req->url->path;
+    $self->redirect_to($self->url_for('/login')->query(redirect => $path));
     return undef;
 }
 
