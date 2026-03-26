@@ -645,7 +645,7 @@ CREATE TABLE `timers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `name` varchar(100) NOT NULL,
-  `category` enum('Computer','Phone','Tablet','Gaming Console','TV') NOT NULL,
+  `category` enum('Computer','Phone','Tablet','Gaming Console','TV','Unlimited') NOT NULL,
   `weekday_minutes` int(11) NOT NULL DEFAULT 60,
   `weekend_minutes` int(11) NOT NULL DEFAULT 120,
   `is_active` tinyint(1) DEFAULT 1,
