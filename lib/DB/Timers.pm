@@ -68,25 +68,31 @@ sub DB::get_user_timers {
             ? $row->{weekend_minutes} 
             : $row->{weekday_minutes};
         
-        $row->{limit_seconds} = ($limit_minutes * 60) + ($row->{bonus_seconds} // 0);
         $row->{elapsed_seconds} //= 0;
         $row->{is_running} //= 0;
         $row->{is_paused} //= 0;
         
-        # Calculate remaining time
-        $row->{remaining_seconds} = $row->{limit_seconds} - $row->{elapsed_seconds};
-        
-        # Determine status color
-        my $usage_percent = $row->{limit_seconds} > 0 
-            ? ($row->{elapsed_seconds} / $row->{limit_seconds}) * 100 
-            : 0;
-        
-        if ($usage_percent >= 100) {
-            $row->{status_color} = 'red';
-        } elsif ($usage_percent >= 80) {
-            $row->{status_color} = 'yellow';
-        } else {
+        # Handle "Unlimited" sentinel value (-1)
+        if ($limit_minutes == -1) {
+            $row->{limit_seconds} = -1; # Sentinel for infinite
+            $row->{remaining_seconds} = 999999; # Practically infinite
             $row->{status_color} = 'green';
+        } else {
+            $row->{limit_seconds} = ($limit_minutes * 60) + ($row->{bonus_seconds} // 0);
+            $row->{remaining_seconds} = $row->{limit_seconds} - $row->{elapsed_seconds};
+            
+            # Determine status color based on usage percentage
+            my $usage_percent = $row->{limit_seconds} > 0 
+                ? ($row->{elapsed_seconds} / $row->{limit_seconds}) * 100 
+                : 0;
+            
+            if ($usage_percent >= 100) {
+                $row->{status_color} = 'red';
+            } elsif ($usage_percent >= 80) {
+                $row->{status_color} = 'yellow';
+            } else {
+                $row->{status_color} = 'green';
+            }
         }
         
         push @timers, $row;
@@ -147,9 +153,16 @@ sub DB::get_all_timers {
             ? $row->{weekend_minutes} 
             : $row->{weekday_minutes};
         
-        $row->{limit_seconds} = ($limit_minutes * 60) + ($row->{bonus_seconds} // 0);
         $row->{elapsed_seconds} //= 0;
-        $row->{remaining_seconds} = $row->{limit_seconds} - $row->{elapsed_seconds};
+
+        # Handle "Unlimited" sentinel value (-1)
+        if ($limit_minutes == -1) {
+            $row->{limit_seconds} = -1;
+            $row->{remaining_seconds} = 999999;
+        } else {
+            $row->{limit_seconds} = ($limit_minutes * 60) + ($row->{bonus_seconds} // 0);
+            $row->{remaining_seconds} = $row->{limit_seconds} - $row->{elapsed_seconds};
+        }
         
         push @timers, $row;
     }
@@ -225,14 +238,19 @@ sub DB::update_timer {
         
         if ($session && $session->{elapsed_seconds} > 0) {
             my $is_weekend = $self->_is_weekend($today);
-            my $new_limit_seconds = ($is_weekend ? $weekend_minutes : $weekday_minutes) * 60 + ($session->{bonus_seconds} || 0);
+            my $limit_minutes = $is_weekend ? $weekend_minutes : $weekday_minutes;
             
-            # If elapsed exceeds new limit, stop the timer if running
-            if ($session->{elapsed_seconds} >= $new_limit_seconds) {
-                if ($session->{is_running}) {
-                    # Get the user_id from the timer
-                    my $timer = $self->_get_timer_by_id($timer_id);
-                    $self->stop_timer($timer_id, $timer->{user_id}) if $timer;
+            # Only enforce expiration if it's not an unlimited timer
+            if ($limit_minutes != -1) {
+                my $new_limit_seconds = ($limit_minutes * 60) + ($session->{bonus_seconds} || 0);
+                
+                # If elapsed exceeds new limit, stop the timer if running
+                if ($session->{elapsed_seconds} >= $new_limit_seconds) {
+                    if ($session->{is_running}) {
+                        # Get the user_id from the timer
+                        my $timer = $self->_get_timer_by_id($timer_id);
+                        $self->stop_timer($timer_id, $timer->{user_id}) if $timer;
+                    }
                 }
             }
         }
@@ -565,6 +583,10 @@ sub DB::get_timers_needing_warning {
         WHERE ts.session_date = ?
           AND ts.warning_sent = 0
           AND ts.is_running = 1
+          AND (CASE 
+                WHEN DAYOFWEEK(?) IN (1, 7) THEN t.weekend_minutes
+                ELSE t.weekday_minutes
+              END) > 0
           AND ((CASE 
                 WHEN DAYOFWEEK(?) IN (1, 7) THEN t.weekend_minutes
                 ELSE t.weekday_minutes
@@ -618,6 +640,10 @@ sub DB::get_expired_timers {
         JOIN users u ON t.user_id = u.id
         WHERE ts.session_date = ?
           AND ts.expired_sent = 0
+          AND (CASE 
+                WHEN DAYOFWEEK(?) IN (1, 7) THEN t.weekend_minutes
+                ELSE t.weekday_minutes
+              END) > 0
           AND ts.elapsed_seconds >= ((CASE 
                 WHEN DAYOFWEEK(?) IN (1, 7) THEN t.weekend_minutes
                 ELSE t.weekday_minutes
@@ -794,8 +820,12 @@ sub DB::_get_session {
             ? $timer->{weekend_minutes} 
             : $timer->{weekday_minutes};
         
-        my $limit_seconds = ($limit_minutes * 60) + ($session->{bonus_seconds} // 0);
-        $session->{remaining_seconds} = $limit_seconds - $session->{elapsed_seconds};
+        if ($limit_minutes == -1) {
+            $session->{remaining_seconds} = 999999;
+        } else {
+            my $limit_seconds = ($limit_minutes * 60) + ($session->{bonus_seconds} // 0);
+            $session->{remaining_seconds} = $limit_seconds - $session->{elapsed_seconds};
+        }
     }
     
     return $session;
