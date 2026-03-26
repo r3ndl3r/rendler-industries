@@ -215,7 +215,7 @@ sub contact {
 # Returns: Rendered HTML template 'clipboard'.
 sub copy_get {
     my $c = shift;
-    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->redirect_to($c->url_for('/login')->query(redirect => $c->req->url->path)) unless $c->is_logged_in;
 
     $c->render('clipboard');
 }
