@@ -27,15 +27,15 @@
     /**
      * Sets the target timezone for subsequent formatting.
      * 
-     * @param {string} zone - IANA Timezone (e.g., "Australia/Melbourne")
+     * @param {string} zone - IANA Timezone (e.g., APP_TZ)
      * @returns {MomentLite}
      */
-    MomentLite.prototype.tz = function(zone) {
+     MomentLite.prototype.tz = function(zone) {
         this._tz = zone;
         return this;
-    };
+     };
 
-    /**
+     /**
      * Formats the date into a specific string pattern.
      * Implements specific logic for the project's dashboard clocks.
      * 
@@ -43,8 +43,11 @@
      * @returns {string} - Formatted output
      */
     MomentLite.prototype.format = function(pattern) {
+        // Fallback sequence: Specific TZ -> Global Config -> Safe Default
+        const activeTz = this._tz || (typeof APP_TZ !== 'undefined' ? APP_TZ : 'UTC');
+        
         const options = {
-            timeZone: this._tz || 'Australia/Melbourne',
+            timeZone: activeTz,
             hour12: true
         };
 
