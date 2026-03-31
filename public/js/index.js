@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Clock: set current date prefix and refresh every 60s
     if (prefixEl) {
         const updatePrefix = () => {
-            prefixEl.textContent = moment().tz("Australia/Melbourne").format('dddd, D MMMM YYYY');
+            prefixEl.textContent = moment().tz(APP_TZ).format('dddd, D MMMM YYYY');
         };
         updatePrefix();
         setInterval(updatePrefix, 60000);
