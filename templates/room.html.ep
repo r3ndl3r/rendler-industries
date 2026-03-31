@@ -1,0 +1,152 @@
+<%# /templates/room.html.ep %>
+
+% layout 'default';
+% title icon('room') . ' Room Cleaning Tracker';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/room.css?<%= time %>">
+    <script src="/js/room.js?<%= time %>"></script>
+% end
+
+<div class="app-container">
+    <div class="header-bar">
+        <h1><%= icon('room') %> <span>Room Tracker</span></h1>
+        <div class="manage-actions" id="headerActions">
+            <%# Populated via JS based on role %>
+        </div>
+    </div>
+
+    <%# Teen / Submitter View %>
+    <div id="teenView" class="room-section hidden">
+        <div class="status-card glass" id="todayStatusCard">
+            <div class="status-icon"><%= icon('waiting') %></div>
+            <div class="status-content">
+                <h2 id="statusTitle">Checking Status...</h2>
+                <p id="statusDesc">Please wait while we sync with the vault.</p>
+            </div>
+            <div class="status-action">
+                <button type="button" class="btn-primary" onclick="openUploadModal()">
+                    <%= icon('upload') %> Upload Photos
+                </button>
+            </div>
+        </div>
+
+        <div class="submission-gallery-container hidden" id="todayGalleryContainer">
+            <h3>Today's Submissions</h3>
+            <div class="submission-grid" id="todayGallery">
+                <%# Populated via JS %>
+            </div>
+        </div>
+    </div>
+
+    <%# Admin / Reviewer View %>
+    <div id="adminView" class="room-section hidden">
+        <div class="admin-tabs">
+            <button class="tab-btn active" onclick="switchTab('review', this)"><%= icon('search') %> Review Queue</button>
+            <button class="tab-btn" onclick="switchTab('settings', this)"><%= icon('settings') %> Management</button>
+        </div>
+
+        <div id="reviewTab" class="tab-content">
+            <div id="dailyProgressSummary" class="daily-progress-summary">
+                <%# Populated via JS %>
+            </div>
+            <div id="reviewQueue" class="review-queue">
+                <div class="component-loading">
+                    <span class="loading-icon-pulse"><%= icon('waiting') %></span>
+                    <p class="loading-label">Fetching pending submissions...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="settingsTab" class="tab-content hidden">
+            <div class="settings-grid" id="userConfigs">
+                <%# Populated via JS %>
+            </div>
+            <div class="storage-card glass" id="storageSummary">
+                <%# Populated via JS %>
+            </div>
+            <div class="blackout-manager">
+                <div class="blackout-form glass">
+                    <h4><%= icon('plus') %> Add Blackout Day</h4>
+                    <form id="blackoutForm" onsubmit="addBlackout(event)">
+                        <div class="form-row">
+                            <input type="date" name="date" class="game-input" required>
+                            <input type="text" name="reason" class="game-input" placeholder="Reason (Optional)">
+                            <button type="submit" class="btn-primary"><%= icon('save') %> Add</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="blackout-list" id="blackoutList">
+                    <%# Populated via JS %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%# User Settings Modal %>
+<div id="userSettingsModal" class="modal-overlay">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h3><span id="settingsModalUser">User Settings</span></h3>
+            <span class="close-btn" onclick="closeSettingsModal()">&times;</span>
+        </div>
+        <form id="userSettingsForm">
+            <input type="hidden" id="settingsUserId">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Daily Alert Start Time</label>
+                    <input type="time" id="settingsAlertTime" class="game-input" required>
+                </div>
+                <div class="standalone-toggle">
+                    <input type="checkbox" id="settingsIsActive" class="hidden">
+                    <label for="settingsIsActive">
+                        <span class="icon-enabled"><%= icon('check') %></span>
+                        <span class="icon-disabled"><%= icon('disabled') %></span>
+                        <span class="label-tracked">Tracked</span>
+                        <span class="label-untracked">Untracked</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-actions modal-actions-center">
+                <button type="button" class="btn-primary" onclick="applySettingsModal()">
+                    <%= icon('save') %> Save Settings
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<%# Upload Modal %>
+<div id="uploadModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><%= icon('upload') %> Submit Room Photos</h3>
+            <span class="close-btn" onclick="closeUploadModal()">&times;</span>
+        </div>
+        <form id="uploadForm" onsubmit="handleUpload(event)">
+            <div class="modal-body">
+                <div class="file-drop-area" id="dropZone">
+                    <input type="file" id="roomFiles" name="files[]" multiple accept="image/*" class="hidden">
+                    <div id="filePreviews" class="file-previews"></div>
+                </div>
+            </div>
+            <div class="modal-actions modal-actions-center">
+                <button type="button" class="btn-primary btn-small" onclick="document.getElementById('roomFiles').click()">
+                    <%= icon('plus') %> Add Photo
+                </button>
+                <button type="submit" id="uploadBtn" class="btn-primary hidden">
+                    <%= icon('check') %> Submit All
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<%# Photo Review Modal %>
+<div id="photoModal" class="modal-overlay" onclick="closePhotoModal()">
+    <div class="image-modal-content" onclick="event.stopPropagation()">
+        <span class="close-btn" onclick="closePhotoModal()"><%= icon('close') %></span>
+        <img id="modalImg" src="" class="room-modal-img">
+    </div>
+</div>
