@@ -520,6 +520,7 @@ sub DB::update_running_timers {
     $self->ensure_connection();
     
     my $today = $self->_get_current_date();
+    my $now   = $self->_get_current_datetime();
     
     # Get all running timers
     my $sql = q{
@@ -543,13 +544,27 @@ sub DB::update_running_timers {
             WHERE timer_id = ? AND session_date = ?
         };
 
-        my $now = $self->_get_current_datetime();
         $self->{dbh}->do($update_sql, undef, $new_elapsed, $now, $row->{timer_id}, $today);
 
         $updated++;
     }
     
     return $updated;
+}
+
+# Clean up expired timer sessions older than today.
+# Parameters: None
+# Returns:
+#   Integer count of deleted records
+sub DB::cleanup_timer_sessions {
+    my ($self) = @_;
+    
+    $self->ensure_connection();
+    
+    my $today = $self->_get_current_date();
+    my $sql   = "DELETE FROM timer_sessions WHERE session_date < ?";
+    
+    return $self->{dbh}->do($sql, undef, $today) || 0;
 }
 
 # Get timers that need warning emails (10 minutes or less remaining).
@@ -565,6 +580,7 @@ sub DB::get_timers_needing_warning {
     
     my $sql = q{
         SELECT 
+            t.id,
             t.id as timer_id,
             t.name,
             t.category,
@@ -598,7 +614,7 @@ sub DB::get_timers_needing_warning {
     };
     
     my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute($today, $today, $today, $today);
+    $sth->execute($today, $today, $today, $today, $today);
     
     my @timers;
     while (my $row = $sth->fetchrow_hashref) {
@@ -623,6 +639,7 @@ sub DB::get_expired_timers {
     
     my $sql = q{
         SELECT 
+            t.id,
             t.id as timer_id,
             t.name,
             t.category,
@@ -647,15 +664,15 @@ sub DB::get_expired_timers {
           AND ts.elapsed_seconds >= ((CASE 
                 WHEN DAYOFWEEK(?) IN (1, 7) THEN t.weekend_minutes
                 ELSE t.weekday_minutes
-              END * 60 + ts.bonus_seconds))
+              END * 60 + COALESCE(ts.bonus_seconds, 0)))
     };
     
     my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute($today, $today, $today);
+    $sth->execute($today, $today, $today, $today);
     
     my @timers;
     while (my $row = $sth->fetchrow_hashref) {
-        $row->{limit_seconds} = ($row->{limit_minutes} * 60) + $row->{bonus_seconds};
+        $row->{limit_seconds} = ($row->{limit_minutes} * 60) + ($row->{bonus_seconds} || 0);
         push @timers, $row;
     }
     
@@ -740,12 +757,12 @@ sub DB::get_timer_logs {
 # PRIVATE HELPER METHODS
 # ============================================================================
 
-# Get current date in Australia/Melbourne timezone, respecting reset hour.
+# Get current date in the configured timezone, respecting reset hour.
 # Returns: Date string in YYYY-MM-DD format
 sub DB::_get_current_date {
     my ($self) = @_;
     
-    my $dt = DateTime->now(time_zone => 'Australia/Melbourne');
+    my $dt = DateTime->now(time_zone => $self->{timezone});
     my $reset_hour = $self->get_timer_reset_hour();
     
     # If we haven't reached the reset hour yet today, 
@@ -757,11 +774,11 @@ sub DB::_get_current_date {
     return $dt->ymd;
 }
 
-# Get current datetime in Australia/Melbourne timezone.
+# Get current datetime in the configured timezone.
 # Returns: DateTime string in MySQL format
 sub DB::_get_current_datetime {
     my ($self) = @_;
-    my $dt = DateTime->now(time_zone => 'Australia/Melbourne');
+    my $dt = DateTime->now(time_zone => $self->{timezone});
     return $dt->strftime('%Y-%m-%d %H:%M:%S');
 }
 
@@ -854,7 +871,7 @@ sub DB::_calculate_elapsed_since {
     
     return 0 unless $started_at;
     
-    my $now = DateTime->now(time_zone => 'Australia/Melbourne');
+    my $now = DateTime->now(time_zone => $self->{timezone});
     
     my ($date, $time) = split / /, $started_at;
     my ($year, $month, $day) = split /-/, $date;
@@ -867,7 +884,7 @@ sub DB::_calculate_elapsed_since {
         hour   => $hour,
         minute => $minute,
         second => $second,
-        time_zone => 'Australia/Melbourne'
+        time_zone => $self->{timezone}
     );
     
     my $duration = $now->subtract_datetime_absolute($started);
