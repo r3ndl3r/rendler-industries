@@ -40,10 +40,7 @@ sub api_state {
 
     my $state = {
         reminders    => $c->db->get_all_reminders(),
-        recipients   => [ grep { 
-            ($_->{status} // '') eq 'approved' && 
-            (($_->{is_family} // 0) == 1 || ($_->{is_admin} // 0) == 1)
-        } @{$c->db->get_all_users() || []} ],
+        recipients   => $c->db->get_family_users(),
         is_admin     => $c->is_admin ? 1 : 0,
         current_user => $c->session('user') // '',
         success      => 1
