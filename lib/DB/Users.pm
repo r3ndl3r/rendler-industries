@@ -113,7 +113,7 @@ sub DB::get_all_users {
     
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, created_at, is_admin, is_family, status FROM users");
+    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, created_at, is_admin, is_family, is_child, status FROM users");
     $sth->execute();
     
     return $sth->fetchall_arrayref({});
@@ -162,7 +162,7 @@ sub DB::get_user_by_id {
     my ($self, $id) = @_;
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, is_admin, is_family, status FROM users WHERE id = ?");
+    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, is_admin, is_family, is_child, status FROM users WHERE id = ?");
     $sth->execute($id);
     
     return $sth->fetchrow_hashref();
@@ -170,14 +170,14 @@ sub DB::get_user_by_id {
 
 # Updates user profile information.
 # Parameters:
-#   id, username, email, discord_id, is_admin, is_family, status : Attributes.
+#   id, username, email, discord_id, is_admin, is_family, is_child, status : Attributes.
 # Returns: Void.
 sub DB::update_user {
-    my ($self, $id, $username, $email, $discord_id, $is_admin, $is_family, $status) = @_;
+    my ($self, $id, $username, $email, $discord_id, $is_admin, $is_family, $is_child, $status) = @_;
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("UPDATE users SET username = ?, email = ?, discord_id = ?, is_admin = ?, is_family = ?, status = ? WHERE id = ?");
-    $sth->execute($username, $email, $discord_id, $is_admin, $is_family, $status, $id);
+    my $sth = $self->{dbh}->prepare("UPDATE users SET username = ?, email = ?, discord_id = ?, is_admin = ?, is_family = ?, is_child = ?, status = ? WHERE id = ?");
+    $sth->execute($username, $email, $discord_id, $is_admin, $is_family, $is_child, $status, $id);
 }
 
 # Resets a user's password.
@@ -267,17 +267,37 @@ sub DB::is_family {
     return $is_family ? 1 : 0;
 }
 
-# Granularly toggles a specific user role (is_admin or is_family).
+# Checks if a user has child status.
+# Parameters:
+#   username : String identifier.
+# Returns:
+#   Integer : 1 if Child, 0 otherwise.
+sub DB::is_child {
+    my ($self, $username) = @_;
+    
+    $self->ensure_connection;
+    
+    my $sth = $self->{dbh}->prepare("SELECT is_child FROM users WHERE username = ?");
+    $sth->execute($username);
+    my ($is_child) = $sth->fetchrow_array();
+    
+    return $is_child ? 1 : 0;
+}
+
+# Granularly toggles a specific user role (is_admin, is_family, or is_child).
 # Parameters:
 #   id    : User ID.
-#   role  : Column name ('admin' -> is_admin, 'family' -> is_family).
+#   role  : Column name ('admin' -> is_admin, 'family' -> is_family, 'child' -> is_child).
 #   value : Boolean (1/0).
 # Returns: Void.
 sub DB::toggle_user_role {
     my ($self, $id, $role, $value) = @_;
     $self->ensure_connection;
     
-    my $column = $role eq 'admin' ? 'is_admin' : 'is_family';
+    my $column = 'is_family';
+    $column = 'is_admin' if $role eq 'admin';
+    $column = 'is_child' if $role eq 'child';
+    
     my $sth = $self->{dbh}->prepare("UPDATE users SET $column = ? WHERE id = ?");
     $sth->execute($value, $id);
 }
