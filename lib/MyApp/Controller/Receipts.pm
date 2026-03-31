@@ -152,7 +152,7 @@ sub _finalize_upload {
 
     unless ($receipt_date) {
         require DateTime;
-        $receipt_date = DateTime->now(time_zone => 'Australia/Melbourne')->strftime('%Y-%m-%d');
+        $receipt_date = $c->now->strftime('%Y-%m-%d');
     }
 
     eval {
