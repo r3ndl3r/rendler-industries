@@ -148,6 +148,16 @@ sub startup {
             return $c->db->get_user_id($username);
         }
     );
+
+    # Helper: Centralized DateTime factory
+    # Returns: DateTime object localized to the system timezone
+    $self->helper(
+        now => sub {
+            my $c = shift;
+            my $tz = $c->app->config->{timezone} || 'UTC';
+            return DateTime->now(time_zone => $tz);
+        }
+    );
     
     # Helper: Determine active resolution context (for responsive logic)
     # Parameters:
@@ -217,16 +227,16 @@ sub startup {
     # Helper: Singleton Database Connection with Reconnection logic
     # Parameters: None
     # Returns: DB object instance
-    $self->helper(db => sub { 
-        state $db = DB->new(app => $self); 
+    $self->helper(db => sub {
+        my $tz = $self->config->{timezone} || 'UTC';
+        state $db = DB->new(app => $self, timezone => $tz);
         # Check if handle is still alive, reconnect if needed
         unless ($db->{dbh} && $db->{dbh}->ping) {
             $self->app->log->info("Database connection lost. Reconnecting...");
-            $db = DB->new(app => $self);
+            $db = DB->new(app => $self, timezone => $tz);
         }
         return $db;
     });
-
     # Helper: Native Background Maintenance Runner
     # Parameters: None
     # Behavior:
@@ -242,7 +252,7 @@ sub startup {
             $c->log->info("Background maintenance: Lock acquired. Starting tasks...");
 
             eval {
-                my $now = DateTime->now(time_zone => 'Australia/Melbourne');
+                my $now = $c->now;
 
                 require MyApp::Controller::System;
                 my $sys = MyApp::Controller::System->new(app => $c->app, tx => $c->tx);
@@ -251,6 +261,7 @@ sub startup {
                 $sys->run_reminder_maintenance($now);
                 $sys->run_calendar_notifications($now);
                 $sys->run_meals_maintenance($now);
+                $sys->run_room_reminders($now);
 
                 # Asynchronous Emoji Task: Correct lock release chain
                 $sys->run_emoji_maintenance_p()->then(sub {
@@ -521,6 +532,18 @@ sub startup {
     $family->post('/receipts/api/crop/:id')->to('receipts#api_crop');
     $family->post('/receipts/api/ocr/:id')->to('receipts#api_ocr');
     $family->post('/receipts/api/ai_analyze/:id')->to('receipts#api_ai_analyze');
+
+    # --- Room Tracker Routes ---
+    $family->get('/room')->to('room#index');
+    $family->get('/room/api/state')->to('room#api_state');
+    $family->post('/room/api/upload')->to('room#api_upload');
+    $family->get('/room/serve/:id')->to('room#serve');
+    $admin->post('/room/api/update_status')->to('room#api_update_status');
+    $family->post('/room/api/delete/:id')->to('room#api_delete');
+    $admin->post('/room/api/save_config')->to('room#api_save_config');
+    $admin->post('/room/api/trim')->to('room#api_trim');
+    $admin->post('/room/api/add_blackout')->to('room#api_add_blackout');
+    $admin->post('/room/api/delete_blackout')->to('room#api_delete_blackout');
 
     # --- Medication Tracker Routes ---
     $family->get('/medication')->to('medication#index');
