@@ -25,7 +25,7 @@ sub index {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_admin;
-    $c->render('files');
+    $c->render('files', is_admin => 1);
 }
 
 # Returns the consolidated state for the file vault.
