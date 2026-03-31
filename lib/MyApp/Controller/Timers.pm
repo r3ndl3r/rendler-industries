@@ -70,7 +70,7 @@ sub api_manage_state {
     
     my $filter_user_id = $c->param('user_id');
     my $timers = $c->db->get_all_timers($filter_user_id);
-    my $users  = $c->db->get_all_users();
+    my $users  = $c->db->get_family_users();
     
     $c->render(json => {
         success => 1,
