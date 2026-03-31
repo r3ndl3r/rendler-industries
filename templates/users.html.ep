@@ -26,12 +26,13 @@
                     <th>Approved</th>
                     <th>Admin</th>
                     <th>Family</th>
+                    <th>Child</th>
                     <th class="col-actions-narrow">Actions</th>
                 </tr>
             </thead>
             <tbody id="users-table-body">
                 <tr class="component-loading-row">
-                    <td colspan="9">
+                    <td colspan="10">
                         <div class="component-loading">
                             <div class="loading-scan-line"></div>
                             <span class="loading-icon-pulse"><%= icon('user') %></span>
