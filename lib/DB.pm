@@ -59,6 +59,7 @@ sub new {
         dsn => $dsn,
         dbUser => $authDbUser,
         dbPass => $authDbPass,
+        timezone => $args{timezone} || 'UTC',
         %args
     }, $class;
     
