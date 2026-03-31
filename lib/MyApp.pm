@@ -133,7 +133,19 @@ sub startup {
             return 0 unless $c->session('user');
             my $username = $c->session('user');
             return 1 if $c->db->is_admin($username);
+            return 1 if $c->db->is_child($username);
             return $c->db->is_family($username);
+        }
+    );
+    
+    # Helper: Check if current user is a Child
+    # Parameters: None (Uses session)
+    # Returns: Boolean (1 if child, 0 otherwise)
+    $self->helper(
+        is_child => sub {
+            my $c = shift;
+            return 0 unless $c->session('user');
+            return $c->db->is_child($c->session('user'));
         }
     );
     
@@ -215,6 +227,8 @@ sub startup {
             my $permission = 'guest';
             if ($c->is_admin) {
                 $permission = 'admin';
+            } elsif ($c->is_child) {
+                $permission = 'child';
             } elsif ($c->is_family) {
                 $permission = 'family';
             } elsif ($c->is_logged_in) {
