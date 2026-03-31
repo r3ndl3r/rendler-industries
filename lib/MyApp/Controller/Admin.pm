@@ -141,6 +141,7 @@ sub edit_user {
 
     my $is_admin = defined $c->param('is_admin') ? ($c->param('is_admin') ? 1 : 0) : $current_user->{is_admin};
     my $is_family = defined $c->param('is_family') ? ($c->param('is_family') ? 1 : 0) : $current_user->{is_family};
+    my $is_child = defined $c->param('is_child') ? ($c->param('is_child') ? 1 : 0) : $current_user->{is_child};
     my $status = $c->param('status') // $current_user->{status} // 'pending';
     my $password = trim($c->param('password') // '');
     
@@ -158,7 +159,7 @@ sub edit_user {
             }
             $c->db->update_user_password($id, $password);
         }
-        $c->db->update_user($id, $username, $email, $discord_id, $is_admin, $is_family, $status);
+        $c->db->update_user($id, $username, $email, $discord_id, $is_admin, $is_family, $is_child, $status);
     };
     
     if ($@) {
@@ -185,7 +186,7 @@ sub toggle_role {
     my $role = $c->param('role');
     my $value = $c->param('value');
 
-    unless ($id && $id =~ /^\d+$/ && $role =~ /^(admin|family)$/ && defined $value) {
+    unless ($id && $id =~ /^\d+$/ && $role =~ /^(admin|family|child)$/ && defined $value) {
         return $c->render(json => { success => 0, error => 'Invalid parameters' });
     }
 
