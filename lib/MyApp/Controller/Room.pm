@@ -37,6 +37,7 @@ sub api_state {
     
     my $state = {
         is_admin     => $c->is_admin ? 1 : 0,
+        is_child     => $c->is_child ? 1 : 0,
         today_status => $c->db->get_room_status_for_date($user_id, $today),
         is_blackout  => $c->db->is_room_blackout($today),
         success      => 1
@@ -56,10 +57,10 @@ sub api_state {
     $c->render(json => $state);
 }
 
-# Processes daily photo uploads from teens.
+# Processes daily photo uploads from children.
 sub api_upload {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_child;
 
     my $uploads = $c->every_param('files[]');
     return $c->render(json => { success => 0, error => 'No files uploaded' }) unless @$uploads;
