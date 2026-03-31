@@ -92,7 +92,7 @@ sub register {
     $app->helper(gemini_analyze_receipt => sub {
         my ($c, $image, $mime) = @_;
         
-        my $now = DateTime->now(time_zone => 'Australia/Melbourne')->strftime('%Y-%m-%d');
+        my $now = $c->now->strftime('%Y-%m-%d');
         my $system = "You are a professional receipt digitizer. Current system date: $now. Use this to help resolve ambiguous characters and verify plausibility. "
                    . "Analyze the image and extract data into a JSON object. "
                    . "Include: store_name, location, date (formatted as YYYY-MM-DD), time, items (array of {desc, qty, unit_price, line_total}), total_amount, currency, payment_method. "
