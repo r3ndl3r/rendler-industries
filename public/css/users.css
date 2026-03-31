@@ -98,6 +98,7 @@
 input:checked + .slider { background-color: #3b82f6; } /* Default: Admin Blue */
 input:checked + .slider-approved { background-color: #065f46; } /* Approved Muted Green */
 input:checked + .slider-family { background-color: #a855f7; } /* Family Purple */
+input:checked + .slider-child { background-color: #f59e0b; } /* Child Orange */
 
 /* Handle for Approved Green Switch is darker/grey */
 input:checked + .slider-approved:before {
