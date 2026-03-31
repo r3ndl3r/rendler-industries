@@ -77,7 +77,7 @@ sub register {
             year => $y, month => $m, day => $d,
             hour => $hh, minute => $mm, second => $ss
         );
-        my $now = DateTime->now(time_zone => 'Australia/Melbourne');
+        my $now = $c->now;
         my $dur = $now->delta_md($dob);
 
         my $years  = int($dur->delta_months / 12);
