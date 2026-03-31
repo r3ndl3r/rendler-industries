@@ -61,7 +61,7 @@ function upPage() {
         const timeEl = document.getElementById('time');
         if (timeEl) {
             // Apply timezone-aware formatting
-            timeEl.innerHTML = moment(new Date).tz("Australia/Melbourne").format('dddd MMMM h:mm:ss a');
+            timeEl.innerHTML = moment(new Date).tz(APP_TZ).format('dddd MMMM h:mm:ss a');
         }
         upValues();
     }, 1000);
