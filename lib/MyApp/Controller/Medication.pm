@@ -121,17 +121,15 @@ sub reset {
                 my $desc       = $c->param('reminder_desc')  // 'Follow-up dose reminder.';
 
                 if ($recipients) {
-                    require DateTime;
-                    
                     my $dt;
                     if ($taken_at && $taken_at =~ /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/) {
                         $dt = DateTime->new(
                             year => $1, month => $2, day => $3, 
                             hour => $4, minute => $5, 
-                            time_zone => 'Australia/Melbourne'
+                            time_zone => $c->app->config->{timezone} || 'UTC'
                         );
                     } else {
-                        $dt = DateTime->now(time_zone => 'Australia/Melbourne');
+                        $dt = $c->now;
                     }
                     
                     $dt->add(hours => $delay);
