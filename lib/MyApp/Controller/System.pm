@@ -81,10 +81,10 @@ sub run_meals_maintenance {
             my %has_voted     = map { $_ => 1 } @{$participation->{voted_ids}};
             
             # Find all family members with Discord IDs
-            my $users = $c->db->get_all_users();
+            my $users = $c->db->get_family_users();
             foreach my $u (@$users) {
                 # Target family/admins with Discord who have NOT suggested AND have NOT voted
-                if ($u->{discord_id} && ($u->{is_family} || $u->{is_admin})) {
+                if ($u->{discord_id}) {
                     if (!$has_suggested{$u->{id}} && !$has_voted{$u->{id}}) {
                         my $msg = "🍳 MEAL PLANNER REMINDER 🍳\n\nYou haven't added a suggestion or voted for today's meal yet! Lock-in is at 2PM.\n\nhttps://rendler.org/meals";
                         $c->send_discord_dm($u->{discord_id}, $msg);
@@ -113,8 +113,8 @@ sub run_meals_maintenance {
                     # To prevent tie-spamming within the same minute, we should check if we already notified.
                     # Let's just lock it to 'open' and rely on the minute check.
                     my $admin_msg = "⚖️ MEAL PLANNER TIE: Today's meal plan is TIED. Please go to /meals and pick a winner!\n\nhttps://rendler.org/meals";
-                    my $admins = $c->db->get_all_users();
-                    foreach my $a (grep { $_->{is_admin} } @$admins) {
+                    my $admins = $c->db->get_admins();
+                    foreach my $a (@$admins) {
                         $c->send_discord_dm($a->{discord_id}, $admin_msg) if $a->{discord_id};
                     }
                     push @{$stats->{actions}}, "Notified admins of tie";
@@ -124,9 +124,9 @@ sub run_meals_maintenance {
                     
                     # Notify everyone of the final choice
                     my $announcement = "🍽️ TODAY'S MENU LOCKED: $winner->{meal_name} wins with $winner->{vote_count} votes! (Suggested by $winner->{suggested_by_name})\n\nhttps://rendler.org/meals";
-                    my $users = $c->db->get_all_users();
+                    my $users = $c->db->get_family_users();
                     foreach my $u (@$users) {
-                        if ($u->{discord_id} && ($u->{is_family} || $u->{is_admin})) {
+                        if ($u->{discord_id}) {
                             $c->send_discord_dm($u->{discord_id}, $announcement);
                         }
                     }
@@ -135,12 +135,50 @@ sub run_meals_maintenance {
             } else {
                 # No suggestions at 2PM? Notify admin
                 my $admin_msg = "⚠️ MEAL PLANNER EMPTY: No suggestions made by 2PM. Please set a blackout or manual meal.\n\nhttps://rendler.org/meals";
-                my $admins = $c->db->get_all_users();
-                foreach my $a (grep { $_->{is_admin} } @$admins) {
+                my $admins = $c->db->get_admins();
+                foreach my $a (@$admins) {
                     $c->send_discord_dm($a->{discord_id}, $admin_msg) if $a->{discord_id};
                 }
                 push @{$stats->{actions}}, "Notified admins of empty plan";
             }
+        }
+    }
+
+    return $stats;
+}
+
+# Internal helper to handle daily room cleaning reminders.
+sub run_room_reminders {
+    my ($c, $now) = @_;
+    
+    my $stats = {
+        checked_time => $now->strftime('%H:%M'),
+        reminders_sent => 0
+    };
+
+    my $today = $now->strftime('%Y-%m-%d');
+    my $needing_reminders = $c->db->get_users_needing_room_reminders($today);
+    
+    foreach my $r (@$needing_reminders) {
+        my $comments = $c->db->get_room_failed_comments($r->{user_id}, $today);
+        
+        my $msg = "🧹 **ROOM CLEANING REMINDER** 🧹\n\nIt's time to clean your room and upload photos for review!";
+        
+        if (@$comments) {
+            $msg .= "\n\n⚠️ **Items to fix from your previous upload:**\n";
+            foreach my $comment (@$comments) {
+                $msg .= " - $comment\n";
+            }
+        }
+        
+        $msg .= "\n\nUpload: https://rendler.org/room";
+        
+        # Mark as sent FIRST to prevent double-firing across workers
+        $c->db->update_room_reminder_sent($r->{user_id});
+        
+        if ($c->notify_user($r->{user_id}, $msg, "Room Cleaning Reminder")) {
+            $stats->{reminders_sent}++;
+            $c->app->log->info("Room reminder sent to $r->{username}");
         }
     }
 
@@ -211,34 +249,26 @@ sub run_timer_maintenance {
         expiry_sent => 0
     };
 
-    # A. Clean up old sessions
-    my $today = $c->db->_get_current_date();
-    my $sql = "DELETE FROM timer_sessions WHERE session_date < ?";
-    $stats->{cleaned_sessions} = $c->db->{dbh}->do($sql, undef, $today) || 0;
+    # A. Clean up old sessions (via Model encapsulation)
+    $stats->{cleaned_sessions} = $c->db->cleanup_timer_sessions();
     
     # B. Update running timers
     $stats->{updated_timers} = $c->db->update_running_timers();
     
-    # C. Send warning emails
+    # C. Send warning notifications
     my $warning_timers = $c->db->get_timers_needing_warning();
     foreach my $timer (@$warning_timers) {
         my $minutes_remaining = int($timer->{remaining_seconds} / 60);
         next if $minutes_remaining <= 0;
         
-        my $email_subject = "Timer Warning: $timer->{name} ($timer->{category})";
-        my $email_body = qq{Hello $timer->{username},
-
-Your timer "$timer->{name}" ($timer->{category}) is running low on time.
-
-Time Remaining: $minutes_remaining minutes
-
-Please wrap up your current activity soon.
-
-https://rendler.org/timers
-
-- Rendler Industries Timer System};
+        my $subject = "Timer Warning: $timer->{name} ($timer->{category})";
+        my $message = "⏱️ **TIMER WARNING: $timer->{name}** ⏱️\n\n"
+                    . "Your session for **$timer->{name}** ($timer->{category}) is running low on time.\n\n"
+                    . "**Time Remaining:** $minutes_remaining minutes\n\n"
+                    . "Please wrap up your current activity soon.\n"
+                    . "https://rendler.org/timers";
         
-        if ($c->send_email_via_gmail([$timer->{email}], $email_subject, $email_body)) {
+        if ($c->notify_user($timer->{user_id}, $message, $subject)) {
             $c->db->mark_warning_sent($timer->{timer_id});
             $stats->{warnings_sent}++;
         }
@@ -247,28 +277,31 @@ https://rendler.org/timers
     # D. Send expiry notifications
     my $expired_timers = $c->db->get_expired_timers();
     foreach my $timer (@$expired_timers) {
-        my $email_subject = "Timer Expired: $timer->{name} ($timer->{category})";
-        my $email_body = qq{Hello $timer->{username},
-
-Your timer "$timer->{name}" ($timer->{category}) has expired.
-
-Daily Limit: $timer->{limit_minutes} minutes
-Usage Today: } . int($timer->{elapsed_seconds} / 60) . qq{ minutes
-
-Please stop using this device immediately.
-
-https://rendler.org/timers
-
-- Rendler Industries Timer System};
+        my $subject = "Timer Expired: $timer->{name} ($timer->{category})";
+        my $user_msg = "🚨 **TIMER EXPIRED: $timer->{name}** 🚨\n\n"
+                     . "Your session for **$timer->{name}** ($timer->{category}) has expired.\n\n"
+                     . "**Daily Limit:** $timer->{limit_minutes} minutes\n"
+                     . "**Usage Today:** " . int($timer->{elapsed_seconds} / 60) . " minutes\n\n"
+                     . "Please stop using this device immediately.\n"
+                     . "https://rendler.org/timers";
         
-        my $all_users = $c->db->get_all_users();
-        my @admin_emails = map { $_->{email} } grep { $_->{is_admin} && $_->{email} } @$all_users;
-        my @recipients = ($timer->{email}, @admin_emails);
+        # Notify User
+        $c->notify_user($timer->{user_id}, $user_msg, $subject);
         
-        if ($c->send_email_via_gmail(\@recipients, $email_subject, $email_body)) {
-            $c->db->mark_expired_sent($timer->{timer_id});
-            $stats->{expiry_sent}++;
+        # Notify Admins
+        my $admin_msg = "🚨 **TIMER EXPIRED: $timer->{name}** 🚨\n\n"
+                      . "The timer **$timer->{name}** ($timer->{category}) for **$timer->{username}** has reached its daily limit and expired.\n\n"
+                      . "**Limit:** $timer->{limit_minutes} minutes\n"
+                      . "**Usage:** " . int($timer->{elapsed_seconds} / 60) . " minutes\n\n"
+                      . "Manage: https://rendler.org/timers/manage";
+        
+        my $admins = $c->db->get_admins();
+        foreach my $admin (@$admins) {
+            $c->notify_user($admin->{id}, $admin_msg, "Admin Alert: $timer->{username} Timer Expired");
         }
+        
+        $c->db->mark_expired_sent($timer->{timer_id});
+        $stats->{expiry_sent}++;
     }
 
     return $stats;
