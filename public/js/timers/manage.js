@@ -255,8 +255,7 @@ function renderTableRow(t) {
  * @returns {void}
  */
 function renderUserDropdowns() {
-    const nonAdmins = STATE.users.filter(u => !u.is_admin);
-    const options = nonAdmins.map(u => `<option value="${u.id}">${escapeHtml(u.username)}</option>`).join('');
+    const options = STATE.users.map(u => `<option value="${u.id}">${escapeHtml(u.username)}</option>`).join('');
     
     document.querySelectorAll('.user-dropdown').forEach(el => {
         const currentVal = el.value;
