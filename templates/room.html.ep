@@ -39,6 +39,17 @@
         </div>
     </div>
 
+    <%# Fallback / No Access View %>
+    <div id="noAccessView" class="room-section hidden">
+        <div class="status-card glass">
+            <div class="status-icon"><%= icon('waiting') %></div>
+            <div class="status-content">
+                <h2>Access Restricted</h2>
+                <p>The Room Cleaning Tracker is only active for tracked children and administrators.</p>
+            </div>
+        </div>
+    </div>
+
     <%# Admin / Reviewer View %>
     <div id="adminView" class="room-section hidden">
         <div class="admin-tabs">
