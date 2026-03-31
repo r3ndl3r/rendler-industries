@@ -93,7 +93,7 @@ function renderTable() {
     if (!tbody) return;
 
     if (STATE.users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No users registered in the system.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center">No users registered in the system.</td></tr>';
         return;
     }
 
@@ -142,6 +142,12 @@ function renderUserRow(u) {
                 <label class="switch">
                     <input type="checkbox" onchange="toggleRole(${u.id}, 'family', this.checked)" ${u.is_family == 1 ? 'checked' : ''}>
                     <span class="slider slider-family"></span>
+                </label>
+            </td>
+            <td data-label="Child">
+                <label class="switch">
+                    <input type="checkbox" onchange="toggleRole(${u.id}, 'child', this.checked)" ${u.is_child == 1 ? 'checked' : ''}>
+                    <span class="slider slider-child"></span>
                 </label>
             </td>
             <td data-label="Actions">
@@ -272,6 +278,7 @@ async function toggleRole(userId, role, value) {
         if (u) {
             if (role === 'admin') u.is_admin = value ? 1 : 0;
             if (role === 'family') u.is_family = value ? 1 : 0;
+            if (role === 'child') u.is_child = value ? 1 : 0;
             renderTable();
         }
     } else {
