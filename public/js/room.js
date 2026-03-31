@@ -9,6 +9,7 @@
 
 let STATE = {
     is_admin: false,
+    is_child: false,
     today_status: [],
     is_blackout: false,
     pending_submissions: [],
@@ -55,15 +56,22 @@ async function loadState() {
 function renderUI() {
     const teenView = document.getElementById('teenView');
     const adminView = document.getElementById('adminView');
+    const noAccessView = document.getElementById('noAccessView');
     
     if (STATE.is_admin) {
         if (adminView) adminView.classList.remove('hidden');
         if (teenView) teenView.classList.add('hidden');
+        if (noAccessView) noAccessView.classList.add('hidden');
         renderAdminTabs();
-    } else {
+    } else if (STATE.is_child) {
         if (teenView) teenView.classList.remove('hidden');
         if (adminView) adminView.classList.add('hidden');
+        if (noAccessView) noAccessView.classList.add('hidden');
         renderTeenStatus();
+    } else {
+        if (teenView) teenView.classList.add('hidden');
+        if (adminView) adminView.classList.add('hidden');
+        if (noAccessView) noAccessView.classList.remove('hidden');
     }
 }
 
@@ -355,7 +363,7 @@ function renderSettings() {
     const container = document.getElementById('userConfigs');
     if (!container) return;
 
-    container.innerHTML = STATE.all_users.filter(u => u.is_family && !u.is_admin).map(u => {
+    container.innerHTML = STATE.all_users.filter(u => u.is_child && !u.is_admin).map(u => {
         const config = STATE.room_configs.find(c => c.user_id === u.id) || { alert_start_time: '17:00:00', is_active: 0 };
         const statusIcon = config.is_active ? window.getIcon('check') : window.getIcon('error');
         const statusClass = config.is_active ? 'text-success' : 'text-danger';
