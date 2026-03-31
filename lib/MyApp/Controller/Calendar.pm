@@ -38,8 +38,7 @@ sub api_state {
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
     
     my $categories = $c->db->get_calendar_categories();
-    my $all_users = $c->db->get_all_users();
-    my $users = [ grep { $c->db->is_family($_->{username}) } @$all_users ];
+    my $users      = $c->db->get_family_users();
 
     # Determine available notification channels
     my @channels = (
@@ -146,8 +145,8 @@ sub api_add {
         
         # Only notify others if the event is NOT private
         if ($send_notifications && !$is_private) {
-            my $all_users = $c->db->get_all_users();
-            my @family_emails = grep { $_->{email} && $c->db->is_family($_->{username}) } @$all_users;
+            my $family_users = $c->db->get_family_users();
+            my @family_emails = grep { $_->{email} } @$family_users;
             
             if (@family_emails) {
                 my $attendee_names = '';
