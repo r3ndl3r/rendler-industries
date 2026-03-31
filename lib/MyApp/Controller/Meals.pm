@@ -107,9 +107,9 @@ sub api_suggest {
         my $msg = "🍳 NEW MEAL SUGGESTION: $username suggested '$meal_name' for $day_text!\n\nhttps://rendler.org/meals";
         
         # Dispatch notifications using non-blocking app-wide UA helper
-        my $all_users = $c->db->get_all_users();
-        foreach my $u (@$all_users) {
-            if ($u->{discord_id} && $u->{id} != $uid && ($u->{is_family} || $u->{is_admin})) {
+        my $family_users = $c->db->get_family_users();
+        foreach my $u (@$family_users) {
+            if ($u->{discord_id} && $u->{id} != $uid) {
                 $c->send_discord_dm($u->{discord_id}, $msg);
             }
         }
