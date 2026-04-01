@@ -796,7 +796,7 @@ function openAddEventModal(dateStr) {
         document.getElementById('eventCategory').value = activeFilter;
     }
 
-    modal.classList.add('active');
+    modal.classList.add('show');
     document.body.classList.add('modal-open');
 }
 
@@ -863,7 +863,7 @@ function openEditModalById(id) {
     }
 
     const modal = document.getElementById('eventModal');
-    modal.classList.add('active');
+    modal.classList.add('show');
     document.body.classList.add('modal-open');
 }
 
@@ -954,7 +954,7 @@ function showEventDetails(id) {
     }
 
     const modal = document.getElementById('eventDetailsModal');
-    modal.classList.add('active');
+    modal.classList.add('show');
     document.body.classList.add('modal-open');
 }
 
@@ -966,7 +966,7 @@ function showEventDetails(id) {
 function closeEventModal() {
     const modal = document.getElementById('eventModal');
     if (modal) {
-        modal.classList.remove('active');
+        modal.classList.remove('show');
         document.body.classList.remove('modal-open');
     }
 }
@@ -979,7 +979,7 @@ function closeEventModal() {
 function closeDetailsModal() {
     const modal = document.getElementById('eventDetailsModal');
     if (modal) {
-        modal.classList.remove('active');
+        modal.classList.remove('show');
         document.body.classList.remove('modal-open');
     }
 }
