@@ -278,14 +278,13 @@ function populateAssignedSelect() {
     const select = document.getElementById('assignedToSelect');
     if (!select) return;
 
-    const baseOpt = '<option value="">Global Pool</option>';
+    const baseOpt = `<option value="">${getIcon('family')} Family Pool</option>`;
     const children = STATE.all_users.filter(u => u.is_child && !u.is_admin);
 
-    select.innerHTML = baseOpt + children.map(c => 
-        `<option value="${c.id}">${escapeHtml(c.username)}</option>`
+    select.innerHTML = baseOpt + children.map(c =>
+        `<option value="${c.id}">${getIcon(c.username)} ${escapeHtml(c.username)}</option>`
     ).join('');
 }
-
 /**
  * Processes Admin posting a new chore.
  * 
