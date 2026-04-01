@@ -416,6 +416,12 @@ sub startup {
     $admin->post('/users/approve/:id')->to('admin#approve_user');
     $admin->post('/users/update/:id')->to('admin#edit_user');
 
+    # --- Notification History Routes ---
+    $admin->get('/notifications')->to('notifications#index');
+    $admin->get('/notifications/api/state')->to('notifications#api_state');
+    $admin->post('/notifications/api/delete/:id')->to('notifications#api_delete');
+    $admin->post('/notifications/api/prune')->to('notifications#api_prune');
+
     # --- Reminders Administration Routes ---
     $family->get('/reminders')->to('reminders#index');
     $family->get('/reminders/api/state')->to('reminders#api_state');
