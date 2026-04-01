@@ -19,3 +19,47 @@
         </div>
     </div>
 </div>
+
+<%# Redeem Points Modal %>
+<div id="redeemModal" class="modal-overlay">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h3><%= icon('star') %> Redeem Points for Time</h3>
+            <span class="close-btn" onclick="closeRedeemModal()">&times;</span>
+        </div>
+        <form id="redeemForm" onsubmit="handleRedeemSubmit(event)">
+            <input type="hidden" id="redeemTimerId" name="timer_id">
+            <div class="modal-body">
+                <div class="redeem-stats glass-panel">
+                    <div class="redeem-balance">
+                        <span class="stat-label">Your Balance</span>
+                        <span class="stat-value text-gold" id="userBalanceDisplay">0 pts</span>
+                    </div>
+                    <div class="redeem-conversion">
+                        <span class="stat-label">Exchange Rate</span>
+                        <span class="stat-value">1 pt = 10 min</span>
+                    </div>
+                </div>
+
+                <div class="form-group mt-4 points-input-container">
+                    <label for="redeemPoints">Points to Spend</label>
+                    <div class="input-with-icon">
+                        <span class="input-icon-prefix"><%= icon('star') %></span>
+                        <input type="number" id="redeemPoints" name="points" 
+                               class="game-input-premium" min="1" step="1" value="1"
+                               oninput="updateRedeemCalculation()">
+                    </div>
+                </div>
+
+                <div id="redeemCalculation" class="redeem-calc-preview">
+                    This will add <strong class="text-green" id="calcMinutes">10</strong> minutes to <strong id="calcTimerName">this timer</strong>.
+                </div>
+            </div>
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" id="confirmRedeemBtn" class="btn-primary">
+                    <%= icon('check') %> Confirm Redemption
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
