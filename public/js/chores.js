@@ -419,8 +419,9 @@ function confirmRevoke(choreId) {
     showConfirmModal({
         title: 'Revoke Completion',
         message: 'This will return the chore to the grid and dock points from the child. Proceed?',
-        confirmText: 'Yes, Revoke',
-        cancelText: 'Cancel',
+        confirmText: 'REVOKE',
+        danger: true,
+        hideCancel: true,
         onConfirm: async () => {
             const res = await apiPost('/chores/api/revoke', { id: choreId });
             if (res && res.success) {
