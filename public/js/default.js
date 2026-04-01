@@ -313,9 +313,43 @@ function renderSelectorGrid(containerId, items, options = {}) {
     `).join('');
 }
 
+/**
+ * Standardized Date/Time Formatter for SQL Timestamps.
+ * Transforms database strings into high-fidelity localized display strings.
+ * 
+ * @param {string} dt - SQL format datetime (YYYY-MM-DD HH:MM:SS)
+ * @param {boolean} [all_day=false] - Whether to omit time segments.
+ * @returns {string} - Human-readable format (e.g., "01-Apr-2026 12:45 PM")
+ */
+function format_datetime(dt, all_day = false) {
+    if (!dt) return "-";
+    
+    // Parse SQL format: YYYY-MM-DD HH:MM:SS or YYYY-MM-DD
+    const parts = dt.split(/[- :]/);
+    const dateObj = parts.length >= 6 
+        ? new Date(parts[0], parts[1]-1, parts[2], parts[3], parts[4], parts[5])
+        : new Date(parts[0], parts[1]-1, parts[2]);
+
+    if (isNaN(dateObj.getTime())) return dt;
+
+    const day   = String(dateObj.getDate()).padStart(2, '0');
+    const month = dateObj.toLocaleString('en-US', { month: 'short' });
+    const year  = dateObj.getFullYear();
+
+    if (all_day) return `${day}-${month}-${year}`;
+
+    let hours = dateObj.getHours();
+    const mins = String(dateObj.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+
+    return `${day}-${month}-${year} ${hours}:${mins} ${ampm}`;
+}
+
 // Global Exposure
 window.getDayFullName = getDayFullName;
 window.renderSelectorGrid = renderSelectorGrid;
+window.format_datetime = format_datetime;
 
 /**
  * Themed Confirmation Modal Controller.
