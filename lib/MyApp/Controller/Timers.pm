@@ -52,10 +52,15 @@ sub api_state {
     $c->db->update_running_timers();
     
     my $timers = $c->db->get_user_timers($user_id);
+    my $points = $c->db->get_user_points($user_id);
+    my $reset  = $c->db->get_timer_reset_hour();
     
     $c->render(json => { 
-        success => 1,
-        timers  => $timers 
+        success          => 1,
+        timers           => $timers,
+        user_points      => $points,
+        is_child         => $c->is_child ? 1 : 0,
+        timer_reset_hour => $reset
     });
 }
 
@@ -233,6 +238,42 @@ sub grant_bonus {
         $c->render(json => { success => 1, message => "Bonus granted: $bonus_minutes minutes" });
     } else {
         $c->render(json => { success => 0, error => 'Grant rejected: Operation failed' });
+    }
+}
+
+# Processes a point-to-time redemption request (Child context).
+# Route: POST /timers/api/redeem
+sub api_redeem {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_child;
+
+    my $timer_id = $c->param('timer_id');
+    my $points   = int($c->param('points') // 0);
+    my $user_id  = $c->current_user_id;
+    my $username = $c->session('user');
+
+    unless ($timer_id && $points > 0) {
+        return $c->render(json => { success => 0, error => 'Invalid redemption parameters' });
+    }
+
+    my ($success, $message) = $c->db->redeem_points_for_time($user_id, $timer_id, $points);
+
+    if ($success) {
+        # Notify Admins via Discord
+        my $mins = $points * 10;
+        my $timer = $c->db->_get_timer_by_id($timer_id);
+        my $timer_name = $timer ? $timer->{name} : "Unknown Timer";
+        
+        my $alert_msg = "🪙 **Points Redeemed** 🪙\n\n**$username** just spent **$points points** for **$mins minutes** of time on **$timer_name**.\n\nManage: https://rendler.org/timers/manage";
+        
+        my $admins = $c->db->get_admins();
+        foreach my $admin (@$admins) {
+            $c->notify_user($admin->{id}, $alert_msg, "Points Redeemed: $username");
+        }
+
+        $c->render(json => { success => 1, message => $message });
+    } else {
+        $c->render(json => { success => 0, error => $message });
     }
 }
 
