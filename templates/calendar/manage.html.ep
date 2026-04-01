@@ -47,7 +47,7 @@
 </div>
 
 <%# Add/Edit Event Modal %>
-<div id="eventModal" class="modal">
+<div id="eventModal" class="modal-overlay">
     <div class="modal-content">
         <span class="close" onclick="closeEventModal()">&times;</span>
         <h2 id="modalTitle">Edit Event</h2>
