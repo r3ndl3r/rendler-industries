@@ -11,6 +11,11 @@
 <div class="admin-container app-container">
     <div class="header-bar">
         <h1><%= icon('user') %> <span>Users Admin</span></h1>
+        <div class="manage-actions">
+            <button id="addUserBtn" class="btn-primary" onclick="openAddUserModal()">
+                <%= icon('plus') %> Add User
+            </button>
+        </div>
     </div>
 
     <%# Users Ledger %>
@@ -88,6 +93,65 @@
             
             <div class="modal-actions modal-actions-center">
                 <button type="submit" id="editSaveBtn" class="btn-primary"><%= icon('save') %> Save Profile</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<%# Add User Modal %>
+<div id="addUserModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><%= icon('plus') %> Add New User</h3>
+            <span class="close-btn" onclick="closeAddUserModal()">&times;</span>
+        </div>
+        <form id="addUserForm" onsubmit="handleAddSubmit(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="addUsername">Username</label>
+                    <input type="text" id="addUsername" name="username" class="game-input" placeholder="3-20 characters" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="addEmail">Email Address</label>
+                    <input type="email" id="addEmail" name="email" class="game-input" placeholder="user@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="addPassword">Password</label>
+                    <input type="password" id="addPassword" name="password" class="game-input" placeholder="Minimum 8 characters" required>
+                </div>
+
+                <div class="form-group roles-row-container">
+                    <label class="section-label">Account Roles</label>
+                    <div class="roles-toggle-row">
+                        <div class="role-toggle-item">
+                            <label class="switch">
+                                <input type="checkbox" name="is_admin" value="1">
+                                <span class="slider"></span>
+                            </label>
+                            <span class="role-label">Admin</span>
+                        </div>
+                        <div class="role-toggle-item">
+                            <label class="switch">
+                                <input type="checkbox" name="is_family" value="1">
+                                <span class="slider slider-family"></span>
+                            </label>
+                            <span class="role-label">Family</span>
+                        </div>
+                        <div class="role-toggle-item">
+                            <label class="switch">
+                                <input type="checkbox" name="is_child" value="1">
+                                <span class="slider slider-child"></span>
+                            </label>
+                            <span class="role-label">Child</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" id="addSaveBtn" class="btn-primary"><%= icon('save') %> Create</button>
             </div>
         </form>
     </div>
