@@ -4,17 +4,17 @@
  * User Management Controller
  * 
  * Manages the Administrative User interface using a state-driven 
- * architecture. It facilitates role toggling, account approval, and 
- * record modification through a high-density ledger.
+ * architecture. It facilitates role toggling, account approval, record
+ * modification, and manual account creation through a high-density ledger.
  * 
  * Features:
- * - State-driven ledger rendering with 9-column grid
+ * - State-driven ledger rendering with 10-column grid
+ * - Manual account creation via admin-only Add User modal
  * - Real-time role switching with iOS-style toggle UI
  * - Integrated approval workflow with automated synchronization
- * - High-density JSDoc documentation
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
+ * - default.js: For apiPost, getIcon, setupGlobalModalClosing, showToast, and modal helpers
  */
 
 /**
@@ -37,11 +37,78 @@ let STATE = {
  */
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
-
-    setupGlobalModalClosing(['modal-overlay'], [closeEditModal]);
-
+    setupGlobalModalClosing(['modal-overlay'], [closeEditModal, closeAddUserModal]);
     setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
 });
+
+/**
+ * --- UI Logic: Add User Modal ---
+ */
+
+/**
+ * Prepares and displays the user creation interface.
+ * Resets the form to clear any previous input before showing.
+ * 
+ * @returns {void}
+ */
+function openAddUserModal() {
+    const form = document.getElementById('addUserForm');
+    if (form) form.reset();
+
+    const m = document.getElementById('addUserModal');
+    if (m) m.classList.add('show');
+    document.body.classList.add('modal-open');
+}
+
+/**
+ * Hides the user creation interface and restores scroll behavior.
+ * 
+ * @returns {void}
+ */
+function closeAddUserModal() {
+    const m = document.getElementById('addUserModal');
+    if (m) m.classList.remove('show');
+    document.body.classList.remove('modal-open');
+}
+
+/**
+ * Executes the account creation protocol.
+ * Submits the form payload to the server, shows a loading state on the
+ * button during the request, and refreshes the ledger on success.
+ * Toast feedback is handled automatically by apiPost.
+ * 
+ * @async
+ * @param {Event} event - Form submission event.
+ * @returns {Promise<void>}
+ */
+async function handleAddSubmit(event) {
+    if (event) event.preventDefault();
+    const form = event.target;
+    const btn = document.getElementById('addSaveBtn');
+    const originalHtml = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = `${getIcon('waiting')} Creating...`;
+
+    try {
+        const formData = new FormData(form);
+
+        // Explicitly set checkbox values: unchecked boxes are omitted from FormData,
+        // which would produce an absent key rather than a deterministic 0 on the backend.
+        formData.set('is_admin',  form.querySelector('[name="is_admin"]').checked  ? 1 : 0);
+        formData.set('is_family', form.querySelector('[name="is_family"]').checked ? 1 : 0);
+        formData.set('is_child',  form.querySelector('[name="is_child"]').checked  ? 1 : 0);
+
+        const result = await apiPost('/users/api/add', formData);
+        if (result && result.success) {
+            closeAddUserModal();
+            await loadState(true);
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
 
 /**
  * --- Core Data Management ---
@@ -61,13 +128,13 @@ async function loadState(force = false) {
     // This prevents overwriting user input or causing focus-loss jumps.
     const anyModalOpen = document.querySelector('.modal-overlay.show') || document.querySelector('.delete-modal-overlay.show');
     const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
-    
+
     if (!force && (anyModalOpen || inputFocused) && STATE.users.length > 0) return;
 
     try {
         const response = await fetch('/users/api/state');
         const data = await response.json();
-        
+
         if (data && data.success) {
             STATE.users = data.users;
             STATE.isAdmin = !!data.is_admin;
@@ -85,6 +152,7 @@ async function loadState(force = false) {
 
 /**
  * Orchestrates the generation of the user ledger from state.
+ * Sorts by ID ascending and delegates row generation to renderUserRow.
  * 
  * @returns {void}
  */
@@ -99,26 +167,36 @@ function renderTable() {
 
     // Sort: Permanent record identifier (ascending)
     const sorted = [...STATE.users].sort((a, b) => a.id - b.id);
-
     tbody.innerHTML = sorted.map(u => renderUserRow(u)).join('');
 }
 
 /**
  * Generates the HTML fragment for a single user ledger row.
+ * Self-referencing rows (current admin) have their Admin toggle disabled
+ * to prevent privilege self-removal.
  * 
  * @param {Object} u - User record metadata.
- * @returns {string} - Rendered HTML.
+ * @param {number} u.id - Unique user identifier.
+ * @param {string} u.username - Displayed username.
+ * @param {string} u.email - Registered email address.
+ * @param {string} u.discord_id - Linked Discord user ID.
+ * @param {string} u.created_at - Account creation timestamp.
+ * @param {string} u.status - Account lifecycle state ('approved'|'pending').
+ * @param {number} u.is_admin - Administrative privilege bit.
+ * @param {number} u.is_family - Family member privilege bit.
+ * @param {number} u.is_child - Child account privilege bit.
+ * @returns {string} - Rendered HTML table row.
  */
 function renderUserRow(u) {
     const isApproved = u.status === 'approved';
-    
+
     return `
         <tr id="user-row-${u.id}" class="${u.status === 'pending' ? 'row-pending' : ''}">
             <td data-label="ID">${u.id}</td>
             <td data-label="Username"><span class="user-username">${escapeHtml(u.username)}</span></td>
             <td data-label="Email"><span class="user-email text-small">${escapeHtml(u.email)}</span></td>
             <td data-label="Discord ID">
-                ${u.discord_id 
+                ${u.discord_id
                     ? `<span class="user-discord text-small">${escapeHtml(u.discord_id)}</span>`
                     : `<span class="user-discord-empty">-</span>`
                 }
@@ -132,7 +210,7 @@ function renderUserRow(u) {
             </td>
             <td data-label="Admin">
                 <label class="switch">
-                    <input type="checkbox" onchange="toggleRole(${u.id}, 'admin', this.checked)" 
+                    <input type="checkbox" onchange="toggleRole(${u.id}, 'admin', this.checked)"
                            ${u.is_admin == 1 ? 'checked' : ''}
                            ${u.id == STATE.currentUserId ? 'disabled' : ''}>
                     <span class="slider"></span>
@@ -169,9 +247,10 @@ function renderUserRow(u) {
  */
 
 /**
- * Pre-fills and displays the user editor.
+ * Pre-fills and displays the user editor modal.
+ * Clears the password field to avoid accidental overwrites.
  * 
- * @param {number} id - Target identifier.
+ * @param {number} id - Target user identifier.
  * @returns {void}
  */
 function openEditUserModal(id) {
@@ -187,24 +266,23 @@ function openEditUserModal(id) {
 
     const m = document.getElementById('editUserModal');
     if (m) m.classList.add('show');
+    document.body.classList.add('modal-open');
 }
 
 /**
- * Hides the user editor.
+ * Hides the user editor modal and restores scroll behavior.
  * 
  * @returns {void}
  */
 function closeEditModal() {
     const m = document.getElementById('editUserModal');
     if (m) m.classList.remove('show');
+    document.body.classList.remove('modal-open');
 }
 
 /**
- * --- API Interactions ---
- */
-
-/**
  * Executes persistent profile modifications.
+ * Submits the edit form and refreshes the ledger on success.
  * 
  * @async
  * @param {Event} event - Form submission event.
@@ -234,9 +312,10 @@ async function handleEditSubmit(event) {
 
 /**
  * Activates a pending account registration.
+ * Once approved, the toggle is permanently locked to prevent accidental reversal.
  * 
  * @async
- * @param {number} userId - Target identifier.
+ * @param {number} userId - Target user identifier.
  * @param {HTMLInputElement} checkbox - The triggering toggle switch.
  * @returns {Promise<void>}
  */
@@ -257,11 +336,12 @@ async function approveUser(userId, checkbox) {
 
 /**
  * Surgical toggle for user permission bits.
+ * Guards against administrators removing their own admin privileges.
  * 
  * @async
- * @param {number} userId - Target identifier.
- * @param {string} role - Role key ('admin'|'family').
- * @param {boolean} value - Target status.
+ * @param {number} userId - Target user identifier.
+ * @param {string} role - Role key ('admin'|'family'|'child').
+ * @param {boolean} value - Target permission state.
  * @returns {Promise<void>}
  */
 async function toggleRole(userId, role, value) {
@@ -287,11 +367,12 @@ async function toggleRole(userId, role, value) {
 }
 
 /**
- * Action: confirmDeleteUser (Admin)
  * Orchestrates the deletion flow for a user account.
+ * Uses the themed confirm modal to prevent accidental removals.
+ * Applies a fade-out animation before removing the row from local state.
  * 
- * @param {number} id - Target record ID.
- * @param {string} username - Account label.
+ * @param {number} id - Target record identifier.
+ * @param {string} username - Account display label for context.
  * @returns {void}
  */
 function confirmDeleteUser(id, username) {
@@ -321,10 +402,10 @@ function confirmDeleteUser(id, username) {
 }
 
 /**
- * Prevents XSS by sanitizing dynamic content.
+ * Prevents XSS by sanitizing dynamic content before DOM injection.
  * 
- * @param {string} text - Raw input.
- * @returns {string} - Sanitized HTML.
+ * @param {string} text - Raw input string.
+ * @returns {string} - HTML-escaped output.
  */
 function escapeHtml(text) {
     if (!text) return '';
@@ -343,3 +424,6 @@ window.openEditUserModal = openEditUserModal;
 window.closeEditModal = closeEditModal;
 window.handleEditSubmit = handleEditSubmit;
 window.confirmDeleteUser = confirmDeleteUser;
+window.openAddUserModal = openAddUserModal;
+window.closeAddUserModal = closeAddUserModal;
+window.handleAddSubmit = handleAddSubmit;
