@@ -536,6 +536,7 @@ sub startup {
     $family->post('/timers/api/start')->to('timers#start_timer');
     $family->post('/timers/api/stop')->to('timers#stop_timer');
     $family->post('/timers/api/pause')->to('timers#toggle_pause');
+    $family->post('/timers/api/redeem')->to('timers#api_redeem');
     $family->post('/timers/api/transfer')->to('timers#api_transfer');
     
     $admin->get('/timers/manage')->to('timers#manage');
