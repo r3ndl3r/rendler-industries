@@ -32,11 +32,12 @@ sub DB::get_menu_tree {
     $self->ensure_connection;
 
     # Logic to determine which levels are visible
-    # admin sees everything; family sees guest+user+family; user sees guest+user; guest sees guest.
+    # admin sees everything; family sees guest+user+child+family; child sees guest+user+child; user sees guest+user...
     my @allowed_levels = ('guest');
-    push @allowed_levels, 'user' if $permission eq 'user' || $permission eq 'family' || $permission eq 'admin';
-    push @allowed_levels, 'family' if $permission eq 'family' || $permission eq 'admin';
-    push @allowed_levels, 'admin' if $permission eq 'admin';
+    push @allowed_levels, 'user'   if $permission =~ /^(user|child|family|admin)$/;
+    push @allowed_levels, 'child'  if $permission =~ /^(child|family|admin)$/;
+    push @allowed_levels, 'family' if $permission =~ /^(child|family|admin)$/;
+    push @allowed_levels, 'admin'  if $permission eq 'admin';
     
     my $placeholders = join ',', map { '?' } @allowed_levels;
 
