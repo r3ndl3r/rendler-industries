@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal: Global Closure Logic
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay', 'image-modal-overlay'], [
-        closeReceiptModal, closeEditModal, closeCropModal, closePreUploadCropModal, closeEReceiptModal, closeConfirmModal
+        closeReceiptModal, closeEditModal, closeCropModal, closePreUploadCropModal, closeEReceiptModal, closeConfirmModal, closeUploadModal
     ]);
 });
 
