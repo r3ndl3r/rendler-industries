@@ -97,7 +97,7 @@
 /* Colors from Screenshot */
 input:checked + .slider { background-color: #3b82f6; } /* Default: Admin Blue */
 input:checked + .slider-approved { background-color: #065f46; } /* Approved Muted Green */
-input:checked + .slider-family { background-color: #a855f7; } /* Family Purple */
+input:checked + .slider-family { background-color: #fb7185; } /* Family Rose */
 input:checked + .slider-child { background-color: #f59e0b; } /* Child Orange */
 
 /* Handle for Approved Green Switch is darker/grey */
@@ -153,6 +153,42 @@ input:disabled + .slider {
 
 .btn-icon-edit:hover { background: #2563eb; transform: translateY(-1px); }
 .btn-icon-delete:hover { background: #dc2626; transform: translateY(-1px); }
+
+.roles-row-container {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    background: rgba(15, 23, 42, 0.3);
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modal-body .section-label {
+    display: block;
+    text-align: center;
+    margin-bottom: 2rem !important;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+
+.roles-toggle-row {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.role-toggle-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.role-label {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    font-weight: 500;
+}
 
 /* --- Responsive --- */
 @media (max-width: 768px) {
