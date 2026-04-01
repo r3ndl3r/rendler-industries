@@ -628,8 +628,9 @@ const FlipClockManager = {
  * Synchronized with lib/MyApp/Plugin/Icons.pm via assets/emoji.json.
  */
 window.getIcon = function(name) {
+    if (!name) return '';
     const icons = window.GLOBAL_ICONS || {};
-    return icons[name.toLowerCase()] || name;
+    return icons[name.toLowerCase()] || '';
 };
 
 /**
