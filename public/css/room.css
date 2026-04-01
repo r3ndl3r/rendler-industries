@@ -200,11 +200,6 @@
     color: #fca5a5;
 }
 
-/* Mobile Storage Adjust */
-@media (max-width: 768px) {
-    .storage-card { flex-direction: column; gap: 1rem; text-align: center; }
-}
-
 /* Daily Progress Summary */
 .daily-progress-summary {
     margin: 0 auto 2rem auto;
@@ -535,6 +530,7 @@
 
 /* Mobile Adjustments */
 @media (max-width: 768px) {
+    .storage-card { flex-direction: column; gap: 1rem; text-align: center; }
     .status-card { flex-direction: column; text-align: center; }
     .status-action { margin-left: 0; width: 100%; }
     .status-action .btn-primary { width: 100%; }
@@ -556,9 +552,7 @@
         gap: 0.75rem;
     }
 }
-/* Mobile Adjustments */
-@media (max-width: 768px) {
-
+.photo-feedback {
     padding: 0.75rem;
     background: rgba(239, 68, 68, 0.1);
     border-top: 1px solid rgba(239, 68, 68, 0.2);
@@ -578,4 +572,16 @@
 .photo-actions {
     padding: 0.5rem;
     background: rgba(15, 23, 42, 0.2);
+}
+
+/* Global Page Centering (Matches Chores layout) */
+.app-container {
+    width: 100%;
+    margin: 0 auto;
+    max-width: 1200px; /* Optimal "Premium" admin width */
+    padding: 0 1.5rem;
+}
+
+@media (max-width: 600px) {
+    .app-container { padding: 0 1rem; }
 }
