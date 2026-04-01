@@ -31,7 +31,7 @@ sub register {
     # Returns the icon string for a given semantic name.
     $app->helper(icon => sub {
         my ($c, $name) = @_;
-        return $icons_ref->{lc($name)} // $name;
+        return $icons_ref->{lc($name)} // '';
     });
 
     # 3. Register Injection Helper: icons_json
