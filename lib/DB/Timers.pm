@@ -909,4 +909,60 @@ sub DB::_log_timer_action {
     $self->{dbh}->do($sql, undef, $timer_id, $admin_id, $action, $details);
 }
 
+# Processes a point-to-time exchange for a child user.
+# Parameters:
+#   user_id  : Unique user identifier
+#   timer_id : Unique timer ID
+#   points   : Points to spend (Integer)
+# Returns:
+#   (Boolean success, String message)
+sub DB::redeem_points_for_time {
+    my ($self, $user_id, $timer_id, $points) = @_;
+    $self->ensure_connection();
+
+    my $today = $self->_get_current_date();
+    my $bonus_seconds = $points * 10 * 60; # 1pt = 10m
+
+    # Start atomic transaction
+    $self->{dbh}->begin_work;
+    eval {
+        # 1. Check Point Balance
+        my $balance = $self->get_user_points($user_id);
+        if ($balance < $points) {
+            die "Insufficient point balance (Required: $points, Balance: $balance)";
+        }
+
+        # 2. Verify Timer Ownership and Category
+        my $timer = $self->_get_timer_by_id($timer_id);
+        if (!$timer || $timer->{user_id} != $user_id) {
+            die "Invalid timer identification or ownership mismatch";
+        }
+        if (lc($timer->{category} // '') eq 'unlimited') {
+            die "Cannot redeem points for Unlimited timers";
+        }
+
+        # 3. Deduct Points
+        $self->add_user_points($user_id, -$points, "Redeemed for $timer->{name}");
+
+        # 4. Grant Bonus Time and Reset Alert Flags
+        $self->_initialize_session($timer_id, $today);
+        my $sql_grant = "UPDATE timer_sessions SET bonus_seconds = bonus_seconds + ?, warning_sent = 0, expired_sent = 0 WHERE timer_id = ? AND session_date = ?";
+        $self->{dbh}->do($sql_grant, undef, $bonus_seconds, $timer_id, $today);
+
+        # 5. Log Transaction
+        $self->_log_timer_action($timer_id, $user_id, 'bonus_granted', "Redeemed $points points for " . ($points * 10) . "m bonus time");
+
+        $self->{dbh}->commit;
+    };
+
+    if ($@) {
+        $self->{dbh}->rollback;
+        my $err = $@;
+        $err =~ s/ at .*//s; # Clean up die message
+        return (0, $err);
+    }
+
+    return (1, "Successfully redeemed $points points for " . ($points * 10) . " minutes!");
+}
+
 1;
