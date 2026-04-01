@@ -128,7 +128,7 @@ sub register_form {
 # Processes new user registration.
 # Route: POST /register
 # Parameters:
-#   username : Desired username (3-20 chars, alphanumeric)
+#   username : Desired username (3-20 chars, alphanumeric, underscore, hyphen, dot)
 #   password : Plain text password (min 8 chars)
 #   email    : Valid email address
 # Returns:
@@ -143,7 +143,7 @@ sub register {
     my $email    = trim($c->param('email') // '');
 
     # Validate input formats strict compliance
-    return $c->render_error('Invalid username') unless $username =~ /^[a-zA-Z0-9_]{3,20}$/;
+    return $c->render_error('Invalid username') unless $username =~ /^[a-zA-Z0-9_.\-]{3,20}$/;
     return $c->render_error('Password too short') if length($password) < 8;
     return $c->render_error('Invalid email')
       unless $email =~ /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
