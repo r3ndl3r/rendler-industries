@@ -55,7 +55,7 @@ sub DB::authenticate_user {
 #   password : Plain text string.
 #   email    : User email address.
 # Returns:
-#   Integer: 1 on success.
+#   Integer: Newly created user ID on success.
 sub DB::create_user {
     my ($self, $username, $password, $email) = @_;
     
@@ -84,7 +84,8 @@ sub DB::create_user {
         die "Failed to insert user into database: $@";
     }
     
-    return 1;
+    # Return the new User ID to allow immediate role/status configuration
+    return $self->{dbh}->last_insert_id(undef, undef, 'users', 'id');
 }
 
 # Checks if a username is already taken.
@@ -99,6 +100,23 @@ sub DB::user_exists {
     
     my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
     $sth->execute($username);
+    my ($count) = $sth->fetchrow_array();
+    
+    return $count > 0;
+}
+
+# Checks if an email address is already registered.
+# Parameters:
+#   email : Email string to check.
+# Returns:
+#   Boolean : True if exists.
+sub DB::email_exists {
+    my ($self, $email) = @_;
+    
+    $self->ensure_connection;
+    
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM users WHERE email = ?");
+    $sth->execute($email);
     my ($count) = $sth->fetchrow_array();
     
     return $count > 0;
