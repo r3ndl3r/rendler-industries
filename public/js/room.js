@@ -753,7 +753,9 @@ function confirmDeleteSubmission(id) {
     showConfirmModal({
         title: 'Delete Photo',
         message: 'Are you sure you want to remove this photo? It will be permanently deleted from the vault.',
-        confirmText: 'Delete Photo',
+        confirmText: 'DELETE',
+        danger: true,
+        hideCancel: true,
         onConfirm: async () => {
             const result = await apiPost(`/room/api/delete/${id}`);
             if (result && result.success) {
