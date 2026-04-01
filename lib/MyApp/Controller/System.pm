@@ -52,6 +52,35 @@ sub restart {
     }
 }
 
+# Automatically reminds users of chores pending for > 60 minutes.
+sub run_chore_reminders {
+    my ($c, $now) = @_;
+    
+    my $stale_chores = $c->db->get_stale_chores_and_mark();
+    return unless @$stale_chores;
+
+    my $admins = $c->db->get_admins() || [];
+
+    for my $chore (@$stale_chores) {
+        my $target_name = $chore->{target_user} // 'Everyone';
+        my $msg = sprintf(
+            "⏳ **Chore Reminder:** '%s' has been waiting for an hour! Grab the %d pts. (Assigned to: %s)",
+            $chore->{title},
+            $chore->{points} || 0,
+            $target_name
+        );
+
+        if ($chore->{assigned_to}) {
+            $c->notify_user($chore->{assigned_to}, $msg, "Pending Chore: $chore->{title}");
+        } else {
+            for my $admin (@$admins) {
+                $c->notify_user($admin->{id}, $msg, "Pending Chore: $chore->{title}");
+            }
+        }
+        $c->app->log->info("Chores: Automated nag dispatched for chore $chore->{id}.");
+    }
+}
+
 # Internal helper to handle meal planner automation (Lock-in at 2PM, Reminders at 8AM/12PM).
 sub run_meals_maintenance {
     my ($c, $now) = @_;
