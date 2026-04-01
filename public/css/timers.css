@@ -156,6 +156,9 @@
 .timer-controls {
     display: flex;
     gap: 0.75rem;
+    position: relative;
+    z-index: 11; /* Actionable above expired-overlay (z-index 10) */
+    justify-content: center;
 }
 
 .timer-controls .btn {
@@ -357,6 +360,118 @@
 .target-arrow { color: rgba(255, 255, 255, 0.2); }
 
 /* --- 4. Modals & Forms --- */
+
+.btn-redeem-small {
+    padding: 0.5rem 1rem;
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid rgba(234, 179, 8, 0.2);
+    border-radius: 10px;
+    color: #eab308;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn-redeem-small:hover {
+    background: #eab308;
+    color: #000;
+    box-shadow: 0 0 15px rgba(234, 179, 8, 0.3);
+    transform: translateY(-1px);
+}
+
+.redeem-stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.redeem-balance, .redeem-conversion {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 1px;
+}
+
+.stat-value {
+    font-size: 1.25rem;
+    font-weight: 800;
+}
+
+.text-gold { color: #eab308; }
+.text-green { color: #10b981; }
+
+.redeem-calc-preview {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.redeem-calc-preview strong {
+    font-size: 1.1rem;
+}
+
+.redeem-warning {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    color: #fca5a5;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    line-height: 1.3;
+}
+
+.redeem-warning span {
+    font-size: 1.2rem;
+}
+
+.points-input-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.points-input-container .input-with-icon {
+    display: flex !important;
+    align-items: center;
+    gap: 0.5rem;
+    width: auto !important;
+}
+
+.points-input-container .input-icon-prefix {
+    position: static !important;
+    transform: none !important;
+    font-size: 1.2rem;
+    color: #eab308;
+}
+
+.points-input-container .game-input-premium {
+    text-align: center;
+    width: 50px !important;
+    padding: 0.5rem !important;
+}
+
+.mt-4 { margin-top: 2rem !important; }
 
 .timer-form .modal-body {
     display: flex;
