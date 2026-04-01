@@ -471,6 +471,26 @@ CREATE TABLE `menu_links` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `notifications_log`
+--
+
+DROP TABLE IF EXISTS `notifications_log`;
+CREATE TABLE `notifications_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) DEFAULT NULL,
+  `type` enum('discord','email','pushover','gotify') NOT NULL,
+  `recipient` varchar(255) NOT NULL,
+  `subject` varchar(255) DEFAULT NULL,
+  `message` text NOT NULL,
+  `status` enum('success','failed') NOT NULL DEFAULT 'success',
+  `error_details` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `notifications_log_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
 -- Table structure for table `point_ledger`
 --
 
