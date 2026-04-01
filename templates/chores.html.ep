@@ -58,11 +58,11 @@
                                     </div>
                                 </div>
                                 <div class="form-group-glass flex-1">
-                                    <label>Assign To</label>
-                                    <select name="assigned_to" class="game-input-premium" id="assignedToSelect">
-                                        <option value="">Global Pool</option>
-                                        <%# Populated via JS %>
-                                    </select>
+                                   <label>Assign To</label>
+                                   <select name="assigned_to" class="game-input" id="assignedToSelect">
+                                       <option value=""><%= icon('family') %> Family Pool</option>
+                                       <%# Populated via JS %>
+                                   </select>
                                 </div>
                             </div>
                             
