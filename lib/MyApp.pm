@@ -66,12 +66,18 @@ sub startup {
 
     # Global Hook: Disable caching for all responses to bypass Cloudflare/Proxy staleness.
     # This ensures absolute freshness for synchronized updates across all modules.
-    $self->hook(before_dispatch => sub {
-        my $c = shift;
-        $c->res->headers->cache_control('no-store, no-cache, must-revalidate, max-age=0');
-        $c->res->headers->header('Pragma' => 'no-cache');
-        $c->res->headers->header('Expires' => '0');
-    });
+    # Uses after_dispatch (not before_dispatch) because Mojolicious's static file
+    # server sets its own Cache-Control/ETag headers during dispatch, which would
+    # overwrite any headers set in before_dispatch.
+    # Toggable via my_app.conf (caching => 0/1)
+    unless ($config->{caching}) {
+        $self->hook(after_dispatch => sub {
+            my $c = shift;
+            $c->res->headers->cache_control('no-store, no-cache, must-revalidate, max-age=0');
+            $c->res->headers->header('Pragma' => 'no-cache');
+            $c->res->headers->header('Expires' => '0');
+        });
+    }
 
     # Global Hook: CSRF Enforcement
     # Protects all state-changing requests (POST, PUT, DELETE, PATCH)
@@ -158,6 +164,22 @@ sub startup {
             my $username = $c->session('user') // '';
             return 0 unless $username;
             return $c->db->get_user_id($username);
+        }
+    );
+
+    # Helper: Globally retrieve point balance from ledger
+    $self->helper(
+        get_points => sub {
+            my ($c, $user_id) = @_;
+            return $c->db->get_user_points($user_id);
+        }
+    );
+
+    # Helper: Globally apply points to ledger
+    $self->helper(
+        add_points => sub {
+            my ($c, $user_id, $amount, $reason) = @_;
+            return $c->db->add_user_points($user_id, $amount, $reason);
         }
     );
 
@@ -276,6 +298,7 @@ sub startup {
                 $sys->run_calendar_notifications($now);
                 $sys->run_meals_maintenance($now);
                 $sys->run_room_reminders($now);
+                $sys->run_chore_reminders($now);
 
                 # Asynchronous Emoji Task: Correct lock release chain
                 $sys->run_emoji_maintenance_p()->then(sub {
@@ -387,6 +410,7 @@ sub startup {
     # --- User Management Routes ---
     $admin->get('/users')->to('admin#user_list');
     $admin->get('/users/api/state')->to('admin#api_state');
+    $admin->post('/users/api/add')->to('admin#api_user_add');
     $admin->post('/users/toggle_role')->to('admin#toggle_role');
     $admin->post('/users/delete/:id')->to('admin#delete_user');
     $admin->post('/users/approve/:id')->to('admin#approve_user');
@@ -602,6 +626,14 @@ sub startup {
     $auth->post('/chess/api/move')->to('chess#api_move');
     $auth->post('/chess/api/offer_draw/:id')->to('chess#api_offer_draw');
     $auth->post('/chess/api/respond_draw/:id')->to('chess#api_respond_draw');
+
+    # --- Chores Modules Routes ---
+    $family->get('/chores')->to('chores#index');
+    $family->get('/chores/api/state')->to('chores#api_state');
+    $family->post('/chores/api/complete')->to('chores#api_complete');
+    $admin->post('/chores/api/add')->to('chores#api_add');
+    $admin->post('/chores/api/revoke')->to('chores#api_revoke');
+    $admin->post('/chores/api/delete')->to('chores#api_delete');
 }
 
 1;
