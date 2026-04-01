@@ -4,8 +4,8 @@
 % title icon('room') . ' Room Cleaning Tracker';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/room.css?<%= time %>">
-    <script src="/js/room.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/room.css">
+    <script src="/js/room.js"></script>
 % end
 
 <div class="app-container">

@@ -4,8 +4,8 @@
 % title icon('medication') . ' Medication Tracker';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/medication.css?<%= time %>">
-    <script src="/js/medication.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/medication.css">
+    <script src="/js/medication.js"></script>
 % end
 
 <div class="medication-container app-container">

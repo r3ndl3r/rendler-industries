@@ -4,8 +4,8 @@
 % title icon('shopping') . ' Shopping List';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/shopping.css?<%= time %>">
-    <script src="/js/shopping.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/shopping.css">
+    <script src="/js/shopping.js"></script>
 % end
 
 <div class="shopping-container app-container">

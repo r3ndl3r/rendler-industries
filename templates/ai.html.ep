@@ -4,8 +4,8 @@
 % title icon('ai') . ' Family Pulse AI';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/ai.css?<%= time %>">
-    <script src="/js/ai.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/ai.css">
+    <script src="/js/ai.js"></script>
 % end
 
 <div class="ai-container app-container">

@@ -4,8 +4,8 @@
 % title icon('files') . ' Files';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/files.css?<%= time %>">
-    <script src="/js/files.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/files.css">
+    <script src="/js/files.js"></script>
 % end
 
 <div class="admin-container app-container">

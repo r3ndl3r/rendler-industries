@@ -4,7 +4,7 @@
 % title icon('quick') . ' Quick Access';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/quick.css?<%= time %>">
+    <link rel="stylesheet" href="/css/quick.css">
 % end
 
 <div class="quick-container app-container">

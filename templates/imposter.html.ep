@@ -4,8 +4,8 @@
 % title icon('imposter') . ' Imposter';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/imposter.css?<%= time %>">
-    <script src="/js/imposter.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/imposter.css">
+    <script src="/js/imposter.js"></script>
 % end
 
 <div class="app-container" id="imposter-module-container">

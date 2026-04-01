@@ -4,8 +4,8 @@
 % title icon('kangaroo') . ' Australian Citizenship Quiz';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/quiz/questions.css?<%= time %>">
-    <script src="/js/quiz/questions.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/quiz/questions.css">
+    <script src="/js/quiz/questions.js"></script>
 % end
 
 <div class="quiz-container">

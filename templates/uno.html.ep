@@ -4,8 +4,8 @@
 % title icon('uno') . ' UNO Online';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/uno.css?<%= time %>">
-    <script src="/js/uno.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/uno.css">
+    <script src="/js/uno.js"></script>
 % end
 
 <div class="app-container">

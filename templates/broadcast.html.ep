@@ -4,8 +4,8 @@
 % title icon('warning') . ' System Broadcast';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/broadcast.css?<%= time %>">
-    <script src="/js/broadcast.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/broadcast.css">
+    <script src="/js/broadcast.js"></script>
 % end
 
 <div class="broadcast-container app-container">

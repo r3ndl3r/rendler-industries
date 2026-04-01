@@ -4,8 +4,8 @@
 % title icon('phonebook') . ' Contacts';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/contact.css?<%= time %>">
-    <script src="/js/contact.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/contact.css">
+    <script src="/js/contact.js"></script>
 % end
 
 <div class="contact-container">

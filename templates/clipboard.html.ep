@@ -4,8 +4,8 @@
 % title icon('clipboard') . ' Clipboard';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/clipboard.css?<%= time %>">
-    <script src="/js/clipboard.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/clipboard.css">
+    <script src="/js/clipboard.js"></script>
 % end
 
 <div class="admin-container app-container">

@@ -4,8 +4,8 @@
 % title icon('sparkles') . ' Chores Board';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/chores.css?<%= time %>">
-    <script src="/js/chores.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/chores.css">
+    <script src="/js/chores.js"></script>
 % end
 
 <div class="app-container">

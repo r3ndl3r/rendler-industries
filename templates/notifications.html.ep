@@ -4,8 +4,8 @@
 % title icon('history') . ' Notification History';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/notifications.css?<%= time %>">
-    <script src="/js/notifications.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/notifications.css">
+    <script src="/js/notifications.js"></script>
 % end
 
 <div class="app-container">

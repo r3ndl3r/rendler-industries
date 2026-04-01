@@ -13,17 +13,17 @@
     <meta name="csrf-token" content="<%= csrf_token %>">
 
     <%# Global Style Dependencies %>
-    <link rel="stylesheet" href="/css/default.css?<%= time %>">
-    <link rel="stylesheet" href="/css/emoji-picker.css?<%= time %>">
-    <link rel="stylesheet" href="/css/menubar.css?<%= time %>">
+    <link rel="stylesheet" href="/css/default.css">
+    <link rel="stylesheet" href="/css/emoji-picker.css">
+    <link rel="stylesheet" href="/css/menubar.css">
 
     <%# Global Script Dependencies %>
-    <script src="/js/jquery.js?<%= time %>"></script>
-    <script src="/api/icons.js?<%= time %>"></script>
-    <script src="/js/toast.js?<%= time %>"></script>
-    <script src="/js/default.js?<%= time %>"></script>
-    <script src="/js/emoji-picker.js?<%= time %>"></script>
-    <script src="/js/menubar.js?<%= time %>"></script>
+    <script src="/js/jquery.js"></script>
+    <script src="/api/icons.js"></script>
+    <script src="/js/toast.js"></script>
+    <script src="/js/default.js"></script>
+    <script src="/js/emoji-picker.js"></script>
+    <script src="/js/menubar.js"></script>
 <%= content_for 'head' %>
 </head>
 

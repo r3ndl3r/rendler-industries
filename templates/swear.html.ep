@@ -4,8 +4,8 @@
 % title icon('swear') . ' Swear Jar';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/swear.css?<%= time %>">
-    <script src="/js/swear.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/swear.css">
+    <script src="/js/swear.js"></script>
 % end
 
 <div class="swear-container app-container">

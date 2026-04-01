@@ -4,8 +4,8 @@
 % title icon('settings') . ' Calendar Management';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/calendar.css?<%= time %>">
-    <script src="/js/calendar.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/calendar.css">
+    <script src="/js/calendar.js"></script>
 % end
 
 <div class="manage-container app-container">
