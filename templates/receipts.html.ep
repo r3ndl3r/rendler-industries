@@ -180,8 +180,8 @@
 </div>
 
 <%# Electronic Receipt Modal %>
-<div id="eReceiptModal" class="modal-overlay" onclick="closeEReceiptModal()">
-    <div class="modal-content ereceipt-modal-content" onclick="event.stopPropagation()">
+<div id="eReceiptModal" class="modal-overlay">
+    <div class="modal-content ereceipt-modal-content">
         <div class="modal-header ereceipt-header">
             <h3><%= icon('ai') %> Electronic Receipt</h3>
             <span class="close-btn" onclick="closeEReceiptModal()">&times;</span>
@@ -203,8 +203,8 @@
 </div>
 
 <%# Receipt Modal %>
-<div id="receiptModal" class="modal-overlay" onclick="closeReceiptModal()">
-    <div class="image-modal-content" onclick="event.stopPropagation()">
+<div id="receiptModal" class="modal-overlay">
+    <div class="image-modal-content">
         <span class="close-btn" onclick="closeReceiptModal()"><%= icon('close') %></span>
         <img id="modalImg" src="" class="receipt-modal-img">
     </div>
