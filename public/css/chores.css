@@ -306,7 +306,7 @@ select.game-input-premium option {
     z-index: 5;
 }
 
-.input-with-icon .game-input-premium {
+.input-with-icon .game-input-premium, .input-with-icon .game-input {
     padding-left: 2.75rem !important;
 }
 
