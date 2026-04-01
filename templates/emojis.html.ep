@@ -4,8 +4,8 @@
 % title icon('settings') . ' Emoji Management';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/emojis.css?<%= time %>">
-    <script src="/js/emojis.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/emojis.css">
+    <script src="/js/emojis.js"></script>
 % end
 
 <div class="app-container">

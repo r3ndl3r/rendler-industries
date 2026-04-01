@@ -4,8 +4,8 @@
 % title icon('connect4') . ' Connect 4 Online';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/connect4.css?<%= time %>">
-    <script src="/js/connect4.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/connect4.css">
+    <script src="/js/connect4.js"></script>
 % end
 
 <div id="connect4-app" class="connect-container app-container" data-user-id="<%= current_user_id() %>">

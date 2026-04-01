@@ -4,10 +4,10 @@
 % title icon('home') . ' Welcome!';
 
 % content_for 'head' => begin
-    <script src="/js/moment-lite.js?<%= time %>"></script>
-    <script src="/js/index.js?<%= time %>"></script>
-    <script src="/js/age.js?<%= time %>"></script>
-    <link rel="stylesheet" href="/css/index.css?<%= time %>">
+    <script src="/js/moment-lite.js"></script>
+    <script src="/js/index.js"></script>
+    <script src="/js/age.js"></script>
+    <link rel="stylesheet" href="/css/index.css">
 % end
 
 % if ($logged_in) {

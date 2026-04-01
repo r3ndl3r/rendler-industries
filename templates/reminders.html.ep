@@ -4,8 +4,8 @@
 % title icon('reminders') . ' Manage Reminders';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/reminders.css?<%= time %>">
-    <script src="/js/reminders.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/reminders.css">
+    <script src="/js/reminders.js"></script>
 % end
 
 <div class="reminders-container app-container">

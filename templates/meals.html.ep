@@ -4,8 +4,8 @@
 % title icon('meals') . ' Meal Planner';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/meals.css?<%= time %>">
-    <script src="/js/meals.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/meals.css">
+    <script src="/js/meals.js"></script>
 % end
 
 <div class="meals-container app-container">

@@ -4,8 +4,8 @@
 % title icon('admin') . ' Users Admin';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/users.css?<%= time %>">
-    <script src="/js/users.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/users.css">
+    <script src="/js/users.js"></script>
 % end
 
 <div class="admin-container app-container">

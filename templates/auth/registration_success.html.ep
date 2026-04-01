@@ -4,7 +4,7 @@
 % title icon('success') . ' Registration Successful';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/auth.css?<%= time %>">
+    <link rel="stylesheet" href="/css/auth.css">
 % end
 
 <div class="auth-wrapper">

@@ -4,9 +4,9 @@
 % title icon('chess') . ' Chess Online';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/chess.css?<%= time %>">
-    <script src="/js/vendor/chess.min.js?<%= time %>"></script>
-    <script src="/js/chess.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/chess.css">
+    <script src="/js/vendor/chess.min.js"></script>
+    <script src="/js/chess.js"></script>
 % end
 
 <div id="chess-app" class="chess-container app-container" data-user-id="<%= current_user_id() %>">

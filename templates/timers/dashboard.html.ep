@@ -4,9 +4,9 @@
 % title icon('timers') . ' My Timers';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/timers.css?<%= time %>">
-    <script src="/js/timers/utils.js?<%= time %>"></script>
-    <script src="/js/timers/dashboard.js?<%= time %>"></script>
+    <link rel="stylesheet" href="/css/timers.css">
+    <script src="/js/timers/utils.js"></script>
+    <script src="/js/timers/dashboard.js"></script>
 % end
 
 <div class="timers-container app-container">
