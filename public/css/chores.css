@@ -1,0 +1,494 @@
+/* /public/css/chores.css */
+
+:root {
+    --accent-blue: #3b82f6;
+    --accent-green: #10b981;
+    --accent-gold: #eab308;
+    --accent-purple: #8b5cf6;
+    --glass-bg: rgba(30, 41, 59, 0.4);
+    --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+.chores-section {
+    animation: fadeIn 0.4s ease-out;
+    padding-bottom: 4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center children horizontally */
+    width: 100%;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Header Statistics Styling */
+.header-stats {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1.25rem;
+    background: rgba(16, 185, 129, 0.1);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 50px;
+    font-weight: 800;
+    color: var(--accent-green);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+}
+
+/* Section Titles with Accent Lines */
+.section-title {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin: 2.5rem 0 1.5rem 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    align-self: flex-start; /* Keep headers left-aligned even in centered section */
+}
+
+.section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.1), transparent);
+}
+
+/* Chore Grid Component */
+.chore-grid {
+    display: grid;
+    /* auto-fit with fixed track sizes allows the tracks to horizontally center inside the container */
+    grid-template-columns: repeat(auto-fit, 320px);
+    gap: 2.5rem;
+    margin-top: 2rem;
+    width: 100%;
+    max-width: 1200px;
+    justify-content: center; /* Horizontally center grid items */
+    align-self: center;      /* Center the grid box itself */
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state {
+    grid-column: 1 / -1; /* Mandatory: Span full grid width for true centering */
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5rem 3rem; /* Increased vertical presence */
+    background: rgba(255, 255, 255, 0.02);
+    border: 2px dashed rgba(255, 255, 255, 0.05);
+    border-radius: 40px;
+    width: 100%;
+    max-width: 650px;
+    margin: 4rem auto;   /* Perfect horizontal centering */
+}
+
+.chore-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.chore-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.chore-card.targeted {
+    background: linear-gradient(145deg, rgba(59, 130, 246, 0.15), var(--glass-bg));
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.chore-badge {
+    font-size: 0.7rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 8px;
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+    margin-bottom: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: fit-content;
+}
+
+.chore-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.25rem;
+}
+
+.chore-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #f8fafc;
+    max-width: 70%;
+}
+
+.chore-points {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--accent-green);
+    background: rgba(16, 185, 129, 0.1);
+    padding: 0.2rem 0.6rem;
+    border-radius: 8px;
+    height: fit-content;
+}
+
+.chore-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Premium Layout for Admin Panels */
+.admin-nav-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 3.5rem; 
+    width: 100%;
+}
+
+.pill-nav {
+    display: inline-flex; /* Correctly shrink-wrap the children */
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.4rem;
+    border-radius: 50px;
+    border: 1px solid var(--glass-border);
+}
+
+.pill-btn {
+    padding: 0.6rem 2rem;
+    border-radius: 50px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.pill-btn:hover { color: #fff; }
+
+.pill-btn.active {
+    background: var(--accent-blue);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+/* Header Bar Stretch */
+.header-bar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+/* Complex Glass Grids */
+.glass-layout {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 2.5rem;
+    width: 100%;
+    max-width: 1200px; /* Prevent over-widening on large screens */
+}
+
+.tab-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Panel Titles */
+.panel-title {
+    font-size: 1.25rem;
+    font-weight: 300;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.panel-desc {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.85rem;
+    margin-top: -1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Premium Form Elements */
+.game-input-premium {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    color: #fff;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.game-input-premium:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+/* Themed Select Elements */
+select.game-input-premium {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+}
+
+select.game-input-premium option {
+    background-color: #0f172a; /* Solid dark background for the dropdown menu */
+    color: #fff;
+    padding: 10px;
+}
+
+.input-with-icon { position: relative; display: flex; align-items: center; }
+.input-icon-prefix {
+    position: absolute; 
+    left: 1rem; 
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent-gold);
+    opacity: 0.8;
+    pointer-events: none; /* Allows clicking the input through the icon */
+    z-index: 5;
+}
+
+.input-with-icon .game-input-premium {
+    padding-left: 2.75rem !important;
+}
+
+.form-row-balanced {
+    display: flex; gap: 1.5rem;
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-actions-center {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+    width: 100%;
+}
+
+/* Refined Shrunk Action Buttons */
+.btn-premium-action-shrink {
+    padding: 0.5rem 1.25rem; 
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+    color: white;
+    font-weight: 500;
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-premium-action-shrink:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.5);
+    filter: brightness(1.1);
+}
+
+/* Common Claim Buttons (On Cards) */
+.btn-chore-claim {
+    width: 100%;
+    padding: 0.85rem;
+    border-radius: 12px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    justify-content: center;
+}
+
+.btn-chore-claim:not(:disabled):hover {
+    background: var(--accent-green);
+    color: white;
+    box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+}
+
+/* Table Enhancements */
+.table-responsive-glass {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+}
+
+.data-table-glass {
+    width: 100%;
+    min-width: 500px; /* Ensures a minimum readable width before scroll */
+    border-collapse: separate;
+    border-spacing: 0 0.5rem;
+}
+
+.data-table-glass th {
+    padding: 1rem;
+    text-align: left;
+    color: rgba(255, 255, 255, 0.3);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+}
+
+.data-table-glass tr td {
+    padding: 1.25rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.data-table-glass tr td:first-child {
+    border-top-left-radius: 16px;
+    border-bottom-left-radius: 16px;
+    border-left: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.data-table-glass tr td:last-child {
+    border-top-right-radius: 16px;
+    border-bottom-right-radius: 16px;
+    border-right: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+/* Quick Repost Tools */
+.quick-repost-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 1rem;
+}
+
+.repost-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.repost-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent-blue);
+    transform: translateY(-2px);
+}
+
+.repost-pts { color: var(--accent-green); font-weight: 800; font-size: 0.8rem; }
+
+/* Status Icons Glow (Access Restricted) */
+.status-icon-glow {
+    font-size: 4rem;
+    color: #ef4444;
+    text-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+    margin-bottom: 2rem;
+}
+
+/* Responsive Overrides */
+@media (max-width: 1100px) {
+    .glass-layout { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+    .app-container { padding: 0 1rem !important; }
+    .chore-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+    .chore-title { font-size: 1.1rem; }
+    .chore-points { font-size: 1.25rem; }
+    
+    .form-row-balanced { flex-direction: column; gap: 1rem; }
+    .pill-nav { width: auto; }
+    .pill-btn { padding: 0.6rem 1.25rem; font-size: 0.75rem; white-space: nowrap; }
+    .btn-premium-action-shrink { width: 100%; }
+
+    /* Hide Timestamp to fit columns on mobile */
+    #historyTable td:first-child, 
+    #historyTab th:first-child { 
+        display: none; 
+    }
+    
+    .data-table-glass { min-width: 0; }
+    .data-table-glass th, .data-table-glass tr td { 
+        padding: 0.85rem 0.6rem; 
+        font-size: 0.8rem;
+    }
+}
+.header-stats:empty {
+    display: none;
+}
+
+/* Utility Spacing */
+.mt-4 { margin-top: 2rem !important; }
+
+/* Global Page Centering (Replaces brittle percentage padding) */
+.app-container {
+    width: 100%;
+    margin: 0 auto;
+    max-width: 1200px; /* Optimal "Premium" reading/admin width */
+    padding: 0 1.5rem;
+}
+
+@media (max-width: 600px) {
+    .app-container { padding: 0 1rem; }
+}
