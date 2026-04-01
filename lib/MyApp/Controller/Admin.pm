@@ -7,10 +7,11 @@ use Mojo::Util qw(trim);
 # Controller for User Administration and Role Management.
 # Features:
 #   - User listing and status monitoring
+#   - Manual account creation with immediate role assignment
 #   - Approval workflow for new registrations
 #   - User profile editing (Roles, Details, Passwords)
 #   - Account deletion
-#   - Granular role toggling (Admin/Family)
+#   - Granular role toggling (Admin/Family/Child)
 # Integration points:
 #   - Restricted to administrative members via router bridge
 #   - Depends on DB::Users for all data persistence and aggregated roster data
@@ -43,6 +44,74 @@ sub api_state {
     };
 
     $c->render(json => $state);
+}
+
+# Manually creates a new user account (Admin only).
+# Route: POST /users/api/add
+# Parameters:
+#   username   : Unique String (3+ chars, alphanumeric, underscore, hyphen, or dot)
+#   email      : String (Email format, must be unique)
+#   password   : String (min 8 chars)
+#   is_admin   : Boolean bit (1/0)
+#   is_family  : Boolean bit (1/0)
+#   is_child   : Boolean bit (1/0)
+# Returns: JSON object { success, message, error }
+sub api_user_add {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
+    my $username = trim($c->param('username') // '');
+    my $email    = trim($c->param('email') // '');
+    my $password = trim($c->param('password') // '');
+    
+    # Permission bits from the Add modal
+    my $is_admin  = $c->param('is_admin') || 0;
+    my $is_family = $c->param('is_family') || 0;
+    my $is_child  = $c->param('is_child') || 0;
+
+    # Basic Validation
+    unless (length($username) >= 3 && $username =~ /^[a-zA-Z0-9_.\-]+$/) {
+        return $c->render(json => { success => 0, error => 'Invalid username format' });
+    }
+    unless ($email =~ /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/) {
+        return $c->render(json => { success => 0, error => 'Invalid email format' });
+    }
+    unless (length($password) >= 8) {
+        return $c->render(json => { success => 0, error => 'Password must be at least 8 characters' });
+    }
+
+    # Duplicate Check: Username and Email must both be unique
+    if ($c->db->get_user_id($username)) {
+        return $c->render(json => { success => 0, error => 'Username already exists' });
+    }
+    if ($c->db->email_exists($email)) {
+        return $c->render(json => { success => 0, error => 'Email address is already registered' });
+    }
+
+    my $dbh = $c->db->{dbh};
+    $dbh->begin_work;
+    eval {
+        # 1. Create the base account record (generates Bcrypt hash internally)
+        my $new_id = $c->db->create_user($username, $password, $email);
+        die "User creation returned no ID" unless $new_id;
+
+        # 2. Atomically assign roles and approve the account in the same transaction.
+        # If this UPDATE fails, begin_work ensures the INSERT is rolled back,
+        # preventing an orphaned account with no roles or incorrect status.
+        my $rows = $c->db->update_user($new_id, $username, $email, '', $is_admin, $is_family, $is_child, 'approved');
+        die "Role assignment failed for new user (ID: $new_id)" unless $rows;
+
+        $dbh->commit;
+        $c->app->log->info("Admin manual user creation: $username (ID: $new_id) added by " . $c->session('username'));
+    };
+
+    if ($@) {
+        eval { $dbh->rollback };
+        $c->app->log->error("Failed to create user manually: $@");
+        return $c->render(json => { success => 0, error => 'Database error during user creation' });
+    }
+
+    return $c->render(json => { success => 1, message => "User '$username' created successfully." });
 }
 
 # Permanently removes a user account.
@@ -145,8 +214,8 @@ sub edit_user {
     my $status = $c->param('status') // $current_user->{status} // 'pending';
     my $password = trim($c->param('password') // '');
     
-    unless ($username =~ /^[a-zA-Z0-9_]{3,20}$/) {
-        return $c->render(json => { success => 0, error => 'Invalid username (3-20 chars, alphanumeric/underscore)' });
+    unless ($username =~ /^[a-zA-Z0-9_.\-]{3,20}$/) {
+        return $c->render(json => { success => 0, error => 'Invalid username (3-20 chars, alphanumeric, underscore, hyphen, or dot)' });
     }
     unless ($email =~ /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/) {
         return $c->render(json => { success => 0, error => 'Invalid email format' });
