@@ -19,15 +19,15 @@ use warnings;
 # Integration points:
 # - Registers high-level helpers in the Mojolicious app.
 # - Depends on credentials stored in respective DB tables.
-# - Provides standardized logging for delivery tracking.
+# - Provides both server-file logging and DB audit tracking.
 
 sub register {
     my ($self, $app, $config) = @_;
 
     # --- DISCORD DMs ---
-    # Parameters: discord_id, text
+    # Parameters: discord_id, text, user_id (opt)
     $app->helper(send_discord_dm => sub {
-        my ($c, $discord_id, $text) = @_;
+        my ($c, $discord_id, $text, $user_id) = @_;
         return 0 unless $discord_id;
         
         my $url = "http://127.0.0.1:3000/message/dm/$discord_id";
@@ -38,22 +38,46 @@ sub register {
             if (my $res = $tx->result) {
                 if ($res->is_success) {
                     $c->app->log->info("Discord DM sent to $discord_id: $text");
+                    $c->db->log_notification(
+                        user_id   => $user_id,
+                        type      => 'discord',
+                        recipient => $discord_id,
+                        message   => $text,
+                        status    => 'success'
+                    );
                 } else {
-                    $c->app->log->error("Discord API error ($discord_id): Status " . $res->code);
+                    my $err_msg = "Discord API error ($discord_id): Status " . $res->code;
+                    $c->app->log->error($err_msg);
+                    $c->db->log_notification(
+                        user_id       => $user_id,
+                        type          => 'discord',
+                        recipient     => $discord_id,
+                        message       => $text,
+                        status        => 'failed',
+                        error_details => $err_msg
+                    );
                 }
             }
         })->catch(sub {
             my $err = shift;
             $c->app->log->error("Discord API Exception ($discord_id): $err");
+            $c->db->log_notification(
+                user_id       => $user_id,
+                type          => 'discord',
+                recipient     => $discord_id,
+                message       => $text,
+                status        => 'failed',
+                error_details => "Exception: $err"
+            );
         });
         
-        return 1; # Optimistic success for callers
+        return 1;
     });
 
     # --- EMAIL (GMAIL SMTP) ---
-    # Parameters: to (string or arrayref), subject, body
+    # Parameters: to (string or arrayref), subject, body, user_id (opt)
     $app->helper(send_email_via_gmail => sub {
-        my ($c, $to, $subject, $body) = @_;
+        my ($c, $to, $subject, $body, $user_id) = @_;
         my $settings = $c->db->get_email_settings();
         
         unless ($settings->{gmail_email} && $settings->{gmail_app_password}) {
@@ -61,6 +85,8 @@ sub register {
             return 0;
         }
         
+        my $recipient_str = ref($to) eq 'ARRAY' ? join(', ', @$to) : $to;
+
         # Fire and forget via subprocess to prevent blocking the Mojo loop
         Mojo::IOLoop->subprocess(
             sub {
@@ -82,7 +108,7 @@ sub register {
                 
                 $smtp->data();
                 $smtp->datasend("From: $from\n");
-                $smtp->datasend("To: $settings->{gmail_email}\n"); # BCC pattern
+                $smtp->datasend("To: $settings->{gmail_email}\n"); 
                 $smtp->datasend("Subject: $encoded_subject\n");
                 $smtp->datasend("Content-Type: text/plain; charset=UTF-8\n\n");
                 $smtp->datasend("$encoded_body\n");
@@ -95,19 +121,36 @@ sub register {
                 my ($subprocess, $err, $count) = @_;
                 if ($err) {
                     $c->app->log->error("SMTP Subprocess Error: $err");
+                    $c->db->log_notification(
+                        user_id       => $user_id,
+                        type          => 'email',
+                        recipient     => $recipient_str,
+                        subject       => $subject,
+                        message       => $body,
+                        status        => 'failed',
+                        error_details => "SMTP Error: $err"
+                    );
                 } else {
                     $c->app->log->info("Email sent to $count recipient(s): $subject");
+                    $c->db->log_notification(
+                        user_id   => $user_id,
+                        type      => 'email',
+                        recipient => $recipient_str,
+                        subject   => $subject,
+                        message   => $body,
+                        status    => 'success'
+                    );
                 }
             }
         );
         
-        return 1; # Optimistic success for callers
+        return 1;
     });
 
     # --- PUSHOVER ---
-    # Parameters: message
+    # Parameters: message, user_id (opt)
     $app->helper(push_pushover => sub {
-        my ($c, $message) = @_;
+        my ($c, $message, $user_id) = @_;
         my $creds = $c->db->{dbh}->selectrow_hashref("SELECT * FROM pushover LIMIT 1");
         
         return 0 unless $creds;
@@ -120,22 +163,45 @@ sub register {
             my $tx = shift;
             if ($tx->result->is_success) {
                 $c->app->log->info("Pushover alert sent: " . substr($message, 0, 30) . "...");
+                $c->db->log_notification(
+                    user_id   => $user_id,
+                    type      => 'pushover',
+                    recipient => 'Pushover Device',
+                    message   => $message,
+                    status    => 'success'
+                );
             } else {
                 my $body = $tx->result->body // '';
                 $body = substr($body, 0, 200) . '...' if length($body) > 200;
                 $c->app->log->error("Pushover failed: $body");
+                $c->db->log_notification(
+                    user_id       => $user_id,
+                    type          => 'pushover',
+                    recipient     => 'Pushover Device',
+                    message       => $message,
+                    status        => 'failed',
+                    error_details => "Status: " . $tx->result->code . " - $body"
+                );
             }
         })->catch(sub {
             my $err = shift;
             $c->app->log->error("Pushover Exception: $err");
+            $c->db->log_notification(
+                user_id       => $user_id,
+                type          => 'pushover',
+                recipient     => 'Pushover Device',
+                message       => $message,
+                status        => 'failed',
+                error_details => "Exception: $err"
+            );
         });
         return 1;
     });
 
     # --- GOTIFY ---
-    # Parameters: message, title (opt), priority (opt)
+    # Parameters: message, title (opt), priority (opt), user_id (opt)
     $app->helper(push_gotify => sub {
-        my ($c, $message, $title, $priority) = @_;
+        my ($c, $message, $title, $priority, $user_id) = @_;
         my $creds = $c->db->{dbh}->selectrow_hashref("SELECT * FROM gotify LIMIT 1");
         
         return 0 unless $creds;
@@ -148,14 +214,40 @@ sub register {
             my $tx = shift;
             if ($tx->result->is_success) {
                 $c->app->log->info("Gotify alert sent: " . ($title // 'No Title'));
+                $c->db->log_notification(
+                    user_id   => $user_id,
+                    type      => 'gotify',
+                    recipient => 'Gotify Client',
+                    subject   => $title,
+                    message   => $message,
+                    status    => 'success'
+                );
             } else {
                 my $body = $tx->result->body // '';
                 $body = substr($body, 0, 200) . '...' if length($body) > 200;
                 $c->app->log->error("Gotify failed: $body");
+                $c->db->log_notification(
+                    user_id       => $user_id,
+                    type          => 'gotify',
+                    recipient     => 'Gotify Client',
+                    subject       => $title,
+                    message       => $message,
+                    status        => 'failed',
+                    error_details => "Status: " . $tx->result->code . " - $body"
+                );
             }
         })->catch(sub {
             my $err = shift;
             $c->app->log->error("Gotify Exception: $err");
+            $c->db->log_notification(
+                user_id       => $user_id,
+                type          => 'gotify',
+                recipient     => 'Gotify Client',
+                subject       => $title,
+                message       => $message,
+                status        => 'failed',
+                error_details => "Exception: $err"
+            );
         });
         return 1;
     });
@@ -171,15 +263,23 @@ sub register {
 
         # Try Discord first
         if ($user->{discord_id}) {
-            return 1 if $c->send_discord_dm($user->{discord_id}, $message) >= 1;
+            return 1 if $c->send_discord_dm($user->{discord_id}, $message, $user_id) >= 1;
         }
 
         # Fallback to Email
         if ($user->{email}) {
-            return $c->send_email_via_gmail($user->{email}, $subject, $message);
+            return $c->send_email_via_gmail($user->{email}, $subject, $message, $user_id);
         }
 
         $c->app->log->warn("No notification channels for user $user_id");
+        $c->db->log_notification(
+            user_id       => $user_id,
+            type          => 'email',
+            recipient     => 'None',
+            message       => $message,
+            status        => 'failed',
+            error_details => 'No notification channels configured for user'
+        );
         return 0;
     });
 }
