@@ -10,6 +10,7 @@
  * Features:
  * - Real-time local countdowns (1000ms resolution)
  * - Server-side synchronization (10s frequency)
+ * - Point-to-Time redemption for child accounts (1 pt = 10 mins)
  * - Interactive Start/Pause controls with optimistic state updates
  * - Dynamic progress visualization and daily limit enforcement
  * - Integrated expiry overlays for exhaustive sessions
@@ -29,7 +30,9 @@ const CONFIG = {
 };
 
 let STATE = {
-    timers: []                      // Collection of active timer sessions
+    timers: [],                     // Collection of active timer sessions
+    user_points: 0,                 // Current point balance (for children)
+    is_child: false                 // Role-based functionality toggle
 };
 
 /**
@@ -38,14 +41,17 @@ let STATE = {
  * @returns {void}
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // Initial fetch of the timer roster
+    // Initial fetch of the timer roster and points
     loadState();
 
-    // High-resolution local UI loop
+    // High-resolution local UI loop for smooth countdowns
     setInterval(updateLocalTimers, CONFIG.TICK_INTERVAL_MS);
 
     // Background server synchronization
     setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
+
+    // Global modal closure integration
+    setupGlobalModalClosing(['modal-overlay'], [closeRedeemModal]);
 });
 
 /**
@@ -61,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadState(force = false) {
     // Skip background refresh if a modal is active or the user is typing
-    const anyModalOpen = document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active');
+    const anyModalOpen = document.querySelector('.modal-overlay.show, .delete-modal-overlay.show');
     const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
 
     if (!force && (anyModalOpen || inputFocused)) return;
@@ -72,6 +78,8 @@ async function loadState(force = false) {
         
         if (data && data.success) {
             STATE.timers = data.timers;
+            STATE.user_points = data.user_points || 0;
+            STATE.is_child = !!data.is_child;
             renderGrid();
         }
     } catch (err) {
@@ -151,7 +159,7 @@ function renderTimerCard(t) {
                 </div>
                 ${t.bonus_seconds > 0 && !isUnlimited ? `
                     <div class="stat-row bonus-indicator">
-                        <span class="stat-label">${getIcon('bonus')} Bonus Time:</span>
+                        <span class="stat-label">${getIcon('star')} Bonus Time:</span>
                         <span class="stat-value">+${Math.floor(t.bonus_seconds / 60)} minutes</span>
                     </div>
                 ` : ''}
@@ -163,8 +171,18 @@ function renderTimerCard(t) {
                 ` : (t.is_paused ? `
                     <button class="btn btn-pause paused" onclick="handlePause(${t.id}, this)">${getIcon('running')} Resume</button>
                 ` : `
-                    <button class="btn btn-start" onclick="handleStart(${t.id}, this)" ${isExpired ? 'disabled' : ''}>${getIcon('running')} Start</button>
+                    <button class="btn btn-start" onclick="handleStart(${t.id}, this)" 
+                            style="${isExpired ? 'display: none;' : ''}"
+                            ${isExpired ? 'disabled' : ''}>
+                        ${getIcon('running')} Start
+                    </button>
                 `)}
+                
+                ${STATE.is_child && !isUnlimited ? `
+                    <button class="btn-redeem-small" onclick="openRedeemModal(${t.id}, '${escapeHtml(t.name)}')">
+                        ${getIcon('star')} Redeem
+                    </button>
+                ` : ''}
             </div>
 
             ${t.is_running ? `
@@ -186,6 +204,92 @@ function renderTimerCard(t) {
         </div>
     `;
 }
+
+/**
+ * --- Point Redemption Logic ---
+ */
+
+/**
+ * Prepares and displays the point redemption interface.
+ * 
+ * @param {number} timerId - ID of the timer to boost.
+ * @param {string} timerName - Readable name for UI feedback.
+ * @returns {void}
+ */
+function openRedeemModal(timerId, timerName) {
+    document.getElementById('redeemTimerId').value = timerId;
+    document.getElementById('calcTimerName').innerText = timerName;
+    document.getElementById('userBalanceDisplay').innerText = `${STATE.user_points} pts`;
+    document.getElementById('redeemPoints').value = 1;
+    updateRedeemCalculation();
+    
+    document.getElementById('redeemModal').classList.add('show');
+    document.body.classList.add('modal-open');
+}
+
+/**
+ * Hides the point redemption interface and restores scroll.
+ * 
+ * @returns {void}
+ */
+function closeRedeemModal() {
+    const m = document.getElementById('redeemModal');
+    if (m) m.classList.remove('show');
+    document.body.classList.remove('modal-open');
+}
+
+/**
+ * Updates the visual calculation preview (1pt = 10m).
+ * Validates against current user balance.
+ * 
+ * @returns {void}
+ */
+function updateRedeemCalculation() {
+    const pts = parseInt(document.getElementById('redeemPoints').value) || 0;
+    const mins = pts * 10;
+    document.getElementById('calcMinutes').innerText = mins;
+    
+    const btn = document.getElementById('confirmRedeemBtn');
+    if (pts > STATE.user_points || pts <= 0) {
+        btn.disabled = true;
+        btn.classList.add('disabled');
+    } else {
+        btn.disabled = false;
+        btn.classList.remove('disabled');
+    }
+}
+
+/**
+ * Executes the point-to-time atomic exchange.
+ * 
+ * @async
+ * @param {Event} event - Form submission.
+ * @returns {Promise<void>}
+ */
+async function handleRedeemSubmit(event) {
+    event.preventDefault();
+    const btn = document.getElementById('confirmRedeemBtn');
+    const formData = new FormData(event.target);
+    
+    btn.disabled = true;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = `${getIcon('waiting')} Redeeming...`;
+
+    try {
+        const result = await apiPost('/timers/api/redeem', formData);
+        if (result && result.success) {
+            closeRedeemModal();
+            loadState(true); // Force state refresh to update points/time
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+/**
+ * --- Timer Control Logic ---
+ */
 
 /**
  * Initiates a timer session and reconciles local state.
@@ -243,6 +347,7 @@ async function handlePause(timerId, btn) {
 
 /**
  * High-resolution background loop for local time increments.
+ * Manages countdown labels and progress bars between server syncs.
  * 
  * @returns {void}
  */
@@ -301,9 +406,8 @@ function updateLocalTimers() {
  */
 function escapeHtml(text) {
     if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
 /**
@@ -312,3 +416,7 @@ function escapeHtml(text) {
 window.handleStart = handleStart;
 window.handlePause = handlePause;
 window.loadState = loadState;
+window.openRedeemModal = openRedeemModal;
+window.closeRedeemModal = closeRedeemModal;
+window.updateRedeemCalculation = updateRedeemCalculation;
+window.handleRedeemSubmit = handleRedeemSubmit;
