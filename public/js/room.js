@@ -21,8 +21,13 @@ let STATE = {
 // Persistent queue for multi-photo uploads
 let UPLOAD_QUEUE = [];
 
+const CONFIG = {
+    SYNC_INTERVAL_MS: 30000
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
+    setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
     setupDropZone();
     
     // Global modal closure integration
@@ -31,10 +36,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Synchronizes the module state with the server via the consolidated state endpoint.
+ * Inhibit background sync if a modal is active or user is typing.
  * 
+ * @param {boolean} [force=false] - Bypass inhibition checks.
  * @returns {Promise<void>}
  */
-async function loadState() {
+async function loadState(force = false) {
+    const anyModalOpen = document.querySelector('.modal-overlay.show');
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+
+    if (!force && (anyModalOpen || inputFocused) && STATE.all_users.length > 0) return;
+
     try {
         const response = await fetch('/room/api/state');
         const data = await response.json();
@@ -63,7 +75,7 @@ function renderUI() {
         if (teenView) teenView.classList.add('hidden');
         if (noAccessView) noAccessView.classList.add('hidden');
         renderAdminTabs();
-    } else if (STATE.is_child) {
+    } else if (STATE.is_child && STATE.is_tracked) {
         if (teenView) teenView.classList.remove('hidden');
         if (adminView) adminView.classList.add('hidden');
         if (noAccessView) noAccessView.classList.add('hidden');
