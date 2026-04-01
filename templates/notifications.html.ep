@@ -1,0 +1,130 @@
+<%# /templates/notifications.html.ep %>
+
+% layout 'default';
+% title icon('history') . ' Notification History';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/notifications.css?<%= time %>">
+    <script src="/js/notifications.js?<%= time %>"></script>
+% end
+
+<div class="app-container">
+    <div class="header-bar">
+        <h1><%= icon('history') %> <span>Notification Ledger</span></h1>
+        <div class="manage-actions">
+            <button type="button" class="action-btn btn-danger-soft" onclick="openPruneModal()">
+                <%= icon('delete') %> Prune Logs
+            </button>
+        </div>
+    </div>
+
+    <div class="ledger-filters">
+        <div class="filter-group">
+            <input type="text" id="filterSearch" placeholder="Search message, recipient..." class="game-input">
+        </div>
+        <div class="filter-group">
+            <select id="filterType" class="game-input">
+                <option value="">All Channels</option>
+                <option value="discord">Discord</option>
+                <option value="email">Email</option>
+                <option value="pushover">Pushover</option>
+                <option value="gotify">Gotify</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="filterStatus" class="game-input">
+                <option value="">All Statuses</option>
+                <option value="success">Success</option>
+                <option value="failed">Failed</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="filterUser" class="game-input">
+                <option value="">All Users</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="filterTime" class="game-input">
+                <option value="">All Time</option>
+                <option value="7">Last 7 Days</option>
+                <option value="30">Last 30 Days</option>
+                <option value="60">Last 60 Days</option>
+                <option value="90">Last 90 Days</option>
+            </select>
+        </div>
+        <button type="button" id="resetFilters" class="btn-icon-reset" title="Reset Filters">
+            <%= icon('reset') %>
+        </button>
+    </div>
+
+    <div class="ledger-container">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="col-status">Status</th>
+                        <th>Time</th>
+                        <th>User</th>
+                        <th>Channel</th>
+                        <th>Recipient</th>
+                        <th>Message Snippet</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="notificationTableBody">
+                    <tr>
+                        <td colspan="7">
+                            <div class="component-loading">
+                                <div class="loading-scan-line"></div>
+                                <span class="loading-icon-pulse"><%= icon('history') %></span>
+                                <p class="loading-label">Synchronizing Audit Log...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<%# Detail Modal %>
+<div id="detailModal" class="modal-overlay">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3><%= icon('info') %> Notification Details</h3>
+            <span class="close-btn" onclick="closeDetailModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="detailContent" class="detail-grid">
+                <%# Populated via JS %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%# Prune Modal %>
+<div id="pruneModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><%= icon('delete') %> Prune Notification Logs</h3>
+            <span class="close-btn" onclick="closePruneModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p class="help-text">Select the retention period. All logs older than the selected timeframe will be permanently removed.</p>
+            <div class="form-group mt-4">
+                <label>Keep Last:</label>
+                <select id="pruneDays" class="game-input">
+                    <option value="7">7 Days</option>
+                    <option value="30" selected>30 Days</option>
+                    <option value="60">60 Days</option>
+                    <option value="90">90 Days</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-actions modal-actions-center">
+            <button type="button" class="btn-danger" onclick="handlePruneSubmit()">
+                <%= icon('delete') %> Prune
+            </button>
+        </div>
+    </div>
+</div>
