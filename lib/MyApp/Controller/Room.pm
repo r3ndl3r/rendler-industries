@@ -34,10 +34,12 @@ sub api_state {
 
     my $user_id = $c->current_user_id;
     my $today = $c->now->strftime('%Y-%m-%d');
+    my $config = $c->db->get_room_configs($user_id);
     
     my $state = {
         is_admin     => $c->is_admin ? 1 : 0,
         is_child     => $c->is_child ? 1 : 0,
+        is_tracked   => ($config && $config->{is_active}) ? 1 : 0,
         today_status => $c->db->get_room_status_for_date($user_id, $today),
         is_blackout  => $c->db->is_room_blackout($today),
         success      => 1
@@ -154,7 +156,7 @@ sub _dispatch_consolidated_feedback {
     my ($c, $target_user_id, $date) = @_;
     
     # Fallback to today if no date provided
-    $date //= $c->now->strftime('%Y-%m-%d');
+    $date //= $c->now->ymd;
     
     # Format for display: DD-MM-YYYY
     my $display_date = $date;
