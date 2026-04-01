@@ -340,7 +340,7 @@
 
 /* --- 5. Modals & Dialogs --- */
 
-.modal {
+.modal-overlay {
     display: none;
     position: fixed;
     z-index: 10001;
@@ -354,7 +354,7 @@
     animation: fadeIn 0.3s;
 }
 
-.modal.show, .modal.active {
+.modal-overlay.show, .modal-overlay.active {
     display: flex !important;
 }
 
@@ -661,7 +661,7 @@
        MODAL & DIALOG FIXES
        ========================================= */
     
-    .modal {
+    .modal-overlay {
         padding-top: 30px;
     }
 
