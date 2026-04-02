@@ -408,21 +408,11 @@ function closeEntryModal() {
 }
 
 /**
- * --- Utils ---
  */
 
-/**
- * Sanitizes input for DOM safety.
- * 
- * @param {string} text - Unsafe input.
- * @returns {string} - Escaped output.
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+ /**
+ * --- Global Exposure ---
 
-/**
  * Normalizes SQL timestamps to user-friendly strings.
  * 
  * @param {string} dateStr - SQL timestamp.
