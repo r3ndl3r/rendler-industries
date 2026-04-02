@@ -407,13 +407,6 @@ function confirmDeleteUser(id, username) {
  * @param {string} text - Raw input string.
  * @returns {string} - HTML-escaped output.
  */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 /**
  * --- Global Exposure ---
  */
