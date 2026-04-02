@@ -17,21 +17,9 @@
 // --- Utility Helpers ---
 
 /**
- * Prevents XSS by sanitizing dynamic content before DOM injection.
- * 
- * @param {string} text - Raw input string.
- * @returns {string} - HTML-escaped output.
+ * --- Global Exposure ---
  */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
 
-
-/**
- * --- Module Configuration & State ---
  */
 const CONFIG = {
     SYNC_INTERVAL_MS: 10000          // Background synchronization frequency (10s)
@@ -465,7 +453,6 @@ function confirmRevoke(choreId) {
 /**
  * --- Global Exposure ---
  */
-window.escapeHtml = escapeHtml;
 window.loadState = loadState;
 window.confirmClaim = confirmClaim;
 window.confirmDeleteChore = confirmDeleteChore;
