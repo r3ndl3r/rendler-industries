@@ -45,6 +45,7 @@ sub api_send {
     }
 
     my $sender = $c->session('user');
+    my $user_id = $c->current_user_id;
     my $full_msg = "Broadcast from $sender: $message";
     my $subject = "🔔 BROADCAST: From $sender 🔔";
 
@@ -58,17 +59,17 @@ sub api_send {
     # 2. Individual Channel Dispatch
     foreach my $admin (@admins) {
         if ($admin->{discord_id}) {
-            $c->send_discord_dm($admin->{discord_id}, "🚨 **SYSTEM BROADCAST** 🚨\n\n$full_msg");
+            $c->send_discord_dm($admin->{discord_id}, "🚨 **SYSTEM BROADCAST** 🚨\n\n$full_msg", $user_id);
         }
 
         if ($admin->{email}) {
-            $c->send_email_via_gmail([$admin->{email}], $subject, $full_msg);
+            $c->send_email_via_gmail([$admin->{email}], $subject, $full_msg, $user_id);
         }
     }
 
     # 3. Global Channel Dispatch
-    $c->push_pushover($full_msg);
-    $c->push_gotify($full_msg, $subject);
+    $c->push_pushover($full_msg, $user_id);
+    $c->push_gotify($full_msg, $subject, undef, $user_id);
 
     $c->render(json => { 
         success => 1, 
