@@ -299,6 +299,7 @@ sub startup {
                 $sys->run_meals_maintenance($now);
                 $sys->run_room_reminders($now);
                 $sys->run_chore_reminders($now);
+                $sys->run_weather_maintenance($now);
 
                 # Asynchronous Emoji Task: Correct lock release chain
                 $sys->run_emoji_maintenance_p()->then(sub {
@@ -641,6 +642,15 @@ sub startup {
     $admin->post('/chores/api/add')->to('chores#api_add');
     $admin->post('/chores/api/revoke')->to('chores#api_revoke');
     $admin->post('/chores/api/delete')->to('chores#api_delete');
+
+    # --- Weather Board Routes ---
+    $auth->get('/weather')->to('weather#index');
+    $auth->post('/weather/api/state')->to('weather#api_state');
+    $admin->post('/weather/api/geocode')->to('weather#api_geocode');
+    $admin->post('/weather/api/add')->to('weather#api_add');
+    $admin->post('/weather/api/update/:id')->to('weather#api_update');
+    $admin->post('/weather/api/delete/:id')->to('weather#api_delete');
+    $admin->post('/weather/api/reorder')->to('weather#api_reorder');
 }
 
 1;
