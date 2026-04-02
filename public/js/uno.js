@@ -539,21 +539,10 @@ async function apiAction(url, params = {}, btn = null) {
     } finally {
         if (btn) btn.classList.remove('pending');
     }
-}
+    }
 
-/**
- * Helper: Sanitizes text for HTML injection.
- * @param {string} text - The unsafe string.
- * @returns {string} Safe HTML string.
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+    window.loadState = loadState;
 
-// Global exposure
 window.createGame = createGame;
 window.joinGame = joinGame;
 window.leaveGame = leaveGame;
