@@ -11,7 +11,7 @@
 
 .chores-section {
     animation: fadeIn 0.4s ease-out;
-    padding-bottom: 4rem;
+    padding-bottom: 1rem;
     display: flex;
     flex-direction: column;
     align-items: center; /* Center children horizontally */
@@ -45,7 +45,7 @@
     color: rgba(255, 255, 255, 0.4);
     text-transform: uppercase;
     letter-spacing: 0.15em;
-    margin: 2.5rem 0 1.5rem 0.5rem;
+    margin: 1.5rem 0 1rem 0.5rem;
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -66,7 +66,6 @@
     /* auto-fit with fixed track sizes allows the tracks to horizontally center inside the container */
     grid-template-columns: repeat(auto-fit, 320px);
     gap: 2.5rem;
-    margin-top: 2rem;
     width: 100%;
     max-width: 1200px;
     justify-content: center; /* Horizontally center grid items */
@@ -91,7 +90,27 @@
     border-radius: 40px;
     width: 100%;
     max-width: 650px;
-    margin: 4rem auto;   /* Perfect horizontal centering */
+    margin: 0 auto;
+}
+
+.leaderboard-panel {
+    width: 100%;
+    max-width: 650px;
+    margin: 1.5rem auto 0 auto;
+    padding: 1.25rem 1.5rem !important; /* Force tighter padding on this specific board */
+}
+
+.leaderboard-panel th:first-child,
+#balancesTable td:first-child {
+    padding-left: 6rem !important;
+}
+
+.max-w-admin {
+    max-width: 900px;
+}
+
+.w-100 {
+    width: 100%;
 }
 
 .chore-card {
@@ -169,52 +188,19 @@
     gap: 0.5rem;
 }
 
-/* Premium Layout for Admin Panels */
-.admin-nav-container {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 3.5rem; 
-    width: 100%;
-}
 
-.pill-nav {
-    display: inline-flex; /* Correctly shrink-wrap the children */
-    background: rgba(0, 0, 0, 0.3);
-    padding: 0.4rem;
-    border-radius: 50px;
-    border: 1px solid var(--glass-border);
-}
-
-.pill-btn {
-    padding: 0.6rem 2rem;
-    border-radius: 50px;
-    border: none;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.5);
-    font-weight: 700;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-}
-
-.pill-btn:hover { color: #fff; }
-
-.pill-btn.active {
-    background: var(--accent-blue);
-    color: #fff;
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-}
-
-/* Header Bar Stretch */
 .header-bar {
     width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 /* Complex Glass Grids */
@@ -244,9 +230,9 @@
 
 /* Panel Titles */
 .panel-title {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     font-weight: 300;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -415,28 +401,57 @@ select.game-input-premium option {
 
 /* Quick Repost Tools */
 .quick-repost-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
 }
 
 .repost-item {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 16px;
-    padding: 1rem;
-    text-align: center;
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     cursor: pointer;
     transition: all 0.2s;
+    font-size: 0.75rem;
+    white-space: nowrap;
 }
 
 .repost-item:hover {
     background: rgba(255, 255, 255, 0.08);
     border-color: var(--accent-blue);
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
-.repost-pts { color: var(--accent-green); font-weight: 800; font-size: 0.8rem; }
+.repost-title {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
+.repost-pts { color: var(--accent-green); font-weight: 800; font-size: 0.7rem; }
+
+/* Modal-specific Rapid Repost */
+.modal-quick-add-container {
+    margin-bottom: 1.5rem;
+}
+
+.modal-section-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.4);
+    margin-bottom: 1.5rem !important;
+    letter-spacing: 0.05em;
+}
+
+.modal-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    margin: 1.5rem 0;
+}
 
 /* Status Icons Glow (Access Restricted) */
 .status-icon-glow {
@@ -452,58 +467,131 @@ select.game-input-premium option {
 }
 
 @media (max-width: 600px) {
-    .app-container { padding: 0 1rem !important; }
+    .app-container { padding: 1rem 0.75rem !important; }
     .chore-grid { grid-template-columns: 1fr; gap: 1.5rem; }
     .chore-title { font-size: 1.1rem; }
     .chore-points { font-size: 1.25rem; }
     
     .form-row-balanced { flex-direction: column; gap: 1rem; }
-    .pill-nav { width: auto; }
-    .pill-btn { padding: 0.6rem 1.25rem; font-size: 0.75rem; white-space: nowrap; }
     .btn-premium-action-shrink { width: 100%; }
 
-    /* Hide Timestamp to fit columns on mobile */
-    #historyTable td:first-child, 
-    #historyTab th:first-child { 
-        display: none; 
+    /* Table Transformation to 4-line Cards */
+    #adminView .glass-panel { 
+        padding: 0; 
+        background: transparent; 
+        border: none; 
+        box-shadow: none; 
+        backdrop-filter: none;
+    }
+    #adminView .panel-title { padding-left: 0.5rem; }
+    #adminView .data-table-glass, 
+    #adminView .data-table-glass tbody { 
+        display: block; 
+        background: transparent; 
+        box-shadow: none; 
+        border: none; 
     }
     
+    #historyTable tr {
+        display: block; 
+        background: #1e293b; 
+        border-radius: 1rem; 
+        padding: 1rem 1.25rem; 
+        margin-bottom: 1rem; 
+        border: 1px solid #334155; 
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        position: relative; /* For top-right button anchoring */
+    }
+
+    #historyTable td { 
+        display: flex;
+        align-items: center;
+        padding: 0.35rem 0 !important; 
+        border: none !important; 
+        width: 100% !important; 
+        text-align: left !important; 
+        background: transparent !important;
+        font-size: 0.85rem;
+    }
+
+    #historyTable td::before {
+        content: attr(data-label); 
+        font-weight: 600; 
+        color: #94a3b8; 
+        text-transform: uppercase; 
+        font-size: 0.65rem; 
+        margin-right: 1rem; 
+        min-width: 70px; 
+        flex-shrink: 0;
+    }
+
+    /* Vertically center action button on right edge */
+    #historyTable td.col-actions { 
+        position: absolute;
+        top: 50%;
+        right: 1.25rem;
+        transform: translateY(-50%);
+        width: auto !important;
+        padding: 0 !important;
+        display: flex !important;
+        justify-content: flex-end;
+    }
+    
+    #historyTable tr::after {
+        display: none; /* Just cleaning up */
+    }
+
+    /* Standardized widths for desktop table view */
     .data-table-glass { 
         min-width: 0; 
-        table-layout: fixed; /* Force alignment and fit within container */
+        table-layout: auto;
+    }
+    
+    #adminView thead { display: none; }
+
+    /* Balance table remains a table for density */
+    .leaderboard-panel th {
+        padding: 0.5rem 1rem !important;
+        text-align: left !important;
     }
 
-    .data-table-glass th, .data-table-glass tr td { 
-        padding: 0.85rem 0.5rem; 
-        font-size: 0.75rem;
-        word-break: break-word; /* Allow wrapping for long task names */
-        overflow: hidden;
+    .leaderboard-panel th:first-child,
+    #balancesTable td:first-child {
+        padding-left: 6rem !important;
     }
-
-    /* Column specific adjustments for history on mobile */
-    #historyTable td:nth-child(2), #historyTab th:nth-child(2) { width: 25%; } /* Claimant */
-    #historyTable td:nth-child(3), #historyTab th:nth-child(3) { width: 45%; } /* Task */
-    #historyTable td:nth-child(4), #historyTab th:nth-child(4) { width: 15%; } /* Reward */
-    #historyTable td:nth-child(5), #historyTab th:nth-child(5) { width: 15%; } /* Audit */
-
-    /* Balance table specific adjustments */
+    
+    #balancesTable td {
+        display: table-cell;
+        width: auto !important;
+        background: rgba(255, 255, 255, 0.02) !important;
+        padding: 0.75rem 1rem !important;
+        text-align: left !important;
+    }
+    
     #balancesTable td:last-child { 
-        min-width: 80px; 
-        text-align: right;
-    }
-
-    /* Force right alignment for audit and reward columns on mobile */
-    #historyTable td:nth-child(4), #historyTab th:nth-child(4),
-    #historyTable td:nth-child(5), #historyTab th:nth-child(5) {
-        text-align: right;
+        min-width: 80px;
     }
 }
+
+.audit-user {
+    font-weight: 700;
+    color: #fff;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+
 .header-stats:empty {
     display: none;
 }
 
-/* Utility Spacing */
+/* Utility Spacing & Alignment (Local) */
 .mt-4 { margin-top: 2rem !important; }
+.text-left { text-align: left !important; }
+.text-center { text-align: center !important; }
+.text-right { text-align: right !important; }
 
 /* Global Page Centering (Replaces brittle percentage padding) */
 .app-container {
