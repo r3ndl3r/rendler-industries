@@ -732,18 +732,6 @@ function closePhotoModal() {
 }
 
 /**
- * Sanitizes text for HTML injection.
- * 
- * @param {string} text - Raw string.
- * @returns {string} - Escaped string.
- */
-function escapeHtml(text) {
-    if (!text) return "";
-    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-    return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
-}
-
-/**
  * Triggers a confirmation modal before permanently removing a submission.
  * 
  * @param {number} id - Submission ID.
