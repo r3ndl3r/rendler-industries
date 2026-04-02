@@ -45,6 +45,7 @@ sub api_state {
         google_cloud     => {
             key => $c->db->get_google_cloud_key()
         },
+        owm_api_key      => $c->db->get_all_settings()->{owm_api_key},
         success          => 1
     };
     
@@ -165,6 +166,11 @@ sub update {
         my $api_key = trim($c->param('google_cloud_key') // '');
         $c->db->update_google_cloud_key($api_key);
         return $c->render(json => { success => 1, message => 'Google Cloud API key updated successfully' });
+    }
+    elsif ($section eq 'openweathermap') {
+        my $api_key = trim($c->param('owm_api_key') // '');
+        $c->db->update_owm_api_key($api_key);
+        return $c->render(json => { success => 1, message => 'OpenWeatherMap API key updated successfully' });
     }
 
     return $c->render(json => { success => 0, error => 'Unknown settings section' });
