@@ -417,19 +417,6 @@ function setupDropZone() {
 }
 
 /**
- * Sanitizes strings for safe DOM injection.
- * 
- * @param {string} str - Unsafe input.
- * @returns {string} - Escaped output.
- */
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-/**
  * --- Global Exposure ---
  */
 window.openUploadModal = openUploadModal;
