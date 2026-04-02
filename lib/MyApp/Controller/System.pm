@@ -116,7 +116,7 @@ sub run_meals_maintenance {
                 if ($u->{discord_id}) {
                     if (!$has_suggested{$u->{id}} && !$has_voted{$u->{id}}) {
                         my $msg = "🍳 MEAL PLANNER REMINDER 🍳\n\nYou haven't added a suggestion or voted for today's meal yet! Lock-in is at 2PM.\n\nhttps://rendler.org/meals";
-                        $c->send_discord_dm($u->{discord_id}, $msg);
+                        $c->send_discord_dm($u->{discord_id}, $msg, $u->{id});
                     }
                 }
             }
@@ -144,7 +144,7 @@ sub run_meals_maintenance {
                     my $admin_msg = "⚖️ MEAL PLANNER TIE: Today's meal plan is TIED. Please go to /meals and pick a winner!\n\nhttps://rendler.org/meals";
                     my $admins = $c->db->get_admins();
                     foreach my $a (@$admins) {
-                        $c->send_discord_dm($a->{discord_id}, $admin_msg) if $a->{discord_id};
+                        $c->send_discord_dm($a->{discord_id}, $admin_msg, $a->{id}) if $a->{discord_id};
                     }
                     push @{$stats->{actions}}, "Notified admins of tie";
                 } else {
@@ -156,7 +156,7 @@ sub run_meals_maintenance {
                     my $users = $c->db->get_family_users();
                     foreach my $u (@$users) {
                         if ($u->{discord_id}) {
-                            $c->send_discord_dm($u->{discord_id}, $announcement);
+                            $c->send_discord_dm($u->{discord_id}, $announcement, $u->{id});
                         }
                     }
                     push @{$stats->{actions}}, "Locked in: $winner->{meal_name}";
@@ -166,7 +166,7 @@ sub run_meals_maintenance {
                 my $admin_msg = "⚠️ MEAL PLANNER EMPTY: No suggestions made by 2PM. Please set a blackout or manual meal.\n\nhttps://rendler.org/meals";
                 my $admins = $c->db->get_admins();
                 foreach my $a (@$admins) {
-                    $c->send_discord_dm($a->{discord_id}, $admin_msg) if $a->{discord_id};
+                    $c->send_discord_dm($a->{discord_id}, $admin_msg, $a->{id}) if $a->{discord_id};
                 }
                 push @{$stats->{actions}}, "Notified admins of empty plan";
             }
@@ -439,16 +439,16 @@ Start: $formatted_start
             
             # Email
             if ($channels =~ /email/) {
-                $c->send_email_via_gmail([$user->{email}], $email_subject, $email_body) if $user->{email};
+                $c->send_email_via_gmail([$user->{email}], $email_subject, $email_body, $user->{id}) if $user->{email};
             }
             
             # Discord
             if ($channels =~ /discord/) {
                 if ($user->{discord_id}) {
-                    $c->send_discord_dm($user->{discord_id}, $discord_msg);
+                    $c->send_discord_dm($user->{discord_id}, $discord_msg, $user->{id});
                 } elsif ($user->{email} && $channels !~ /email/) {
                     # Fallback to email if discord_id is missing
-                    $c->send_email_via_gmail([$user->{email}], "[Discord Fallback] $email_subject", $email_body);
+                    $c->send_email_via_gmail([$user->{email}], "[Discord Fallback] $email_subject", $email_body, $user->{id});
                 }
             }
         }
