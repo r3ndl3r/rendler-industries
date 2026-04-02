@@ -553,17 +553,6 @@ function closeModals() {
 }
 
 /**
- * Sanitizes input for safe DOM injection.
- * 
- * @param {string} text - Raw input.
- * @returns {string} - Escaped output.
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-/**
  * --- Global Exposure ---
  */
 window.handleCreateSubmit = handleCreateSubmit;
