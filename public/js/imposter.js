@@ -402,18 +402,6 @@ function formatTime(seconds) {
 }
 
 /**
- * Helper: Sanitizes user input for DOM injection.
- * @param {string} text - The unsafe string.
- * @returns {string} Safe HTML string.
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-/**
  * Helper: Sanitizes URLs to prevent javascript: injections.
  * @param {string} url - The URL to sanitize.
  * @returns {string} The sanitized URL.
