@@ -370,19 +370,6 @@ function openClearCompletedModal() {
 }
 
 /**
- * Escapes reserved characters for safe HTML injection.
- * 
- * @param {string} text - Raw content.
- * @returns {string} - Sanitized string.
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-/**
  * --- Global Exposure ---
  */
 window.loadState = loadState;
