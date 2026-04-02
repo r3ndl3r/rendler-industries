@@ -88,6 +88,7 @@ async function loadState() {
             STATE.timer_reset_hour = data.timer_reset_hour;
             STATE.gemini = data.gemini;
             STATE.google_cloud = data.google_cloud;
+            STATE.owm_api_key = data.owm_api_key;
             
             renderSettings();
             restoreUIState();
@@ -292,6 +293,18 @@ function renderIntegrationsPanel() {
                         <label>API Key</label>
                         <div class="input-wrapper">
                             <input type="password" name="google_cloud_key" class="game-input" value="${escapeHtml(cloud.key)}" autocomplete="off">
+                            <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
+                        </div>
+                    </div>
+                </div>
+            `)}
+            
+            ${renderCard('openweathermap', 'OpenWeatherMap', 'API key for weather observations and forecasts.', !!STATE.owm_api_key, `
+                <div class="settings-fields">
+                    <div class="form-group full-width">
+                        <label>One Call 3.0 API Key</label>
+                        <div class="input-wrapper">
+                            <input type="password" name="owm_api_key" class="game-input" value="${escapeHtml(STATE.owm_api_key)}" autocomplete="off">
                             <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
                         </div>
                     </div>
@@ -583,22 +596,10 @@ function confirmDeleteModel(modelName) {
         }
     });
 }
-
-/**
- * Prevents XSS by sanitizing dynamic input.
- * 
- * @param {string} text - Raw content.
- * @returns {string} - Sanitized HTML.
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
-/**
- * --- Global Exposure ---
+window.loadState = loadState;
+
  */
 window.loadState = loadState;
 window.toggleCard = toggleCard;
