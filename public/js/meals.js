@@ -718,19 +718,6 @@ function closeBlackoutModal() {
 }
 
 /**
- * Sanitizes input to prevent XSS.
- * 
- * @param {string} text - Raw input.
- * @returns {string} - Sanitized HTML.
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-/**
  * --- Global Exposure ---
  */
 window.loadState = loadState;
