@@ -30,27 +30,6 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-/**
- * Switches between module-specific administrative tabs.
- * 
- * @param {string} tab - Tab name prefix.
- * @param {HTMLElement} btn - clicked button.
- * @returns {void}
- */
-function switchTab(tab, btn) {
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-    document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
-    
-    const targetTab = document.getElementById(tab + 'Tab');
-    if (targetTab) {
-        targetTab.classList.remove('hidden');
-        renderAdminControlPanel();
-    }
-    
-    if (btn) {
-        btn.classList.add('active');
-    }
-}
 
 /**
  * --- Module Configuration & State ---
@@ -78,6 +57,7 @@ let STATE = {
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
     setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
+    setupGlobalModalClosing(['modal-overlay'], [closeAddModal]);
 });
 
 /**
@@ -119,6 +99,7 @@ function renderUI() {
     const adminView = document.getElementById('adminView');
     const noAccessView = document.getElementById('noAccessView');
     const statsCon = document.getElementById('headerStats');
+    const adminActions = document.getElementById('adminActions');
 
     // 1. Display Player Balance
     if (STATE.is_child && !STATE.is_admin) {
@@ -132,17 +113,22 @@ function renderUI() {
         if (adminView) adminView.classList.remove('hidden');
         if (childView) childView.classList.remove('hidden'); 
         if (noAccessView) noAccessView.classList.add('hidden');
+        if (adminActions) adminActions.classList.remove('hidden');
         renderAdminControlPanel();
         renderChores();
+        renderUserBalances();
     } else if (STATE.is_child) {
         if (childView) childView.classList.remove('hidden');
         if (adminView) adminView.classList.add('hidden');
         if (noAccessView) noAccessView.classList.add('hidden');
+        if (adminActions) adminActions.classList.add('hidden');
         renderChores();
+        renderUserBalances();
     } else {
         if (childView) childView.classList.add('hidden');
         if (adminView) adminView.classList.add('hidden');
         if (noAccessView) noAccessView.classList.remove('hidden');
+        if (adminActions) adminActions.classList.add('hidden');
     }
 }
 
@@ -270,6 +256,28 @@ function renderAdminControlPanel() {
 }
 
 /**
+ * Modal Management: Open the "Add Chore" dialog.
+ */
+function openAddModal() {
+    const modal = document.getElementById('addChoreModal');
+    if (modal) {
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+    }
+}
+
+/**
+ * Modal Management: Close the "Add Chore" dialog.
+ */
+function closeAddModal() {
+    const modal = document.getElementById('addChoreModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+    }
+}
+
+/**
  * Fills the "Add Chore" dropdown targeting children.
  * 
  * @returns {void}
@@ -309,6 +317,7 @@ async function addChore(e) {
         if (res && res.success) {
             showToast(`✨ Posted: ${escapeHtml(formData.get('title'))} (+${formData.get('points')} pts). Notification sent!`, 'success');
             form.reset();
+            closeAddModal();
             await loadState(true);
         }
     } finally {
@@ -329,6 +338,7 @@ async function triggerQuickAdd(title, points) {
     const res = await apiPost('/chores/api/add', { title: title, points: points, assigned_to: '' });
     if (res && res.success) {
         showToast(`✨ Reactivated: ${escapeHtml(title)} (+${points} pts). Notification sent!`, 'success');
+        closeAddModal();
         loadState(true);
     }
 }
@@ -349,8 +359,8 @@ function renderQuickAdd() {
 
     container.innerHTML = STATE.quick_add_chores.map(c => `
         <div class="repost-item" onclick="triggerQuickAdd('${escapeHtml(c.title)}', ${c.points})">
-            <div class="repost-title">${escapeHtml(c.title)}</div>
-            <div class="repost-pts">+${c.points}</div>
+            <span class="repost-title">${escapeHtml(c.title)}</span>
+            <span class="repost-pts">+${c.points}</span>
         </div>
     `).join('');
 }
@@ -369,7 +379,7 @@ function renderUserBalances() {
         return `
             <tr>
                 <td><strong>${window.getIcon(u.username)} ${escapeHtml(u.username)}</strong></td>
-                <td class="text-right ${sum > 0 ? 'text-success' : ''}"><strong>${sum}</strong> <small>pts</small></td>
+                <td class="${sum > 0 ? 'text-success' : ''}"><strong>${sum}</strong> <small>pts</small></td>
             </tr>
         `;
     }).join('');
@@ -390,17 +400,19 @@ function renderHistory() {
     }
 
     tbody.innerHTML = STATE.history.map(h => {
-        const date = new Date(h.completed_at).toLocaleString();
+        const userIcon = window.getIcon(h.completed_by_name?.toLowerCase()) || window.getIcon('user');
         return `
-            <tr>
-                <td><small>${date}</small></td>
-                <td><strong>${escapeHtml(h.completed_by_name || 'System')}</strong></td>
-                <td>${escapeHtml(h.title)}</td>
-                <td class="${h.points > 0 ? 'text-success' : ''}">
-                    ${h.points > 0 ? `+${h.points}` : '0'}
+            <tr class="history-row">
+                <td data-label="User" class="col-user">
+                    <span class="audit-user">${userIcon} ${escapeHtml(h.completed_by_name || 'System')}</span>
                 </td>
-                <td class="text-right">
-                    <button class="btn-icon-delete" onclick="confirmRevoke(${h.id})">
+                <td data-label="Time" class="col-time"><small>${format_datetime(h.completed_at)}</small></td>
+                <td data-label="Task" class="col-task">${escapeHtml(h.title)}</td>
+                <td data-label="Points" class="col-points ${h.points > 0 ? 'text-success' : ''}">
+                    <strong>${h.points > 0 ? `+${h.points}` : '0'}</strong>
+                </td>
+                <td class="text-right col-actions">
+                    <button class="btn-icon-delete" title="Revoke Completion" onclick="confirmRevoke(${h.id})">
                         ${window.getIcon('delete')}
                     </button>
                 </td>
@@ -436,10 +448,11 @@ function confirmRevoke(choreId) {
  * --- Global Exposure ---
  */
 window.escapeHtml = escapeHtml;
-window.switchTab = switchTab;
 window.loadState = loadState;
 window.confirmClaim = confirmClaim;
 window.confirmDeleteChore = confirmDeleteChore;
 window.addChore = addChore;
 window.triggerQuickAdd = triggerQuickAdd;
 window.confirmRevoke = confirmRevoke;
+window.openAddModal = openAddModal;
+window.closeAddModal = closeAddModal;
