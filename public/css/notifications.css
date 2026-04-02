@@ -243,6 +243,7 @@
         padding: 1rem; 
         margin-bottom: 0.75rem; 
         border: 1px solid #334155; 
+        position: relative;
     }
 
     .data-table td { 
@@ -268,19 +269,38 @@
     .col-status { 
         font-size: 1.2rem;
     }
+
+    .col-recipient, .col-message {
+        max-width: none !important;
+        white-space: normal !important;
+        word-break: break-all !important;
+    }
     
     .col-actions { 
-        display: flex !important; 
-        justify-content: center !important; 
-        align-items: center !important;
-        margin-top: 0.75rem; 
-        padding-top: 0.75rem; 
-        border-top: 1px solid #334155;
-        width: 100% !important;
+        position: absolute;
+        top: 50%;
+        right: 1rem;
+        transform: translateY(-50%);
+        width: auto !important;
+        padding: 0 !important;
+        display: flex !important;
+        justify-content: flex-end;
+        border-top: none !important;
+        margin-top: 0 !important;
     }
     .col-actions::before { content: none !important; }
+
+    /* Space out for the floating button */
+    .data-table tr {
+        padding-right: 3.5rem !important;
+    }
 
     /* Detail Modal Mobile */
     .detail-grid { grid-template-columns: 1fr; }
     .detail-item.full-width { grid-column: auto; }
 }
+
+/* Local Utilities */
+.text-left { text-align: left !important; }
+.text-center { text-align: center !important; }
+.text-right { text-align: right !important; }
