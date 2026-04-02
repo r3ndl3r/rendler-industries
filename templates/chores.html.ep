@@ -11,14 +11,20 @@
 <div class="app-container">
     <div class="header-bar">
         <h1><%= icon('sparkles') %> <span>Chores Board</span></h1>
-        <div class="header-stats" id="headerStats">
-            <%# Populated via JS: Points Badge %>
+        <div class="header-actions">
+            <div class="header-stats" id="headerStats">
+                <%# Populated via JS: Points Badge %>
+            </div>
+            <div id="adminActions" class="manage-actions hidden">
+                <button type="button" class="btn-primary" onclick="openAddModal()">
+                    <%= icon('plus') %> Chore
+                </button>
+            </div>
         </div>
     </div>
 
     <%# Player Grid (Primary Action Area) %>
     <div id="childView" class="chores-section hidden">
-        <h2 class="section-title"><%= icon('star') %> Active Chores</h2>
         <div class="chore-grid" id="choreGrid">
             <div class="component-loading">
                 <div class="loading-scan-line"></div>
@@ -26,103 +32,45 @@
                 <p class="loading-label">Scanning for pending chores...</p>
             </div>
         </div>
+
+        <%# Points Leaderboard (Visible to all) %>
+        <div class="glass-panel leaderboard-panel mt-4">
+            <h3 class="panel-title"><%= icon('user') %> Points Balance</h3>
+            <div class="table-responsive-glass">
+                <table class="data-table-glass">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="balancesTable">
+                        <%# Populated via JS %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <%# Admin Oversight and Management %>
     <div id="adminView" class="chores-section hidden">
-        <div class="admin-nav-container">
-            <div class="pill-nav">
-                <button class="pill-btn active" onclick="switchTab('manage', this)"><%= icon('settings') %> Management</button>
-                <button class="pill-btn" onclick="switchTab('history', this)"><%= icon('history') %> Audit Logs</button>
-            </div>
-        </div>
-
-        <div id="manageTab" class="tab-content">
-            <div class="glass-layout">
-                <%# Left Column: Post and Balance %>
-                <div class="glass-col">
-                    <div class="glass-panel form-panel">
-                        <h3 class="panel-title"><%= icon('plus') %> New Chore Posting</h3>
-                        <form id="addChoreForm" onsubmit="addChore(event)" class="premium-form">
-                            <div class="form-group-glass">
-                                <label>Task Description</label>
-                                <input type="text" name="title" class="game-input-premium" placeholder="e.g. Empty the dishwasher" required>
-                            </div>
-                            
-                            <div class="form-row-balanced">
-                                <div class="form-group-glass flex-1">
-                                    <label>Points Reward</label>
-                                    <div class="input-with-icon">
-                                        <span class="input-icon-prefix"><%= icon('star') %></span>
-                                        <input type="number" name="points" class="game-input-premium" value="1" min="0" required>
-                                    </div>
-                                </div>
-                                <div class="form-group-glass flex-1">
-                                   <label>Assign To</label>
-                                   <select name="assigned_to" class="game-input" id="assignedToSelect">
-                                       <option value=""><%= icon('family') %> Family Pool</option>
-                                       <%# Populated via JS %>
-                                   </select>
-                                </div>
-                            </div>
-                            
-                            <div class="form-actions-center">
-                                <button type="submit" class="btn-premium-action-shrink">
-                                    <%= icon('save') %> Post
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div class="glass-panel mt-4">
-                        <h3 class="panel-title"><%= icon('user') %> Child Balances</h3>
-                        <div class="table-responsive-glass">
-                            <table class="data-table-glass">
-                                <thead>
-                                    <tr>
-                                        <th>Child</th>
-                                        <th class="text-right">Balance</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="balancesTable">
-                                    <%# Populated via JS %>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <%# Right Column: Quick Add Tool %>
-                <div class="glass-col">
-                    <div class="glass-panel h-100">
-                        <h3 class="panel-title"><%= icon('quick') %> Rapid Repost</h3>
-                        <div class="quick-repost-grid" id="quickAddGrid">
-                            <%# Populated via JS %>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="historyTab" class="tab-content hidden">
-            <div class="glass-panel">
-                <h3 class="panel-title"><%= icon('history') %> Completion History</h3>
-                <div class="table-responsive-glass">
-                    <table class="data-table-glass">
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Claimant</th>
-                                <th>Task</th>
-                                <th>Reward</th>
-                                <th class="text-right">Audit</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyTable">
-                            <%# Populated via JS %>
-                        </tbody>
-                    </table>
-                </div>
+        <div class="glass-panel w-100 max-w-admin">
+            <h3 class="panel-title"><%= icon('history') %> Completion History</h3>
+            <div class="table-responsive-glass">
+                <table class="data-table-glass">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Time</th>
+                            <th>Task</th>
+                            <th>Points</th>
+                            <th class="text-right">Audit</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTable">
+                        <%# Populated via JS %>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -133,6 +81,57 @@
             <div class="status-icon-glow"><%= icon('error') %></div>
             <h2>Access Restricted</h2>
             <p>The Chore Board is restricted to children and administrators. Please contact the Head of Household to gain access.</p>
+        </div>
+    </div>
+</div>
+
+<%# Add Chore Modal %>
+<div id="addChoreModal" class="modal-overlay">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h3><%= icon('plus') %> New Chore Posting</h3>
+            <span class="close-btn" onclick="closeAddModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="addChoreForm" onsubmit="addChore(event)" class="premium-form">
+                <div class="form-group-glass">
+                    <label>Task Description</label>
+                    <input type="text" name="title" class="game-input-premium" placeholder="e.g. Empty the dishwasher" required>
+                </div>
+                
+                <div class="form-row-balanced">
+                    <div class="form-group-glass flex-1">
+                        <label>Points Reward</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon-prefix"><%= icon('star') %></span>
+                            <input type="number" name="points" class="game-input-premium" value="1" min="0" required>
+                        </div>
+                    </div>
+                    <div class="form-group-glass flex-1">
+                       <label>Assign To</label>
+                       <select name="assigned_to" class="game-input-premium" id="assignedToSelect">
+                           <option value=""><%= icon('family') %> Family Pool</option>
+                           <%# Populated via JS %>
+                       </select>
+                    </div>
+                </div>
+
+                <div class="modal-actions modal-actions-center">
+                    <button type="submit" class="btn-premium-action-shrink">
+                        <%= icon('save') %> Post
+                    </button>
+                </div>
+            </form>
+
+            <div class="modal-divider"></div>
+
+            <%# Rapid Repost Section (Inside Modal) %>
+            <div class="modal-quick-add-container">
+                <label class="modal-section-label"><%= icon('quick') %> Quick Templates</label>
+                <div class="quick-repost-grid" id="quickAddGrid">
+                    <%# Populated via JS %>
+                </div>
+            </div>
         </div>
     </div>
 </div>
