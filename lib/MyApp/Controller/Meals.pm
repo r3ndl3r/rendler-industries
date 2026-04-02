@@ -110,7 +110,7 @@ sub api_suggest {
         my $family_users = $c->db->get_family_users();
         foreach my $u (@$family_users) {
             if ($u->{discord_id} && $u->{id} != $uid) {
-                $c->send_discord_dm($u->{discord_id}, $msg);
+                $c->send_discord_dm($u->{discord_id}, $msg, $u->{id});
             }
         }
     }
