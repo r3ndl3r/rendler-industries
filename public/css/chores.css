@@ -139,14 +139,14 @@
 }
 
 .chore-badge {
-    font-size: 0.7rem;
+    font-size: 0.85rem; /* Increased from 0.7rem */
     font-weight: 900;
     text-transform: uppercase;
     padding: 0.2rem 0.6rem;
     border-radius: 8px;
     background: rgba(59, 130, 246, 0.2);
     color: #93c5fd;
-    margin-bottom: 0.75rem;
+    margin-bottom: 1.25rem; /* Increased space after header badge */
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -157,29 +157,15 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 1.25rem;
+    margin-bottom: 2rem; /* Increased spacing before the button */
 }
 
 .chore-title {
-    font-size: 1.3rem;
+    font-size: 1rem; /* Decreased from 1.3rem */
     font-weight: 700;
     line-height: 1.2;
     color: #f8fafc;
     max-width: 70%;
-}
-
-.chore-points {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.25rem;
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: var(--accent-green);
-    background: rgba(16, 185, 129, 0.1);
-    padding: 0.2rem 0.6rem;
-    border-radius: 8px;
-    height: fit-content;
 }
 
 .chore-actions {
@@ -356,6 +342,35 @@ select.game-input-premium option {
     box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
 }
 
+.btn-points-tag {
+    /* removed margin-left: auto to allow centering */
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--accent-green);
+    letter-spacing: 0.05em;
+}
+
+.btn-chore-claim:hover .btn-points-tag {
+    background: rgba(0, 0, 0, 0.1);
+    color: white;
+}
+
+.chore-points-static {
+    display: flex;
+    justify-content: center; /* Centered from flex-end */
+    width: 100%;
+}
+
+.chore-points-static .btn-points-tag {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+}
+
 /* Table Enhancements */
 .table-responsive-glass {
     width: 100%;
@@ -470,7 +485,6 @@ select.game-input-premium option {
     .app-container { padding: 1rem 0.75rem !important; }
     .chore-grid { grid-template-columns: 1fr; gap: 1.5rem; }
     .chore-title { font-size: 1.1rem; }
-    .chore-points { font-size: 1.25rem; }
     
     .form-row-balanced { flex-direction: column; gap: 1rem; }
     .btn-premium-action-shrink { width: 100%; }
@@ -592,6 +606,15 @@ select.game-input-premium option {
 .text-left { text-align: left !important; }
 .text-center { text-align: center !important; }
 .text-right { text-align: right !important; }
+
+/* Visual feedback for in-flight AJAX actions */
+.pending {
+    opacity: 0.6;
+    pointer-events: none;
+    cursor: wait;
+    filter: grayscale(0.5) blur(1px);
+    transition: all 0.3s ease;
+}
 
 /* Global Page Centering (Replaces brittle percentage padding) */
 .app-container {
