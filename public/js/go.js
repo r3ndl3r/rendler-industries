@@ -144,17 +144,8 @@ function renderList() {
  */
 
 /**
- * Encodes special characters for safe DOM injection.
- * 
- * @param {string} str - Raw input.
- * @returns {string} - Escaped output.
+ * --- UI & Interaction Logic ---
  */
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
 
 /**
  * Pre-fills and displays the record modification interface.
