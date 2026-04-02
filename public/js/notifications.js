@@ -22,7 +22,7 @@
  */
 const CONFIG = {
     DEBOUNCE_MS: 300,
-    SYNC_INTERVAL_MS: 30000
+    SYNC_INTERVAL_MS: 10000
 };
 
 let STATE = {
