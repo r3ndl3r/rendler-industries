@@ -1190,21 +1190,9 @@ function initializeViewFromUrl() {
 }
 
 /**
- * Sanitizes text for DOM injection.
- * 
- * @param {string} text - Raw input.
- * @returns {string} - Escaped output.
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-/**
  * --- Global Exposure ---
  */
+
 window.handleEventSubmit = handleEventSubmit;
 window.openAddEventModal = openAddEventModal;
 window.openEditModalById = openEditModalById;
