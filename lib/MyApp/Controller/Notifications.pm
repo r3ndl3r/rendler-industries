@@ -37,9 +37,10 @@ sub api_state {
     my $users = $c->db->get_family_users();
 
     $c->render(json => {
-        success => 1,
-        logs    => $logs,
-        users   => $users
+        success  => 1,
+        logs     => $logs,
+        users    => $users,
+        is_admin => 1
     });
 }
 
