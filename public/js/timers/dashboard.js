@@ -399,18 +399,6 @@ function updateLocalTimers() {
 }
 
 /**
- * Sanitizes input for safe DOM injection.
- * 
- * @param {string} text - Raw input.
- * @returns {string} - Escaped output.
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-    return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
-}
-
-/**
  * --- Global Exposure ---
  */
 window.handleStart = handleStart;
