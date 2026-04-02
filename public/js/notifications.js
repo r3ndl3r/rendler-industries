@@ -171,35 +171,11 @@ function viewDetails(id) {
     if (!log) return;
 
     const content = document.getElementById('detailContent');
-    const userEmoji = getIcon(log.username?.toLowerCase()) || getIcon('user');
 
     content.innerHTML = `
         <div class="detail-item full-width">
-            <label>Timestamp</label>
-            <div class="detail-value">${format_datetime(log.created_at)}</div>
-        </div>
-        <div class="detail-item">
-            <label>User</label>
-            <div class="detail-value">${userEmoji} ${escapeHtml(log.username || 'System')}</div>
-        </div>
-        <div class="detail-item">
-            <label>Channel</label>
-            <div class="detail-value">${getIcon(log.type)} ${log.type.toUpperCase()}</div>
-        </div>
-        <div class="detail-item full-width">
-            <label>Recipient</label>
-            <div class="detail-value font-mono">${escapeHtml(log.recipient)}</div>
-        </div>
-        <div class="detail-item full-width">
-            <label>Message Content</label>
             <div class="detail-value message-full-box">${escapeHtml(log.message)}</div>
         </div>
-        ${log.error_details ? `
-            <div class="detail-item full-width">
-                <label class="text-danger">Diagnostic Details</label>
-                <div class="detail-value error-box">${escapeHtml(log.error_details)}</div>
-            </div>
-        ` : ''}
     `;
 
     document.getElementById('detailModal').classList.add('show');
