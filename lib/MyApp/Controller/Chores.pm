@@ -32,6 +32,7 @@ sub api_state {
         is_child       => $c->is_child ? 1 : 0,
         current_points => $c->get_points($user_id),
         active_chores  => $c->db->get_active_chores($user_id, $c->is_admin),
+        child_balances => $c->db->get_child_balances(),
         success        => 1
     };
 
@@ -40,7 +41,6 @@ sub api_state {
         $state->{all_users}         = $c->db->get_all_users();
         $state->{history}           = $c->db->get_completed_chores_history();
         $state->{quick_add_chores}  = $c->db->get_recent_chore_templates();
-        $state->{child_balances}    = $c->db->get_child_balances();
     }
 
     $c->render(json => $state);
