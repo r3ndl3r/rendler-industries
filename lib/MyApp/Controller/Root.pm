@@ -279,20 +279,20 @@ sub copy_post {
     # Handle Dynamic Notifications
     my @channels;
     if ($c->param('notify_discord') && $c->db->get_user_by_id($user_id)->{discord_id}) {
-        $c->send_discord_dm($c->db->get_user_by_id($user_id)->{discord_id}, "📋 CLIPBOARD: $text");
+        $c->send_discord_dm($c->db->get_user_by_id($user_id)->{discord_id}, "📋 CLIPBOARD: $text", $user_id);
         push @channels, "Discord";
     }
     if ($c->param('notify_email') && $c->db->get_user_by_id($user_id)->{email}) {
-        $c->send_email_via_gmail($c->db->get_user_by_id($user_id)->{email}, "Clipboard: New Content", $text);
+        $c->send_email_via_gmail($c->db->get_user_by_id($user_id)->{email}, "Clipboard: New Content", $text, $user_id);
         push @channels, "Email";
     }
     if ($c->is_admin) {
         if ($c->param('notify_pushover')) {
-            $c->push_pushover($text);
+            $c->push_pushover($text, $user_id);
             push @channels, "Pushover";
         }
         if ($c->param('notify_gotify')) {
-            $c->push_gotify($text);
+            $c->push_gotify($text, undef, undef, $user_id);
             push @channels, "Gotify";
         }
     }
