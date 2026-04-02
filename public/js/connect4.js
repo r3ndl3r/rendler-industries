@@ -460,12 +460,7 @@ const Connect4App = {
     /**
      * Helpers
      */
-    escapeHtml: function(t) {
-        if (!t) return '';
-        const d = document.createElement('div');
-        d.textContent = t;
-        return d.innerHTML;
-    },
+    escapeHtml: window.escapeHtml,
     capitalize: function(s) {
         if (!s) return '';
         return s.charAt(0).toUpperCase() + s.slice(1);
