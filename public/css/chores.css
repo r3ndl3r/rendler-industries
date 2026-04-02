@@ -468,10 +468,34 @@ select.game-input-premium option {
         display: none; 
     }
     
-    .data-table-glass { min-width: 0; }
+    .data-table-glass { 
+        min-width: 0; 
+        table-layout: fixed; /* Force alignment and fit within container */
+    }
+
     .data-table-glass th, .data-table-glass tr td { 
-        padding: 0.85rem 0.6rem; 
-        font-size: 0.8rem;
+        padding: 0.85rem 0.5rem; 
+        font-size: 0.75rem;
+        word-break: break-word; /* Allow wrapping for long task names */
+        overflow: hidden;
+    }
+
+    /* Column specific adjustments for history on mobile */
+    #historyTable td:nth-child(2), #historyTab th:nth-child(2) { width: 25%; } /* Claimant */
+    #historyTable td:nth-child(3), #historyTab th:nth-child(3) { width: 45%; } /* Task */
+    #historyTable td:nth-child(4), #historyTab th:nth-child(4) { width: 15%; } /* Reward */
+    #historyTable td:nth-child(5), #historyTab th:nth-child(5) { width: 15%; } /* Audit */
+
+    /* Balance table specific adjustments */
+    #balancesTable td:last-child { 
+        min-width: 80px; 
+        text-align: right;
+    }
+
+    /* Force right alignment for audit and reward columns on mobile */
+    #historyTable td:nth-child(4), #historyTab th:nth-child(4),
+    #historyTable td:nth-child(5), #historyTab th:nth-child(5) {
+        text-align: right;
     }
 }
 .header-stats:empty {
