@@ -1,10 +1,9 @@
 // /public/js/chores.js
 
 /**
- * Chore Board Controller (V3)
+ * Chore Board Controller
  * 
  * Optimized for High-Fidelity Glassmorphism and Atomic State Sync.
- * Terminology: "Chore" (replacing Bounty).
  * 
  * Features:
  * - State-driven ledger rendering
@@ -162,15 +161,12 @@ function renderChores() {
         const isTargeted = !!c.assigned_to;
         const targetText = (STATE.is_admin && !STATE.is_child) ? `Assigned to ${escapeHtml(c.assigned_username || 'User')}` : 'Assigned to You';
         return `
-            <div class="chore-card ${isTargeted ? 'targeted' : ''}">
+            <div id="chore-card-${c.id}" class="chore-card ${isTargeted ? 'targeted' : ''}">
                 <div>
                     ${isTargeted ? `<div class="chore-badge">${window.getIcon('star')} ${targetText}</div>` : ''}
                     <div class="chore-header">
                         <div class="chore-title">${escapeHtml(c.title)}</div>
                         <div class="chore-actions">
-                            <div class="chore-points">
-                                ${c.points > 0 ? `+${c.points}` : '0'} 
-                            </div>
                             ${STATE.is_admin ? `<button class="btn-icon-delete" title="Delete Chore" onclick="confirmDeleteChore(${c.id}, '${escapeHtml(c.title).replace(/'/g, "\\'")}')">${window.getIcon('delete')}</button>` : ''}
                         </div>
                     </div>
@@ -178,9 +174,13 @@ function renderChores() {
                 ${STATE.is_child ? `
                 <button class="btn-chore-claim" 
                     onclick="confirmClaim(${c.id}, '${escapeHtml(c.title).replace(/'/g, "\\'")}', ${c.points})">
-                    ${window.getIcon('check')} I Finished This!
+                    ${window.getIcon('check')} I Finished This! <span class="btn-points-tag">Points: ${c.points}</span>
                 </button>
-                ` : ''}
+                ` : `
+                <div class="chore-points-static">
+                    <span class="btn-points-tag">Points: ${c.points}</span>
+                </div>
+                `}
             </div>
         `;
     }).join('');
@@ -199,14 +199,18 @@ function confirmClaim(choreId, title, points) {
         title: 'Chore Completion',
         message: `Confirm that you completed "<strong>${title}</strong>"?<br><br>Rewards: ${points > 0 ? `<span class="text-success">${points} pts</span>` : 'no points'}.`,
         confirmText: 'Confirm Completion',
-        cancelText: 'Cancel',
+        hideCancel: true,
         onConfirm: async () => {
+            const card = document.getElementById(`chore-card-${choreId}`);
+            if (card) card.classList.add('pending');
+
             const res = await apiPost('/chores/api/complete', { id: choreId });
             if (res && res.success) {
                 showToast(`Task recognized! +${points} pts rewarded.`, 'success');
                 loadState(true);
-            } else if (res && res.error) {
-                showToast(res.error, "danger");
+            } else {
+                if (card) card.classList.remove('pending');
+                if (res && res.error) showToast(res.error, "danger");
                 loadState(true);
             }
         }
@@ -223,15 +227,20 @@ function confirmClaim(choreId, title, points) {
 function confirmDeleteChore(choreId, title) {
     showConfirmModal({
         title: 'Delete Chore',
-        message: `Permanently delete "<strong>${title}</strong>"?<br>This cannot be undone.`,
+        message: `Permanently delete "<strong>${title}</strong>"?`,
         danger: true,
         confirmText: 'Delete',
-        cancelText: 'Cancel',
+        hideCancel: true,
         onConfirm: async () => {
+            const card = document.getElementById(`chore-card-${choreId}`);
+            if (card) card.classList.add('pending');
+
             const res = await apiPost('/chores/api/delete', { id: choreId });
             if (res && res.success) {
                 showToast(`Chore "${title}" deleted.`, 'success');
                 loadState(true);
+            } else {
+                if (card) card.classList.remove('pending');
             }
         }
     });
@@ -257,6 +266,8 @@ function renderAdminControlPanel() {
 
 /**
  * Modal Management: Open the "Add Chore" dialog.
+ * 
+ * @returns {void}
  */
 function openAddModal() {
     const modal = document.getElementById('addChoreModal');
@@ -268,6 +279,8 @@ function openAddModal() {
 
 /**
  * Modal Management: Close the "Add Chore" dialog.
+ * 
+ * @returns {void}
  */
 function closeAddModal() {
     const modal = document.getElementById('addChoreModal');
@@ -402,7 +415,7 @@ function renderHistory() {
     tbody.innerHTML = STATE.history.map(h => {
         const userIcon = window.getIcon(h.completed_by_name?.toLowerCase()) || window.getIcon('user');
         return `
-            <tr class="history-row">
+            <tr id="history-row-${h.id}" class="history-row">
                 <td data-label="User" class="col-user">
                     <span class="audit-user">${userIcon} ${escapeHtml(h.completed_by_name || 'System')}</span>
                 </td>
@@ -432,13 +445,18 @@ function confirmRevoke(choreId) {
         title: 'Revoke Completion',
         message: 'This will return the chore to the grid and dock points from the child. Proceed?',
         confirmText: 'REVOKE',
-        danger: true,
         hideCancel: true,
+        danger: true,
         onConfirm: async () => {
+            const row = document.getElementById(`history-row-${choreId}`);
+            if (row) row.classList.add('pending');
+
             const res = await apiPost('/chores/api/revoke', { id: choreId });
             if (res && res.success) {
                 showToast('Chore status revoked.', 'success');
                 loadState(true);
+            } else {
+                if (row) row.classList.remove('pending');
             }
         }
     });
