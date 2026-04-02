@@ -1,0 +1,126 @@
+<%# /templates/weather.html.ep %>
+
+% layout 'default';
+% title icon('sunny') . ' Weather Dashboard';
+
+% content_for 'head' => begin
+  <link rel="stylesheet" href="/css/weather.css">
+  <script src="/js/weather.js"></script>
+% end
+
+<div class="weather-container app-container">
+  <div class="header-bar">
+    <h1><%= icon('sunny') %> <span>Weather Locations</span></h1>
+    <div class="manage-actions">
+        <button class="btn-primary" id="btnShowAddLocation" title="Track New Location">
+          <%= icon('add') %> Add
+        </button>
+    </div>
+  </div>
+
+  <%# Main Dashboard View %>
+  <div class="weather-navigation">
+    <button class="scroll-nav-btn left" id="scrollPrev" title="Previous Location">‹</button>
+    <button class="scroll-nav-btn right" id="scrollNext" title="Next Location">›</button>
+  </div>
+  <div id="weatherDashboard" class="weather-grid dashboard-view">
+    <div class="component-loading">
+        <div class="loading-scan-line"></div>
+        <span class="loading-icon-pulse"><%= icon('sunny') %></span>
+        <p class="loading-label">Acquiring satellite data...</p>
+        <p class="loading-sub">Retrieving OpenWeatherMap One Call sync</p>
+    </div>
+  </div>
+
+  <%# Admin Location Management Ledger %>
+  <% if (is_admin) { %>
+  <div class="admin-section hidden" id="adminSection">
+    <div class="section-header">
+      <h2><%= icon('settings') %> Location Management</h2>
+    </div>
+    <div class="table-responsive glass-card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th width="40" class="text-center">Sort</th>
+            <th>Location</th>
+            <th>Coordinates</th>
+            <th>Interval</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="locationLedger"></tbody>
+      </table>
+    </div>
+  </div>
+  <% } %>
+</div>
+
+<%# Modal: Add/Edit Location (Integrated Geocoding) %>
+<div class="modal-overlay" id="locationModal">
+  <div class="modal-content glass-card">
+    <div class="modal-header">
+      <h3 id="modalTitle">Track New Location</h3>
+      <span class="close-btn" onclick="closeLocationModal()">&times;</span>
+    </div>
+    <form id="locationForm">
+      <input type="hidden" name="id" id="editLocationId">
+      <div class="modal-body">
+        <div class="form-group search-group">
+          <label>City Search</label>
+          <div class="input-wrapper">
+             <input type="text" id="citySearchInput" class="game-input" placeholder="e.g. Melbourne, AU" autocomplete="off">
+             <button type="button" class="btn-search" id="btnGeocode"><%= icon('search') %></button>
+          </div>
+          <div id="geocodeResults" class="search-results-tray"></div>
+        </div>
+
+        <div class="location-details-grid">
+           <div class="form-group">
+             <label>Name</label>
+             <input type="text" name="name" id="locationName" class="game-input" required placeholder="Display Name">
+           </div>
+           <div class="form-group">
+             <label>Update Interval</label>
+             <select name="update_interval_mins" id="updateInterval" class="game-input">
+               <option value="30">30 Minutes</option>
+               <option value="60" selected>1 Hour</option>
+               <option value="180">3 Hours</option>
+               <option value="360">6 Hours</option>
+             </select>
+           </div>
+           <div class="form-group">
+             <label>Latitude</label>
+             <input type="text" name="lat" id="locationLat" class="game-input" readonly required>
+           </div>
+           <div class="form-group">
+             <label>Longitude</label>
+             <input type="text" name="lon" id="locationLon" class="game-input" readonly required>
+           </div>
+        </div>
+
+      </div>
+      <div class="modal-footer centered-footer">
+        <button type="submit" class="btn-primary" id="btnSaveLocation">
+          <%= icon('save') %> Save Location
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<%# Bespoke Weather Detail Modal %>
+<div id="detailModal" class="weather-detail-overlay">
+  <div class="weather-detail-content">
+    <div class="weather-detail-header">
+      <h3 class="weather-detail-title"><%= icon('info') %> Forecast Detail</h3>
+      <span class="close-btn" onclick="closeDetailModal()">&times;</span>
+    </div>
+    <div class="weather-detail-body" id="detailContent">
+      <p class="text-center text-sub">
+        Select a forecast day to view localized high-fidelity details.
+      </p>
+    </div>
+  </div>
+</div>
