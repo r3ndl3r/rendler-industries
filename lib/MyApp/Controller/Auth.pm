@@ -50,7 +50,9 @@ sub login {
         $c->session({});
         
         # 2. Establish new user identity
+        my $user_id = $c->db->get_user_id($username);
         $c->session(user => $username);
+        $c->session(user_id => $user_id);
         
         # 3. Force Mojolicious to generate a fresh Session ID (Rotation)
         # This is the safest way to prevent session fixation in Mojo.
