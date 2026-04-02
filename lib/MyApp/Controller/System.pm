@@ -176,6 +176,70 @@ sub run_meals_maintenance {
     return $stats;
 }
 
+# Internal helper to handle asynchronous weather fetching from OpenWeatherMap (OWM).
+# Parameters:
+#   - now : DateTime object representing the current execution minute.
+# Returns:
+#   Stats HashRef { checked_time, locations_checked, updates_triggered, errors }
+sub run_weather_maintenance {
+    my ($self, $now) = @_;
+    
+    my $stats = {
+        checked_time => $now->strftime('%H:%M'),
+        locations_checked => 0,
+        updates_triggered => 0,
+        errors => 0
+    };
+
+    # 1. Retrieve the OWM API Key from global settings
+    my $api_key = $self->db->get_owm_api_key();
+    unless ($api_key) {
+        $self->app->log->warn("Weather: OWM API Key not configured. Skipping maintenance.");
+        return $stats;
+    }
+
+    # 2. Identify locations due for a fresh observation
+    my $due_locations = $self->db->get_due_weather_locations();
+    $stats->{locations_checked} = scalar @$due_locations;
+
+    foreach my $l (@$due_locations) {
+        # OWM One Call 3.0 Endpoint
+        my $url = sprintf(
+            "https://api.openweathermap.org/data/3.0/onecall?lat=%s&lon=%s&appid=%s&units=metric",
+            $l->{lat}, $l->{lon}, $api_key
+        );
+        
+        # Use the persistent app-wide UserAgent (Non-blocking)
+        $self->ua->get($url => sub {
+            my ($ua, $tx) = @_;
+            
+            if (my $res = $tx->result) {
+                if ($res->is_success) {
+                    # Store the raw JSON payload for client-side parsing
+                    my $raw_json = $res->body;
+                    my $observed_at = $now->strftime('%Y-%m-%d %H:%M:%S');
+
+                    eval {
+                        $self->db->save_weather_observation($l->{id}, $raw_json, $observed_at);
+                        $self->app->log->info("Weather: Updated location '$l->{name}' with fresh OWM One Call data.");
+                    };
+                    if ($@) {
+                        $self->app->log->error("Weather: Database save failed for '$l->{name}': $@");
+                    }
+                } else {
+                    $self->app->log->error("Weather: OWM request failed for '$l->{name}' (HTTP " . $res->code . "): " . $res->body);
+                }
+            } else {
+                $self->app->log->error("Weather: OWM connection failed for '$l->{name}': " . $tx->error->{message});
+            }
+        });
+        
+        $stats->{updates_triggered}++;
+    }
+
+    return $stats;
+}
+
 # Internal helper to handle daily room cleaning reminders.
 sub run_room_reminders {
     my ($c, $now) = @_;
