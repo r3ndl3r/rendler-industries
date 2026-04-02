@@ -370,16 +370,3 @@ const MenuMgmt = {
  * Bootstrapper
  */
 document.addEventListener('DOMContentLoaded', () => MenuMgmt.init());
-
-/**
- * Utility: Sanitizes input for DOM safety.
- * 
- * @param {string} text - Raw string.
- * @returns {string} - Escaped string.
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
