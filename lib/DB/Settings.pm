@@ -88,6 +88,14 @@ sub DB::get_all_settings {
         $settings->{google_cloud_key} = $key || '';
     };
 
+    # Safely fetch OpenWeatherMap API key
+    eval {
+        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'owm_api_key'");
+        $sth->execute();
+        my ($key) = $sth->fetchrow_array();
+        $settings->{owm_api_key} = $key || '';
+    };
+
     return $settings;
 }
 
@@ -444,4 +452,19 @@ sub DB::update_google_cloud_key {
     }
 }
 
+# Updates the OpenWeatherMap API key.
+sub DB::update_owm_api_key {
+    my ($self, $api_key) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'owm_api_key'");
+    $sth->execute();
+    my ($count) = $sth->fetchrow_array();
+    if ($count > 0) {
+        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'owm_api_key'");
+        $sth->execute($api_key);
+    } else {
+        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('owm_api_key', ?)");
+        $sth->execute($api_key);
+    }
+}
 1;
