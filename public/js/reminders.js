@@ -539,23 +539,6 @@ function updateCountdowns() {
 }
 
 /**
- * --- Helpers & Utilities ---
- */
-
-/**
- * Prevents XSS by sanitizing dynamic content.
- * 
- * @param {string} text - Raw input.
- * @returns {string} - Sanitized HTML.
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-/**
  * --- Global Exposure ---
  */
 window.openAddModal = openAddModal;
