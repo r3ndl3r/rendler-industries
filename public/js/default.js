@@ -704,3 +704,19 @@ async function translateText(text, target = 'th') {
 // Ensure it's exposed to the global scope
 window.speakText = speakText;
 window.translateText = translateText;
+
+/**
+ * Global XSS Prevention Helper: escapeHtml
+ * 
+ * Sanitizes user-provided content by converting sensitive HTML characters 
+ * into their entity equivalents.
+ * 
+ * @param {string} text - The raw string to sanitize.
+ * @returns {string} - The sanitized HTML string.
+ */
+window.escapeHtml = function(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+};
