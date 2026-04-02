@@ -169,9 +169,9 @@ sub approve_user {
     # Dispatch welcome email asynchronously
     if ($user->{email}) {
         eval {
-            my $subject = "Account Approved: $user->{username}";
+            my $subject = "Account Approval: $user->{username}";
             my $body = qq{Hello $user->{username},\n\nYour account has been approved!\n\nLog in: https://rendler.org/login\n\n- Rendler Industries®};
-            $c->send_email_via_gmail($user->{email}, $subject, $body);
+            $c->send_email_via_gmail($user->{email}, $subject, $body, $id);
         };
     }
 
