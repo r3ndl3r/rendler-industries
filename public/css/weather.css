@@ -144,7 +144,7 @@
 
     /* Hide standard scrollbar but keep functionality */
     .weather-grid::-webkit-scrollbar {
-        height: 4px;
+        height: 6px;
     }
     .weather-grid::-webkit-scrollbar-track {
         background: rgba(255, 255, 255, 0.05);
@@ -338,30 +338,49 @@
 
 .forecast-grid {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 0.35rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+    padding-bottom: 2px;
+}
+
+.forecast-grid::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
 }
 
 .forecast-day {
     display: flex;
     flex-direction: column;
     align-items: center;
-    flex: 1;
+    flex: 0 0 80px; /* Locked width to match original comfortable size */
+    flex-shrink: 0; /* Prevention against squishing */
+    scroll-snap-align: start;
     gap: 0.5rem;
-    padding: 0.5rem 0.25rem;
+    padding: 0.6rem 0.25rem;
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.02);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.forecast-day:hover {
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .day-name {
-    font-size: 0.7rem;
+    font-size: 0.9rem;
     font-weight: 800;
-    color: #94a3b8;
+    color: #f8fafc;
+    margin-bottom: 0.25rem;
 }
 
 .forecast-icon {
-    width: 32px;
-    height: 32px;
+    width: 48px;
+    height: 48px;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
 }
 
 .day-temps {
@@ -563,14 +582,13 @@
     }
 
     .forecast-grid {
-        gap: 0.25rem;
-        padding-bottom: 0;
+        gap: 0.35rem;
+        padding-bottom: 5px; /* Ensure space for touch scroll */
     }
 
     .forecast-day {
-        min-width: unset;
-        flex: 1;
-        padding: 0.25rem;
+        /* Mobile override removed to maintain 80px carousel width */
+        padding: 0.5rem 0.25rem;
     }
 
     .weather-card {
@@ -812,10 +830,10 @@
 }
 
 .hero-v2-icon-box img {
-    width: 65px;
-    height: 65px;
-    margin-right: -10px;
-    filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4));
+    width: 82px;
+    height: 82px;
+    margin-right: -15px;
+    filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5));
 }
 
 .hero-v2-description {
@@ -907,6 +925,18 @@
     z-index: 5;
 }
 
+.trend-pop-label {
+    position: absolute;
+    bottom: -12px;
+    transform: translateX(-50%);
+    font-size: 7px;
+    font-weight: 800;
+    color: #60a5fa;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    pointer-events: none;
+    z-index: 20;
+}
+
 .trend-label-text {
     color: #ffffff;
     font-size: 11px;
@@ -915,9 +945,9 @@
 }
 
 .trend-emoji {
-    font-size: 18px;
-    line-height: 1.2;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    font-size: 24px;
+    line-height: 1;
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
 }
 
 .trend-axis-labels {
