@@ -596,11 +596,7 @@ function confirmDeleteModel(modelName) {
         }
     });
 }
-}
 
-window.loadState = loadState;
-
- */
 window.loadState = loadState;
 window.toggleCard = toggleCard;
 window.activateTab = activateTab;
