@@ -162,7 +162,7 @@
     backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     border-radius: 20px;
-    padding: 1.5rem 0.75rem;
+    padding: 1.25rem 0.75rem 0rem; /* Zero bottom padding for maximum card density */
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -315,7 +315,7 @@
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
-    padding: 1rem 0 1rem 3rem;
+    padding: 1rem 0 0 3rem; /* Zero bottom padding for maximum metrics density */
     border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -339,6 +339,11 @@
     color: #f1f5f9;
 }
 
+/* Separation logic for metrics grid */
+.metrics-grid {
+    margin-bottom: 0; /* Clear margin logic for metrics synchronization */
+}
+
 .stat-value small {
     font-size: 0.7rem;
     opacity: 0.5;
@@ -347,7 +352,7 @@
 /* --- 7-Day Forecast Section --- */
 
 .forecast-section {
-    padding-top: 1rem;
+    padding-top: 1rem; /* Standard forecast section padding */
     border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -1052,15 +1057,70 @@
     left: 100% !important;
 }
 
-.card-footer-meta {
-    margin-top: 0.75rem;
-    font-size: 0.65rem;
-    color: #64748b;
-    text-align: right;
+/* --- Card Footer Clock & Status Sync (High-Fidelity Calibration) --- */
+.card-footer-clock-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin: 0; /* Zero vertical margin for maximum footer density */
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-clock-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem; /* Vertical gap for date/time hierarchy */
+    align-items: center; /* Centered horizontal alignment baseline */
+}
+
+.clock-prefix-date {
+    font-size: 0.78rem;
     text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    opacity: 0.8;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #ff4444; 
+    margin-bottom: 0;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+}
+
+.footer-refresh-column {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: rgba(255, 255, 255, 0.35);
+    text-transform: uppercase;
+    text-align: right;
+    margin-bottom: 24px; /* Elevated baseline for refresh metadata sync */
+}
+
+.refresh-time {
+    display: block;
+    margin-top: 0.2rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* 3D Flip Clock: High-Fidelity Scaled Variant for Weather Cards */
+.flip-clock-small {
+    display: flex;
+    gap: 3px;
+    transform: scale(0.65);
+    transform-origin: center top; /* Center origin for vertical alignment */
+}
+
+.flip-clock-small .flip-unit {
+    margin: 0;
+}
+
+.flip-clock-small .flip-label {
+    display: none; /* Purged markers for minimalist aesthetic sync */
+}
+
+.flip-clock-small .flip-label {
+    font-size: 6px !important;
+    font-weight: 800;
+    letter-spacing: 0.02em;
 }
 
 /* --- Sort Controls --- */
