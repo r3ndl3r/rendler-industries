@@ -15,8 +15,11 @@
 
 const CONFIG = {
     SYNC_INTERVAL_MS: 600000,   // Background synchronization frequency (10m)
-    TEMP_HOT_THRESHOLD: 30,     // Celsius threshold for "Hot" visual state
-    TEMP_COLD_THRESHOLD: 12,    // Celsius threshold for "Cold" visual state
+    TEMP_HOT_THRESHOLD: 28,     // Celsius threshold for "Hot"
+    TEMP_WARM_THRESHOLD: 22,    // Celsius threshold for "Warm"
+    TEMP_MILD_THRESHOLD: 14,    // Celsius threshold for "Mild"
+    TEMP_COLD_THRESHOLD: 8,     // Celsius threshold for "Cold"
+    TEMP_V_COLD_THRESHOLD: 0,   // Celsius threshold for "Sub-zero"
     RAIN_THRESHOLD: 0.1,        // mm threshold for "Rainy" visual state
     GEO_DEBOUNCE_MS: 300        // Delay before triggering geocode search
 };
@@ -60,6 +63,17 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * --- Core Data Management ---
  */
+
+/**
+ * Returns a CSS class name based on temperature value for context-aware styling.
+ */
+function getTempClass(temp) {
+    if (temp >= CONFIG.TEMP_HOT_THRESHOLD) return 'temp-hot';      // 28+
+    if (temp >= CONFIG.TEMP_WARM_THRESHOLD) return 'temp-warm';    // 22-27
+    if (temp >= CONFIG.TEMP_MILD_THRESHOLD) return 'temp-mild';    // 14-21
+    if (temp >= CONFIG.TEMP_COLD_THRESHOLD) return 'temp-cold';    // 8-13
+    return 'temp-v-cold';                                          // Everything below 8
+}
 
 async function loadState(force = false) {
     const isModalOpen = document.getElementById('locationModal')?.classList.contains('show');
@@ -163,7 +177,7 @@ function renderWeatherDashboard() {
                     </div>
                     
                     <div class="weather-primary">
-                        <div class="current-temp">
+                        <div class="current-temp ${getTempClass(temp)}">
                             ${Math.round(temp)}<span class="unit">°C</span>
                         </div>
                         <div class="current-condition">${description}</div>
@@ -269,14 +283,17 @@ function renderForecastDays(daily = [], locationId, cityTz = APP_TZ) {
         const max = Math.round(day.temp.max);
         const min = Math.round(day.temp.min);
 
+        const isSunday = date.getDay() === 0;
+        const sundayClass = isSunday ? 'is-sunday' : '';
+
         // forecast-day starts at index 1 of daily array
         return `
             <div class="forecast-day" onclick="showForecastDetail(${locationId}, ${index + 1}); event.stopPropagation();">
-                <span class="day-name">${dayName}</span>
+                <span class="day-name ${sundayClass}">${dayName}</span>
                 <img class="forecast-icon" src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="">
                 <div class="day-temps">
-                    <span class="temp-max">${max}°</span>
-                    <span class="temp-min">${min}°</span>
+                    <span class="temp-max ${getTempClass(max)}">${max}°</span>
+                    <span class="temp-min ${getTempClass(min)}">${min}°</span>
                 </div>
             </div>
         `;
