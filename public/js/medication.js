@@ -650,11 +650,9 @@ function confirmDeleteRegistry(id, name) {
         }
     });
 }
-}
 
 window.loadState = loadState;
 
- */
 window.handleLogSubmit = handleLogSubmit;
 window.handleRegistrySubmit = handleRegistrySubmit;
 window.fillForm = fillForm;
