@@ -5,6 +5,7 @@
 
 % content_for 'head' => begin
   <link rel="stylesheet" href="/css/weather.css">
+  <script src="/js/moment-lite.js"></script>
   <script src="/js/weather.js"></script>
 % end
 
