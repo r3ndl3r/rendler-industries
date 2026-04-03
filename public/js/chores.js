@@ -20,7 +20,7 @@
  * --- Global Exposure ---
  */
 
- */
+
 const CONFIG = {
     SYNC_INTERVAL_MS: 10000          // Background synchronization frequency (10s)
 };
