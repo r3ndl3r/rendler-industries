@@ -141,7 +141,7 @@ function renderWeatherDashboard() {
         return;
     }
 
-    container.innerHTML = STATE.observations.map(obs => {
+    const cardsHtml = STATE.observations.map(obs => {
         let data;
         try {
             data = JSON.parse(obs.data_json || '{}');
@@ -180,7 +180,8 @@ function renderWeatherDashboard() {
         else if (temp <= CONFIG.TEMP_COLD_THRESHOLD) visualClass = 'is-cold';
         if ((current.rain?.['1h'] || 0) > CONFIG.RAIN_THRESHOLD) visualClass += ' is-rainy';
 
-        const lastRefreshed = new Date(obs.observed_at.replace(' ', 'T')).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: cityTz });
+        const mTime = moment(obs.observed_at.replace(' ', 'T')).tz(cityTz);
+        const lastRefreshed = mTime.format('h:mm A') + ' ' + mTime.zoneAbbr();
 
         return `
             <div class="weather-card ${visualClass}" id="weather-card-${obs.location_id}" onclick="showForecastDetail(${obs.location_id}, 0)">
@@ -244,12 +245,73 @@ function renderWeatherDashboard() {
                     </div>
                 </div>
 
-                <div class="card-footer-meta">
-                    Last refreshed: ${lastRefreshed.toLowerCase()}
+                <div class="card-footer-clock-row" data-tz="${cityTz}">
+                    <div class="footer-clock-column">
+                        <div class="clock-prefix-date"></div>
+                        <div class="flip-clock-small"></div>
+                    </div>
+                    <div class="footer-refresh-column">
+                        LAST REFRESHED
+                        <div class="refresh-time">${lastRefreshed}</div>
+                    </div>
                 </div>
             </div>
         `;
     }).join('');
+
+    container.innerHTML = cardsHtml;
+
+    /**
+     * Isolated Station-Local Clock Initialization: Weather Dashboard
+     * 
+     * Orchestrates the real-time heartbeat for each station's IANA timezone.
+     * Manually pushes station-local date/time parts into the flip engine.
+     */
+    const initWeatherClock = () => {
+        const updateTick = () => {
+            const now = new Date();
+            document.querySelectorAll('.card-footer-clock-row').forEach((row, idx) => {
+                const targetTz = row.dataset.tz || (typeof APP_TZ !== 'undefined' ? APP_TZ : 'UTC');
+                const prefixEl = row.querySelector('.clock-prefix-date');
+                const clockEl = row.querySelector('.flip-clock-small');
+                
+                // 1. Station-Local Date Synchronization
+                if (prefixEl) {
+                    try {
+                        prefixEl.textContent = new Intl.DateTimeFormat('en-AU', { 
+                            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                            timeZone: targetTz
+                        }).format(now);
+                    } catch (e) { console.error("TZ Date Error:", e); }
+                }
+
+                // 2. Station-Local 3D Flip Clock Synchronization
+                if (clockEl && typeof FlipClockManager !== 'undefined') {
+                    try {
+                        const parts = new Intl.DateTimeFormat('en-AU', {
+                            timeZone: targetTz, hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+                        }).formatToParts(now);
+
+                        const p = {};
+                        parts.forEach(part => p[part.type] = part.value);
+
+                        // Engine Push: { hh, mm, ss, ampm }
+                        FlipClockManager.update(clockEl, {
+                            hh: p.hour.padStart(2, '0'),
+                            mm: p.minute,
+                            ss: p.second,
+                            ampm: p.dayPeriod ? p.dayPeriod.toUpperCase() : ''
+                        }, `weather-card-${idx}`);
+                    } catch (e) { console.error("TZ Clock Error:", e); }
+                }
+            });
+        };
+
+        updateTick();
+        setInterval(updateTick, 1000); // 1s sync-heartbeat
+    };
+
+    initWeatherClock();
 
     // Initialize Scroll Hints (Targeting the Main Container for fixed positioning)
     const grid = document.getElementById('weatherDashboard');
@@ -595,8 +657,15 @@ function showForecastDetail(locationId, dayIndex) {
 
     const date = new Date(day.dt * 1000);
     const dateStr = date.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', timeZone: cityTz });
-    const description = (day.summary || day.weather[0].description);
-    const iconCode = day.weather[0].icon;
+    
+    // Logic Sync: If viewing 'Today', pull icon/description from the Current observation
+    let description = (day.summary || day.weather[0].description);
+    let iconCode = day.weather[0].icon;
+
+    if (dayIndex === 0 && data.current) {
+        description = data.current.weather[0].description;
+        iconCode = data.current.weather[0].icon;
+    }
     
     // Visibility Extraction (from nearest hour)
     let visibility = '-';
