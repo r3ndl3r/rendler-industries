@@ -307,7 +307,7 @@
 .stat-hi { color: #f87171 !important; }
 .stat-lo { color: #60a5fa !important; }
 .weather-detail-date { font-weight: 400; font-size: 0.85rem; color: #94a3b8; margin-left: 0.5rem; }
-.trend-pop-label { color: #60a5fa; font-weight: 900; z-index: 10; position: absolute; }
+.trend-pop-label { color: #60a5fa; font-weight: 900; z-index: 10; position: absolute; left: var(--x, 0); top: var(--y, 0); }
 
 /* --- Detail Grid --- */
 
@@ -562,11 +562,9 @@
 
     /* Bespoke Weather Detail Modal - Correctly targeted High-Density Positioning */
     .weather-detail-content {
-        top: 0.5rem !important;
-        transform: translate(-50%, 0) !important;
         width: 95vw !important;
         max-width: 480px !important;
-        margin: 0 auto !important;
+        margin: 1rem auto !important; /* Stable mobile centering with top gap */
         border-radius: 20px !important;
     }
 
@@ -666,10 +664,20 @@
     backdrop-filter: blur(4px);
     z-index: 12000;
     display: none;
+    overflow-y: auto; /* Required for document-native scrolling overlay */
+    -webkit-overflow-scrolling: touch;
 }
 
 .weather-detail-overlay.show {
-    display: block !important;
+    display: block !important; /* Mobile default */
+}
+
+@media (min-width: 769px) {
+    .weather-detail-overlay.show {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+    }
 }
 
 .weather-detail-content {
@@ -683,13 +691,31 @@
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
     color: #ffffff;
     animation: slideInUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    overflow: hidden;
+    position: relative;
+    margin: 1rem auto; /* Stable mobile centering */
+    overflow: visible;
     box-sizing: border-box;
-    margin: 0;
+}
+
+@media (min-width: 769px) {
+    .weather-detail-content {
+        margin: 3rem 0;
+        padding: 1rem 1rem 0 1rem;
+    }
+    
+    .weather-detail-header {
+        padding: 0 0.5rem 0.25rem 0.5rem;
+    }
+
+    .weather-detail-header .close-btn {
+        top: 0.5rem !important;
+        right: 0.75rem !important;
+    }
+
+    .accu-grid {
+        padding: 0 0 0 0.75rem !important;
+        gap: 0.6rem 0.5rem !important;
+    }
 }
 
 .weather-detail-header {
@@ -714,8 +740,13 @@
 .weather-detail-body {
     padding: 0.75rem;
     box-sizing: border-box;
-    overflow-y: auto;
-    max-height: 85vh;
+    overflow-y: visible;
+    max-height: none;
+}
+
+.weather-detail-content .forecast-emoji {
+    font-size: 1.5rem;
+    margin: 0.5rem 0;
 }
 
 /* --- AccuWeather Inspired Layout --- */
@@ -867,10 +898,10 @@
 }
 
 .header-emoji {
-    font-size: 7.5rem;
+    font-size: 4.5rem;
     line-height: 1;
-    margin-right: -15px;
-    filter: drop-shadow(0 15px 25px rgba(0,0,0,0.5));
+    margin: 0.5rem 0;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
 }
 
 .forecast-description {
@@ -954,6 +985,8 @@
 
 .trend-point-label {
     position: absolute;
+    left: var(--x, 0);
+    top: var(--y, 0);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -964,6 +997,8 @@
 
 .trend-pop-label {
     position: absolute;
+    left: var(--x, 0);
+    top: var(--y, 0);
     bottom: -12px;
     transform: translateX(-50%);
     font-size: 7px;
@@ -998,6 +1033,7 @@
 
 .axis-time {
     position: absolute;
+    left: var(--x, 0);
     transform: translateX(-50%);
     font-size: 0.65rem;
     color: #94a3b8;
@@ -1155,14 +1191,13 @@
 }
 
 /* Animation for modal entrance scale and opacity */
-/* Combines centering transform with entrance scale to maintain alignment */
 @keyframes modalPopSafe {
     from { 
-        transform: translate(-50%, -50%) scale(0.95); 
+        transform: scale(0.95); 
         opacity: 0; 
     }
     to { 
-        transform: translate(-50%, -50%) scale(1); 
+        transform: scale(1); 
         opacity: 1; 
     }
 }
