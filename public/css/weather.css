@@ -237,18 +237,37 @@
 .weather-icon-large {
     position: absolute;
     top: 0.5rem;
-    right: 0.5rem;
+    right: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0;
 }
 
-.weather-icon-large img {
-    width: 128px;
-    height: 128px;
-    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.4));
-    transition: transform 0.3s ease;
+.main-emoji {
+    font-size: 6.5rem;
+    line-height: 1;
+    transition: transform 0.3s var(--transition-bounce);
+    filter: drop-shadow(0 15px 30px rgba(0,0,0,0.5));
+    cursor: default;
+    user-select: none;
 }
 
-.weather-icon-large img:hover {
+.main-emoji:hover {
     transform: scale(1.1) rotate(5deg);
+}
+
+.card-hi-lo {
+    position: absolute;
+    bottom: 0px;
+    right: 0.75rem;
+    display: flex;
+    gap: 0.8rem;
+    font-size: 1.15rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 10;
 }
 
 /* --- Primary Stats --- */
@@ -257,6 +276,7 @@
     display: flex;
     flex-direction: column;
     padding-left: 1.5rem;
+    position: relative;
 }
 
 .current-temp {
@@ -282,6 +302,12 @@
     text-transform: capitalize;
     margin-top: 0.5rem;
 }
+
+/* --- Semantic Stat Utilities (Zero Inline Style Mandate) --- */
+.stat-hi { color: #f87171 !important; }
+.stat-lo { color: #60a5fa !important; }
+.weather-detail-date { font-weight: 400; font-size: 0.85rem; color: #94a3b8; margin-left: 0.5rem; }
+.trend-pop-label { color: #60a5fa; font-weight: 900; z-index: 10; position: absolute; }
 
 /* --- Detail Grid --- */
 
@@ -380,10 +406,11 @@
     color: #ef4444 !important;
 }
 
-.forecast-icon {
-    width: 48px;
-    height: 48px;
-    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+.forecast-emoji {
+    font-size: 2.2rem;
+    line-height: 1;
+    margin: 0.25rem 0;
+    display: block;
 }
 
 .day-temps {
@@ -774,27 +801,27 @@
 
 /* --- Hero v2: High Fidelity Overview --- */
 
-.hero-v2-container {
+.forecast-header {
     padding: 0 0 0.5rem 0;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
 }
 
-.hero-v2-main {
+.header-main {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0 0.5rem;
 }
 
-.hero-v2-temp-box {
+.temp-display-box {
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
 }
 
-.hero-v2-main-temp {
+.main-temp {
     font-size: 3.5rem;
     font-weight: 300;
     line-height: 0.9;
@@ -802,21 +829,21 @@
     letter-spacing: -2px;
 }
 
-.hero-v2-status-line {
+.header-status-line {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
     margin-top: 0.5rem;
 }
 
-.hero-v2-hi-lo-chips {
+.hi-lo-chips {
     display: flex;
     gap: 0.75rem;
     font-size: 1rem;
     font-weight: 500;
 }
 
-.hero-v2-feels-like {
+.feels-like-text {
     font-size: 0.72rem;
     color: #94a3b8;
     text-transform: uppercase;
@@ -825,13 +852,13 @@
     white-space: nowrap;
 }
 
-.hero-v2-feels-like span {
+.feels-like-text span {
     color: #ffffff;
     font-size: 0.88rem;
     margin-left: 0.35rem;
 }
 
-.hero-v2-icon-box {
+.header-icon-box {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -839,14 +866,14 @@
     text-align: right;
 }
 
-.hero-v2-icon-box img {
-    width: 82px;
-    height: 82px;
+.header-emoji {
+    font-size: 7.5rem;
+    line-height: 1;
     margin-right: -15px;
-    filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5));
+    filter: drop-shadow(0 15px 25px rgba(0,0,0,0.5));
 }
 
-.hero-v2-description {
+.forecast-description {
     font-size: 0.95rem;
     font-weight: 400;
     color: #cbd5e1;
