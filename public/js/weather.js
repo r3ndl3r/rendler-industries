@@ -261,8 +261,8 @@ function renderWeatherDashboard() {
 function renderForecastDays(daily = [], locationId, cityTz = APP_TZ) {
     if (!daily || daily.length === 0) return '<p>Forecast unavailable.</p>';
 
-    // Skip today (index 0) and show next 5 days
-    return daily.slice(1, 6).map((day, index) => {
+    // Skip today (index 0) and show next 7 days
+    return daily.slice(1, 8).map((day, index) => {
         const date = new Date(day.dt * 1000);
         const dayName = date.toLocaleDateString([], { weekday: 'short', timeZone: cityTz });
         const icon = day.weather?.[0]?.icon || '01d';
@@ -273,7 +273,7 @@ function renderForecastDays(daily = [], locationId, cityTz = APP_TZ) {
         return `
             <div class="forecast-day" onclick="showForecastDetail(${locationId}, ${index + 1}); event.stopPropagation();">
                 <span class="day-name">${dayName}</span>
-                <img class="forecast-icon" src="https://openweathermap.org/img/wn/${icon}.png" alt="">
+                <img class="forecast-icon" src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="">
                 <div class="day-temps">
                     <span class="temp-max">${max}°</span>
                     <span class="temp-min">${min}°</span>
@@ -489,15 +489,20 @@ function renderHourlyTrendline(hourly, selectedDate, cityTz = APP_TZ) {
             </svg>
 
             <div class="trend-points-overlay">
+                ${nowX >= 0 ? (() => {
+                    const nowPoint = points.reduce((prev, curr) => Math.abs(curr.dt - nowSec) < Math.abs(prev.dt - nowSec) ? curr : prev);
+                    const nowPopVal = Math.round(nowPoint.pop * 100);
+                    const nowLeft = (nowX / width) * 100;
+                    return nowPopVal > 0 ? `<div class="trend-pop-label" style="left: ${nowLeft}%; color: #60a5fa; font-weight: 900; z-index: 10;">☔ ${nowPopVal}%</div>` : '';
+                })() : ''}
                 ${labelIndices.map(idx => {
                     const p = points[idx];
                     const icon = p.weather?.main === 'Rain' ? '🌧️' : (p.weather?.main === 'Clouds' ? '☁️' : '☀️');
-                    const popLabel = p.pop > 0 ? `<span class="trend-pop-text">${Math.round(p.pop * 100)}%</span>` : '';
                     const left = (p.x / width) * 100;
                     const top = (p.y / height) * 100;
                     return `
                         <div class="trend-point-label" style="left: ${left}%; top: ${top}%">
-                            <span class="trend-emoji">${icon} ${popLabel}</span>
+                            <span class="trend-emoji">${icon}</span>
                             <span class="trend-label-text">${Math.round(p.temp)}°</span>
                         </div>
                     `;
