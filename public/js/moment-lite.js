@@ -66,26 +66,60 @@
             return `${p.weekday}, ${p.day} ${p.month} ${p.year}`;
         }
 
-        // Pattern: 'dddd MMMM h:mm:ss a'
-        if (pattern.includes('h:mm:ss a')) {
-            const d = new Intl.DateTimeFormat('en-AU', {
-                ...options,
-                weekday: 'long',
-                month: 'long',
-                hour: 'numeric',
-                minute: '2-digit',
-                second: '2-digit'
-            }).formatToParts(this._date);
-
-            const p = {};
-            d.forEach(part => p[part.type] = part.value);
-            const ampm = p.dayPeriod ? p.dayPeriod.toLowerCase() : '';
-            return `${p.weekday} ${p.month} ${p.hour}:${p.minute}:${p.second} ${ampm}`;
-        }
-
-        // Fallback to standard local string if pattern is unknown
-        return this._date.toLocaleString('en-AU', options);
-    };
+         // Pattern: 'dddd MMMM h:mm:ss a'
+         if (pattern.includes('h:mm:ss a')) {
+             const d = new Intl.DateTimeFormat('en-AU', {
+                 ...options,
+                 weekday: 'long',
+                 month: 'long',
+                 hour: 'numeric',
+                 minute: '2-digit',
+                 second: '2-digit'
+             }).formatToParts(this._date);
+ 
+             const p = {};
+             d.forEach(part => p[part.type] = part.value);
+             const ampm = p.dayPeriod ? p.dayPeriod.toLowerCase() : '';
+             return `${p.weekday} ${p.month} ${p.hour}:${p.minute}:${p.second} ${ampm}`;
+         }
+ 
+         // Pattern: 'h:mm A'
+         if (pattern === 'h:mm A') {
+             const d = new Intl.DateTimeFormat('en-AU', {
+                 ...options,
+                 hour: 'numeric',
+                 minute: '2-digit',
+                 hour12: true
+             }).formatToParts(this._date);
+ 
+             const p = {};
+             d.forEach(part => p[part.type] = part.value);
+             const ampm = p.dayPeriod ? p.dayPeriod.toUpperCase() : '';
+             return `${p.hour}:${p.minute} ${ampm}`;
+         }
+ 
+         // Fallback to standard local string if pattern is unknown
+         return this._date.toLocaleString('en-AU', options);
+     };
+ 
+     /**
+      * Returns the timezone abbreviation (e.g., 'AEDT').
+      * 
+      * @returns {string} - Short timezone notation
+      */
+     MomentLite.prototype.zoneAbbr = function() {
+         const activeTz = this._tz || (typeof APP_TZ !== 'undefined' ? APP_TZ : 'UTC');
+         try {
+             const d = new Intl.DateTimeFormat('en-AU', {
+                 timeZone: activeTz,
+                 timeZoneName: 'short'
+             }).formatToParts(this._date);
+             const p = d.find(part => part.type === 'timeZoneName');
+             return p ? p.value : '';
+         } catch (e) {
+             return '';
+         }
+     };
 
     /**
      * Global Entry Point
