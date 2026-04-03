@@ -66,6 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Returns a CSS class name based on temperature value for context-aware styling.
+ * @param {number} temp - The temperature value in Celsius.
+ * @returns {string} - The semantic CSS class name prefix (e.g., 'temp-hot').
  */
 function getTempClass(temp) {
     if (temp >= CONFIG.TEMP_HOT_THRESHOLD) return 'temp-hot';      // 28+
@@ -75,6 +77,12 @@ function getTempClass(temp) {
     return 'temp-v-cold';                                          // Everything below 8
 }
 
+/**
+ * Fetches the global weather state including observations and location metadata.
+ * Inhibits background sync if a modal is open or an input is focused.
+ * @param {boolean} force - Whether to bypass sync inhibition.
+ * @returns {Promise<void>}
+ */
 async function loadState(force = false) {
     const isModalOpen = document.getElementById('locationModal')?.classList.contains('show');
     const isInputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT');
@@ -100,6 +108,11 @@ async function loadState(force = false) {
  * --- UI Rendering Engine ---
  */
 
+/**
+ * Single Entry Point for UI rendering.
+ * Orchestrates dashboard and administrative component lifecycle.
+ * @returns {void}
+ */
 function renderUI() {
     renderWeatherDashboard();
     if (STATE.isAdmin) {
@@ -109,6 +122,11 @@ function renderUI() {
     }
 }
 
+/**
+ * Renders the primary weather location grid (Pattern B: Dashboard Tiles).
+ * Calculates visual states and initializes mobile carousel scroll navigation.
+ * @returns {void}
+ */
 function renderWeatherDashboard() {
     const container = document.getElementById('weatherDashboard');
     if (!container) return;
@@ -172,7 +190,12 @@ function renderWeatherDashboard() {
                             <h2 class="location-name">${escapeHtml(obs.name)}</h2>
                         </div>
                         <div class="weather-icon-large">
-                            <img src="https://openweathermap.org/img/wn/${iconCode}@4x.png" alt="${description}">
+                            <div class="main-emoji">
+                                ${(() => {
+                                    const map = { '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️', '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️', '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌧️', '11d': '🌩️', '11n': '🌩️', '13d': '❄️', '13n': '❄️', '50d': '🌫️', '50n': '🌫️' };
+                                    return map[iconCode] || '❓';
+                                })()}
+                            </div>
                         </div>
                     </div>
                     
@@ -181,6 +204,10 @@ function renderWeatherDashboard() {
                             ${Math.round(temp)}<span class="unit">°C</span>
                         </div>
                         <div class="current-condition">${description}</div>
+                        <div class="card-hi-lo">
+                            <span class="stat-hi">▲ ${Math.round(data.daily[0].temp.max)}°</span>
+                            <span class="stat-lo">▼ ${Math.round(data.daily[0].temp.min)}°</span>
+                        </div>
                     </div>
 
                     <div class="weather-stats">
@@ -290,7 +317,10 @@ function renderForecastDays(daily = [], locationId, cityTz = APP_TZ) {
         return `
             <div class="forecast-day" onclick="showForecastDetail(${locationId}, ${index + 1}); event.stopPropagation();">
                 <span class="day-name ${sundayClass}">${dayName}</span>
-                <img class="forecast-icon" src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="">
+                <span class="forecast-emoji">${(() => {
+                    const map = { '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️', '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️', '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌧️', '11d': '🌩️', '11n': '🌩️', '13d': '❄️', '13n': '❄️', '50d': '🌫️', '50n': '🌫️' };
+                    return map[icon] || '❓';
+                })()}</span>
                 <div class="day-temps">
                     <span class="temp-max ${getTempClass(max)}">${max}°</span>
                     <span class="temp-min ${getTempClass(min)}">${min}°</span>
@@ -510,7 +540,7 @@ function renderHourlyTrendline(hourly, selectedDate, cityTz = APP_TZ) {
                     const nowPoint = points.reduce((prev, curr) => Math.abs(curr.dt - nowSec) < Math.abs(prev.dt - nowSec) ? curr : prev);
                     const nowPopVal = Math.round(nowPoint.pop * 100);
                     const nowLeft = (nowX / width) * 100;
-                    return nowPopVal > 0 ? `<div class="trend-pop-label" style="left: ${nowLeft}%; color: #60a5fa; font-weight: 900; z-index: 10;">☔ ${nowPopVal}%</div>` : '';
+                    return nowPopVal > 0 ? `<div class="trend-pop-label" style="left: ${nowLeft}%;">☔ ${nowPopVal}%</div>` : '';
                 })() : ''}
                 ${labelIndices.map(idx => {
                     const p = points[idx];
@@ -538,6 +568,11 @@ function renderHourlyTrendline(hourly, selectedDate, cityTz = APP_TZ) {
     `;
 }
 
+/**
+ * Displays the detailed forecast modal for a specific location and day.
+ * @param {number} locationId - The ID of the location.
+ * @param {number} dayIndex - The index of the day in the daily forecast array.
+ */
 function showForecastDetail(locationId, dayIndex) {
     const obs = STATE.observations.find(x => x.location_id === locationId);
     if (!obs) return;
@@ -579,31 +614,41 @@ function showForecastDetail(locationId, dayIndex) {
     // Feels Like estimate (avg of relevant day periods)
     const rfHigh = Math.round(Math.max(day.feels_like.day, day.feels_like.eve, day.feels_like.morn));
     const rfLow = Math.round(Math.min(day.feels_like.night, day.feels_like.morn));
-    const avgFeelsLike = Math.round((rfHigh + rfLow) / 2);
+    let avgFeelsLike = Math.round((rfHigh + rfLow) / 2);
+
+    // Synchronize "Today" with real-time observed data
+    let displayTemp = Math.round(day.temp.day);
+    if (dayIndex === 0 && data.current) {
+        displayTemp = Math.round(data.current.temp);
+        avgFeelsLike = Math.round(data.current.feels_like);
+    }
 
     if (titleEl) {
-        titleEl.innerHTML = `${escapeHtml(obs.name)} <span style="font-weight:400; font-size:0.85rem; color:#94a3b8; margin-left:0.5rem;">${dateStr}</span>`;
+        titleEl.innerHTML = `${escapeHtml(obs.name)} <span class="weather-detail-date">${dateStr}</span>`;
     }
 
     const trendlineHtml = renderHourlyTrendline(data.hourly, date, cityTz);
 
     body.innerHTML = `
-        <div class="hero-v2-container">
-            <div class="hero-v2-main">
-                <div class="hero-v2-temp-box">
-                    <span class="hero-v2-main-temp">${Math.round(day.temp.day)}°</span>
-                    <div class="hero-v2-status-line">
-                        <div class="hero-v2-hi-lo-chips">
-                            <span style="color:#f87171;">▲ ${Math.round(day.temp.max)}°</span>
-                            <span style="color:#60a5fa;">▼ ${Math.round(day.temp.min)}°</span>
+        <div class="forecast-header">
+            <div class="header-main">
+                <div class="temp-display-box">
+                    <span class="main-temp">${displayTemp}°</span>
+                    <div class="header-status-line">
+                        <div class="hi-lo-chips">
+                            <span class="stat-hi">▲ ${Math.round(day.temp.max)}°</span>
+                            <span class="stat-lo">▼ ${Math.round(day.temp.min)}°</span>
                         </div>
-                        <div class="hero-v2-feels-like">FEELS LIKE <span>${avgFeelsLike}°</span></div>
+                        <div class="feels-like-text">FEELS LIKE <span>${avgFeelsLike}°</span></div>
                     </div>
                 </div>
                 
-                <div class="hero-v2-icon-box">
-                    <img src="https://openweathermap.org/img/wn/${iconCode}@4x.png" alt="">
-                    <span class="hero-v2-description">${description}</span>
+                <div class="header-icon-box">
+                    <div class="header-emoji">${(() => {
+                        const map = { '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️', '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️', '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌧️', '11d': '🌩️', '11n': '🌩️', '13d': '❄️', '13n': '❄️', '50d': '🌫️', '50n': '🌫️' };
+                        return map[iconCode] || '❓';
+                    })()}</div>
+                    <div class="forecast-description">${day.weather[0].description}</div>
                 </div>
             </div>
             <div class="accu-separator"></div>
