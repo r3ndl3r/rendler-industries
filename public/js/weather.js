@@ -540,8 +540,7 @@ function renderHourlyTrendline(hourly, selectedDate, cityTz = APP_TZ) {
 
 function showForecastDetail(locationId, dayIndex) {
     const obs = STATE.observations.find(x => x.location_id === locationId);
-    const loc = STATE.locations.find(x => x.id === locationId);
-    if (!obs || !loc) return;
+    if (!obs) return;
 
     let data;
     try {
@@ -583,7 +582,7 @@ function showForecastDetail(locationId, dayIndex) {
     const avgFeelsLike = Math.round((rfHigh + rfLow) / 2);
 
     if (titleEl) {
-        titleEl.innerHTML = `${escapeHtml(loc.name)} <span style="font-weight:400; font-size:0.85rem; color:#94a3b8; margin-left:0.5rem;">${dateStr}</span>`;
+        titleEl.innerHTML = `${escapeHtml(obs.name)} <span style="font-weight:400; font-size:0.85rem; color:#94a3b8; margin-left:0.5rem;">${dateStr}</span>`;
     }
 
     const trendlineHtml = renderHourlyTrendline(data.hourly, date, cityTz);
