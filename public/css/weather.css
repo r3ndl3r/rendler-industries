@@ -375,6 +375,11 @@
     font-weight: 800;
     color: #f8fafc;
     margin-bottom: 0.25rem;
+    transition: color 0.3s ease;
+}
+
+.day-name.is-sunday {
+    color: #ef4444 !important;
 }
 
 .forecast-icon {
@@ -398,8 +403,15 @@
 .temp-min {
     font-size: 0.7rem;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.3);
+    opacity: 0.7; /* Increased from 0.5 for more distinct color-coding on dark cards */
 }
+
+/* Specific Temperature Text Colors */
+.temp-hot { color: #ef4444 !important; }
+.temp-warm { color: #fbbf24 !important; }
+.temp-mild { color: #2dd4bf !important; }
+.temp-cold { color: #60a5fa !important; }
+.temp-v-cold { color: #0ea5e9 !important; font-weight: 900; }
 
 /* --- Condition Themes --- */
 
