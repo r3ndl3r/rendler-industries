@@ -58,6 +58,52 @@
     animation: fadeIn 0.4s ease-out;
 }
 
+/* --- Carousel Navigation (Mobile Only) --- */
+.scroll-nav-btn {
+    position: absolute;
+    top: 315px; /* Nudged down for better vertical centering */
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 3.5rem;
+    cursor: pointer;
+    z-index: 100;
+    line-height: 1;
+    text-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
+    transition: opacity 0.3s ease, transform 0.3s ease, color 0.2s ease;
+    opacity: 0;
+    pointer-events: none;
+    padding: 0 1.5rem; /* Large hit-area */
+    display: none; /* Hidden by default; toggled via JS/CSS on Mobile */
+}
+
+.scroll-nav-btn:hover {
+    color: rgba(255, 255, 255, 0.8);
+    scale: 1.1;
+}
+
+.scroll-nav-btn.left {
+    left: -0.25rem;
+    transform: translateY(-50%);
+}
+
+.scroll-nav-btn.right {
+    right: -0.25rem;
+    transform: translateY(-50%);
+}
+
+@keyframes pulseRight {
+    0% { transform: translateY(-50%) translateX(0); }
+    50% { transform: translateY(-50%) translateX(5px); }
+    100% { transform: translateY(-50%) translateX(0); }
+}
+
+@keyframes pulseLeft {
+    0% { transform: translateY(-50%) translateX(0); }
+    50% { transform: translateY(-50%) translateX(-5px); }
+    100% { transform: translateY(-50%) translateX(0); }
+}
+
 @media (max-width: 768px) {
     .weather-grid {
         display: flex;
@@ -73,73 +119,25 @@
         position: relative;
     }
 
-    .scroll-nav-btn {
-        position: absolute;
-        top: 280px;
-        background: none;
-        border: none;
-        color: rgba(255, 255, 255, 0.4);
-        font-size: 3.5rem;
-        cursor: pointer;
-        z-index: 100;
-        line-height: 1;
-        text-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
-        transition: opacity 0.3s ease, transform 0.3s ease, color 0.2s ease;
-        opacity: 0;
-        pointer-events: none;
-        padding: 0 1.5rem; /* Large hit-area */
-        display: none;
-    }
-
-    .weather-container.has-multiple-locations .scroll-nav-btn {
-        display: block;
-    }
-
-    .scroll-nav-btn:hover {
-        color: rgba(255, 255, 255, 0.8);
-        scale: 1.1;
-    }
-
-    .scroll-nav-btn.left {
-        left: -0.25rem;
-        transform: translateY(-50%);
-    }
-
-    .scroll-nav-btn.right {
-        right: -0.25rem;
-        transform: translateY(-50%);
-    }
-
     /* Visibility States based on JS-detected scroll position */
-    .weather-container[data-scroll-state="start"] #scrollNext,
-    .weather-container[data-scroll-state="middle"] #scrollPrev,
-    .weather-container[data-scroll-state="middle"] #scrollNext,
-    .weather-container[data-scroll-state="end"] #scrollPrev {
+    .weather-container.has-multiple-locations[data-scroll-state="start"] #scrollNext,
+    .weather-container.has-multiple-locations[data-scroll-state="middle"] #scrollPrev,
+    .weather-container.has-multiple-locations[data-scroll-state="middle"] #scrollNext,
+    .weather-container.has-multiple-locations[data-scroll-state="end"] #scrollPrev {
+        display: block;
         opacity: 1;
         pointer-events: auto;
     }
 
     /* Animations */
-    .weather-container[data-scroll-state="start"] #scrollNext,
-    .weather-container[data-scroll-state="middle"] #scrollNext {
+    .weather-container.has-multiple-locations[data-scroll-state="start"] #scrollNext,
+    .weather-container.has-multiple-locations[data-scroll-state="middle"] #scrollNext {
         animation: pulseRight 2.5s infinite;
     }
 
-    .weather-container[data-scroll-state="end"] #scrollPrev,
-    .weather-container[data-scroll-state="middle"] #scrollPrev {
+    .weather-container.has-multiple-locations[data-scroll-state="end"] #scrollPrev,
+    .weather-container.has-multiple-locations[data-scroll-state="middle"] #scrollPrev {
         animation: pulseLeft 2.5s infinite;
-    }
-
-    @keyframes pulseRight {
-        0% { transform: translateY(-50%) translateX(0); }
-        50% { transform: translateY(-50%) translateX(5px); }
-        100% { transform: translateY(-50%) translateX(0); }
-    }
-
-    @keyframes pulseLeft {
-        0% { transform: translateY(-50%) translateX(0); }
-        50% { transform: translateY(-50%) translateX(-5px); }
-        100% { transform: translateY(-50%) translateX(0); }
     }
 
     /* Hide standard scrollbar but keep functionality */
