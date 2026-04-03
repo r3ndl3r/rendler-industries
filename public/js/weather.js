@@ -525,8 +525,8 @@ function renderHourlyTrendline(hourly, selectedDate, cityTz = APP_TZ) {
             <svg viewBox="0 0 ${width} ${height}" class="trend-svg" preserveAspectRatio="none">
                 <defs>
                     <linearGradient id="trendGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.8" />
-                        <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+                        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8" />
+                        <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
                     </linearGradient>
                 </defs>
                 <path d="${fillD}" class="trend-fill" fill="url(#trendGradient)" />
@@ -540,7 +540,7 @@ function renderHourlyTrendline(hourly, selectedDate, cityTz = APP_TZ) {
                     const nowPoint = points.reduce((prev, curr) => Math.abs(curr.dt - nowSec) < Math.abs(prev.dt - nowSec) ? curr : prev);
                     const nowPopVal = Math.round(nowPoint.pop * 100);
                     const nowLeft = (nowX / width) * 100;
-                    return nowPopVal > 0 ? `<div class="trend-pop-label" style="left: ${nowLeft}%;">☔ ${nowPopVal}%</div>` : '';
+                    return nowPopVal > 0 ? `<div class="trend-pop-label" style="--x: ${nowLeft}%;">☔ ${nowPopVal}%</div>` : '';
                 })() : ''}
                 ${labelIndices.map(idx => {
                     const p = points[idx];
@@ -548,7 +548,7 @@ function renderHourlyTrendline(hourly, selectedDate, cityTz = APP_TZ) {
                     const left = (p.x / width) * 100;
                     const top = (p.y / height) * 100;
                     return `
-                        <div class="trend-point-label" style="left: ${left}%; top: ${top}%">
+                        <div class="trend-point-label" style="--x: ${left}%; --y: ${top}%;">
                             <span class="trend-emoji">${icon}</span>
                             <span class="trend-label-text">${Math.round(p.temp)}°</span>
                         </div>
@@ -561,7 +561,7 @@ function renderHourlyTrendline(hourly, selectedDate, cityTz = APP_TZ) {
                     const p = points[idx];
                     const labelTime = new Intl.DateTimeFormat([], { hour: 'numeric', hour12: true, timeZone: cityTz }).format(new Date(p.dt * 1000));
                     const left = (p.x / width) * 100;
-                    return `<div class="axis-time" style="left: ${left}%">${labelTime}</div>`;
+                    return `<div class="axis-time" style="--x: ${left}%;">${labelTime}</div>`;
                 }).join('')}
             </div>
         </div>
