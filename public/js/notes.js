@@ -29,7 +29,9 @@ const STATE = {
     heartbeatTimer: null,           // Active Polling Reference
     isDragging:     false,          // Note Movement State
     isResizing:     false,          // Note Dimensions State
-    isEditingNote:  false           // Inline Editor Active State
+    isEditingNote:  false,          // Inline Editor Active State
+    activeLayerId:  1,               // Level Isolation Filter (1-99)
+    isSwitchingLayer: false          // Interaction Guard: Prevents overlapping transitions
 };
 
 /**
@@ -209,12 +211,14 @@ async function initNotes() {
 
 /**
  * Fetches the Single Source of Truth state from the backend.
- * Restores viewport scale and scroll position ONLY during the initial onboarding.
+ * Restores viewport scale and scroll position during initial onboarding OR level switching.
  * @param {boolean} initial - Whether this is the initial load.
  * @param {number|null} canvas_id - Optional specific canvas ID.
+ * @param {number|null} targetNoteId - Optional target note for centering.
+ * @param {number|null} layer_id - Optional target layer for perspective restoration.
  * @returns {Promise<void>}
  */
-async function loadState(initial = false, canvas_id = null, targetNoteId = null) {
+async function loadState(initial = false, canvas_id = null, targetNoteId = null, layer_id = null) {
     if (initial) STATE.isInitializing = true; // Protect interface state during initial hydration
     
     // Resolve context: Prioritize URL param -> Current State -> Backend Default (null)
@@ -224,9 +228,8 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null)
 
     try {
         let query = tid ? `?canvas_id=${tid}` : '';
-        if (nid) {
-            query = query ? `${query}&note_id=${nid}` : `?note_id=${nid}`;
-        }
+        if (nid) query += (query ? '&' : '?') + `note_id=${nid}`;
+        if (layer_id) query += (query ? '&' : '?') + `layer_id=${layer_id}`;
 
         const response = await fetch(`/notes/api/state${query}`);
         const data = await response.json();
@@ -258,10 +261,19 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null)
                 window.history.replaceState({ canvas_id: STATE.canvas_id }, '', url);
             }
 
-            // Only restore perspective if this is the initial load
-            if (initial && data.viewport && !nid) {
+            // Restore perspective if this is the initial load OR a manual level switch
+            if ((initial || layer_id) && data.viewport && !nid) {
                 STATE.scale = parseFloat(data.viewport.scale) || 1.0;
                 applyScale();
+
+                // Level Restoration: Align active layer immediately before rendering engine fires
+                if (data.viewport.layer_id) {
+                    STATE.activeLayerId = parseInt(data.viewport.layer_id);
+                    
+                    // Update the new Directional Indicator
+                    const display = document.getElementById('level-display');
+                    if (display) display.textContent = `${STATE.activeLayerId}`;
+                }
 
                 requestAnimationFrame(() => {
                     const wrapper = document.getElementById('canvas-wrapper');
@@ -270,8 +282,12 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null)
                     const centerX = parseFloat(data.viewport.scroll_x) || (STATE.canvasSize / 2);
                     const centerY = parseFloat(data.viewport.scroll_y) || (STATE.canvasSize / 2);
 
-                    wrapper.scrollLeft = (centerX * STATE.scale) - (wrapper.clientWidth  / 2);
-                    wrapper.scrollTop  = (centerY * STATE.scale) - (wrapper.clientHeight / 2);
+                    // Spatial Transition: Smoothly scroll and zoom to the new level perspective
+                    wrapper.scrollTo({
+                        left: (centerX * STATE.scale) - (wrapper.clientWidth  / 2),
+                        top: (centerY * STATE.scale) - (wrapper.clientHeight / 2),
+                        behavior: initial ? 'auto' : 'smooth' // Animated transition during manual level switches
+                    });
                     
                     setTimeout(() => { STATE.isInitializing = false; }, 200);
                 });
@@ -384,6 +400,9 @@ function renderUI() {
     const canEdit       = currentCanvas ? currentCanvas.can_edit : 1;
 
     STATE.notes.forEach(note => {
+        // Isolation Filter: Only render notes belonging to the current active level
+        if (note.layer_id != STATE.activeLayerId) return;
+
         const noteEl = createNoteElement(note, canEdit);
         canvas.appendChild(noteEl);
         
@@ -439,6 +458,7 @@ function createNoteElement(note, canEdit = true) {
                     ${escapeHtml(note.title || 'Untitled Note')}
                 </div>
                 <input type="text" class="inline-title-input" value="${escapeHtml(note.title || '')}" 
+                       onclick="event.stopPropagation()"
                        placeholder="Note Title..." autocomplete="off">
             </div>
             <div class="note-actions">
@@ -451,6 +471,9 @@ function createNoteElement(note, canEdit = true) {
                     </button>
                     <button class="btn-icon-move" onclick="openMoveModal(event, ${note.id})" title="Copy to Canvas" ${canEdit ? '' : 'disabled'}>
                         ${getIcon('move')}
+                    </button>
+                    <button class="btn-icon-level-copy" onclick="openLayerActionModal(${note.id})" title="Copy to Level" ${canEdit ? '' : 'disabled'}>
+                        ${getIcon('level_copy')}
                     </button>
                     <button class="btn-icon-view" onclick="viewNote(${note.id})" title="Quick View">
                         ${getIcon('view')}
@@ -570,6 +593,10 @@ function makeDraggable(el) {
 
     function dragMouseDown(e) {
         if (!STATE.editMode) return;
+        
+        // Safety Guard: If clicking an interactive input, release control to the browser
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
         // Check if the click was on the header or an icon within it
         if (!e.target.closest('.note-drag-handle-container')) return;
         
@@ -629,13 +656,17 @@ function makeDraggable(el) {
  * @returns {void}
  */
 function toggleStickyMove(e, id) {
+    const el = document.getElementById(`note-${id}`);
+    
+    // Safety Guard: Disable Pick and Place if the note is in Active Edit Mode
+    if (el && el.classList.contains('is-editing')) return;
+
     if (STATE.pickedNoteId) {
         dropStickyNote();
         return;
     }
 
     const note = STATE.notes.find(n => n.id == id);
-    const el   = document.getElementById(`note-${id}`);
     if (!note || !el) return;
 
     // Capture the dynamic delta between the cursor and the note's origin
@@ -803,6 +834,7 @@ async function syncNotePosition(id) {
         z_index: el.style.zIndex,
         content: note.content,
         color: note.color,
+        layer_id: note.layer_id || 1,
         is_collapsed: note.is_collapsed,
         is_options_expanded: note.is_options_expanded || 0
     };
@@ -830,22 +862,26 @@ function centerView() {
 }
 
 /**
- * Focus detection: Locates the most recently created note (Max ID) 
- * and centers the viewport on its coordinates.
+ * Layer-Aware Focus Detection: Locates the most recently modified note 
+ * on the ACTIVE isolation layer and centers the viewport.
  * @returns {void}
  */
 function focusMostRecentNote() {
-    if (STATE.notes.length === 0) {
+    // Isolation Filter: Only consider notes on the current active level
+    const levelNotes = STATE.notes.filter(n => n.layer_id == STATE.activeLayerId);
+
+    if (levelNotes.length === 0) {
         centerView();
+        showToast(`No notes found on Level ${STATE.activeLayerId}`, 'info');
         return;
     }
 
     // Find the note with the most recent modification (Highest updated_at timestamp)
-    const recentNote = STATE.notes.reduce((prev, current) => (prev.updated_at > current.updated_at) ? prev : current);
+    const recentNote = levelNotes.reduce((prev, current) => (prev.updated_at > current.updated_at) ? prev : current);
 
     if (recentNote) {
         centerOnNote(recentNote.id);
-        showToast('Focused on most recent note', 'success');
+        showToast(`Focused on recent note on Level ${STATE.activeLayerId}`, 'success');
     }
 }
 
@@ -858,6 +894,11 @@ function focusMostRecentNote() {
 function centerOnNote(id) {
     const note = STATE.notes.find(n => n.id == id);
     if (!note) return;
+
+    // Level Isolation Recovery: Switch level if the target note is not on the active layer
+    if (note.layer_id && note.layer_id != STATE.activeLayerId) {
+        switchLevel(note.layer_id);
+    }
 
     const wrapper = document.getElementById('canvas-wrapper');
     const noteEl  = document.querySelector(`.sticky-note[data-id="${id}"]`);
@@ -980,7 +1021,8 @@ async function persistViewport() {
         canvas_id: STATE.canvas_id,
         scale:    STATE.scale,
         scroll_x: centerX,
-        scroll_y: centerY
+        scroll_y: centerY,
+        layer_id: STATE.activeLayerId
     });
 }
 
@@ -1001,7 +1043,8 @@ function saveViewportImmediate() {
         canvas_id: STATE.canvas_id,
         scale:    STATE.scale,
         scroll_x: centerX,
-        scroll_y: centerY
+        scroll_y: centerY,
+        layer_id: STATE.activeLayerId
     });
 
     fetch('/notes/api/viewport', {
@@ -1284,6 +1327,7 @@ async function saveNoteInline(id) {
         title: title,
         content: content,
         color: color,
+        layer_id: note.layer_id || STATE.activeLayerId,
         x: note.x,
         y: note.y,
         width: el.offsetWidth,
@@ -1298,14 +1342,9 @@ async function saveNoteInline(id) {
         if (res && res.success) {
             STATE.notes = res.notes; // State Sync baseline
             
-            // Revert UI to View Mode
-            el.classList.remove('is-editing');
-            if (textarea) textarea.readOnly = true;
-            if (editBtn) {
-                editBtn.innerHTML = getIcon('edit');
-                editBtn.title     = 'Edit Content';
-                editBtn.classList.remove('pulse-glow');
-            }
+            // Interaction Guard: Recalibrate the entire board to reflect the Absolute Truth
+            renderUI();
+            
             STATE.isEditingNote = false;
             showToast('Note Saved', 'success');
         }
@@ -1396,7 +1435,8 @@ async function toggleCollapse(id) {
             width: note.width,
             height: note.height,
             color: note.color,
-            z_index: note.z_index
+            z_index: note.z_index,
+            layer_id: note.layer_id || 1
         });
         
         if (res && res.success) {
@@ -1655,6 +1695,7 @@ async function executeCreateNote() {
                 title,
                 content,
                 color,
+                layer_id: STATE.activeLayerId,
                 ...coords
             };
             const res = await apiPost('/notes/api/save', params);
@@ -1671,6 +1712,7 @@ async function executeCreateNote() {
                 title,
                 content: note ? note.content : '',
                 color,
+                layer_id: STATE.activeLayerId,
                 ...coords
             };
             
@@ -1723,6 +1765,122 @@ function closeCreateModal() {
 }
 
 /**
+ * Command Palette: Orchestrates the Layer Action modal for cloning notes.
+ * @param {number|string} id - The source note ID.
+ */
+function openLayerActionModal(id) {
+    window.showConfirmModal({
+        title: 'Clone to Level',
+        icon: 'level_copy',
+        message: 'Specify the target level:',
+        width: 'small',
+        hideCancel: true,
+        noEmoji: true,
+        autoFocus: true,
+        input: {
+            type: 'number',
+            placeholder: 'Level #',
+            value: STATE.activeLayerId
+        },
+        confirmText: 'Duplicate',
+        confirmIcon: 'level_copy',
+        onConfirm: async (val) => {
+            const level = parseInt(val);
+            if (isNaN(level) || level < 1 || level > 99) {
+                showToast('Please enter a valid level (1-99)', 'error');
+                throw new Error('Invalid level');
+            }
+            await copyNoteToLevel(id, level);
+        }
+    });
+}
+
+/**
+ * Triggers the 'Jump to Level' global modal prompt.
+ * Allows the user to rapidly navigate to any numeric isolation level.
+ * 
+ * @returns {void}
+ */
+window.openJumpToLevelModal = function() {
+    window.showConfirmModal({
+        title: 'Jump to Level',
+        icon: 'level',
+        message: 'Specify level to view:',
+        width: 'small',
+        hideCancel: true,
+        noEmoji: true,
+        autoFocus: true,
+        input: {
+            type: 'number',
+            placeholder: 'Level #',
+            min: 1,
+            max: 99,
+            value: STATE.activeLayerId
+        },
+        confirmText: 'Go',
+        confirmIcon: 'home',
+        onConfirm: async (val) => {
+            const level = Math.floor(Math.abs(parseInt(val)));
+            if (isNaN(level) || level < 1 || level > 99) {
+                showToast('Please enter a valid level (1-99)', 'error');
+                throw new Error('Invalid level');
+            }
+            await window.switchLevel(level);
+        }
+    });
+}
+
+/**
+ * Orchestrates Cross-Level Duplication.
+ * @param {number|string} id - The source note ID.
+ * @param {number} newLevelId - Target Level (1-4).
+ * @returns {Promise<void>}
+ */
+async function copyNoteToLevel(id, newLevelId) {
+    const note = STATE.notes.find(n => n.id == id);
+    if (!note) return;
+
+    // Interaction Locking
+    const el = document.getElementById(`note-${id}`);
+    if (el) el.classList.add('pending');
+
+    try {
+        const res = await apiPost('/notes/api/save', {
+            id: null, // Force creation of a NEW record
+            source_id: id, // Link for binary deep-copy (images)
+            canvas_id: STATE.canvas_id,
+            type: note.type || 'text', // Preserve 'image' vs 'text' identity
+            title: note.title, // Clean clone: No (Copy) suffix
+            content: note.content,
+            x: note.x + 20, // Offset horizontally for clarity
+            y: note.y + 20, // Offset vertically for clarity
+            width: note.width,
+            height: note.height,
+            color: note.color,
+            z_index: note.z_index,
+            is_collapsed: note.is_collapsed,
+            layer_id: newLevelId
+        });
+
+        if (res && res.success) {
+            STATE.notes = res.notes;
+            showToast(`Note copied to Level ${newLevelId}`, 'success');
+            
+            // If we copied to the SAME level, re-render immediately.
+            // If we copied to a DIFFERENT level, the note won't appear until we switch.
+            if (newLevelId == STATE.activeLayerId) {
+                renderUI();
+            }
+        }
+    } catch (e) {
+        console.error("Duplication failure:", e);
+        showToast("Failed to copy note between levels", "error");
+    } finally {
+        if (el) el.classList.remove('pending');
+    }
+}
+
+/**
  * Search initialization: Opens the search interface.
  * @returns {void}
  */
@@ -1743,6 +1901,50 @@ function openSearchModal() {
 
 let SEARCH_DEBOUNCE_TIMER;
 let CURRENT_SEARCH_RESULTS = [];
+
+/**
+ * Orchestrates level-specific isolation by switching the active layer.
+ * Implements Perspective Persistence: Saves current viewport before transitioning.
+ * @param {number} id - The Level ID (1-4).
+ * @returns {Promise<void>}
+ */
+window.switchLevel = async function(id) {
+    if (id == STATE.activeLayerId || STATE.isSwitchingLayer) return;
+    
+    // Perspective Lock: Save the outgoing level's camera state
+    STATE.isSwitchingLayer = true;
+    await saveViewportImmediate();
+    
+    // State Stabilization: Clear interaction flags
+    STATE.isEditingNote = false;
+    
+    // Interaction Guard: Prevent overlapping transitions
+    showLoadingOverlay('Transitioning Perspective...');
+    
+    try {
+        // Hydrate the target level's unique perspective and notes
+        await loadState(false, STATE.canvas_id, null, id);
+    } finally {
+        hideLoadingOverlay();
+        STATE.isSwitchingLayer = false;
+    }
+}
+
+/**
+ * Directional Navigation: Moves the isolation layer context up or down.
+ * @param {number} direction - -1 (Up) or 1 (Down).
+ */
+window.moveLevel = async function(direction) {
+    if (STATE.isSwitchingLayer) return;
+
+    let nextLevel = STATE.activeLayerId + direction;
+    
+    // Circular Loop Resolution: 1 <-> 99 wrapping
+    if (nextLevel > 99) nextLevel = 1;
+    if (nextLevel < 1) nextLevel = 99;
+    
+    await switchLevel(nextLevel);
+}
 
 /**
  * Discovery Engine: Orchestrates local filtering or global board-wide search.
@@ -1807,7 +2009,10 @@ function renderSearchResults(results, isGlobal) {
             </div>
             <div class="search-result-info">
                 <div class="search-result-path">
-                    ${window.getIcon('notebook')} ${escapeHtml(note.canvas_name || 'Board')} <span class="path-separator">❯</span>
+                    ${window.getIcon('notebook')} ${escapeHtml(note.canvas_name || 'Board')} 
+                    <span class="path-separator">❯</span> 
+                    Level ${note.layer_id || 1} 
+                    <span class="path-separator">❯</span>
                 </div>
                 <div class="search-result-title">${escapeHtml(note.title || 'Untitled Note')}</div>
                 <div class="search-result-snippet">${escapeHtml(note.content || '').substring(0, 80)}${note.content && note.content.length > 80 ? '...' : ''}</div>
