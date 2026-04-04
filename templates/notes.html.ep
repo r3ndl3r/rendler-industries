@@ -1,0 +1,123 @@
+<%# /templates/notes.html.ep %>
+
+% layout 'default';
+% title 'Sticky Notes Whiteboard';
+
+<% content_for 'head' => begin %>
+    <link rel="stylesheet" href="/css/notes.css">
+    <script src="/js/notes.js"></script>
+<% end %>
+
+<div class="canvas-container" id="canvas-wrapper">
+    <div id="notes-canvas" data-icons='<%== icons_json %>'>
+        <div id="canvas-skeleton" class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse"><%= icon('edit') %></span>
+            <p class="loading-label">Synchronizing Whiteboard...</p>
+        </div>
+    </div>
+</div>
+
+<div class="floating-actions">
+    <div id="scale-badge">100%</div>
+
+    <button id="zoom-in" class="fab-btn btn-icon-square" title="Zoom In">
+        <%= icon('plus') %>
+    </button>
+
+    <button id="zoom-out" class="fab-btn btn-icon-square" title="Zoom Out">
+        <%= icon('minus') %>
+    </button>
+    
+    <button id="add-text-note" class="fab-btn btn-icon-square btn-success" title="Add Note">
+        <%= icon('checklist') %>
+    </button>
+
+    <button id="center-view" class="fab-btn btn-icon-square" title="Center Canvas">
+        <%= icon('home') %>
+    </button>
+
+    <button id="focus-recent" class="fab-btn btn-icon-square" title="Most Recent Note">
+        <%= icon('focus') %>
+    </button>
+
+    <button id="open-search" class="fab-btn btn-icon-square btn-primary" title="Search Notes">
+        <%= icon('search') %>
+    </button>
+</div>
+
+<div id="note-view-modal" class="modal-overlay">
+    <div class="note-modal-content">
+        <div class="note-modal-header">
+            <h2 id="note-view-title" class="note-modal-title-display"></h2>
+            <span class="close-btn note-modal-close" data-close="modal">&times;</span>
+        </div>
+        
+        <div class="note-modal-body">
+            <pre id="note-view-content" class="note-view-pre-max"></pre>
+            
+            <div class="note-modal-footer">
+                <div class="modal-actions-center">
+                    <button id="note-view-copy-btn" class="btn-primary">
+                        <%= icon('copy') %> Copy to Clipboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="note-create-modal" class="modal-overlay">
+    <div class="note-modal-content">
+        <div class="note-modal-header">
+            <h3 id="create-modal-header-text"><%= icon('checklist') %> <span id="draft-header-label">Add Note</span></h3>
+            <span class="close-modal" data-close="modal">&times;</span>
+        </div>
+        <div class="note-modal-body">
+            <div class="create-form-group">
+                <div class="create-input-wrapper">
+                    <input type="text" id="create-note-title" class="create-modal-input" placeholder="Enter a note title..." autocomplete="off">
+                </div>
+            </div>
+
+            <div id="create-note-preview" class="create-preview-glass">
+            </div>
+        </div>
+        <div class="note-modal-footer modal-actions-center create-modal-footer-right">
+            <div class="custom-color-picker-container">
+                <div class="color-inputs">
+                    <input type="color" id="create-note-color" value="#f59e0b" title="Choose color">
+                    <input type="text" id="create-note-color-hex" value="#f59e0b" maxlength="7" class="font-mono">
+                </div>
+            </div>
+            <button id="create-note-btn" class="btn-primary">
+                <span id="draft-btn-icon"><%= icon('checklist') %></span> <span id="draft-btn-text">Create</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="note-search-modal" class="modal-overlay">
+    <div class="note-modal-content search-modal-glass">
+        <div class="note-modal-header">
+            <h3><%= icon('search') %> Search</h3>
+            <span class="close-btn note-modal-close" data-close="modal">&times;</span>
+        </div>
+        
+        <div class="note-modal-body no-padding">
+            <div class="search-filter-layer">
+                <div class="search-input-wrapper">
+                    <span class="search-icon-fixed"><%= icon('search') %></span>
+                    <input type="text" id="note-search-input" class="note-modal-title-input" autocomplete="off">
+                </div>
+            </div>
+            
+            <div id="search-results-container" class="search-results-grid">
+                <div class="search-empty-state">
+                    <%= icon('search') %>
+                    <p>Enter a query to find your notes...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
