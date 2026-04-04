@@ -1126,7 +1126,7 @@ async function showCreateNoteModal(type, data, editId = null) {
 
         // Edit Mode Initialization
         if (headerLabel) headerLabel.textContent = 'Edit Note';
-        if (btnText)     btnText.textContent     = 'Save Changes';
+        if (btnText)     btnText.textContent     = 'Save';
         if (btnIcon)     btnIcon.innerHTML       = getIcon('save');
 
         titleInput.value = note.title || '';
