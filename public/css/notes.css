@@ -61,6 +61,82 @@
     z-index: 10000;
 }
 
+/* Vertical Level Selection Stack (Left Anchor) */
+.level-switcher-container {
+    position: fixed;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 0.6rem; /* Balanced, symmetrical padding for arrow-centric UI */
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 100px;
+    z-index: 10000;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6),
+                inset 0 0 15px rgba(255, 255, 255, 0.03);
+}
+
+.level-tracks {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.level-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.level-btn:hover {
+    background: rgba(59, 130, 246, 0.2);
+    color: #fff;
+    border-color: rgba(59, 130, 246, 0.4);
+    transform: scale(1.1);
+}
+
+.level-btn:active {
+    transform: scale(0.95);
+}
+
+.level-btn svg {
+    width: 0.9rem;
+    height: 0.9rem;
+}
+
+.level-indicator-pill {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: #3b82f6;
+    border: 1px solid #60a5fa;
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    user-select: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
 .fab-btn {
     width: 2.7em;
     height: 2.7em;
@@ -153,7 +229,6 @@
     gap: 0.625em; /* 10px */
     cursor: default;
     user-select: none;
-    transition: box-shadow 0.2s, transform 0.2s, opacity 0.2s;
     background: rgba(30, 41, 59, 0.7);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -168,6 +243,14 @@
                 box-shadow 0.25s ease, 
                 border-color 0.25s ease,
                 border-style 0.25s ease;
+    
+    /* Spatial Transition: Level-Selection Entry Animation */
+    animation: note-fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes note-fade-in {
+    0% { opacity: 0; transform: translateY(10px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* Pick & Place: Flight Mode */
@@ -765,12 +848,28 @@
 }
 
 .note-actions-drawer.expanded {
-    max-width: 12.5em; /* Expanded volume for the new Sticky Move icon */
+    max-width: 14.0em; /* Expanded volume for 8 buttons including Copy Level tool */
     opacity: 1;
     pointer-events: auto;
 }
 
-/* Drawer Toggle Cluster (Glassmorphic Trigger) */
+.layer-target-btn.active {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #60a5fa;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+}
+
+
+
+/* Hide spin buttons for a cleaner Command-Palette feel */
+.layer-numeric-input::-webkit-inner-spin-button, 
+.layer-numeric-input::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+
+/* Drawer Trigger Cluster (Glassmorphic Trigger) */
 .drawer-trigger {
     display: flex;
     align-items: center;
@@ -1749,4 +1848,42 @@ input:checked + .switch-sm .slider:before {
 
 .search-result-item:hover .search-result-path {
     color: rgba(255, 255, 255, 0.6);
+}
+/* Action Drawer Button Themes (Thematic Tints) */
+.btn-icon-copy { background: #6366f1; }
+.btn-icon-link { background: #ec4899; }
+.btn-icon-move { background: #3b82f6; }
+.btn-icon-level-copy { background: #10b981; } /* Emerald Green for Level Cloning */
+.btn-icon-view { background: #10b981; }
+.btn-icon-collapse { background: #3b82f6; }
+.btn-icon-edit { background: #f59e0b; }
+.btn-icon-delete { background: #ef4444; }
+
+/* Global Override: Glassmorphic Button Base */
+.note-actions-drawer button {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    color: #fff;
+    padding: 0;
+    font-size: 0.8rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.note-actions-drawer button:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.2);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.note-actions-drawer button svg,
+.note-actions-drawer button i {
+    width: 0.9rem;
+    height: 0.9rem;
 }
