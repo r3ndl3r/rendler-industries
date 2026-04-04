@@ -54,6 +54,7 @@
     "connect4_blue": "🔵",
     "meals": "🍽️",
     "files": "📁",
+    "folder_open": "📂",
     "receipts": "🧾",
     "reminders": "🔔",
     "room": "🧹",
@@ -105,6 +106,7 @@
     "history": "📜",
     "checklist": "📝",
     "star": "⭐",
+    "notebook": "📔",
     "happy": "🎉",
     "sparkles": "✨",
     "globe": "🌍",
@@ -112,5 +114,6 @@
     "weather": "🌦️",
     "sunny": "🌞",
     "zoom": "🔭",
-    "focus": "⛶"
+    "focus": "⛶",
+    "move": "➡️"
 }
