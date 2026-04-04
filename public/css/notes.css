@@ -201,6 +201,39 @@
                 inset 0 0 15px rgba(255, 255, 255, 0.08); 
 }
 
+/* Inline Editing State */
+.sticky-note.is-editing {
+    border-color: var(--note-accent, #3b82f6) !important;
+    border-width: 2px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 
+                0 0 30px var(--note-accent, rgba(59, 130, 246, 0.4));
+    transform: scale(1.02);
+}
+
+.sticky-note.is-editing .note-header {
+    background: rgba(15, 23, 42, 0.9);
+}
+
+.sticky-note.is-editing textarea {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.pulse-glow {
+    animation: savePulseGlow 1.5s infinite;
+    background: rgba(59, 130, 246, 0.3) !important;
+    border-color: #3b82f6 !important;
+    color: #fff !important;
+}
+
+@keyframes savePulseGlow {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
 /* Modern Crisp Resize Handle */
 .note-resize-handle {
     position: absolute;
@@ -648,10 +681,74 @@
     transition: all 0.2s ease;
 }
 
+.inline-title-input {
+    display: none;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 2px 8px;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    outline: none;
+}
+
+.sticky-note.is-editing .note-title-slot {
+    display: none;
+}
+
+.sticky-note.is-editing .inline-title-input {
+    display: block;
+}
+
+.inline-color-input {
+    display: none;
+    width: 24px;
+    height: 24px;
+    margin-left: -6px; /* Horizontal gutter offset for inline color swatch */
+    margin-right: 14px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.inline-color-input:hover {
+    transform: scale(1.1);
+    border-color: #fff;
+}
+
+.inline-color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.inline-color-input::-webkit-color-swatch {
+    border: none;
+    border-radius: 50%;
+}
+
+.sticky-note.is-editing .inline-color-input {
+    display: block;
+}
+
 .note-actions {
     display: flex;
     align-items: center;
     gap: 0.3125em; /* 5px */
+}
+
+/* Global Action Override for Disabled State */
+.note-actions button[disabled] {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
 }
 
 /* Immersive Action Drawer Engine */
