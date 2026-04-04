@@ -751,7 +751,7 @@
 }
 
 /* Global Square Icon Buttons on Note Cards (High-Density Profile) */
-.btn-icon-view, .btn-icon-collapse, .btn-icon-edit, .btn-icon-delete, .btn-icon-sticky {
+.btn-icon-view, .btn-icon-collapse, .btn-icon-edit, .btn-icon-delete, .btn-icon-sticky, .btn-icon-copy {
     width: 1.75em; /* 28px calculation */
     height: 1.75em;
     border-radius: 0.375em; /* Rounded corners for standardized interactive elements */
@@ -772,8 +772,9 @@
 .btn-icon-edit     { background: #f59e0b; } /* Amber */
 .btn-icon-delete   { background: #ef4444; } /* Rose */
 .btn-icon-sticky   { background: #14b8a6; } /* Teal 500 */
+.btn-icon-copy     { background: #6366f1; } /* Indigo 500 */
 
-.btn-icon-view:hover, .btn-icon-collapse:hover, .btn-icon-edit:hover, .btn-icon-delete:hover, .btn-icon-sticky:hover {
+.btn-icon-view:hover, .btn-icon-collapse:hover, .btn-icon-edit:hover, .btn-icon-delete:hover, .btn-icon-sticky:hover, .btn-icon-copy:hover {
     transform: scale(1.1);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
     filter: brightness(1.2);
@@ -785,6 +786,7 @@
 .btn-icon-edit:hover     { border-color: rgba(245, 158, 11, 0.5); }
 .btn-icon-delete:hover   { border-color: rgba(239, 68, 68, 0.5); }
 .btn-icon-sticky:hover   { border-color: rgba(20, 184, 166, 0.5); }
+.btn-icon-copy:hover     { border-color: rgba(99, 102, 241, 0.5); }
 
 /* Responsive normalization */
 @media (max-width: 768px) {
