@@ -88,32 +88,41 @@ sub DB::save_note {
     
     return undef unless $self->check_canvas_access($cid, $p->{user_id}, 1);
 
+    my $id;
     if ($p->{id}) {
         # Update existing note
         my $sql = "UPDATE notes SET title = ?, content = ?, x = ?, y = ?, width = ?, height = ?, 
-                   color = ?, z_index = ?, is_collapsed = ?, is_options_expanded = ? 
+                   color = ?, z_index = ?, is_collapsed = ?, is_options_expanded = ?, layer_id = ? 
                    WHERE id = ?";
         my $sth = $self->{dbh}->prepare($sql);
         $sth->execute(
             $p->{title}, $p->{content}, $p->{x}, $p->{y}, $p->{width}, $p->{height},
             $p->{color}, $p->{z_index}, $p->{is_collapsed}, $p->{is_options_expanded} // 0, 
-            $p->{id}
+            $p->{layer_id} // 1, $p->{id}
         );
-        return $p->{id};
+        $id = $p->{id};
     } else {
         # Insert new note
-        my $sql = "INSERT INTO notes (user_id, canvas_id, type, title, content, x, y, width, height, color, z_index, is_collapsed, is_options_expanded)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        my $sql = "INSERT INTO notes (user_id, canvas_id, type, title, content, x, y, width, height, color, z_index, is_collapsed, is_options_expanded, layer_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         my $sth = $self->{dbh}->prepare($sql);
         $sth->execute(
             $p->{user_id}, $cid, $p->{type} // 'text', $p->{title}, $p->{content}, $p->{x}, $p->{y}, 
             $p->{width}, $p->{height}, $p->{color}, $p->{z_index}, $p->{is_collapsed} // 0,
-            $p->{is_options_expanded} // 0
+            $p->{is_options_expanded} // 0, $p->{layer_id} // 1
         );
-        my $id = $self->{dbh}->last_insert_id(undef, undef, 'notes', 'id');
+        $id = int($self->{dbh}->last_insert_id(undef, undef, 'notes', 'id'));
         $self->touch_canvas($cid); # Forward-Moving Signal
-        return $id;
+
+        # Binary Deep-Copy Logic: If this is an 'image' clone, replicate the blob association
+        if (($p->{type} // '') eq 'image' && $p->{source_id} && $id) {
+            my $sql_b = "INSERT INTO note_blobs (note_id, file_data, mime_type, file_size) 
+                         SELECT ?, file_data, mime_type, file_size FROM note_blobs WHERE note_id = ?";
+            my $sth_b = $self->{dbh}->prepare($sql_b);
+            $sth_b->execute($id, $p->{source_id});
+        }
     }
+    return $id;
 }
 
 # --- Internal Helpers ---
@@ -241,21 +250,40 @@ sub DB::get_note_blob {
 # Returns:
 #   HashRef { scale, scroll_x, scroll_y } or default coordinates.
 sub DB::get_viewport {
-    my ($self, $user_id, $canvas_id) = @_;
+    my ($self, $user_id, $canvas_id, $layer_id) = @_;
     $self->ensure_connection;
 
     # Verify visibility before exposing coordinate metadata
-    return { scale => '1.00', scroll_x => 2500, scroll_y => 2500 }
+    return { scale => '1.00', scroll_x => 2500, scroll_y => 2500, layer_id => 1 }
         unless $self->check_canvas_access($canvas_id, $user_id, 0);
 
-    my $sth = $self->{dbh}->prepare(
-        "SELECT scale, scroll_x, scroll_y FROM notes_viewport WHERE user_id = ? AND canvas_id = ? LIMIT 1"
-    );
-    $sth->execute($user_id, $canvas_id);
+    my $sql = "SELECT scale, scroll_x, scroll_y, layer_id FROM notes_viewport WHERE user_id = ? AND canvas_id = ?";
+    my $sth;
+
+    if ($layer_id) {
+        $sql .= " AND layer_id = ? LIMIT 1";
+        $sth = $self->{dbh}->prepare($sql);
+        $sth->execute($user_id, $canvas_id, $layer_id);
+    } else {
+        $sql .= " ORDER BY updated_at DESC LIMIT 1";
+        $sth = $self->{dbh}->prepare($sql);
+        $sth->execute($user_id, $canvas_id);
+    }
+
     my $row = $sth->fetchrow_hashref();
 
     # Scale-Independent canonical fallback
-    return $row // { scale => '1.00', scroll_x => 2500, scroll_y => 2500 };
+    if ($row) {
+        return $row;
+    } else {
+        # If no row exists, we MUST return the requested layer_id to avoid being stuck on Level 1
+        return { 
+            scale    => '1.00', 
+            scroll_x => 2500, 
+            scroll_y => 2500, 
+            layer_id => ($layer_id || 1) 
+        };
+    }
 }
 
 # Determines the most recently accessed canvas for a user.
@@ -278,18 +306,19 @@ sub DB::get_last_viewed_canvas {
 # Persists viewport state, respecting the user's focus on a per-board basis.
 # Note: Viewports are user-specific even on shared canvases to avoid cross-fire.
 sub DB::save_viewport {
-    my ($self, $user_id, $canvas_id, $scale, $scroll_x, $scroll_y) = @_;
+    my ($self, $user_id, $canvas_id, $scale, $scroll_x, $scroll_y, $layer_id) = @_;
     $self->ensure_connection;
 
     return unless $self->check_canvas_access($canvas_id, $user_id, 0);
 
-    my $sql = "INSERT INTO notes_viewport (user_id, canvas_id, scale, scroll_x, scroll_y, updated_at)
-               VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    my $sql = "INSERT INTO notes_viewport (user_id, canvas_id, scale, scroll_x, scroll_y, layer_id, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                ON DUPLICATE KEY UPDATE scale = VALUES(scale),
                                         scroll_x = VALUES(scroll_x),
                                         scroll_y = VALUES(scroll_y),
+                                        layer_id = VALUES(layer_id),
                                         updated_at = CURRENT_TIMESTAMP";
-    $self->{dbh}->do($sql, undef, $user_id, $canvas_id, $scale, $scroll_x, $scroll_y);
+    $self->{dbh}->do($sql, undef, $user_id, $canvas_id, $scale, $scroll_x, $scroll_y, $layer_id // 1);
 }
 
 # --- Multi-Canvas & Sharing Expansion ---
