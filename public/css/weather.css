@@ -3,7 +3,7 @@
 /**
  * Weather Board Design System (OpenWeatherMap Edition)
  * 
- * Re-imagined for high-fidelity 5-day forecasting and coordinate-based tracking.
+ * Re-imagined for 5-day forecasting and coordinate-based tracking.
  * Features advanced glassmorphism, responsive forecast grids, and an integrated
  * geocoding search experience for administrators.
  */
@@ -182,9 +182,9 @@
     .weather-card {
         flex: 0 0 calc(100vw - 1rem);
         margin-left: 0.5rem;
-        padding: 1.5rem 0.5rem;
+        padding: 1.5rem 0.5rem 0; /* Anchor footer to bottom of card */
         scroll-snap-align: center;
-        min-height: 440px;
+        min-height: auto; /* Dynamic height based on content density */
         margin-bottom: 0.5rem;
     }
     
@@ -565,7 +565,7 @@
         gap: 0.75rem;
     }
 
-    /* Bespoke Weather Detail Modal - Correctly targeted High-Density Positioning */
+    /* Weather Detail Modal - Target Positioning */
     .weather-detail-content {
         width: 95vw !important;
         max-width: 480px !important;
@@ -632,7 +632,7 @@
     }
 
     .weather-card {
-        padding: 1.5rem 0.5rem;
+        padding: 1.5rem 0.5rem 0; /* Anchor footer to bottom of card */
     }
 
     .weather-stats {
@@ -658,7 +658,7 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Bespoke Weather Detail Modal --- */
+/* --- Weather Detail Modal --- */
 
 .weather-detail-overlay {
     position: fixed;
@@ -835,7 +835,7 @@
 
 
 
-/* --- Hero v2: High Fidelity Overview --- */
+/* --- Hero v2: Overview --- */
 
 .forecast-header {
     padding: 0 0 0.5rem 0;
@@ -1057,12 +1057,12 @@
     left: 100% !important;
 }
 
-/* --- Card Footer Clock & Status Sync (High-Fidelity Calibration) --- */
+/* --- Card Footer Clock & Status Sync --- */
 .card-footer-clock-row {
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
-    margin: 0; /* Zero vertical margin for maximum footer density */
+    align-items: center; /* Center alignment for horizontal baseline symmetry */
+    margin: 0; 
     padding-top: 0.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -1092,7 +1092,7 @@
     color: rgba(255, 255, 255, 0.35);
     text-transform: uppercase;
     text-align: right;
-    margin-bottom: 24px; /* Elevated baseline for refresh metadata sync */
+    margin-bottom: 0; /* Vertical center handled by parent flexbox */
 }
 
 .refresh-time {
@@ -1101,7 +1101,7 @@
     color: rgba(255, 255, 255, 0.5);
 }
 
-/* 3D Flip Clock: High-Fidelity Scaled Variant for Weather Cards */
+/* 3D Flip Clock: Scaled Variant for Weather Cards */
 .flip-clock-small {
     display: flex;
     gap: 3px;
