@@ -1,0 +1,277 @@
+/* /public/css/points.css */
+
+/**
+ * Points Management Styles
+ * 
+ * Provides glassmorphic layout for administrative ledger interfaces.
+ * Adheres to Pattern A (Ledger) and Pattern B (Dashboard) architectural standards.
+ * Theming parity with the Chores module.
+ */
+
+:root {
+    --accent-blue: #3b82f6;
+    --accent-green: #10b981;
+    --accent-gold: #eab308;
+    --glass-bg: rgba(30, 41, 59, 0.4);
+    --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+/* Layout Container */
+.app-container {
+    width: 100%;
+    margin: 0 auto;
+    max-width: 1200px;
+    padding: 0 1.5rem;
+}
+
+@media (max-width: 600px) {
+    .app-container { padding: 0 1rem; }
+}
+
+/* Dashboard Layout (Pattern B) */
+.wallets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, 320px);
+    justify-content: center;
+    gap: 2.5rem;
+    margin-bottom: 3rem;
+}
+
+.wallet-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.wallet-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.wallet-username {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #f8fafc;
+}
+
+.wallet-balance {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+    margin: 1.5rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.wallet-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.wallet-actions button {
+    flex: 1;
+}
+
+/* Ledger Layout (Pattern A) */
+.history-section {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.history-section h2 {
+    font-size: 1.2rem;
+    font-weight: 300;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #f8fafc;
+}
+
+/* Table Enhancements (1:1 with Chores) */
+.table-responsive-glass {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+}
+
+.data-table-glass {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 0.5rem;
+}
+
+.data-table-glass th {
+    padding: 1rem;
+    text-align: left;
+    color: rgba(255, 255, 255, 0.3);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+}
+
+.data-table-glass th.text-right {
+    text-align: right;
+}
+
+.data-table-glass tr td {
+    padding: 1.25rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.data-table-glass tr td:first-child {
+    border-top-left-radius: 16px;
+    border-bottom-left-radius: 16px;
+    border-left: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.data-table-glass tr td:last-child {
+    border-top-right-radius: 16px;
+    border-bottom-right-radius: 16px;
+    border-right: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.text-right { text-align: right !important; }
+
+.amount-positive {
+    color: var(--accent-green);
+    font-weight: bold;
+}
+
+.amount-negative {
+    color: #ef4444;
+    font-weight: bold;
+}
+
+/* Modal Consistency */
+.modal-actions-center {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+/* Visual feedback for in-flight AJAX actions */
+.pending {
+    opacity: 0.6;
+    pointer-events: none;
+    cursor: wait;
+    filter: grayscale(0.5) blur(1px);
+    transition: all 0.3s ease;
+}
+
+/* Mobile-First Responsive Transformation */
+@media (max-width: 768px) {
+    .wallets-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .wallet-card {
+        max-width: 100%;
+    }
+
+    /* Transformation to Stacked Cards (Matches Chores mobile cards) */
+    .history-section { 
+        padding: 0; 
+        background: transparent !important; 
+        border: none !important; 
+        box-shadow: none !important; 
+        backdrop-filter: none !important;
+    }
+    
+    .data-table-glass, 
+    .data-table-glass tbody { 
+        display: block; 
+        background: transparent !important;
+    }
+    
+    .data-table-glass thead { 
+        display: none; 
+    }
+
+    .data-table-glass tr {
+        display: block; 
+        background: #1e293b !important; 
+        border-radius: 1rem; 
+        padding: 1rem 1.25rem; 
+        margin-bottom: 1rem; 
+        border: 1px solid #334155 !important; 
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .data-table-glass td { 
+        display: flex;
+        align-items: center;
+        padding: 0.35rem 0 !important; 
+        border: none !important; 
+        width: 100% !important; 
+        text-align: left !important; 
+        background: transparent !important;
+        font-size: 0.85rem;
+        color: #f8fafc;
+    }
+
+    .data-table-glass td::before {
+        content: attr(data-label); 
+        font-weight: 600; 
+        color: #94a3b8; 
+        text-transform: uppercase; 
+        font-size: 0.65rem; 
+        margin-right: 1rem; 
+        min-width: 80px; 
+        flex-shrink: 0;
+    }
+
+    .data-table-glass td.text-right {
+        text-align: left !important;
+        justify-content: flex-start;
+    }
+
+    .data-table-glass td.amount-positive { color: var(--accent-green) !important; }
+    .data-table-glass td.amount-negative { color: #ef4444 !important; }
+}
+
+/* Modal Input Icons (Corrected Standards) */
+.modal-input-container {
+    position: relative;
+    width: 100%;
+}
+
+.modal-input-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent-gold);
+    pointer-events: none;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+}
+
+.modal-input-with-icon {
+    padding-left: 42px !important;
+}
+
