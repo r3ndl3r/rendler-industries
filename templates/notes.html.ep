@@ -1,12 +1,16 @@
 <%# /templates/notes.html.ep %>
 
 % layout 'default';
-% title 'Sticky Notes Whiteboard';
+% title icon('notebook') . ' Notes Board';
 
 <% content_for 'head' => begin %>
     <link rel="stylesheet" href="/css/notes.css">
     <script src="/js/notes.js"></script>
 <% end %>
+
+<div class="board-branding-pill" id="active-board-branding">
+    <span id="active-board-name-pill">Loading Canvas...</span>
+</div>
 
 <div class="canvas-container" id="canvas-wrapper">
     <div id="notes-canvas" data-icons='<%== icons_json %>'>
@@ -16,6 +20,12 @@
             <p class="loading-label">Loading Whiteboard...</p>
         </div>
     </div>
+</div>
+
+<div class="canvas-manager-toggle">
+    <button id="open-canvas-manager" class="fab-btn btn-icon-square btn-primary" title="Switch Board">
+        <%= icon('folder_open') %>
+    </button>
 </div>
 
 <div class="floating-actions">
@@ -108,7 +118,14 @@
             <div class="search-filter-layer">
                 <div class="search-input-wrapper">
                     <span class="search-icon-fixed"><%= icon('search') %></span>
-                    <input type="text" id="note-search-input" class="note-modal-title-input" autocomplete="off">
+                    <input type="text" id="note-search-input" class="note-modal-title-input" autocomplete="off" placeholder="Search notes...">
+                </div>
+                <div class="search-scope-container">
+                    <span class="search-scope-label">All Boards</span>
+                    <label class="switch switch-sm">
+                        <input type="checkbox" id="search-global-toggle" onchange="filterSearch(document.getElementById('note-search-input').value)">
+                        <span class="slider"></span>
+                    </label>
                 </div>
             </div>
             
@@ -116,6 +133,78 @@
                 <div class="search-empty-state">
                     <%= icon('search') %>
                     <p>Enter a query to find your notes...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="canvas-manager-modal" class="modal-overlay">
+    <div class="note-modal-content canvas-manager-modal-content">
+        <div class="note-modal-header">
+            <h3><%= icon('folder_open') %> Boards</h3>
+            <span class="close-btn note-modal-close" data-close="modal">&times;</span>
+        </div>
+        
+        <div class="note-modal-body">
+            <div id="canvas-list-container" class="canvas-list">
+                <!-- Dynamically Populated -->
+            </div>
+
+            <div class="create-form-group">
+                <div class="create-input-wrapper">
+                    <input type="text" id="new-canvas-name" class="create-modal-input" placeholder="New board name..." autocomplete="off">
+                    <button id="add-canvas-btn" class="btn-primary">
+                        <%= icon('plus') %> Create New Board
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="move-note-modal" class="modal-overlay">
+    <div class="note-modal-content canvas-manager-modal-content">
+        <div class="note-modal-header">
+            <h3><%= icon('move') %> Copy to Canvas</h3>
+            <span class="close-btn note-modal-close" data-close="modal">&times;</span>
+        </div>
+        <div class="note-modal-body">
+            <p class="modal-instruction-text">Choose a destination board for this note:</p>
+            <div id="move-canvas-list" class="canvas-list">
+                <!-- Dynamically Populated -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="canvas-settings-modal" class="modal-overlay">
+    <div class="note-modal-content canvas-manager-modal-content">
+        <div class="note-modal-header">
+            <h3><%= icon('settings') %> Board Settings</h3>
+            <span class="close-btn note-modal-close" data-close="modal">&times;</span>
+        </div>
+        
+        <div class="note-modal-body">
+            <div class="settings-group">
+                <label class="settings-label">Board Name</label>
+                <div class="settings-vertical-stack">
+                    <input type="text" id="edit-canvas-name" class="create-modal-input" placeholder="Board name...">
+                    <div class="modal-actions modal-actions-center" style="margin-top: 15px; border-top: none; padding-top: 0;">
+                        <button id="save-canvas-name-btn" class="btn-primary"><%= icon('save') %> Save</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sharing-section">
+                <h4><%= icon('checklist') %> Manage Collaborators</h4>
+                <div class="search-container">
+                    <input type="text" id="user-search-input" placeholder="Search by username..." autocomplete="off">
+                    <div id="user-search-results" class="user-search-results"></div>
+                </div>
+                
+                <div id="canvas-share-list" class="share-list">
+                    <!-- Collaborators Populated Here -->
                 </div>
             </div>
         </div>
