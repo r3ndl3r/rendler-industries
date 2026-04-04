@@ -3,7 +3,7 @@
 /* Core Canvas Layout - Immersive Refactor */
 .canvas-container {
     width: 100%;
-    /* High-Fidelity Local Offset: Lifting the canvas -25px to hide the global 70px body gap */
+    /* Offset: Lifting the canvas -25px to hide the global 70px body gap */
     height: calc(100vh - 45px);
     margin-top: -25px;
     overflow: auto;
@@ -17,7 +17,7 @@
     width: 5000px;
     height: 5000px;
     position: relative;
-    /* High-Fidelity 10px Grid Feedback */
+    /* 10px Grid Feedback */
     background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
     background-size: 20px 20px;
 }
@@ -29,7 +29,7 @@
     right: 30px;
     display: flex;
     flex-direction: column;
-    align-items: flex-end; /* Absolute Right-Alignment Pillar */
+    align-items: flex-end; /* Right-Alignment anchor */
     gap: 0.675em; /* 20% Increase: 9px -> 10.8px equivalent */
     z-index: 10000;
 }
@@ -45,7 +45,7 @@
     cursor: pointer;
     border: 1px solid rgba(255, 255, 255, 0.15);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 
-                inset 0 0 10px rgba(255, 255, 255, 0.05); /* Inset Glass Graduation */
+                inset 0 0 10px rgba(255, 255, 255, 0.05); /* Inset Glass Effect */
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -66,7 +66,7 @@
 .fab-btn.btn-icon-square {
     width: 1.98em; /* 20% Increase: 26.4px -> 31.68px equivalent */
     height: 1.98em;
-    border-radius: 0.375em; /* Reduced from 0.625em: Modern Crisp Graduation */
+    border-radius: 0.375em; /* Rounded corners for standardized interactive elements */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -81,7 +81,7 @@
 }
 
 .fab-btn.btn-icon-square:hover {
-    transform: scale(1.05) translateX(-5px); /* Side-Flush Tactile Graduation */
+    transform: scale(1.05) translateX(-5px); /* Align to side on hover */
     background: rgba(59, 130, 246, 0.5); /* Global Blue Glow */
     border-color: rgba(59, 130, 246, 0.8);
     color: #fff;
@@ -94,7 +94,7 @@
     box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
 }
 
-/* Bespoke Small-Scale FAB for Zoom Out Navigation */
+/* Small-Scale FAB for Zoom Out Navigation */
 .fab-btn.btn-icon-square.btn-sm {
     width: 1.53em; /* 20% Increase: 20.4px -> 24.48px equivalent */
     height: 1.53em;
@@ -116,10 +116,10 @@
 /* Glassmorphic Sticky Note Component */
 .sticky-note {
     position: absolute;
-    width: 31.25em; /* 500px resolution-independent graduation */
+    width: 31.25em; /* Fixed width for scaling consistency */
     min-width: 15em;
     min-height: 7.5em; /* 120px */
-    border-radius: 0.75em; /* Reduced from 1.25em: Modern Crisp Graduation */
+    border-radius: 0.75em; /* Rounded corners for note cards */
     padding: 0.9375em; /* 15px */
     display: flex;
     flex-direction: column;
@@ -135,7 +135,7 @@
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-left: 4px solid var(--note-accent, #f59e0b);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 
-                inset 0 0 12px rgba(255, 255, 255, 0.05); /* Inset Glass Graduation */
+                inset 0 0 12px rgba(255, 255, 255, 0.05); /* Soft inner glow */
     z-index: 10;
     transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.25), 
                 box-shadow 0.25s ease, 
@@ -143,7 +143,7 @@
                 border-style 0.25s ease;
 }
 
-/* Pick & Place: Flight Mode Graduation */
+/* Pick & Place: Flight Mode */
 .sticky-note.note-picked {
     z-index: 10000 !important;
     transform: translateY(-10px) scale(1.05);
@@ -154,7 +154,7 @@
     cursor: move;
 }
 
-/* Sub-Tactile Feedback: Highlight Pulse Graduation */
+/* Focus highlight animation */
 .sticky-note.highlight-pulse {
     animation: noteHighlightPulse 2s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1000 !important;
@@ -168,7 +168,7 @@
 
 .sticky-note:hover {
     border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-4px) scale(1.01); /* Tactile Interaction Graduation */
+    transform: translateY(-4px) scale(1.01); /* Lift effect on hover */
     box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6), 
                 0 0 20px var(--note-accent, rgba(59, 130, 246, 0.3)),
                 inset 0 0 15px rgba(255, 255, 255, 0.08); 
@@ -205,7 +205,6 @@
     cursor: grabbing;
 }
 
-/* Deprecated Header Block removed during Structural Consolidation */
 
 .note-actions {
     display: flex;
@@ -217,7 +216,7 @@
     flex-grow: 1;
     overflow: hidden;
     position: relative;
-    display: flex; /* High-Fidelity Expansion Pillar */
+    display: flex; /* Expansion anchor */
     flex-direction: column;
 }
 
@@ -228,7 +227,7 @@
     border: none;
     color: #e5e7eb;
     font-family: 'Inter', sans-serif;
-    font-size: 1.05em; /* Premium Leading Graduation */
+    font-size: 1.05em; /* Professional leading */
     line-height: 1.65;
     resize: none;
     outline: none;
@@ -283,7 +282,7 @@
     padding-bottom: 0;
 }
 
-/* High-Fidelity Color Tints */
+/* Color Tints */
 .sticky-note[data-color="amber"] { border-top: 4px solid #f59e0b; }
 .sticky-note[data-color="blue"] { border-top: 4px solid #3b82f6; }
 .sticky-note[data-color="emerald"] { border-top: 4px solid #10b981; }
@@ -310,7 +309,7 @@
 }
 
 /* Premium High-Density Layout Engine */
-/* Premium Bespoke Immersive Modal Layout Engine */
+/* Immersive Modal Layout Engine */
 .note-modal-content {
     width: 92vw;
     max-width: 1600px;
@@ -326,7 +325,7 @@
     box-shadow: 0 30px 100px rgba(0, 0, 0, 0.9), 
                 inset 0 0 0 1px rgba(255, 255, 255, 0.05),
                 inset 0 0 30px rgba(255, 255, 255, 0.03); /* Multi-Layered Inset Depth */
-    border-radius: 1.0em; /* Reduced from 1.5em: Modern Crisp Graduation */
+    border-radius: 1.0em; /* Defined radius for modal corners */
     display: flex;
     flex-direction: column;
     animation: modalScaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -346,13 +345,13 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.25rem 1.8rem 1rem 1.8rem; /* Precision Vertical Calibration */
+    padding: 1.25rem 1.8rem 1rem 1.8rem; /* Vertical sizing */
     z-index: 100;
     position: relative;
     gap: 20px;
 }
 
-/* High-Fidelity Inset Separator: Synchronized with content margins */
+/* Inset Separator: Synchronized with content margins */
 
 
 .note-modal-header h3 {
@@ -365,7 +364,7 @@
     gap: 12px;
 }
 
-/* Modal Typography Graduation: Title Input cluster */
+/* Modal Header: Title Input */
 .note-modal-title-input {
     flex: 1;
     background: transparent;
@@ -385,7 +384,7 @@
     color: #3b82f6; /* Subtle indicator of active state */
 }
 
-/* Modal Typography Graduation: Title Display */
+/* Modal Header: Title Display */
 .note-modal-title-display {
     flex: 1;
     font-size: 1.1rem;
@@ -440,7 +439,7 @@
     box-shadow: inset 0 40px 80px -40px rgba(0, 0, 0, 0.8), inset 0 -40px 80px -40px rgba(0, 0, 0, 0.8) !important;
 }
 
-/* Bespoke Static Footer (The Anchor) */
+/* Static Footer (The Anchor) */
 .note-modal-footer {
     height: 5.625em; /* 90px */
     width: 100%;
@@ -458,7 +457,7 @@
     position: relative;
 }
 
-/* Color Picker promoted to left-aligned pillar */
+/* Color Picker promoted to left-aligned section */
 .note-modal-footer .custom-color-picker-container {
     position: absolute;
     left: 40px;
@@ -481,7 +480,7 @@
     transform: rotate(90deg) scale(1.2);
 }
 
-/* Micro-Lens Calibration for Zoom Out */
+/* Micro-Lens Scaling for Zoom Out */
 .icon-scale-down .global-icon {
     transform: scale(0.7);
     display: inline-flex;
@@ -584,7 +583,7 @@
     justify-content: space-between;
     align-items: center;
     height: 2.5em; /* 40px */
-    padding: 0 0.5em 0 1.25em; /* Asymmetric Graduation: Right-anchored trigger */
+    padding: 0 0.5em 0 1.25em; /* Layout: Right-anchored trigger */
     margin: 0.625em 0.625em 0 0.625em; /* 10px */
     background: linear-gradient(45deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.4) 50%, rgba(15, 23, 42, 0.7) 100%);
     background-size: 200% 200%;
@@ -603,7 +602,7 @@
 
 .note-title-slot {
     font-size: 0.78rem;
-    font-weight: 700; /* High-Fidelity Font-Weight Graduation */
+    font-weight: 700; /* Bold weight for title visibility */
     color: rgba(255, 255, 255, 0.85);
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -674,7 +673,7 @@
     pointer-events: none;
 }
 
-/* High-Fidelity Integrated Creation Preview */
+/* Integrated Creation Preview */
 .create-preview-glass {
     background: rgba(15, 23, 42, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -728,7 +727,7 @@
     margin-bottom: 0.5em;
 }
 
-/* Drawer Toggle Pillar (Small Slate Square) */
+/* Drawer Toggle section (Small Slate Square) */
 .btn-icon-drawer {
     width: 28px;
     height: 28px;
@@ -755,7 +754,7 @@
 .btn-icon-view, .btn-icon-collapse, .btn-icon-edit, .btn-icon-delete, .btn-icon-sticky {
     width: 1.75em; /* 28px calculation */
     height: 1.75em;
-    border-radius: 0.375em; /* Reduced from 0.625em: Modern Crisp Graduation */
+    border-radius: 0.375em; /* Rounded corners for standardized interactive elements */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -787,7 +786,7 @@
 .btn-icon-delete:hover   { border-color: rgba(239, 68, 68, 0.5); }
 .btn-icon-sticky:hover   { border-color: rgba(20, 184, 166, 0.5); }
 
-/* High-Fidelity Responsive Calibration */
+/* Responsive normalization */
 @media (max-width: 768px) {
     .note-modal-content {
         width: 96vw;
@@ -807,7 +806,7 @@
     }
 
     .note-modal-footer .custom-color-picker-container {
-        position: static; /* Absolute-purge the floating anchor */
+        position: static; /* Remove the floating anchor */
     }
 
     .note-modal-header {
@@ -831,7 +830,7 @@
         background: transparent;
     }
 }
-/* --- High-Fidelity Paste Modal Centering --- */
+/* --- Paste Modal Centering --- */
 .create-modal-footer-right {
     display: flex !important;
     justify-content: flex-end !important;
@@ -853,7 +852,7 @@
     transform: translateY(-50%);
 }
 
-/* --- High-Fidelity Unified Creation Modal Layout --- */
+/* --- Unified Creation Modal Layout --- */
 #note-create-modal .note-modal-header::after {
     content: '';
     position: absolute;
@@ -892,7 +891,7 @@
     position: relative;
 }
 
-/* --- High-Fidelity Search Engine Aesthetics --- */
+/* --- Search Engine Aesthetics --- */
 #note-search-modal .note-modal-content {
     width: 800px;
     max-width: 90vw;
@@ -948,7 +947,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 1rem 2rem 2rem 2rem; /* Gold Standard Alignment */
+    padding: 1rem 2rem 2rem 2rem; /* Symmetrical inset alignment */
     overflow-y: auto;
     flex: 1;
     max-height: calc(92vh - 200px); /* Synchronized for vertical stack */
@@ -1028,7 +1027,7 @@
 /* --- Create Modal Form Aesthetics --- */
 .create-form-group {
     margin-bottom: 0.5rem;
-    padding: 0 1.8rem; /* Synchronized with Header Graduation */
+    padding: 0 1.8rem; /* Center within header constraints */
 }
 
 .create-modal-label {
@@ -1067,7 +1066,7 @@
     color: rgba(255, 255, 255, 0.2);
 }
 
-/* Mobile Calibration for Search Grid */
+/* Mobile normalization for Search Grid */
 @media (max-width: 768px) {
     .search-results-grid {
         padding: 15px;
@@ -1083,7 +1082,7 @@
         transform: none; /* Avoid horizontal shift on touch */
     }
 }
-/* High-Fidelity Draft Tip: Subtle immutability indicator */
+/* Draft Tip: Subtle immutability indicator */
 .create-edit-tip {
     position: absolute;
     bottom: 1.25rem;
