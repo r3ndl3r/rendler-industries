@@ -42,7 +42,7 @@ sub startup {
 
     # Set maximum request size limit (1GB) to support large file uploads
     $self->max_request_size(1024 * 1024 * 1024);
-    
+
     # Load configuration plugin
     my $config = $self->plugin('Config');
     
@@ -144,7 +144,7 @@ sub startup {
         }
     );
     
-    # Helper: Check if current user is a Child
+    # Helper: Get Current User ID from session
     # Parameters: None (Uses session)
     # Returns: Boolean (1 if child, 0 otherwise)
     $self->helper(
@@ -582,11 +582,24 @@ sub startup {
     # --- Notes Whiteboard Routes ---
     $auth->get('/notes')->to('notes#index');
     $auth->get('/notes/api/state')->to('notes#api_state');
+    $auth->get('/notes/api/search')->to('notes#api_search');
     $auth->post('/notes/api/save')->to('notes#api_save');
     $auth->post('/notes/api/delete')->to('notes#api_delete');
     $auth->post('/notes/api/upload')->to('notes#api_upload');
     $auth->post('/notes/api/viewport')->to('notes#api_save_viewport');
     $auth->get('/notes/serve/:note_id')->to('notes#serve_blob');
+    
+    # Platform Expansion: Multi-Canvas & Collaborative Switching
+    $auth->post('/notes/api/canvases/create')->to('notes#api_canvas_create');
+    $auth->post('/notes/api/canvases/delete')->to('notes#api_canvas_delete');
+    $auth->post('/notes/api/canvases/rename')->to('notes#api_canvas_rename');
+    $auth->post('/notes/api/canvases/share')->to('notes#api_canvas_share');
+    $auth->get('/notes/api/users/search')->to('notes#api_user_search');
+    $auth->post('/notes/api/notes/copy')->to('notes#api_copy_note');
+
+    # --- Whiteboard Real-Time Synchronization (Reactive AJAX) ---
+    # Mutation Heartbeat for cross-session/cross-worker consistency.
+    $auth->get('/notes/api/sync/heartbeat/:canvas_id')->to('notes#api_heartbeat');
 
     # --- Room Tracker Routes ---
     $family->get('/room')->to('room#index');
