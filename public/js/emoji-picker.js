@@ -523,7 +523,7 @@ const EmojiPicker = {
         // Lifecycle: identify compatible inputs upon focus
         document.addEventListener('focusin', (e) => {
             const target = e.target;
-            if (target.matches('.game-input, input[type="text"], textarea') && 
+            if (target.matches('.game-input, .create-modal-input, .note-modal-title-input, .modal-prompt-input, input[type="text"], textarea') && 
                 !target.classList.contains('emoji-search')) {
                 this.activeInput = target;
                 this.attachTrigger(target);
@@ -586,8 +586,14 @@ const EmojiPicker = {
      */
     attachTrigger: function(input) {
         const parent = input.parentElement;
-        // Context: only attach if within a recognized platform form container
-        if (parent && (parent.classList.contains('form-group') || parent.classList.contains('modal-group') || parent.classList.contains('checkbox-group') || parent.classList.contains('meal-input-wrapper'))) {
+        // Context: only attach if within a recognized platform form container (Global whitelist)
+        const validWrappers = [
+            'form-group', 'modal-group', 'checkbox-group', 'meal-input-wrapper', 
+            'create-input-wrapper', 'search-input-wrapper', 'modal-prompt-container',
+            'settings-input-row', 'search-container', 'settings-vertical-stack'
+        ];
+        
+        if (parent && validWrappers.some(cl => parent.classList.contains(cl))) {
             if (!parent.contains(this.triggerBtn)) {
                 parent.appendChild(this.triggerBtn);
             }
