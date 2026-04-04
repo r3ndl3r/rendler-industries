@@ -15,12 +15,18 @@ const STATE = {
     canvasSize: 5000,
     snapGrid:   10,
     scale:      1.0,      // Current CSS transform scale
-    canvas_id:  1,        // Active Whiteboard Context
+    canvas_id:  null,     // Active Whiteboard Context (Dynamic resolution)
+    canvases:   [],       // Available boards (Owned + Shared)
+    share_list: [],       // ACL for the current board
     vpSaveTimer: null,    // Debounce handle for viewport persistence
-    isInitializing: false, // Shield to prevent save-during-load race conditions
+    isInitializing: false, // Prevents save-during-load race conditions
     pickedNoteId:   null,  // Active 'Pick & Place' record
     originalPos:    null,  // Restore-point for 'Escape-to-Cancel'
-    dragOffset:     { x: 0, y: 0 } // Dynamic delta for 'Pick & Place'
+    dragOffset:     { x: 0, y: 0 }, // Dynamic delta for 'Pick & Place'
+    isPanning:      false,          // Drag-to-Scroll State
+    panStart:       { x:0, y:0, scrollX:0, scrollY:0 },
+    last_mutation:  null,           // Synchronization Baseline
+    heartbeatTimer: null            // Active Polling Reference
 };
 
 /**
@@ -52,10 +58,17 @@ async function initNotes() {
     await loadState(true); // Establish initial perspective
 
     // Event Delegation for Canvas Interactions
-    const canvas = document.getElementById('notes-canvas');
-    if (canvas) {
+    const canvas  = document.getElementById('notes-canvas');
+    const wrapper = document.getElementById('canvas-wrapper');
+    if (canvas && wrapper) {
         canvas.addEventListener('dblclick', handleCanvasDoubleClick);
+        canvas.addEventListener('mousedown', handleCanvasMouseDown);
+        wrapper.addEventListener('wheel', handleCanvasWheel, { passive: false });
     }
+    
+    // Global Panning Listeners: Attached to window to ensure capture outside canvas bounds
+    window.addEventListener('mousemove', handleCanvasMouseMove);
+    window.addEventListener('mouseup',   handleCanvasMouseUp);
     
     document.getElementById('zoom-in').addEventListener('click', zoomIn);
     document.getElementById('zoom-out').addEventListener('click', zoomOut);
@@ -63,6 +76,7 @@ async function initNotes() {
     document.getElementById('center-view').addEventListener('click', centerView);
     document.getElementById('focus-recent').addEventListener('click', focusMostRecentNote);
     document.getElementById('open-search').addEventListener('click', openSearchModal);
+    document.getElementById('open-canvas-manager').addEventListener('click', openCanvasManager);
 
     // Search Input Listener
     const searchInput = document.getElementById('note-search-input');
@@ -76,6 +90,37 @@ async function initNotes() {
     const createConfirmBtn = document.getElementById('create-note-btn');
     if (createConfirmBtn) {
         createConfirmBtn.addEventListener('click', executeCreateNote);
+    }
+    
+    // Canvas Manager Listeners
+    const addCanvasBtn = document.getElementById('add-canvas-btn');
+    if (addCanvasBtn) {
+        addCanvasBtn.addEventListener('click', () => {
+            const name = document.getElementById('new-canvas-name').value;
+            if (name) createCanvas(name);
+        });
+    }
+
+    const canvasNameInput = document.getElementById('new-canvas-name');
+    if (canvasNameInput) {
+        canvasNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const name = e.target.value;
+                if (name) createCanvas(name);
+            }
+        });
+    }
+
+    setupUserSearch();
+
+    // Canvas Settings Listeners
+    const saveCanvasNameBtn = document.getElementById('save-canvas-name-btn');
+    if (saveCanvasNameBtn) {
+        saveCanvasNameBtn.onclick = () => {
+            const id = saveCanvasNameBtn.dataset.canvasId;
+            const name = document.getElementById('edit-canvas-name').value;
+            if (id && name) updateBoardName(id, name);
+        };
     }
     
     const createColorPicker = document.getElementById('create-note-color');
@@ -116,20 +161,25 @@ async function initNotes() {
     }
 
     // Modal Registry: Synchronize all overlays with the global closing engine
-    setupGlobalModalClosing(['modal-overlay'], [closeViewModal, closeCreateModal, closeSearchModal]);
-    document.querySelectorAll('[data-close="modal"]').forEach(btn => {
-        btn.onclick = () => {
+    setupGlobalModalClosing(['modal-overlay'], [closeViewModal, closeCreateModal, closeSearchModal, closeCanvasManager, closeMoveModal, closeBoardSettings]);
+    
+    // Robust Event Delegation: Handles all close triggers (static & dynamic)
+    document.addEventListener('click', (e) => {
+        const closeBtn = e.target.closest('[data-close="modal"]');
+        if (closeBtn) {
             closeViewModal();
             closeCreateModal();
             closeSearchModal();
-        };
+            closeCanvasManager();
+            closeMoveModal();
+            closeBoardSettings();
+        }
     });
 
     // Copy button in the view modal
     document.getElementById('note-view-copy-btn').addEventListener('click', copyViewContent);
 
     // Persist scroll position on scroll (debounced)
-    const wrapper = document.getElementById('canvas-wrapper');
     if (wrapper) {
         wrapper.addEventListener('scroll', onViewportScroll);
     }
@@ -153,6 +203,7 @@ async function initNotes() {
     }
 }
 
+
 /**
  * Fetches the Single Source of Truth state from the backend.
  * Restores viewport scale and scroll position ONLY during the initial onboarding.
@@ -161,19 +212,48 @@ async function initNotes() {
  * @returns {Promise<void>}
  */
 async function loadState(initial = false, canvas_id = null) {
-    if (initial) STATE.isInitializing = true; // Activate Shield for initial restoration
+    if (initial) STATE.isInitializing = true; // Protect interface state during initial hydration
     
-    // Default to the current state context if no ID is provided
-    const tid = canvas_id || STATE.canvas_id || 1;
+    // Resolve context: Prioritize URL param -> Current State -> Backend Default (null)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tid = canvas_id || urlParams.get('canvas_id') || STATE.canvas_id;
+    const nid = urlParams.get('note_id'); // Deep-link detection
 
     try {
-        const response = await fetch(`/notes/api/state?canvas_id=${tid}`);
+        let query = tid ? `?canvas_id=${tid}` : '';
+        if (nid) {
+            query = query ? `${query}&note_id=${nid}` : `?note_id=${nid}`;
+        }
+
+        const response = await fetch(`/notes/api/state${query}`);
         const data = await response.json();
         
         if (data.success) {
-            STATE.notes     = data.notes;
-            STATE.user_id   = data.user_id;
-            STATE.canvas_id = data.canvas_id || tid;
+            STATE.notes    = data.notes    || [];
+            STATE.canvases = data.canvases || [];
+            STATE.user_id  = data.user_id;
+            STATE.canvas_id  = data.canvas_id; // Resolved active context
+            
+            // State Synchronization: Baseline alignment with backend truth
+            STATE.last_mutation = data.last_mutation;
+
+            STATE.share_list = data.share_list || [];
+            
+            // Sync Branding Pill
+            const canvasObj = STATE.canvases.find(c => c.id == STATE.canvas_id);
+            const pill      = document.getElementById('active-board-name-pill');
+            if (canvasObj && pill) {
+                pill.textContent = canvasObj.name;
+            }
+
+            // URL Parameter Lifecycle: Standardize on a clean, board-agnostic URL.
+            // The backend already persists the 'last viewed' board, so we clear volatile parameters.
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('canvas_id') || url.searchParams.has('note_id')) {
+                url.searchParams.delete('canvas_id');
+                url.searchParams.delete('note_id');
+                window.history.replaceState({ canvas_id: STATE.canvas_id }, '', url);
+            }
 
             // Only restore perspective if this is the initial load
             if (initial && data.viewport) {
@@ -192,7 +272,7 @@ async function loadState(initial = false, canvas_id = null) {
                     wrapper.scrollLeft = (centerX * STATE.scale) - (wrapper.clientWidth  / 2);
                     wrapper.scrollTop  = (centerY * STATE.scale) - (wrapper.clientHeight / 2);
                     
-                    // Deactivate Shield after a micro-delay stabilizers
+                    // Allow interface updates after the viewport has stabilized
                     setTimeout(() => { STATE.isInitializing = false; }, 200);
                 });
             } else if (initial) {
@@ -200,15 +280,76 @@ async function loadState(initial = false, canvas_id = null) {
                 STATE.isInitializing = false;
             }
 
-            renderUI();
+            // Remote Centering Dispatch: If a target note ID is in the context, center it after stabilization
+            if (nid) {
+                requestAnimationFrame(() => {
+                    setTimeout(() => centerOnNote(nid), 300);
+                });
+            }
         } else {
             showToast('Failed to load whiteboard state', 'error');
-            if (initial) STATE.isInitializing = false;
+            if (initial) {
+                STATE.notes = []; // Purge potentially conflicting notes from previous board
+                STATE.isInitializing = false;
+            }
         }
     } catch (err) {
         console.error('loadState Error:', err);
-        if (initial) STATE.isInitializing = false;
+        if (initial) {
+            STATE.notes = [];
+            STATE.isInitializing = false;
+        }
     }
+    // Render UI after all state is consolidated
+    renderUI();
+
+    // Context Persistence: Synchronize Mutation Heartbeat to the active board
+    setupHeartbeat(STATE.canvas_id);
+
+    return true;
+}
+
+/**
+ * Reactive AJAX Heartbeat Engine
+ * Periodically polls the server for workspace mutations to ensure cross-session consistency.
+ * @param {number} canvasId - The workspace to monitor.
+ * @returns {void}
+ */
+function setupHeartbeat(canvasId) {
+    if (!canvasId) return;
+
+    // Reset Poller to prevent multi-interval drift
+    if (STATE.heartbeatTimer) clearInterval(STATE.heartbeatTimer);
+
+    console.log(`[SYNC] Initializing Mutation Heartbeat for Board ${canvasId}...`);
+    
+    STATE.heartbeatTimer = setInterval(async () => {
+        // Condition: Only poll if we are not currently in an initialization/save cycle
+        if (STATE.isInitializing) return;
+
+        try {
+            const resp = await fetch(`/notes/api/sync/heartbeat/${canvasId}`);
+            const data = await resp.json();
+
+            if (data.success && data.last_mutation) {
+                // Reactive Trigger: If the server reports a newer mutation than our local state
+                if (STATE.last_mutation && data.last_mutation > STATE.last_mutation) {
+                    console.log(`[SYNC] Mutation detected (${data.last_mutation} > ${STATE.last_mutation}). Re-hydrating...`);
+                    
+                    // Execution Reality: Only update the local baseline AFTER successful state re-hydration.
+                    // This ensures the client remains at the previous mutation state if a fetch/render fails.
+                    if (await loadState(false, canvasId)) {
+                        STATE.last_mutation = data.last_mutation;
+                    }
+                } else {
+                    // Update baseline even if no change (ensures we stay in sync with server clock)
+                    STATE.last_mutation = data.last_mutation;
+                }
+            }
+        } catch (err) {
+            console.warn('[SYNC] Heartbeat connection failure. Retrying in 2s...');
+        }
+    }, 2000); // 2-Second Interval: Optimized for a responsive 'real-time' experience.
 }
 
 /**
@@ -219,7 +360,7 @@ function renderUI() {
     const canvas = document.getElementById('notes-canvas');
     if (!canvas) return;
     
-    // Purge existing elements (Except for permanent overlays/skeletons)
+    // Remove existing elements (Except for permanent overlays/skeletons)
     const existingNotes = canvas.querySelectorAll('.sticky-note');
     existingNotes.forEach(n => n.remove());
     
@@ -227,10 +368,15 @@ function renderUI() {
     const skeleton = document.getElementById('canvas-skeleton');
     if (skeleton && STATE.notes.length > 0) skeleton.classList.add('hidden');
 
+    // Verify Permissions: Check if current user has EDIT access to this board
+    const currentCanvas = STATE.canvases.find(c => c.id == STATE.canvas_id);
+    const canEdit       = currentCanvas ? currentCanvas.can_edit : 1;
+
     STATE.notes.forEach(note => {
-        const noteEl = createNoteElement(note);
+        const noteEl = createNoteElement(note, canEdit);
         canvas.appendChild(noteEl);
-        if (STATE.editMode) {
+        
+        if (STATE.editMode && canEdit) {
             makeDraggable(noteEl);
             initResizable(noteEl, note);
         }
@@ -240,15 +386,16 @@ function renderUI() {
 /**
  * Creates the DOM element for a sticky note.
  * @param {Object} note - The note data object.
+ * @param {boolean} canEdit - Permission flag.
  * @returns {HTMLElement} - The created note element.
  */
-function createNoteElement(note) {
+function createNoteElement(note, canEdit = true) {
     const div = document.createElement('div');
     div.className = `sticky-note ${note.is_collapsed ? 'collapsed' : ''}`;
     div.id = `note-${note.id}`;
     div.dataset.id = note.id;
     
-    // Apply custom accent color via CSS variable for high-precision rendering
+    // Apply custom accent color via CSS variable
     const accentColor = normalizeColorHex(note.color);
     div.style.setProperty('--note-accent', accentColor);
     
@@ -273,17 +420,21 @@ function createNoteElement(note) {
 
     div.innerHTML = `
         <div class="note-header">
-            <div class="note-drag-handle-container">
-                <div class="note-title-slot">${escapeHtml(note.title || 'Untitled Note')}</div>
-                <div class="note-drag-handle">${getIcon('move')}</div>
+            <div class="note-drag-handle-container" onclick="toggleStickyMove(event, ${note.id})" title="Click anywhere in the title bar to Pick and Place (Sticky Move)">
+                <div class="note-title-slot">
+                    ${escapeHtml(note.title || 'Untitled Note')}
+                </div>
             </div>
             <div class="note-actions">
                 <div class="note-actions-drawer ${note.is_options_expanded ? 'expanded' : ''}" id="drawer-${note.id}">
-                    <button class="btn-icon-sticky" onclick="toggleStickyMove(event, ${note.id})" title="Pick & Place (Sticky Move)">
-                        ${getIcon('pin')}
-                    </button>
                     <button class="btn-icon-copy" onclick="copyNoteToClipboard(${note.id})" title="Copy to Clipboard">
                         ${getIcon('copy')}
+                    </button>
+                    <button class="btn-icon-link" onclick="copyNoteLink(${note.id})" title="Copy Direct Link">
+                        ${getIcon('link')}
+                    </button>
+                    <button class="btn-icon-move" onclick="openMoveModal(event, ${note.id})" title="Copy to Canvas" ${canEdit ? '' : 'disabled style="opacity:0.5"'}>
+                        ${getIcon('move')}
                     </button>
                     <button class="btn-icon-view" onclick="viewNote(${note.id})" title="Quick View">
                         ${getIcon('view')}
@@ -291,10 +442,10 @@ function createNoteElement(note) {
                     <button class="btn-icon-collapse" onclick="toggleCollapse(${note.id})" title="Toggle Collapse">
                         ${getIcon(note.is_collapsed ? 'expand' : 'collapse')}
                     </button>
-                    <button class="btn-icon-edit" onclick="editNote(${note.id})" title="Edit Content">
+                    <button class="btn-icon-edit" onclick="editNote(${note.id})" title="Edit Content" ${canEdit ? '' : 'disabled style="opacity:0.5"'}>
                         ${getIcon('edit')}
                     </button>
-                    <button class="btn-icon-delete" onclick="deleteNote(${note.id})" title="Delete Note">
+                    <button class="btn-icon-delete" onclick="deleteNote(${note.id})" title="Delete Note" ${canEdit ? '' : 'disabled style="opacity:0.5"'}>
                         ${getIcon('delete')}
                     </button>
                 </div>
@@ -865,6 +1016,104 @@ function deleteNote(id) {
 }
 
 /**
+ * Handle Canvas MouseDown to start panning.
+ * @param {MouseEvent} e - The mouse event.
+ * @returns {void}
+ */
+function handleCanvasMouseDown(e) {
+    // Only trigger panning if clicking directly on the canvas background
+    if (e.target.id !== 'notes-canvas') return;
+    if (e.button !== 0) return; // Left-click only
+
+    const wrapper = document.getElementById('canvas-wrapper');
+    if (!wrapper) return;
+
+    STATE.isPanning = true;
+    STATE.panStart = {
+        x: e.clientX,
+        y: e.clientY,
+        scrollX: wrapper.scrollLeft,
+        scrollY: wrapper.scrollTop
+    };
+
+    document.body.style.cursor = 'grabbing';
+    e.preventDefault();
+}
+
+/**
+ * Global MouseMove handler for active panning.
+ * @param {MouseEvent} e - The mouse event.
+ * @returns {void}
+ */
+function handleCanvasMouseMove(e) {
+    if (!STATE.isPanning) return;
+
+    const wrapper = document.getElementById('canvas-wrapper');
+    if (!wrapper) return;
+
+    const dx = e.clientX - STATE.panStart.x;
+    const dy = e.clientY - STATE.panStart.y;
+
+    // Movement is -dx/-dy because we are scrolling the container opposite to drag direction
+    wrapper.scrollLeft = STATE.panStart.scrollX - dx;
+    wrapper.scrollTop  = STATE.panStart.scrollY - dy;
+}
+
+/**
+ * Global MouseUp handler to terminate panning.
+ * @returns {void}
+ */
+function handleCanvasMouseUp() {
+    if (!STATE.isPanning) return;
+    
+    STATE.isPanning = false;
+    document.body.style.cursor = '';
+    
+    // Viewport persistence is automatically handled by the wrapper's scroll listener
+}
+
+/**
+ * Handle Mouse Wheel Zooming: Cursor-Centric Magnification.
+ * @param {WheelEvent} e - The wheel event.
+ * @returns {void}
+ */
+function handleCanvasWheel(e) {
+    if (!e.ctrlKey) return; // Only zoom when Ctrl is held
+    e.preventDefault();
+
+    const wrapper = document.getElementById('canvas-wrapper');
+    if (!wrapper) return;
+
+    const oldScale = STATE.scale;
+    const step     = 0.1;
+    
+    if (e.deltaY < 0) {
+        STATE.scale = Math.min(3.0, Math.round((STATE.scale + step) * 10) / 10);
+    } else {
+        STATE.scale = Math.max(0.1, Math.round((STATE.scale - step) * 10) / 10);
+    }
+
+    if (STATE.scale === oldScale) return;
+
+    // Viewport-relative mouse positions
+    const rect = wrapper.getBoundingClientRect();
+    const mouseVX = e.clientX - rect.left;
+    const mouseVY = e.clientY - rect.top;
+
+    // Canvas-space coordinates under the cursor
+    const canvasMX = (wrapper.scrollLeft + mouseVX) / oldScale;
+    const canvasMY = (wrapper.scrollTop  + mouseVY) / oldScale;
+
+    applyScale();
+
+    // Adjust scroll to keep the cursor fixed on the canvas coordinate
+    wrapper.scrollLeft = canvasMX * STATE.scale - mouseVX;
+    wrapper.scrollTop  = canvasMY * STATE.scale - mouseVY;
+
+    scheduleViewportSave();
+}
+
+/**
  * Handle Canvas Double Click to create notes.
  * @param {MouseEvent} e - The mouse event.
  * @returns {void}
@@ -918,6 +1167,28 @@ function closeViewModal() {
         modal.classList.remove('show');
         document.body.classList.remove('modal-open');
     }
+}
+
+/**
+ * Copies the currently viewed note content to the clipboard.
+ * @returns {Promise<void>}
+ */
+/**
+ * Copies a persistent deep-link for a specific note to the clipboard.
+ * @param {number|string} id - The note ID.
+ * @returns {void}
+ */
+function copyNoteLink(id) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('note_id', id);
+    const link = url.toString();
+
+    navigator.clipboard.writeText(link).then(() => {
+        showToast('Direct Link Copied', 'success');
+    }).catch(err => {
+        console.error('Clipboard copy failed:', err);
+        showToast('Failed to copy link', 'error');
+    });
 }
 
 /**
@@ -991,6 +1262,7 @@ async function toggleCollapse(id) {
             canvas_id: STATE.canvas_id,
             title: note.title,
             is_collapsed: note.is_collapsed,
+            is_options_expanded: note.is_options_expanded,
             content: note.content,
             x: note.x,
             y: note.y,
@@ -1342,28 +1614,65 @@ function openSearchModal() {
     setTimeout(() => input.focus(), 100);
 }
 
+let SEARCH_DEBOUNCE_TIMER;
+let CURRENT_SEARCH_RESULTS = [];
+
 /**
- * Live-Filtering Logic: Scrutinizes notes across title and content fields.
- * @param {string} query - The search query.
+ * Discovery Engine: Orchestrates local filtering or global board-wide search.
+ * @param {string} queryText - The raw search input.
  * @returns {void}
  */
-function filterSearch(query) {
+async function filterSearch(queryText) {
+    const container = document.getElementById('search-results-container');
+    const globalToggle = document.getElementById('search-global-toggle');
+    if (!container) return;
+
+    const query = queryText.trim();
+    const isGlobal = globalToggle && globalToggle.checked;
+
+    clearTimeout(SEARCH_DEBOUNCE_TIMER);
+
+    if (query === '') {
+        // Default State: Fallback to local board parity
+        renderSearchResults(STATE.notes, false);
+        return;
+    }
+
+    if (isGlobal) {
+        // Global Discovery Protocol: Fetch cross-board results with debouncing
+        SEARCH_DEBOUNCE_TIMER = setTimeout(async () => {
+             const res = await fetch(`/notes/api/search?q=${encodeURIComponent(query)}`);
+             const data = await res.json();
+             renderSearchResults(data, true);
+        }, 300);
+    } else {
+        // Focused Local Context: Filter the active canvas set
+        const q = query.toLowerCase();
+        const results = STATE.notes.filter(n => 
+            (n.title && n.title.toLowerCase().includes(q)) || 
+            (n.content && n.content.toLowerCase().includes(q))
+        );
+        renderSearchResults(results, false);
+    }
+}
+
+/**
+ * Result Rendering Engine: Generates the search result grid with board context.
+ * @param {Array} results - The note result set.
+ * @param {boolean} isGlobal - Whether global indicators should match.
+ * @returns {void}
+ */
+function renderSearchResults(results, isGlobal) {
     const container = document.getElementById('search-results-container');
     if (!container) return;
 
-    const q = query.toLowerCase().trim();
-    const results = q === '' 
-        ? STATE.notes 
-        : STATE.notes.filter(n => 
-            (n.title && n.title.toLowerCase().includes(q)) || 
-            (n.content && n.content.toLowerCase().includes(q))
-          );
+    CURRENT_SEARCH_RESULTS = results;
 
     if (results.length === 0) {
         container.innerHTML = `
             <div class="search-empty-state">
-                <span class="global-icon">${getIcon('search')}</span>
-                <p>${q === '' ? 'No notes found on this canvas' : 'No matches found for "' + query + '"'}</p>
+                <span class="global-icon">${window.getIcon('search')}</span>
+                <p>No matches found in ${isGlobal ? 'any of your whiteboards' : 'the current board'}</p>
             </div>
         `;
         return;
@@ -1372,29 +1681,48 @@ function filterSearch(query) {
     container.innerHTML = results.map(note => `
         <div class="search-result-item" style="--note-accent: ${note.color || '#3b82f6'}" onclick="handleSearchResultClick(${note.id})">
             <div class="search-result-icon">
-                <span class="global-icon">${getIcon(note.type === 'image' ? 'file_image' : 'edit')}</span>
+                <span class="global-icon">${window.getIcon(note.type === 'image' ? 'file_image' : 'edit')}</span>
             </div>
             <div class="search-result-info">
+                ${isGlobal ? `<span class="search-result-board-badge">${escapeHtml(note.canvas_name || 'Board')}</span>` : ''}
                 <div class="search-result-title">${escapeHtml(note.title || 'Untitled Note')}</div>
                 <div class="search-result-snippet">${escapeHtml(note.content || '').substring(0, 80)}${note.content && note.content.length > 80 ? '...' : ''}</div>
             </div>
             <div class="search-result-action">
-                <span class="global-icon">${getIcon('chevron-right')}</span>
+                <span class="global-icon">${window.getIcon('chevron-right')}</span>
             </div>
         </div>
     `).join('');
 }
 
 /**
- * Search Outcome Orchestrator: Centers the view and dismisses the interface.
+ * Search Outcome Orchestrator: Transition across boards and center on the target note.
  * @param {number|string} id - The note ID.
  * @returns {void}
  */
-function handleSearchResultClick(id) {
+async function handleSearchResultClick(id) {
+    const note = CURRENT_SEARCH_RESULTS.find(n => n.id == id);
+    if (!note) return;
+
+    // Early Modal Dismissal: Clean the view before asynchronous transposition
     const modal = document.getElementById('note-search-modal');
     if (modal) modal.classList.remove('show');
     
-    centerOnNote(id);
+    try {
+        // Cross-Board Orchestration Logic
+        if (note.canvas_id && note.canvas_id != STATE.canvas_id) {
+            // Note: We no longer call showLoadingOverlay here to avoid manual DOM duplication in default.js.
+            // switchCanvas() handles its own authoritative overlay lifecycle.
+            await switchCanvas(note.canvas_id);
+        }
+        
+        // Final focus navigation: Move viewport to the note's absolute coordinates
+        centerOnNote(id);
+    } catch (err) {
+        console.error('Navigation Error:', err);
+        showToast('Navigation failed: Unable to reach target note', 'error');
+        hideLoadingOverlay();
+    }
 }
 /**
  * Search Engine Logic: Dismissal of the search interface.
@@ -1435,5 +1763,410 @@ async function copyNoteToClipboard(id) {
     } catch (err) {
         console.error('Clipboard Sync Failed:', err);
         showToast('Failed to copy content', 'error');
+    }
+}
+
+// --- Multi-Canvas & Sharing UI Logic ---
+
+/**
+ * Open the Board Management modal.
+ */
+function openCanvasManager() {
+    const modal = document.getElementById('canvas-manager-modal');
+    if (!modal) return;
+    
+    modal.classList.add('active');
+    loadCanvases();
+}
+
+function closeCanvasManager() {
+    const modal = document.getElementById('canvas-manager-modal');
+    if (modal) modal.classList.remove('active');
+    // Clear scroll-lock
+    document.body.classList.remove('modal-open');
+}
+
+/**
+ * Populates the board list in the manager.
+ */
+function loadCanvases() {
+    const container = document.getElementById('canvas-list-container');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    STATE.canvases.forEach(canvas => {
+        const item = document.createElement('div');
+        item.className = `canvas-item ${canvas.id == STATE.canvas_id ? 'active' : ''}`;
+        
+        const isOwner = canvas.user_id == STATE.user_id;
+        
+        item.innerHTML = `
+            <div class="canvas-info" onclick="switchCanvas(${canvas.id})">
+                <div class="canvas-name-row">
+                    <span class="canvas-name">${escapeHtml(canvas.name)}</span>
+                    ${canvas.id == STATE.canvas_id ? `<span class="active-badge">${window.getIcon('ai')} Active</span>` : ''}
+                </div>
+                <div class="canvas-meta">
+                    ${isOwner ? 'Owned by you' : 'Shared by ' + (canvas.owner_name || 'System')}
+                </div>
+            </div>
+            <div class="canvas-actions">
+                ${isOwner ? `
+                    <button class="btn-icon-square btn-sm btn-primary" onclick="openBoardSettings(${canvas.id})" title="Board Settings">
+                        ${window.getIcon('settings')}
+                    </button>
+                ` : ''}
+                ${isOwner && canvas.name !== 'Your Notebook' ? `
+                    <button class="btn-icon-square btn-sm btn-danger" onclick="deleteCanvas(event, ${canvas.id})" title="Delete Board">
+                        ${window.getIcon('delete')}
+                    </button>
+                ` : ''}
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+/**
+ * Renames a board using the global prompt system.
+ */
+/**
+ * Switches the active whiteboard context.
+ */
+async function switchCanvas(id) {
+    if (id == STATE.canvas_id) {
+        closeCanvasManager();
+        return;
+    }
+    
+    STATE.canvas_id = id;
+    showLoadingOverlay('Cleaning canvas...');
+    
+    try {
+        await loadState(true, id);
+    } finally {
+        // Zero-Trust Termination: Always clear the splash screen
+        hideLoadingOverlay();
+        closeCanvasManager();
+    }
+    
+    showToast('Switched board', 'success');
+}
+
+/**
+ * Creates a new canonical workspace.
+ */
+async function createCanvas(name) {
+    const res = await apiPost('/notes/api/canvases/create', { name });
+    if (res && res.success) {
+        document.getElementById('new-canvas-name').value = '';
+        await loadState(false, res.id);
+        switchCanvas(res.id);
+    }
+}
+
+/**
+ * Opens the unified Board Settings (Rename + Sharing).
+ */
+async function openBoardSettings(id) {
+    const canvas = STATE.canvases.find(c => c.id == id);
+    if (!canvas) return;
+
+    // First, close the Manager list to clear the POV
+    closeCanvasManager();
+
+    const modal = document.getElementById('canvas-settings-modal');
+    if (!modal) return;
+
+    // Reset Context
+    document.getElementById('edit-canvas-name').value = canvas.name;
+    document.getElementById('save-canvas-name-btn').dataset.canvasId = id;
+    document.getElementById('user-search-input').dataset.canvasId = id;
+
+    // If this is NOT the current active board, we need to fetch its specific share list
+    // However, for consistency and avoiding state confusion, we fetch it every time we open settings.
+    try {
+        const res = await fetch(`/notes/api/state?canvas_id=${id}`);
+        const data = await res.json();
+        if (data.success) {
+            renderBoardShares(id, data.share_list || []);
+        }
+    } catch (e) {
+        console.error("Failed to fetch board ACL", e);
+        renderBoardShares(id, []);
+    }
+
+    modal.classList.add('active');
+    document.body.classList.add('modal-open');
+}
+
+/**
+ * Handles the board renaming from the settings modal.
+ */
+async function updateBoardName(id, name) {
+    const res = await apiPost('/notes/api/canvases/rename', { canvas_id: id, name });
+    if (res && res.success) {
+        showToast('Board renamed successfully', 'success');
+        
+        // Update local state and pill if active
+        if (id == STATE.canvas_id) {
+            const pill = document.getElementById('active-board-name-pill');
+            if (pill) pill.textContent = name;
+        }
+
+        await loadState(false, STATE.canvas_id); // Refresh boards list
+        
+        // Auto-close modal on success
+        const modal = document.getElementById('canvas-settings-modal');
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.classList.remove('modal-open');
+            
+            // UX Enhancement: Bring back the Board Manager for faster navigation
+            openCanvasManager();
+        }
+    } else {
+        showToast(res.error || 'Failed to rename board', 'error');
+    }
+}
+
+/**
+ * Owner-only board purging.
+ */
+async function deleteCanvas(e, id) {
+    if (e) e.stopPropagation();
+
+    // 1. Retention Check: Prevent users from deleting their ONLY owned workspace
+    const ownedCanvases = STATE.canvases.filter(c => c.is_owner);
+    if (ownedCanvases.length <= 1) {
+        showToast('Retention Error: You must maintain at least one Notebook.', 'error');
+        return;
+    }
+    
+    window.showConfirmModal({
+        title: 'Delete Board?',
+        icon: 'delete',
+        message: 'This will permanently destroy all notes and images on this board. This action cannot be undone.',
+        danger: true,
+        hideCancel: true,
+        confirmText: 'DELETE',
+        confirmIcon: 'delete',
+        onConfirm: async () => {
+            const res = await apiPost('/notes/api/canvases/delete', { canvas_id: id });
+            if (res && res.success) {
+                // If we deleted the current board, switch back to the first available
+                if (id == STATE.canvas_id) {
+                    await loadState(true);
+                } else {
+                    // Just refresh the list
+                    await loadState(false, STATE.canvas_id);
+                }
+                loadCanvases();
+                showToast('Board destroyed', 'success');
+            } else {
+                throw new Error(res.error || 'Failed to destroy board');
+            }
+        }
+    });
+}
+
+/**
+ * Closes the Board Settings modal.
+ */
+function closeBoardSettings() {
+    const modal = document.getElementById('canvas-settings-modal');
+    if (modal && modal.classList.contains('active')) {
+        modal.classList.remove('active');
+        // Clear scroll-lock
+        document.body.classList.remove('modal-open');
+        // Return context to the Boards Manager list (as requested in Step 28)
+        openCanvasManager();
+    }
+}
+
+/**
+ * Renders the collaborators for a specific board into the settings modal.
+ */
+function renderBoardShares(id, shares = null) {
+    const shareList = document.getElementById('canvas-share-list');
+    if (!shareList) return;
+
+    shareList.innerHTML = '';
+    // Use the provided list (for per-board settings) or fall back to the global state
+    const targetList = shares || STATE.share_list;
+    
+    targetList.forEach(share => {
+        const item = document.createElement('div');
+        item.className = 'share-item';
+        item.innerHTML = `
+            <div class="share-user-info">
+                <span class="share-username">${escapeHtml(share.username)}</span>
+            </div>
+            <div class="share-actions">
+                <div class="permission-toggle-group">
+                    <span class="permission-label">Edit Access</span>
+                    <label class="switch">
+                        <input type="checkbox" ${share.can_edit ? 'checked' : ''} 
+                               onchange="updateSharePermission(${id}, '${share.username}', this.checked ? 1 : 0)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <button class="btn-icon-delete" onclick="confirmRevoke(${id}, '${share.username}')" title="Revoke Access">
+                    ${window.getIcon('delete')}
+                </button>
+            </div>
+        `;
+        shareList.appendChild(item);
+    });
+}
+
+/**
+ * Setup search-as-you-type for user selection.
+ */
+function setupUserSearch() {
+    const input = document.getElementById('user-search-input');
+    const results = document.getElementById('user-search-results');
+    if (!input || !results) return;
+
+    let searchTimer;
+    input.addEventListener('input', (e) => {
+        const q = e.target.value;
+        clearTimeout(searchTimer);
+        if (q.length < 2) {
+            results.style.display = 'none';
+            return;
+        }
+
+        searchTimer = setTimeout(async () => {
+            const res = await fetch(`/notes/api/users/search?q=${encodeURIComponent(q)}`);
+            const users = await res.json();
+            
+            results.innerHTML = '';
+            if (users.length > 0) {
+                users.forEach(u => {
+                    const div = document.createElement('div');
+                    div.className = 'search-result-item';
+                    div.textContent = u.username;
+                    div.onclick = () => {
+                        addShare(input.dataset.canvasId, u.username);
+                        results.style.display = 'none';
+                        input.value = '';
+                    };
+                    results.appendChild(div);
+                });
+                results.style.display = 'block';
+            } else {
+                results.style.display = 'none';
+            }
+        }, 300);
+    });
+}
+
+async function addShare(canvasId, username) {
+    const res = await apiPost('/notes/api/canvases/share', { canvas_id: canvasId, username, can_edit: 1 });
+    if (res && res.success) {
+        // Update local state ONLY if it's the currently active board
+        if (canvasId == STATE.canvas_id) {
+            STATE.share_list = res.share_list;
+        }
+        renderBoardShares(canvasId, res.share_list);
+        showToast('Shared successfully', 'success');
+    }
+}
+
+async function updateSharePermission(canvasId, username, canEdit) {
+    const res = await apiPost('/notes/api/canvases/share', { canvas_id: canvasId, username, can_edit: canEdit });
+    if (res && res.success) {
+        STATE.share_list = res.share_list;
+        showToast('Permissions updated', 'success');
+    }
+}
+
+/**
+ * Triggers a themed confirmation before revoking access.
+ */
+function confirmRevoke(canvasId, username) {
+    showConfirmModal({
+        title: 'Revoke Access',
+        message: `Are you sure you want to revoke access for <strong>${username}</strong>?`,
+        subMessage: 'They will immediately lose all permissions to this board.',
+        icon: 'delete',
+        danger: true,
+        hideCancel: true,
+        confirmText: 'DELETE',
+        confirmIcon: 'delete',
+        onConfirm: async () => {
+            await revokeShare(canvasId, username);
+        }
+    });
+}
+
+async function revokeShare(canvasId, username) {
+    const res = await apiPost('/notes/api/canvases/share', { canvas_id: canvasId, username, revoke: 1 });
+    if (res && res.success) {
+        // Update local state ONLY if it's the currently active board
+        if (canvasId == STATE.canvas_id) {
+            STATE.share_list = res.share_list;
+        }
+        renderBoardShares(canvasId, res.share_list);
+        showToast('Access revoked', 'info');
+    }
+}
+
+// --- Note Migration (Send to Canvas) ---
+
+function openMoveModal(e, id) {
+    e.stopPropagation();
+    const modal = document.getElementById('move-note-modal');
+    const list  = document.getElementById('move-canvas-list');
+    if (!modal || !list) return;
+    
+    list.innerHTML = '';
+    STATE.canvases.filter(c => c.id != STATE.canvas_id && c.can_edit).forEach(canvas => {
+        const item = document.createElement('div');
+        item.className = 'canvas-item';
+        item.onclick = () => copyNoteToBoard(id, canvas.id);
+        item.innerHTML = `
+            <div class="canvas-info">
+                <div class="canvas-name-row">
+                    <span class="canvas-name">${escapeHtml(canvas.name)}</span>
+                </div>
+                <div class="canvas-meta">Owned by ${escapeHtml(canvas.owner_name || 'System')}</div>
+            </div>
+            <div class="canvas-actions">
+                <button class="btn-icon-square btn-sm btn-primary">
+                    ${window.getIcon('move')}
+                </button>
+            </div>
+        `;
+        list.appendChild(item);
+    });
+    
+    if (list.children.length === 0) {
+        list.innerHTML = '<p style="text-align:center; padding:20px; color:#64748b;">No other editable boards found.</p>';
+    }
+
+    modal.classList.add('active');
+}
+
+function closeMoveModal() {
+    const modal = document.getElementById('move-note-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+/**
+ * Board Duplication Logic: Clones the record onto the target board.
+ * @param {number|string} id - The note ID.
+ * @param {number|string} canvas_id - The target canvas ID.
+ * @returns {Promise<void>}
+ */
+async function copyNoteToBoard(id, canvas_id) {
+    const res = await apiPost('/notes/api/notes/copy', { id, canvas_id });
+    if (res && res.success) {
+        showToast('Note copied to board successfully', 'success');
+        closeMoveModal(); // Corrected modal termination handler
+    } else {
+        showToast(res.error || 'Duplication Failed', 'error');
     }
 }
