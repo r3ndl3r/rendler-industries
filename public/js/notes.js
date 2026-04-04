@@ -211,13 +211,13 @@ async function initNotes() {
  * @param {number|null} canvas_id - Optional specific canvas ID.
  * @returns {Promise<void>}
  */
-async function loadState(initial = false, canvas_id = null) {
+async function loadState(initial = false, canvas_id = null, targetNoteId = null) {
     if (initial) STATE.isInitializing = true; // Protect interface state during initial hydration
     
     // Resolve context: Prioritize URL param -> Current State -> Backend Default (null)
     const urlParams = new URLSearchParams(window.location.search);
     const tid = canvas_id || urlParams.get('canvas_id') || STATE.canvas_id;
-    const nid = urlParams.get('note_id'); // Deep-link detection
+    const nid = targetNoteId || urlParams.get('note_id'); // Deep-link or search-target detection
 
     try {
         let query = tid ? `?canvas_id=${tid}` : '';
@@ -256,27 +256,26 @@ async function loadState(initial = false, canvas_id = null) {
             }
 
             // Only restore perspective if this is the initial load
-            if (initial && data.viewport) {
+            if (initial && data.viewport && !nid) {
                 STATE.scale = parseFloat(data.viewport.scale) || 1.0;
                 applyScale();
 
-                // Restore canonical perspective (X, Y Center) across scale levels
                 requestAnimationFrame(() => {
                     const wrapper = document.getElementById('canvas-wrapper');
                     if (!wrapper) return;
 
-                    // Calculate the scroll position from the canonical canvas-center coordinates
                     const centerX = parseFloat(data.viewport.scroll_x) || (STATE.canvasSize / 2);
                     const centerY = parseFloat(data.viewport.scroll_y) || (STATE.canvasSize / 2);
 
                     wrapper.scrollLeft = (centerX * STATE.scale) - (wrapper.clientWidth  / 2);
                     wrapper.scrollTop  = (centerY * STATE.scale) - (wrapper.clientHeight / 2);
                     
-                    // Allow interface updates after the viewport has stabilized
                     setTimeout(() => { STATE.isInitializing = false; }, 200);
                 });
-            } else if (initial) {
+            } else if (initial && !nid) {
                 centerView();
+                STATE.isInitializing = false;
+            } else {
                 STATE.isInitializing = false;
             }
 
@@ -1623,37 +1622,32 @@ let CURRENT_SEARCH_RESULTS = [];
  * @returns {void}
  */
 async function filterSearch(queryText) {
-    const container = document.getElementById('search-results-container');
     const globalToggle = document.getElementById('search-global-toggle');
-    if (!container) return;
-
     const query = queryText.trim();
     const isGlobal = globalToggle && globalToggle.checked;
 
     clearTimeout(SEARCH_DEBOUNCE_TIMER);
 
     if (query === '') {
-        // Default State: Fallback to local board parity
         renderSearchResults(STATE.notes, false);
         return;
     }
 
-    if (isGlobal) {
-        // Global Discovery Protocol: Fetch cross-board results with debouncing
-        SEARCH_DEBOUNCE_TIMER = setTimeout(async () => {
-             const res = await fetch(`/notes/api/search?q=${encodeURIComponent(query)}`);
-             const data = await res.json();
-             renderSearchResults(data, true);
-        }, 300);
-    } else {
-        // Focused Local Context: Filter the active canvas set
-        const q = query.toLowerCase();
-        const results = STATE.notes.filter(n => 
-            (n.title && n.title.toLowerCase().includes(q)) || 
-            (n.content && n.content.toLowerCase().includes(q))
-        );
-        renderSearchResults(results, false);
-    }
+    // Unify Debounce: Ensures performance even for local filter cycles
+    SEARCH_DEBOUNCE_TIMER = setTimeout(async () => {
+        if (isGlobal) {
+            const res = await fetch(`/notes/api/search?q=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            renderSearchResults(data, true);
+        } else {
+            const q = query.toLowerCase();
+            const results = STATE.notes.filter(n => 
+                (n.title && n.title.toLowerCase().includes(q)) || 
+                (n.content && n.content.toLowerCase().includes(q))
+            );
+            renderSearchResults(results, false);
+        }
+    }, 250);
 }
 
 /**
@@ -1684,7 +1678,9 @@ function renderSearchResults(results, isGlobal) {
                 <span class="global-icon">${window.getIcon(note.type === 'image' ? 'file_image' : 'edit')}</span>
             </div>
             <div class="search-result-info">
-                ${isGlobal ? `<span class="search-result-board-badge">${escapeHtml(note.canvas_name || 'Board')}</span>` : ''}
+                <div class="search-result-path">
+                    ${window.getIcon('notebook')} ${escapeHtml(note.canvas_name || 'Board')} <span class="path-separator">❯</span>
+                </div>
                 <div class="search-result-title">${escapeHtml(note.title || 'Untitled Note')}</div>
                 <div class="search-result-snippet">${escapeHtml(note.content || '').substring(0, 80)}${note.content && note.content.length > 80 ? '...' : ''}</div>
             </div>
@@ -1711,13 +1707,11 @@ async function handleSearchResultClick(id) {
     try {
         // Cross-Board Orchestration Logic
         if (note.canvas_id && note.canvas_id != STATE.canvas_id) {
-            // Note: We no longer call showLoadingOverlay here to avoid manual DOM duplication in default.js.
-            // switchCanvas() handles its own authoritative overlay lifecycle.
-            await switchCanvas(note.canvas_id);
+            await switchCanvas(note.canvas_id, id);
+        } else {
+            // Local focus navigation: Move viewport immediately
+            centerOnNote(id);
         }
-        
-        // Final focus navigation: Move viewport to the note's absolute coordinates
-        centerOnNote(id);
     } catch (err) {
         console.error('Navigation Error:', err);
         showToast('Navigation failed: Unable to reach target note', 'error');
@@ -1834,7 +1828,7 @@ function loadCanvases() {
 /**
  * Switches the active whiteboard context.
  */
-async function switchCanvas(id) {
+async function switchCanvas(id, targetNoteId = null) {
     if (id == STATE.canvas_id) {
         closeCanvasManager();
         return;
@@ -1844,7 +1838,7 @@ async function switchCanvas(id) {
     showLoadingOverlay('Cleaning canvas...');
     
     try {
-        await loadState(true, id);
+        await loadState(true, id, targetNoteId);
     } finally {
         // Zero-Trust Termination: Always clear the splash screen
         hideLoadingOverlay();
