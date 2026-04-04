@@ -468,6 +468,11 @@ sub startup {
     $admin->get('/settings/api/state')->to('settings#api_state');
     $admin->post('/settings/update')->to('settings#update');
 
+    # --- Points Management Routes ---
+    $admin->get('/points')->to('points#index');
+    $admin->get('/points/api/state')->to('points#api_state');
+    $admin->post('/points/api/add')->to('points#api_add');
+
     # --- Emoji Management Routes ---
     $admin->get('/emojis')->to('emoji#index');
     $admin->get('/emojis/api/state')->to('emoji#api_state');
