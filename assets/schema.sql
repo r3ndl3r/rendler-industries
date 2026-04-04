@@ -57,6 +57,25 @@ CREATE TABLE `calendar_events` (
   KEY `idx_calendar_emoji` (`has_emoji`),
   CONSTRAINT `calendar_events_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `canvas_shares` (
+  `canvas_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `can_edit` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`canvas_id`,`user_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `canvas_shares_ibfk_1` FOREIGN KEY (`canvas_id`) REFERENCES `canvases` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `canvas_shares_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `canvases` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `name` varchar(255) DEFAULT 'Main Workspace',
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `chess_sessions` (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique game identifier',
   `player1_id` int(11) NOT NULL COMMENT 'User ID of the game host (White)',
@@ -255,6 +274,47 @@ CREATE TABLE `menu_links` (
   KEY `parent_id` (`parent_id`),
   CONSTRAINT `menu_links_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `menu_links` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE `note_blobs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `note_id` int(11) NOT NULL,
+  `mime_type` varchar(100) DEFAULT NULL,
+  `file_size` int(11) DEFAULT NULL,
+  `file_data` longblob DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_note` (`note_id`),
+  CONSTRAINT `fk_blobs_note` FOREIGN KEY (`note_id`) REFERENCES `notes` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `notes` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `canvas_id` int(11) NOT NULL DEFAULT 1,
+  `type` enum('text','image') NOT NULL DEFAULT 'text',
+  `title` varchar(255) DEFAULT 'Untitled Note',
+  `content` text DEFAULT NULL,
+  `x` int(11) DEFAULT 2500,
+  `y` int(11) DEFAULT 2500,
+  `width` int(11) DEFAULT 280,
+  `height` int(11) DEFAULT 200,
+  `color` varchar(20) DEFAULT '#fef3c7',
+  `z_index` int(11) DEFAULT 1,
+  `is_collapsed` tinyint(1) DEFAULT 0,
+  `is_options_expanded` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_user` (`user_id`),
+  CONSTRAINT `fk_notes_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `notes_viewport` (
+  `user_id` int(11) NOT NULL,
+  `canvas_id` int(11) NOT NULL DEFAULT 1,
+  `scale` decimal(4,2) NOT NULL DEFAULT 1.00,
+  `scroll_x` int(11) NOT NULL DEFAULT 2500,
+  `scroll_y` int(11) NOT NULL DEFAULT 2500,
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`user_id`,`canvas_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `notifications_log` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) DEFAULT NULL,
@@ -539,6 +599,6 @@ CREATE TABLE `weather_observations` (
   `observed_at` datetime DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
-  KEY `location_id` (`location_id`),
+  UNIQUE KEY `location_id` (`location_id`),
   CONSTRAINT `weather_observations_ibfk_1` FOREIGN KEY (`location_id`) REFERENCES `weather_locations` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
