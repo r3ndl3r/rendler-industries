@@ -1623,15 +1623,33 @@ input:checked + .switch-sm .slider:before {
     transform: translateX(14px) !important;
 }
 
-/* Search Results: Board Context Badge */
-.search-result-board-badge {
+/* Search Results: Board Context Path (Metadata Breadcrumb) */
+.search-result-path {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 6px;
+    transition: color 0.3s ease;
+}
+
+.search-result-path .global-icon {
+    font-size: 0.8rem;
+    color: var(--note-accent, #3b82f6);
+    opacity: 0.6;
+}
+
+.path-separator {
+    margin: 0 4px;
+    opacity: 0.4;
     font-size: 0.7rem;
-    padding: 2px 8px;
-    background: rgba(59, 130, 246, 0.1);
-    color: #93c5fd;
-    border: 1px solid rgba(59, 130, 246, 0.2);
-    border-radius: 12px;
-    margin-bottom: 4px;
-    backdrop-filter: blur(4px);
-    display: inline-block;
+    font-weight: 300;
+}
+
+.search-result-item:hover .search-result-path {
+    color: rgba(255, 255, 255, 0.6);
 }
