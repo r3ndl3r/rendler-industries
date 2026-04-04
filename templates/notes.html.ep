@@ -13,7 +13,7 @@
         <div id="canvas-skeleton" class="component-loading">
             <div class="loading-scan-line"></div>
             <span class="loading-icon-pulse"><%= icon('edit') %></span>
-            <p class="loading-label">Synchronizing Whiteboard...</p>
+            <p class="loading-label">Loading Whiteboard...</p>
         </div>
     </div>
 </div>
