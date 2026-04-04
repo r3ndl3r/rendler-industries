@@ -523,10 +523,16 @@ const EmojiPicker = {
         // Lifecycle: identify compatible inputs upon focus
         document.addEventListener('focusin', (e) => {
             const target = e.target;
-            if (target.matches('.game-input, .create-modal-input, .note-modal-title-input, .modal-prompt-input, input[type="text"], textarea') && 
-                !target.classList.contains('emoji-search')) {
+            const isEmojiCompatible = target.matches('.game-input, .create-modal-input, .note-modal-title-input, .modal-prompt-input, input[type="text"], textarea');
+            const isSearchField = target.classList.contains('emoji-search');
+            const isOptedOut = target.classList.contains('no-emoji');
+
+            if (isEmojiCompatible && !isSearchField && !isOptedOut) {
                 this.activeInput = target;
                 this.attachTrigger(target);
+            } else {
+                // Feature: Hide trigger if focus shifts to a non-compatible or opted-out field
+                if (this.triggerBtn) this.triggerBtn.style.display = 'none';
             }
         });
 
