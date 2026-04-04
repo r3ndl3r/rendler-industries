@@ -831,6 +831,10 @@
         justify-content: center;
         background: transparent;
     }
+
+    #create-note-color-hex {
+        display: none !important;
+    }
 }
 /* --- Paste Modal Centering --- */
 .create-modal-footer-right {
