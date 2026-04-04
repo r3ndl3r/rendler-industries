@@ -1,0 +1,75 @@
+<%# /templates/points.html.ep %>
+
+% layout 'default';
+% title icon('coin') . ' Points Management';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/points.css">
+    <script src="/js/points.js"></script>
+% end
+
+<div class="app-container">
+    <div class="header-bar">
+        <h1><%= icon('coin') %> <span>Points Management</span></h1>
+        <div class="manage-actions">
+        </div>
+    </div>
+
+    <div id="points-loading" class="component-loading">
+        <div class="loading-scan-line"></div>
+        <span class="loading-icon-pulse"><%= icon('coin') %></span>
+        <p class="loading-label">Synchronizing point ledger...</p>
+    </div>
+
+    <div id="points-content" class="hidden">
+        <div id="wallets-container" class="wallets-grid"></div>
+
+        <div class="history-section mt-4">
+            <h2><%= icon('history') %> Points History</h2>
+            <div class="table-responsive-glass">
+                <table class="data-table-glass">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Time</th>
+                            <th>Reason</th>
+                            <th class="text-right">Points</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="transactionModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle"><%= icon('coin') %> Adjust Points</h3>
+            <span class="close-modal" onclick="closeTransactionModal()">&times;</span>
+        </div>
+        
+        <form id="transactionForm" onsubmit="submitTransaction(event)">
+            <input type="hidden" id="targetUserId">
+            <input type="hidden" id="transactionType">
+            
+            <div class="form-group">
+                <label for="transactionAmount">Amount</label>
+                <div class="modal-input-container">
+                    <span class="modal-input-icon" id="amountIcon"><%= icon('coin') %></span>
+                    <input type="number" id="transactionAmount" class="game-input modal-input-with-icon" min="1" step="1" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="transactionReason">Reason / Description</label>
+                <input type="text" id="transactionReason" class="game-input" placeholder="e.g. Finished all chores" required autocomplete="off">
+            </div>
+
+            <div class="modal-actions modal-actions-center mt-4">
+                <button type="submit" id="saveTransactionBtn" class="btn-primary"><%= icon('save') %> Save</button>
+            </div>
+        </form>
+    </div>
+</div>
