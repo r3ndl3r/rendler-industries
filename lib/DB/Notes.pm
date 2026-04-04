@@ -9,7 +9,7 @@ use DBI qw(:sql_types);
 # Database library for the /notes module.
 #
 # Features:
-#   - High-fidelity persistence for sticky note coordinates and content.
+#   - Persistent storage for sticky note coordinates and content.
 #   - Binary BLOB storage for image-based notes (matching Receipts pattern).
 #   - SQL-level privacy isolation for registered users (Rule #125).
 #   - Atomic synchronization of z-index, collapse states, and viewport scale.
@@ -46,7 +46,7 @@ sub DB::save_note {
     my ($self, $p) = @_;
     $self->ensure_connection;
 
-    # High-Fidelity Defaulting: Ensure the note is anchored to a canvas environment
+    # State Initialization: Ensure the note is anchored to a canvas environment
     $p->{canvas_id} //= 1;
 
     if ($p->{id}) {
