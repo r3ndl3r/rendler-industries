@@ -26,7 +26,9 @@ const STATE = {
     isPanning:      false,          // Drag-to-Scroll State
     panStart:       { x:0, y:0, scrollX:0, scrollY:0 },
     last_mutation:  null,           // Synchronization Baseline
-    heartbeatTimer: null            // Active Polling Reference
+    heartbeatTimer: null,           // Active Polling Reference
+    isDragging:     false,          // Note Movement State
+    isResizing:     false           // Note Dimensions State
 };
 
 /**
@@ -323,8 +325,16 @@ function setupHeartbeat(canvasId) {
     console.log(`[SYNC] Initializing Mutation Heartbeat for Board ${canvasId}...`);
     
     STATE.heartbeatTimer = setInterval(async () => {
-        // Condition: Only poll if we are not currently in an initialization/save cycle
-        if (STATE.isInitializing) return;
+        // Interaction Inhibition Check: Strictly prevent background hydration during active user engagement.
+        const isInteracting = STATE.isInitializing || 
+                              STATE.isPanning      || 
+                              STATE.isDragging     || 
+                              STATE.isResizing     || 
+                              STATE.pickedNoteId   || 
+                              document.querySelector('.modal-overlay.show') || 
+                              ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+
+        if (isInteracting) return;
 
         try {
             const resp = await fetch(`/notes/api/sync/heartbeat/${canvasId}`);
@@ -479,6 +489,7 @@ function initResizable(el, note) {
         e.preventDefault();
         
         isResizing = true;
+        STATE.isResizing = true;
         startX = e.clientX;
         startY = e.clientY;
         const style = window.getComputedStyle(el);
@@ -519,6 +530,7 @@ function initResizable(el, note) {
     function stopResize() {
         if (!isResizing) return;
         isResizing = false;
+        STATE.isResizing = false;
         
         document.removeEventListener('mousemove', doResize);
         document.removeEventListener('mouseup', stopResize);
@@ -560,6 +572,7 @@ function makeDraggable(el) {
         const maxZ = Math.max(...STATE.notes.map(n => n.z_index || 0), 0) + 1;
         el.style.zIndex = maxZ;
         el.classList.add('dragging');
+        STATE.isDragging = true;
         
         pos3 = e.clientX;
         pos4 = e.clientY;
@@ -592,6 +605,7 @@ function makeDraggable(el) {
 
     function closeDragElement() {
         el.classList.remove('dragging');
+        STATE.isDragging = false;
         document.removeEventListener('mouseup', closeDragElement);
         document.removeEventListener('mousemove', elementDrag);
         
