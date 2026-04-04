@@ -1,0 +1,1108 @@
+/* /public/css/notes.css */
+
+/* Core Canvas Layout - Immersive Refactor */
+.canvas-container {
+    width: 100%;
+    /* High-Fidelity Local Offset: Lifting the canvas -25px to hide the global 70px body gap */
+    height: calc(100vh - 45px);
+    margin-top: -25px;
+    overflow: auto;
+    background: #0b1121;
+    position: relative;
+    box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.6);
+    border: none; /* Edget-to-edge parity */
+}
+
+#notes-canvas {
+    width: 5000px;
+    height: 5000px;
+    position: relative;
+    /* High-Fidelity 10px Grid Feedback */
+    background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Floating Action Button (FAB) Stack */
+.floating-actions {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* Absolute Right-Alignment Pillar */
+    gap: 0.675em; /* 20% Increase: 9px -> 10.8px equivalent */
+    z-index: 10000;
+}
+
+.fab-btn {
+    width: 2.7em;
+    height: 2.7em;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 
+                inset 0 0 10px rgba(255, 255, 255, 0.05); /* Inset Glass Graduation */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    color: white;
+}
+
+.fab-btn:hover {
+    transform: scale(1.1) translateY(-5px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.fab-btn:active {
+    transform: scale(0.95);
+}
+
+/* Standardized Floating Action Buttons (Global Square Format) */
+.fab-btn.btn-icon-square {
+    width: 1.98em; /* 20% Increase: 26.4px -> 31.68px equivalent */
+    height: 1.98em;
+    border-radius: 0.375em; /* Reduced from 0.625em: Modern Crisp Graduation */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    margin-bottom: 5px;
+}
+
+.fab-btn.btn-icon-square:hover {
+    transform: scale(1.05) translateX(-5px); /* Side-Flush Tactile Graduation */
+    background: rgba(59, 130, 246, 0.5); /* Global Blue Glow */
+    border-color: rgba(59, 130, 246, 0.8);
+    color: #fff;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.4);
+}
+
+.fab-btn.btn-icon-square.btn-success:hover {
+    background: rgba(16, 185, 129, 0.5); /* Global Green Glow */
+    border-color: rgba(16, 185, 129, 0.8);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+
+/* Bespoke Small-Scale FAB for Zoom Out Navigation */
+.fab-btn.btn-icon-square.btn-sm {
+    width: 1.53em; /* 20% Increase: 20.4px -> 24.48px equivalent */
+    height: 1.53em;
+    border-radius: 4px;
+    margin-top: -5px; /* Compact the vertical stack */
+}
+
+/* Scale percentage badge shown above FAB cluster */
+#scale-badge {
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.05em;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Glassmorphic Sticky Note Component */
+.sticky-note {
+    position: absolute;
+    width: 31.25em; /* 500px resolution-independent graduation */
+    min-width: 15em;
+    min-height: 7.5em; /* 120px */
+    border-radius: 0.75em; /* Reduced from 1.25em: Modern Crisp Graduation */
+    padding: 0.9375em; /* 15px */
+    display: flex;
+    flex-direction: column;
+    gap: 0.625em; /* 10px */
+    cursor: default;
+    user-select: none;
+    transition: box-shadow 0.2s, transform 0.2s, opacity 0.2s;
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    
+    /* High-Precision Custom Accent Logic */
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-left: 4px solid var(--note-accent, #f59e0b);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 
+                inset 0 0 12px rgba(255, 255, 255, 0.05); /* Inset Glass Graduation */
+    z-index: 10;
+    transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.25), 
+                box-shadow 0.25s ease, 
+                border-color 0.25s ease,
+                border-style 0.25s ease;
+}
+
+/* Pick & Place: Flight Mode Graduation */
+.sticky-note.note-picked {
+    z-index: 10000 !important;
+    transform: translateY(-10px) scale(1.05);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 30px var(--note-accent, #3b82f6);
+    border-style: dashed;
+    border-width: 2px;
+    opacity: 0.95;
+    cursor: move;
+}
+
+/* Sub-Tactile Feedback: Highlight Pulse Graduation */
+.sticky-note.highlight-pulse {
+    animation: noteHighlightPulse 2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000 !important;
+}
+
+@keyframes noteHighlightPulse {
+    0% { transform: scale(1); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45); }
+    30% { transform: scale(1.05); box-shadow: 0 0 50px var(--note-accent, #3b82f6), 0 0 20px var(--note-accent, #3b82f6); }
+    100% { transform: scale(1); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45); }
+}
+
+.sticky-note:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-4px) scale(1.01); /* Tactile Interaction Graduation */
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6), 
+                0 0 20px var(--note-accent, rgba(59, 130, 246, 0.3)),
+                inset 0 0 15px rgba(255, 255, 255, 0.08); 
+}
+
+/* Modern Crisp Resize Handle */
+.note-resize-handle {
+    position: absolute;
+    right: 0.125em;
+    bottom: 0.125em;
+    width: 1em;
+    height: 1em;
+    cursor: nwse-resize;
+    z-index: 100;
+    opacity: 0.2;
+    transition: opacity 0.2s;
+    background: linear-gradient(135deg, transparent 50%, rgba(255, 255, 255, 0.6) 50%);
+    border-radius: 0 0 0.5em 0;
+}
+
+.sticky-note:hover .note-resize-handle {
+    opacity: 0.6;
+}
+
+.note-resize-handle:hover {
+    opacity: 1 !important;
+}
+
+.sticky-note.dragging {
+    z-index: 10000 !important;
+    opacity: 0.85;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    transform: scale(1.02);
+    cursor: grabbing;
+}
+
+/* Deprecated Header Block removed during Structural Consolidation */
+
+.note-actions {
+    display: flex;
+    gap: 0.375em; /* 6px */
+}
+
+/* Content Area Synchronization */
+.note-content {
+    flex-grow: 1;
+    overflow: hidden;
+    position: relative;
+    display: flex; /* High-Fidelity Expansion Pillar */
+    flex-direction: column;
+}
+
+.note-content textarea {
+    width: 100%;
+    height: 100%; /* Absolute Volumetric Synchronization */
+    background: transparent;
+    border: none;
+    color: #e5e7eb;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.05em; /* Premium Leading Graduation */
+    line-height: 1.65;
+    resize: none;
+    outline: none;
+    padding: 0.5em; /* 8px padding for breathing room */
+    /* Preserve whitespace, tabs, and newlines from pasted content */
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Image Note Scaling */
+.note-image-container {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.note-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Premium cropped scale */
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.sticky-note:hover .note-image {
+    transform: scale(1.02); /* Subtle hover parallax effect */
+}
+
+/* State-Driven Collapse Toggle */
+.sticky-note.collapsed {
+    min-height: unset !important;
+    height: 80px !important;
+    padding: 0.625em 0.9375em; /* 10px 15px */
+}
+
+.sticky-note.collapsed .note-resize-handle {
+    display: none !important;
+}
+
+.sticky-note.collapsed .note-content {
+    display: none;
+}
+
+.sticky-note.collapsed .note-header {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* High-Fidelity Color Tints */
+.sticky-note[data-color="amber"] { border-top: 4px solid #f59e0b; }
+.sticky-note[data-color="blue"] { border-top: 4px solid #3b82f6; }
+.sticky-note[data-color="emerald"] { border-top: 4px solid #10b981; }
+.sticky-note[data-color="rose"] { border-top: 4px solid #f43f5e; }
+.sticky-note[data-color="violet"] { border-top: 4px solid #8b5cf6; }
+
+/* Drag-over Upload Feedback */
+#notes-canvas.drag-active::after {
+    content: 'Drop to create Image Note';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(59, 130, 246, 0.2);
+    border: 2px dashed #3b82f6;
+    color: #3b82f6;
+    padding: 2rem 4rem;
+    border-radius: 1rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 5000;
+    backdrop-filter: blur(4px);
+}
+
+/* Premium High-Density Layout Engine */
+/* Premium Bespoke Immersive Modal Layout Engine */
+.note-modal-content {
+    width: 92vw;
+    max-width: 1600px;
+    height: 92vh;
+    padding: 0 !important;
+    margin: auto;
+    overflow: hidden;
+    position: relative;
+    background: rgba(10, 15, 28, 0.95) !important;
+    backdrop-filter: blur(40px) saturate(200%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.9), 
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+                inset 0 0 30px rgba(255, 255, 255, 0.03); /* Multi-Layered Inset Depth */
+    border-radius: 1.0em; /* Reduced from 1.5em: Modern Crisp Graduation */
+    display: flex;
+    flex-direction: column;
+    animation: modalScaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.note-modal-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    background: transparent !important;
+}
+
+/* Immersive Modal Header: Unifying the Title and Close Cluster */
+.note-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.8rem 1rem 1.8rem; /* Precision Vertical Calibration */
+    z-index: 100;
+    position: relative;
+    gap: 20px;
+}
+
+/* High-Fidelity Inset Separator: Synchronized with content margins */
+
+
+.note-modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 300;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Modal Typography Graduation: Title Input cluster */
+.note-modal-title-input {
+    flex: 1;
+    background: transparent;
+    border: none !important;
+    padding: 0;
+    margin: 0;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    outline: none;
+    letter-spacing: -0.01em;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.note-modal-title-input:focus {
+    color: #3b82f6; /* Subtle indicator of active state */
+}
+
+/* Modal Typography Graduation: Title Display */
+.note-modal-title-display {
+    flex: 1;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    letter-spacing: -0.01em;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Immersive Close Button Cluster Alignment */
+.note-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 18px;
+    font-size: 1.5rem;
+    line-height: 1;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+    z-index: 101;
+}
+
+.note-modal-close:hover {
+    color: #fff;
+    transform: rotate(90deg) scale(1.2);
+}
+
+/* Immersive Editor/Viewer absolute-stretched to content base */
+.note-view-pre-max {
+    margin: 0;
+    padding: 1.25em 2.5em; /* 20px 40px */
+    flex: 1;
+    width: 100%;
+    height: auto !important; /* Allow flex: 1 to control height */
+    background: transparent !important;
+    color: #f8fafc;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 0.8rem;
+    line-height: 1.8;
+    letter-spacing: 0.01em;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    overflow-y: auto;
+    border: none !important;
+    outline: none !important;
+    resize: none;
+    box-shadow: inset 0 40px 80px -40px rgba(0, 0, 0, 0.8), inset 0 -40px 80px -40px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Bespoke Static Footer (The Anchor) */
+.note-modal-footer {
+    height: 5.625em; /* 90px */
+    width: 100%;
+    padding: 0 3.75em; /* 60px */
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Centered Button Standard */
+    background: rgba(5, 8, 15, 0.8);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0 0 24px 24px;
+    z-index: 1000;
+    flex-shrink: 0;
+    flex-grow: 0;
+    position: relative;
+}
+
+/* Color Picker promoted to left-aligned pillar */
+.note-modal-footer .custom-color-picker-container {
+    position: absolute;
+    left: 40px;
+}
+
+.modal-close-floating {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    z-index: 2000;
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.2);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    line-height: 1;
+    cursor: pointer;
+}
+
+.modal-close-floating:hover {
+    color: #ef4444;
+    transform: rotate(90deg) scale(1.2);
+}
+
+/* Micro-Lens Calibration for Zoom Out */
+.icon-scale-down .global-icon {
+    transform: scale(0.7);
+    display: inline-flex;
+    transition: transform 0.3s ease;
+}
+
+.icon-scale-down:hover .global-icon {
+    transform: scale(0.85); /* Maintain relative scale during button hover */
+}
+
+/* Custom Premium Scrollbar (Themed Glass) */
+.note-view-pre-max::-webkit-scrollbar {
+    width: 8px;
+}
+
+.note-view-pre-max::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.note-view-pre-max::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.2);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.note-view-pre-max::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.4);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+/* Redesigned Floating Interaction (Pill Tab) */
+.note-view-floating-copy {
+    position: absolute;
+    bottom: 32px;
+    right: 40px;
+    padding: 12px 22px;
+    border-radius: 40px;
+    background: rgba(59, 130, 246, 0.15);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: #3b82f6;
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.note-view-floating-copy:hover {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: #3b82f6;
+    color: #fff;
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+}
+
+/* Custom Color Picker (Refined Sizing) */
+.custom-color-picker-container {
+    display: flex;
+    align-items: center;
+}
+
+.color-inputs {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 8px 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#edit-note-color {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+#edit-note-color::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+/* note-header absolute-stretched with drawer and title support */
+.note-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 2.5em; /* 40px */
+    padding: 0 0.5em 0 1.25em; /* Asymmetric Graduation: Right-anchored trigger */
+    margin: 0.625em 0.625em 0 0.625em; /* 10px */
+    background: linear-gradient(45deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.4) 50%, rgba(15, 23, 42, 0.7) 100%);
+    background-size: 200% 200%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75em; /* Reduced from Pill to Modern Crisp Floating Box */
+    cursor: grab;
+}
+
+.note-drag-handle-container {
+    display: flex;
+    align-items: center;
+    gap: 0.625em; /* 10px */
+    flex: 1;
+    min-width: 0; /* Allow title to truncate */
+}
+
+.note-title-slot {
+    font-size: 0.78rem;
+    font-weight: 700; /* High-Fidelity Font-Weight Graduation */
+    color: rgba(255, 255, 255, 0.85);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: 'Inter', sans-serif;
+}
+
+.note-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.3125em; /* 5px */
+}
+
+/* Immersive Action Drawer Engine */
+.note-actions-drawer {
+    display: flex;
+    align-items: center;
+    gap: 0.3125em; /* 5px */
+    width: max-content;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.note-actions-drawer.expanded {
+    max-width: 12.5em; /* Expanded volume for the new Sticky Move icon */
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Drawer Toggle Cluster (Glassmorphic Trigger) */
+.drawer-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.5em; /* 8px */
+    background: linear-gradient(45deg, rgba(30, 41, 59, 0.9) 0%, rgba(51, 65, 85, 0.6) 50%, rgba(30, 41, 59, 0.9) 100%);
+    background-size: 200% 200%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.5em; /* Reduced from Pill to Modern Crisp Trigger */
+    padding: 0.25em 0.75em; /* ~4px 12px */
+    margin: 0.25em 0; /* 4px */
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.drawer-trigger:hover {
+    background: rgba(51, 65, 85, 0.9);
+    border-color: rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+}
+
+.drawer-note-title {
+    flex: 1;
+    text-align: left; /* Anchored as requested */
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* High-Fidelity Integrated Creation Preview */
+.create-preview-glass {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1.25em;
+    margin: 0.5rem 1.8rem 1.25rem 1.8rem; /* Precision-calibrated inset */
+    min-height: 80px;
+    max-height: 600px;
+    overflow-y: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
+}
+
+.modal-overlay.active, .modal-overlay.show {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+.create-preview-image {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    object-fit: contain;
+}
+
+.create-preview-text {
+    width: 100%;
+    height: 25rem;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    color: #cbd5e1;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    text-align: left;
+    line-height: 1.6;
+}
+
+.modal-sub-label {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    margin-bottom: 0.5em;
+}
+
+/* Drawer Toggle Pillar (Small Slate Square) */
+.btn-icon-drawer {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #475569; /* Slate 600 */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: monospace;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 0;
+}
+
+.btn-icon-drawer:hover {
+    background: #64748b;
+    transform: scale(1.1);
+}
+
+/* Global Square Icon Buttons on Note Cards (High-Density Profile) */
+.btn-icon-view, .btn-icon-collapse, .btn-icon-edit, .btn-icon-delete, .btn-icon-sticky {
+    width: 1.75em; /* 28px calculation */
+    height: 1.75em;
+    border-radius: 0.375em; /* Reduced from 0.625em: Modern Crisp Graduation */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    color: #fff;
+    padding: 0;
+}
+
+.btn-icon-view     { background: #10b981; } /* Emerald */
+.btn-icon-collapse { background: #3b82f6; } /* Blue */
+.btn-icon-edit     { background: #f59e0b; } /* Amber */
+.btn-icon-delete   { background: #ef4444; } /* Rose */
+.btn-icon-sticky   { background: #14b8a6; } /* Teal 500 */
+
+.btn-icon-view:hover, .btn-icon-collapse:hover, .btn-icon-edit:hover, .btn-icon-delete:hover, .btn-icon-sticky:hover {
+    transform: scale(1.1);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+    filter: brightness(1.2);
+    z-index: 10;
+}
+
+.btn-icon-view:hover     { border-color: rgba(16, 185, 129, 0.5); }
+.btn-icon-collapse:hover { border-color: rgba(59, 130, 246, 0.5); }
+.btn-icon-edit:hover     { border-color: rgba(245, 158, 11, 0.5); }
+.btn-icon-delete:hover   { border-color: rgba(239, 68, 68, 0.5); }
+.btn-icon-sticky:hover   { border-color: rgba(20, 184, 166, 0.5); }
+
+/* High-Fidelity Responsive Calibration */
+@media (max-width: 768px) {
+    .note-modal-content {
+        width: 96vw;
+        height: 98vh; /* Maximize vertical volume on mobile */
+        border-radius: 16px;
+    }
+
+    .note-view-pre-max {
+        padding: 20px 15px; /* Minimal mobile padding */
+        font-size: 0.75rem; /* Micro-titration for phone density */
+    }
+
+    .note-modal-footer {
+        height: 80px;
+        padding: 0 20px;
+        justify-content: space-between; /* Dock to sides to prevent collision */
+    }
+
+    .note-modal-footer .custom-color-picker-container {
+        position: static; /* Absolute-purge the floating anchor */
+    }
+
+    .note-modal-header {
+        padding: 15px 20px 5px 20px;
+        gap: 10px;
+    }
+
+    .note-modal-title-input, .note-modal-title-display {
+        font-size: 1.3rem; /* Micro-titration for phone density */
+    }
+
+    .note-modal-close {
+        top: 4px;
+        right: 4px;
+        font-size: 1.1rem; /* Discrete Precision Titration */
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+    }
+}
+/* --- High-Fidelity Paste Modal Centering --- */
+.create-modal-footer-right {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    width: 100% !important;
+    height: 4rem;
+    padding-right: 1.8rem !important;
+    gap: 0 !important;
+}
+
+#create-note-btn {
+    margin: 0 !important;
+}
+
+#note-create-modal .custom-color-picker-container {
+    position: absolute;
+    left: 1.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* --- High-Fidelity Unified Creation Modal Layout --- */
+#note-create-modal .note-modal-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1) 20%, rgba(255, 255, 255, 0.1) 80%, transparent);
+}
+
+#note-create-modal .note-modal-body {
+    padding-top: 1.25rem;
+}
+
+#note-create-modal .note-modal-content {
+    width: 600px;
+    max-width: 96vw;
+    height: auto;
+    max-height: 92vh;
+    margin: 2vh auto;
+}
+
+#note-create-modal .note-modal-footer {
+    height: 4rem;
+    border-top: none !important; /* Force removal of separation line */
+    background: transparent !important;
+}
+
+/* --- Unified Drafting Utility Hooks --- */
+.create-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.8rem;
+    position: relative;
+}
+
+/* --- High-Fidelity Search Engine Aesthetics --- */
+#note-search-modal .note-modal-content {
+    width: 800px;
+    max-width: 90vw;
+    height: 70vh;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    animation: modalScaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.search-modal-glass {
+    background: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: blur(40px) saturate(240%) !important;
+}
+
+.search-filter-layer {
+    padding: 20px 2rem 0 2rem; /* Sync with Header */
+    background: rgba(15, 23, 42, 0.2);
+}
+
+.search-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 2px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.search-input-wrapper:focus-within {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+}
+
+.search-icon-fixed .global-icon {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.search-input-wrapper:focus-within .search-icon-fixed .global-icon {
+    color: #3b82f6;
+}
+
+.search-results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 1rem 2rem 2rem 2rem; /* Gold Standard Alignment */
+    overflow-y: auto;
+    flex: 1;
+    max-height: calc(92vh - 200px); /* Synchronized for vertical stack */
+}
+
+/* Search Result Item (Immersive Card Layout) */
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-left: 4px solid var(--note-accent, #3b82f6);
+    border-radius: 12px;
+    padding: 1.25em;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.search-result-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateX(8px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.search-result-icon .global-icon {
+    font-size: 1.5rem;
+    color: var(--note-accent, #3b82f6);
+}
+
+.search-result-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.search-result-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-result-snippet {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Empty State Styling */
+.search-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4em 0;
+    color: rgba(255, 255, 255, 0.15);
+    gap: 20px;
+}
+
+.search-empty-state .global-icon {
+    font-size: 4rem;
+}
+
+.search-empty-state p {
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+/* --- Create Modal Form Aesthetics --- */
+.create-form-group {
+    margin-bottom: 0.5rem;
+    padding: 0 1.8rem; /* Synchronized with Header Graduation */
+}
+
+.create-modal-label {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 12px;
+    letter-spacing: 0.02em;
+}
+
+.create-input-wrapper {
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.create-input-wrapper:focus-within {
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+}
+
+.create-modal-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 1.05rem;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+}
+
+.create-modal-input::placeholder {
+    color: rgba(255, 255, 255, 0.2);
+}
+
+/* Mobile Calibration for Search Grid */
+@media (max-width: 768px) {
+    .search-results-grid {
+        padding: 15px;
+        max-height: calc(98vh - 120px);
+    }
+    
+    .search-result-item {
+        padding: 12px;
+        gap: 15px;
+    }
+    
+    .search-result-item:hover {
+        transform: none; /* Avoid horizontal shift on touch */
+    }
+}
+/* High-Fidelity Draft Tip: Subtle immutability indicator */
+.create-edit-tip {
+    position: absolute;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(59, 130, 246, 0.1);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 20px;
+    color: #3b82f6;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+    opacity: 0.85;
+    z-index: 10;
+    transition: all 0.3s ease;
+}
