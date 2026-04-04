@@ -579,6 +579,15 @@ sub startup {
     $family->post('/receipts/api/ocr/:id')->to('receipts#api_ocr');
     $family->post('/receipts/api/ai_analyze/:id')->to('receipts#api_ai_analyze');
 
+    # --- Notes Whiteboard Routes ---
+    $auth->get('/notes')->to('notes#index');
+    $auth->get('/notes/api/state')->to('notes#api_state');
+    $auth->post('/notes/api/save')->to('notes#api_save');
+    $auth->post('/notes/api/delete')->to('notes#api_delete');
+    $auth->post('/notes/api/upload')->to('notes#api_upload');
+    $auth->post('/notes/api/viewport')->to('notes#api_save_viewport');
+    $auth->get('/notes/serve/:note_id')->to('notes#serve_blob');
+
     # --- Room Tracker Routes ---
     $family->get('/room')->to('room#index');
     $family->get('/room/api/state')->to('room#api_state');
