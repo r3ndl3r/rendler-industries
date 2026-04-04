@@ -28,7 +28,8 @@ const STATE = {
     last_mutation:  null,           // Synchronization Baseline
     heartbeatTimer: null,           // Active Polling Reference
     isDragging:     false,          // Note Movement State
-    isResizing:     false           // Note Dimensions State
+    isResizing:     false,          // Note Dimensions State
+    isEditingNote:  false           // Inline Editor Active State
 };
 
 /**
@@ -330,6 +331,7 @@ function setupHeartbeat(canvasId) {
                               STATE.isPanning      || 
                               STATE.isDragging     || 
                               STATE.isResizing     || 
+                              STATE.isEditingNote  || 
                               STATE.pickedNoteId   || 
                               document.querySelector('.modal-overlay.show') || 
                               ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
@@ -417,7 +419,7 @@ function createNoteElement(note, canEdit = true) {
 
     let contentHtml = '';
     if (note.type === 'text') {
-        contentHtml = `<div class="note-content"><textarea readonly>${escapeHtml(note.content || '')}</textarea></div>`;
+        contentHtml = `<div class="note-content"><textarea readonly onkeydown="handleNoteKeydown(event, ${note.id})">${escapeHtml(note.content || '')}</textarea></div>`;
     } else if (note.type === 'image') {
         contentHtml = `
             <div class="note-content">
@@ -429,10 +431,15 @@ function createNoteElement(note, canEdit = true) {
 
     div.innerHTML = `
         <div class="note-header">
+            <input type="color" class="inline-color-input" value="${accentColor}" 
+                   oninput="updateNoteAccent(this, ${note.id})" title="Change Note Color" ${canEdit ? '' : 'disabled'}>
+            
             <div class="note-drag-handle-container" onclick="toggleStickyMove(event, ${note.id})" title="Click anywhere in the title bar to Pick and Place (Sticky Move)">
                 <div class="note-title-slot">
                     ${escapeHtml(note.title || 'Untitled Note')}
                 </div>
+                <input type="text" class="inline-title-input" value="${escapeHtml(note.title || '')}" 
+                       placeholder="Note Title..." autocomplete="off">
             </div>
             <div class="note-actions">
                 <div class="note-actions-drawer ${note.is_options_expanded ? 'expanded' : ''}" id="drawer-${note.id}">
@@ -442,7 +449,7 @@ function createNoteElement(note, canEdit = true) {
                     <button class="btn-icon-link" onclick="copyNoteLink(${note.id})" title="Copy Direct Link">
                         ${getIcon('link')}
                     </button>
-                    <button class="btn-icon-move" onclick="openMoveModal(event, ${note.id})" title="Copy to Canvas" ${canEdit ? '' : 'disabled style="opacity:0.5"'}>
+                    <button class="btn-icon-move" onclick="openMoveModal(event, ${note.id})" title="Copy to Canvas" ${canEdit ? '' : 'disabled'}>
                         ${getIcon('move')}
                     </button>
                     <button class="btn-icon-view" onclick="viewNote(${note.id})" title="Quick View">
@@ -451,10 +458,10 @@ function createNoteElement(note, canEdit = true) {
                     <button class="btn-icon-collapse" onclick="toggleCollapse(${note.id})" title="Toggle Collapse">
                         ${getIcon(note.is_collapsed ? 'expand' : 'collapse')}
                     </button>
-                    <button class="btn-icon-edit" onclick="editNote(${note.id})" title="Edit Content" ${canEdit ? '' : 'disabled style="opacity:0.5"'}>
+                    <button class="btn-icon-edit" onclick="toggleInlineEdit(this, ${note.id})" title="Edit Content" ${canEdit ? '' : 'disabled'}>
                         ${getIcon('edit')}
                     </button>
-                    <button class="btn-icon-delete" onclick="deleteNote(${note.id})" title="Delete Note" ${canEdit ? '' : 'disabled style="opacity:0.5"'}>
+                    <button class="btn-icon-delete" onclick="deleteNote(${note.id})" title="Delete Note" ${canEdit ? '' : 'disabled'}>
                         ${getIcon('delete')}
                     </button>
                 </div>
@@ -1221,16 +1228,123 @@ async function copyViewContent() {
 }
 
 /**
- * Edit Note Modal Integration.
+ * Inline Core: Toggles the editing state for a specific note element.
+ * @param {HTMLElement} btn - The clicked button reference.
  * @param {number|string} id - The note ID.
  * @returns {void}
  */
+function toggleInlineEdit(btn, id) {
+    const el   = document.getElementById(`note-${id}`);
+    const note = STATE.notes.find(n => n.id == id);
+    if (!el || !note) return;
+
+    const isEditing = el.classList.toggle('is-editing');
+    const textarea  = el.querySelector('textarea');
+    const titleInp  = el.querySelector('.inline-title-input');
+
+    if (isEditing) {
+        // Mode Transition: Enable Interaction & Focus
+        STATE.isEditingNote  = true;
+        if (textarea) textarea.readOnly = false;
+        
+        btn.innerHTML = getIcon('save');
+        btn.title     = 'Save Changes';
+        btn.classList.add('pulse-glow');
+        
+        // Auto-Focus Precision
+        titleInp.focus();
+    } else {
+        // Mode Termination: Atomic Persistence
+        saveNoteInline(id);
+    }
+}
+
+/**
+ * State Persistence: Synchronizes DOM values and persists note modifications directly.
+ * @param {number|string} id - The note ID.
+ * @returns {Promise<void>}
+ */
+async function saveNoteInline(id) {
+    const el   = document.getElementById(`note-${id}`);
+    const note = STATE.notes.find(n => n.id == id);
+    if (!el || !note) return;
+
+    const title    = el.querySelector('.inline-title-input').value;
+    const textarea = el.querySelector('textarea');
+    const content  = textarea ? textarea.value : '';
+    const color    = el.querySelector('.inline-color-input').value;
+    const editBtn  = el.querySelector('.btn-icon-edit');
+
+    el.classList.add('pending');
+    
+    // Interaction Locking: Maintain state integrity during flight
+    const params = {
+        id: id,
+        canvas_id: STATE.canvas_id,
+        title: title,
+        content: content,
+        color: color,
+        x: note.x,
+        y: note.y,
+        width: el.offsetWidth,
+        height: el.offsetHeight,
+        z_index: el.style.zIndex,
+        is_collapsed: note.is_collapsed,
+        is_options_expanded: note.is_options_expanded
+    };
+
+    try {
+        const res = await apiPost('/notes/api/save', params);
+        if (res && res.success) {
+            STATE.notes = res.notes; // State Sync baseline
+            
+            // Revert UI to View Mode
+            el.classList.remove('is-editing');
+            if (textarea) textarea.readOnly = true;
+            if (editBtn) {
+                editBtn.innerHTML = getIcon('edit');
+                editBtn.title     = 'Edit Content';
+                editBtn.classList.remove('pulse-glow');
+            }
+            STATE.isEditingNote = false;
+            showToast('Note Saved', 'success');
+        }
+    } finally {
+        el.classList.remove('pending');
+    }
+}
+
+/**
+ * Real-time Feedback: Update note accent color during editing.
+ */
+function updateNoteAccent(inp, id) {
+    const el = document.getElementById(`note-${id}`);
+    if (el) {
+        el.style.setProperty('--note-accent', inp.value);
+    }
+}
+
 function editNote(id) {
     const note = STATE.notes.find(n => n.id == id);
     if (!note) return;
 
-    // Trigger the Unified Drafting Modal in 'edit' mode
-    showCreateNoteModal(note.type, null, id);
+    // Backward compatibility for keyboard shortcuts or global triggers
+    const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
+    if (btn) toggleInlineEdit(btn, id);
+}
+
+/**
+ * Keyboard Interface: Handles productivity shortcuts within the inline editor.
+ */
+function handleNoteKeydown(e, id) {
+    // Ctrl + Enter: Instant Save
+    if (e.ctrlKey && e.key === 'Enter') {
+        const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
+        if (btn && document.getElementById(`note-${id}`).classList.contains('is-editing')) {
+            e.preventDefault();
+            toggleInlineEdit(btn, id);
+        }
+    }
 }
 
 /**
