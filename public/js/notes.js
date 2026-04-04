@@ -3,7 +3,7 @@
 /**
  * Sticky Notes Whiteboard Engine
  * 
- * Manages the high-fidelity persistence and interactive rendering of
+ * Manages the persistent storage and interactive rendering of
  * sticky note records. Handles coordinate synchronization, 10px snap-grid
  * movement, and multipart binary upload flows.
  */
@@ -15,7 +15,7 @@ const STATE = {
     canvasSize: 5000,
     snapGrid:   10,
     scale:      1.0,      // Current CSS transform scale
-    canvas_id:  1,        // High-Fidelity Active Whiteboard Context
+    canvas_id:  1,        // Active Whiteboard Context
     vpSaveTimer: null,    // Debounce handle for viewport persistence
     isInitializing: false, // Shield to prevent save-during-load race conditions
     pickedNoteId:   null,  // Active 'Pick & Place' record
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initNotes();
 });
 
-// High-Fidelity Persistence Guard: Save viewport before reload
+// State Synchronization: Save viewport before reload
 window.addEventListener('beforeunload', () => {
     if (!STATE.isInitializing) {
         saveViewportImmediate();
@@ -49,7 +49,7 @@ window.addEventListener('beforeunload', () => {
  * @returns {void}
  */
 async function initNotes() {
-    await loadState(true); // Absolute-anchor initial perspective
+    await loadState(true); // Establish initial perspective
 
     // Event Delegation for Canvas Interactions
     const canvas = document.getElementById('notes-canvas');
@@ -64,15 +64,15 @@ async function initNotes() {
     document.getElementById('focus-recent').addEventListener('click', focusMostRecentNote);
     document.getElementById('open-search').addEventListener('click', openSearchModal);
 
-    // High-Fidelity Search Input Listener
+    // Search Input Listener
     const searchInput = document.getElementById('note-search-input');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => filterSearch(e.target.value));
     }
-    // High-Fidelity Interaction: Global Clipboard Sync (Ctrl+V)
+    // Interaction: Global Clipboard Sync (Ctrl+V)
     document.addEventListener('paste', handleGlobalClipPaste);
 
-    // High-Fidelity Unified Creation Modal Listener
+    // Creation Modal Listener
     const createConfirmBtn = document.getElementById('create-note-btn');
     if (createConfirmBtn) {
         createConfirmBtn.addEventListener('click', executeCreateNote);
@@ -108,14 +108,14 @@ async function initNotes() {
                     note.is_options_expanded = drawer.classList.contains('expanded') ? 1 : 0;
                     toggleBtn.innerHTML = note.is_options_expanded ? '&gt;' : '&lt;';
                     
-                    // Persistence Pillar: Immediate synchronization
+                    // State Synchronization: Persist position across the module
                     syncNotePosition(noteId);
                 }
             }
         });
     }
 
-    // High-Fidelity Modal Registry: Synchronize all overlays with the global closing engine
+    // Modal Registry: Synchronize all overlays with the global closing engine
     setupGlobalModalClosing(['modal-overlay'], [closeViewModal, closeCreateModal, closeSearchModal]);
     document.querySelectorAll('[data-close="modal"]').forEach(btn => {
         btn.onclick = () => {
@@ -134,16 +134,16 @@ async function initNotes() {
         wrapper.addEventListener('scroll', onViewportScroll);
     }
 
-    // High-Fidelity Interaction: Activate Drag-and-Drop File Engine
+    // Interaction: Activate Drag-and-Drop File Engine
     initDropZones();
 
-    // High-Fidelity Global Interface: Keydown Listeners (ESC/Arrows)
+    // Global Interface: Keydown Listeners (ESC/Arrows)
     document.addEventListener('keydown', handleGlobalKeydown);
     
     // Global Click Listener for 'Pick & Place' Drop Conclusion
     document.addEventListener('click', handleGlobalClick, true);
 
-    // Icon Registry Graduation: Read from the non-inline data anchor
+    // Icon Registry Initialization: Read from the non-inline data anchor
     if (canvas && canvas.dataset.icons) {
         try {
             window.GLOBAL_ICONS = JSON.parse(canvas.dataset.icons);
@@ -175,12 +175,12 @@ async function loadState(initial = false, canvas_id = null) {
             STATE.user_id   = data.user_id;
             STATE.canvas_id = data.canvas_id || tid;
 
-            // Only restore perspective if this is the high-fidelity initial load
+            // Only restore perspective if this is the initial load
             if (initial && data.viewport) {
                 STATE.scale = parseFloat(data.viewport.scale) || 1.0;
                 applyScale();
 
-                // Restore canonical perspective (X, Y Center) across scale graduation
+                // Restore canonical perspective (X, Y Center) across scale levels
                 requestAnimationFrame(() => {
                     const wrapper = document.getElementById('canvas-wrapper');
                     if (!wrapper) return;
@@ -308,7 +308,7 @@ function createNoteElement(note) {
 }
 
 /**
- * High-Fidelity Resize Engine Graduation
+ * Resize engine initialization
  * @param {HTMLElement} el - The note element.
  * @param {Object} note - The note data object.
  * @returns {void}
@@ -352,7 +352,7 @@ function initResizable(el, note) {
         newWidth  = Math.round(newWidth / STATE.snapGrid) * STATE.snapGrid;
         newHeight = Math.round(newHeight / STATE.snapGrid) * STATE.snapGrid;
         
-        // Constraint Graduation: Min-Size and Canvas-Boundary Entrapment
+        // Constraint Logic: Min-Size and Canvas-Boundary Entrapment
         const maxWidth  = STATE.canvasSize - note.x;
         const maxHeight = STATE.canvasSize - note.y;
         
@@ -371,7 +371,7 @@ function initResizable(el, note) {
         document.removeEventListener('mouseup', stopResize);
         el.classList.remove('resizing');
         
-        // Persistence Pillar: Synchronization with MariaDB
+        // State Synchronization: Persist dimensions to the database
         const finalWidth  = parseInt(el.style.width, 10);
         const finalHeight = parseInt(el.style.height, 10);
         
@@ -429,7 +429,7 @@ function makeDraggable(el) {
         newX = Math.round(newX / STATE.snapGrid) * STATE.snapGrid;
         newY = Math.round(newY / STATE.snapGrid) * STATE.snapGrid;
 
-        // Clamping Pillar: Coordinate overflow is absolute-prevented
+        // Clamping Logic: Coordinate overflow is prevented
         newX = Math.max(0, Math.min(newX, STATE.canvasSize - el.offsetWidth));
         newY = Math.max(0, Math.min(newY, STATE.canvasSize - el.offsetHeight));
 
@@ -442,13 +442,13 @@ function makeDraggable(el) {
         document.removeEventListener('mouseup', closeDragElement);
         document.removeEventListener('mousemove', elementDrag);
         
-        // Persistence Pillar: Synchronization with MariaDB
+        // State Synchronization: Persist position to the database
         syncNotePosition(el.dataset.id);
     }
 }
 
 /**
- * High-Fidelity Pick & Place (Sticky Move) Orchestrator.
+ * Pick & Place (Sticky Move) Orchestrator.
  * Transitions a note into 'flight mode' where it follows the cursor without a held click.
  * @param {MouseEvent} e - The click event.
  * @param {number|string} id - The note ID.
@@ -538,7 +538,7 @@ function dropStickyNote() {
     if (el) el.classList.remove('note-picked');
     document.removeEventListener('mousemove', updateStickyMove);
     
-    // Persistence Pillar: Synchronization with MariaDB
+    // State Synchronization: Persist position to the database
     syncNotePosition(id);
     showToast('Note placed', 'success');
 }
@@ -572,7 +572,7 @@ function cancelStickyMove() {
 }
 
 /**
- * High-Fidelity Global Click Orchestrator.
+ * Global Click Orchestrator.
  * Handles drop logic for the 'Pick & Place' engine.
  * @param {MouseEvent} e - The click event.
  * @returns {void}
@@ -589,7 +589,7 @@ function handleGlobalClick(e) {
 }
 
 /**
- * High-Fidelity Global Keyboard Interface.
+ * Global Keyboard Interface.
  * @param {KeyboardEvent} e - The keydown event.
  * @returns {void}
  */
@@ -636,7 +636,7 @@ async function syncNotePosition(id) {
     try {
         const res = await apiPost('/notes/api/save', params);
         if (res && res.success) {
-            STATE.notes = res.notes; // State Synthesis Graduation
+            STATE.notes = res.notes; // State Sync
         }
     } finally {
         el.classList.remove('pending');
@@ -656,7 +656,7 @@ function centerView() {
 }
 
 /**
- * High-Fidelity Focus: Locates the most recently created note (Max ID) 
+ * Focus detection: Locates the most recently created note (Max ID) 
  * and centers the viewport on its coordinates.
  * @returns {void}
  */
@@ -676,7 +676,7 @@ function focusMostRecentNote() {
 }
 
 /**
- * High-Fidelity Centering Engine: Smooth-scrolls the viewport to anchor a specific note.
+ * Centering Engine: Smooth-scrolls the viewport to anchor a specific note.
  * Recalculates offsets based on the current STATE.scale to ensure precision centering.
  * @param {number|string} id - The note ID.
  * @returns {void}
@@ -733,7 +733,7 @@ function zoomIn() {
     if (!wrapper) return;
     const oldScale = STATE.scale;
 
-    // High-Fidelity Snap-to-Decile: Absolute-purges any 5% scale drift
+    // Removes any incremental scale drift during decile snapping
     STATE.scale = Math.min(SCALE_MAX, Math.round((STATE.scale + SCALE_STEP) * 10) / 10);
 
     // Canvas coordinate at the current viewport centre
@@ -758,7 +758,7 @@ function zoomOut() {
     if (!wrapper) return;
     const oldScale = STATE.scale;
 
-    // High-Fidelity Snap-to-Decile: Absolute-purges any 5% scale drift
+    // Removes any incremental scale drift during decile snapping
     STATE.scale = Math.max(SCALE_MIN, Math.round((STATE.scale - SCALE_STEP) * 10) / 10);
 
     const canvasCX = (wrapper.scrollLeft + wrapper.clientWidth  / 2) / oldScale;
@@ -811,7 +811,7 @@ async function persistViewport() {
 }
 
 /**
- * High-Fidelity Immediate Persistence: Bypasses the debounce timer for lifecycle events.
+ * Immediate Persistence: Bypasses the debounce timer for lifecycle events.
  * @returns {void}
  */
 function saveViewportImmediate() {
@@ -822,7 +822,7 @@ function saveViewportImmediate() {
     const centerX = (wrapper.scrollLeft + wrapper.clientWidth  / 2) / STATE.scale;
     const centerY = (wrapper.scrollTop  + wrapper.clientHeight / 2) / STATE.scale;
 
-    // Use raw fetch with keepalive for high-fidelity persistence during unload
+    // Use raw fetch with keepalive for absolute persistence during unload
     const params = new URLSearchParams({
         canvas_id: STATE.canvas_id,
         scale:    STATE.scale,
@@ -1096,7 +1096,7 @@ async function handleGlobalClipPaste(e) {
 }
 
 /**
- * High-Fidelity Unified Creation Modal
+ * Unified Creation Modal
  * @param {string} type - Note type.
  * @param {string|null} data - Initial content or data URL.
  * @param {number|string|null} editId - Optional ID if editing.
@@ -1121,7 +1121,7 @@ async function showCreateNoteModal(type, data, editId = null) {
         const note = STATE.notes.find(n => n.id == editId);
         if (!note) return;
 
-        // Edit Mode Calibration
+        // Edit Mode Initialization
         if (headerLabel) headerLabel.textContent = 'Edit Note';
         if (btnText)     btnText.textContent     = 'Save Changes';
         if (btnIcon)     btnIcon.innerHTML       = getIcon('save');
@@ -1150,7 +1150,7 @@ async function showCreateNoteModal(type, data, editId = null) {
             container.appendChild(tip);
         }
     } else if (data) {
-        // Paste Mode Graduation
+        // Initialization for pasted notes
         if (headerLabel) headerLabel.textContent = 'Paste from Clipboard';
         if (btnText)     btnText.textContent     = 'Create Note';
         if (btnIcon)     btnIcon.innerHTML       = getIcon('checklist');
@@ -1194,7 +1194,7 @@ async function showCreateNoteModal(type, data, editId = null) {
     }
 
     modal.classList.add('show');
-    modal.classList.add('active'); // High-Fidelity Sync (Synchronized with closure engine)
+    modal.classList.add('active'); // State Sync (Synchronized with closure engine)
     document.body.classList.add('modal-open');
     setTimeout(() => {
         titleInput.focus();
@@ -1303,14 +1303,14 @@ async function executeCreateNote() {
 }
 
 /**
- * Drafting Modal Dismissal: Absolute-purge of metadata state.
+ * Drafting Modal Dismissal: Clear metadata state.
  * @returns {void}
  */
 function closeCreateModal() {
     const modal = document.getElementById('note-create-modal');
     if (modal) {
         modal.classList.remove('show');
-        modal.classList.remove('active'); // Active State Absolute-Dismissal
+        modal.classList.remove('active'); // Clear active state
         document.body.classList.remove('modal-open'); // Release scroll lock
         DRAFT_NOTE = null;
         const titleInput = document.getElementById('create-note-title');
@@ -1321,7 +1321,7 @@ function closeCreateModal() {
 }
 
 /**
- * Search Engine Graduation: Opens the immersive search interface.
+ * Search initialization: Opens the search interface.
  * @returns {void}
  */
 function openSearchModal() {
@@ -1394,7 +1394,7 @@ function handleSearchResultClick(id) {
     centerOnNote(id);
 }
 /**
- * Search Engine Logic: Absolute-dismissal of the search interface.
+ * Search Engine Logic: Dismissal of the search interface.
  * @returns {void}
  */
 function closeSearchModal() {
