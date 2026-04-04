@@ -14,7 +14,7 @@ use Mojo::Util qw(trim);
 #   - Unified access for all registered/logged-in users.
 #
 # Integration Points:
-#   - Strictly adheres to the Rendler Gold Standard (Rule #3).
+#   - Strictly adheres to the project's MVC and privacy standards.
 #   - Depends on DB::Notes for privacy-isolated SQL logic.
 #   - Leverages localized serving for binary note blobs.
 
@@ -125,7 +125,7 @@ sub api_save_viewport {
     $scale = 0.1  if $scale < 0.1;
     $scale = 3.00 if $scale > 3.00;
 
-    # Persist Canonical Perspective (X, Y as floats for high-fidelity restoration)
+    # Persist Canonical Perspective (X, Y as floats for stable restoration)
     $c->db->save_viewport($user_id, $canvas_id, $scale, $centerX, $centerY);
 
     $c->render(json => { success => 1 });
@@ -143,8 +143,8 @@ sub api_upload {
     my $upload    = $c->param('file') // $c->param('image'); # Alias support
     my $canvas_id = $c->param('canvas_id') // 1;
     
-    # Graduation: Drafting Canvas Mode
-    # If the Host Note has not been established (legacy/direct drop), generate it now.
+    # Image handling: Drafting Canvas Mode
+    # If the Host Note has not been established (direct drag-and-drop), generate it now.
     # Primary Path: showCreateNoteModal (JS) -> api_save (ID) -> api_upload (ID).
     if (!$note_id && $upload) {
         $note_id = $c->db->save_note({
@@ -155,7 +155,7 @@ sub api_upload {
             content      => $upload->filename,
             x            => $c->param('x') // 0,
             y            => $c->param('y') // 0,
-            width        => 400, # Initial high-fidelity scale
+            width        => 400, # Initial scale
             height       => 400,
             color        => '#ffffff',
             z_index             => $c->param('z_index') // 1,
