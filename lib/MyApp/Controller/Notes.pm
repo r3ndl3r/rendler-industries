@@ -8,19 +8,20 @@ use Mojo::Util qw(trim);
 # Controller for the /notes Whiteboard module.
 #
 # Features:
-#   - Single Source of Truth handshake for initial SPA state.
+#   - Single-request handshake for initial SPA state.
 #   - Atomic persistence for draggable sticky note coordinates.
 #   - Multipart image upload processing with binary BLOB storage.
-#   - Unified access for all registered/logged-in users.
+#   - Multi-canvas management with collaborative sharing and permission-aware ACL.
+#   - Unified access for all registered and shared users.
 #
 # Integration Points:
-#   - Strictly adheres to the project's MVC and privacy standards.
+#   - Adheres to the mission-critical MVC and privacy standards.
 #   - Depends on DB::Notes for privacy-isolated SQL logic.
 #   - Leverages localized serving for binary note blobs.
 
 # Renders the main whiteboard skeleton.
 # Route: GET /notes
-# Description: Serves the Pure Skeleton SPA template.
+# Description: Serves the Pure Skeleton template.
 sub index {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
@@ -29,63 +30,106 @@ sub index {
 
 # Returns the consolidated state for the notes board.
 # Route: GET /notes/api/state
-# Description: SSO handshake for all user-specific sticky notes and viewport config.
+# Description: SSO handshake for all user-specific sticky notes, canvases, and viewport config.
 sub api_state {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
 
     my $user_id   = $c->current_user_id();
-    my $canvas_id = $c->param('canvas_id') // 1;
+    my $canvases  = $c->db->get_available_canvases($user_id);
     
-    my $notes    = $c->db->get_user_notes($user_id, $canvas_id);
-    my $viewport = $c->db->get_viewport($user_id, $canvas_id);
+    # 1. Verification: Determine the active Board context via tiered priority
+    if (!scalar @$canvases) {
+        # Initialize default notebook for new users
+        my $new_id = int($c->db->create_canvas($user_id, 'Your Notebook'));
+        $canvases = $c->db->get_available_canvases($user_id);
+    }
+
+    # 1. Canvas Context Resolution Logic
+    my $cid;
+    
+    # Resolution Hierarchy:
+    #   1. Explicit Note Deep Link (?note_id=X) -> Resolves parent board
+    #   2. Explicit Canvas Context (?canvas_id=X)
+    #   3. Session Persistence (Last-touched viewport)
+    #   4. Fallback (First available record)
+    if (my $nid = $c->param('note_id')) {
+        $cid = $c->db->get_canvas_for_note_id($nid, $user_id);
+    }
+    
+    unless ($cid) {
+        $cid = $c->param('canvas_id') 
+               || $c->db->get_last_viewed_canvas($user_id) 
+               || $canvases->[0]->{id};
+    }
+    
+    # 2. Security Gate: Verify the user has access to the resolved board
+    unless ($cid && $c->db->check_canvas_access($cid, $user_id, 0)) {
+        # Recovery: If specific context is denied or stale, force resolution to first valid board
+        $cid = $canvases->[0]->{id};
+    }
+
+    # 3. Session Persistence: 'Touch' the viewport to update the last-viewed timestamp
+    my $v = $c->db->get_viewport($user_id, $cid);
+    $c->db->save_viewport($user_id, $cid, $v->{scale}, $v->{scroll_x}, $v->{scroll_y});
+    
+    my $notes      = $c->db->get_user_notes($user_id, $cid);
+    my $viewport   = $c->db->get_viewport($user_id, $cid);
+    my $share_list = $c->db->get_canvas_shares($cid);
 
     $c->render(json => {
-        success   => 1,
-        notes     => $notes,
-        user_id   => $user_id,
-        canvas_id => int($canvas_id),
-        viewport  => $viewport
+        success       => 1,
+        canvas_id     => int($cid),
+        notes         => $notes,
+        user_id       => $user_id,
+        canvases      => $canvases,
+        viewport      => $viewport,
+        share_list    => $share_list,
+        last_mutation => $c->db->get_board_mutation_time($cid)
     });
 }
 
 # Synchronizes or creates a sticky note record.
 # Route: POST /notes/api/save
-# Parameters: id (Optional), canvas_id, type, content, x, y, width, height, color, z_index, is_collapsed
 sub api_save {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
 
-    my $user_id = $c->current_user_id();
-    my $canvas_id = $c->param('canvas_id') // 1;
+    my $user_id   = $c->current_user_id();
+    my $canvas_id = $c->param('canvas_id');
 
     my $id = $c->param('id');
     $id = undef if $id && ($id eq 'null' || $id eq 'undefined' || $id eq '');
 
     my $params = {
-        id           => $id,
-        user_id      => $user_id,
-        canvas_id    => $canvas_id,
-        type         => $c->param('type') // 'text',
-        title        => trim($c->param('title') // 'Untitled Note'),
-        content      => trim($c->param('content') // ''),
-        x            => int($c->param('x') // 2500),
-        y            => int($c->param('y') // 2500),
-        width        => int($c->param('width') // 280),
-        height       => int($c->param('height') // 200),
-        color        => $c->param('color') // '#fef3c7',
+        id                  => $id,
+        user_id             => $user_id,
+        canvas_id           => $canvas_id,
+        type                => $c->param('type') // 'text',
+        title               => trim($c->param('title') // 'Untitled Note'),
+        content             => trim($c->param('content') // ''),
+        x                   => int($c->param('x') // 2500),
+        y                   => int($c->param('y') // 2500),
+        width               => int($c->param('width') // 280),
+        height              => int($c->param('height') // 200),
+        color               => $c->param('color') // '#fef3c7',
         z_index             => int($c->param('z_index') // 1),
         is_collapsed        => int($c->param('is_collapsed') // 0),
         is_options_expanded => int($c->param('is_options_expanded') // 0)
     };
 
-    $id = $c->db->save_note($params);
+    my $result_id = $c->db->save_note($params);
+
+    unless (defined $result_id) {
+        return $c->render(json => { success => 0, error => 'Permission Denied' }, status => 403);
+    }
 
     $c->render(json => {
-        success   => 1,
-        id        => int($id),
-        canvas_id => int($canvas_id),
-        notes     => $c->db->get_user_notes($user_id, $canvas_id)
+        success       => 1,
+        id            => int($result_id),
+        canvas_id     => int($canvas_id),
+        notes         => $c->db->get_user_notes($user_id, $canvas_id),
+        last_mutation => $c->db->get_board_mutation_time($canvas_id)
     });
 }
 
@@ -97,14 +141,15 @@ sub api_delete {
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
 
     my $id        = $c->param('id');
-    my $canvas_id = $c->param('canvas_id') // 1;
+    my $canvas_id = $c->param('canvas_id');
     my $user_id   = $c->current_user_id();
 
     $c->db->delete_note($id, $user_id);
 
     $c->render(json => {
-        success => 1,
-        notes   => $c->db->get_user_notes($user_id, $canvas_id)
+        success       => 1,
+        notes         => $c->db->get_user_notes($user_id, $canvas_id),
+        last_mutation => $c->db->get_board_mutation_time($canvas_id)
     });
 }
 
@@ -116,36 +161,37 @@ sub api_save_viewport {
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
 
     my $user_id   = $c->current_user_id();
-    my $canvas_id = $c->param('canvas_id') // 1;
+    my $canvas_id = $c->param('canvas_id');
     my $scale     = $c->param('scale')    // 1;
-    my $centerX   = $c->param('scroll_x') // 2500; # Canonical X Center
-    my $centerY   = $c->param('scroll_y') // 2500; # Canonical Y Center
+    my $centerX   = $c->param('scroll_x') // 2500;
+    my $centerY   = $c->param('scroll_y') // 2500;
 
-    # Clamp scale to safe rendering bounds (Synchronized with notes.js:SCALE_MIN)
     $scale = 0.1  if $scale < 0.1;
     $scale = 3.00 if $scale > 3.00;
 
-    # Persist Canonical Perspective (X, Y as floats for stable restoration)
     $c->db->save_viewport($user_id, $canvas_id, $scale, $centerX, $centerY);
-
-    $c->render(json => { success => 1 });
+    $c->render(json => { 
+        success       => 1,
+        last_mutation => $c->db->get_board_mutation_time($canvas_id)
+    });
 }
 
 # Processes a multipart image upload for a sticky note.
 # Route: POST /notes/api/upload
-# Parameters: note_id (Optional), file|image (Binary), x, y, canvas_id, title
 sub api_upload {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
 
     my $user_id   = $c->current_user_id();
     my $note_id   = $c->param('note_id');
-    my $upload    = $c->param('file') // $c->param('image'); # Alias support
-    my $canvas_id = $c->param('canvas_id') // 1;
+    my $upload    = $c->param('file') // $c->param('image');
+    my $canvas_id = $c->param('canvas_id');
     
-    # Image handling: Drafting Canvas Mode
-    # If the Host Note has not been established (direct drag-and-drop), generate it now.
-    # Primary Path: showCreateNoteModal (JS) -> api_save (ID) -> api_upload (ID).
+    # Permission Pre-Flight: Verify access to the destination canvas
+    unless ($c->db->check_canvas_access($canvas_id, $user_id, 1)) {
+        return $c->render(json => { success => 0, error => "Permission Denied" }, status => 403);
+    }
+
     if (!$note_id && $upload) {
         $note_id = $c->db->save_note({
             user_id      => $user_id,
@@ -155,7 +201,7 @@ sub api_upload {
             content      => $upload->filename,
             x            => $c->param('x') // 0,
             y            => $c->param('y') // 0,
-            width        => 400, # Initial scale
+            width        => 400,
             height       => 400,
             color        => '#ffffff',
             z_index             => $c->param('z_index') // 1,
@@ -172,19 +218,13 @@ sub api_upload {
     my $mime_type = $upload->headers->content_type || 'image/png';
     my $file_size = $upload->size;
 
-    # Ownership Verification: Ensures an active user is the record's primary anchor
-    if ($c->param('note_id')) {
-        unless ($c->db->check_note_ownership($note_id, $user_id)) {
-            return $c->render(json => { success => 0, error => "Unauthorized note access" });
-        }
-    }
-
     $c->db->store_note_blob($note_id, $file_data, $mime_type, $file_size);
 
     $c->render(json => {
-        success => 1,
-        note_id => int($note_id),
-        notes   => $c->db->get_user_notes($user_id, $canvas_id) # Refresh state for immediate UI sync
+        success       => 1,
+        note_id       => int($note_id),
+        notes         => $c->db->get_user_notes($user_id, $canvas_id),
+        last_mutation => $c->db->get_board_mutation_time($canvas_id)
     });
 }
 
@@ -197,16 +237,172 @@ sub serve_blob {
     my $note_id = $c->stash('note_id');
     my $user_id = $c->current_user_id();
     
-    # Privacy Check: Verify record ownership before serving binary stream
-    unless ($c->db->check_note_ownership($note_id, $user_id)) {
-        return $c->render(text => 'Unauthorized or Not found', status => 403);
-    }
-
-    my $blob = $c->db->get_note_blob($note_id);
-    return $c->render(text => 'Blob not found', status => 404) unless $blob;
+    my $blob = $c->db->get_note_blob($note_id, $user_id);
+    return $c->render(text => 'Not found or Unauthorized', status => 403) unless $blob;
 
     $c->res->headers->content_type($blob->{mime_type});
     $c->render(data => $blob->{file_data});
+}
+
+# --- Multi-Canvas API Expansion ---
+
+# Initializes a new canonical board record.
+sub api_canvas_create {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id = $c->current_user_id();
+    my $name    = trim($c->param('name') // 'Untitled Workspace');
+    
+    my $id = $c->db->create_canvas($user_id, $name);
+    $c->render(json => { success => 1, id => int($id) });
+}
+
+# Purges a board record (Owner only).
+sub api_canvas_delete {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id();
+    my $canvas_id = $c->param('canvas_id');
+
+    # 1. Retention Check: Prevent users from deleting their ONLY workspace
+    my $canvases = $c->db->get_available_canvases($user_id);
+    my @owned = grep { $_->{is_owner} } @$canvases;
+    
+    if (scalar @owned <= 1) {
+        return $c->render(json => { 
+            success => 0, 
+            error   => 'Retention Error: You must maintain at least one Notebook.' 
+        });
+    }
+    
+    $c->db->delete_canvas($canvas_id, $user_id);
+    $c->render(json => { success => 1 });
+}
+
+# Manages shared access permissions.
+sub api_canvas_share {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id();
+    my $canvas_id = $c->param('canvas_id');
+    my $target    = $c->param('username');
+    my $can_edit  = int($c->param('can_edit') // 1);
+    my $revoke    = int($c->param('revoke') // 0);
+
+    # 1. Authority Check: Only owner can manage shares
+    my $canvases = $c->db->get_available_canvases($user_id);
+    my ($canvas) = grep { $_->{id} == $canvas_id && $_->{is_owner} } @$canvases;
+    return $c->render(json => { success => 0, error => 'Permission Denied' }, status => 403) unless $canvas;
+
+    # 2. Target Resolution
+    my $target_id = $c->db->get_user_id($target);
+    return $c->render(json => { success => 0, error => 'User not found' }) unless $target_id;
+
+    if ($revoke) {
+        $c->db->unshare_canvas($canvas_id, $target_id);
+    } else {
+        $c->db->share_canvas($canvas_id, $target_id, $can_edit);
+    }
+
+    $c->render(json => { success => 1, share_list => $c->db->get_canvas_shares($canvas_id) });
+}
+
+# Real-time User Search (Search-as-you-type).
+sub api_user_search {
+    my $c = shift;
+    return $c->render(json => [] ) unless $c->is_logged_in;
+
+    my $query = trim($c->param('q') // '');
+    my $me    = $c->current_user_id();
+
+    return $c->render(json => []) if length $query < 2;
+
+    # Logic-Pure Filtering: Only active/approved users, exclude self
+    my $all_users = $c->db->get_all_users();
+    my @matched = grep { 
+        $_->{id} != $me && 
+        $_->{status} eq 'approved' && 
+        $_->{username} =~ m/\Q$query\E/i 
+    } @$all_users;
+
+    $c->render(json => \@matched);
+}
+
+# Performs an ACL-aware global search across all accessible boards.
+# Route: GET /notes/api/search
+sub api_search {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id = $c->current_user_id();
+    my $query   = trim($c->param('q') // '');
+    
+    # Logic-Pure: Immediate exit for empty queries
+    return $c->render(json => []) if length $query < 1;
+
+    my $notes = $c->db->get_global_search_notes($user_id, $query);
+    
+    $c->render(json => $notes);
+}
+
+# Copies a note to a different board.
+sub api_copy_note {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id();
+    my $note_id   = $c->param('id');
+    my $new_cid   = $c->param('canvas_id');
+
+    if ($c->db->copy_note($note_id, $new_cid, $user_id)) {
+        $c->render(json => { success => 1 });
+    } else {
+        $c->render(json => { success => 0, error => 'Logic Error or Permission Denied' });
+    }
+}
+# Renames a board record (Owner only).
+# Route: POST /notes/api/canvases/rename
+sub api_canvas_rename {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id();
+    my $canvas_id = $c->param('canvas_id');
+    my $new_name  = trim($c->param('name') // '');
+    
+    return $c->render(json => { success => 0, error => 'Invalid name' }) unless length($new_name) >= 1;
+
+    if ($c->db->rename_canvas($canvas_id, $user_id, $new_name)) {
+        $c->render(json => { success => 1, name => $new_name });
+    } else {
+        $c->render(json => { success => 0, error => 'Permission denied or update failed' });
+    }
+}
+
+# --- Real-Time Sync Heartbeat ---
+
+# Returns the latest mutation timestamp for a specific workspace.
+# Used by the client-side AJAX poller for cross-session consistency.
+sub api_heartbeat {
+    my $c = shift;
+    my $canvas_id = $c->stash('canvas_id');
+    my $user_id   = $c->current_user_id();
+
+    # Authority Check: Ensure the user has at least read-access to this board
+    unless ($user_id && $c->db->check_canvas_access($canvas_id, $user_id, 0)) {
+        return $c->render(json => { success => 0, error => 'Access Denied' }, status => 403);
+    }
+
+    # Signal Fetch: Get optimized aggregate timestamp from notes + canvases
+    my $last_mutation = $c->db->get_board_mutation_time($canvas_id);
+
+    $c->render(json => {
+        success       => 1,
+        last_mutation => $last_mutation // '1970-01-01 00:00:00'
+    });
 }
 
 1;
