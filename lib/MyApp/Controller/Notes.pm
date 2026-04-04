@@ -47,6 +47,7 @@ sub api_state {
 
     # 1. Canvas Context Resolution Logic
     my $cid;
+    my $lid = $c->param('layer_id');
     
     # Resolution Hierarchy:
     #   1. Explicit Note Deep Link (?note_id=X) -> Resolves parent board
@@ -69,12 +70,13 @@ sub api_state {
         $cid = $canvases->[0]->{id};
     }
 
-    # 3. Session Persistence: 'Touch' the viewport to update the last-viewed timestamp
-    my $v = $c->db->get_viewport($user_id, $cid);
-    $c->db->save_viewport($user_id, $cid, $v->{scale}, $v->{scroll_x}, $v->{scroll_y});
+    # 3. Session Persistence: Resolve the viewport (Specific layer or most recent)
+    my $viewport = $c->db->get_viewport($user_id, $cid, $lid);
+    
+    # Update the last-viewed timestamp for the resolved level
+    $c->db->save_viewport($user_id, $cid, $viewport->{scale}, $viewport->{scroll_x}, $viewport->{scroll_y}, $viewport->{layer_id});
     
     my $notes      = $c->db->get_user_notes($user_id, $cid);
-    my $viewport   = $c->db->get_viewport($user_id, $cid);
     my $share_list = $c->db->get_canvas_shares($cid);
 
     $c->render(json => {
@@ -102,9 +104,11 @@ sub api_save {
     $id = undef if $id && ($id eq 'null' || $id eq 'undefined' || $id eq '');
 
     my $params = {
-        id                  => $id,
         user_id             => $user_id,
         canvas_id           => $canvas_id,
+        id                  => $id,
+        source_id           => $c->param('source_id'),
+        layer_id            => int($c->param('layer_id') // 1),
         type                => $c->param('type') // 'text',
         title               => trim($c->param('title') // 'Untitled Note'),
         content             => trim($c->param('content') // ''),
@@ -165,11 +169,12 @@ sub api_save_viewport {
     my $scale     = $c->param('scale')    // 1;
     my $centerX   = $c->param('scroll_x') // 2500;
     my $centerY   = $c->param('scroll_y') // 2500;
+    my $layer_id  = $c->param('layer_id') // 1;
 
     $scale = 0.1  if $scale < 0.1;
     $scale = 3.00 if $scale > 3.00;
 
-    $c->db->save_viewport($user_id, $canvas_id, $scale, $centerX, $centerY);
+    $c->db->save_viewport($user_id, $canvas_id, $scale, $centerX, $centerY, $layer_id);
     $c->render(json => { 
         success       => 1,
         last_mutation => $c->db->get_board_mutation_time($canvas_id)
