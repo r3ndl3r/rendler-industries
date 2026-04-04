@@ -282,6 +282,9 @@ function createNoteElement(note) {
                     <button class="btn-icon-sticky" onclick="toggleStickyMove(event, ${note.id})" title="Pick & Place (Sticky Move)">
                         ${getIcon('pin')}
                     </button>
+                    <button class="btn-icon-copy" onclick="copyNoteToClipboard(${note.id})" title="Copy to Clipboard">
+                        ${getIcon('copy')}
+                    </button>
                     <button class="btn-icon-view" onclick="viewNote(${note.id})" title="Quick View">
                         ${getIcon('view')}
                     </button>
@@ -1401,4 +1404,36 @@ function closeSearchModal() {
     const modal = document.getElementById('note-search-modal');
     if (modal) modal.classList.remove('show');
     document.body.classList.remove('modal-open');
+}
+
+/**
+ * Copy Orchestrator: Captures note content (text) or binary image data (blobs) to the clipboard.
+ * @param {number|string} id - The note ID.
+ * @returns {Promise<void>}
+ */
+async function copyNoteToClipboard(id) {
+    const note = STATE.notes.find(n => n.id == id);
+    if (!note) return;
+
+    try {
+        if (note.type === 'image') {
+            // Binary Sync: Fetch the original blob data
+            showToast('Fetching image data...', 'info');
+            const response = await fetch(`/notes/serve/${id}`);
+            const blob = await response.blob();
+            
+            // Utilize the ClipboardItem API for binary data synchronization
+            const item = new ClipboardItem({ [blob.type]: blob });
+            await navigator.clipboard.write([item]);
+            showToast('Image data copied to clipboard', 'success');
+        } else {
+            // Standard Text Sync: Direct string write
+            const targetText = note.content || '';
+            await navigator.clipboard.writeText(targetText);
+            showToast('Note content copied to clipboard', 'success');
+        }
+    } catch (err) {
+        console.error('Clipboard Sync Failed:', err);
+        showToast('Failed to copy content', 'error');
+    }
 }
