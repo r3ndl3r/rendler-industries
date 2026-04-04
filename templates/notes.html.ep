@@ -12,6 +12,18 @@
     <span id="active-board-name-pill">Loading Canvas...</span>
 </div>
 
+<div class="level-switcher-container">
+    <div class="level-tracks">
+        <button class="level-btn btn-level-up" onclick="moveLevel(1)" title="Move up one layer">
+            <%= icon('plus') %>
+        </button>
+        <div class="level-indicator-pill" id="level-display" title="Jump to Level" onclick="openJumpToLevelModal()">1</div>
+        <button class="level-btn btn-level-down" onclick="moveLevel(-1)" title="Move down one layer">
+            <%= icon('minus') %>
+        </button>
+    </div>
+</div>
+
 <div class="canvas-container" id="canvas-wrapper">
     <div id="notes-canvas" data-icons='<%== icons_json %>'>
         <div id="canvas-skeleton" class="component-loading">
@@ -210,3 +222,5 @@
         </div>
     </div>
 </div>
+
+
