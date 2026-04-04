@@ -3,6 +3,7 @@
     "delete": "🗑️",
     "add": "➕",
     "plus": "➕",
+    "minus": "➖",
     "save": "💾",
     "cancel": "❌",
     "view": "👁️",
@@ -109,5 +110,7 @@
     "globe": "🌍",
     "world": "🌍",
     "weather": "🌦️",
-    "sunny": "🌞"
+    "sunny": "🌞",
+    "zoom": "🔭",
+    "focus": "⛶"
 }
