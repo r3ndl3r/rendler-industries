@@ -123,11 +123,11 @@ function renderTable() {
             </td>
             <td data-label="Actions">
                 <div class="action-buttons">
-                    <a href="/files/serve/${file.id}" target="_blank" class="btn-icon-view" title="View/Download">${getIcon('view')}</a>
-                    <button type="button" class="btn-icon-copy" onclick="copyFileLink(${file.id})" title="Copy Link">${getIcon('copy')}</button>
+                    <a href="/files/serve/${file.id}" target="_blank" class="btn-icon-view" title="View/Download">👁️</a>
+                    <button type="button" class="btn-icon-copy" onclick="copyFileLink(${file.id})" title="Copy Link">📋</button>
                     ${moduleState.isAdmin ? `
-                        <button type="button" class="btn-icon-edit" onclick="openPermissionModal(${file.id})" title="Permissions">${getIcon('settings')}</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteFile(${file.id}, '${escapeHtml(file.original_filename)}')" title="Purge">${getIcon('delete')}</button>
+                        <button type="button" class="btn-icon-edit" onclick="openPermissionModal(${file.id})" title="Permissions">⚙️</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteFile(${file.id}, '${escapeHtml(file.original_filename)}')" title="Purge">🗑️</button>
                     ` : ''}
                 </div>
             </td>
@@ -243,7 +243,7 @@ async function submitFileUpload(event) {
     const originalHtml = btn.innerHTML;
     
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Uploading...`;
+    btn.innerHTML = `⌛ Uploading...`;
 
     try {
         const formData = new FormData(form);
@@ -281,7 +281,7 @@ async function submitPermissions(event) {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const formData = new FormData(form);
@@ -364,12 +364,12 @@ function copyFileLink(id) {
  * @returns {string} - Semantic icon symbol.
  */
 function getFileEmoji(mime) {
-    if (!mime) return getIcon('file_attach');
-    if (mime.startsWith('image/')) return getIcon('file_image');
-    if (mime.includes('pdf')) return getIcon('file_pdf');
-    if (mime.startsWith('text/')) return getIcon('file_text');
-    if (mime.includes('zip') || mime.includes('archive')) return getIcon('file_archive');
-    return getIcon('file_attach');
+    if (!mime) return '📎';
+    if (mime.startsWith('image/')) return '🖼️';
+    if (mime.includes('pdf')) return '📕';
+    if (mime.startsWith('text/')) return '📄';
+    if (mime.includes('zip') || mime.includes('archive')) return '📦';
+    return '📎';
 }
 
 /**

@@ -231,18 +231,18 @@ function renderTableRow(t) {
             <td class="elapsed-cell" data-label="Used Today">${Math.floor((t.elapsed_seconds || 0) / 60)}m</td>
             <td class="remaining-cell" data-label="Remaining">${remainingDisplay}</td>
             <td class="status-cell" data-label="Status">
-                ${t.is_running ? `<span class="status-badge running">${getIcon('running')} Running</span>` : (t.is_paused ? `<span class="status-badge paused">${getIcon('paused')} Paused</span>` : `<span class="status-badge idle">${getIcon('idle')} Idle</span>`)}
+                ${t.is_running ? `<span class="status-badge running">▶️ Running</span>` : (t.is_paused ? `<span class="status-badge paused">⏸️ Paused</span>` : `<span class="status-badge idle">💤 Idle</span>`)}
             </td>
             <td class="actions-cell" data-label="Actions">
                 <div class="action-buttons">
                     ${t.limit_seconds !== -1 ? `
-                        <button class="btn-icon-bonus" onclick="openBonusModal(${t.id})" title="Grant Bonus Time">${getIcon('bonus')}</button>
+                        <button class="btn-icon-bonus" onclick="openBonusModal(${t.id})" title="Grant Bonus Time">🎁</button>
                         ${remaining > 0 ? `
-                            <button class="btn-icon-transfer" onclick="showTransferModal(${t.id})" title="Transfer Time">${getIcon('transfer')}</button>
+                            <button class="btn-icon-transfer" onclick="showTransferModal(${t.id})" title="Transfer Time">🔄</button>
                         ` : ''}
                     ` : ''}
-                    <button class="btn-icon-edit" onclick="openEditModal(${t.id})" title="Edit Timer">${getIcon('edit')}</button>
-                    <button class="btn-icon-delete" onclick="confirmDeleteTimer(${t.id}, '${escapeHtml(t.name)}')" title="Delete Timer">${getIcon('delete')}</button>
+                    <button class="btn-icon-edit" onclick="openEditModal(${t.id})" title="Edit Timer">✎</button>
+                    <button class="btn-icon-delete" onclick="confirmDeleteTimer(${t.id}, '${escapeHtml(t.name)}')" title="Delete Timer">🗑️</button>
                 </div>
             </td>
         </tr>
@@ -339,7 +339,7 @@ async function handleCreateSubmit(event) {
     const originalHtml = btn.innerHTML;
 
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const formData = new FormData(form);
@@ -369,7 +369,7 @@ async function handleEditSubmit(event) {
     const originalHtml = btn.innerHTML;
 
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const formData = new FormData(form);
@@ -398,7 +398,7 @@ async function handleBonusSubmit(event) {
     const originalHtml = btn.innerHTML;
 
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const formData = new FormData(form);
@@ -472,14 +472,14 @@ function showTransferModal(fromId) {
                 ${targets.map(t => `
                     <div class="transfer-target-item" onclick="handleTransfer(${fromId}, ${t.id})">
                         <div class="target-icon ${t.category.toLowerCase().replace(' ', '-')}">
-                            ${getIcon(t.category.toLowerCase().replace(' ', '-'))}
+                            ${{ 'work': '💼', 'school': '🎓', 'gaming': '🎮', 'screen': '📱', 'ai': '🧠' }[t.category.toLowerCase().replace(' ', '-')] || '🕒'}
                         </div>
                         <div class="target-info">
                             <div class="target-name">${escapeHtml(t.name)}</div>
                             <div class="target-remaining">${Math.floor((t.remaining_seconds || 0) / 60)}m remaining</div>
                         </div>
                         <div class="target-arrow">
-                            ${getIcon('chevron-right')}
+                            ▶️
                         </div>
                     </div>
                 `).join('')}
@@ -517,7 +517,7 @@ async function handleTransfer(fromId, toId) {
     const targetItem = document.querySelector(`.transfer-target-item[onclick*="${toId}"]`);
     if (targetItem) {
         targetItem.classList.add('pending');
-        targetItem.innerHTML = `<div class="loading-spinner">${getIcon('waiting')} Transferring...</div>`;
+        targetItem.innerHTML = `<div class="loading-spinner">⌛ Transferring...</div>`;
     }
 
     try {

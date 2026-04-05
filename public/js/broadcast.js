@@ -60,7 +60,7 @@ function renderUI() {
     container.innerHTML = `
         <div class="emergency-banner">
             <div class="banner-icon">
-                ${getIcon('pushover')}
+                📢
             </div>
             <div class="banner-text">
                 <h3>Emergency Alert System</h3>
@@ -84,13 +84,13 @@ function renderUI() {
                 ></textarea>
             </div>
 
-            <div class="broadcast-actions">
+            <div class="empty-state">📢 No active broadcasts.</div>
                 <button 
                     id="send-btn" 
                     class="btn-broadcast-send pulse-animation" 
                     onclick="confirmBroadcast()"
                 >
-                    ${getIcon('pushover')} Send Broadcast
+                    📢 Send Broadcast
                 </button>
             </div>
         </div>
@@ -144,7 +144,7 @@ async function sendBroadcast(message) {
     if (btn) {
         btn.disabled = true;
         btn.classList.remove('pulse-animation');
-        btn.innerHTML = `${getIcon('waiting')} Broadcasting...`;
+        btn.innerHTML = `⌛ Broadcast in progress...`;
     }
 
     try {

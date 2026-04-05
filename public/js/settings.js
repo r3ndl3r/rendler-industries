@@ -336,7 +336,7 @@ function renderApplicationPanel() {
 
             ${renderCard('app_secret', 'App Secret', 'Mojolicious session signing key.', true, `
                 <div class="form-warning">
-                    ${getIcon('warning')} Changing this invalidates all active sessions. An app restart is required for the new key to take effect.
+                    ⚠️ Changing this invalidates all active sessions. An app restart is required for the new key to take effect.
                 </div>
                 <div class="settings-fields">
                     <div class="form-group full-width">
@@ -525,7 +525,7 @@ async function handleSettingsUpdate(e) {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const result = await apiPost('/settings/update', Object.fromEntries(formData));

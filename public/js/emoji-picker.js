@@ -454,7 +454,7 @@ const EmojiPicker = {
     createTrigger: function() {
         const btn = document.createElement('button');
         btn.className = 'emoji-picker-trigger';
-        btn.innerHTML = window.getIcon('smiley');
+        btn.innerHTML = '😊';
         btn.type = 'button';
         btn.title = 'Insert Emoji';
         btn.style.zIndex = '100001';
@@ -479,16 +479,16 @@ const EmojiPicker = {
             </div>
             <div class="emoji-grid"></div>
             <div class="emoji-categories">
-                <span class="category-btn active" data-cat="smileys" title="Smileys">${window.getIcon('smiley')}</span>
-                <span class="category-btn" data-cat="people" title="People">${window.getIcon('user')}</span>
-                <span class="category-btn" data-cat="animals" title="Animals">${window.getIcon('kangaroo')}</span>
-                <span class="category-btn" data-cat="nature" title="Nature">${window.getIcon('world')}</span>
-                <span class="category-btn" data-cat="food" title="Food">${window.getIcon('meals')}</span>
-                <span class="category-btn" data-cat="travel" title="Travel">${window.getIcon('chelsea')}</span>
-                <span class="category-btn" data-cat="activities" title="Activities">${window.getIcon('gaming-console')}</span>
-                <span class="category-btn" data-cat="objects" title="Objects">${window.getIcon('idea')}</span>
-                <span class="category-btn" data-cat="symbols" title="Symbols">${window.getIcon('sparkles')}</span>
-                <span class="category-btn" data-cat="flags" title="Flags">${window.getIcon('globe')}</span>
+                <span class="category-btn active" data-cat="smileys" title="Smileys">😊</span>
+                <span class="category-btn" data-cat="people" title="People">👥</span>
+                <span class="category-btn" data-cat="animals" title="Animals">🦘</span>
+                <span class="category-btn" data-cat="nature" title="Nature">🌍</span>
+                <span class="category-btn" data-cat="food" title="Food">🍲</span>
+                <span class="category-btn" data-cat="travel" title="Travel">⚽</span>
+                <span class="category-btn" data-cat="activities" title="Activities">🎮</span>
+                <span class="category-btn" data-cat="objects" title="Objects">💡</span>
+                <span class="category-btn" data-cat="symbols" title="Symbols">✨</span>
+                <span class="category-btn" data-cat="flags" title="Flags">🌐</span>
             </div>
         `;
         

@@ -151,7 +151,7 @@ async function loadEvents(force = false) {
         container.innerHTML = `
             <div class="component-loading">
                 <div class="loading-scan-line"></div>
-                <span class="loading-icon-pulse">${window.getIcon('calendar')}</span>
+                <span class="loading-icon-pulse">📅</span>
                 <p class="loading-label">Synchronizing...</p>
             </div>`;
     }
@@ -216,7 +216,7 @@ function populateDropdowns() {
 
     // 3. Notification Channel Checkboxes
     if (STATE.channels.length > 0) {
-        const channelOptions = STATE.channels.map(c => ({ id: c.id, label: `${window.getIcon(c.icon)} ${escapeHtml(c.label)}` }));
+        const channelOptions = STATE.channels.map(c => ({ id: c.id, label: `${{ bell: '🔔', email: '📧', discord: '💬' }[c.icon] || '🔔'} ${escapeHtml(c.label)}` }));
         window.renderSelectorGrid('channels-container', channelOptions, { name: 'notification_channels[]', prefix: 'channel', type: 'day' });
     }
 }
@@ -351,7 +351,7 @@ function renderDayView() {
             <div class="calendar-hour-events" onclick="openAddEventModal('${dateStr}')">
                 ${getEventsForHour(dateStr, h).map(e => `
                     <div class="event-item" style="--event-color: ${e.color};" onclick="event.stopPropagation(); showEventDetails(${e.id})">
-                        ${e.is_private ? window.getIcon('lock') : ''}
+                        ${e.is_private ? '🔒' : ''}
                         <strong>${escapeHtml(e.title)}</strong> ${e.all_day ? '(All Day)' : ''}
                     </div>
                 `).join('')}
@@ -384,7 +384,7 @@ function renderEventPill(e, compact) {
         <div class="event-item ${e.all_day ? 'all-day' : ''} ${e.is_private ? 'private-event' : ''}" style="--event-color: ${e.color};" onclick="event.stopPropagation(); showEventDetails(${e.id})">
             <div class="event-item-content">
                 <span class="event-title">
-                    ${e.is_private ? window.getIcon('lock') : ''}
+                    ${e.is_private ? '🔒' : ''}
                     ${escapeHtml(e.title)}${timeStr}
                 </span>
                 ${attendeeHtml}
@@ -447,7 +447,7 @@ function renderTable(events, emptyMsg) {
             html += `
                 <tr class="day-group-header ${groupClass}">
                     <td colspan="6">
-                        <div class="day-group-label">${window.getIcon('calendar')} ${formatDateWithOrdinal(currentDay)}</div>
+                        <div class="day-group-label">📅 ${formatDateWithOrdinal(currentDay)}</div>
                     </td>
                 </tr>
             `;
@@ -459,7 +459,7 @@ function renderTable(events, emptyMsg) {
             <tr data-event-id="${e.id}" class="${groupClass} ${e.is_private ? 'table-row-private' : ''}">
                 <td>
                     <span class="event-color-dot" style="--event-color: ${e.color}"></span>
-                    ${e.is_private ? window.getIcon('lock') : ''}
+                    ${e.is_private ? '🔒' : ''}
                     <strong>${escapeHtml(e.title)}</strong>
                     ${e.description ? `<div class="event-desc">${escapeHtml(e.description)}</div>` : ''}
                 </td>
@@ -473,8 +473,8 @@ function renderTable(events, emptyMsg) {
                 <td>${escapeHtml(e.creator_name || 'Unknown')}</td>
                 <td class="actions-cell">
                     <div class="action-btns">
-                        <button type="button" class="btn-icon-edit" onclick="openEditModalById(${e.id})" title="Edit">${window.getIcon('edit')}</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteEvent(${e.id}, '${escapeHtml(e.title)}')" title="Delete">${window.getIcon('delete')}</button>
+                        <button type="button" class="btn-icon-edit" onclick="openEditModalById(${e.id})" title="Edit">✏️</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteEvent(${e.id}, '${escapeHtml(e.title)}')" title="Delete">🗑️</button>
                     </div>
                 </td>
             </tr>
@@ -556,7 +556,7 @@ function renderUpcomingEvents() {
             lastDay = currentDay;
             html += `
                 <div class="upcoming-day-header">
-                    ${window.getIcon('calendar')} ${formatDateWithOrdinal(currentDay)}
+                    📅 ${formatDateWithOrdinal(currentDay)}
                 </div>
             `;
         }
@@ -568,7 +568,7 @@ function renderUpcomingEvents() {
                 <div class="upcoming-event-color"></div>
                 <div class="upcoming-event-details">
                     <div class="upcoming-event-title">
-                        ${e.is_private ? window.getIcon('lock') : ''}
+                        ${e.is_private ? '🔒' : ''}
                         ${escapeHtml(e.title)}
                     </div>
                     <div class="upcoming-event-datetime">${timeInfo}</div>
@@ -697,7 +697,7 @@ async function handleEventSubmit(event) {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${window.getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const result = await window.apiPost(url, formData);
@@ -929,18 +929,18 @@ function showEventDetails(id) {
     content.innerHTML = `
         <div class="event-details-header">
             <h2 style="--header-color: ${event.color}; color: var(--header-color)">
-                ${event.is_private ? window.getIcon('lock') : ''}
+                ${event.is_private ? '🔒' : ''}
                 ${escapeHtml(event.title)}
             </h2>
         </div>
         <div class="event-details-body">
-            ${event.is_private ? `<div class="event-detail-row status-private"><strong>${window.getIcon('lock')} Status:</strong> <span class="badge-private">Private Event</span></div>` : ''}
-            <div class="event-detail-row"><strong>${window.getIcon('calendar')} Date:</strong> <span>${dateStr}</span></div>
-            <div class="event-detail-row"><strong>${window.getIcon('clock')} Time:</strong> <span>${timeInfo}</span></div>
-            ${event.category ? `<div class="event-detail-row"><strong>${window.getIcon('info')} Category:</strong> <span>${escapeHtml(event.category)}</span></div>` : ''}
-            ${event.description ? `<div class="event-detail-row"><strong>${window.getIcon('clipboard')} Description:</strong> <span>${escapeHtml(event.description)}</span></div>` : ''}
-            ${event.attendee_names ? `<div class="event-detail-row"><strong>${window.getIcon('family')} Attendees:</strong> <span>${renderAttendeePills(event.attendee_names, true)}</span></div>` : ''}
-            <div class="event-detail-row"><strong>${window.getIcon('user')} Created By:</strong> <span>${escapeHtml(event.creator_name || 'Unknown')}</span></div>
+            ${event.is_private ? `<div class="event-detail-row status-private"><strong>🔒 Status:</strong> <span class="badge-private">Private Event</span></div>` : ''}
+            <div class="event-detail-row"><strong>📅 Date:</strong> <span>${dateStr}</span></div>
+            <div class="event-detail-row"><strong>🕒 Time:</strong> <span>${timeInfo}</span></div>
+            ${event.category ? `<div class="event-detail-row"><strong>ℹ️ Category:</strong> <span>${escapeHtml(event.category)}</span></div>` : ''}
+            ${event.description ? `<div class="event-detail-row"><strong>📋 Description:</strong> <span>${escapeHtml(event.description)}</span></div>` : ''}
+            ${event.attendee_names ? `<div class="event-detail-row"><strong>👪 Attendees:</strong> <span>${renderAttendeePills(event.attendee_names, true)}</span></div>` : ''}
+            <div class="event-detail-row"><strong>👤 Created By:</strong> <span>${escapeHtml(event.creator_name || 'Unknown')}</span></div>
         </div>
     `;
 

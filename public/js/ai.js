@@ -100,13 +100,14 @@ function renderMessages() {
  */
 function renderMessageRow(msg) {
     const isUser = msg.role === 'user';
-    const iconHtml = isUser ? window.getUserIcon(STATE.username) : window.getIcon('ai');
+    const iconHtml = isUser ? window.getUserIcon(STATE.username) : '🤖';
     const content = formatMarkdown(msg.content);
 
     return `
         <div class="message ${msg.role}">
             <div class="message-bubble">
                 <span class="role-icon">${iconHtml}</span>
+                    <div class="ai-status-glow">🧠</div>
                 <div class="text-content">${content}</div>
             </div>
         </div>
@@ -230,7 +231,7 @@ function quickPrompt(text) {
 function clearChat() {
     showConfirmModal({
         title: 'Clear History',
-        icon: 'delete',
+        icon: '🗑️',
         message: 'Are you sure you want to clear your entire conversation history? This action is permanent.',
         danger: true,
         confirmText: 'Clear All',

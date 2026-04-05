@@ -164,7 +164,7 @@ function renderReminderCard(r) {
 
     // Recipient branding
     const recipientPills = (r.recipient_names || '').split(',').filter(n => n).map(name => 
-        `<span class="recipient-badge">${getIcon('reminders')} ${escapeHtml(name)}</span>`
+        `<span class="recipient-badge">🔔 ${escapeHtml(name)}</span>`
     ).join('');
 
     return `
@@ -176,14 +176,14 @@ function renderReminderCard(r) {
              data-last-run="${r.last_run_at || ''}">
             <div class="reminder-header">
                 <div class="title-stack">
-                    ${isOneOff ? `<span class="one-off-badge">${getIcon('clock')} One-off</span>` : ''}
+                    ${isOneOff ? `<span class="one-off-badge">🕒 One-off</span>` : ''}
                     <h2 class="reminder-title">${escapeHtml(r.title || 'Untitled')}</h2>
                 </div>
             </div>
 
             <div class="reminder-time">
                 <div class="reminder-time-main">
-                    <span class="clock-icon">${getIcon('clock')}</span>
+                    <span class="clock-icon">🕒</span>
                     <span class="time-text">${displayTime}</span>
                     <span class="time-ampm">${ampm}</span>
                 </div>
@@ -207,15 +207,15 @@ function renderReminderCard(r) {
                 <button class="btn-icon-${isActive ? 'copy' : 'view'}"
                         onclick="toggleReminder(${r.id}, ${isActive ? 0 : 1})"
                         title="${isActive ? 'Pause Reminder' : 'Resume Reminder'}">
-                    ${getIcon(isActive ? 'paused' : 'running')}
+                    ${isActive ? '⏸️' : '▶️'}
                 </button>
                 <button class="btn-icon-edit"
                         onclick="openEditModal(${r.id})"
-                        title="Edit Reminder">${getIcon('edit')}
+                        title="Edit Reminder">✎
                 </button>
                 <button class="btn-icon-delete"
                         onclick="confirmDeleteReminder(${r.id}, \`${(r.title || 'Untitled').replace(/`/g, '\\`')}\`)"
-                        title="Delete Reminder">${getIcon('delete')}
+                        title="Delete Reminder">🗑️
                 </button>
             </div>
         </div>
@@ -343,7 +343,7 @@ async function handleAdd(e) {
     const originalHtml = btn.innerHTML;
     
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Creating...`;
+    btn.innerHTML = `⌛ Creating...`;
 
     try {
         const result = await apiPost('/reminders/api/add', new FormData(form));
@@ -372,7 +372,7 @@ async function handleEdit(e) {
     const originalHtml = btn.innerHTML;
 
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const result = await apiPost(`/reminders/api/update/${id}`, new FormData(form));

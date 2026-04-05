@@ -104,7 +104,7 @@ const MenuMgmt = {
 
         tbody.innerHTML = STATE.links.map(link => `
             <tr data-id="${link.id}" class="${link.parent_id ? 'child-row' : 'parent-row'}">
-                <td class="drag-handle">${window.getIcon('menu')}</td>
+                <td class="drag-handle">☰</td>
                 <td data-label="Label">
                     ${link.is_separator ? 
                         '<span class="separator-label">───── SEPARATOR ─────</span>' : 
@@ -129,8 +129,7 @@ const MenuMgmt = {
                 </td>
                 <td class="actions-cell">
                     <div class="action-buttons">
-                        <button type="button" class="btn-icon-edit" onclick="MenuMgmt.openEditModal(${link.id})" title="Edit">${window.getIcon('edit')}</button>
-                        <button type="button" class="btn-icon-delete" onclick="MenuMgmt.confirmDelete(${link.id}, '${escapeHtml(link.label)}')" title="Delete">${window.getIcon('delete')}</button>
+                        <button type="button" class="btn-icon-delete" onclick="MenuMgmt.confirmDelete(${link.id}, '${escapeHtml(link.label)}')" title="Delete">🗑️</button>
                     </div>
                 </td>
             </tr>
@@ -187,7 +186,7 @@ const MenuMgmt = {
      */
     openAddModal: function() {
         const titleEl = document.getElementById('modalTitle');
-        if (titleEl) titleEl.innerHTML = `${window.getIcon('add')} Add Menu Link`;
+        if (titleEl) titleEl.innerHTML = `➕ Add Menu Link`;
         
         const form = document.getElementById('linkForm');
         if (form) form.reset();
@@ -213,7 +212,7 @@ const MenuMgmt = {
         if (!link) return;
 
         const titleEl = document.getElementById('modalTitle');
-        if (titleEl) titleEl.innerHTML = `${window.getIcon('edit')} Edit Menu Link`;
+        if (titleEl) titleEl.innerHTML = `✏️ Edit Menu Link`;
 
         document.getElementById('linkId').value = link.id;
         document.getElementById('linkSort').value = link.sort_order || '0';
@@ -258,7 +257,7 @@ const MenuMgmt = {
         const url = id ? '/menu/api/update' : '/menu/api/add';
 
         btn.disabled = true;
-        btn.innerHTML = `${window.getIcon('waiting')} Saving...`;
+        btn.innerHTML = `⌛ Saving...`;
 
         try {
             const formData = new FormData(e.target);
@@ -327,7 +326,7 @@ const MenuMgmt = {
         const orders = {};
 
         btn.disabled = true;
-        btn.innerHTML = `${window.getIcon('waiting')} Updating...`;
+        btn.innerHTML = `⌛ Updating...`;
 
         try {
             // Calculate new sequence positions

@@ -113,7 +113,7 @@ function renderTable() {
     if (STATE.todos.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <p>${getIcon('empty')} Your todo list is empty!</p>
+                <p>📭 Your todo list is empty!</p>
                 <p class="empty-hint">Add your first task above to get started.</p>
             </div>`;
         return;
@@ -139,7 +139,7 @@ function renderTable() {
             <div class="completed-section">
                 <div class="completed-header">
                     <h3 class="section-title">Completed</h3>
-                    <button type="button" class="btn-clear-all" onclick="openClearCompletedModal()">${getIcon('reset')} Clear All</button>
+                    <button type="button" class="btn-clear-all" onclick="openClearCompletedModal()">🔄 Clear All</button>
                 </div>
                 ${completed.map(todo => renderTodoRow(todo)).join('')}
             </div>`;
@@ -163,7 +163,7 @@ function renderTodoRow(todo) {
             <div class="item-content">
                 <button type="button" class="checkbox-btn ${isCompleted ? 'completed' : ''}" 
                         onclick="toggleTodo(${todo.id})" title="${isCompleted ? 'Re-open Task' : 'Complete Task'}">
-                    <span class="checkmark">${isCompleted ? getIcon('check') : ''}</span>
+                    <span class="checkmark">${isCompleted ? '✅' : ''}</span>
                 </button>
                 <div class="item-details">
                     <span class="item-name">${nameEscaped}</span>
@@ -172,11 +172,11 @@ function renderTodoRow(todo) {
             <div class="action-buttons">
                 ${!isCompleted ? `
                     <button type="button" class="btn-icon-edit" onclick="openEditModal(${todo.id})" title="Edit Task">
-                        ${getIcon('edit')}
+                        ✎
                     </button>
                 ` : ''}
                 <button type="button" class="btn-icon-delete" onclick="confirmDeleteTodo(${todo.id})" title="Remove Task">
-                    ${getIcon('delete')}
+                    🗑️
                 </button>
             </div>
         </div>
@@ -204,7 +204,7 @@ async function handleAddTodo(event) {
     const btn = document.getElementById('addTaskBtn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Adding...`;
+    btn.innerHTML = `⌛ Adding...`;
 
     try {
         const result = await apiPost('/todo/api/add', { task_name: task_name });
@@ -303,7 +303,7 @@ async function handleEditSubmit(event) {
     const btn = document.getElementById('editSaveBtn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const result = await apiPost(`/todo/api/edit/${id}`, { task_name: name });

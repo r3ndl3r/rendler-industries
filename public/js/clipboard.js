@@ -88,9 +88,9 @@ function renderList() {
         return `
             <div class="message-item glass-panel" id="msg-row-${msg.id}">
                 <div class="item-actions">
-                    <button class="btn-icon-copy" onclick="copyToClipboard('${safeRaw}')" title="Copy to Clipboard">${getIcon('copy')}</button>
-                    <button class="btn-icon-edit" onclick="editMessage(${msg.id}, '${safeRaw}')" title="Edit">${getIcon('edit')}</button>
-                    <button class="btn-icon-delete" onclick="removeMessage(${msg.id})" title="Delete">${getIcon('delete')}</button>
+                    <button class="btn-icon-copy" onclick="copyToClipboard('${safeRaw}')" title="Copy to Clipboard">📋</button>
+                    <button class="btn-icon-edit" onclick="editMessage(${msg.id}, '${safeRaw}')" title="Edit">✎</button>
+                    <button class="btn-icon-delete" onclick="removeMessage(${msg.id})" title="Delete">🗑️</button>
                 </div>
                 <span class="message-text">${msg.text}</span>
             </div>
@@ -220,7 +220,7 @@ async function submitEntry(event) {
 
     // UI State: Indicate flight
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const formData = new FormData(form);

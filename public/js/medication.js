@@ -115,7 +115,7 @@ async function handleLogSubmit(event, url) {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const result = await apiPost(url, Object.fromEntries(formData));
@@ -146,7 +146,7 @@ async function handleRegistrySubmit(event, url) {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const result = await apiPost(url, Object.fromEntries(formData));
@@ -238,16 +238,16 @@ function renderLogItem(l) {
                     <div class="med-item-timer">
                         <span class="interval-update" data-unix="${l.taken_at_unix}">...</span>
                     </div>
-                    <span class="expand-icon">${getIcon('expand')}</span>
+                    <span class="expand-icon">🔽</span>
                 </div>
             </div>
             <div class="med-item-details">
                 <div class="med-item-footer">
-                    <span class="taken-at-label">${getIcon('clock')} ${displayDt}</span>
+                    <span class="taken-at-label">🕒 ${displayDt}</span>
                     <div class="med-item-actions" onclick="event.stopPropagation()">
-                        <button type="button" class="btn-icon-reset" onclick="confirmResetMedication(${l.id})" title="Reset Time">${getIcon('reset')}</button>
-                        <button type="button" class="btn-icon-edit" onclick='openEditModal(${JSON.stringify(l)})' title="Edit Log">${getIcon('edit')}</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, '${escapeHtml(l.medication_name)} for ${escapeHtml(l.family_member)}')" title="Delete Log">${getIcon('delete')}</button>
+                        <button type="button" class="btn-icon-reset" onclick="confirmResetMedication(${l.id})" title="Reset Time">🔄</button>
+                        <button type="button" class="btn-icon-edit" onclick='openEditModal(${JSON.stringify(l)})' title="Edit Log">✏️</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, '${escapeHtml(l.medication_name)} for ${escapeHtml(l.family_member)}')" title="Delete Log">🗑️</button>
                     </div>
                 </div>
             </div>
@@ -311,9 +311,9 @@ function renderRegistryTable() {
             <td>${m.usage_count}</td>
             <td class="col-actions">
                 <div class="action-buttons">
-                    <button type="button" class="btn-icon-edit" onclick="openManageModal('${m.id}', '${escapeHtml(m.name)}', '${m.default_dosage}')" title="Edit Registry">${getIcon('edit')}</button>
+                    <button type="button" class="btn-icon-edit" onclick="openManageModal('${m.id}', '${escapeHtml(m.name)}', '${m.default_dosage}')" title="Edit Registry">✏️</button>
                     <button type="button" class="btn-icon-delete" onclick="confirmDeleteRegistry(${m.id}, '${escapeHtml(m.name)}')" 
-                            ${m.usage_count > 0 ? 'disabled' : ''} title="Remove Registry Item">${getIcon('delete')}</button>
+                            ${m.usage_count > 0 ? 'disabled' : ''} title="Remove Registry Item">🗑️</button>
                 </div>
             </td>
         </tr>
@@ -511,7 +511,7 @@ function confirmResetMedication(id) {
         <div class="reminder-box">
             <label class="reminder-toggle-label">
                 <input type="checkbox" id="enable_reminder" onchange="toggleReminderOptions(this.checked)">
-                <span class="reminder-toggle-content">${getIcon('reminders')} Schedule Reminder</span>
+                <span class="reminder-toggle-content">🔔 Schedule Reminder</span>
             </label>
             <div id="reminder_options" class="reminder-options hidden">
                 <label class="reminder-delay-label">Delay (Hours)</label>
@@ -528,10 +528,10 @@ function confirmResetMedication(id) {
 
     showConfirmModal({
         title: 'Reset Time',
-        icon: 'reset',
+        icon: '🔄',
         message: resetHtml,
         confirmText: 'Reset',
-        confirmIcon: 'save',
+        confirmIcon: '💾',
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {

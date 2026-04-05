@@ -107,7 +107,7 @@ function renderTeenStatus() {
     const container = document.getElementById('todayGalleryContainer');
 
     if (STATE.is_blackout) {
-        icon.innerHTML = window.getIcon('calendar');
+        icon.innerHTML = '📅';
         title.innerText = "Enjoy Your Day!";
         desc.innerText = "Today is a blackout day. No room check required.";
         card.querySelector('.status-action').classList.add('hidden');
@@ -117,7 +117,7 @@ function renderTeenStatus() {
 
     const submissions = STATE.today_status;
     if (submissions.length === 0) {
-        icon.innerHTML = window.getIcon('waiting');
+        icon.innerHTML = '⌛';
         title.innerText = "Ready for Review?";
         desc.innerText = "You haven't uploaded your room photos for today yet.";
     } else {
@@ -125,16 +125,16 @@ function renderTeenStatus() {
         const pending = submissions.filter(s => s.status === 'pending');
         
         if (failed.length > 0) {
-            icon.innerHTML = window.getIcon('error');
+            icon.innerHTML = '❌';
             icon.style.color = "#ef4444";
             title.innerText = "Revision Needed";
             desc.innerText = `Admin has requested changes on ${failed.length} photo(s).`;
         } else if (pending.length > 0) {
-            icon.innerHTML = window.getIcon('waiting');
+            icon.innerHTML = '⌛';
             title.innerText = "Pending Review";
             desc.innerText = "Photos uploaded! Waiting for a parent to check.";
         } else {
-            icon.innerHTML = window.getIcon('check');
+            icon.innerHTML = '✅';
             icon.style.color = "#10b981";
             title.innerText = "Room Approved!";
             desc.innerText = "Great job! Your room is officially clean for today.";
@@ -193,17 +193,17 @@ function renderStorageStats() {
     container.innerHTML = `
         <div class="storage-info">
             <div class="storage-main">
-                ${window.getIcon('files')} <strong>Storage Usage:</strong> ${totalSize} (${stats.total_count} photos)
+                📂 <strong>Storage Usage:</strong> ${totalSize} (${stats.total_count} photos)
             </div>
             <div class="storage-detail">
-                ${window.getIcon('delete')} ${stats.old_count} photos older than 30 days can be trimmed to free <strong>${oldSize}</strong>.
+                🗑️ ${stats.old_count} photos older than 30 days can be trimmed to free <strong>${oldSize}</strong>.
             </div>
         </div>
         <div class="storage-action">
             <button class="btn-primary btn-small ${stats.old_count === 0 ? 'disabled' : ''}" 
                     onclick="${stats.old_count > 0 ? 'confirmTrimData()' : ''}"
                     ${stats.old_count === 0 ? 'disabled' : ''}>
-                ${window.getIcon('delete')} Trim Old Data
+                🗑️ Trim Old Data
             </button>
         </div>
     `;
@@ -261,7 +261,7 @@ function renderDailySummary() {
     container.innerHTML = `
         <div class="progress-grid glass">
             <div class="progress-grid-header">
-                <h4>${window.getIcon('room')} Daily Cleaning Progress</h4>
+                <h4>🧹 Daily Cleaning Progress</h4>
             </div>
             <div class="progress-badges">
                 ${STATE.daily_summary.map(u => {
@@ -291,7 +291,7 @@ function renderDailySummary() {
                                 ${window.getUserIcon(u.username)} <strong>${escapeHtml(u.username)}</strong>
                             </div>
                             <div class="status-info">
-                                ${window.getIcon(icon)} ${statusLabel}
+                                ${{ 'waiting': '⌛', 'search': '🔍', 'error': '⚠️', 'check': '✅' }[icon] || '❓'} ${statusLabel}
                                 ${u.total_photos > 0 ? `<small>(${u.passed_photos}/${u.total_photos})</small>` : ''}
                             </div>
                         </div>
@@ -345,14 +345,14 @@ function renderReviewQueue() {
                         <div class="photo-controls">
                             <div class="action-buttons">
                                 <button type="button" class="btn-icon-view" onclick="updateStatus(${p.id}, 'passed')" title="Pass">
-                                    ${window.getIcon('check')}
-                                </button>
-                                <button type="button" class="btn-icon-edit" onclick="showFailComment(${p.id})" title="Fail">
-                                    ${window.getIcon('close')}
-                                </button>
-                                <button type="button" class="btn-icon-delete" onclick="confirmDeleteSubmission(${p.id})" title="Delete">
-                                    ${window.getIcon('delete')}
-                                </button>
+                    ✅
+                </button>
+                <button type="button" class="btn-icon-edit" onclick="showFailComment(${p.id})" title="Fail">
+                    ×
+                </button>
+                <button type="button" class="btn-icon-delete" onclick="confirmDeleteSubmission(${p.id})" title="Delete">
+                    🗑️
+                </button>
                             </div>
                         </div>
                         <div id="fail-box-${p.id}" class="${p.status === 'failed' ? '' : 'hidden'}">
@@ -377,7 +377,7 @@ function renderSettings() {
 
     container.innerHTML = STATE.all_users.filter(u => u.is_child && !u.is_admin).map(u => {
         const config = STATE.room_configs.find(c => c.user_id === u.id) || { alert_start_time: '17:00:00', is_active: 0 };
-        const statusIcon = config.is_active ? window.getIcon('check') : window.getIcon('error');
+        const statusIcon = config.is_active ? '✅' : '⚠️';
         const statusClass = config.is_active ? 'text-success' : 'text-danger';
         const formattedTime = formatTimeAMPM(config.alert_start_time);
         const alertTimeShort = (config.alert_start_time || '17:00').substring(0, 5);
@@ -390,7 +390,7 @@ function renderSettings() {
                 </div>
                 <div class="setting-card-body">
                     <div class="config-summary">
-                        <small>${window.getIcon('clock')} ${formattedTime}</small>
+                        <small>🕒 ${formattedTime}</small>
                     </div>
                 </div>
                 <input type="hidden" class="config-time" value="${alertTimeShort}">
@@ -430,7 +430,7 @@ function renderBlackouts() {
                 <strong>${b.blackout_date}</strong>
                 ${b.reason ? `<br><small>${escapeHtml(b.reason)}</small>` : ''}
             </div>
-            <button class="btn-icon-delete" onclick="deleteBlackout(${b.id})">${window.getIcon('delete')}</button>
+            <button class="btn-icon-delete" onclick="deleteBlackout(${b.id})">🗑️</button>
         </div>
     `).join('');
 }
@@ -537,7 +537,7 @@ function renderUploadPreviews() {
         previewContainer.classList.remove('file-previews');
         previewContainer.innerHTML = `
             <div class="empty-preview-hint">
-                <span>${window.getIcon('file_image')}</span>
+                <span>🖼️</span>
                 No photos added yet
             </div>
         `;
@@ -574,7 +574,7 @@ async function handleUpload(event) {
     
     btn.disabled = true;
     const originalHtml = btn.innerHTML;
-    btn.innerHTML = `${window.getIcon('waiting')} Uploading ${UPLOAD_QUEUE.length} photos...`;
+    btn.innerHTML = `⌛ Uploading ${UPLOAD_QUEUE.length} photos...`;
     
     try {
         const result = await apiPost('/room/api/upload', formData);

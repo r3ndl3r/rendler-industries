@@ -476,28 +476,28 @@ function createNoteElement(note, canEdit = true) {
             <div class="note-actions">
                 <div class="note-actions-drawer ${note.is_options_expanded ? 'expanded' : ''}" id="drawer-${note.id}">
                     <button class="btn-icon-copy" onclick="copyNoteToClipboard(${note.id})" title="Copy to Clipboard">
-                        ${getIcon('copy')}
+                        📋
                     </button>
                     <button class="btn-icon-link" onclick="copyNoteLink(${note.id})" title="Copy Direct Link">
-                        ${getIcon('link')}
+                        🔗
                     </button>
                     <button class="btn-icon-move" onclick="openMoveModal(event, ${note.id})" title="Copy to Canvas" ${canEdit ? '' : 'disabled'}>
-                        ${getIcon('move')}
+                        📦
                     </button>
                     <button class="btn-icon-level-copy" onclick="openLayerActionModal(${note.id})" title="Copy to Level" ${canEdit ? '' : 'disabled'}>
-                        ${getIcon('level_copy')}
+                        📑
                     </button>
                     <button class="btn-icon-view" onclick="viewNote(${note.id})" title="Quick View">
-                        ${getIcon('view')}
+                        👁️
                     </button>
                     <button class="btn-icon-collapse" onclick="toggleCollapse(${note.id})" title="Toggle Collapse">
-                        ${getIcon(note.is_collapsed ? 'expand' : 'collapse')}
+                        ${note.is_collapsed ? '➕' : '➖'}
                     </button>
                     <button class="btn-icon-edit" onclick="toggleInlineEdit(this, ${note.id})" title="Edit Content" ${canEdit ? '' : 'disabled'}>
-                        ${getIcon('edit')}
+                        ✏️
                     </button>
                     <button class="btn-icon-delete" onclick="deleteNote(${note.id})" title="Delete Note" ${canEdit ? '' : 'disabled'}>
-                        ${getIcon('delete')}
+                        🗑️
                     </button>
                 </div>
                 <button class="btn-icon-drawer" data-id="${note.id}" title="Toggle Actions">
@@ -1324,7 +1324,7 @@ function toggleInlineEdit(btn, id) {
             textarea.focus();
         }
         
-        btn.innerHTML = getIcon('save');
+        btn.innerHTML = '💾';
         btn.title     = 'Save Changes';
         btn.classList.add('pulse-glow');
     } else {
@@ -1387,7 +1387,7 @@ async function saveNoteInline(id) {
             el.classList.remove('is-editing');
             if (textarea) textarea.readOnly = true;
             if (editBtn) {
-                editBtn.innerHTML = getIcon('edit');
+                editBtn.innerHTML = '✏️';
                 editBtn.title     = 'Edit Content';
                 editBtn.classList.remove('pulse-glow');
             }
@@ -1473,7 +1473,7 @@ async function toggleCollapse(id) {
     // Icon Synchronization: Reflect new state without board re-render
     const collapseBtn = el.querySelector('.btn-icon-collapse');
     if (collapseBtn) {
-        collapseBtn.innerHTML = getIcon(note.is_collapsed ? 'expand' : 'collapse');
+        collapseBtn.innerHTML = note.is_collapsed ? '➕' : '➖';
     }
 
     el.classList.add('pending');
@@ -1626,7 +1626,7 @@ async function showCreateNoteModal(type, data, editId = null) {
         // Edit Mode Initialization
         if (headerLabel) headerLabel.textContent = 'Edit Note';
         if (btnText)     btnText.textContent     = 'Save';
-        if (btnIcon)     btnIcon.innerHTML       = getIcon('save');
+        if (btnIcon)     btnIcon.innerHTML       = '💾';
 
         titleInput.value = note.title || '';
         if (colorPicker) colorPicker.value = normalizeColorHex(note.color);
@@ -1648,14 +1648,14 @@ async function showCreateNoteModal(type, data, editId = null) {
             // Subtle Indicator: Images are immutable via this interface
             const tip = document.createElement('div');
             tip.className = 'create-edit-tip';
-            tip.innerHTML = `${getIcon('info')} Image content is preserved`;
+            tip.innerHTML = `ℹ️ Image content is preserved`;
             container.appendChild(tip);
         }
     } else if (data) {
         // Initialization for pasted notes
         if (headerLabel) headerLabel.textContent = 'Paste from Clipboard';
         if (btnText)     btnText.textContent     = 'Create Note';
-        if (btnIcon)     btnIcon.innerHTML       = getIcon('checklist');
+        if (btnIcon)     btnIcon.innerHTML       = '📋';
 
         titleInput.value = (type === 'text' ? 'Pasted Note' : 'Pasted Image');
         if (colorPicker) colorPicker.value = '#f59e0b';
@@ -1678,7 +1678,7 @@ async function showCreateNoteModal(type, data, editId = null) {
         // New Note Mode
         if (headerLabel) headerLabel.textContent = 'Add New Note';
         if (btnText)     btnText.textContent     = 'Create Note';
-        if (btnIcon)     btnIcon.innerHTML       = getIcon('checklist');
+        if (btnIcon)     btnIcon.innerHTML       = '📋';
 
         titleInput.value = '';
         titleInput.placeholder = (type === 'text' ? 'Note Title...' : 'Image Title...');
@@ -1742,7 +1742,7 @@ async function executeCreateNote() {
     const confirmBtn = document.getElementById('create-note-btn');
     const originalText = confirmBtn.innerHTML;
     confirmBtn.disabled = true;
-    confirmBtn.innerHTML = `${getIcon('waiting')} Saving...`;
+    confirmBtn.innerHTML = `⌛ Saving...`;
 
     try {
         if (type === 'text') {
@@ -2062,7 +2062,7 @@ function renderSearchResults(results, isGlobal) {
     if (results.length === 0) {
         container.innerHTML = `
             <div class="search-empty-state">
-                <span class="global-icon">${window.getIcon('search')}</span>
+                <span class="global-icon">🔍</span>
                 <p>No matches found in ${isGlobal ? 'any of your whiteboards' : 'the current board'}</p>
             </div>
         `;
@@ -2072,11 +2072,11 @@ function renderSearchResults(results, isGlobal) {
     container.innerHTML = results.map(note => `
         <div class="search-result-item" style="--note-accent: ${note.color || '#3b82f6'}" onclick="handleSearchResultClick(${note.id})">
             <div class="search-result-icon">
-                <span class="global-icon">${window.getIcon(note.type === 'image' ? 'file_image' : 'edit')}</span>
+                <span class="global-icon">${note.type === 'image' ? '🖼️' : '✏️'}</span>
             </div>
             <div class="search-result-info">
                 <div class="search-result-path">
-                    ${window.getIcon('notebook')} ${escapeHtml(note.canvas_name || 'Board')} 
+                    📓 ${escapeHtml(note.canvas_name || 'Board')} 
                     <span class="path-separator">❯</span> 
                     Level ${note.layer_id || 1} 
                     <span class="path-separator">❯</span>
@@ -2085,7 +2085,7 @@ function renderSearchResults(results, isGlobal) {
                 <div class="search-result-snippet">${escapeHtml(note.content || '').substring(0, 80)}${note.content && note.content.length > 80 ? '...' : ''}</div>
             </div>
             <div class="search-result-action">
-                <span class="global-icon">${window.getIcon('chevron-right')}</span>
+                <span class="global-icon">▶️</span>
             </div>
         </div>
     `).join('');
@@ -2170,7 +2170,7 @@ async function copyNoteId(e, id) {
     
     try {
         await navigator.clipboard.writeText(id);
-        showToast(`${getIcon('copy')} Note ID #${id} copied to clipboard`, 'success');
+        showToast(`📋 Note ID #${id} copied to clipboard`, 'success');
     } catch (err) {
         console.error('Copy Note ID failed:', err);
         showToast('Failed to copy ID', 'error');
@@ -2216,7 +2216,7 @@ function loadCanvases() {
             <div class="canvas-info" onclick="switchCanvas(${canvas.id})">
                 <div class="canvas-name-row">
                     <span class="canvas-name">${escapeHtml(canvas.name)}</span>
-                    ${canvas.id == STATE.canvas_id ? `<span class="active-badge">${window.getIcon('ai')} Active</span>` : ''}
+                    ${canvas.id == STATE.canvas_id ? `<span class="active-badge">🧠 Active</span>` : ''}
                 </div>
                 <div class="canvas-meta">
                     ${isOwner ? 'Owned by you' : 'Shared by ' + (canvas.owner_name || 'System')}
@@ -2225,12 +2225,12 @@ function loadCanvases() {
             <div class="canvas-actions">
                 ${isOwner ? `
                     <button class="btn-icon-square btn-sm btn-primary" onclick="openBoardSettings(${canvas.id})" title="Board Settings">
-                        ${window.getIcon('settings')}
+                        ⚙️
                     </button>
                 ` : ''}
                 ${isOwner && canvas.name !== 'Your Notebook' ? `
                     <button class="btn-icon-square btn-sm btn-danger" onclick="deleteCanvas(event, ${canvas.id})" title="Delete Board">
-                        ${window.getIcon('delete')}
+                        🗑️
                     </button>
                 ` : ''}
             </div>
@@ -2424,7 +2424,7 @@ function renderBoardShares(id, shares = null) {
                     </label>
                 </div>
                 <button class="btn-icon-delete" onclick="confirmRevoke(${id}, '${share.username}')" title="Revoke Access">
-                    ${window.getIcon('delete')}
+                    🗑️
                 </button>
             </div>
         `;
@@ -2547,7 +2547,7 @@ function openMoveModal(e, id) {
             </div>
             <div class="canvas-actions">
                 <button class="btn-icon-square btn-sm btn-primary">
-                    ${window.getIcon('move')}
+                    📦
                 </button>
             </div>
         `;
@@ -2616,9 +2616,9 @@ function formatNoteContent(content, noteId) {
         let formatted = line.replace(/\[note:(\d+)\]/g, (match, id) => {
             const meta = STATE.note_map && STATE.note_map[id];
             if (meta) {
-                return `<span class="note-link" onclick="handleNoteLinkClick(${id})" title="Jump to: ${window.escapeHtml(meta.title)}">${getIcon('link')} ${window.escapeHtml(meta.title)}</span>`;
+                return `<span class="note-link" onclick="handleNoteLinkClick(${id})" title="Jump to: ${window.escapeHtml(meta.title)}">🔗 ${window.escapeHtml(meta.title)}</span>`;
             }
-            return `<span class="note-link-broken" title="Note #${id} not found or inaccessible">${getIcon('warning')} [note:${id}]</span>`;
+            return `<span class="note-link-broken" title="Note #${id} not found or inaccessible">⚠️ [note:${id}]</span>`;
         });
 
         // 1. Bold & Italic Emphasis
@@ -2632,7 +2632,7 @@ function formatNoteContent(content, noteId) {
 
         // 2. External Links (Sanitized for http/https only)
         formatted = formatted.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, (match, label, url) => {
-            return `<a class="note-external-link" href="${url}" target="_blank" rel="noopener noreferrer">${label} ${getIcon('link')}</a>`;
+            return `<a class="note-external-link" href="${url}" target="_blank" rel="noopener noreferrer">${label} 🔗</a>`;
         });
 
         // 3. Color Tags (Themed names or Custom HEX)
@@ -2652,11 +2652,11 @@ function formatNoteContent(content, noteId) {
                 const scale = parseFloat(scaleFactor) || 1.0;
                 const width = Math.min(Math.max(scale * 100, 10), 100); // Bounds: 10% - 100%
                 
-                return `<div class="note-embedded-wrap" style="width: ${width}%;" onclick="handleNoteLinkClick(${id})"><img src="/notes/serve/${id}" class="note-embedded-img" alt="${window.escapeHtml(meta.title)}" loading="lazy"><div class="note-embedded-caption">${getIcon('image')} ${window.escapeHtml(meta.title || `Image #${id}`)}</div></div>`;
+                return `<div class="note-embedded-wrap" style="width: ${width}%;" onclick="handleNoteLinkClick(${id})"><img src="/notes/serve/${id}" class="note-embedded-img" alt="${window.escapeHtml(meta.title)}" loading="lazy"><div class="note-embedded-caption">🖼️ ${window.escapeHtml(meta.title || `Image #${id}`)}</div></div>`;
             }
             
             // Fallback: Broken/Missing Image Reference
-            return `<div class="note-embedded-broken">${getIcon('warning')} [image:${id}] - Reference not found</div>`;
+            return `<div class="note-embedded-broken">⚠️ [image:${id}] - Reference not found</div>`;
         });
 
         return formatted;
@@ -2672,7 +2672,7 @@ function formatNoteContent(content, noteId) {
 function showBoardInfo() {
     const helpContent = `
         <div class="board-guide-section nav">
-            <h4>${getIcon('link')} Navigation & Rendering</h4>
+            <h4>🔗 Navigation & Rendering</h4>
             <ul class="board-guide-list">
                 <li><strong>[note:#]</strong> - Link to another note by its ID</li>
                 <li><strong>[image:#:scale]</strong> - Embed an image note (scale: 0.1 - 1.0)</li>
@@ -2681,7 +2681,7 @@ function showBoardInfo() {
         </div>
         <div class="board-guide-divider"></div>
         <div class="board-guide-section edit">
-            <h4>${getIcon('edit')} Rich Text Formatting</h4>
+            <h4>✏️ Rich Text Formatting</h4>
             <ul class="board-guide-list">
                 <li><strong>**Bold**</strong> and <strong>*Italic*</strong> for emphasis</li>
                 <li><strong>\`code\`</strong> - Monospace code block</li>
@@ -2691,7 +2691,7 @@ function showBoardInfo() {
         </div>
         <div class="board-guide-divider"></div>
         <div class="board-guide-section move">
-            <h4>${getIcon('move')} Whiteboard Controls</h4>
+            <h4>📦 Whiteboard Controls</h4>
             <ul class="board-guide-list">
                 <li><strong>Double Click</strong> - Create a new note at cursor</li>
                 <li><strong>Ctrl+V</strong> - Paste image to create an Image Note</li>
@@ -2836,7 +2836,7 @@ function renderBin(notes) {
     if (notes.length === 0) {
         container.innerHTML = `
             <div class="bin-empty-state">
-                ${getIcon('empty')}
+                📭
                 <p>Recycle Bin is empty.</p>
             </div>
         `;
@@ -2851,22 +2851,22 @@ function renderBin(notes) {
         item.style.setProperty('--note-accent', accentColor);
 
         item.innerHTML = `
-            <div class="bin-item-icon">${getIcon(note.type === 'image' ? 'file_image' : 'file_text')}</div>
+            <div class="bin-item-icon">${note.type === 'image' ? '🖼️' : '📄'}</div>
             <div class="bin-item-info">
                 <div class="bin-item-title">${escapeHtml(note.title || 'Untitled Note')}</div>
                 <div class="bin-item-meta">
                     <span class="bin-item-board-badge">
-                        ${getIcon('folder_open')} ${escapeHtml(note.canvas_name || 'Deleted Board')}
+                        📂 ${escapeHtml(note.canvas_name || 'Deleted Board')}
                     </span>
                     <span>Deleted ${new Date(note.updated_at).toLocaleDateString()}</span>
                 </div>
             </div>
             <div class="bin-item-actions">
                 <button class="btn-icon-square btn-success" onclick="restoreNote(${note.id})" title="Restore Note">
-                    ${getIcon('reset')}
+                    🔄
                 </button>
                 <button class="btn-icon-square btn-danger" onclick="confirmPurge(${note.id})" title="Delete Permanently">
-                    ${getIcon('delete')}
+                    🗑️
                 </button>
             </div>
         `;

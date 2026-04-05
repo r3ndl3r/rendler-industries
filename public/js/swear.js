@@ -153,7 +153,7 @@ const SwearModule = {
                             <form class="pay-debt-form" onsubmit="SwearModule.handlePaymentSubmit(event)">
                                 <input type="hidden" name="perpetrator" value="${escapeHtml(row.perpetrator)}">
                                 <input type="number" name="amount" value="${parseFloat(row.total).toFixed(2)}" step="0.50" min="0" class="game-input small-input">
-                                <button type="submit" class="game-btn btn-green btn-small">DEPOSIT</button>
+                                <button class="btn-icon-edit" onclick="openEditModal(${row.id})" title="Edit">✏️</button>
                             </form>
                         ` : ''}
                     </div>
@@ -228,9 +228,7 @@ const SwearModule = {
                     <br>
                     <span class="member-default-fine">Default: $${parseFloat(m.default_fine).toFixed(2)}</span>
                 </div>
-                <button type="button" class="btn-icon-delete" onclick="confirmDeleteMember(${m.id}, '${escapeHtml(m.name)}')">
-                    ${getIcon('delete')}
-                </button>
+                <button class="btn-icon-delete" onclick="confirmDeleteMember(${m.id}, '${escapeHtml(m.name)}')" title="Delete">🗑️</button>
             </div>
         `).join('');
     },
@@ -271,7 +269,7 @@ const SwearModule = {
         const originalHtml = btn.innerHTML;
 
         btn.disabled = true;
-        btn.innerHTML = `${getIcon('waiting')} Reporting...`;
+        btn.innerHTML = `⌛ Reporting...`;
 
         try {
             const formData = new FormData(e.target);
@@ -301,7 +299,7 @@ const SwearModule = {
         const originalHtml = btn.innerHTML;
 
         btn.disabled = true;
-        btn.innerHTML = `${getIcon('waiting')}...`;
+        btn.innerHTML = `⌛...`;
 
         try {
             const formData = new FormData(e.target);
@@ -329,7 +327,7 @@ const SwearModule = {
         const originalHtml = btn.innerHTML;
 
         btn.disabled = true;
-        btn.innerHTML = `${getIcon('waiting')} Depositing...`;
+        btn.innerHTML = `⌛ Depositing...`;
 
         try {
             const formData = new FormData(e.target);
@@ -358,7 +356,7 @@ const SwearModule = {
         const originalHtml = btn.innerHTML;
 
         btn.disabled = true;
-        btn.innerHTML = `${getIcon('waiting')} Spending...`;
+        btn.innerHTML = `⌛ Spending...`;
 
         try {
             const formData = new FormData(e.target);
@@ -387,7 +385,7 @@ const SwearModule = {
         const originalHtml = btn.innerHTML;
 
         btn.disabled = true;
-        btn.innerHTML = `${getIcon('waiting')} Adding...`;
+        btn.innerHTML = `⌛ Adding...`;
 
         try {
             const formData = new FormData(e.target);
