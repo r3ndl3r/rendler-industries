@@ -507,6 +507,25 @@ function createNoteElement(note, canEdit = true) {
         <div class="note-resize-handle" title="Resize Note"></div>
     `;
 
+    // Interaction: Focus-driven z-index promotion (Seamless Click-to-Front)
+    div.addEventListener('mousedown', () => {
+        if (!canEdit || STATE.isInitializing) return;
+        
+        const currentZ = parseInt(div.style.zIndex || 1);
+        const maxZ     = Math.max(...STATE.notes.map(n => n.z_index || 0), 0);
+        
+        if (currentZ <= maxZ) {
+            const newZ = maxZ + 1;
+            div.style.zIndex = newZ;
+            note.z_index     = newZ;
+            
+            // Interaction Synchronization: Persist layering focus to MariaDB (Silent Mode)
+            // Silent mode skips the .pending UI lockout to ensure follow-up 'click' events 
+            // for Sticky Move (Pick & Place) are not swallowed.
+            syncNotePosition(note.id, 'silent');
+        }
+    });
+
     return div;
 }
 
@@ -536,10 +555,6 @@ function initResizable(el, note) {
         startWidth = parseInt(style.width, 10);
         startHeight = parseInt(style.height, 10);
         
-        // Z-Index Promotion
-        const maxZ = Math.max(...STATE.notes.map(n => n.z_index || 0), 0) + 1;
-        el.style.zIndex = maxZ;
-
         document.addEventListener('mousemove', doResize);
         document.addEventListener('mouseup', stopResize);
         el.classList.add('resizing');
@@ -612,9 +627,7 @@ function makeDraggable(el) {
         
         e.preventDefault();
         
-        // Elevate z-index during flight (Consolidated Logic)
-        const maxZ = Math.max(...STATE.notes.map(n => n.z_index || 0), 0) + 1;
-        el.style.zIndex = maxZ;
+        // Logic-Pure Movement: Layering is handled by the focus listener
         el.classList.add('dragging');
         STATE.isDragging = true;
         
@@ -695,9 +708,6 @@ function toggleStickyMove(e, id) {
     STATE.pickedNoteId = id;
     STATE.originalPos  = { x: note.x, y: note.y, z: el.style.zIndex };
     
-    // Elevate z-index for the flight path
-    const maxZ = Math.max(...STATE.notes.map(n => n.z_index || 0), 0) + 1;
-    el.style.zIndex = maxZ;
     el.classList.add('note-picked');
     
     document.addEventListener('mousemove', updateStickyMove);
@@ -824,14 +834,15 @@ function handleGlobalKeydown(e) {
 /**
  * Synchronizes position data to the backend.
  * @param {number|string} id - The note ID.
+ * @param {string} [type] - Optional synchronization mode ('silent' skips UI lockout).
  * @returns {Promise<void>}
  */
-async function syncNotePosition(id) {
+async function syncNotePosition(id, type = 'normal') {
     const el = document.getElementById(`note-${id}`);
     const note = STATE.notes.find(n => n.id == id);
     if (!el || !note) return;
 
-    el.classList.add('pending');
+    if (type !== 'silent') el.classList.add('pending');
 
     const params = {
         id: id,
@@ -857,7 +868,7 @@ async function syncNotePosition(id) {
             STATE.note_map      = res.note_map || STATE.note_map;
         }
     } finally {
-        el.classList.remove('pending');
+        if (type !== 'silent') el.classList.remove('pending');
     }
 }
 
