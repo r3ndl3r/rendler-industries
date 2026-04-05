@@ -31,7 +31,8 @@ const STATE = {
     isResizing:     false,          // Note Dimensions State
     isEditingNote:  false,          // Inline Editor Active State
     activeLayerId:  1,               // Level Isolation Filter (1-99)
-    isSwitchingLayer: false          // Interaction Guard: Prevents overlapping transitions
+    isSwitchingLayer: false,         // Interaction Guard: Prevents overlapping transitions
+    note_map:       {}               // Metadata Registry for [note:#] resolution
 };
 
 /**
@@ -82,6 +83,11 @@ async function initNotes() {
     document.getElementById('focus-recent').addEventListener('click', focusMostRecentNote);
     document.getElementById('open-search').addEventListener('click', openSearchModal);
     document.getElementById('open-canvas-manager').addEventListener('click', openCanvasManager);
+    
+    const openInfoBtn = document.getElementById('open-info');
+    if (openInfoBtn) {
+        openInfoBtn.addEventListener('click', showBoardInfo);
+    }
 
     // Search Input Listener
     const searchInput = document.getElementById('note-search-input');
@@ -242,6 +248,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             
             // State Synchronization: Baseline alignment with backend truth
             STATE.last_mutation = data.last_mutation;
+            STATE.note_map      = data.note_map || {};
 
             STATE.share_list = data.share_list || [];
             
@@ -438,7 +445,13 @@ function createNoteElement(note, canEdit = true) {
 
     let contentHtml = '';
     if (note.type === 'text') {
-        contentHtml = `<div class="note-content"><textarea readonly onkeydown="handleNoteKeydown(event, ${note.id})">${escapeHtml(note.content || '')}</textarea></div>`;
+        const viewerHtml = formatNoteContent(note.content, note.id);
+        contentHtml = `
+            <div class="note-content">
+                <div class="note-text-viewer" data-id="${note.id}">${viewerHtml}</div>
+                <textarea readonly onkeydown="handleNoteKeydown(event, ${note.id})">${window.escapeHtml(note.content || '')}</textarea>
+            </div>
+        `;
     } else if (note.type === 'image') {
         contentHtml = `
             <div class="note-content">
@@ -450,6 +463,7 @@ function createNoteElement(note, canEdit = true) {
 
     div.innerHTML = `
         <div class="note-header">
+            <span class="note-id-hash" onclick="copyNoteId(event, ${note.id})" title="Click to copy Note ID #${note.id}">#</span>
             <input type="color" class="inline-color-input" value="${accentColor}" 
                    oninput="updateNoteAccent(this, ${note.id})" title="Change Note Color" ${canEdit ? '' : 'disabled'}>
             
@@ -1288,14 +1302,14 @@ function toggleInlineEdit(btn, id) {
     if (isEditing) {
         // Mode Transition: Enable Interaction & Focus
         STATE.isEditingNote  = true;
-        if (textarea) textarea.readOnly = false;
+        if (textarea) {
+            textarea.readOnly = false;
+            textarea.focus();
+        }
         
         btn.innerHTML = getIcon('save');
         btn.title     = 'Save Changes';
         btn.classList.add('pulse-glow');
-        
-        // Auto-Focus Precision
-        titleInp.focus();
     } else {
         // Mode Termination: Atomic Persistence
         saveNoteInline(id);
@@ -2093,6 +2107,23 @@ async function copyNoteToClipboard(id) {
     }
 }
 
+/**
+ * Copies the Note's numeric ID to the clipboard.
+ * @param {Event} e - Click event.
+ * @param {number|string} id - The note ID.
+ */
+async function copyNoteId(e, id) {
+    if (e) e.stopPropagation();
+    
+    try {
+        await navigator.clipboard.writeText(id);
+        showToast(`${getIcon('copy')} Note ID #${id} copied to clipboard`, 'success');
+    } catch (err) {
+        console.error('Copy Note ID failed:', err);
+        showToast('Failed to copy ID', 'error');
+    }
+}
+
 // --- Multi-Canvas & Sharing UI Logic ---
 
 /**
@@ -2497,3 +2528,209 @@ async function copyNoteToBoard(id, canvas_id) {
         showToast(res.error || 'Duplication Failed', 'error');
     }
 }
+
+/**
+ * Transforms Markdown-style checkbox syntax into interactive HTML checkboxes.
+ * @param {string} content - The raw note text.
+ * @param {number|string} noteId - The associated note ID for event binding.
+ * @returns {string} - Formatted HTML string.
+ */
+function formatNoteContent(content, noteId) {
+    if (!content) return '';
+    const lines = content.split('\n');
+    const result = lines.map((line, index) => {
+        // Precise Detection: Identify leading whitespace, checkbox markers, and optional separator space
+        const todoMatch = line.match(/^([\s]*)(\[\]|\[\*\])([ ]?)(.*)$/);
+        
+        if (todoMatch) {
+            const prefix    = todoMatch[1]; // Preserve indentation
+            const isChecked = todoMatch[2] === '[*]';
+            const separator = todoMatch[3]; // The optional single space after marker
+            const text      = todoMatch[4]; // Extract remaining text
+            
+            const checkedAttr  = isChecked ? 'checked' : '';
+            const checkedClass = isChecked ? 'checked' : '';
+            
+            // Inline Transformation: Replace [] marker with a functional wrapper
+            // By consuming the separator space here, we ensure perfect vertical 
+            // alignment for wrapped multi-line text blocks.
+            return `<label class="todo-inline-wrap"><span class="prefix">${prefix}</span><input type="checkbox" class="note-todo-checkbox" ${checkedAttr} onchange="toggleNoteCheckbox(event, ${noteId}, ${index})"><span class="note-todo-text ${checkedClass}">${window.escapeHtml(text)}</span></label>`;
+        }
+        
+        // Literal Line Passthrough: Maintain original structure for non-checkbox lines
+        return window.escapeHtml(line);
+    }).map(line => {
+        // Post-Escaping Transformation: Resolve [note:#] deep links and rich text
+        let formatted = line.replace(/\[note:(\d+)\]/g, (match, id) => {
+            const meta = STATE.note_map && STATE.note_map[id];
+            if (meta) {
+                return `<span class="note-link" onclick="handleNoteLinkClick(${id})" title="Jump to: ${window.escapeHtml(meta.title)}">${getIcon('link')} ${window.escapeHtml(meta.title)}</span>`;
+            }
+            return `<span class="note-link-broken" title="Note #${id} not found or inaccessible">${getIcon('warning')} [note:${id}]</span>`;
+        });
+
+        // 1. Bold & Italic Emphasis
+        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="note-bold">$1</strong>');
+        formatted = formatted.replace(/\*([^\*]+)\*/g, '<em class="note-italic">$1</em>');
+
+        // 2. Inline Code Formatting
+        formatted = formatted.replace(/`([^`]+)`/g, (match, code) => {
+            return `<code class="note-code-inline">${code}</code>`;
+        });
+
+        // 2. External Links (Sanitized for http/https only)
+        formatted = formatted.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, (match, label, url) => {
+            return `<a class="note-external-link" href="${url}" target="_blank" rel="noopener noreferrer">${label} ${getIcon('link')}</a>`;
+        });
+
+        // 3. Color Tags (Themed names or Custom HEX)
+        formatted = formatted.replace(/\[color:(\w+|#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/g, (match, selector, text) => {
+            const isHex = selector.startsWith('#');
+            const style = isHex ? `style="color: ${selector}"` : '';
+            const className = isHex ? '' : `note-text-${selector.toLowerCase()}`;
+            return `<span class="${className}" ${style}>${text}</span>`;
+        });
+
+        // 4. Embedded Image Notes: [image:id:scale]
+        formatted = formatted.replace(/\[image:(\d+):?(\d*\.?\d+)?\]/g, (match, id, scaleFactor) => {
+            const meta = STATE.note_map && STATE.note_map[id];
+            
+            // Validation: Ensure the note exists and is an image type
+            if (meta && meta.type === 'image') {
+                const scale = parseFloat(scaleFactor) || 1.0;
+                const width = Math.min(Math.max(scale * 100, 10), 100); // Bounds: 10% - 100%
+                
+                return `<div class="note-embedded-wrap" style="width: ${width}%;" onclick="handleNoteLinkClick(${id})"><img src="/notes/serve/${id}" class="note-embedded-img" alt="${window.escapeHtml(meta.title)}" loading="lazy"><div class="note-embedded-caption">${getIcon('image')} ${window.escapeHtml(meta.title || `Image #${id}`)}</div></div>`;
+            }
+            
+            // Fallback: Broken/Missing Image Reference
+            return `<div class="note-embedded-broken">${getIcon('warning')} [image:${id}] - Reference not found</div>`;
+        });
+
+        return formatted;
+    }).join('\n');
+
+    // Neutralizes line breaks for consistent block-to-inline transitions in pre-formatted areas
+    return result.replace(/\n(<div class="note-embedded-(wrap|broken)"[^>]*>)/g, '$1').replace(/(<\/div>)\n/g, '$1');
+}
+
+/**
+ * Displays a formatted information modal explaining whiteboard features.
+ */
+function showBoardInfo() {
+    const helpContent = `
+        <div class="board-guide-section nav">
+            <h4>${getIcon('link')} Navigation & Rendering</h4>
+            <ul class="board-guide-list">
+                <li><strong>[note:#]</strong> - Link to another note by its ID</li>
+                <li><strong>[image:#:scale]</strong> - Embed an image note (scale: 0.1 - 1.0)</li>
+                <li><strong>[Label](url)</strong> - Create an external link</li>
+            </ul>
+        </div>
+        <div class="board-guide-divider"></div>
+        <div class="board-guide-section edit">
+            <h4>${getIcon('edit')} Rich Text Formatting</h4>
+            <ul class="board-guide-list">
+                <li><strong>**Bold**</strong> and <strong>*Italic*</strong> for emphasis</li>
+                <li><strong>\`code\`</strong> - Monospace code block</li>
+                <li><strong>[color:selector]text[/color]</strong> - Highlight text (Semantic or HEX)</li>
+                <li><strong>- [ ]</strong> or <strong>- [x]</strong> - Interactive checklists</li>
+            </ul>
+        </div>
+        <div class="board-guide-divider"></div>
+        <div class="board-guide-section move">
+            <h4>${getIcon('move')} Whiteboard Controls</h4>
+            <ul class="board-guide-list">
+                <li><strong>Double Click</strong> - Create a new note at cursor</li>
+                <li><strong>Ctrl+V</strong> - Paste image to create an Image Note</li>
+                <li><strong>Ctrl+Wheel</strong> - Zoom in/out to scale the perspective</li>
+            </ul>
+        </div>
+    `;
+
+    showConfirmModal({
+        title: 'Guide',
+        icon: 'info',
+        message: helpContent,
+        confirmText: 'Got it',
+        hideCancel: true,
+        width: 'medium'
+    });
+}
+
+/**
+ * Note Link Interaction Handler
+ * Manages local centering or cross-canvas transitions for [note:#] links.
+ * @param {number|string} id - The target note ID.
+ */
+function handleNoteLinkClick(id) {
+    const meta = STATE.note_map[id];
+    if (!meta) return;
+
+    // Orchestration Logic: Local Viewport Shift vs Cross-Canvas Transposition
+    if (meta.canvas_id == STATE.canvas_id) {
+        centerOnNote(id);
+    } else {
+        switchCanvas(meta.canvas_id, id);
+    }
+}
+
+/**
+ * Toggles the checkbox state within a note and persists to the backend.
+ * @param {Event} event - The checkbox change event.
+ * @param {number|string} noteId - The note ID.
+ * @param {number} lineIndex - The zero-based line index to update.
+ * @returns {Promise<void>}
+ */
+async function toggleNoteCheckbox(event, noteId, lineIndex) {
+    event.stopPropagation();
+    const note = STATE.notes.find(n => n.id == noteId);
+    if (!note) return;
+
+    const isChecked = event.target.checked;
+    const lines = note.content.split('\n');
+    const line  = lines[lineIndex];
+
+    if (line) {
+        const oldMarker = isChecked ? '[]' : '[*]';
+        const newMarker = isChecked ? '[*]' : '[]';
+        lines[lineIndex] = line.replace(oldMarker, newMarker);
+    }
+
+    const newContent = lines.join('\n');
+    note.content     = newContent; // Optimistic UI update
+
+    // Background Sync: Use the established save pattern
+    const el = document.getElementById(`note-${noteId}`);
+    const params = {
+        id: noteId,
+        canvas_id: STATE.canvas_id,
+        title: note.title,
+        content: newContent,
+        color: note.color,
+        layer_id: note.layer_id || STATE.activeLayerId,
+        x: note.x,
+        y: note.y,
+        width: el ? el.offsetWidth : note.width,
+        height: el ? el.offsetHeight : note.height,
+        z_index: el ? el.style.zIndex : note.z_index,
+        is_collapsed: note.is_collapsed,
+        is_options_expanded: note.is_options_expanded
+    };
+
+    try {
+        const res = await apiPost('/notes/api/save', params);
+        if (res && res.success) {
+            STATE.notes = res.notes; // State transition reconciliation
+            renderUI(); // Refresh view to reflect changes (strikethrough etc.)
+        }
+    } catch (err) {
+        console.error('[TODO] Checkbox sync failed:', err);
+        showToast('Failed to sync checkbox state', 'error');
+    }
+}
+
+// Global Exposure: Required for inline event handlers
+window.formatNoteContent = formatNoteContent;
+window.toggleNoteCheckbox = toggleNoteCheckbox;
+window.handleNoteLinkClick = handleNoteLinkClick;
