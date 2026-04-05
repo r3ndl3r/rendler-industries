@@ -232,6 +232,31 @@ async function apiPost(url, data = {}) {
 }
 
 /**
+ * Standard AJAX GET wrapper.
+ * 
+ * @param {string} url - Target API endpoint.
+ * @returns {Promise<Object|null>} - Parsed JSON response or null on failure.
+ */
+async function apiGet(url) {
+    try {
+        const response = await fetch(url);
+        const text = await response.text();
+        let result;
+        try {
+            result = JSON.parse(text);
+        } catch (e) {
+            console.error('JSON Parse Error:', text);
+            throw new Error('Invalid JSON response');
+        }
+        return result;
+    } catch (err) {
+        console.error('apiGet Error:', err);
+        showToast('Network error', 'error');
+        return null;
+    }
+}
+
+/**
  * Triggers global fullscreen loading overlay.
  * Uses frosted glass aesthetic per system design standards.
  * 
