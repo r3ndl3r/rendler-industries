@@ -119,5 +119,7 @@
     "focus": "⛶",
     "move": "➡️",
     "coin": "🪙",
-    "smiley": "😀"
+    "smiley": "😀",
+    "triangle_up": "🔺",
+    "triangle_down": "🔻"
 }
