@@ -19,7 +19,6 @@
 
     <%# Global Script Dependencies %>
     <script src="/js/jquery.js"></script>
-    <script src="/api/icons.js"></script>
     <script src="/js/toast.js"></script>
     <script src="/js/default.js"></script>
     <script src="/js/emoji-picker.js"></script>
@@ -37,7 +36,7 @@
     <div id="globalConfirmActionModal" class="delete-modal-overlay">
         <div id="globalConfirmModalContent" class="delete-modal-content">
             <div class="delete-modal-header">
-                <h3><span id="globalConfirmModalIcon"><%= icon('delete') %></span> <span id="globalConfirmModalTitle">Confirm Action</span></h3>
+                <h3><span id="globalConfirmModalIcon">🗑️</span> <span id="globalConfirmModalTitle">Confirm Action</span></h3>
                 <span id="globalConfirmCloseX" class="delete-modal-close" onclick="closeConfirmModal()">&times;</span>
             </div>
             <div class="delete-modal-body">
