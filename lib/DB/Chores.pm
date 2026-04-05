@@ -94,12 +94,13 @@ sub DB::get_recent_chore_templates {
     my ($self) = @_;
     $self->ensure_connection();
 
-    # Groups by title returning their general point values
+    # Groups by title returning their general point values and assignment context
     my $sth = $self->{dbh}->prepare(
-        "SELECT MAX(id) as max_id, title, MAX(points) as points 
-         FROM chores 
-         GROUP BY title 
-         ORDER BY max_id DESC 
+        "SELECT c.title, c.points, c.assigned_to, u.username as assigned_username
+         FROM chores c
+         LEFT JOIN users u ON c.assigned_to = u.id
+         WHERE c.id IN (SELECT MAX(id) FROM chores GROUP BY title)
+         ORDER BY c.id DESC
          LIMIT 12"
     );
     $sth->execute();
