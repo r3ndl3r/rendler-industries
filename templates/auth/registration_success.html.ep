@@ -1,7 +1,7 @@
 <%# /templates/auth/registration_success.html.ep %>
 
 % layout 'default';
-% title icon('success') . ' Registration Successful';
+% title '✅ Registration Successful';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/auth.css">
@@ -10,7 +10,7 @@
 <div class="auth-wrapper">
     <div class="auth-container">
         <div class="header-bar">
-            <h1><%= icon('register') %> <span>Registration</span></h1>
+            <h1>📝 <span>Registration</span></h1>
         </div>
 
         <%# Success Message Card %>

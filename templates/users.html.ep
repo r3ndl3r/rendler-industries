@@ -1,7 +1,7 @@
 <%# /templates/users.html.ep %>
 
 % layout 'default';
-% title icon('admin') . ' Users Admin';
+<% title '👥 User Management'; %>
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/users.css">
@@ -10,10 +10,10 @@
 
 <div class="admin-container app-container">
     <div class="header-bar">
-        <h1><%= icon('user') %> <span>Users Admin</span></h1>
+        <h1>👥 <span>Identity Hub</span></h1>
         <div class="manage-actions">
             <button id="addUserBtn" class="btn-primary" onclick="openAddUserModal()">
-                <%= icon('plus') %> Add User
+                ➕ Add User
             </button>
         </div>
     </div>
@@ -40,7 +40,7 @@
                     <td colspan="10">
                         <div class="component-loading">
                             <div class="loading-scan-line"></div>
-                            <span class="loading-icon-pulse"><%= icon('user') %></span>
+                            <span class="loading-icon-pulse">👤</span>
                             <p class="loading-label">Synchronizing user roster...</p>
                             <p class="loading-sub">Retrieving permissions and account lifecycle states</p>
                         </div>
@@ -55,7 +55,7 @@
 <div id="editUserModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('edit') %> Edit User</h3>
+            <h3>➕ Create User Account</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
         <form id="editUserForm" onsubmit="handleEditSubmit(event)">
@@ -92,7 +92,7 @@
             </div>
             
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="editSaveBtn" class="btn-primary"><%= icon('save') %> Save Profile</button>
+                <button type="submit" class="btn-primary">💾 Save Account</button>
             </div>
         </form>
     </div>
@@ -102,7 +102,7 @@
 <div id="addUserModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('plus') %> Add New User</h3>
+            <h3>➕ Add New User</h3>
             <span class="close-btn" onclick="closeAddUserModal()">&times;</span>
         </div>
         <form id="addUserForm" onsubmit="handleAddSubmit(event)">
@@ -151,7 +151,7 @@
             </div>
             
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="addSaveBtn" class="btn-primary"><%= icon('save') %> Create</button>
+                <button type="submit" id="addSaveBtn" class="btn-primary">💾 Create</button>
             </div>
         </form>
     </div>

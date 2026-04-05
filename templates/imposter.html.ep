@@ -1,7 +1,7 @@
 <%# /templates/imposter.html.ep %>
 
 % layout 'default';
-% title icon('imposter') . ' Imposter';
+% title '👨‍🚀 Imposter';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/imposter.css">
@@ -11,7 +11,7 @@
 <div class="app-container" id="imposter-module-container">
     <div id="imposter-game" class="component-loading">
         <div class="loading-scan-line"></div>
-        <span class="loading-icon-pulse"><%= icon('imposter') %></span>
+        <span class="loading-icon-pulse">🕵️</span>
         <p class="loading-label">Synchronizing Game State...</p>
     </div>
 </div>

@@ -1,7 +1,7 @@
 <%# /templates/p.html.ep %>
 
 % layout 'default';
-% title icon('phonebook') . ' Phone Numbers';
+% title '🔒 Phone Numbers';
 
 % content_for 'head' => begin
     <style>

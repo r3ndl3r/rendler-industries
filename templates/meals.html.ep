@@ -1,7 +1,7 @@
 <%# /templates/meals.html.ep %>
 
 % layout 'default';
-% title icon('meals') . ' Meal Planner';
+<% title '🍲 Meal Planner'; %>
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/meals.css">
@@ -10,12 +10,12 @@
 
 <div class="meals-container app-container">
     <div class="header-bar">
-        <h1><%= icon('meals') %> <span>Meals</span></h1>
+        <h1>🍲 <span>Family Table</span></h1>
         <div class="header-meta">
             <%# Admin Management Actions %>
             <div id="adminActions" class="manage-actions">
-                <button type="button" class="btn-primary" onclick="openAddEditMealModal()"><%= icon('add') %> Add</button>
-                <button type="button" class="btn-secondary" onclick="openManageVaultModal()"><%= icon('settings') %> Manage</button>
+                <button type="button" class="btn-primary" onclick="openAddEditMealModal()">➕ Add</button>
+                <button type="button" class="btn-secondary" onclick="openManageVaultModal()">⚙️ Manage Vault</button>
             </div>
         </div>
     </div>
@@ -24,7 +24,7 @@
     <div id="meals-timeline" class="meals-timeline">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('meals') %></span>
+            <span class="loading-icon-pulse">🍲</span>
             <p class="loading-label">Synchronizing meal plan...</p>
             <p class="loading-sub">Retrieving active suggestions and voting data</p>
         </div>
@@ -35,7 +35,7 @@
 <div id="suggestModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('add') %> Suggest Meal</h3>
+            <h3>➕ Suggest Meal</h3>
             <span class="close-btn" onclick="closeSuggestModal()">&times;</span>
         </div>
         <div class="modal-body">
@@ -50,7 +50,7 @@
         </div>
         <div class="modal-actions modal-actions-center">
             <input type="hidden" id="activePlanId">
-            <button type="button" class="btn-primary" onclick="submitSuggestion()"><%= icon('save') %> Submit</button>
+            <button type="button" class="btn-primary" onclick="submitSuggestion()">💾 Submit</button>
         </div>
     </div>
 </div>
@@ -59,7 +59,7 @@
 <div id="editSuggestionModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('edit') %> Edit Suggestion</h3>
+            <h3>✏️ Edit Suggestion</h3>
             <span class="close-btn" onclick="closeEditSuggestionModal()">&times;</span>
         </div>
         <div class="modal-body">
@@ -73,7 +73,7 @@
         </div>
         <div class="modal-actions modal-actions-center">
             <input type="hidden" id="editSuggestionId">
-            <button type="button" class="btn-primary" onclick="submitEditSuggestion()"><%= icon('save') %> Save</button>
+            <button type="button" class="btn-primary" onclick="submitEditSuggestion()">💾 Save</button>
         </div>
     </div>
 </div>
@@ -82,7 +82,7 @@
 <div id="blackoutModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('cancel') %> Blackout Day</h3>
+            <h3>🚫 Blackout Day</h3>
             <span class="close-btn" onclick="closeBlackoutModal()">&times;</span>
         </div>
         <div class="modal-body">
@@ -98,7 +98,7 @@
             </div>
         </div>
         <div class="modal-actions modal-actions-center">
-            <button type="button" class="btn-primary" onclick="submitBlackout()"><%= icon('save') %> Save</button>
+            <button type="button" class="btn-primary" onclick="submitBlackout()">💾 Save</button>
         </div>
     </div>
 </div>
@@ -107,7 +107,7 @@
 <div id="manageVaultModal" class="modal-overlay">
     <div class="modal-content modal-vault-manage">
         <div class="modal-header">
-            <h3><%= icon('settings') %> Manage Meals</h3>
+            <h3>⚙️ Manage Meals</h3>
             <span class="close-btn" onclick="closeManageVaultModal()">&times;</span>
         </div>
         <div class="modal-body">
@@ -131,7 +131,7 @@
 <div id="addEditMealModal" class="modal-overlay">
     <div class="modal-content modal-vault-edit">
         <div class="modal-header">
-            <h3 id="manageMealModalTitle"><%= icon('add') %> Add Meal</h3>
+            <h3 id="manageMealModalTitle">➕ Add Meal</h3>
             <span class="close-btn" onclick="closeAddEditMealModal()">&times;</span>
         </div>
         <div class="modal-body">
@@ -145,7 +145,7 @@
             </div>
         </div>
         <div class="modal-actions modal-actions-center">
-            <button type="button" class="btn-primary" onclick="submitManageMeal()"><%= icon('save') %> Save</button>
+            <button type="button" class="btn-primary" onclick="submitManageMeal()">💾 Save</button>
         </div>
     </div>
 </div>

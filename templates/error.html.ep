@@ -1,7 +1,7 @@
 <%# /templates/error.html.ep %>
 
 % layout 'default';
-% title icon('error') . ' Error';
+% title '⚠️ Error';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/error.css">
@@ -9,13 +9,13 @@
 
 <div class="error-container">
     <div class="header-bar">
-        <h1><%= icon('warning') %> <span>System Error</span></h1>
+        <h1>⚠️ <span>System Error</span></h1>
     </div>
 
     <%# Error Message Card %>
     <div class="glass-panel message-card">
         <div class="error-icon">
-            <%= icon('warning') %>
+            ⚠️
         </div>
         <h2 class="error-title">Something went wrong</h2>
         <p class="status-code">HTTP Status: <%= $status %></p>

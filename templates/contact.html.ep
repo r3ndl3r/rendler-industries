@@ -1,7 +1,7 @@
 <%# /templates/contact.html.ep %>
 
 % layout 'default';
-% title icon('phonebook') . ' Contacts';
+% title '📧 Contacts';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/contact.css">

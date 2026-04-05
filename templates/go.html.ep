@@ -1,7 +1,7 @@
 <%# /templates/go.html.ep %>
 
 % layout 'default';
-% title icon('link') . ' Go Links';
+% title '🔗 Go Links';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/go.css">
@@ -10,7 +10,7 @@
 
 <div class="go-container app-container">
     <div class="header-bar">
-        <h1><%= icon('link') %> <span>Go Links</span></h1>
+        <h1>🔗 <span>Go Links</span></h1>
     </div>
 
     <%# Add Link Panel %>
@@ -46,7 +46,7 @@
             </div>
             <div class="form-actions">
                 <button type="submit" id="addBtn" class="btn-primary">
-                    <%= icon('add') %> Add Link
+                    ➕ Add Link
                 </button>
             </div>
         </form>
@@ -56,7 +56,7 @@
     <div id="linksList" class="links-grid">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('link') %></span>
+            <span class="loading-icon-pulse">🔗</span>
             <p class="loading-label">Synchronizing short-links...</p>
         </div>
     </div>
@@ -66,7 +66,7 @@
 <div id="editModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('edit') %> Edit Link</h3>
+            <h3>✎ Edit Link</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
         <form id="editForm" onsubmit="submitEntry(event, true)">
@@ -86,7 +86,7 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="editSaveBtn" class="btn-primary"><%= icon('save') %> Save Changes</button>
+                <button type="submit" id="editSaveBtn" class="btn-primary">💾 Save Changes</button>
             </div>
         </form>
     </div>

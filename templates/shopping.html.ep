@@ -1,7 +1,7 @@
 <%# /templates/shopping.html.ep %>
 
 % layout 'default';
-% title icon('shopping') . ' Shopping List';
+% title '🛒 Shopping List';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/shopping.css">
@@ -10,7 +10,7 @@
 
 <div class="shopping-container app-container">
     <div class="header-bar">
-        <h1><%= icon('shopping') %> <span>Shopping List</span></h1>
+        <h1>🛒 <span>Shopping List</span></h1>
     </div>
 
     <%# Add Item Form %>
@@ -35,7 +35,7 @@
     <div id="shoppingListContainer" class="items-container">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('shopping') %></span>
+            <span class="loading-icon-pulse">🛒</span>
             <p class="loading-label">Synchronizing shopping list...</p>
             <p class="loading-sub">Retrieving latest items and shared family state</p>
         </div>
@@ -46,7 +46,7 @@
 <div id="editModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('edit') %> Edit Item</h3>
+            <h3>✎ Edit Item</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
         <form id="editForm" onsubmit="handleEditSubmit(event)">
@@ -66,7 +66,7 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="editSaveBtn" class="btn-primary"><%= icon('save') %> Save changes</button>
+                <button type="submit" id="editSaveBtn" class="btn-primary">💾 Save changes</button>
             </div>
         </form>
     </div>

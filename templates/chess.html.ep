@@ -1,7 +1,7 @@
 <%# /templates/chess.html.ep %>
 
 % layout 'default';
-% title icon('chess') . ' Chess Online';
+% title '♟️ Chess Online';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/chess.css">
@@ -14,7 +14,7 @@
     <%# --- View: Lobby --- %>
     <div id="view-lobby" class="spa-view active">
         <div class="lobby-header">
-            <h1 class="lobby-title"><%= icon('chess') %> Chess Lobby</h1>
+            <h1 class="lobby-title">♟️ Chess Lobby</h1>
             <p style="color: #94a3b8;">Master the art of strategy in a game of Chess!</p>
         </div>
 
@@ -34,7 +34,7 @@
         <div id="open-game-list" class="game-list">
             <div class="component-loading">
                 <div class="loading-scan-line"></div>
-                <span class="loading-icon-pulse"><%= icon('chess') %></span>
+                <span class="loading-icon-pulse">♟️</span>
                 <p class="loading-label">Synchronizing Lobby...</p>
             </div>
         </div>
@@ -43,9 +43,9 @@
     <%# --- View: Active Game --- %>
     <div id="view-game" class="spa-view hidden">
         <div class="header-bar">
-            <h1><%= icon('chess') %> <span id="game-title">Chess</span></h1>
+            <h1>♟️ <span id="game-title">Grandmaster Chess</span></h1>
             <div class="manage-actions">
-                <button type="button" class="btn-secondary" onclick="ChessApp.showLobby()"><%= icon('logout') %> Lobby</button>
+                <button type="button" class="btn-secondary" onclick="ChessApp.showLobby()">🚪 Lobby</button>
             </div>
         </div>
 
@@ -93,12 +93,12 @@
             <%# Status & Operations Panel %>
             <div class="glass-panel status-panel">
                 <h3 id="game-status-text" class="status-indicator">
-                    <%= icon('waiting') %> Initializing...
+                    ⌛ Initializing...
                 </h3>
 
                 <div class="operation-controls">
-                    <button id="offerDrawBtn" class="btn-secondary"><%= icon('draw') %> Offer Draw</button>
-                    <button id="resignBtn" class="btn-danger"><%= icon('logout') %> Resign</button>
+                    <button id="offerDrawBtn" class="btn-secondary">🤝 Offer Draw</button>
+                    <button id="resignBtn" class="btn-danger">🚪 Resign</button>
                 </div>
 
                 <div id="fen-display" class="debug-fen">

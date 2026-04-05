@@ -1,7 +1,7 @@
 <%# /templates/todo.html.ep %>
 
 % layout 'default';
-% title icon('todo') . ' Todo List';
+% title '✅ Todo List';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/todo.css">
@@ -10,7 +10,7 @@
 
 <div class="todo-container app-container">
     <div class="header-bar">
-        <h1><%= icon('todo') %> <span>Todo List</span></h1>
+        <h1>✅ <span>Todo List</span></h1>
         <div class="manage-actions"></div>
     </div>
 
@@ -37,7 +37,7 @@
     <div id="todoListContainer" class="items-container">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('todo') %></span>
+            <span class="loading-icon-pulse">✅</span>
             <p class="loading-label">Synchronizing todo list...</p>
             <p class="loading-sub">Retrieving active tasks and historical records</p>
         </div>
@@ -48,7 +48,7 @@
 <div id="editModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('edit') %> Edit Task</h3>
+            <h3>✎ Edit Task</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
         <form id="editForm" onsubmit="handleEditSubmit(event)">
@@ -60,7 +60,7 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="editSaveBtn" class="btn-primary"><%= icon('save') %> Save changes</button>
+                <button type="submit" id="editSaveBtn" class="btn-primary">💾 Save changes</button>
             </div>
         </form>
     </div>

@@ -1,7 +1,7 @@
 <%# /templates/receipts.html.ep %>
 
 % layout 'default';
-% title icon('receipts') . ' Shopping Receipts Ledger';
+% title '🧾 Shopping Receipts Ledger';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/files.css">
@@ -14,16 +14,16 @@
 
 <div class="app-container">
     <div class="header-bar">
-        <h1><%= icon('receipts') %> <span>Receipts</span></h1>
+        <h1>🧾 <span>Receipts</span></h1>
         <div class="manage-actions">
-            <button type="button" class="action-btn" onclick="openUploadModal()"><%= icon('upload') %> Upload</button>
+            <button type="button" class="action-btn" onclick="openUploadModal()">📤 Upload</button>
         </div>
     </div>
 
     <div id="spendingSummaryContainer" class="spending-stats">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('receipts') %></span>
+            <span class="loading-icon-pulse">🧾</span>
             <p class="loading-label">Calculating Aggregates...</p>
         </div>
     </div>
@@ -62,7 +62,7 @@
             <input type="number" id="filterMinAmount" placeholder="Min $" class="game-input" step="0.01">
         </div>
         <button type="button" id="resetFilters" class="btn-icon-reset" title="Reset Filters">
-            <%= icon('reset') %>
+            🔄
         </button>
     </div>
 
@@ -85,7 +85,7 @@
                     <td colspan="7">
                         <div class="component-loading">
                             <div class="loading-scan-line"></div>
-                            <span class="loading-icon-pulse"><%= icon('waiting') %></span>
+                            <span class="loading-icon-pulse">⌛</span>
                             <p class="loading-label">Synchronizing Ledger...</p>
                         </div>
                     </td>
@@ -96,7 +96,7 @@
         
     <div id="pagination-container" class="pagination-container">
         <button id="loadMoreBtn" class="btn-primary btn-load-more hidden">
-            <%= icon('expand') %> Load More
+            🔽 Load More
         </button>
     </div>
 </div>
@@ -105,7 +105,7 @@
 <div id="editModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('edit') %> Edit Receipt</h3>
+            <h3>✏️ Edit Receipt</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
         <form id="editForm" onsubmit="handleEditSubmit(event)">
@@ -132,9 +132,9 @@
             </div>
             <div class="modal-actions edit-modal-actions">
                 <button type="button" id="btnApplyAI" class="btn-ai-apply hidden" title="Apply AI-digitized data to these fields">
-                    <%= icon('ai') %> Use AI Data
+                    🤖 Use AI Data
                 </button>
-                <button type="submit" class="btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" class="btn-primary">💾 Save</button>
             </div>
         </form>
     </div>
@@ -144,7 +144,7 @@
 <div id="cropModal" class="modal-overlay">
     <div class="modal-content modal-large">
         <div class="modal-header">
-            <h3><%= icon('crop') %> Crop Receipt</h3>
+            <h3>✂️ Crop Receipt</h3>
             <span class="close-btn" onclick="closeCropModal()">&times;</span>
         </div>
         <div class="modal-body crop-preview-container">
@@ -154,7 +154,7 @@
             <p class="crop-help-text">Drag the corners to crop the receipt. Only the selected area will be saved.</p>
         </div>
         <div class="modal-actions crop-modal-actions modal-actions-center">
-            <button type="button" class="btn-primary" onclick="saveCrop()"><%= icon('save') %> Save Crop</button>
+            <button type="button" class="btn-primary" onclick="saveCrop()">💾 Save Crop</button>
         </div>
     </div>
 </div>
@@ -163,7 +163,7 @@
 <div id="preUploadCropModal" class="modal-overlay">
     <div class="modal-content modal-large">
         <div class="modal-header">
-            <h3><%= icon('edit') %> Refine Receipt Image</h3>
+            <h3>✏️ Refine Receipt Image</h3>
             <span class="close-btn" onclick="closePreUploadCropModal()">&times;</span>
         </div>
         <div class="modal-body">
@@ -173,7 +173,7 @@
             <p class="help-text-muted">Drag to select the receipt area. This will be the final image uploaded.</p>
         </div>
         <div class="modal-actions modal-actions-center">
-            <button type="button" class="btn-primary" onclick="applyPreUploadCrop()"><%= icon('check') %> Apply Crop</button>
+            <button type="button" class="btn-primary" onclick="applyPreUploadCrop()">✅ Apply Crop</button>
             <button type="button" class="btn-secondary" onclick="closePreUploadCropModal()">Skip Cropping</button>
         </div>
     </div>
@@ -183,20 +183,20 @@
 <div id="eReceiptModal" class="modal-overlay">
     <div class="modal-content ereceipt-modal-content">
         <div class="modal-header ereceipt-header">
-            <h3><%= icon('ai') %> Electronic Receipt</h3>
+            <h3>🤖 Electronic Receipt</h3>
             <span class="close-btn" onclick="closeEReceiptModal()">&times;</span>
         </div>
         <div class="modal-body ereceipt-body" id="eReceiptContent">
             <div class="component-loading">
                 <div class="loading-scan-line"></div>
-                <span class="loading-icon-pulse"><%= icon('ai') %></span>
+                <span class="loading-icon-pulse">🤖</span>
                 <p class="loading-label">Digitizing with AI...</p>
                 <p class="loading-sub">Analyzing items and structured data</p>
             </div>
         </div>
         <div class="modal-actions ereceipt-actions modal-actions-center">
             <button type="button" class="btn-icon-ai btn-ereceipt-rescan" onclick="reScanReceipt()">
-                <%= icon('search') %> Full Rescan
+                🔍 Full Rescan
             </button>
         </div>
     </div>
@@ -205,7 +205,7 @@
 <%# Receipt Modal %>
 <div id="receiptModal" class="modal-overlay">
     <div class="image-modal-content">
-        <span class="close-btn" onclick="closeReceiptModal()"><%= icon('close') %></span>
+        <span class="close-btn" onclick="closeReceiptModal()">❌</span>
         <img id="modalImg" src="" class="receipt-modal-img">
     </div>
 </div>
@@ -214,7 +214,7 @@
 <div id="uploadModal" class="modal-overlay receipt-upload-modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('upload') %> Upload Receipt</h3>
+            <h3>📤 Upload Receipt</h3>
             <span class="close-btn" onclick="closeUploadModal()">&times;</span>
         </div>
         <div class="modal-body">
@@ -222,7 +222,7 @@
                 <div class="file-drop-area" id="dropZone" onclick="document.getElementById('file').click()">
                     <input type="file" id="file" name="file" required accept="image/*,application/pdf" class="hidden">
                     <p class="drop-hint">
-                        <span><%= icon('receipts') %></span>
+                        <span>🧾</span>
                         Drag & drop receipt here<br>
                         or click to browse
                     </p>
@@ -231,7 +231,7 @@
 
                 <div class="upload-actions">
                     <button type="submit" id="uploadSubmitBtn" class="btn-primary hidden">
-                        <%= icon('upload') %> Upload
+                        📤 Upload
                     </button>
                 </div>
             </form>

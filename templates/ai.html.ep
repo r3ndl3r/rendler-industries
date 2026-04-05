@@ -1,7 +1,7 @@
 <%# /templates/ai.html.ep %>
 
 % layout 'default';
-% title icon('ai') . ' Family Pulse AI';
+% title '🧠 Family Pulse AI';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/ai.css">
@@ -10,9 +10,9 @@
 
 <div class="ai-container app-container">
     <div class="header-bar">
-        <h1><%= icon('ai') %> <span>Family Pulse AI</span></h1>
+        <h1>🤖 <span>AI Assistant</span></h1>
         <div class="manage-actions">
-            <button class="btn-secondary" onclick="clearChat()"><%= icon('delete') %> Clear History</button>
+            <button class="btn-secondary" onclick="clearChat()">🗑️ Clear History</button>
         </div>
     </div>
 
@@ -20,8 +20,8 @@
         <%# Chat Messages %>
         <div id="chat-messages" class="chat-messages">
             <div class="component-loading">
-                <div class="loading-scan-line"></div>
-                <span class="loading-icon-pulse"><%= icon('ai') %></span>
+                    <h2 class="title-with-icon">🤖 History</h2>
+                <span class="loading-icon-pulse">🤖</span>
                 <p class="loading-label">Synchronizing neural link...</p>
                 <p class="loading-sub">Retrieving conversation history and dashboard context</p>
             </div>
@@ -38,7 +38,7 @@
                 <input type="text" id="prompt-input" class="game-input" placeholder="Ask me about the house..." autocomplete="off">
                 <input type="hidden" id="file-id">
                 <input type="hidden" id="file-type">
-                <button type="submit" id="send-btn" class="btn-primary"><%= icon('add') %></button>
+                <button type="submit" id="send-btn" class="btn-primary">➕</button>
             </form>
         </div>
     </div>

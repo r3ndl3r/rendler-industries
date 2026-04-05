@@ -1,7 +1,7 @@
 <%# /templates/uno.html.ep %>
 
 % layout 'default';
-% title icon('uno') . ' UNO Online';
+% title '🃏 UNO Online';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/uno.css">
@@ -11,7 +11,7 @@
 <div class="app-container">
     <div id="uno-app" class="component-loading">
         <div class="loading-scan-line"></div>
-        <span class="loading-icon-pulse"><%= icon('uno') %></span>
+        <span class="loading-icon-pulse">🃏</span>
         <p class="loading-label">Initializing UNO Deck...</p>
     </div>
 </div>

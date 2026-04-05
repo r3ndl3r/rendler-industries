@@ -1,7 +1,7 @@
 <%# /templates/quick.html.ep %>
 
 % layout 'default';
-% title icon('quick') . ' Quick Access';
+<% title '⚡ Quick Access'; %>
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/quick.css">
@@ -9,7 +9,7 @@
 
 <div class="quick-container app-container">
     <div class="header-bar">
-        <h1><%= icon('quick') %> <span>Quick Access</span></h1>
+        <h1>⚡ <span>Quick Access</span></h1>
     </div>
 
     <div class="tile-grid">
@@ -22,7 +22,7 @@
             <% 
                 my $label = $item->{label};
                 my ($icon, $name) = $label =~ /^(\X+?)\s+(.*)$/u;
-                if (!$name) { $name = $label; $icon = $item->{icon} || icon('link'); }
+                if (!$name) { $name = $label; $icon = $item->{icon} || '🔗'; }
             %>
 
             <%# Render the item (Category or child) %>
@@ -38,7 +38,7 @@
                 <% 
                     my $c_label = $child->{label};
                     my ($c_icon, $c_name) = $c_label =~ /^(\X+?)\s+(.*)$/u;
-                    if (!$c_name) { $c_name = $c_label; $c_icon = $child->{icon} || icon('link'); }
+                    if (!$c_name) { $c_name = $c_label; $c_icon = $child->{icon} || '🔗'; }
                 %>
                 <a href="<%= $child->{url} %>" class="tile">
                     <div class="icon"><%= $c_icon %></div>
@@ -58,7 +58,7 @@
                 <% 
                     my $label = $item->{label};
                     my ($icon, $name) = $label =~ /^(\X+?)\s+(.*)$/u;
-                    if (!$name) { $name = $label; $icon = $item->{icon} || icon('settings'); }
+                    if (!$name) { $name = $label; $icon = $item->{icon} || '⚙️'; }
                     # Strip "Admin: " prefix if present
                     $name =~ s/^(Admin|Manage):\s*//i;
                 %>
@@ -75,7 +75,7 @@
                     <% 
                         my $c_label = $child->{label};
                         my ($c_icon, $c_name) = $c_label =~ /^(\X+?)\s+(.*)$/u;
-                        if (!$c_name) { $c_name = $c_label; $c_icon = $child->{icon} || icon('settings'); }
+                        if (!$c_name) { $c_name = $c_label; $c_icon = $child->{icon} || '⚙️'; }
                         $c_name =~ s/^(Admin|Manage):\s*//i;
                     %>
                     <a href="<%= $child->{url} %>" class="tile admin">
@@ -87,14 +87,14 @@
 
             <%# Special Admin/Logout Buttons %>
             <button class="tile admin danger" onclick="startRestartSequence(event)">
-                <div class="icon"><%= icon('warning') %></div>
+                <div class="icon">⚠️</div>
                 <div class="label">Restart</div>
             </button>
         <% } %>
 
         <% if (is_logged_in()) { %>
             <a href="/logout" class="tile logout">
-                <div class="icon"><%= icon('logout') %></div>
+                <div class="icon">🚪</div>
                 <div class="label">Logout</div>
             </a>
         <% } %>

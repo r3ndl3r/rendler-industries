@@ -1,7 +1,7 @@
 <%# /templates/quiz/study.html.ep %>
 
 % layout 'default';
-% title icon('kangaroo') . ' Quiz Study Guide - All Questions & Answers';
+% title '🦘 Quiz Study Guide - All Questions & Answers';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/quiz/questions.css">
@@ -12,12 +12,12 @@
   <div class="header-bar">
     <div class="header-title">
       <h1>
-        <%= icon('files') %> <span>Study Guide</span>
+        📁 <span>Study Guide</span>
       </h1>
       <p class="thai-subtitle">คู่มือการศึกษา - คำถามและคำตอบทั้งหมด</p>
     </div>
     <div class="header-actions">
-      <a href="/quiz" class="back-link"><%= icon('back') %> Back to Quiz</a>
+      <a href="/quiz" class="back-link">⬅️ Back to Quiz</a>
       <span id="total-questions" class="total-count"></span>
     </div>
   </div>
@@ -39,7 +39,7 @@
   <%# Pagination Controls %>
   <div id="pagination-controls" class="controls-area study-pagination hidden">
       <button id="prev-btn" class="btn-next btn-prev-manual hidden">
-          <%= icon('back') %> Previous
+          ⬅️ Previous
       </button>
       
       <span id="page-indicator" class="page-indicator"></span>

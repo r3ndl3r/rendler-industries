@@ -1,7 +1,7 @@
 <%# /templates/settings.html.ep %>
 
 % layout 'default';
-% title icon('settings') . ' Settings';
+% title '⚙️ Settings';
 
 % content_for 'head' => begin
   <link rel="stylesheet" href="/css/settings.css">
@@ -10,25 +10,25 @@
 
 <div class="settings-container app-container">
   <div class="header-bar">
-    <h1><%= icon('settings') %> <span>Settings</span></h1>
+    <h1>⚙️ <span>Settings</span></h1>
   </div>
 
   <div class="settings-layout">
     <nav class="settings-nav">
       <button class="settings-tab active" data-tab="notifications">
-        <span class="tab-icon"><%= icon('reminders') %></span>
+        <span class="tab-icon">🔔</span>
         <span class="tab-label">Notifications</span>
       </button>
       <button class="settings-tab" data-tab="email">
-        <span class="tab-icon"><%= icon('register') %></span>
+        <span class="tab-icon">📝</span>
         <span class="tab-label">Email</span>
       </button>
       <button class="settings-tab" data-tab="integrations">
-        <span class="tab-icon"><%= icon('link') %></span>
+        <span class="tab-icon">🔗</span>
         <span class="tab-label">Integrations</span>
       </button>
       <button class="settings-tab" data-tab="application">
-        <span class="tab-icon"><%= icon('settings') %></span>
+        <span class="tab-icon">⚙️</span>
         <span class="tab-label">Application</span>
       </button>
     </nav>
@@ -36,7 +36,7 @@
     <div class="settings-panels" id="settingsPanelsContainer">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('settings') %></span>
+            <span class="loading-icon-pulse">⚙️</span>
             <p class="loading-label">Synchronizing configuration...</p>
             <p class="loading-sub">Retrieving API keys and system environment variables</p>
         </div>

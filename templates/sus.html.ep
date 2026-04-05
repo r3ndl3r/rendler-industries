@@ -1,7 +1,7 @@
 <%# /templates/sus.html.ep %>
 
 % layout 'default';
-% title icon('imposter') . ' Sus';
+%        <h1>🔪 <span>The Sus Ledger</span></h1>
 
 <div style="display:flex; justify-content:center; align-items:center; height:80vh; color:white; font-size: 2rem;">
     Thanks for the IP, bye.

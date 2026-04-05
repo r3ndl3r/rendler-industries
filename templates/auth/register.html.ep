@@ -1,7 +1,7 @@
 <%# /templates/auth/register.html.ep %>
 
 % layout 'default';
-% title icon('register') . ' Register';
+% title '📝 Register';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/auth.css">
@@ -11,7 +11,7 @@
 <div class="auth-wrapper">
     <div class="auth-container">
         <div class="header-bar">
-            <h1><%= icon('register') %> <span>Register</span></h1>
+            <h1>📝 <span>Register</span></h1>
         </div>
         
         <%# Registration Form %>
