@@ -172,15 +172,7 @@ sub file_map_json {
 # Returns: Plain text path
 sub cwd { shift->render(text => "CWD: " . getcwd()) }
 
-# JSON API endpoint serving semantic icon mappings as a JS variable.
-# Route: GET /api/icons.js
-# Returns: JavaScript assignment window.GLOBAL_ICONS = { ... }
-sub get_icons_js {
-    my $c = shift;
-    # Public resource for UI icons
-    $c->res->headers->content_type('application/javascript;charset=UTF-8');
-    $c->render(text => "window.GLOBAL_ICONS = " . $c->icons_json . ";");
-}
+
 
 # Static Page Renders
 sub t_page { shift->render('t') }
@@ -345,6 +337,19 @@ sub remove_message {
 
     $c->db->delete_message($id, $user_id);
     $c->render(json => { success => 1, message => "Content removed." });
+}
+
+# Provides a high-performance JSON mapping of all user emojis.
+# Optimized for SPA state hydration and parity with /emojis module.
+# Route: GET /api/user_icons
+# Returns: JSON object { users => { username => emoji } }
+sub api_user_icons {
+    my $c = shift;
+    
+    # Security: Ensure consumer is authenticated
+    return $c->render(json => { error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    
+    $c->render(json => $c->icons_json_users);
 }
 
 1;
