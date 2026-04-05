@@ -84,7 +84,9 @@ function renderUI() {
                 ></textarea>
             </div>
 
-            <div class="empty-state">📢 No active broadcasts.</div>
+
+            
+            <div class="broadcast-actions">
                 <button 
                     id="send-btn" 
                     class="btn-broadcast-send pulse-animation" 
