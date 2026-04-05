@@ -4,6 +4,7 @@ package DB::Users;
 
 use strict;
 use warnings;
+use utf8;
 use Crypt::Eksblowfish::Bcrypt qw(bcrypt en_base64);
 
 # User Authentication and Role-Based Access Control Database Library.
@@ -131,10 +132,29 @@ sub DB::get_all_users {
     
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, created_at, is_admin, is_family, is_child, status FROM users");
+    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, emoji, created_at, is_admin, is_family, is_child, status FROM users");
     $sth->execute();
     
     return $sth->fetchall_arrayref({});
+}
+
+# Retrieves a simple mapping of usernames to their profile emojis for UI hydration.
+# Parameters: None
+# Returns:
+#   HashRef: { username => emoji }
+sub DB::get_user_emoji_map {
+    my ($self) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("SELECT username, emoji FROM users WHERE status = 'approved' AND emoji IS NOT NULL");
+    $sth->execute();
+
+    my %map;
+    while (my $row = $sth->fetchrow_hashref) {
+        $map{lc($row->{username})} = $row->{emoji};
+    }
+
+    return \%map;
 }
 
 # Retrieves list of approved family members for selection dropdowns.
@@ -147,7 +167,7 @@ sub DB::get_family_users {
     $self->ensure_connection;
     
     # Strict Privacy: Filter by is_family and status at the database level.
-    my $sql = "SELECT id, username, email, discord_id FROM users WHERE is_family = 1 AND status = 'approved' ORDER BY username ASC";
+    my $sql = "SELECT id, username, email, discord_id, emoji FROM users WHERE is_family = 1 AND status = 'approved' ORDER BY username ASC";
     my $sth = $self->{dbh}->prepare($sql);
     $sth->execute();
     
@@ -164,7 +184,7 @@ sub DB::get_admins {
     $self->ensure_connection;
     
     # Strict Privacy: Filter by is_admin and status at the database level.
-    my $sql = "SELECT id, username, email, discord_id FROM users WHERE is_admin = 1 AND status = 'approved' ORDER BY username ASC";
+    my $sql = "SELECT id, username, email, discord_id, emoji FROM users WHERE is_admin = 1 AND status = 'approved' ORDER BY username ASC";
     my $sth = $self->{dbh}->prepare($sql);
     $sth->execute();
     
@@ -180,10 +200,11 @@ sub DB::get_user_by_id {
     my ($self, $id) = @_;
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, is_admin, is_family, is_child, status FROM users WHERE id = ?");
+    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, emoji, is_admin, is_family, is_child, status FROM users WHERE id = ?");
     $sth->execute($id);
-    
-    return $sth->fetchrow_hashref();
+
+    my $user = $sth->fetchrow_hashref();
+    return $user;
 }
 
 # Updates user profile information.
@@ -191,11 +212,11 @@ sub DB::get_user_by_id {
 #   id, username, email, discord_id, is_admin, is_family, is_child, status : Attributes.
 # Returns: Void.
 sub DB::update_user {
-    my ($self, $id, $username, $email, $discord_id, $is_admin, $is_family, $is_child, $status) = @_;
+    my ($self, $id, $username, $email, $discord_id, $is_admin, $is_family, $is_child, $status, $emoji) = @_;
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("UPDATE users SET username = ?, email = ?, discord_id = ?, is_admin = ?, is_family = ?, is_child = ?, status = ? WHERE id = ?");
-    $sth->execute($username, $email, $discord_id, $is_admin, $is_family, $is_child, $status, $id);
+    my $sth = $self->{dbh}->prepare("UPDATE users SET username = ?, email = ?, discord_id = ?, is_admin = ?, is_family = ?, is_child = ?, status = ?, emoji = ? WHERE id = ?");
+    return $sth->execute($username, $email, $discord_id, $is_admin, $is_family, $is_child, $status, $emoji, $id);
 }
 
 # Resets a user's password.
