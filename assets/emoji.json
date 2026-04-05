@@ -91,6 +91,7 @@
     "nicky": "🐉",
     "thararat": "🐎",
     "rendler": "🐓",
+    "test.user": "🧪",
     "warning": "⚠️",
     "info": "ℹ️",
     "success": "✅",
@@ -117,5 +118,6 @@
     "zoom": "🔭",
     "focus": "⛶",
     "move": "➡️",
-    "coin": "🪙"
+    "coin": "🪙",
+    "smiley": "😀"
 }
