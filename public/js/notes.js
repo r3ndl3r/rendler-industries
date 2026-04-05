@@ -2742,9 +2742,11 @@ async function toggleNoteCheckbox(event, noteId, lineIndex) {
     const line  = lines[lineIndex];
 
     if (line) {
-        const oldMarker = isChecked ? '[]' : '[*]';
-        const newMarker = isChecked ? '[*]' : '[]';
-        lines[lineIndex] = line.replace(oldMarker, newMarker);
+        if (isChecked) {
+            lines[lineIndex] = line.replace(/\[ ?\]/, '[x]');
+        } else {
+            lines[lineIndex] = line.replace(/\[x\]/i, '[ ]');
+        }
     }
 
     const newContent = lines.join('\n');
