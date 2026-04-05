@@ -412,4 +412,57 @@ sub api_heartbeat {
     });
 }
 
+# --- Bin & Recovery API ---
+
+# Retrieves all soft-deleted notes for the active user.
+# Route: GET /notes/api/bin
+sub api_bin {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id = $c->current_user_id();
+    my $notes   = $c->db->get_deleted_notes($user_id);
+
+    $c->render(json => {
+        success => 1,
+        notes   => $notes
+    });
+}
+
+# Restores a note from the bin.
+# Route: POST /notes/api/restore
+sub api_restore {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $id        = $c->param('id');
+    my $canvas_id = $c->param('canvas_id');
+    my $layer_id  = $c->param('layer_id');
+    my $x         = $c->param('x');
+    my $y         = $c->param('y');
+    my $user_id   = $c->current_user_id();
+
+    if ($c->db->restore_note($id, $user_id, $canvas_id, $layer_id, $x, $y)) {
+        $c->render(json => { success => 1 });
+    } else {
+        $c->render(json => { success => 0, error => 'Restoration Failed or Permission Denied' });
+    }
+}
+
+# Permanently removes a note record.
+# Route: POST /notes/api/purge
+sub api_purge {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $id      = $c->param('id');
+    my $user_id = $c->current_user_id();
+
+    if ($c->db->purge_note($id, $user_id)) {
+        $c->render(json => { success => 1 });
+    } else {
+        $c->render(json => { success => 0, error => 'Purge Failed or Permission Denied' });
+    }
+}
+
 1;
