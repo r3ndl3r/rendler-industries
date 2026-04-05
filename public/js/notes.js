@@ -2592,28 +2592,27 @@ function formatNoteContent(content, noteId) {
     if (!content) return '';
     const lines = content.split('\n');
     const result = lines.map((line, index) => {
-        // Precise Detection: Identify leading whitespace, checkbox markers, and optional separator space
-        const todoMatch = line.match(/^([\s]*)(\[\]|\[\*\])([ ]?)(.*)$/);
-        
+        // Precise Detection: Identify leading whitespace, optional list markers (- or *), checkbox markers, and optional separator space
+        // Supports: [ ], [x], [X], [*], - [ ], * [ ]
+        const todoMatch = line.match(/^([\s]*)(?:[\-\*][ ]+)?(\[[ xX\*]?\])([ ]?)(.*)$/);
+
         if (todoMatch) {
             const prefix    = todoMatch[1]; // Preserve indentation
-            const isChecked = todoMatch[2] === '[*]';
+            const marker    = todoMatch[2]; // The [ ] or [x] part
+            const isChecked = /\[[xX\*]\]/.test(marker);
             const separator = todoMatch[3]; // The optional single space after marker
             const text      = todoMatch[4]; // Extract remaining text
-            
+
             const checkedAttr  = isChecked ? 'checked' : '';
             const checkedClass = isChecked ? 'checked' : '';
-            
-            // Inline Transformation: Replace [] marker with a functional wrapper
-            // By consuming the separator space here, we ensure perfect vertical 
-            // alignment for wrapped multi-line text blocks.
+
+            // Inline Transformation: Replace checkbox marker with a functional wrapper
             return `<label class="todo-inline-wrap"><span class="prefix">${prefix}</span><input type="checkbox" class="note-todo-checkbox" ${checkedAttr} onchange="toggleNoteCheckbox(event, ${noteId}, ${index})"><span class="note-todo-text ${checkedClass}">${window.escapeHtml(text)}</span></label>`;
         }
-        
+
         // Literal Line Passthrough: Maintain original structure for non-checkbox lines
         return window.escapeHtml(line);
-    }).map(line => {
-        // Post-Escaping Transformation: Resolve [note:#] deep links and rich text
+    }).map(line => {        // Post-Escaping Transformation: Resolve [note:#] deep links and rich text
         let formatted = line.replace(/\[note:(\d+)\]/g, (match, id) => {
             const meta = STATE.note_map && STATE.note_map[id];
             if (meta) {
@@ -2746,9 +2745,9 @@ async function toggleNoteCheckbox(event, noteId, lineIndex) {
 
     if (line) {
         if (isChecked) {
-            lines[lineIndex] = line.replace(/\[ ?\]/, '[x]');
+            lines[lineIndex] = line.replace(/\[[ ]?\]/, '[x]');
         } else {
-            lines[lineIndex] = line.replace(/\[x\]/i, '[ ]');
+            lines[lineIndex] = line.replace(/\[[xX\*]\]/, '[ ]');
         }
     }
 
