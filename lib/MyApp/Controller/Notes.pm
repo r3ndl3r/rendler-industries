@@ -87,6 +87,7 @@ sub api_state {
         canvases      => $canvases,
         viewport      => $viewport,
         share_list    => $share_list,
+        note_map      => $c->db->get_all_accessible_note_metadata($user_id),
         last_mutation => $c->db->get_board_mutation_time($cid)
     });
 }
@@ -133,6 +134,7 @@ sub api_save {
         id            => int($result_id),
         canvas_id     => int($canvas_id),
         notes         => $c->db->get_user_notes($user_id, $canvas_id),
+        note_map      => $c->db->get_all_accessible_note_metadata($user_id),
         last_mutation => $c->db->get_board_mutation_time($canvas_id)
     });
 }
