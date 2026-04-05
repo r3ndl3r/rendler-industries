@@ -33,7 +33,7 @@ sub DB::get_user_notes {
     # Security Gate: Verify the user has at least READ access to this canvas
     return [] unless $self->check_canvas_access($canvas_id, $user_id, 0);
 
-    my $sql = "SELECT * FROM notes WHERE canvas_id = ? ORDER BY z_index ASC, updated_at DESC";
+    my $sql = "SELECT * FROM notes WHERE canvas_id = ? AND is_deleted = 0 ORDER BY z_index ASC, updated_at DESC";
     my $sth = $self->{dbh}->prepare($sql);
     $sth->execute($canvas_id);
     
@@ -57,6 +57,7 @@ sub DB::get_global_search_notes {
         FROM notes n
         JOIN canvases c ON n.canvas_id = c.id
         WHERE (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
+        AND n.is_deleted = 0
         AND (n.title LIKE ? OR n.content LIKE ?)
         ORDER BY n.updated_at DESC
         LIMIT 50
@@ -140,6 +141,7 @@ sub DB::get_all_accessible_note_metadata {
         FROM notes n
         JOIN canvases c ON n.canvas_id = c.id
         WHERE (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
+        AND n.is_deleted = 0
     ";
     
     my $sth = $self->{dbh}->prepare($sql);
@@ -182,7 +184,7 @@ sub DB::delete_note {
     
     return 0 unless $cid && $self->check_canvas_access($cid, $user_id, 1);
 
-    my $sql = "DELETE FROM notes WHERE id = ?";
+    my $sql = "UPDATE notes SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
     $sth = $self->{dbh}->prepare($sql);
     return $sth->execute($note_id);
 }
@@ -532,6 +534,83 @@ sub DB::get_board_mutation_time {
     my ($time) = $sth->fetchrow_array();
     
     return $time;
+}
+
+# --- Bin & Recovery Operations ---
+
+# Retrieves all soft-deleted notes for a user across all accessible canvases.
+# Parameters:
+#   user_id : Active user ID.
+# Returns:
+#   ArrayRef of HashRefs.
+sub DB::get_deleted_notes {
+    my ($self, $user_id) = @_;
+    $self->ensure_connection;
+
+    my $sql = "
+        SELECT n.*, c.name as canvas_name
+        FROM notes n
+        LEFT JOIN canvases c ON n.canvas_id = c.id
+        WHERE n.user_id = ? AND n.is_deleted = 1
+        ORDER BY n.updated_at DESC
+    ";
+    
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute($user_id);
+    return $sth->fetchall_arrayref({});
+}
+
+# Restores a note from the bin to a specific canvas and layer at a given position.
+# Parameters:
+#   note_id   : Target note ID.
+#   user_id   : Active user authority.
+#   canvas_id : target canvas.
+#   layer_id  : target layer.
+#   x         : Optional new horizontal coordinate.
+#   y         : Optional new vertical coordinate.
+# Returns:
+#   Boolean success.
+sub DB::restore_note {
+    my ($self, $note_id, $user_id, $canvas_id, $layer_id, $x, $y) = @_;
+    $self->ensure_connection;
+
+    # 1. Fetch note and check ownership
+    my $sth_n = $self->{dbh}->prepare("SELECT id FROM notes WHERE id = ? AND user_id = ?");
+    $sth_n->execute($note_id, $user_id);
+    my ($exists) = $sth_n->fetchrow_array();
+    return 0 unless $exists;
+
+    # 2. Final Restoration (Contextual)
+    my $sql_r = "UPDATE notes SET is_deleted = 0, canvas_id = ?, layer_id = ?, x = ?, y = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+    my $sth_r = $self->{dbh}->prepare($sql_r);
+    $sth_r->execute($canvas_id, $layer_id, $x, $y, $note_id);
+
+    $self->touch_canvas($canvas_id);
+    return 1;
+}
+
+# Permanently removes a note and its binary blob.
+# Authority Check: Only canonical owners can permanently purge.
+sub DB::purge_note {
+    my ($self, $note_id, $user_id) = @_;
+    $self->ensure_connection;
+
+    # Authority Check: Only owner can permanently purge
+    my $sth_o = $self->{dbh}->prepare("SELECT canvas_id FROM notes WHERE id = ? AND user_id = ?");
+    $sth_o->execute($note_id, $user_id);
+    my ($cid) = $sth_o->fetchrow_array();
+    
+    return 0 unless $cid;
+
+    # 1. Delete Blobs
+    $self->{dbh}->do("DELETE FROM note_blobs WHERE note_id = ?", undef, $note_id);
+    
+    # 2. Delete Note
+    my $sth = $self->{dbh}->prepare("DELETE FROM notes WHERE id = ?");
+    my $count = $sth->execute($note_id);
+    
+    $self->touch_canvas($cid) if $count;
+    return $count;
 }
 
 1;
