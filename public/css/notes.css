@@ -61,6 +61,18 @@
     z-index: 10000;
 }
 
+/* Symmetrical Info FAB cluster (Left-Anchored) */
+.floating-info {
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.675em;
+    z-index: 10000;
+}
+
 /* Vertical Level Selection Stack (Left Anchor) */
 .level-switcher-container {
     position: fixed;
@@ -380,6 +392,302 @@
     word-break: break-word;
     overflow-wrap: break-word;
 }
+
+/* Interactive Todo / Checkbox Engine */
+.note-text-viewer {
+    width: 100%;
+    height: 100%;
+    padding: 0.5em; /* 8px padding parity */
+    color: #e5e7eb;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.05em; /* Professional leading parity */
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-y: auto;
+    cursor: default;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.sticky-note.is-editing .note-text-viewer {
+    display: none;
+}
+
+.sticky-note:not(.is-editing) textarea {
+    display: none !important;
+}
+
+.todo-inline-wrap {
+    display: inline-flex;
+    align-items: flex-start; /* Pin checkbox to top of wrapped text */
+    gap: 0.4rem;
+    cursor: pointer;
+    vertical-align: top;
+    width: 100%;
+}
+
+.todo-inline-wrap .prefix {
+    white-space: pre; /* Ensure leading spaces don't collapse */
+    line-height: inherit;
+    flex-shrink: 0;
+}
+
+.note-todo-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.1rem;
+    height: 1.1rem;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    background: rgba(15, 23, 42, 0.6);
+    cursor: pointer;
+    position: relative;
+    top: 0.25em; /* Precisely align with first line text height */
+    flex-shrink: 0;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.note-todo-checkbox:hover {
+    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.note-todo-checkbox:checked {
+    background: #10b981;
+    border-color: #10b981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+.note-todo-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 48%; /* Visual centering */
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 900;
+}
+
+.note-todo-text {
+    flex: 1;
+    transition: all 0.3s ease;
+}
+
+.note-todo-text.checked {
+    opacity: 0.5;
+    text-decoration: line-through;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Internal Note Linking [note:#] */
+.note-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 0 6px 0 1px;
+    margin: 0 2px;
+    height: 1.25rem;
+    line-height: 1;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 4px;
+    color: #60a5fa;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    font-size: 0.9em;
+    user-select: none;
+    vertical-align: middle;
+}
+
+.note-link:hover {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: #3b82f6;
+    color: #fff;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+    transform: translateY(-1px);
+}
+
+.note-link:active {
+    transform: scale(0.95);
+}
+
+.note-link .global-icon svg {
+    width: 0.65em;
+    height: 0.65em;
+}
+
+.note-link-broken {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 0 6px 0 1px;
+    margin: 0 2px;
+    height: 1.25rem;
+    line-height: 1;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 4px;
+    color: #f87171;
+    font-size: 0.9em;
+    opacity: 0.7;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.note-link-broken .global-icon svg {
+    width: 0.65em;
+    height: 0.65em;
+}
+
+/* Inline Code Formatting */
+.note-code-inline {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    background: rgba(0, 0, 0, 0.4);
+    color: #e2e8f0;
+    padding: 0 5px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* External Link Formatting */
+.note-external-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #3b82f6;
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(59, 130, 246, 0.5);
+    transition: all 0.2s ease;
+}
+
+.note-external-link:hover {
+    color: #60a5fa;
+    border-bottom-style: solid;
+    text-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+}
+
+.note-external-link svg {
+    width: 0.75em;
+    height: 0.75em;
+    opacity: 0.8;
+}
+
+/* Embedded Image Note Formatting */
+.note-embedded-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    padding: 0;
+    /* Offset-neutral layout for inline-block media within pre-wrap text flow */
+    margin: 0 !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+
+.note-embedded-wrap:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+.note-embedded-img {
+    width: 100%;
+    border-radius: 4px;
+    display: block;
+}
+
+.note-embedded-caption {
+    margin: 4px 0 3px 0;
+    font-size: 0.78em;
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    font-style: italic;
+    letter-spacing: 0.02em;
+}
+
+.note-embedded-wrap:hover .note-embedded-caption {
+    color: #3b82f6;
+}
+
+/* Presentation styling for missing or inaccessible embedded image resources */
+.note-embedded-broken {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    border-radius: 6px;
+    color: #fca5a5;
+    font-size: 0.82em;
+    margin: 8px 0;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Informational Guide Modal Styling */
+.board-guide-section {
+    position: relative;
+}
+
+.board-guide-section h4 {
+    margin-bottom: 8px;
+    font-size: 0.95em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.board-guide-section.nav h4 { color: #3b82f6; }
+.board-guide-section.edit h4 { color: #10b981; }
+.board-guide-section.move h4 { color: #f59e0b; }
+
+.board-guide-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.82em;
+    line-height: 1.6;
+}
+
+.board-guide-list li strong {
+    color: #e2e8f0;
+}
+
+.board-guide-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.05);
+    margin: 12px 0;
+}
+
+/* Typography Emphasis */
+.note-bold {
+    font-weight: 700;
+    color: rgba(255, 255, 255, 1);
+    letter-spacing: 0.02em;
+}
+
+.note-italic {
+    font-style: italic;
+    opacity: 0.9;
+}
+
+/* Color Accent Utility Classes */
+.note-text-red    { color: #ef4444 !important; font-weight: 600; }
+.note-text-green  { color: #10b981 !important; font-weight: 600; }
+.note-text-blue   { color: #3b82f6 !important; font-weight: 600; }
+.note-text-amber  { color: #f59e0b !important; font-weight: 600; }
+.note-text-violet { color: #8b5cf6 !important; font-weight: 600; }
+.note-text-rose   { color: #f43f5e !important; font-weight: 600; }
 
 /* Image Note Scaling */
 .note-image-container {
@@ -749,6 +1057,34 @@
 .note-drag-handle-container:hover .note-title-slot {
     color: #fff;
     text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+}
+
+.note-id-hash {
+    /* Stabilized: Internalized to the flex-header context */
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--note-accent, #3b82f6);
+    opacity: 0.8;
+    user-select: none;
+    cursor: pointer;
+    pointer-events: auto;
+    z-index: 100;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Placement: Shifted into the specific left-gutter padding of the header */
+    margin-left: -0.65em;
+    margin-right: 0.25em;
+}
+
+.note-id-hash:hover {
+    opacity: 1;
+    transform: scale(1.2);
+    text-shadow: 0 0 10px var(--note-accent, #3b82f6);
+}
+
+.note-id-hash:active {
+    transform: scale(0.95);
 }
 
 .note-title-slot {
