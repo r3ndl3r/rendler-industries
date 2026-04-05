@@ -303,6 +303,13 @@ select.game-input-premium option {
     width: 100%;
 }
 
+/* Chores-specific override to move button above the line */
+#addChoreModal .modal-actions {
+    border-top: none;
+    padding-top: 0;
+    margin-top: -0.5rem;
+}
+
 /* Refined Shrunk Action Buttons */
 .btn-premium-action-shrink {
     padding: 0.5rem 1.25rem; 
@@ -615,7 +622,7 @@ select.game-input-premium option {
 .text-center { text-align: center !important; }
 .text-right { text-align: right !important; }
 
-/* Visual feedback for in-flight AJAX actions */
+/* Visual feedback for in-flight requests */
 .pending {
     opacity: 0.6;
     pointer-events: none;
