@@ -1188,7 +1188,7 @@
 }
 
 .note-actions-drawer.expanded {
-    max-width: 14.0em; /* Expanded volume for 8 buttons including Copy Level tool */
+    max-width: 18.0em; /* Expanded volume for 8 buttons including Copy Level tool */
     opacity: 1;
     pointer-events: auto;
 }
@@ -1723,7 +1723,9 @@
     top: 85px;
     right: 24px;
     z-index: 10001;
-    transform: scale(1.1);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -2215,6 +2217,7 @@ input:checked + .switch-sm .slider:before {
     padding: 0;
     font-size: 0.8rem;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    flex-shrink: 0;
 }
 
 .note-actions-drawer button:hover {
@@ -2224,7 +2227,96 @@ input:checked + .switch-sm .slider:before {
 }
 
 .note-actions-drawer button svg,
-.note-actions-drawer button i {
+.note-actions-drawer button i,
+.note-actions-drawer button .global-icon {
     width: 0.9rem;
     height: 0.9rem;
 }
+
+/* --- Notes Bin High-Fidelity Items --- */
+.bin-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-left: 4px solid var(--note-accent, #3b82f6);
+    border-radius: 12px;
+    padding: 1.25em;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.bin-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateX(8px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.bin-item-icon .global-icon {
+    font-size: 1.5rem;
+    color: var(--note-accent, #3b82f6);
+}
+
+.bin-item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bin-item-title {
+    font-size: 1.0rem;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bin-item-meta {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bin-item-board-badge {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    color: #94a3b8;
+}
+
+.bin-item-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.bin-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8rem 2rem;
+    color: rgba(255, 255, 255, 0.15);
+    gap: 20px;
+    text-align: center;
+}
+
+.bin-empty-state .global-icon {
+    font-size: 3.5rem;
+}
+
+/* Modal Content Constraints */
+#note-bin-modal .note-modal-content {
+    width: 850px;
+    max-width: 92vw;
+    height: 75vh;
+}
+
