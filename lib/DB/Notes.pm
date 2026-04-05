@@ -125,6 +125,37 @@ sub DB::save_note {
     return $id;
 }
 
+# Retrieves a metadata map for ALL accessible notes (Owned + Shared).
+# Used by the frontend to resolve [note:#] links into clickable titles.
+# Parameters:
+#   user_id : Integer ID for the active user.
+# Returns:
+#   HashRef { id => { title, canvas_id } }
+sub DB::get_all_accessible_note_metadata {
+    my ($self, $user_id) = @_;
+    $self->ensure_connection;
+
+    my $sql = "
+        SELECT n.id, n.title, n.canvas_id, n.type
+        FROM notes n
+        JOIN canvases c ON n.canvas_id = c.id
+        WHERE (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
+    ";
+    
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute($user_id, $user_id);
+    
+    my %map;
+    while (my $row = $sth->fetchrow_hashref()) {
+        $map{$row->{id}} = {
+            title     => $row->{title},
+            type      => $row->{type},
+            canvas_id => int($row->{canvas_id})
+        };
+    }
+    return \%map;
+}
+
 # --- Internal Helpers ---
 
 # Updates the parent canvas timestamp to trigger the synchronization heartbeat.
