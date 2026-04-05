@@ -139,7 +139,7 @@ async function loadMore() {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Loading...`;
+    btn.innerHTML = `⌛ Synchronizing...`;
     STATE.isLoading = true;
 
     try {
@@ -183,7 +183,7 @@ async function handleEntrySubmit(e) {
     const btn = form.querySelector('button[type="submit"]');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const result = await apiPost('/emojis/api/update', formData);
@@ -238,10 +238,10 @@ async function testAI() {
     
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Predicting...`;
+    btn.innerHTML = `🤖 Predicting...`;
     
     resultArea.classList.remove('empty');
-    resultArea.innerHTML = `<span class="predicting-text">${getIcon('ai')} AI is thinking...</span>`;
+    resultArea.innerHTML = `<span class="predicting-text">🤖 AI is thinking...</span>`;
     saveBtn.classList.add('hidden');
 
     try {
@@ -252,7 +252,7 @@ async function testAI() {
             saveBtn.dataset.emoji = result.emoji;
             saveBtn.dataset.text = text;
         } else {
-            resultArea.innerHTML = `<span class="error-text">${getIcon('error')} ${escapeHtml(result.error || 'Prediction failed')}</span>`;
+            resultArea.innerHTML = `<span class="error-text">⚠️ ${escapeHtml(result.error || 'Prediction failed')}</span>`;
         }
     } catch (err) {
         resultArea.innerHTML = `<span class="error-text">Network error during prediction</span>`;
@@ -299,21 +299,21 @@ function renderStats() {
 
     container.innerHTML = `
         <div class="stat-card main">
-            <span class="stat-icon">${getIcon('ai')}</span>
+            <span class="stat-icon">🤖</span>
             <div class="stat-info">
                 <span class="stat-label">Learned Mappings</span>
                 <span class="stat-value">${STATE.stats.learned_count || 0}</span>
             </div>
         </div>
         <div class="stat-card ${STATE.stats.total_pending > 0 ? 'warning' : 'success'}">
-            <span class="stat-icon">${getIcon('waiting')}</span>
+            <span class="stat-icon">⌛</span>
             <div class="stat-info">
                 <span class="stat-label">Pending Queue</span>
                 <span class="stat-value">${STATE.stats.total_pending || 0}</span>
             </div>
         </div>
         <div class="stat-card info">
-            <span class="stat-icon">${getIcon('reminders')}</span>
+            <span class="stat-icon">🔔</span>
             <div class="stat-info">
                 <span class="stat-label">Module Coverage</span>
                 <span class="stat-value">5 Modules</span>
@@ -351,12 +351,12 @@ function renderDictionary(append = false, items = null) {
                             data-keyword="${escapeHtml(entry.keyword)}" 
                             data-emoji="${escapeHtml(entry.emoji)}"
                             title="Edit">
-                        ${getIcon('edit')}
+                        ✏️
                     </button>
                     <button class="btn-icon-delete" 
                             data-keyword="${escapeHtml(entry.keyword)}"
                             title="Delete">
-                        ${getIcon('delete')}
+                        🗑️
                     </button>
                 </div>
             </td>

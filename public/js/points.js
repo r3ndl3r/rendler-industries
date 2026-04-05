@@ -94,7 +94,7 @@ function renderWallets() {
     container.innerHTML = '';
 
     if (!STATE.balances || STATE.balances.length === 0) {
-        container.innerHTML = `<div class="empty-state">${window.getIcon('info')} No child accounts found.</div>`;
+        container.innerHTML = `<div class="empty-state">🏆 No points recorded yet.</div>`;
         return;
     }
 
@@ -111,13 +111,13 @@ function renderWallets() {
         
         div.innerHTML = `
             <div class="wallet-username">${displayName}</div>
-            <div class="wallet-balance ${balanceClass}">${window.getIcon('coin')} ${parseInt(child.current_points).toLocaleString()}</div>
+            <div class="wallet-balance ${balanceClass}">💰 ${parseInt(child.current_points).toLocaleString()}</div>
             <div class="wallet-actions">
                 <button type="button" class="btn-success" onclick="openTransactionModal(${child.id}, '${escapedName}', 'reward')">
-                    ${window.getIcon('add')} ADD
+                    ➕ ADD
                 </button>
                 <button type="button" class="btn-danger" onclick="openTransactionModal(${child.id}, '${escapedName}', 'deduct')">
-                    ${window.getIcon('minus')} DEDUCT
+                    ➖ DEDUCT
                 </button>
             </div>
         `;
@@ -135,7 +135,7 @@ function renderHistory() {
     tbody.innerHTML = '';
 
     if (!STATE.history || STATE.history.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center">${window.getIcon('history')} No transaction history available.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center">📜 No transaction history available.</td></tr>`;
         return;
     }
 
@@ -174,7 +174,7 @@ function openTransactionModal(userId, username, type) {
     document.getElementById('transactionType').value = type;
     
     const title = document.getElementById('modalTitle');
-    title.innerHTML = `${window.getIcon('coin')} ${type.toUpperCase()} for ${escapeHtml(username)}`;
+    title.innerHTML = `💰 ${type.toUpperCase()} for ${escapeHtml(username)}`;
     
     document.getElementById('transactionAmount').value = (type === 'reward' ? '1' : '');
     document.getElementById('transactionReason').value = '';
@@ -182,10 +182,10 @@ function openTransactionModal(userId, username, type) {
     const btn = document.getElementById('saveTransactionBtn');
     if (type === 'reward') {
         btn.className = 'btn-success';
-        btn.innerHTML = `${window.getIcon('save')} ADD`;
+        btn.innerHTML = `💾 ADD`;
     } else {
         btn.className = 'btn-danger';
-        btn.innerHTML = `${window.getIcon('save')} DEDUCT`;
+        btn.innerHTML = `💾 DEDUCT`;
     }
     
     document.getElementById('transactionModal').classList.add('show');
@@ -233,7 +233,7 @@ async function submitTransaction(event) {
     if (type === 'deduct') amount = -Math.abs(amount);
 
     btn.disabled = true;
-    btn.innerHTML = `${window.getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const data = await apiPost('/points/api/add', {

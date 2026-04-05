@@ -82,7 +82,7 @@ async function loadState(force = false) {
         container.innerHTML = `
             <div class="component-loading">
                 <div class="loading-scan-line"></div>
-                <span class="loading-icon-pulse">${window.getIcon('meals')}</span>
+                <span class="loading-icon-pulse">🍲</span>
                 <p class="loading-label">Synchronizing...</p>
             </div>`;
     }
@@ -171,13 +171,13 @@ function renderVaultTable(meals) {
             <td class="col-actions">
                 <div class="action-buttons">
                     <button type="button" class="btn-icon-edit" onclick="openAddEditMealModal(${m.id}, '${escapeHtml(m.name).replace(/'/g, "\\'")}')" title="Edit Name">
-                        ${window.getIcon('edit')}
+                        ✏️
                     </button>
                     <button type="button" class="btn-icon-delete ${m.is_used ? 'disabled' : ''}" 
                             ${m.is_used ? 'disabled' : ''} 
                             onclick="deleteManageMeal(${m.id}, '${escapeHtml(m.name).replace(/'/g, "\\'")}')"
                             title="${m.is_used ? 'Cannot delete: Meal is part of a plan' : 'Remove from Vault'}">
-                        ${window.getIcon('delete')}
+                        🗑️
                     </button>
                 </div>
             </td>
@@ -202,7 +202,7 @@ function openAddEditMealModal(id = null, name = null) {
     const dropdown = document.getElementById('manageMealDropdown');
     if (dropdown) dropdown.classList.add('hidden');
 
-    if (title) title.innerHTML = id ? `${window.getIcon('edit')} Edit Meal` : `${window.getIcon('add')} Add Meal`;
+    if (title) title.innerHTML = id ? `✏️ Edit Meal` : `➕ Add Meal`;
     if (modal) {
         modal.classList.add('active');
         document.body.classList.add('modal-open');
@@ -237,7 +237,7 @@ async function submitManageMeal() {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${window.getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const endpoint = id ? '/meals/api/vault/update' : '/meals/api/vault/add';
@@ -310,7 +310,7 @@ function renderDayColumn(day, index) {
     
     let lockPill = '';
     if (index === 0 && !blackout && !day.final_suggestion_id) {
-        const icon = isPast2PM ? window.getIcon('lock') : window.getIcon('clock');
+        const icon = isPast2PM ? '🔒' : '🕒';
         const text = isPast2PM ? 'Locked' : 'Will Lock @ 2PM';
         lockPill = `<span class="lock-info inline">${icon} ${text}</span>`;
     }
@@ -320,12 +320,12 @@ function renderDayColumn(day, index) {
     if (blackout) {
         contentHtml = `
             <div class="blackout-state">
-                <span class="blackout-icon">${window.getIcon('cancel')}</span>
-                <p>${escapeHtml(blackout)}</p>
+                <span class="blackout-icon">🚫</span>
+                <p>🍲 Your meal plan is empty!</p>
                 ${STATE.isAdmin ? `
                     <div class="day-actions mt-4">
                         <button type="button" class="btn-secondary btn-small" onclick="adminUnlock(${day.id})">
-                            ${window.getIcon('lock')} Unlock Day
+                            🔒 Unlock Day
                         </button>
                     </div>` : ''}
             </div>`;
@@ -339,7 +339,7 @@ function renderDayColumn(day, index) {
                 ${STATE.isAdmin ? `
                     <div class="mt-4">
                         <button type="button" class="btn-secondary btn-small" onclick="adminUnlock(${day.id})">
-                            ${window.getIcon('lock')} Unlock Day
+                            🔒 Unlock Day
                         </button>
                     </div>` : ''}
             </div>` : '<p>Decision pending.</p>';
@@ -351,13 +351,13 @@ function renderDayColumn(day, index) {
         if (leaders.length > 1) {
             leaderBanner = `
                 <div class="leader-banner is-tie">
-                    <span class="leader-label">${window.getIcon('vote')} TIE</span>
+                    <span class="leader-label">🗳️ TIE</span>
                     <span class="leader-meal">${leaders.map(l => escapeHtml(l.meal_name)).join(' / ')}</span>
                 </div>`;
         } else if (leaders.length === 1) {
             leaderBanner = `
                 <div class="leader-banner">
-                    <span class="leader-label">${window.getIcon('trophy')} LEADER</span>
+                    <span class="leader-label">🏆 LEADER</span>
                     <span class="leader-meal">${escapeHtml(leaders[0].meal_name)}</span>
                 </div>`;
         }
@@ -376,18 +376,18 @@ function renderDayColumn(day, index) {
                     <button type="button" class="btn-icon-vote ${s.user_voted ? 'is-voted' : ''}" 
                             onclick="castVote(${s.id})" 
                             title="${s.user_voted ? 'Remove vote' : 'Vote for this meal'}">
-                        ${window.getIcon('vote')}
+                        🗳️
                     </button>
                     ${(STATE.isAdmin || s.suggested_by_id == STATE.currentUserId) ? `
                         <button type="button" class="btn-icon-edit" onclick="openEditSuggestionModal(${s.id}, '${s.meal_name.replace(/'/g, "\\'")}')" title="Edit suggestion">
-                            ${window.getIcon('edit')}
+                            ✏️
                         </button>
                         <button type="button" class="btn-icon-delete" onclick="deleteSuggestion(${s.id}, '${s.meal_name.replace(/'/g, "\\'")}')" title="Remove suggestion">
-                            ${window.getIcon('delete')}
+                            🗑️
                         </button>` : ''}
                     ${STATE.isAdmin ? `
                         <button type="button" class="btn-icon-bonus" onclick="adminLock(${day.id}, ${s.id})" title="Manual Lock-in">
-                            ${window.getIcon('check')}
+                            ✅
                         </button>` : ''}
                 </div>` : ''}
             </div>`).join('');
@@ -395,12 +395,13 @@ function renderDayColumn(day, index) {
         const dayActions = isLocked ? '' : `
             <div class="day-actions">
                 ${(!day.user_has_suggested) ? `
+                    <button type="button" class="btn-clear-all" onclick="openResetModal()">🔄 Reset</button>
                     <button type="button" class="btn-primary" onclick="openSuggestModal(${day.id}, '${day.formatted_date}')">
-                        ${window.getIcon('add')} Suggest
+                        ➕ Suggest
                     </button>` : ''}
                 ${STATE.isAdmin ? `
                     <button type="button" class="btn-danger" onclick="openBlackoutModal(${day.id})">
-                        ${window.getIcon('cancel')} Blackout
+                        🚫 Blackout
                     </button>` : ''}
             </div>`;
 
@@ -415,7 +416,7 @@ function renderDayColumn(day, index) {
             <div class="day-header">
                 <span class="day-name">${day.formatted_date}</span>
                 ${lockPill}
-                ${isLocked && index !== 0 ? `<span class="status-icon" title="Locked">${window.getIcon('check')}</span>` : ''}
+                ${isLocked && index !== 0 ? `<span class="status-icon" title="Locked">✅</span>` : ''}
             </div>
             <div class="day-content">${contentHtml}</div>
         </div>`;
@@ -431,7 +432,7 @@ function renderVoterPills(voters) {
     if (!voters || !voters.length) return '';
     return `
         <div class="voter-pills">
-            ${voters.map(v => `<span class="voter-badge">${window.getIcon('vote')} ${escapeHtml(v)}</span>`).join('')}
+            ${voters.map(v => `<span class="voter-badge">🗳️ ${escapeHtml(v)}</span>`).join('')}
         </div>`;
 }
 
@@ -510,7 +511,7 @@ async function submitSuggestion() {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${window.getIcon('waiting')} Submitting...`;
+    btn.innerHTML = `⌛ Submitting...`;
 
     try {
         const result = await window.apiPost('/meals/api/suggest', { plan_id: planId, meal_name: mealName });
@@ -558,7 +559,7 @@ async function submitEditSuggestion() {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${window.getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const result = await window.apiPost('/meals/api/edit_suggestion', { suggestion_id: id, meal_name: name });

@@ -157,7 +157,7 @@ function renderLobby(container) {
             `).join('')}
             ${STATE.lobbies.length === 0 ? `
                 <div class="empty-state">
-                    <p>No games waiting. Create one to start!</p>
+                    <p>🃏 No games waiting. Create one to start!</p>
                 </div>
             ` : ''}
         </div>
@@ -260,7 +260,7 @@ function renderBoard(container) {
                 ${orderedPlayers.map((p, i) => i === 0 ? '' : `
                     <div class="player-slot slot-${i} ${STATE.game.turn === p.id ? 'active-turn' : ''}">
                         <div class="player-avatar">
-                            ${window.getIcon('user')}
+                            👤
                         </div>
                         <div class="player-meta">
                             <span class="player-name">${escapeHtml(p.name)}</span>
@@ -493,7 +493,7 @@ function renderWinModal() {
     return `
         <div class="modal-overlay show win-view">
             <div class="modal-content win-modal">
-                <div class="win-icon">${window.getIcon('trophy')}</div>
+                <div class="win-icon">🏆</div>
                 <h1 class="win-title">WINNER!</h1>
                 <p class="win-message">${escapeHtml(winnerName)} won!</p>
                 <button onclick="leaveGame()" class="btn-emerald btn-win-action">Return to Lobby</button>

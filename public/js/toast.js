@@ -40,7 +40,14 @@ function showToast(message, type = 'info', duration = 3000) {
     toast.className = `toast ${type}`;
     
     // Icon Logic: resolve symbol based on semantic type
-    const icon = typeof getIcon === 'function' ? getIcon(type) : '';
+    const iconMap = {
+        'success': '✅',
+        'error':   '❌',
+        'warning': '⚠️',
+        'info':    'ℹ️',
+        'waiting': '⌛'
+    };
+    const icon = iconMap[type] || '🔔';
     
     // Security: Use textContent instead of innerHTML to prevent XSS.
     // This ensures that any HTML passed in the message is rendered as literal text.

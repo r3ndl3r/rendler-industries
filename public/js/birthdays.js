@@ -101,7 +101,7 @@ async function handleBirthdaySubmit(event) {
     const btn = document.getElementById('submitBtn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const result = await apiPost(url, {
@@ -216,10 +216,10 @@ function renderManageList() {
             <div class="manage-actions">
                 <button type="button" class="btn-icon-edit" 
                         onclick="openEditModal(${b.id})" 
-                        title="Edit Record">${getIcon('edit')}</button>
+                        title="Edit Record">✎</button>
                 <button type="button" class="btn-icon-delete" 
                         onclick="confirmDelete(${b.id}, '${escapeHtml(b.name)}')" 
-                        title="Remove Record">${getIcon('delete')}</button>
+                        title="Remove Record">🗑️</button>
             </div>
         </div>
     `).join('');
@@ -315,7 +315,7 @@ function toggleManageMode() {
  * @returns {void}
  */
 function openAddModal() {
-    document.getElementById('modalTitle').innerHTML = `${getIcon('add')} Add Birthday`;
+    document.getElementById('modalTitle').innerHTML = `➕ Add Birthday`;
     document.getElementById('field_id').value = '';
     document.getElementById('field_name').value = '';
     document.getElementById('field_date').value = '';
@@ -337,7 +337,7 @@ function openEditModal(id) {
     const b = STATE.birthdays.find(item => item.id == id);
     if (!b) return;
 
-    document.getElementById('modalTitle').innerHTML = `${getIcon('edit')} Edit Birthday`;
+    document.getElementById('modalTitle').innerHTML = `✎ Edit Birthday`;
     document.getElementById('field_id').value = b.id;
     document.getElementById('field_name').value = b.name;
     document.getElementById('field_date').value = b.birth_date;

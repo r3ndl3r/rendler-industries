@@ -31,11 +31,11 @@ function toggleMenu() {
     if (menu.classList.contains('open')) {
         menu.classList.remove('open');
         overlay.classList.remove('open');
-        btn.innerHTML = getIcon('menu');
+        btn.innerHTML = '☰';
     } else {
         menu.classList.add('open');
         overlay.classList.add('open');
-        btn.innerHTML = getIcon('close');
+        btn.innerHTML = '×';
     }
 }
 
@@ -54,10 +54,10 @@ function toggleSubmenu(id) {
 
     if (!submenu.classList.contains('open')) {
         submenu.classList.add('open');
-        arrow.innerHTML = getIcon('collapse');
+        arrow.innerHTML = '▲';
     } else {
         submenu.classList.remove('open');
-        arrow.innerHTML = getIcon('expand');
+        arrow.innerHTML = '▼';
     }
 }
 
@@ -159,16 +159,16 @@ async function loadMenu() {
             if (data.is_admin) {
                 html += `
                     <button class="menu-action text-red" onclick="startRestartSequence(event)">
-                        ${getIcon('warning')} Restart Server
+                        ⚠️ Restart Server
                     </button>
                 `;
             }
-            html += `<a href="/logout" class="text-red">${getIcon('logout')} Logout</a>`;
+            html += `<a href="/logout" class="text-red">🚪 Logout</a>`;
         } else {
             // Public guest navigation view
             html += '<div class="menu-spacer"></div>';
-            html += `<a href="/login" class="text-green">${getIcon('user')} Login</a>`;
-            html += `<a href="/register">${getIcon('edit')} Register</a>`;
+            html += `<a href="/login" class="text-green">👤 Login</a>`;
+            html += `<a href="/register">✎ Register</a>`;
         }
 
         container.innerHTML = html;
@@ -209,8 +209,14 @@ function renderMenuItem(item, currentPath) {
     };
     
     const altText = permAltMap[item.perm_icon] || '';
+    const emojiMap = {
+        'perm_admin': '🛡️',
+        'perm_family': '👨‍👩‍👧‍👦',
+        'perm_user': '👤',
+        'perm_guest': '🌍'
+    };
     const permIcon = item.perm_icon 
-        ? `<small class="perm-indicator" title="${altText}">(${getIcon(item.perm_icon)})</small>` 
+        ? `<small class="perm-indicator" title="${altText}">(${emojiMap[item.perm_icon] || '❓'})</small>` 
         : '';
     
     if (hasChildren) {
@@ -219,7 +225,7 @@ function renderMenuItem(item, currentPath) {
             <a href="javascript:void(0)" onclick="toggleSubmenu('${item.id}')" class="submenu-toggle">
                 <span class="${item.css_class || ''}">${item.label}</span>
                 ${permIcon}
-                <span id="arrow-${item.id}" class="submenu-arrow">${getIcon('expand')}</span>
+                <span id="arrow-${item.id}" class="submenu-arrow">▼</span>
             </a>
             <div id="submenu-${item.id}" class="submenu-container">
                 ${item.children.map(child => renderMenuItem(child, currentPath)).join('')}
@@ -258,7 +264,7 @@ document.addEventListener('click', function(event) {
         const overlay = document.getElementById('menuOverlay');
         menu.classList.remove('open');
         overlay.classList.remove('open');
-        btn.innerHTML = getIcon('menu');
+        btn.innerHTML = '☰';
     }
 });
 

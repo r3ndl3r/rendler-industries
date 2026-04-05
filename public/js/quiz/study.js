@@ -169,7 +169,7 @@ function renderPage() {
 
                     <div class="study-question-row">
                         <div class="q-text-en flex-1">${q.question}</div>
-                        <button class="btn-tts tts-q-btn" aria-label="Read Question">${getIcon('audio')}</button>
+                        <button class="btn-tts tts-q-btn" aria-label="Read Question">🔊</button>
                     </div>
 
                     <div class="q-text-ph">${q.question_ph}</div>
@@ -179,7 +179,7 @@ function renderPage() {
             
             <div class="study-answer-section">
                 <div class="study-answer-header">
-                    <span>${getIcon('success')}</span>
+                    <span>✅</span>
                     <strong>Correct Answer:</strong>
                 </div>
                 
@@ -188,7 +188,7 @@ function renderPage() {
                         <div class="study-answer-text flex-1">
                             ${correctAnswer.text}
                         </div>
-                        <button class="btn-tts tts-a-btn" aria-label="Read Answer">${getIcon('audio')}</button>
+                        <button class="btn-tts tts-a-btn" aria-label="Read Answer">🔊</button>
                     </div>
 
                     <div class="answer-text-ph">
@@ -201,7 +201,7 @@ function renderPage() {
                 
                 ${correctAnswer.explanation ? `
                     <div class="study-explanation-box">
-                        <div class="study-explanation-title">${getIcon('idea')} Explanation:</div>
+                        <div class="study-explanation-title">💡 Explanation:</div>
                         <div class="study-explanation-text">${correctAnswer.explanation}</div>
                         ${correctAnswer.explanation_th ? `
                             <div class="thai-text result-text-th">

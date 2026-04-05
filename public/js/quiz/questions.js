@@ -262,7 +262,7 @@ function handleAnswer(selectedBtn, answerObj) {
         selectedBtn.classList.add('correct-answer');
         if (feedbackContainer) {
             feedbackContainer.className = 'feedback-box alert-success';
-            if (feedbackIcon) feedbackIcon.innerHTML = getIcon('success');
+            if (feedbackIcon) feedbackIcon.innerHTML = '✅';
             if (feedbackEn) feedbackEn.textContent = 'Correct!';
             if (feedbackTh) feedbackTh.textContent = 'ถูกต้อง';
         }
@@ -275,7 +275,7 @@ function handleAnswer(selectedBtn, answerObj) {
         
         if (feedbackContainer) {
             feedbackContainer.className = 'feedback-box alert-danger';
-            if (feedbackIcon) feedbackIcon.innerHTML = getIcon('error');
+            if (feedbackIcon) feedbackIcon.innerHTML = '❌';
             if (feedbackEn) feedbackEn.textContent = 'Incorrect';
             if (feedbackTh) feedbackTh.textContent = 'ไม่ถูกต้อง';
         }

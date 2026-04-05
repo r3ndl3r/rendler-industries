@@ -90,7 +90,7 @@ function renderUI() {
 
     // 1. Display Player Balance
     if (STATE.is_child && !STATE.is_admin) {
-        statsCon.innerHTML = `${window.getIcon('star')} <span>${STATE.current_points} pts</span>`;
+        statsCon.innerHTML = `⭐ <span>${STATE.current_points} pts</span>`;
     } else {
         statsCon.innerHTML = '';
     }
@@ -137,7 +137,7 @@ function renderChores() {
     if (STATE.active_chores.length === 0) {
         grid.innerHTML = `
             <div class="empty-state">
-                <div class="empty-state-icon">${window.getIcon('happy')}</div>
+                <div class="empty-state-icon">😊</div>
                 <p>No Chores Pending</p>
                 <div class="empty-hint">Everything is clean! The board is currently clear.</div>
             </div>
@@ -148,7 +148,7 @@ function renderChores() {
     grid.innerHTML = STATE.active_chores.map(c => {
         const isTargeted = !!c.assigned_to;
         const iconName = isTargeted ? (c.assigned_username?.toLowerCase() || 'user') : 'globe';
-        const iconHtml = window.getUserIcon(iconName) || window.getIcon('globe');
+        const iconHtml = window.getUserIcon(iconName) || '🌐';
         const badgeText = isTargeted 
             ? ((STATE.is_admin && !STATE.is_child) ? `Assigned to ${escapeHtml(c.assigned_username || 'User')}` : 'Assigned to You')
             : 'Global Chore';
@@ -160,14 +160,14 @@ function renderChores() {
                     <div class="chore-header">
                         <div class="chore-title">${escapeHtml(c.title)}</div>
                         <div class="chore-actions">
-                            ${STATE.is_admin ? `<button class="btn-icon-delete" title="Delete Chore" onclick="confirmDeleteChore(${c.id}, '${escapeHtml(c.title).replace(/'/g, "\\'")}')">${window.getIcon('delete')}</button>` : ''}
+                            ${STATE.is_admin ? `<button class="btn-icon-delete" title="Delete Chore" onclick="confirmDeleteChore(${c.id}, '${escapeHtml(c.title).replace(/'/g, "\\'")}')">🗑️</button>` : ''}
                         </div>
                     </div>
                 </div>
                 ${STATE.is_child ? `
                 <button class="btn-chore-claim" 
                     onclick="confirmClaim(${c.id}, '${escapeHtml(c.title).replace(/'/g, "\\'")}', ${c.points})">
-                    ${window.getIcon('check')} I Finished This! <span class="btn-points-tag">Points: ${c.points}</span>
+                    ✅ I Finished This! <span class="btn-points-tag">Points: ${c.points}</span>
                 </button>
                 ` : `
                 <div class="chore-points-static">
@@ -292,7 +292,7 @@ function populateAssignedSelect() {
     const select = document.getElementById('assignedToSelect');
     if (!select) return;
 
-    const baseOpt = `<option value="">${getIcon('family')} Family Pool</option>`;
+    const baseOpt = `<option value="">🏠 Family Pool</option>`;
     const children = STATE.all_users.filter(u => u.is_child && !u.is_admin);
 
     select.innerHTML = baseOpt + children.map(c =>
@@ -314,7 +314,7 @@ async function addChore(e) {
     const originalHtml = btn.innerHTML;
     
     btn.disabled = true;
-    btn.innerHTML = `${window.getIcon('waiting')} Posting...`;
+    btn.innerHTML = `⏳ Posting...`;
     
     try {
         const formData = new FormData(form);
@@ -373,13 +373,13 @@ function renderQuickAdd() {
     if (!container) return;
 
     if (STATE.quick_add_chores.length === 0) {
-        container.innerHTML = '<div class="empty-hint p-2">No recent templates available.</div>';
+        container.innerHTML = `<div class="component-loading"><span class="loading-icon-pulse">⌛</span></div>`;
         return;
     }
 
     container.innerHTML = STATE.quick_add_chores.map(c => {
         const iconName = c.assigned_username ? c.assigned_username.toLowerCase() : 'globe';
-        const iconHtml = window.getUserIcon(iconName) || window.getIcon('globe');
+        const iconHtml = window.getUserIcon(iconName) || '🌐';
         return `
             <div class="repost-item" onclick="fillChoreForm('${escapeHtml(c.title)}', ${c.points}, '${c.assigned_to || ''}')">
                 <span class="repost-icon">${iconHtml}</span>
@@ -438,7 +438,7 @@ function renderHistory() {
                 </td>
                 <td class="text-right col-actions">
                     <button class="btn-icon-delete" title="Revoke Completion" onclick="confirmRevoke(${h.id})">
-                        ${window.getIcon('delete')}
+                        🗑️
                     </button>
                 </td>
             </tr>

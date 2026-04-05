@@ -392,19 +392,19 @@ const Connect4App = {
                 
                 if (winnerId === 0) {
                     modalPanel.classList.add('draw');
-                    iconEl.innerHTML = window.getIcon('draw');
+                    iconEl.innerHTML = '🤝';
                     titleEl.innerText = "DRAW GAME";
                     msgEl.innerText = "The board is full. It's a stalemate!";
                 } else if (winnerId === STATE.userId) {
                     AudioEngine.victory();
                     modalPanel.classList.add('victory');
-                    iconEl.innerHTML = window.getIcon('trophy');
+                    iconEl.innerHTML = '🏆';
                     titleEl.innerText = "VICTORY!";
                     msgEl.innerText = "Four in a row! You win!";
                 } else {
                     AudioEngine.defeat();
                     modalPanel.classList.add('defeat');
-                    iconEl.innerHTML = window.getIcon('error');
+                    iconEl.innerHTML = '❌';
                     titleEl.innerText = "DEFEAT";
                     msgEl.innerText = "Better luck next time. Watch your vectors!";
                 }
@@ -439,7 +439,7 @@ const Connect4App = {
                 if (STATE.isMyTurn) {
                     statusMsg.innerText = "YOUR TURN";
                     statusMsg.classList.add('status-active');
-                    turnMsg.innerHTML = `You are ${STATE.myRole === 1 ? 'Red ' + window.getIcon('connect4') : 'Blue ' + window.getIcon('connect4_blue')}`;
+                    turnMsg.innerHTML = `You are ${STATE.myRole === 1 ? 'Red 🔴' : 'Blue 🔵'}`;
                     if (boardFrame) boardFrame.classList.add('my-turn-pulse');
                 } else {
                     const currentTurnName = (data.turn == data.p1_id) ? data.p1_name : data.p2_name;

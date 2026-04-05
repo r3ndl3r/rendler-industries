@@ -88,7 +88,7 @@ async function handleAddSubmit(event) {
     const originalHtml = btn.innerHTML;
 
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Creating...`;
+    btn.innerHTML = `⌛ Creating...`;
 
     try {
         const formData = new FormData(form);
@@ -230,12 +230,8 @@ function renderUserRow(u) {
             </td>
             <td data-label="Actions">
                 <div class="action-btns">
-                    <button type="button" class="btn-icon-edit" onclick="openEditUserModal(${u.id})" title="Edit Profile">
-                        ${getIcon('edit')}
-                    </button>
-                    <button type="button" class="btn-icon-delete" onclick="confirmDeleteUser(${u.id}, '${escapeHtml(u.username)}')" title="Delete Account">
-                        ${getIcon('delete')}
-                    </button>
+                    <button class="btn-icon-edit" onclick="openEditModal(${u.id})" title="Edit Detail">✏️</button>
+                    <button class="btn-icon-delete" onclick="confirmDelete(${u.id}, '${escapeHtml(u.username)}')" title="Revoke Access">🗑️</button>
                 </div>
             </td>
         </tr>
@@ -296,7 +292,7 @@ async function handleEditSubmit(event) {
     const originalHtml = btn.innerHTML;
 
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const result = await apiPost(`/users/update/${userId}`, new FormData(form));

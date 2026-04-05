@@ -122,9 +122,10 @@ function renderLedger() {
     }
 
     tbody.innerHTML = STATE.logs.map(log => {
-        const statusIcon = log.status === 'success' ? getIcon('success') : getIcon('error');
+        const statusIcon = log.status === 'success' ? '✅' : '❌';
+        const typeMap = { discord: '💬', email: '📧', gotify: '🔔', pushover: '📢' };
+        const channelIcon = typeMap[log.type] || '🔔';
         const statusClass = log.status === 'success' ? 'text-green' : 'text-danger';
-        const channelIcon = getIcon(log.type);
         const userEmoji = window.getUserIcon(log.username?.toLowerCase());
         
         // Truncate message for snippet
@@ -148,7 +149,7 @@ function renderLedger() {
                 <td class="col-message" data-label="Message"><span class="message-snippet">${escapeHtml(snippet)}</span></td>
                 <td class="col-actions" onclick="event.stopPropagation()">
                     <button class="btn-icon-delete" title="Delete Log" onclick="confirmDelete(${log.id})">
-                        ${getIcon('delete')}
+                        🗑️
                     </button>
                 </td>
             </tr>
@@ -174,7 +175,7 @@ function viewDetails(id) {
 
     content.innerHTML = `
         <div class="detail-item full-width">
-            <div class="detail-value message-full-box">${escapeHtml(log.message)}</div>
+            <div class="empty-state">🔔 No pending notifications.</div>
         </div>
     `;
 

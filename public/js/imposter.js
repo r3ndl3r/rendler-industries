@@ -103,10 +103,10 @@ function renderLobby(container) {
                     <span class="player-card-name">${escapeHtml(player)}</span>
                     <div class="player-card-actions">
                         <button onclick="editPlayer('${escapeHtml(player).replace(/'/g, "\\'")}')" class="btn-icon-edit">
-                            ${window.getIcon('edit')}
+                            ✏️
                         </button>
                         <button onclick="removePlayer('${escapeHtml(player).replace(/'/g, "\\'")}')" class="btn-icon-delete">
-                            ${window.getIcon('delete')}
+                            🗑️
                         </button>
                     </div>
                 </div>
@@ -125,7 +125,7 @@ function renderLobby(container) {
                            onkeypress="if(event.key === 'Enter') addPlayer()"
                            class="game-input">
                     <button onclick="addPlayer()" class="btn-add-input">
-                        ${window.getIcon('add')}
+                        ➕
                     </button>
                 </div>
 
@@ -181,7 +181,7 @@ function renderPassing(container) {
                     ` : ''}
 
                     <div class="secret-reveal-box">
-                        <div class="accent-line ${isImposter ? 'imposter' : 'player'}"></div>
+                        <div class="empty-state">🕵️ Loading Imposter game...</div>
                         
                         ${isImposter ? `
                             <div class="hint-label">Your Hint</div>
@@ -191,7 +191,7 @@ function renderPassing(container) {
                             <div class="secret-word">${escapeHtml(STATE.game.word_data[STATE.lang].word)}</div>
                         `}
                     </div>
-                    <button onclick="apiAction('/imposter/api/next_player', {}, this)" class="btn-purple btn-next-player">NEXT PLAYER ${window.getIcon('arrow_forward')}</button>
+                    <button onclick="apiAction('/imposter/api/next_player', {}, this)" class="btn-purple btn-next-player">NEXT PLAYER ➡️</button>
                 `}
             </div>
         </div>

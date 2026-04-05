@@ -99,7 +99,7 @@ function renderGrid() {
     if (STATE.timers.length === 0) {
         container.innerHTML = `
             <div class="no-timers">
-                <p>${getIcon('phone')} You don't have any timers set up yet.</p>
+                <p>📱 You don't have any timers set up yet.</p>
                 <p>Contact an admin to create timers for you.</p>
             </div>
         `;
@@ -122,7 +122,13 @@ function renderTimerCard(t) {
     
     const cat = t.category || '';
     const catClass = cat.toLowerCase().replace(' ', '-');
-    const iconHtml = getIcon(catClass);
+    const iconHtml = {
+        'work': '💼',
+        'school': '🎓',
+        'gaming': '🎮',
+        'screen': '📱',
+        'ai': '🧠'
+    }[catClass] || '🕒';
 
     return `
         <div class="timer-card" data-timer-id="${t.id}" data-status="${isUnlimited ? 'green' : t.status_color}">
@@ -159,7 +165,7 @@ function renderTimerCard(t) {
                 </div>
                 ${t.bonus_seconds > 0 && !isUnlimited ? `
                     <div class="stat-row bonus-indicator">
-                        <span class="stat-label">${getIcon('star')} Bonus Time:</span>
+                        <span class="stat-label">⭐ Bonus Time:</span>
                         <span class="stat-value">+${Math.floor(t.bonus_seconds / 60)} minutes</span>
                     </div>
                 ` : ''}
@@ -167,20 +173,20 @@ function renderTimerCard(t) {
 
             <div class="timer-controls">
                 ${t.is_running ? `
-                    <button class="btn btn-pause" onclick="handlePause(${t.id}, this)">${getIcon('paused')} Pause</button>
+                    <button class="btn btn-pause" onclick="handlePause(${t.id}, this)">⏸️ Pause</button>
                 ` : (t.is_paused ? `
-                    <button class="btn btn-pause paused" onclick="handlePause(${t.id}, this)">${getIcon('running')} Resume</button>
+                    <button class="btn btn-pause paused" onclick="handlePause(${t.id}, this)">▶️ Resume</button>
                 ` : `
                     <button class="btn btn-start" onclick="handleStart(${t.id}, this)" 
                             style="${isExpired ? 'display: none;' : ''}"
                             ${isExpired ? 'disabled' : ''}>
-                        ${getIcon('running')} Start
+                        ▶️ Start
                     </button>
                 `)}
                 
                 ${STATE.is_child && !isUnlimited ? `
                     <button class="btn-redeem-small" onclick="openRedeemModal(${t.id}, '${escapeHtml(t.name)}')">
-                        ${getIcon('star')} Redeem
+                        ⭐ Redeem
                     </button>
                 ` : ''}
             </div>
@@ -195,7 +201,7 @@ function renderTimerCard(t) {
             ${isExpired ? `
                 <div class="expired-overlay">
                     <div class="expired-message">
-                        <span class="expired-icon">${getIcon('cancel')}</span>
+                        <span class="expired-icon">❌</span>
                         <p>Time's Up!</p>
                         <small>Ask an admin for more time</small>
                     </div>
@@ -273,7 +279,7 @@ async function handleRedeemSubmit(event) {
     
     btn.disabled = true;
     const originalHtml = btn.innerHTML;
-    btn.innerHTML = `${getIcon('waiting')} Redeeming...`;
+    btn.innerHTML = `⌛ Redeeming...`;
 
     try {
         const result = await apiPost('/timers/api/redeem', formData);
@@ -302,7 +308,7 @@ async function handleRedeemSubmit(event) {
 async function handleStart(timerId, btn) {
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} ...`;
+    btn.innerHTML = `⌛ ...`;
 
     const result = await apiPost('/timers/api/start', { timer_id: timerId });
     if (result && result.success) {
@@ -329,7 +335,7 @@ async function handleStart(timerId, btn) {
 async function handlePause(timerId, btn) {
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} ...`;
+    btn.innerHTML = `⌛ ...`;
 
     const result = await apiPost('/timers/api/pause', { timer_id: timerId });
     if (result && result.success) {

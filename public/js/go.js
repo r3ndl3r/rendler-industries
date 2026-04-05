@@ -73,7 +73,7 @@ async function loadState(force = false) {
         container.innerHTML = `
             <div class="component-loading">
                 <div class="loading-scan-line"></div>
-                <span class="loading-icon-pulse">${window.getIcon('link')}</span>
+                <span class="loading-icon-pulse">🔗</span>
                 <p class="loading-label">Synchronizing short-links...</p>
             </div>`;
     }
@@ -103,7 +103,7 @@ function renderList() {
     if (STATE.items.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <p>${window.getIcon('empty')} No Go links found.</p>
+                <p>📭 No Go links found.</p>
             </div>`;
         return;
     }
@@ -125,14 +125,14 @@ function renderList() {
                     <div class="item-meta">
                         <i class="url-text">→ ${safeUrl}</i>
                         ${safeDesc ? `<span class="description-text">${safeDesc}</span>` : ''}
-                        <span class="added-by">${window.getIcon('user')} ${escapeHtml(link.username || 'Unknown')}</span>
+                        <span class="added-by">👤 ${escapeHtml(link.username || 'Unknown')}</span>
                     </div>
                 </div>
                 
                 <div class="item-actions">
-                    <button type="button" class="btn-icon-copy" onclick="copyGoLink('${safeKeyword}')" title="Copy Link">${window.getIcon('copy')}</button>
-                    <button type="button" class="btn-icon-edit" onclick="openEditModal(${link.id})" title="Edit">${window.getIcon('edit')}</button>
-                    <button type="button" class="btn-icon-delete" onclick="removeLink(${link.id}, '${safeKeyword}')" title="Delete">${window.getIcon('delete')}</button>
+                    <button type="button" class="btn-icon-copy" onclick="copyGoLink('${safeKeyword}')" title="Copy Link">📋</button>
+                    <button type="button" class="btn-icon-edit" onclick="openEditModal(${link.id})" title="Edit">✏️</button>
+                    <button type="button" class="btn-icon-delete" onclick="removeLink(${link.id}, '${safeKeyword}')" title="Delete">🗑️</button>
                 </div>
             </div>
         `;
@@ -201,7 +201,7 @@ async function submitEntry(event, isEdit = false) {
     
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${window.getIcon('waiting')} ${isEdit ? 'Saving...' : 'Adding...'}`;
+    btn.innerHTML = `⏳ ${isEdit ? 'Saving...' : 'Adding...'}`;
 
     try {
         const formData = new FormData(form);

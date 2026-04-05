@@ -166,11 +166,11 @@ function renderItemRow(item) {
             <div class="action-buttons">
                 ${!isChecked ? `
                     <button type="button" class="btn-icon-edit" onclick="openEditModal(${item.id})" title="Edit Item">
-                        ${getIcon('edit')}
+                        ✎
                     </button>
                 ` : ''}
                 <button type="button" class="btn-icon-delete" onclick="confirmDeleteItem(${item.id}, \`${item.item_name.replace(/`/g, "\\`")}\`)" title="Remove Item">
-                    ${getIcon('delete')}
+                    🗑️
                 </button>
             </div>
         </div>
@@ -200,7 +200,7 @@ async function handleAddItem(event) {
     const btn = document.getElementById('addItemBtn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Adding...`;
+    btn.innerHTML = `⌛ Adding...`;
 
     try {
         const result = await apiPost('/shopping/api/add', { item_name: name });
@@ -300,7 +300,7 @@ async function handleEditSubmit(event) {
     const btn = document.getElementById('editSaveBtn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const result = await apiPost(`/shopping/api/edit/${id}`, { item_name: name });

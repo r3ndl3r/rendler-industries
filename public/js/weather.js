@@ -134,7 +134,7 @@ function renderWeatherDashboard() {
     if (STATE.observations.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <div class="status-icon-glow">${getIcon('weather')}</div>
+                <div class="status-icon-glow">☀️</div>
                 <p>No locations configured or pending synchronization.</p>
                 ${STATE.isAdmin ? '<p class="empty-hint">Use the "+" button to track your first city.</p>' : ''}
             </div>`;
@@ -431,8 +431,8 @@ function renderLocationLedger() {
                 <td data-label="Interval" class="text-center">${l.update_interval_mins}m</td>
                 <td data-label="Actions" class="text-right">
                     <div class="action-buttons">
-                        <button type="button" class="btn-icon-edit" onclick="editLocation(${l.id})" title="Edit">${getIcon('edit')}</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteLocation(${l.id}, '${escapeHtml(l.name)}')" title="Delete Forever">${getIcon('delete')}</button>
+                        <button type="button" class="btn-icon-edit" onclick="editLocation(${l.id})" title="Edit">✎</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteLocation(${l.id}, '${escapeHtml(l.name)}')" title="Delete Forever">🗑️</button>
                     </div>
                 </td>
             </tr>`;
@@ -871,7 +871,7 @@ async function handleGeocode() {
     const query = input?.value.trim();
     if (!query || query.length < 3) return;
 
-    tray.innerHTML = `${getIcon('waiting')} Searching coordinates...`;
+    tray.innerHTML = `⌛ Searching coordinates...`;
     
     try {
         const res = await apiPost('/weather/api/geocode', { q: query });
@@ -914,12 +914,12 @@ function openLocationModal(id = null) {
     document.getElementById('editLocationId').value = '';
     document.getElementById('geocodeResults').innerHTML = '';
     document.getElementById('citySearchInput').value = '';
-    title.innerHTML = `${getIcon('add')} Track New Location`;
+    title.innerHTML = `➕ Track New Location`;
 
     if (id) {
         const l = STATE.locations.find(x => x.id === id);
         if (l) {
-            title.innerHTML = `${getIcon('edit')} Edit Location`;
+            title.innerHTML = `✎ Edit Location`;
             document.getElementById('editLocationId').value = l.id;
             document.getElementById('locationName').value = l.name;
             document.getElementById('locationLat').value = l.lat;
@@ -950,7 +950,7 @@ async function saveLocation(e) {
     
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Saving...`;
+    btn.innerHTML = `⌛ Saving...`;
 
     try {
         const res = await apiPost(url, formData);

@@ -154,7 +154,7 @@ async function loadMore() {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Loading...`;
+    btn.innerHTML = `⌛ Loading...`;
 
     const filters = getActiveFilters();
     const params = new URLSearchParams({ ...filters, offset: STATE.offset });
@@ -199,7 +199,7 @@ function renderStats() {
                 <span class="stat-label">${labels[period]}</span>
                 <span class="stat-value">
                     $${parseFloat(total).toFixed(2)}
-                    <span class="tile-toggle-icon">${getIcon('expand')}</span>
+                    <span class="tile-toggle-icon">🔽</span>
                 </span>
                 <div class="stat-breakdown">
                     ${sub.map(s => `
@@ -242,14 +242,14 @@ function renderReceipts(append = false, batch = null) {
                     <div class="receipt-thumbnail-wrapper" onclick="openReceiptModal('${r.id}')">
                         <img src="/receipts/serve/${r.id}" class="receipt-thumb">
                     </div>
-                ` : `<span class="receipt-fallback-icon">${getIcon('receipts')}</span>`}
+                ` : `<span class="receipt-fallback-icon">🧾</span>`}
             </td>
             <td data-label="Filename"><small>${escapeHtml(r.original_filename)}</small></td>
             <td data-label="Store">
                 <div class="store-icon-wrapper">
                     ${getStoreLogoHtml(r.store_name)}
                     <strong>${escapeHtml(r.store_name || 'Unknown')}</strong>
-                    ${r.ai_json ? `<span class="ai-badge" title="AI Digitized">${getIcon('ai')}</span>` : ''}
+                    ${r.ai_json ? `<span class="ai-badge" title="AI Digitized">🤖</span>` : ''}
                 </div>
                 ${r.description ? `<br><small class="receipt-description">${escapeHtml(r.description)}</small>` : ''}
             </td>
@@ -258,19 +258,19 @@ function renderReceipts(append = false, batch = null) {
             <td data-label="Uploaded By"><small>${escapeHtml(r.uploaded_by)}</small></td>
             <td class="col-actions">
                 <div class="action-buttons">
-                    <a href="/receipts/serve/${r.id}" target="_blank" class="btn-icon-view" title="Original">${getIcon('view')}</a>
+                    <a href="/receipts/serve/${r.id}" target="_blank" class="btn-icon-view" title="Original">👁️</a>
                     <button type="button" 
                             class="btn-icon-ai" 
                             data-receipt-id="${r.id}"
                             data-ai-json="${escapeHtml(r.ai_json || "")}"
                             data-store-icon="${getStoreLogoUrl(r.store_name)}"
                             onclick="viewElectronicReceipt(this.dataset.receiptId, 0, this.dataset.aiJson, this.dataset.storeIcon)" 
-                            title="Electronic">${getIcon('ai')}</button>
+                            title="Electronic">🤖</button>
                     ${(r.uploaded_by === STATE.currentUser || STATE.isAdmin) ? `
-                        <button type="button" class="btn-icon-crop" onclick="openCropModal('${r.id}')" title="Refine">${getIcon('crop')}</button>
-                        <button type="button" class="btn-icon-bonus" onclick="triggerOCR('${r.id}')" title="OCR Scan" id="ocr-btn-${r.id}">${getIcon('search')}</button>
-                        <button type="button" class="btn-icon-edit" onclick="openEditModal(this.dataset.receipt)" data-receipt='${escapeHtml(JSON.stringify(r))}' title="Edit">${getIcon('edit')}</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('${r.id}', '${escapeHtml(r.store_name || r.original_filename)}')" title="Delete">${getIcon('delete')}</button>
+                        <button type="button" class="btn-icon-crop" onclick="openCropModal('${r.id}')" title="Refine">✂️</button>
+                        <button type="button" class="btn-icon-bonus" onclick="triggerOCR('${r.id}')" title="OCR Scan" id="ocr-btn-${r.id}">🔍</button>
+                        <button type="button" class="btn-icon-edit" onclick="openEditModal(this.dataset.receipt)" data-receipt='${escapeHtml(JSON.stringify(r))}' title="Edit">✏️</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('${r.id}', '${escapeHtml(r.store_name || r.original_filename)}')" title="Delete">🗑️</button>
                     ` : ''}
                 </div>
             </td>
@@ -305,7 +305,7 @@ async function handleUpload(e) {
 
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Uploading...`;
+    btn.innerHTML = `⌛ Uploading...`;
     btn.classList.add('receipt-btn-waiting');
 
     showLoadingOverlay('Processing receipt...', 'Performing binary scan and OCR extraction.');
@@ -344,7 +344,7 @@ async function handleEditSubmit(e) {
     const btn = form.querySelector('button[type="submit"]');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Syncing...`;
+    btn.innerHTML = `⌛ Syncing...`;
     
     try {
         const result = await apiPost(`/receipts/api/update/${id}`, formData);
@@ -567,7 +567,7 @@ function applyPreUploadCrop() {
     const btn = document.querySelector('#preUploadCropModal .btn-primary');
     const original = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} Refining...`;
+    btn.innerHTML = `⌛ Refining...`;
 
     STATE.cropper.getCroppedCanvas({ fillColor: '#fff' }).toBlob(blob => {
         if (blob) {
@@ -696,7 +696,7 @@ async function openCropModal(id) {
             const btn = document.querySelector('#cropModal .btn-primary');
             const original = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = `${getIcon('waiting')} Saving...`;
+            btn.innerHTML = `⌛ Saving...`;
 
             STATE.cropper.getCroppedCanvas({ fillColor: '#fff' }).toBlob(async b => {
                 const fd = new FormData();
@@ -729,7 +729,7 @@ async function triggerOCR(id) {
 
     const original = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `${getIcon('waiting')} ...`;
+    btn.innerHTML = `⌛ ...`;
     
     try {
         const data = await apiPost('/receipts/api/ocr/' + id);
@@ -785,12 +785,12 @@ async function viewElectronicReceipt(id, force = 0, preLoaded = null, initialIco
             const errorMsg = res.error || 'AI Analysis failed';
             content.innerHTML = `
                 <div class="alert alert-error">
-                    <p>${getIcon('error')} <strong>Analysis Failed</strong></p>
+                    <p>⚙️ <strong>Analysis Failed</strong></p>
                     <p class="error-detail">${errorMsg}</p>
                 </div>`;
         }
     } catch (err) {
-        content.innerHTML = `<div class="alert alert-error">${getIcon('error')} Network error</div>`;
+        content.innerHTML = `<div class="alert alert-error">❌ Network error</div>`;
     }
 }
 

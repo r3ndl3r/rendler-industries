@@ -498,7 +498,7 @@ const ChessApp = {
                 
                 if (winnerId === 0) {
                     modalPanel.classList.add('draw');
-                    iconEl.innerHTML = window.getIcon('draw');
+                    iconEl.innerHTML = '🤝';
                     
                     if (STATE.engine && STATE.engine.in_stalemate()) {
                         titleEl.innerText = "STALEMATE";
@@ -515,14 +515,14 @@ const ChessApp = {
                     }
                 } else if (winnerId === STATE.userId) {
                     modalPanel.classList.add('victory');
-                    iconEl.innerHTML = window.getIcon('trophy');
+                    iconEl.innerHTML = '🏆';
                     titleEl.innerText = "VICTORY!";
                     msgEl.innerText = data.last_move === null && data.fen_state === STATE.engine.fen() 
                         ? "Your opponent has resigned. You win by default!" 
                         : "Checkmate! You have mastered the board.";
                 } else {
                     modalPanel.classList.add('defeat');
-                    iconEl.innerHTML = window.getIcon('error');
+                    iconEl.innerHTML = '❌';
                     titleEl.innerText = "DEFEAT";
                     msgEl.innerText = "Better luck next time. Strategy is a journey.";
                 }
@@ -534,10 +534,10 @@ const ChessApp = {
             
             const winnerId = parseInt(data.winner_id, 10);
             if (winnerId === 0) {
-                statusText.innerHTML = `${window.getIcon('draw')} Game Over - Draw`;
+                statusText.innerHTML = `🤝 Game Over - Draw`;
             } else {
                 const isMeWinner = (winnerId === STATE.userId);
-                statusText.innerHTML = isMeWinner ? `${window.getIcon('trophy')} Game Over - You Win!` : `Game Over - You Lost`;
+                statusText.innerHTML = isMeWinner ? `🏆 Game Over - You Win!` : `Game Over - You Lost`;
             }
             
             if (offerBtn) offerBtn.classList.remove('active');
@@ -545,11 +545,11 @@ const ChessApp = {
         } else {
             if (gameOverModal) gameOverModal.classList.remove('active');
             if (STATE.gameStatus === 'waiting') {
-                statusText.innerHTML = `${window.getIcon('waiting')} Waiting for opponent...`;
+                statusText.innerHTML = `⏳ Waiting for opponent...`;
                 if (boardEl) boardEl.classList.remove('my-turn-pulse');
             } else {
                 const isMyTurn = STATE.currentTurnId === STATE.userId;
-                statusText.innerHTML = isMyTurn ? `${window.getIcon('success')} Your Turn` : `${window.getIcon('error')} Opponent's Turn`;
+                statusText.innerHTML = isMyTurn ? `✅ Your Turn` : `❌ Opponent's Turn`;
                 
                 if (boardEl) {
                     if (isMyTurn) boardEl.classList.add('my-turn-pulse');
@@ -571,7 +571,7 @@ const ChessApp = {
             }
         } else {
             if (overlay) overlay.classList.remove('active');
-            if (offerBtn) { offerBtn.textContent = `${window.getIcon('draw')} Offer Draw`; offerBtn.disabled = false; }
+            if (offerBtn) { offerBtn.textContent = `🤝 Offer Draw`; offerBtn.disabled = false; }
         }
         
         document.getElementById('fen-display').textContent = `FEN: ${data.fen_state}`;
