@@ -297,7 +297,7 @@ function getLoadingHtml(text = 'Loading...', subtext = '', showScanner = false) 
     return `
         <div class="component-loading">
             ${showScanner ? '<div class="loading-scan-line"></div>' : ''}
-            <span class="loading-icon-pulse">${getIcon('ai')}</span>
+            <span class="loading-icon-pulse">🤖</span>
             <p class="loading-label">${text}</p>
             ${subtext ? `<p class="loading-sub">${subtext}</p>` : ''}
         </div>
@@ -430,7 +430,7 @@ window.showConfirmModal = function(options) {
 
     // 1. Content Injection
     if (title) title.textContent = options.title || 'Confirm Action';
-    if (icon) icon.innerHTML = getIcon(options.icon || 'delete');
+    if (icon) icon.innerHTML = options.icon || '🗑️';
     if (text) text.innerHTML = options.message || 'Are you sure?';
     
     if (subText) {
@@ -451,7 +451,7 @@ window.showConfirmModal = function(options) {
     actions.classList.add(`modal-actions-${align}`);
 
     // 3. Button Configuration
-    btnConfirm.innerHTML = (options.confirmIcon ? getIcon(options.confirmIcon) + ' ' : '') + (options.confirmText || 'Confirm');
+    btnConfirm.innerHTML = (options.confirmIcon ? options.confirmIcon + ' ' : '') + (options.confirmText || 'Confirm');
     btnConfirm.className = options.danger ? 'btn-danger-confirm' : (options.success ? 'btn-success' : 'btn-primary');
     btnConfirm.disabled = !!(options.input && options.input.requiredText);
 
@@ -500,7 +500,7 @@ window.showConfirmModal = function(options) {
 
         const originalHtml = newBtn.innerHTML;
         newBtn.disabled = true;
-        newBtn.innerHTML = `${getIcon('waiting')} ${options.loadingText || 'Processing...'}`;
+        newBtn.innerHTML = `⌛ ${options.loadingText || 'Processing...'}`;
         
         try {
             await options.onConfirm(options.input ? promptInput.value : null);
@@ -659,54 +659,44 @@ const FlipClockManager = {
     }
 };
 
-/**
- * --- Global Icon Registries ---
- * Standardized mapping of semantic names and user identities to Unicode/Emoji symbols.
- * Synchronized with lib/MyApp/Plugin/Icons.pm via assets/emoji.json.
- */
-window.getIcon = function(name) {
-    if (!name) return '';
-    const registry = _hydrateIconRegistries();
-    return registry.general[name.toLowerCase()] || '';
-};
-
-window.getUserIcon = function(username) {
-    if (!username) return '';
-    const registry = _hydrateIconRegistries();
-    return registry.users[username.toLowerCase()] || registry.users['unknown'] || '👤';
-};
 
 /**
- * Internal hydration helper: flattens the grouped JSON structure
- * on-demand into separate fast-lookup registries.
+ * --- Identity & Icon Management ---
+ * 
+ * Synchronized with lib/MyApp/Plugin/Icons.pm via /api/user_icons.
  */
-function _hydrateIconRegistries() {
-    if (!window._ICON_REGISTRY && window.GLOBAL_ICONS) {
-        window._ICON_REGISTRY = {
-            general: {},
-            users:   {}
-        };
+window.GLOBAL_USER_ICONS = { users: {} };
 
-        const raw = window.GLOBAL_ICONS;
-
-        // 1. Flatten General Icons
-        if (raw.general) {
-            for (const [emoji, keywords] of Object.entries(raw.general)) {
-                keywords.forEach(kw => {
-                    window._ICON_REGISTRY.general[kw.toLowerCase()] = emoji;
-                });
-            }
-        }
-
-        // 2. Map User Identities
-        if (raw.users) {
-            for (const [user, emoji] of Object.entries(raw.users)) {
-                window._ICON_REGISTRY.users[user.toLowerCase()] = emoji;
-            }
-        }
+/**
+ * Hydrates the global icon registry from the secure API.
+ * This pattern mirrors the /emojis module to ensure 100% encoding accuracy.
+ */
+async function loadUserIcons() {
+    try {
+        const response = await fetch('/api/user_icons');
+        if (!response.ok) return;
+        window.GLOBAL_USER_ICONS = await response.json();
+        
+        // Dispatch event so SPA modules can re-render if needed
+        window.dispatchEvent(new CustomEvent('userIconsHydrated'));
+    } catch (err) {
+        console.error('Failed to hydrate user icons:', err);
     }
-    return window._ICON_REGISTRY || { general: {}, users: {} };
 }
+
+// Global Lifecycle: Trigger hydration immediately on script load
+loadUserIcons();
+
+/**
+ * window.getUserIcon
+ * Standardized mapping of user identities to Unicode/Emoji symbols.
+ * Synchronized with lib/MyApp/Plugin/Icons.pm via /api/user_icons.
+ */
+window.getUserIcon = function(username) {
+    const registry = window.GLOBAL_USER_ICONS?.users;
+    if (!username || !registry) return '👤';
+    return registry[username.toLowerCase()] || registry['unknown'] || '👤';
+};
 
 /**
  * Global TTS Helper: speakText
