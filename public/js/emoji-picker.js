@@ -435,21 +435,26 @@ const EmojiPicker = {
     /**
      * Initialization System
      * Bootstraps the UI elements and establishes global focus-tracking.
+     * 
+     * @returns {void}
      */
     init: function() {
         this.createTrigger();
         this.createPicker();
+        this.renderEmojis(this.emojis['smileys']); // Populate initial grid
         this.setupListeners();
     },
 
     /**
      * UI Component: createTrigger
      * Generates the floating button used to reveal the selection panel.
+     * 
+     * @returns {void}
      */
     createTrigger: function() {
         const btn = document.createElement('button');
         btn.className = 'emoji-picker-trigger';
-        btn.innerHTML = '😀';
+        btn.innerHTML = window.getIcon('smiley');
         btn.type = 'button';
         btn.title = 'Insert Emoji';
         btn.style.zIndex = '100001';
@@ -460,11 +465,12 @@ const EmojiPicker = {
     /**
      * UI Component: createPicker
      * Generates the categorized selection panel and search header.
+     * 
+     * @returns {void}
      */
     createPicker: function() {
         const panel = document.createElement('div');
         panel.className = 'emoji-picker-panel';
-        panel.style.display = 'none';
         panel.style.zIndex = '100002';
         
         panel.innerHTML = `
@@ -473,16 +479,16 @@ const EmojiPicker = {
             </div>
             <div class="emoji-grid"></div>
             <div class="emoji-categories">
-                <span class="category-btn active" data-cat="smileys" title="Smileys">😀</span>
-                <span class="category-btn" data-cat="people" title="People">👋</span>
-                <span class="category-btn" data-cat="animals" title="Animals">🐶</span>
-                <span class="category-btn" data-cat="nature" title="Nature">🌲</span>
-                <span class="category-btn" data-cat="food" title="Food">🍕</span>
-                <span class="category-btn" data-cat="travel" title="Travel">✈️</span>
-                <span class="category-btn" data-cat="activities" title="Activities">⚽</span>
-                <span class="category-btn" data-cat="objects" title="Objects">💡</span>
-                <span class="category-btn" data-cat="symbols" title="Symbols">✨</span>
-                <span class="category-btn" data-cat="flags" title="Flags">🇦🇺</span>
+                <span class="category-btn active" data-cat="smileys" title="Smileys">${window.getIcon('smiley')}</span>
+                <span class="category-btn" data-cat="people" title="People">${window.getIcon('user')}</span>
+                <span class="category-btn" data-cat="animals" title="Animals">${window.getIcon('kangaroo')}</span>
+                <span class="category-btn" data-cat="nature" title="Nature">${window.getIcon('world')}</span>
+                <span class="category-btn" data-cat="food" title="Food">${window.getIcon('meals')}</span>
+                <span class="category-btn" data-cat="travel" title="Travel">${window.getIcon('chelsea')}</span>
+                <span class="category-btn" data-cat="activities" title="Activities">${window.getIcon('gaming-console')}</span>
+                <span class="category-btn" data-cat="objects" title="Objects">${window.getIcon('idea')}</span>
+                <span class="category-btn" data-cat="symbols" title="Symbols">${window.getIcon('sparkles')}</span>
+                <span class="category-btn" data-cat="flags" title="Flags">${window.getIcon('globe')}</span>
             </div>
         `;
         
@@ -496,6 +502,7 @@ const EmojiPicker = {
      * Reconciles the emoji grid with a provided list of character objects.
      * 
      * @param {Object[]} list - Collection of {c: char, n: name}
+     * @returns {void}
      */
     renderEmojis: function(list) {
         const grid = this.pickerElement.querySelector('.emoji-grid');
@@ -518,32 +525,43 @@ const EmojiPicker = {
     /**
      * Logic: setupListeners
      * Establishes high-resolution event tracking for dynamic trigger placement.
+     * 
+     * @returns {void}
      */
     setupListeners: function() {
         // Lifecycle: identify compatible inputs upon focus
         document.addEventListener('focusin', (e) => {
             const target = e.target;
-            const isEmojiCompatible = target.matches('.game-input, .create-modal-input, .note-modal-title-input, .modal-prompt-input, input[type="text"], textarea');
+            const isEmojiCompatible = target.matches('.game-input, .game-input-premium, .create-modal-input, .note-modal-title-input, .inline-title-input, .modal-prompt-input, input[type="text"], textarea');
+            const isInsidePicker = target.closest('.emoji-picker-panel');
+            const isTrigger = target.closest('.emoji-picker-trigger');
             const isSearchField = target.classList.contains('emoji-search');
             const isOptedOut = target.classList.contains('no-emoji');
 
             if (isEmojiCompatible && !isSearchField && !isOptedOut) {
                 this.activeInput = target;
                 this.attachTrigger(target);
-            } else {
-                // Feature: Hide trigger if focus shifts to a non-compatible or opted-out field
-                if (this.triggerBtn) this.triggerBtn.style.display = 'none';
+            } else if (!isInsidePicker && !isTrigger) {
+                // Lifecycle: Hide trigger only when focus shifts to unrelated, non-compatible elements
+                if (this.triggerBtn) this.triggerBtn.classList.remove('show');
             }
         });
 
-        // Interaction: toggle panel
-        if (this.triggerBtn) {
-            this.triggerBtn.onclick = (e) => {
+        // Interaction: Prevent the trigger from stealing focus from the input
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.emoji-picker-trigger')) {
+                e.preventDefault(); // Prevents focus shift to maintain input selection during interaction
+            }
+        }, true);
+
+        // Interaction: Toggle selection panel with resilience against SPA DOM shifts
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.emoji-picker-trigger')) {
                 e.preventDefault();
-                e.stopPropagation();
+                e.stopImmediatePropagation(); // Ensures exclusive handling of the trigger click event
                 this.togglePicker();
-            };
-        }
+            }
+        }, true); // Capturing phase ensures priority over module-level suppression
 
         // Action: real-time category filtering
         const search = this.pickerElement.querySelector('.emoji-search');
@@ -576,9 +594,9 @@ const EmojiPicker = {
 
         // Global: Click-outside closure
         document.addEventListener('click', (e) => {
-            if (this.pickerElement.style.display === 'flex' && 
+            if (this.pickerElement.classList.contains('show') && 
                 !this.pickerElement.contains(e.target) && 
-                e.target !== this.triggerBtn) {
+                !e.target.closest('.emoji-picker-trigger')) {
                 this.closePicker();
             }
         });
@@ -589,21 +607,24 @@ const EmojiPicker = {
      * Physically moves the trigger button to the right-aligned edge of the active input.
      * 
      * @param {HTMLElement} input - Target text entry element
+     * @returns {void}
      */
     attachTrigger: function(input) {
         const parent = input.parentElement;
         // Context: only attach if within a recognized platform form container (Global whitelist)
         const validWrappers = [
-            'form-group', 'modal-group', 'checkbox-group', 'meal-input-wrapper', 
+            'form-group', 'form-group-glass', 'modal-group', 'checkbox-group', 
             'create-input-wrapper', 'search-input-wrapper', 'modal-prompt-container',
-            'settings-input-row', 'search-container', 'settings-vertical-stack'
+            'note-drag-handle-container', 'settings-input-row', 'search-container', 
+            'settings-vertical-stack', 'meal-input-wrapper', 'meal-edit-wrapper',
+            'note-content', 'create-preview-glass'
         ];
         
         if (parent && validWrappers.some(cl => parent.classList.contains(cl))) {
             if (!parent.contains(this.triggerBtn)) {
                 parent.appendChild(this.triggerBtn);
             }
-            this.triggerBtn.style.display = 'block';
+            this.triggerBtn.classList.add('show');
             this.triggerBtn.style.position = 'absolute';
             this.triggerBtn.style.top = `${input.offsetTop + (input.offsetHeight / 2)}px`;
             this.triggerBtn.style.left = `${input.offsetLeft + input.offsetWidth - 40}px`;
@@ -613,9 +634,11 @@ const EmojiPicker = {
     /**
      * Interface: togglePicker
      * Manages high-level panel visibility and coordinates autofocus.
+     * 
+     * @returns {void}
      */
     togglePicker: function() {
-        if (this.pickerElement.style.display === 'none') {
+        if (!this.pickerElement.classList.contains('show')) {
             this.openPicker();
         } else {
             this.closePicker();
@@ -624,19 +647,23 @@ const EmojiPicker = {
 
     /**
      * Hides the emoji selection panel.
+     * 
+     * @returns {void}
      */
     closePicker: function() {
-        this.pickerElement.style.display = 'none';
+        this.pickerElement.classList.remove('show');
     },
 
     /**
      * Interface: openPicker
      * Resolves panel coordinates based on trigger position and viewport boundaries.
+     * 
+     * @returns {void}
      */
     openPicker: function() {
         if (!this.triggerBtn) return;
         const rect = this.triggerBtn.getBoundingClientRect();
-        this.pickerElement.style.display = 'flex';
+        this.pickerElement.classList.add('show');
         
         let top = rect.bottom + 5;
         let left = rect.right - 320;
@@ -663,6 +690,7 @@ const EmojiPicker = {
      * Triggers standard input events to ensure server state synchronization.
      * 
      * @param {string} emoji - The character to insert
+     * @returns {void}
      */
     insertEmoji: function(emoji) {
         const input = this.activeInput;
