@@ -2,67 +2,60 @@
 
 package MyApp::Plugin::Icons;
 use Mojo::Base 'Mojolicious::Plugin';
-use Mojo::JSON qw(decode_json);
-use Mojo::File qw(path);
-use Mojo::Util qw(decode);
+use utf8;
 
 # Centralized Icon Management Plugin
-# Synchronizes semantic icon mappings between Perl and JavaScript using assets/emoji.json.
+# Migrated to DB-backed user emojis with memory caching for high performance.
 
 sub register {
     my ($self, $app) = @_;
 
-    # 1. Load mappings from centralized JSON asset
-    my $json_path = path($app->home, 'assets', 'emoji.json');
-    my $general_icons = {};
-    my $user_icons    = {};
-    
-    if (-e $json_path) {
-        eval {
-            my $raw = decode_json($json_path->slurp);
-            
-            # 1. Flatten General Icons: Map keywords in arrays back to emoji key
-            if ($raw->{general}) {
-                foreach my $emoji (keys %{$raw->{general}}) {
-                    my $keywords = $raw->{general}{$emoji};
-                    foreach my $kw (@$keywords) {
-                        $general_icons->{lc($kw)} = $emoji;
-                    }
-                }
-            }
+    # Internal state for user icons (Shared across workers)
+    state $user_icons = { unknown => '👤' };
 
-            # 2. Map Users: Direct username to emoji mapping
-            if ($raw->{users}) {
-                foreach my $user (keys %{$raw->{users}}) {
-                    $user_icons->{lc($user)} = $raw->{users}{$user};
-                }
+    # Private refresher sub
+    my $refresh_cache = sub {
+        my $c = shift;
+        my $map = $c->db->get_user_emoji_map();
+        foreach my $user (keys %$map) {
+            $user_icons->{$user} = $map->{$user};
+        }
+        $app->log->debug("User Icon Cache refreshed from DB (" . (scalar keys %$map) . " users)");
+    };
+
+    # 1. Initial State Hydration (at Startup)
+    Mojo::IOLoop->next_tick(sub {
+        eval {
+            # We need a controller context to use DB helper easily
+            # but since we're in register, we can access app->db
+            my $map = $app->db->get_user_emoji_map();
+            foreach my $user (keys %$map) {
+                $user_icons->{$user} = $map->{$user};
             }
         };
-        if ($@) {
-            $app->log->error("Failed to parse emoji.json: $@");
-        }
-    } else {
-        $app->log->error("emoji.json missing at $json_path");
-    }
+    });
 
     # 2. Register Perl Helpers
     
-    # icon('name') - Returns general semantic icons
-    $app->helper(icon => sub {
-        my ($c, $name) = @_;
-        return $general_icons->{lc($name)} // '';
-    });
-
-    # user_icon('username') - Returns specific user icons
-    $app->helper(user_icon => sub {
+    # getUserIcon('username') - Returns specific user icons from memory cache
+    $app->helper(getUserIcon => sub {
         my ($c, $name) = @_;
         return $user_icons->{lc($name // '')} // $user_icons->{unknown} // '👤';
     });
 
-    # Register Injection Helper: icons_json
-    $app->helper(icons_json => sub {
-        my $bytes = path($app->home, 'assets', 'emoji.json')->slurp;
-        return decode('UTF-8', $bytes);
+    # Register Injection Helper: icons_json_users (only for user icons)
+    $app->helper(icons_json_users => sub {
+        return { users => $user_icons };
+    });
+
+    # 3. Scheduled Background Refresh (Every 5 minutes)
+    Mojo::IOLoop->recurring(300 => sub {
+        eval {
+            my $map = $app->db->get_user_emoji_map();
+            foreach my $user (keys %$map) {
+                $user_icons->{$user} = $map->{$user};
+            }
+        };
     });
 }
 
