@@ -100,7 +100,7 @@ function renderMessages() {
  */
 function renderMessageRow(msg) {
     const isUser = msg.role === 'user';
-    const iconHtml = getIcon(isUser ? STATE.username : 'ai');
+    const iconHtml = isUser ? window.getUserIcon(STATE.username) : window.getIcon('ai');
     const content = formatMarkdown(msg.content);
 
     return `

@@ -200,7 +200,7 @@ function renderGrid() {
             <div class="medication-card glass-panel">
                 <div class="user-header">
                     <h2 class="user-name">
-                        <span class="user-icon">${getIcon(member)}</span>
+                        <span class="user-icon">${window.getUserIcon(member)}</span>
                         <span class="user-label">${member}</span>
                     </h2>
                 </div>
@@ -273,7 +273,7 @@ function renderDropdowns() {
 
     // 2. Family Member Options
     const memberOptions = STATE.members.map(m => 
-        `<option value="${m.id}">${getIcon(m.username)} ${escapeHtml(m.username)}</option>`
+        `<option value="${m.id}">${window.getUserIcon(m.username)} ${escapeHtml(m.username)}</option>`
     ).join('');
 
     const memPlaceholder = '<option value="" disabled selected>Select family member</option>';

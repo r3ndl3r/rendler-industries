@@ -660,15 +660,53 @@ const FlipClockManager = {
 };
 
 /**
- * --- Global Icon Registry ---
- * Standardized mapping of semantic names to Unicode/Emoji symbols.
+ * --- Global Icon Registries ---
+ * Standardized mapping of semantic names and user identities to Unicode/Emoji symbols.
  * Synchronized with lib/MyApp/Plugin/Icons.pm via assets/emoji.json.
  */
 window.getIcon = function(name) {
     if (!name) return '';
-    const icons = window.GLOBAL_ICONS || {};
-    return icons[name.toLowerCase()] || '';
+    const registry = _hydrateIconRegistries();
+    return registry.general[name.toLowerCase()] || '';
 };
+
+window.getUserIcon = function(username) {
+    if (!username) return '';
+    const registry = _hydrateIconRegistries();
+    return registry.users[username.toLowerCase()] || registry.users['unknown'] || '👤';
+};
+
+/**
+ * Internal hydration helper: flattens the grouped JSON structure
+ * on-demand into separate fast-lookup registries.
+ */
+function _hydrateIconRegistries() {
+    if (!window._ICON_REGISTRY && window.GLOBAL_ICONS) {
+        window._ICON_REGISTRY = {
+            general: {},
+            users:   {}
+        };
+
+        const raw = window.GLOBAL_ICONS;
+
+        // 1. Flatten General Icons
+        if (raw.general) {
+            for (const [emoji, keywords] of Object.entries(raw.general)) {
+                keywords.forEach(kw => {
+                    window._ICON_REGISTRY.general[kw.toLowerCase()] = emoji;
+                });
+            }
+        }
+
+        // 2. Map User Identities
+        if (raw.users) {
+            for (const [user, emoji] of Object.entries(raw.users)) {
+                window._ICON_REGISTRY.users[user.toLowerCase()] = emoji;
+            }
+        }
+    }
+    return window._ICON_REGISTRY || { general: {}, users: {} };
+}
 
 /**
  * Global TTS Helper: speakText
