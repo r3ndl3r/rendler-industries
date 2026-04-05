@@ -302,6 +302,8 @@ CREATE TABLE `notes` (
   `is_options_expanded` tinyint(1) DEFAULT 0,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `layer_id` int(11) DEFAULT 1,
+  `is_deleted` tinyint(1) DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `idx_user` (`user_id`),
   CONSTRAINT `fk_notes_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
@@ -313,7 +315,8 @@ CREATE TABLE `notes_viewport` (
   `scroll_x` int(11) NOT NULL DEFAULT 2500,
   `scroll_y` int(11) NOT NULL DEFAULT 2500,
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`user_id`,`canvas_id`)
+  `layer_id` int(11) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`user_id`,`canvas_id`,`layer_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `notifications_log` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
