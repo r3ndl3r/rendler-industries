@@ -148,7 +148,7 @@ function renderChores() {
     grid.innerHTML = STATE.active_chores.map(c => {
         const isTargeted = !!c.assigned_to;
         const iconName = isTargeted ? (c.assigned_username?.toLowerCase() || 'user') : 'globe';
-        const iconHtml = window.getIcon(iconName) || window.getIcon('globe');
+        const iconHtml = window.getUserIcon(iconName) || window.getIcon('globe');
         const badgeText = isTargeted 
             ? ((STATE.is_admin && !STATE.is_child) ? `Assigned to ${escapeHtml(c.assigned_username || 'User')}` : 'Assigned to You')
             : 'Global Chore';
@@ -296,7 +296,7 @@ function populateAssignedSelect() {
     const children = STATE.all_users.filter(u => u.is_child && !u.is_admin);
 
     select.innerHTML = baseOpt + children.map(c =>
-        `<option value="${c.id}">${getIcon(c.username)} ${escapeHtml(c.username)}</option>`
+        `<option value="${c.id}">${window.getUserIcon(c.username)} ${escapeHtml(c.username)}</option>`
     ).join('');
 }
 /**
@@ -379,7 +379,7 @@ function renderQuickAdd() {
 
     container.innerHTML = STATE.quick_add_chores.map(c => {
         const iconName = c.assigned_username ? c.assigned_username.toLowerCase() : 'globe';
-        const iconHtml = window.getIcon(iconName) || window.getIcon('globe');
+        const iconHtml = window.getUserIcon(iconName) || window.getIcon('globe');
         return `
             <div class="repost-item" onclick="fillChoreForm('${escapeHtml(c.title)}', ${c.points}, '${c.assigned_to || ''}')">
                 <span class="repost-icon">${iconHtml}</span>
@@ -403,7 +403,7 @@ function renderUserBalances() {
         const sum = u.current_points;
         return `
             <tr>
-                <td><strong>${window.getIcon(u.username)} ${escapeHtml(u.username)}</strong></td>
+                <td><strong>${window.getUserIcon(u.username)} ${escapeHtml(u.username)}</strong></td>
                 <td class="${sum > 0 ? 'text-success' : ''}"><strong>${sum}</strong> <small>pts</small></td>
             </tr>
         `;
@@ -425,7 +425,7 @@ function renderHistory() {
     }
 
     tbody.innerHTML = STATE.history.map(h => {
-        const userIcon = window.getIcon(h.completed_by_name?.toLowerCase()) || window.getIcon('user');
+        const userIcon = window.getUserIcon(h.completed_by_name?.toLowerCase());
         return `
             <tr id="history-row-${h.id}" class="history-row">
                 <td data-label="User" class="col-user">

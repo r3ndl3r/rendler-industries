@@ -288,7 +288,7 @@ function renderDailySummary() {
                     return `
                         <div class="progress-badge-item ${statusClass}">
                             <div class="user-info">
-                                ${window.getIcon(u.username)} <strong>${escapeHtml(u.username)}</strong>
+                                ${window.getUserIcon(u.username)} <strong>${escapeHtml(u.username)}</strong>
                             </div>
                             <div class="status-info">
                                 ${window.getIcon(icon)} ${statusLabel}
@@ -331,7 +331,7 @@ function renderReviewQueue() {
     container.innerHTML = Object.values(groups).map(g => `
         <div class="review-group glass">
             <div class="review-header">
-                <h3>${window.getIcon(g.username)} ${escapeHtml(g.username)} <small>(${g.date})</small></h3>
+                <h3>${window.getUserIcon(g.username)} ${escapeHtml(g.username)} <small>(${g.date})</small></h3>
             </div>
             <div class="submission-grid">
                 ${g.photos.map(p => `
@@ -385,7 +385,7 @@ function renderSettings() {
         return `
             <div class="setting-card glass clickable" data-user-id="${u.id}" data-username="${escapeHtml(u.username)}" data-time="${alertTimeShort}" data-active="${config.is_active ? 1 : 0}" onclick="handleSettingsCardClick(this)">
                 <div class="setting-card-header">
-                    <h4>${window.getIcon(u.username)} ${escapeHtml(u.username)}</h4>
+                    <h4>${window.getUserIcon(u.username)} ${escapeHtml(u.username)}</h4>
                     <span class="status-indicator ${statusClass}">${statusIcon}</span>
                 </div>
                 <div class="setting-card-body">
@@ -465,7 +465,7 @@ function formatTimeAMPM(time24) {
  */
 function openSettingsModal(userId, username, time, isActive) {
     document.getElementById('settingsUserId').value = userId;
-    document.getElementById('settingsModalUser').innerHTML = `${window.getIcon(username)} ${escapeHtml(username)}`;
+    document.getElementById('settingsModalUser').innerHTML = `${window.getUserIcon(username)} ${escapeHtml(username)}`;
     document.getElementById('settingsAlertTime').value = time;
     document.getElementById('settingsIsActive').checked = !!isActive;
     document.getElementById('userSettingsModal').classList.add('show');

@@ -14,11 +14,29 @@ sub register {
 
     # 1. Load mappings from centralized JSON asset
     my $json_path = path($app->home, 'assets', 'emoji.json');
-    my $icons_ref = {};
+    my $general_icons = {};
+    my $user_icons    = {};
     
     if (-e $json_path) {
         eval {
-            $icons_ref = decode_json($json_path->slurp);
+            my $raw = decode_json($json_path->slurp);
+            
+            # 1. Flatten General Icons: Map keywords in arrays back to emoji key
+            if ($raw->{general}) {
+                foreach my $emoji (keys %{$raw->{general}}) {
+                    my $keywords = $raw->{general}{$emoji};
+                    foreach my $kw (@$keywords) {
+                        $general_icons->{lc($kw)} = $emoji;
+                    }
+                }
+            }
+
+            # 2. Map Users: Direct username to emoji mapping
+            if ($raw->{users}) {
+                foreach my $user (keys %{$raw->{users}}) {
+                    $user_icons->{lc($user)} = $raw->{users}{$user};
+                }
+            }
         };
         if ($@) {
             $app->log->error("Failed to parse emoji.json: $@");
@@ -27,15 +45,21 @@ sub register {
         $app->log->error("emoji.json missing at $json_path");
     }
 
-    # 2. Register Perl Helper: icon('name')
-    # Returns the icon string for a given semantic name.
+    # 2. Register Perl Helpers
+    
+    # icon('name') - Returns general semantic icons
     $app->helper(icon => sub {
         my ($c, $name) = @_;
-        return $icons_ref->{lc($name)} // '';
+        return $general_icons->{lc($name)} // '';
     });
 
-    # 3. Register Injection Helper: icons_json
-    # Returns the raw JSON string for frontend hydration.
+    # user_icon('username') - Returns specific user icons
+    $app->helper(user_icon => sub {
+        my ($c, $name) = @_;
+        return $user_icons->{lc($name // '')} // $user_icons->{unknown} // '👤';
+    });
+
+    # Register Injection Helper: icons_json
     $app->helper(icons_json => sub {
         my $bytes = path($app->home, 'assets', 'emoji.json')->slurp;
         return decode('UTF-8', $bytes);

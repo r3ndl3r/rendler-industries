@@ -125,7 +125,7 @@ function renderLedger() {
         const statusIcon = log.status === 'success' ? getIcon('success') : getIcon('error');
         const statusClass = log.status === 'success' ? 'text-green' : 'text-danger';
         const channelIcon = getIcon(log.type);
-        const userEmoji = getIcon(log.username?.toLowerCase()) || getIcon('user');
+        const userEmoji = window.getUserIcon(log.username?.toLowerCase());
         
         // Truncate message for snippet
         let snippet = log.message || '';

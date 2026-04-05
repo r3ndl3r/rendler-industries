@@ -102,7 +102,7 @@ function renderWallets() {
         const div = document.createElement('div');
         div.className = 'wallet-card';
         
-        const userIcon = window.getIcon(child.username);
+        const userIcon = window.getUserIcon(child.username);
         // Security: XSS Prevention via escapeHtml
         const escapedName = escapeHtml(child.username);
         const displayName = userIcon ? `${userIcon} ${escapedName}` : escapedName;
@@ -147,7 +147,7 @@ function renderHistory() {
         const amountClass = parseInt(tx.amount) > 0 ? 'amount-positive' : 'amount-negative';
         const formattedAmount = parseInt(tx.amount) > 0 ? `+${tx.amount}` : tx.amount;
         
-        const userIcon = window.getIcon(tx.username);
+        const userIcon = window.getUserIcon(tx.username);
         const escapedName = escapeHtml(tx.username);
         const displayName = userIcon ? `${userIcon} ${escapedName}` : escapedName;
         
