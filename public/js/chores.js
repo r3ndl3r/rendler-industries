@@ -147,11 +147,16 @@ function renderChores() {
 
     grid.innerHTML = STATE.active_chores.map(c => {
         const isTargeted = !!c.assigned_to;
-        const targetText = (STATE.is_admin && !STATE.is_child) ? `Assigned to ${escapeHtml(c.assigned_username || 'User')}` : 'Assigned to You';
+        const iconName = isTargeted ? (c.assigned_username?.toLowerCase() || 'user') : 'globe';
+        const iconHtml = window.getIcon(iconName) || window.getIcon('globe');
+        const badgeText = isTargeted 
+            ? ((STATE.is_admin && !STATE.is_child) ? `Assigned to ${escapeHtml(c.assigned_username || 'User')}` : 'Assigned to You')
+            : 'Global Chore';
+
         return `
             <div id="chore-card-${c.id}" class="chore-card ${isTargeted ? 'targeted' : ''}">
                 <div>
-                    ${isTargeted ? `<div class="chore-badge">${window.getIcon('star')} ${targetText}</div>` : ''}
+                    <div class="chore-badge">${iconHtml} ${badgeText}</div>
                     <div class="chore-header">
                         <div class="chore-title">${escapeHtml(c.title)}</div>
                         <div class="chore-actions">
