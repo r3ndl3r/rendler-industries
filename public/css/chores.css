@@ -249,6 +249,14 @@
     box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
 }
 
+.form-group-glass {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    position: relative; /* Anchor for absolute elements like the emoji picker trigger */
+    width: 100%;
+}
+
 /* Themed Select Elements */
 select.game-input-premium {
     cursor: pointer;
@@ -343,7 +351,7 @@ select.game-input-premium option {
 }
 
 .btn-points-tag {
-    /* removed margin-left: auto to allow centering */
+    /* Alignment centered within parent container */
     background: rgba(255, 255, 255, 0.1);
     padding: 0.2rem 0.5rem;
     border-radius: 6px;
