@@ -151,6 +151,16 @@ sub api_revoke {
         }
         # Throw back into active pool
         $c->db->reset_chore($chore_id);
+
+        # Notify the user whose work was revoked
+        if ($chore->{completed_by}) {
+            my $title    = $chore->{title};
+            my $points   = $chore->{points};
+            my $base_url = "https://rendler.org/chores";
+            my $msg = "✨ **Work Revoked** ✨\n\n⚠️ **POINT DEDUCTION** ⚠️\n\nYour completion of **$title** has been revoked.\n\n**Adjustment: (-$points pts)**\n\n$base_url";
+            
+            $c->notify_user($chore->{completed_by}, $msg, "Work Revoked");
+        }
     }
     
     $c->render(json => { success => 1 });
@@ -167,6 +177,16 @@ sub api_delete {
     return $c->render(json => { success => 0, error => 'Not found' }) unless $chore;
 
     $c->db->delete_chore($chore_id);
+
+    # Notify the assigned user if a specific chore was removed
+    if ($chore->{assigned_to}) {
+        my $title    = $chore->{title};
+        my $base_url = "https://rendler.org/chores";
+        my $msg = "✨ **Chore Removed** ✨\n\n🗑️ **CHORE DELETED** 🔍\n\n**$title** is no longer on the board.\n\n$base_url";
+        
+        $c->notify_user($chore->{assigned_to}, $msg, "Chore Removed");
+    }
+
     $c->app->log->info(sprintf("Chores: Admin %s deleted chore %d ('%s').", $c->session('user') // 'Unknown', $chore_id, $chore->{title}));
     
     $c->render(json => { success => 1 });
