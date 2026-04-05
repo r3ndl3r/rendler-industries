@@ -83,6 +83,7 @@ async function initNotes() {
     document.getElementById('focus-recent').addEventListener('click', focusMostRecentNote);
     document.getElementById('open-search').addEventListener('click', openSearchModal);
     document.getElementById('open-canvas-manager').addEventListener('click', openCanvasManager);
+    document.getElementById('open-note-bin').addEventListener('click', openBinModal);
     
     const openInfoBtn = document.getElementById('open-info');
     if (openInfoBtn) {
@@ -172,7 +173,7 @@ async function initNotes() {
     }
 
     // Modal Registry: Synchronize all overlays with the global closing engine
-    setupGlobalModalClosing(['modal-overlay'], [closeViewModal, closeCreateModal, closeSearchModal, closeCanvasManager, closeMoveModal, closeBoardSettings]);
+    setupGlobalModalClosing(['modal-overlay'], [closeViewModal, closeCreateModal, closeSearchModal, closeCanvasManager, closeMoveModal, closeBoardSettings, closeBinModal]);
     
     // Robust Event Delegation: Handles all close triggers (static & dynamic)
     document.addEventListener('click', (e) => {
@@ -184,6 +185,7 @@ async function initNotes() {
             closeCanvasManager();
             closeMoveModal();
             closeBoardSettings();
+            closeBinModal();
         }
     });
 
@@ -1083,14 +1085,15 @@ function saveViewportImmediate() {
 }
 
 /**
- * Note Deletion Bridge.
- * @param {number|string} id - The note ID.
- * @returns {void}
+ * Note Deletion Bridge (Soft-Delete)
+ * Moves a note to the Recycle Bin rather than immediate destruction.
+ * @param {number} id - Target note ID.
  */
 function deleteNote(id) {
     showConfirmModal({
-        title: `${getIcon('trash')} Delete Note`,
-        message: 'Are you sure you want to permanently remove this sticky note?',
+        title: 'Delete Note',
+        icon: 'trash',
+        message: 'Are you sure you want to remove this sticky note? It will be moved to the Recycle Bin.',
         danger: true,
         confirmText: 'DELETE',
         hideCancel: true,
@@ -1100,7 +1103,7 @@ function deleteNote(id) {
                 STATE.notes         = res.notes;
                 STATE.last_mutation = res.last_mutation;
                 renderUI();
-                showToast('Note Deleted', 'success');
+                showToast('Note moved to Recycle Bin', 'success');
             }
         }
     });
@@ -2793,3 +2796,155 @@ async function toggleNoteCheckbox(event, noteId, lineIndex) {
 window.formatNoteContent = formatNoteContent;
 window.toggleNoteCheckbox = toggleNoteCheckbox;
 window.handleNoteLinkClick = handleNoteLinkClick;
+
+/**
+ * Recycle Bin Persistence & Interface Orchestration
+ */
+
+async function openBinModal() {
+    const modal = document.getElementById('note-bin-modal');
+    if (!modal) return;
+    
+    // Initial Load: Fetch deleted items before showing
+    const res = await apiGet('/notes/api/bin');
+    if (res && res.success) {
+        renderBin(res.notes);
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+    } else {
+        showToast('Failed to load Recycle Bin', 'error');
+    }
+}
+
+function closeBinModal() {
+    const modal = document.getElementById('note-bin-modal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+    }
+}
+
+/**
+ * Renders the list of deleted notes within the bin modal.
+ * @param {Array} notes - Deleted note objects.
+ */
+function renderBin(notes) {
+    const container = document.getElementById('bin-results-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (notes.length === 0) {
+        container.innerHTML = `
+            <div class="bin-empty-state">
+                ${getIcon('empty')}
+                <p>Recycle Bin is empty.</p>
+            </div>
+        `;
+        return;
+    }
+
+    notes.forEach(note => {
+        const item = document.createElement('div');
+        item.className = 'bin-item';
+        
+        const accentColor = normalizeColorHex(note.color);
+        item.style.setProperty('--note-accent', accentColor);
+
+        item.innerHTML = `
+            <div class="bin-item-icon">${getIcon(note.type === 'image' ? 'file_image' : 'file_text')}</div>
+            <div class="bin-item-info">
+                <div class="bin-item-title">${escapeHtml(note.title || 'Untitled Note')}</div>
+                <div class="bin-item-meta">
+                    <span class="bin-item-board-badge">
+                        ${getIcon('folder_open')} ${escapeHtml(note.canvas_name || 'Deleted Board')}
+                    </span>
+                    <span>Deleted ${new Date(note.updated_at).toLocaleDateString()}</span>
+                </div>
+            </div>
+            <div class="bin-item-actions">
+                <button class="btn-icon-square btn-success" onclick="restoreNote(${note.id})" title="Restore Note">
+                    ${getIcon('reset')}
+                </button>
+                <button class="btn-icon-square btn-danger" onclick="confirmPurge(${note.id})" title="Delete Permanently">
+                    ${getIcon('delete')}
+                </button>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+/**
+ * Restores a note from the bin and triggers a workspace refresh.
+ * @param {number} id - Target note ID.
+ */
+async function restoreNote(id) {
+    showConfirmModal({
+        title: 'Restore Note',
+        icon: 'reset',
+        message: `Restore this note to the current board at level ${STATE.activeLayerId}?`,
+        confirmText: 'RESTORE',
+        hideCancel: true,
+        onConfirm: async () => {
+            showLoadingOverlay('Restoring piece...');
+            
+            // Calculate current logical center for placement
+            const wrapper = document.getElementById('canvas-wrapper');
+            const canvasCX = (wrapper.scrollLeft + wrapper.clientWidth / 2) / STATE.scale;
+            const canvasCY = (wrapper.scrollTop + wrapper.clientHeight / 2) / STATE.scale;
+
+            const res = await apiPost('/notes/api/restore', { 
+                id: id, 
+                canvas_id: STATE.canvas_id, 
+                layer_id: STATE.activeLayerId,
+                x: Math.round(canvasCX / 10) * 10 - 140, // Match creation centering logic
+                y: Math.round(canvasCY / 10) * 10 - 100
+            });
+            hideLoadingOverlay();
+
+            if (res && res.success) {
+                showToast('Note restored to current board', 'success');
+                // Refresh local state to show the restored note
+                await loadState(false, STATE.canvas_id);
+                openBinModal(); // Refresh bin list
+            } else {
+                showToast(res.error || 'Restoration failed', 'error');
+            }
+        }
+    });
+}
+
+/**
+ * High-Stakes Confirmation: Permanent Purge
+ * @param {number} id - Target note ID.
+ */
+function confirmPurge(id) {
+    showConfirmModal({
+        title: 'Permanent Delete',
+        icon: 'trash',
+        message: 'Are you sure you want to permanently delete this note? This action cannot be undone.',
+        danger: true,
+        confirmText: 'PURGE',
+        hideCancel: true,
+        onConfirm: async () => {
+            const res = await apiPost('/notes/api/purge', { id: id });
+            if (res && res.success) {
+                openBinModal(); // Refresh Bin
+                showToast('Note permanently removed', 'success');
+            }
+        }
+    });
+}
+
+// Global Exposure: Required for high-fidelity interactive elements
+window.openBinModal = openBinModal;
+window.closeBinModal = closeBinModal;
+window.restoreNote = restoreNote;
+window.confirmPurge = confirmPurge;
+window.deleteNote = deleteNote;
+window.toggleInlineEdit = window.toggleInlineEdit || (typeof toggleInlineEdit !== 'undefined' ? toggleInlineEdit : null);
+window.copyNoteLink = window.copyNoteLink || (typeof copyNoteLink !== 'undefined' ? copyNoteLink : null);
+window.openMoveModal = window.openMoveModal || (typeof openMoveModal !== 'undefined' ? openMoveModal : null);
+window.openLayerActionModal = window.openLayerActionModal || (typeof openLayerActionModal !== 'undefined' ? openLayerActionModal : null);
+
