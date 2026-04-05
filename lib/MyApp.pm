@@ -601,6 +601,9 @@ sub startup {
     $auth->post('/notes/api/canvases/share')->to('notes#api_canvas_share');
     $auth->get('/notes/api/users/search')->to('notes#api_user_search');
     $auth->post('/notes/api/notes/copy')->to('notes#api_copy_note');
+    $auth->get('/notes/api/bin')->to('notes#api_bin');
+    $auth->post('/notes/api/restore')->to('notes#api_restore');
+    $auth->post('/notes/api/purge')->to('notes#api_purge');
 
     # --- Whiteboard Real-Time Synchronization (Reactive AJAX) ---
     # Mutation Heartbeat for cross-session/cross-worker consistency.
