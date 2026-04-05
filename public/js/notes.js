@@ -345,8 +345,6 @@ function setupHeartbeat(canvasId) {
 
     // Reset Poller to prevent multi-interval drift
     if (STATE.heartbeatTimer) clearInterval(STATE.heartbeatTimer);
-
-    console.log(`[SYNC] Initializing Mutation Heartbeat for Board ${canvasId}...`);
     
     STATE.heartbeatTimer = setInterval(async () => {
         // Interaction Inhibition Check: Strictly prevent background hydration during active user engagement.
@@ -368,8 +366,6 @@ function setupHeartbeat(canvasId) {
             if (data.success && data.last_mutation) {
                 // Reactive Trigger: If the server reports a newer mutation than our local state
                 if (STATE.last_mutation && data.last_mutation > STATE.last_mutation) {
-                    console.log(`[SYNC] Mutation detected (${data.last_mutation} > ${STATE.last_mutation}). Re-hydrating...`);
-                    
                     // Execution Reality: Only update the local baseline AFTER successful state re-hydration.
                     // This ensures the client remains at the previous mutation state if a fetch/render fails.
                     if (await loadState(false, canvasId)) {
@@ -857,6 +853,8 @@ async function syncNotePosition(id) {
         const res = await apiPost('/notes/api/save', params);
         if (res && res.success) {
             STATE.notes = res.notes; // State Sync
+            STATE.last_mutation = res.last_mutation;
+            STATE.note_map      = res.note_map || STATE.note_map;
         }
     } finally {
         el.classList.remove('pending');
@@ -1031,13 +1029,17 @@ async function persistViewport() {
     const centerX = (wrapper.scrollLeft + wrapper.clientWidth  / 2) / STATE.scale;
     const centerY = (wrapper.scrollTop  + wrapper.clientHeight / 2) / STATE.scale;
 
-    await apiPost('/notes/api/viewport', {
+    const res = await apiPost('/notes/api/viewport', {
         canvas_id: STATE.canvas_id,
         scale:    STATE.scale,
         scroll_x: centerX,
         scroll_y: centerY,
         layer_id: STATE.activeLayerId
     });
+
+    if (res && res.success) {
+        STATE.last_mutation = res.last_mutation;
+    }
 }
 
 /**
@@ -1084,7 +1086,8 @@ function deleteNote(id) {
         onConfirm: async () => {
             const res = await apiPost('/notes/api/delete', { id: id, canvas_id: STATE.canvas_id });
             if (res && res.success) {
-                STATE.notes = res.notes;
+                STATE.notes         = res.notes;
+                STATE.last_mutation = res.last_mutation;
                 renderUI();
                 showToast('Note Deleted', 'success');
             }
@@ -1354,7 +1357,9 @@ async function saveNoteInline(id) {
     try {
         const res = await apiPost('/notes/api/save', params);
         if (res && res.success) {
-            STATE.notes = res.notes; // State Sync baseline
+            STATE.notes         = res.notes; // State Sync baseline
+            STATE.last_mutation = res.last_mutation;
+            STATE.note_map      = res.note_map || STATE.note_map;
             
             // Interaction Guard: Recalibrate the entire board to reflect the Absolute Truth
             renderUI();
@@ -1454,7 +1459,9 @@ async function toggleCollapse(id) {
         });
         
         if (res && res.success) {
-            STATE.notes = res.notes;
+            STATE.notes         = res.notes;
+            STATE.last_mutation = res.last_mutation;
+            STATE.note_map      = res.note_map || STATE.note_map;
             renderUI();
         }
     } finally {
@@ -1514,6 +1521,8 @@ async function handleImageDrop(file, x, y, customTitle = null) {
 
     const uploadRes = await apiPost('/notes/api/upload', formData);
     if (uploadRes && uploadRes.success) {
+        // Update baseline immediately to prevent heartbeat races
+        STATE.last_mutation = uploadRes.last_mutation;
         await loadState(false, STATE.canvas_id); // Refresh notes only
         showToast('Image Note Created', 'success');
     }
@@ -1714,6 +1723,8 @@ async function executeCreateNote() {
             };
             const res = await apiPost('/notes/api/save', params);
             if (res && res.success) {
+                STATE.last_mutation = res.last_mutation;
+                STATE.note_map      = res.note_map || STATE.note_map;
                 closeCreateModal();
                 await loadState(false, STATE.canvas_id);
                 showToast(id ? 'Note Updated' : 'Note Created', 'success');
@@ -1733,6 +1744,8 @@ async function executeCreateNote() {
             const res = await apiPost('/notes/api/save', params);
             if (res && res.success) {
                 const noteId = res.id;
+                STATE.last_mutation = res.last_mutation;
+                STATE.note_map      = res.note_map || STATE.note_map;
                 
                 if (data && data.startsWith('data:')) {
                     const blob = await (await fetch(data)).blob();
@@ -1743,6 +1756,7 @@ async function executeCreateNote() {
 
                     const uploadRes = await apiPost('/notes/api/upload', formData);
                     if (uploadRes && uploadRes.success) {
+                        STATE.last_mutation = uploadRes.last_mutation;
                         closeCreateModal();
                         await loadState(false, STATE.canvas_id);
                         showToast('Image Note Created', 'success');
@@ -1877,7 +1891,9 @@ async function copyNoteToLevel(id, newLevelId) {
         });
 
         if (res && res.success) {
-            STATE.notes = res.notes;
+            STATE.notes         = res.notes;
+            STATE.last_mutation = res.last_mutation;
+            STATE.note_map      = res.note_map || STATE.note_map;
             showToast(`Note copied to Level ${newLevelId}`, 'success');
             
             // If we copied to the SAME level, re-render immediately.
@@ -2392,7 +2408,7 @@ function setupUserSearch() {
         const q = e.target.value;
         clearTimeout(searchTimer);
         if (q.length < 2) {
-            results.style.display = 'none';
+            results.classList.add('hidden');
             return;
         }
 
@@ -2408,14 +2424,14 @@ function setupUserSearch() {
                     div.textContent = u.username;
                     div.onclick = () => {
                         addShare(input.dataset.canvasId, u.username);
-                        results.style.display = 'none';
+                        results.classList.add('hidden');
                         input.value = '';
                     };
                     results.appendChild(div);
                 });
-                results.style.display = 'block';
+                results.classList.remove('hidden');
             } else {
-                results.style.display = 'none';
+                results.classList.add('hidden');
             }
         }, 300);
     });
@@ -2721,7 +2737,9 @@ async function toggleNoteCheckbox(event, noteId, lineIndex) {
     try {
         const res = await apiPost('/notes/api/save', params);
         if (res && res.success) {
-            STATE.notes = res.notes; // State transition reconciliation
+            STATE.notes         = res.notes; // State transition reconciliation
+            STATE.last_mutation = res.last_mutation;
+            STATE.note_map      = res.note_map || STATE.note_map;
             renderUI(); // Refresh view to reflect changes (strikethrough etc.)
         }
     } catch (err) {
