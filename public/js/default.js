@@ -467,6 +467,12 @@ window.showConfirmModal = function(options) {
     btnConfirm.parentNode.replaceChild(newBtn, btnConfirm);
 
     newBtn.addEventListener('click', async () => {
+        // If no specifically defined callback, simply dismiss the modal gracefully
+        if (typeof options.onConfirm !== 'function') {
+            closeConfirmModal();
+            return;
+        }
+
         const originalHtml = newBtn.innerHTML;
         newBtn.disabled = true;
         newBtn.innerHTML = `${getIcon('waiting')} ${options.loadingText || 'Processing...'}`;
