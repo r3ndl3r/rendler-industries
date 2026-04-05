@@ -372,7 +372,6 @@ sub startup {
     $r->post('/register')->to('auth#register');
     
     # --- Root / Utility / Misc Routes ---
-    $r->get('/api/icons.js')->to('root#get_icons_js');
     $r->get('/')->to('root#index');
     $r->get('/noperm')->to('root#no_permission');
     $r->get('/source')->to('root#view_source');
@@ -386,6 +385,7 @@ sub startup {
     $r->get('/phone')->to('root#p_page');
     $r->get('/mobile')->to('root#p_page');
     $r->get('/this.is.totally.not.sus')->to('root#sus');
+    $r->get('/api/user_icons')->to('root#api_user_icons');
     $r->get('/system/api/file_map')->to('root#file_map_json');
     $r->get('/quick')->to('root#quick');
     $auth->get('/chelsea')->to('chelsea#index');
