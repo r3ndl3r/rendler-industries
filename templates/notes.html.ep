@@ -68,6 +68,12 @@
     </button>
 </div>
 
+<div class="floating-info">
+    <button id="open-info" class="fab-btn btn-icon-square" title="Guide">
+        <%= icon('info') %>
+    </button>
+</div>
+
 <div id="note-view-modal" class="modal-overlay">
     <div class="note-modal-content">
         <div class="note-modal-header">
