@@ -328,20 +328,34 @@ async function addChore(e) {
 }
 
 /**
- * Reposts a past chore using its template.
+ * Populates the add chore modal with template data for review.
  * 
- * @async
  * @param {string} title - Chore textual description
  * @param {number} points - Bounty value
- * @returns {Promise<void>}
+ * @param {string} assignedTo - Target user ID (or empty for global)
+ * @returns {void}
  */
-async function triggerQuickAdd(title, points) {
-    const res = await apiPost('/chores/api/add', { title: title, points: points, assigned_to: '' });
-    if (res && res.success) {
-        showToast(`✨ Reactivated: ${escapeHtml(title)} (+${points} pts). Notification sent!`, 'success');
-        closeAddModal();
-        loadState(true);
-    }
+function fillChoreForm(title, points, assignedTo) {
+    const titleInput = document.querySelector('input[name="title"]');
+    const pointsInput = document.querySelector('input[name="points"]');
+    const assignedSelect = document.getElementById('assignedToSelect');
+
+    if (titleInput) titleInput.value = title;
+    if (pointsInput) pointsInput.value = points;
+    if (assignedSelect) assignedSelect.value = assignedTo || '';
+
+    // Visual feedback: brief highlight on the form groups
+    const groups = document.querySelectorAll('.form-group-glass');
+    groups.forEach(g => {
+        g.style.transition = 'none';
+        g.style.backgroundColor = 'rgba(59, 130, 246, 0.2)';
+        setTimeout(() => {
+            g.style.transition = 'background-color 0.8s ease';
+            g.style.backgroundColor = '';
+        }, 50);
+    });
+
+    showToast('Template populated! Review and click Post.', 'info');
 }
 
 /**
@@ -358,12 +372,17 @@ function renderQuickAdd() {
         return;
     }
 
-    container.innerHTML = STATE.quick_add_chores.map(c => `
-        <div class="repost-item" onclick="triggerQuickAdd('${escapeHtml(c.title)}', ${c.points})">
-            <span class="repost-title">${escapeHtml(c.title)}</span>
-            <span class="repost-pts">+${c.points}</span>
-        </div>
-    `).join('');
+    container.innerHTML = STATE.quick_add_chores.map(c => {
+        const iconName = c.assigned_username ? c.assigned_username.toLowerCase() : 'globe';
+        const iconHtml = window.getIcon(iconName) || window.getIcon('globe');
+        return `
+            <div class="repost-item" onclick="fillChoreForm('${escapeHtml(c.title)}', ${c.points}, '${c.assigned_to || ''}')">
+                <span class="repost-icon">${iconHtml}</span>
+                <span class="repost-title">${escapeHtml(c.title)}</span>
+                <span class="repost-pts">+${c.points}</span>
+            </div>
+        `;
+    }).join('');
 }
 
 /**
@@ -457,7 +476,7 @@ window.loadState = loadState;
 window.confirmClaim = confirmClaim;
 window.confirmDeleteChore = confirmDeleteChore;
 window.addChore = addChore;
-window.triggerQuickAdd = triggerQuickAdd;
+window.fillChoreForm = fillChoreForm;
 window.confirmRevoke = confirmRevoke;
 window.openAddModal = openAddModal;
 window.closeAddModal = closeAddModal;
