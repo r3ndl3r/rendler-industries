@@ -374,6 +374,7 @@
     position: relative;
     display: flex; /* Expansion anchor */
     flex-direction: column;
+    user-select: text;
 }
 
 .note-content textarea {
@@ -392,6 +393,7 @@
     white-space: pre-wrap;
     word-break: break-word;
     overflow-wrap: break-word;
+    user-select: text;
 }
 
 /* Interactive Todo / Checkbox Engine */
@@ -409,6 +411,7 @@
     cursor: default;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    user-select: text;
 }
 
 .sticky-note.is-editing .note-text-viewer {
@@ -423,7 +426,6 @@
     display: inline-flex;
     align-items: flex-start; /* Pin checkbox to top of wrapped text */
     gap: 0.4rem;
-    cursor: pointer;
     vertical-align: top;
     width: 100%;
 }
