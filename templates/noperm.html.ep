@@ -1,7 +1,7 @@
 <%# /templates/noperm.html.ep %>
 
 % layout 'default';
-% title icon('error') . ' Access Denied';
+% title '🚫 Access Denied';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/noperm.css">

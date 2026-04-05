@@ -1,7 +1,7 @@
 <%# /templates/reminders.html.ep %>
 
 % layout 'default';
-% title icon('reminders') . ' Manage Reminders';
+% title '🔔 Manage Reminders';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/reminders.css">
@@ -10,9 +10,9 @@
 
 <div class="reminders-container app-container">
     <div class="header-bar">
-        <h1><%= icon('reminders') %> <span>Reminders</span></h1>
+        <h1>🔔 <span>Reminders</span></h1>
         <div class="manage-actions">
-            <button type="button" class="btn-primary" onclick="openAddModal()"><%= icon('add') %> New</button>
+            <button type="button" class="btn-primary" onclick="openAddModal()">➕ New</button>
         </div>
     </div>
 
@@ -20,7 +20,7 @@
     <div id="remindersListContainer" class="reminders-grid">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('reminders') %></span>
+            <span class="loading-icon-pulse">🔔</span>
             <p class="loading-label">Synchronizing with maintenance loop...</p>
             <p class="loading-sub">Retrieving active schedules and recipient rules</p>
         </div>
@@ -31,7 +31,7 @@
 <div id="addReminderModal" class="modal-overlay">
     <div class="modal-content modal-reminders">
         <div class="modal-header">
-            <h3><%= icon('add') %> New Recurring Reminder</h3>
+            <h3>➕ New Recurring Reminder</h3>
             <span class="close-btn" onclick="closeAddModal()">&times;</span>
         </div>
         <form id="addReminderForm" onsubmit="handleAdd(event)">
@@ -74,7 +74,7 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn-primary"><%= icon('reminders') %> Create</button>
+                <button type="submit" class="btn-primary">🔔 Create</button>
             </div>
         </form>
     </div>
@@ -84,7 +84,7 @@
 <div id="editReminderModal" class="modal-overlay">
     <div class="modal-content modal-reminders">
         <div class="modal-header">
-            <h3><%= icon('edit') %> Edit Recurring Reminder</h3>
+            <h3>✎ Edit Recurring Reminder</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
         <form id="editReminderForm" onsubmit="handleEdit(event)">
@@ -128,7 +128,7 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" class="btn-primary">💾 Save</button>
             </div>
         </form>
     </div>

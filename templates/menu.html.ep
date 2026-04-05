@@ -1,7 +1,7 @@
 <%# /templates/menu.html.ep %>
 
 % layout 'default';
-% title icon('link') . ' Manage Menu Links';
+% title '🔗 Manage Menu Links';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/menu.css">
@@ -11,9 +11,9 @@
 
 <div class="manage-container app-container">
     <div class="header-bar">
-        <h1><%= icon('link') %> <span>Manage Menu Links</span></h1>
+        <h1>🔗 <span>Manage Menu Links</span></h1>
         <div class="manage-actions">
-            <button id="addLinkBtn" class="btn-primary" onclick="MenuMgmt.openAddModal()"><%= icon('add') %> Add</button>
+            <button id="addLinkBtn" class="btn-primary" onclick="MenuMgmt.openAddModal()">➕ Add</button>
         </div>
     </div>
 
@@ -35,7 +35,7 @@
                     <td colspan="7">
                         <div class="component-loading">
                             <div class="loading-scan-line"></div>
-                            <span class="loading-icon-pulse"><%= icon('link') %></span>
+                            <span class="loading-icon-pulse">🔗</span>
                             <p class="loading-label">Synchronizing navigation links...</p>
                         </div>
                     </td>
@@ -45,8 +45,8 @@
     </div>
 
     <div class="manage-footer">
-        <p class="hint-text"><%= icon('info') %> Tip: Drag and drop rows to reorder the menu items.</p>
-        <button id="saveOrderBtn" class="btn-success floating-save-btn hidden" onclick="MenuMgmt.handleReorder()"><%= icon('save') %> Save</button>
+        <p class="hint-text">ℹ️ Tip: Drag and drop rows to reorder the menu items.</p>
+        <button id="saveOrderBtn" class="btn-success floating-save-btn hidden" onclick="MenuMgmt.handleReorder()">💾 Save</button>
     </div>
 </div>
 
@@ -54,8 +54,8 @@
 <div id="linkModal" class="delete-modal-overlay">
     <div class="delete-modal-content link-modal-content">
         <div class="delete-modal-header">
-            <h3 id="modalTitle"><%= icon('add') %> Add Menu Link</h3>
-            <span class="delete-modal-close" onclick="MenuMgmt.closeModal()">&times;</span>
+            <h3 id="modalTitle">➕ Add Menu Link</h3>
+            <span class="delete-modal-close" onclick="MenuMgmt.closeModal()">❌</span>
         </div>
         <form id="linkForm" onsubmit="MenuMgmt.handleSubmit(event)">
             <input type="hidden" id="linkId" name="id">
@@ -64,7 +64,7 @@
             <div class="modal-body delete-modal-body">
                 <div class="form-group">
                     <label>Label *</label>
-                    <input type="text" id="linkLabel" name="label" placeholder="e.g. <%= icon('calendar') %> Calendar" class="game-input" required>
+                    <input type="text" id="linkLabel" name="label" placeholder="e.g. 📅 Calendar" class="game-input" required>
                 </div>
 
                 <div class="form-group">
@@ -120,7 +120,7 @@
             </div>
 
             <div class="modal-actions delete-modal-actions">
-                <button type="submit" id="saveLinkBtn" class="btn-success"><%= icon('save') %> Save Link</button>
+                <button type="submit" id="saveLinkBtn" class="btn-success">💾 Save Link</button>
             </div>
         </form>
     </div>

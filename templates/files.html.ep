@@ -1,7 +1,7 @@
 <%# /templates/files.html.ep %>
 
 % layout 'default';
-% title icon('files') . ' Files';
+<% title '📁 Files'; %>
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/files.css">
@@ -10,11 +10,11 @@
 
 <div class="admin-container app-container">
     <div class="header-bar">
-        <h1><%= icon('files') %> <span>Files Vault</span></h1>
+        <h1>📁 <span>Binary Vault</span></h1>
         <% if (stash('is_admin')) { %>
             <div class="manage-actions">
                 <button type="button" class="btn-primary" onclick="openUploadModal()">
-                    <%= icon('upload') %> Upload
+                    📤 Upload
                 </button>
             </div>
         <% } %>
@@ -39,7 +39,7 @@
                 <tr class="component-loading-row">
                     <td colspan="8">
                         <div class="component-loading">
-                            <span class="loading-icon-pulse"><%= icon('ai') %></span>
+                            <span class="loading-icon-pulse">📁</span>
                             <p class="loading-label">Synchronizing file vault...</p>
                         </div>
                     </td>
@@ -53,7 +53,7 @@
 <div id="uploadModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('upload') %> Upload New Resource</h3>
+            <h3>📤 Upload New Resource</h3>
             <span class="close-btn" onclick="closeUploadModal()">&times;</span>
         </div>
         <form id="uploadForm" onsubmit="submitFileUpload(event)" enctype="multipart/form-data">
@@ -62,7 +62,7 @@
                     <label for="file">Binary Source (Max 1GB)</label>
                     <div class="file-drop-zone" id="dropZone">
                         <input type="file" id="file" name="file" required>
-                        <p class="drop-text"><%= icon('files') %> Drag & drop source or click to browse</p>
+                        <p class="drop-text">📁 Drag & drop source or click to browse</p>
                         <p class="file-name hidden" id="fileNameDisplay"></p>
                     </div>
                 </div>
@@ -75,7 +75,7 @@
                 <div class="checkbox-group">
                     <label>
                         <input type="checkbox" name="admin_only" id="uploadAdminOnly">
-                        <span><%= icon('lock') %> Admin Only Access</span>
+                        <span>🔒 Admin Only Access</span>
                     </label>
                 </div>
 
@@ -89,7 +89,7 @@
             </div>
 
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="uploadSaveBtn" class="btn-primary"><%= icon('upload') %> Secure Upload</button>
+                <button type="submit" id="uploadSaveBtn" class="btn-primary">📤 Secure Upload</button>
             </div>
         </form>
     </div>
@@ -99,7 +99,7 @@
 <div id="permissionModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('settings') %> Access Control</h3>
+            <h3>⚙️ Access Control</h3>
             <span class="close-btn" onclick="closePermissionModal()">&times;</span>
         </div>
         <form id="permissionForm" onsubmit="submitPermissions(event)">
@@ -109,7 +109,7 @@
                 <div class="checkbox-group">
                     <label>
                         <input type="checkbox" name="admin_only" id="permissionAdminOnly">
-                        <span><%= icon('lock') %> Admin Only Access</span>
+                        <span>🔒 Admin Only Access</span>
                     </label>
                 </div>
                 
@@ -123,7 +123,7 @@
             </div>
             
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="permissionSaveBtn" class="btn-primary"><%= icon('save') %> Sync ACL</button>
+                <button type="submit" id="permissionSaveBtn" class="btn-primary">💾 Sync ACL</button>
             </div>
         </form>
     </div>

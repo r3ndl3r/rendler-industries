@@ -1,7 +1,7 @@
 <%# /templates/timers/manage.html.ep %>
 
 % layout 'default';
-% title icon('timers') . ' Manage Timers';
+% title '⏲️ Manage Timers';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/timers.css">
@@ -11,9 +11,9 @@
 
 <div class="app-container">
     <div class="header-bar">
-        <h1><%= icon('timers') %> <span>Timers</span></h1>
+        <h1>⏲️ <span>Timers</span></h1>
         <div class="manage-actions">
-            <button class="btn btn-primary" id="btn-create-timer"><%= icon('add') %> New</button>
+            <button class="btn btn-primary" id="btn-create-timer">➕ New</button>
         </div>
     </div>
 
@@ -27,7 +27,7 @@
     <div id="manageTableContainer">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('timers') %></span>
+            <span class="loading-icon-pulse">⏲️</span>
             <p class="loading-label">Synchronizing administrative roster...</p>
             <p class="loading-sub">Retrieving timer definitions and user associations</p>
         </div>
@@ -38,7 +38,7 @@
 <div id="modal-create-timer" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><%= icon('add') %> Create New Timer</h2>
+            <h2>➕ Create New Timer</h2>
             <span class="close-btn" onclick="closeModals()">&times;</span>
         </div>
         <form id="create-timer-form" class="timer-form" onsubmit="handleCreateSubmit(event)">
@@ -84,7 +84,7 @@
             </div>
 
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="createSaveBtn" class="btn btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" id="createSaveBtn" class="btn btn-primary">💾 Save</button>
             </div>
         </form>
     </div>
@@ -94,7 +94,7 @@
 <div id="modal-edit-timer" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><%= icon('edit') %> Edit Timer</h2>
+            <h2>✎ Edit Timer</h2>
             <span class="close-btn" onclick="closeModals()">&times;</span>
         </div>
         <form id="edit-timer-form" class="timer-form" onsubmit="handleEditSubmit(event)">
@@ -134,7 +134,7 @@
             </div>
 
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="editSaveBtn" class="btn btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" id="editSaveBtn" class="btn btn-primary">💾 Save</button>
             </div>
         </form>
     </div>
@@ -144,7 +144,7 @@
 <div id="modal-bonus-time" class="modal-overlay">
     <div class="modal-content modal-small">
         <div class="modal-header">
-            <h2><%= icon('bonus') %> Grant Bonus Time</h2>
+            <h2>🎁 Grant Bonus Time</h2>
             <span class="close-btn" onclick="closeModals()">&times;</span>
         </div>
         <form id="bonus-form" class="timer-form" onsubmit="handleBonusSubmit(event)">
@@ -159,7 +159,7 @@
             </div>
 
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="bonusSaveBtn" class="btn btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" id="bonusSaveBtn" class="btn btn-primary">💾 Save</button>
             </div>
         </form>
     </div>

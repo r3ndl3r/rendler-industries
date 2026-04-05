@@ -1,7 +1,7 @@
 <%# /templates/clipboard.html.ep %>
 
 % layout 'default';
-% title icon('clipboard') . ' Clipboard';
+% title '📋 Clipboard';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/clipboard.css">
@@ -10,7 +10,7 @@
 
 <div class="admin-container app-container">
     <div class="header-bar">
-        <h1><%= icon('copy') %> <span>Clipboard</span></h1>
+        <h1>📋 <span>Instant Cloud Clipboard</span></h1>
         <div class="manage-actions">
             <button class="action-btn" onclick="openModal()">+ Add</button>
         </div>
@@ -21,7 +21,7 @@
         <h2>Recent Clippings</h2>
         <div id="messages-list" class="messages-list">
             <div class="component-loading">
-                <span class="loading-icon-pulse"><%= icon('ai') %></span>
+                <span class="loading-icon-pulse">📋</span>
                 <p class="loading-label">Loading clippings...</p>
             </div>
         </div>
@@ -49,25 +49,25 @@
                     <div class="selector-grid">
                         <label id="notify-discord-wrap" class="selector-item hidden">
                             <input type="checkbox" name="notify_discord" value="1">
-                            <span><%= icon('discord') %> Discord</span>
+                            <span>💬 Discord</span>
                         </label>
                         <label id="notify-email-wrap" class="selector-item hidden">
                             <input type="checkbox" name="notify_email" value="1">
-                            <span><%= icon('email') %> Email</span>
+                            <span>📧 Email</span>
                         </label>
                         <label id="notify-pushover-wrap" class="selector-item hidden">
                             <input type="checkbox" name="notify_pushover" value="1">
-                            <span><%= icon('pushover') %> Pushover</span>
+                            <span>📱 Pushover</span>
                         </label>
                         <label id="notify-gotify-wrap" class="selector-item hidden">
                             <input type="checkbox" name="notify_gotify" value="1">
-                            <span><%= icon('gotify') %> Gotify</span>
+                            <span>🔔 Gotify</span>
                         </label>
                     </div>
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn-save" id="submitBtn"><%= icon('save') %> Save</button>
+                <button type="submit" class="btn-save" id="submitBtn">💾 Save</button>
             </div>
         </form>
     </div>

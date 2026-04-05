@@ -1,7 +1,7 @@
 <%# /templates/birthdays.html.ep %>
 
 % layout 'default';
-% title icon('birthdays') . ' Birthdays';
+% title '🎂 Birthdays';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/birthdays.css">
@@ -10,10 +10,10 @@
 
 <div class="birthday-container app-container">
     <div class="header-bar">
-        <h1><%= icon('birthdays') %> <span>Birthdays</span></h1>
+        <h1>🎂 <span>Birthdays</span></h1>
         <div class="manage-actions" id="admin-actions">
-            <button type="button" class="btn-primary" onclick="openAddModal()"><%= icon('add') %> New</button>
-            <button type="button" class="btn-secondary" onclick="toggleManageMode()" id="manageBtn"><%= icon('settings') %> Manage</button>
+            <button type="button" class="btn-primary" onclick="openAddModal()">➕ New</button>
+            <button type="button" class="btn-secondary" onclick="toggleManageMode()" id="manageBtn">⚙️ Manage</button>
         </div>
     </div>
 
@@ -21,7 +21,7 @@
     <div id="birthday-grid" class="birthdays-grid">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('birthdays') %></span>
+            <span class="loading-icon-pulse">🎂</span>
             <p class="loading-label">Synchronizing birthday records...</p>
             <p class="loading-sub">Retrieving family milestones and celestial alignments</p>
         </div>
@@ -42,7 +42,7 @@
 <div id="birthdayModal" class="modal-overlay">
     <div class="modal-content modal-content-small">
         <div class="modal-header">
-            <h3 id="modalTitle"><%= icon('add') %> Add Birthday</h3>
+            <h3 id="modalTitle">➕ Add Birthday</h3>
             <span class="close-btn" onclick="closeModal()">&times;</span>
         </div>
         <form id="birthdayForm" onsubmit="handleBirthdaySubmit(event)">
@@ -59,7 +59,7 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn-primary" id="submitBtn"><%= icon('save') %> Save</button>
+                <button type="submit" class="btn-primary" id="submitBtn">💾 Save</button>
             </div>
         </form>
     </div>

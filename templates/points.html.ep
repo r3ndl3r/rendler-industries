@@ -1,7 +1,7 @@
 <%# /templates/points.html.ep %>
 
 % layout 'default';
-% title icon('coin') . ' Points Management';
+% title '🏆 Point Standings';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/points.css">
@@ -10,14 +10,14 @@
 
 <div class="app-container">
     <div class="header-bar">
-        <h1><%= icon('coin') %> <span>Points Management</span></h1>
+        <h1>🏆 <span>Point Standings</span></h1>
         <div class="manage-actions">
         </div>
     </div>
 
     <div id="points-loading" class="component-loading">
         <div class="loading-scan-line"></div>
-        <span class="loading-icon-pulse"><%= icon('coin') %></span>
+        <span class="loading-icon-pulse">💰</span>
         <p class="loading-label">Synchronizing point ledger...</p>
     </div>
 
@@ -25,7 +25,7 @@
         <div id="wallets-container" class="wallets-grid"></div>
 
         <div class="history-section mt-4">
-            <h2><%= icon('history') %> Points History</h2>
+            <h2>📜 Points History</h2>
             <div class="table-responsive-glass">
                 <table class="data-table-glass">
                     <thead>
@@ -46,7 +46,7 @@
 <div id="transactionModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 id="modalTitle"><%= icon('coin') %> Adjust Points</h3>
+            <h3 id="modalTitle">💰 <span>Points Management</span></h3>
             <span class="close-modal" onclick="closeTransactionModal()">&times;</span>
         </div>
         
@@ -57,7 +57,7 @@
             <div class="form-group">
                 <label for="transactionAmount">Amount</label>
                 <div class="modal-input-container">
-                    <span class="modal-input-icon" id="amountIcon"><%= icon('coin') %></span>
+                    <span class="modal-input-icon" id="amountIcon">💰</span>
                     <input type="number" id="transactionAmount" class="game-input modal-input-with-icon" min="1" step="1" required>
                 </div>
             </div>
@@ -68,7 +68,7 @@
             </div>
 
             <div class="modal-actions modal-actions-center mt-4">
-                <button type="submit" id="saveTransactionBtn" class="btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" id="saveTransactionBtn" class="btn-primary">💾 Save</button>
             </div>
         </form>
     </div>

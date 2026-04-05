@@ -1,7 +1,7 @@
 <%# /templates/swear.html.ep %>
 
 % layout 'default';
-% title icon('swear') . ' Swear Jar';
+<% title '🤬 Swear Jar'; %>
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/swear.css">
@@ -10,11 +10,11 @@
 
 <div class="swear-container app-container">
     <div class="header-bar">
-        <h1><%= icon('swear') %> <span>Swear Jar</span></h1>
+        <h1>🤬 <span>The Fine Jar</span></h1>
         <div class="manage-actions">
             <button class="btn-secondary toggle-view-btn" id="toggleViewBtn" onclick="SwearModule.toggleView()">
-                <span class="view-dashboard-text"><%= icon('settings') %> Manage</span>
-                <span class="view-manage-text hidden"><%= icon('back') %> Back</span>
+                <span class="view-dashboard-text">⚙️ Manage</span>
+                <span class="view-manage-text hidden">⬅️ Back</span>
             </button>
         </div>
     </div>
@@ -52,7 +52,7 @@
         <div id="leaderboardContainer" class="glass-panel panel-padding">
             <div class="component-loading">
                 <div class="loading-scan-line"></div>
-                <span class="loading-icon-pulse"><%= icon('swear') %></span>
+                <span class="loading-icon-pulse">🤬</span>
                 <p class="loading-label">Synchronizing financial ledger...</p>
                 <p class="loading-sub">Retrieving active debts and community contributions</p>
             </div>
@@ -88,7 +88,7 @@
         <h3 class="panel-subtitle">Recent Activity</h3>
         <div id="historyContainer" class="glass-panel panel-padding">
             <div class="component-loading">
-                <span class="loading-icon-pulse"><%= icon('waiting') %></span>
+                <span class="loading-icon-pulse">⌛</span>
             </div>
         </div>
     </div>
@@ -111,7 +111,7 @@
         <h3 class="member-list-title">Active Members</h3>
         <div id="memberListContainer" class="glass-panel panel-padding">
             <div class="component-loading">
-                <span class="loading-icon-pulse"><%= icon('waiting') %></span>
+                <span class="loading-icon-pulse">⌛</span>
             </div>
         </div>
     </div>
@@ -120,7 +120,7 @@
 <%# Image Viewer Modal %>
 <div id="imageModal" class="modal-overlay">
     <div class="image-modal-content">
-        <span class="close-btn" onclick="closeImageModal()"><%= icon('close') %></span>
+        <span class="close-btn" onclick="closeImageModal()">❌</span>
         <img id="modalImage" src="" alt="Full Screen Rules">
     </div>
 </div>

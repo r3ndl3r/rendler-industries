@@ -2,7 +2,7 @@
 
 <div class="navbar">   
     <div class="navbar-brand">
-        <button class="menu-btn" onclick="toggleMenu()"><%= icon('menu') %></button>
+        <button class="menu-btn" onclick="toggleMenu()">☰</button>
         <div class="navbar-title">
             <%= title %>
         </div>
@@ -30,7 +30,7 @@
 <div id="restart-modal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('warning') %> Server Restart</h3>
+            <h3>⚠️ Server Restart</h3>
             <span class="close-modal" onclick="closeRestartModal()">&times;</span>
         </div>
         <div class="modal-body">

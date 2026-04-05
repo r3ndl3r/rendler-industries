@@ -1,7 +1,7 @@
 <%# /templates/emojis.html.ep %>
 
 % layout 'default';
-% title icon('settings') . ' Emoji Management';
+% title '⚙️ Emoji Management';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/emojis.css">
@@ -12,11 +12,11 @@
     <%# Standard module header with title and contextual actions %>
     <div class="header-bar">
         <div class="header-info">
-            <h1><%= icon('settings') %> Emoji Management</h1>
+            <h1>⚙️ Emoji Management</h1>
         </div>
         <div class="manage-actions">
             <button class="btn-primary" onclick="openAddEntryModal()">
-                <%= icon('add') %> Add Entry
+                ➕ Add Entry
             </button>
         </div>
     </div>
@@ -24,7 +24,7 @@
     <%# Initial loading state skeleton for AJAX synchronization %>
     <div id="mainLoadingState" class="component-loading">
         <div class="loading-scan-line"></div>
-        <span class="loading-icon-pulse"><%= icon('settings') %></span>
+        <span class="loading-icon-pulse">⚙️</span>
         <p class="loading-label">Synchronizing Emoji Engine...</p>
     </div>
 
@@ -38,11 +38,11 @@
             <%# --- Left: Dictionary Ledger (Pattern A) --- %>
             <div class="ledger-section card">
                 <div class="section-header">
-                    <h2><%= icon('view') %> Learned Dictionary</h2>
+                    <h2>👁️ Learned Dictionary</h2>
                     <div class="header-actions">
                         <div class="search-box">
                             <input type="text" id="dictSearch" placeholder="Search keywords..." autocomplete="off">
-                            <span class="search-icon"><%= icon('search') %></span>
+                            <span class="search-icon">🔍</span>
                         </div>
                     </div>
                 </div>
@@ -71,7 +71,7 @@
             <%# --- Right: Training Sandbox --- %>
             <div class="sandbox-section card">
                 <div class="section-header">
-                    <h2><%= icon('ai') %> AI Learning Sandbox</h2>
+                    <h2>🤖 AI Learning Sandbox</h2>
                 </div>
                 <p class="help-text">Test how the AI would emojify a specific phrase. Save successful tests to the permanent dictionary.</p>
                 
@@ -87,10 +87,10 @@
 
                     <div class="sandbox-actions modal-actions-center">
                         <button id="btnTestAI" class="btn-secondary" onclick="testAI()">
-                            <%= icon('ai') %> Predict Emoji
+                            🤖 Predict Emoji
                         </button>
                         <button id="btnSaveSandbox" class="btn-primary hidden" onclick="saveSandboxResult()">
-                            <%= icon('save') %> Save to Dictionary
+                            💾 Save to Dictionary
                         </button>
                     </div>
                 </div>
@@ -119,7 +119,7 @@
             </div>
             <div class="modal-actions modal-actions-center">
                 <button type="submit" class="btn-primary">
-                    <%= icon('save') %> Save Mapping
+                    💾 Save Mapping
                 </button>
             </div>
         </form>

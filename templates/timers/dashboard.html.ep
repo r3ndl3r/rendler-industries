@@ -1,7 +1,7 @@
 <%# /templates/timers/dashboard.html.ep %>
 
 % layout 'default';
-% title icon('timers') . ' My Timers';
+% title '🕒 My Timers';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/timers.css">
@@ -13,7 +13,7 @@
     <div id="timersGrid" class="timers-grid">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('timers') %></span>
+            <span class="loading-icon-pulse">🕒</span>
             <p class="loading-label">Synchronizing session timers...</p>
             <p class="loading-sub">Retrieving active limits and usage history</p>
         </div>
@@ -24,7 +24,7 @@
 <div id="redeemModal" class="modal-overlay">
     <div class="modal-content modal-md">
         <div class="modal-header">
-            <h3><%= icon('star') %> Redeem Points for Time</h3>
+            <h3>⭐ Redeem Points for Time</h3>
             <span class="close-btn" onclick="closeRedeemModal()">&times;</span>
         </div>
         <form id="redeemForm" onsubmit="handleRedeemSubmit(event)">
@@ -44,7 +44,7 @@
                 <div class="form-group mt-4 points-input-container">
                     <label for="redeemPoints">Points to Spend</label>
                     <div class="input-with-icon">
-                        <span class="input-icon-prefix"><%= icon('star') %></span>
+                        <span class="input-icon-prefix">⭐</span>
                         <input type="number" id="redeemPoints" name="points" 
                                class="game-input-premium" min="1" step="1" value="1"
                                oninput="updateRedeemCalculation()">
@@ -57,7 +57,7 @@
             </div>
             <div class="modal-actions modal-actions-center">
                 <button type="submit" id="confirmRedeemBtn" class="btn-primary">
-                    <%= icon('check') %> Confirm Redemption
+                    ✅ Confirm Redemption
                 </button>
             </div>
         </form>

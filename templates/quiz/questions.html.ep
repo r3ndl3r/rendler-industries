@@ -1,7 +1,7 @@
 <%# /templates/quiz/questions.html.ep %>
 
 % layout 'default';
-% title icon('kangaroo') . ' Australian Citizenship Quiz';
+% title '🦘 Australian Citizenship Quiz';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/quiz/questions.css">
@@ -11,13 +11,13 @@
 <div class="quiz-container">
     <div class="header-bar">
         <div class="header-title">
-            <h1><%= icon('kangaroo') %> <span>Citizenship Test</span> <%= icon('kangaroo') %></h1>
+            <h1>🦘 <span>Citizenship Test</span> 🦘</h1>
             <span class="thai-subtitle">แบบทดสอบสัญชาติออสเตรเลีย</span>
         </div>
         
         <div class="header-actions">
             <a href="/quiz/study" class="btn-study">
-                <%= icon('files') %> Study Mode <span class="thai-text">(โหมดการศึกษา)</span>
+                📁 Study Mode <span class="thai-text">(โหมดการศึกษา)</span>
             </a>
         </div>
     </div>
@@ -30,7 +30,7 @@
 
     <%# Error State %>
     <div id="error-state" class="state-container hidden">
-        <div class="error-icon"><%= icon('warning') %></div>
+        <div class="error-icon">⚠️</div>
         <p>Failed to load quiz data.<br><span class="thai-text text-secondary">ไม่สามารถโหลดข้อมูลแบบทดสอบได้</span></p>
         <button onclick="location.reload()" class="btn-restart btn-restart-small">Try Again / ลองอีกครั้ง</button>
     </div>
@@ -58,7 +58,7 @@
             <div id="question-text-th" class="q-text-th thai-text"></div>
                 
             <div class="question-actions">
-                <button id="hint-btn" class="btn-hint hidden" aria-label="Show Hint"><%= icon('view') %></button>
+                <button id="hint-btn" class="btn-hint hidden" aria-label="Show Hint">👁️</button>
                 <button id="tts-btn" class="btn-tts" aria-label="Read Question">🔊</button>
             </div>
 

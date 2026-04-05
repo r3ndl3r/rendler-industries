@@ -1,7 +1,7 @@
 <%# /templates/connect4.html.ep %>
 
 % layout 'default';
-% title icon('connect4') . ' Connect 4 Online';
+<% title '🔵 Connect 4'; %>
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/connect4.css">
@@ -13,7 +13,7 @@
     <%# --- View: Lobby --- %>
     <div id="view-lobby" class="spa-view active">
         <div class="lobby-header">
-            <h1 class="lobby-title"><%= icon('connect4') %> Connect 4 Lobby</h1>
+            <h1 class="lobby-title">⭕ Connect 4 Lobby</h1>
             <p style="color: #94a3b8;">Challenge a friend to a battle of strategy!</p>
         </div>
 
@@ -33,7 +33,7 @@
         <div id="open-game-list" class="game-list">
             <div class="component-loading">
                 <div class="loading-scan-line"></div>
-                <span class="loading-icon-pulse"><%= icon('connect4') %></span>
+                <span class="loading-icon-pulse">⭕</span>
                 <p class="loading-label">Synchronizing Lobby...</p>
             </div>
         </div>
@@ -42,9 +42,10 @@
     <%# --- View: Active Game --- %>
     <div id="view-game" class="spa-view hidden">
         <div class="header-bar">
-            <h1><%= icon('connect4') %> <span id="game-title">Connect 4</span></h1>
+            <h1>⭕ <span>Connect 4 Elite</span></h1>
             <div class="manage-actions">
-                <button type="button" class="btn-secondary" onclick="Connect4App.showLobby()"><%= icon('logout') %> Lobby</button>
+                <button id="offerDrawBtn" class="btn-secondary">🤝 Offer Draw</button>
+                <button type="button" class="btn-secondary" onclick="Connect4App.showLobby()">⬅️ Lobby</button>
             </div>
         </div>
 
@@ -53,14 +54,14 @@
             <div class="glass-panel status-card">
                 <h2 id="status-message" class="status-title">Synchronizing...</h2>
                 <div id="turn-indicator" class="status-subtitle">Establishing connection...</div>
-                <button id="btn-restart" class="btn-success btn-restart-fixed hidden"><%= icon('reset') %> Play Again</button>
+                <button id="btn-restart" class="btn-success btn-restart-fixed hidden">🔄 Play Again</button>
             </div>
 
             <%# Interaction Board %>
             <div class="board-viewport">
                 <div class="board-frame">
                     <div id="board" class="board-grid">
-                        <%# Hydrated via JS %>
+                        ⌛ Initializing...
                     </div>
                 </div>
             </div>
@@ -73,6 +74,7 @@
                 <h2 id="game-over-title">Game Over</h2>
                 <p id="game-over-msg"></p>
                 <div class="modal-actions modal-actions-center">
+                    <button id="resignBtn" class="btn-danger">🚪 Resign</button>
                     <button type="button" class="btn-primary" onclick="Connect4App.showLobby()">Return to Lobby</button>
                 </div>
             </div>

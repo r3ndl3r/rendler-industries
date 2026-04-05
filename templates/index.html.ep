@@ -1,7 +1,7 @@
 <%# /templates/index.html.ep %>
 
 % layout 'default';
-% title icon('home') . ' Welcome!';
+% title '🏠 Welcome!';
 
 % content_for 'head' => begin
     <script src="/js/moment-lite.js"></script>
@@ -14,7 +14,7 @@
 <%# Quick Access Redirect Overlay %>
 <div class="redirect-splash" id="redirectSplash">
     <div class="redirect-splash-card">
-        <div class="redirect-splash-icon"><%= icon('quick') %></div>
+        <div class="redirect-splash-icon">⚡</div>
         <h2>Quick Access</h2>
         <p>Redirecting to <a href="/quick" class="redirect-link"><strong>/quick</strong></a> in <span id="redirectCountdown">3</span>s&hellip;</p>
         <div class="redirect-progress-track">

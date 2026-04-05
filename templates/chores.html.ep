@@ -1,7 +1,7 @@
 <%# /templates/chores.html.ep %>
 
 % layout 'default';
-% title icon('sparkles') . ' Chores Board';
+% title '🧹 Chores Board';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/chores.css">
@@ -10,14 +10,14 @@
 
 <div class="app-container">
     <div class="header-bar">
-        <h1><%= icon('sparkles') %> <span>Chores Board</span></h1>
+        <h1>🧹 <span>Chores Board</span></h1>
         <div class="header-actions">
             <div class="header-stats" id="headerStats">
                 <%# Populated via JS: Points Badge %>
             </div>
             <div id="adminActions" class="manage-actions hidden">
                 <button type="button" class="btn-primary" onclick="openAddModal()">
-                    <%= icon('plus') %> Chore
+                    ➕ Chore
                 </button>
             </div>
         </div>
@@ -28,14 +28,14 @@
         <div class="chore-grid" id="choreGrid">
             <div class="component-loading">
                 <div class="loading-scan-line"></div>
-                <span class="loading-icon-pulse"><%= icon('waiting') %></span>
+                <span class="loading-icon-pulse">⌛</span>
                 <p class="loading-label">Scanning for pending chores...</p>
             </div>
         </div>
 
         <%# Points Leaderboard (Visible to all) %>
         <div class="glass-panel leaderboard-panel mt-4">
-            <h3 class="panel-title"><%= icon('user') %> Points Balance</h3>
+            <h3 class="panel-title">👤 Points Balance</h3>
             <div class="table-responsive-glass">
                 <table class="data-table-glass">
                     <thead>
@@ -55,7 +55,7 @@
     <%# Admin Oversight and Management %>
     <div id="adminView" class="chores-section hidden">
         <div class="glass-panel w-100 max-w-admin">
-            <h3 class="panel-title"><%= icon('history') %> Completion History</h3>
+            <h3 class="panel-title">📜 Completion History</h3>
             <div class="table-responsive-glass">
                 <table class="data-table-glass">
                     <thead>
@@ -78,7 +78,7 @@
     <%# Restricted Access State %>
     <div id="noAccessView" class="chores-section hidden">
         <div class="glass-panel error-panel text-center">
-            <div class="status-icon-glow"><%= icon('error') %></div>
+            <div class="status-icon-glow">⚠️</div>
             <h2>Access Restricted</h2>
             <p>The Chore Board is restricted to children and administrators. Please contact the Head of Household to gain access.</p>
         </div>
@@ -89,7 +89,7 @@
 <div id="addChoreModal" class="modal-overlay">
     <div class="modal-content modal-md">
         <div class="modal-header">
-            <h3><%= icon('plus') %> New Chore Posting</h3>
+            <h3>➕ New Chore Posting</h3>
             <span class="close-btn" onclick="closeAddModal()">&times;</span>
         </div>
         <div class="modal-body">
@@ -103,14 +103,14 @@
                     <div class="form-group-glass flex-1">
                         <label>Points Reward</label>
                         <div class="input-with-icon">
-                            <span class="input-icon-prefix"><%= icon('star') %></span>
+                            <span class="input-icon-prefix">⭐</span>
                             <input type="number" name="points" class="game-input-premium" value="1" min="0" required>
                         </div>
                     </div>
                     <div class="form-group-glass flex-1">
                        <label>Assign To</label>
                        <select name="assigned_to" class="game-input-premium" id="assignedToSelect">
-                           <option value=""><%= icon('family') %> Family Pool</option>
+                           <option value="">👪 Family Pool</option>
                            <%# Populated via JS %>
                        </select>
                     </div>
@@ -118,7 +118,7 @@
 
                 <div class="modal-actions modal-actions-center">
                     <button type="submit" class="btn-premium-action-shrink">
-                        <%= icon('save') %> Post
+                        💾 Post
                     </button>
                 </div>
             </form>
@@ -127,7 +127,7 @@
 
             <%# Rapid Repost Section (Inside Modal) %>
             <div class="modal-quick-add-container">
-                <label class="modal-section-label"><%= icon('quick') %> Quick Templates</label>
+                <label class="modal-section-label">⚡ Quick Templates</label>
                 <div class="quick-repost-grid" id="quickAddGrid">
                     <%# Populated via JS %>
                 </div>

@@ -1,7 +1,7 @@
 <%# /templates/medication.html.ep %>
 
 % layout 'default';
-% title icon('medication') . ' Medication Tracker';
+% title '💊 Medication Tracker';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/medication.css">
@@ -10,13 +10,13 @@
 
 <div class="medication-container app-container">
     <div class="header-bar">
-        <h1><%= icon('medication') %> <span>Medication</span></h1>
+        <h1>💊 <span>Medication</span></h1>
         <div class="manage-actions" id="admin-actions">
-            <button class="btn-primary" onclick="openDoseModal()"><%= icon('add') %> Log</button>
-            <button class="action-btn registry-btn" onclick="openRegistryModal()"><%= icon('settings') %> Manage</button>
+            <button class="btn-primary" onclick="openDoseModal()">➕ Log</button>
+            <button class="action-btn registry-btn" onclick="openRegistryModal()">⚙️ Manage</button>
         </div>
         <div class="manage-actions" id="member-actions">
-            <button class="btn-primary" onclick="openDoseModal()"><%= icon('add') %> Log</button>
+            <button class="btn-primary" onclick="openDoseModal()">➕ Log</button>
         </div>
     </div>
 
@@ -24,7 +24,7 @@
     <div id="medication-grid" class="medication-grid">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('medication') %></span>
+            <span class="loading-icon-pulse">💊</span>
             <p class="loading-label">Synchronizing medication logs...</p>
             <p class="loading-sub">Retrieving latest dosage history and family registry</p>
         </div>
@@ -35,7 +35,7 @@
 <div id="doseModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('add') %> Log Medication</h3>
+            <h3>➕ Log Medication</h3>
             <span class="close-btn" onclick="closeDoseModal()">&times;</span>
         </div>
         <form id="doseForm" onsubmit="handleLogSubmit(event, '/medication/api/add')">
@@ -73,7 +73,7 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="addSaveBtn" class="btn-primary"><%= icon('save') %> Save Log</button>
+                <button type="submit" id="addSaveBtn" class="btn-primary">💾 Save Log</button>
             </div>
         </form>
     </div>
@@ -83,7 +83,7 @@
 <div id="editModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><%= icon('edit') %> Edit Log</h3>
+            <h3>🕒 Schedule Dose Reminder</h3>
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
         </div>
         <form id="editForm" onsubmit="handleLogSubmit(event, this.action)">
@@ -120,7 +120,7 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="editSaveBtn" class="btn-primary"><%= icon('save') %> Save changes</button>
+                <button type="submit" class="btn-primary">💾 Save Log</button>
             </div>
         </form>
     </div>
@@ -130,7 +130,7 @@
 <div id="registryModal" class="modal-overlay">
     <div class="modal-content modal-registry">
         <div class="modal-header">
-            <h3><%= icon('settings') %> Manage Medication</h3>
+            <h3>⚙️ Manage Registry</h3>
             <span class="close-btn" onclick="closeRegistryModal()">&times;</span>
         </div>
         <div class="modal-body">
@@ -156,7 +156,7 @@
 <div id="manageEditModal" class="modal-overlay modal-high-index">
     <div class="modal-content modal-content-small">
         <div class="modal-header">
-            <h3><%= icon('edit') %> Edit Medication</h3>
+            <h3>💊 Dosing Panel</h3>
             <span class="close-btn" onclick="closeManageModal()">&times;</span>
         </div>
         <form id="manageEditForm" onsubmit="handleRegistrySubmit(event, this.action)">
@@ -172,7 +172,7 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="manageSaveBtn" class="btn-primary"><%= icon('save') %> Save</button>
+                <button type="submit" id="manageSaveBtn" class="btn-primary">💾 Save</button>
             </div>
         </form>
     </div>

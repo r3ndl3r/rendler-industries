@@ -1,7 +1,7 @@
 <%# /templates/notes.html.ep %>
 
 % layout 'default';
-% title icon('notebook') . ' Notes Board';
+<% title '📓 Whiteboard'; %>
 
 <% content_for 'head' => begin %>
     <link rel="stylesheet" href="/css/notes.css">
@@ -15,11 +15,11 @@
 <div class="level-switcher-container">
     <div class="level-tracks">
         <button class="level-btn btn-level-up" onclick="moveLevel(1)" title="Move up one layer">
-            <%= icon('triangle_up') %>
+            ▲
         </button>
         <div class="level-indicator-pill" id="level-display" title="Jump to Level" onclick="openJumpToLevelModal()">1</div>
         <button class="level-btn btn-level-down" onclick="moveLevel(-1)" title="Move down one layer">
-            <%= icon('triangle_down') %>
+            ▼
         </button>
     </div>
 </div>
@@ -28,7 +28,7 @@
     <div id="notes-canvas" data-icons='<%== icons_json %>'>
         <div id="canvas-skeleton" class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('edit') %></span>
+            <span class="loading-icon-pulse">📝</span>
             <p class="loading-label">Loading Whiteboard...</p>
         </div>
     </div>
@@ -36,10 +36,10 @@
 
 <div class="canvas-manager-toggle" id="right-actions-stack">
     <button id="open-canvas-manager" class="fab-btn btn-icon-square btn-primary" title="Switch Board">
-        <%= icon('folder_open') %>
+        📂
     </button>
     <button id="open-note-bin" class="fab-btn btn-icon-square btn-primary" title="Recycle Bin" data-action="open-bin">
-        <%= icon('delete') %>
+        🗑️
     </button>
 </div>
 
@@ -47,33 +47,33 @@
     <div id="scale-badge">100%</div>
 
     <button id="zoom-in" class="fab-btn btn-icon-square" title="Zoom In">
-        <%= icon('plus') %>
+        ➕
     </button>
 
     <button id="zoom-out" class="fab-btn btn-icon-square" title="Zoom Out">
-        <%= icon('minus') %>
+        ➖
     </button>
     
     <button id="add-text-note" class="fab-btn btn-icon-square btn-success" title="Add Note">
-        <%= icon('checklist') %>
+        📋
     </button>
 
     <button id="center-view" class="fab-btn btn-icon-square" title="Center Canvas">
-        <%= icon('home') %>
+        🏠
     </button>
 
     <button id="focus-recent" class="fab-btn btn-icon-square" title="Most Recent Note">
-        <%= icon('focus') %>
+        🎯
     </button>
 
     <button id="open-search" class="fab-btn btn-icon-square btn-primary" title="Search Notes">
-        <%= icon('search') %>
+        🔍
     </button>
 </div>
 
 <div class="floating-info">
     <button id="open-info" class="fab-btn btn-icon-square" title="Guide">
-        <%= icon('info') %>
+        ℹ️
     </button>
 </div>
 
@@ -90,7 +90,7 @@
             <div class="note-modal-footer">
                 <div class="modal-actions-center">
                     <button id="note-view-copy-btn" class="btn-primary">
-                        <%= icon('copy') %> Copy to Clipboard
+                        📋 Copy to Clipboard
                     </button>
                 </div>
             </div>
@@ -101,7 +101,7 @@
 <div id="note-create-modal" class="modal-overlay">
     <div class="note-modal-content">
         <div class="note-modal-header">
-            <h3 id="create-modal-header-text"><%= icon('checklist') %> <span id="draft-header-label">Add Note</span></h3>
+            <h3 id="create-modal-header-text">📋 <span id="draft-header-label">Add Note</span></h3>
             <span class="close-modal" data-close="modal">&times;</span>
         </div>
         <div class="note-modal-body">
@@ -122,7 +122,7 @@
                 </div>
             </div>
             <button id="create-note-btn" class="btn-primary">
-                <span id="draft-btn-icon"><%= icon('checklist') %></span> <span id="draft-btn-text">Create</span>
+                <span id="draft-btn-icon">📋</span> <span id="draft-btn-text">Create</span>
             </button>
         </div>
     </div>
@@ -131,14 +131,14 @@
 <div id="note-search-modal" class="modal-overlay">
     <div class="note-modal-content search-modal-glass">
         <div class="note-modal-header">
-            <h3><%= icon('search') %> Search</h3>
+            <h3>🔍 Search</h3>
             <span class="close-btn note-modal-close" data-close="modal">&times;</span>
         </div>
         
         <div class="note-modal-body no-padding">
             <div class="search-filter-layer">
                 <div class="search-input-wrapper">
-                    <span class="search-icon-fixed"><%= icon('search') %></span>
+                    <span class="search-icon-fixed">🔍</span>
                     <input type="text" id="note-search-input" class="note-modal-title-input" autocomplete="off" placeholder="Search notes...">
                 </div>
                 <div class="search-scope-container">
@@ -152,7 +152,7 @@
             
             <div id="search-results-container" class="search-results-grid">
                 <div class="search-empty-state">
-                    <%= icon('search') %>
+                    🔍
                     <p>Enter a query to find your notes...</p>
                 </div>
             </div>
@@ -163,7 +163,7 @@
 <div id="note-bin-modal" class="modal-overlay">
     <div class="note-modal-content search-modal-glass">
         <div class="note-modal-header">
-            <h3><%= icon('delete') %> Recycle Bin</h3>
+            <h3>🗑️ Recycle Bin</h3>
             <span class="close-btn note-modal-close" data-close="modal">&times;</span>
         </div>
         
@@ -178,7 +178,7 @@
 <div id="canvas-manager-modal" class="modal-overlay">
     <div class="note-modal-content canvas-manager-modal-content">
         <div class="note-modal-header">
-            <h3><%= icon('folder_open') %> Boards</h3>
+            <h3>📂 Boards</h3>
             <span class="close-btn note-modal-close" data-close="modal">&times;</span>
         </div>
         
@@ -191,7 +191,7 @@
                 <div class="create-input-wrapper">
                     <input type="text" id="new-canvas-name" class="create-modal-input" placeholder="New board name..." autocomplete="off">
                     <button id="add-canvas-btn" class="btn-primary">
-                        <%= icon('plus') %> Create New Board
+                        ➕ Create New Board
                     </button>
                 </div>
             </div>
@@ -202,7 +202,7 @@
 <div id="move-note-modal" class="modal-overlay">
     <div class="note-modal-content canvas-manager-modal-content">
         <div class="note-modal-header">
-            <h3><%= icon('move') %> Copy to Canvas</h3>
+            <h3>📦 Copy to Canvas</h3>
             <span class="close-btn note-modal-close" data-close="modal">&times;</span>
         </div>
         <div class="note-modal-body">
@@ -217,7 +217,7 @@
 <div id="canvas-settings-modal" class="modal-overlay">
     <div class="note-modal-content canvas-manager-modal-content">
         <div class="note-modal-header">
-            <h3><%= icon('settings') %> Board Settings</h3>
+            <h3>⚙️ Board Settings</h3>
             <span class="close-btn note-modal-close" data-close="modal">&times;</span>
         </div>
         
@@ -227,13 +227,13 @@
                 <div class="settings-vertical-stack">
                     <input type="text" id="edit-canvas-name" class="create-modal-input" placeholder="Board name...">
                     <div class="modal-actions modal-actions-center" style="margin-top: 15px; border-top: none; padding-top: 0;">
-                        <button id="save-canvas-name-btn" class="btn-primary"><%= icon('save') %> Save</button>
+                        <button id="save-canvas-name-btn" class="btn-primary">💾 Save</button>
                     </div>
                 </div>
             </div>
 
             <div class="sharing-section">
-                <h4><%= icon('checklist') %> Manage Collaborators</h4>
+                <h4>📋 Manage Collaborators</h4>
                 <div class="search-container">
                     <input type="text" id="user-search-input" placeholder="Search by username..." autocomplete="off">
                     <div id="user-search-results" class="user-search-results"></div>

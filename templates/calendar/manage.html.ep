@@ -1,7 +1,7 @@
 <%# /templates/calendar/manage.html.ep %>
 
 % layout 'default';
-% title icon('settings') . ' Calendar Management';
+% title '⚙️ Calendar Management';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/calendar.css">
@@ -10,11 +10,11 @@
 
 <div class="manage-container app-container">
     <div class="header-bar">
-        <h1><%= icon('settings') %> <span>Manage Events</span></h1>
+        <h1>📅 <span>Event Ledger</span></h1>
         
         <div class="header-meta">
             <div class="manage-actions active">
-                <a href="/calendar" class="btn-back"><%= icon('calendar') %> Back</a>
+                <a href="/calendar" class="btn-back">📅 Back</a>
             </div>
         </div>
     </div>
@@ -32,7 +32,7 @@
     <div id="upcomingTableContainer" class="events-list">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse"><%= icon('calendar') %></span>
+            <span class="loading-icon-pulse">📅</span>
             <p class="loading-label">Synchronizing administrative roster...</p>
         </div>
     </div>
@@ -41,7 +41,7 @@
     <h2 class="section-header past">Past Events</h2>
     <div id="pastTableContainer" class="events-list past-events-list">
         <div class="component-loading">
-            <span class="loading-icon-pulse"><%= icon('waiting') %></span>
+            <span class="loading-icon-pulse">⏳</span>
         </div>
     </div>
 </div>
@@ -67,41 +67,15 @@
             
             <div class="form-group checkbox-group">
                 <label>
-                    <input type="checkbox" id="eventAllDay" name="all_day"> <%= icon('pin') %> All-day event
+                    <input type="checkbox" id="eventAllDay" name="all_day"> 📍 All-day event
                 </label>
             </div>
 
             <div id="notificationGroup" class="hidden">
                 <div class="form-group checkbox-group">
                     <label>
-                        <input type="checkbox" id="sendNotifications" name="send_notifications" checked value="1"> <%= icon('email') %> Send email notifications to family
+                        <input type="checkbox" id="sendNotifications" name="send_notifications" checked value="1"> 📧 Send email notifications to family
                     </label>
-                </div>
-            </div>
-
-            <div class="form-group checkbox-group">
-                <label>
-                    <input type="checkbox" id="eventIsPrivate" name="is_private"> 
-                    <%= icon('lock') %> Private Event (Only you can see this)
-                </label>
-            </div>
-
-            <div class="form-group checkbox-group">
-                <label>
-                    <input type="checkbox" id="eventNotify" name="event_notify"> 
-                    <%= icon('reminders') %> Send notification (1 hour before event)
-                </label>
-            </div>
-            <input type="hidden" id="notificationMinutes" name="notification_minutes" value="0">
-
-            <div id="notificationChannelsGroup" class="form-group hidden">
-                <label>Notification Channels</label>
-                <div id="channels-container" class="selector-grid">
-                </div>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
                     <label for="eventStartDate">Start Date *</label>
                     <input type="date" id="eventStartDate" name="start_date" required>
                 </div>
@@ -141,9 +115,9 @@
             </div>
             
             <div class="modal-actions">
-                <button type="button" class="btn-danger btn-small hidden" id="deleteEventBtn"><%= icon('delete') %> Delete</button>
-                <button type="button" class="btn-clone btn-small hidden" id="cloneEventBtn"><%= icon('copy') %> Clone</button>
-                <button type="submit" id="saveEventBtn" class="btn-primary btn-small"><%= icon('save') %> Save</button>
+                <button type="button" class="btn-danger btn-small hidden" id="deleteEventBtn">🗑️ Delete</button>
+                <button type="button" class="btn-clone btn-small hidden" id="cloneEventBtn">📋 Clone</button>
+                <button type="submit" id="saveEventBtn" class="btn-primary btn-small">💾 Save</button>
             </div>
         </form>
     </div>
