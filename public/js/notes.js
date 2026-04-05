@@ -1372,9 +1372,23 @@ async function saveNoteInline(id) {
             STATE.last_mutation = res.last_mutation;
             STATE.note_map      = res.note_map || STATE.note_map;
             
-            // Interaction Guard: Recalibrate the entire board to reflect the Absolute Truth
-            renderUI();
+            // Targeted DOM Update: Refresh viewer and title without board re-render
+            const viewer = el.querySelector('.note-text-viewer');
+            const slot   = el.querySelector('.note-title-slot');
+            if (viewer) viewer.innerHTML = formatNoteContent(content, id);
+            if (slot)   slot.textContent = title || 'Untitled Note';
             
+            // Sync Accent Color
+            el.style.setProperty('--note-accent', normalizeColorHex(color));
+            
+            el.classList.remove('is-editing');
+            if (textarea) textarea.readOnly = true;
+            if (editBtn) {
+                editBtn.innerHTML = getIcon('edit');
+                editBtn.title     = 'Edit Content';
+                editBtn.classList.remove('pulse-glow');
+            }
+
             STATE.isEditingNote = false;
             showToast('Note Saved', 'success');
         }
@@ -1449,7 +1463,16 @@ async function toggleCollapse(id) {
     const el = document.getElementById(`note-${id}`);
     if (!note || !el) return;
 
+    // Optimistic UI: Immediate visual transition
     note.is_collapsed = note.is_collapsed ? 0 : 1;
+    el.classList.toggle('collapsed', !!note.is_collapsed);
+    
+    // Icon Synchronization: Reflect new state without board re-render
+    const collapseBtn = el.querySelector('.btn-icon-collapse');
+    if (collapseBtn) {
+        collapseBtn.innerHTML = getIcon(note.is_collapsed ? 'expand' : 'collapse');
+    }
+
     el.classList.add('pending');
     
     try {
@@ -1473,7 +1496,7 @@ async function toggleCollapse(id) {
             STATE.notes         = res.notes;
             STATE.last_mutation = res.last_mutation;
             STATE.note_map      = res.note_map || STATE.note_map;
-            renderUI();
+            // Interaction: Silent success (renderUI suppressed to prevent flash)
         }
     } finally {
         el.classList.remove('pending');
@@ -2751,7 +2774,12 @@ async function toggleNoteCheckbox(event, noteId, lineIndex) {
             STATE.notes         = res.notes; // State transition reconciliation
             STATE.last_mutation = res.last_mutation;
             STATE.note_map      = res.note_map || STATE.note_map;
-            renderUI(); // Refresh view to reflect changes (strikethrough etc.)
+            
+            // Targeted Refresh: Update only the viewer to reflect checkbox state (strikethrough)
+            const viewer = el ? el.querySelector('.note-text-viewer') : null;
+            if (viewer) {
+                viewer.innerHTML = formatNoteContent(newContent, noteId);
+            }
         }
     } catch (err) {
         console.error('[TODO] Checkbox sync failed:', err);
