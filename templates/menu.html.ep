@@ -1,7 +1,7 @@
 <%# /templates/menu.html.ep %>
 
-% layout 'default';
-% title '🔗 Manage Menu Links';
+% layout 'default', hide_navbar_title => 1, favicon => '☰';
+% title 'Menu';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/menu.css">
@@ -11,7 +11,7 @@
 
 <div class="manage-container app-container">
     <div class="header-bar">
-        <h1>🔗 <span>Manage Menu Links</span></h1>
+        <h1>⫶☰ <span>Manage Menu</span></h1>
         <div class="manage-actions">
             <button id="addLinkBtn" class="btn-primary" onclick="MenuMgmt.openAddModal()">➕ Add</button>
         </div>
