@@ -1,7 +1,7 @@
 <%# /templates/emojis.html.ep %>
 
-% layout 'default';
-% title '⚙️ Emoji Management';
+% layout 'default', hide_navbar_title => 1, favicon => '⚙️';
+% title 'Emojis Management';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/emojis.css">
@@ -12,7 +12,7 @@
     <%# Standard module header with title and contextual actions %>
     <div class="header-bar">
         <div class="header-info">
-            <h1>⚙️ Emoji Management</h1>
+            <h1>⚙️ Emojis Management</h1>
         </div>
         <div class="manage-actions">
             <button class="btn-primary" onclick="openAddEntryModal()">
