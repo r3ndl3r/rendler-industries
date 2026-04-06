@@ -604,6 +604,7 @@ sub startup {
     $auth->get('/notes/api/bin')->to('notes#api_bin');
     $auth->post('/notes/api/restore')->to('notes#api_restore');
     $auth->post('/notes/api/purge')->to('notes#api_purge');
+    $auth->post('/notes/api/layer/rename')->to('notes#api_layer_rename');
 
     # --- Whiteboard Real-Time Synchronization (Reactive AJAX) ---
     # Mutation Heartbeat for cross-session/cross-worker consistency.
