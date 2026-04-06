@@ -1,7 +1,7 @@
 <%# /templates/timers/manage.html.ep %>
 
-% layout 'default';
-% title '⏲️ Manage Timers';
+% layout 'default', hide_navbar_title => 1, favicon => '🕒';
+% title 'Manage Timers';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/timers.css">
@@ -11,7 +11,7 @@
 
 <div class="app-container">
     <div class="header-bar">
-        <h1>⏲️ <span>Timers</span></h1>
+        <h1>🕒 <span>Timers</span></h1>
         <div class="manage-actions">
             <button class="btn btn-primary" id="btn-create-timer">➕ New</button>
         </div>
@@ -27,7 +27,7 @@
     <div id="manageTableContainer">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
-            <span class="loading-icon-pulse">⏲️</span>
+            <span class="loading-icon-pulse">🕒</span>
             <p class="loading-label">Synchronizing administrative roster...</p>
             <p class="loading-sub">Retrieving timer definitions and user associations</p>
         </div>
