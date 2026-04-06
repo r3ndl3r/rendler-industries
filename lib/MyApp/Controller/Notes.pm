@@ -397,6 +397,7 @@ sub api_canvas_rename {
 sub api_heartbeat {
     my $c = shift;
     my $canvas_id = $c->stash('canvas_id');
+    my $layer_id  = $c->param('layer_id');
     my $user_id   = $c->current_user_id();
 
     # Authority Check: Ensure the user has at least read-access to this board
@@ -405,7 +406,8 @@ sub api_heartbeat {
     }
 
     # Signal Fetch: Get optimized aggregate timestamp from notes + canvases
-    my $last_mutation = $c->db->get_board_mutation_time($canvas_id);
+    # If layer_id is present, the mutation baseline is focused solely on the user's current perspective.
+    my $last_mutation = $c->db->get_board_mutation_time($canvas_id, $layer_id);
 
     $c->render(json => {
         success       => 1,

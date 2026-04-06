@@ -40,7 +40,9 @@ const STATE = {
         active:    false,
         margin:    80,             // Proximity triggers (px)
         maxSpeed:  15              // Peak velocity at absolute edge
-    }
+    },
+    syncQueue:      [],              // Transactional Retry Container
+    isSyncing:      false            // Flow Control: Prevents concurrent flush cycles
 };
 
 /**
@@ -279,16 +281,35 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                 window.history.replaceState({ canvas_id: STATE.canvas_id }, '', url);
             }
 
-            // Restore perspective if this is the initial load OR a manual level switch
-            if ((initial || layer_id) && data.viewport && !nid) {
-                STATE.scale = parseFloat(data.viewport.scale) || 1.0;
+            // --- Layer Context Synchronization ---
+            // If a specific level was requested, we must anchor the STATE and UI immediately,
+            // even if no viewport history exists for that level yet.
+            if (layer_id) {
+                STATE.activeLayerId = parseInt(layer_id);
+                updateLevelDisplay();
+            }
+
+            // --- Viewport Restoration Strategy ---
+            // 1. Mirror Check: Prioritize the local optimistic cache if it's fresher than the server state
+            const localVp = getLocalViewport(canvas_id, layer_id || STATE.activeLayerId);
+            
+            // Cross-Browser Safety: Parse SQL format strings manually for reliable epoch comparison
+            let serverTs = 0;
+            if (data.viewport && data.viewport.updated_at) {
+                const parts = data.viewport.updated_at.split(/[- :]/);
+                serverTs = new Date(parts[0], parts[1]-1, parts[2], parts[3], parts[4], parts[5]).getTime();
+            }
+            
+            let useLocal = localVp && (localVp.ts > serverTs);
+
+            if ((initial || layer_id) && !nid && (useLocal || data.viewport)) {
+                const vp = useLocal ? localVp : data.viewport;
+                
+                STATE.scale = parseFloat(vp.scale) || 1.0;
                 applyScale();
 
-                // Level Restoration: Align active layer immediately before rendering engine fires
-                if (data.viewport.layer_id) {
-                    STATE.activeLayerId = parseInt(data.viewport.layer_id);
-                    
-                    // Update the new Directional Indicator with alias awareness
+                if (vp.layer_id) {
+                    STATE.activeLayerId = parseInt(vp.layer_id);
                     updateLevelDisplay();
                 }
 
@@ -296,23 +317,33 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                     const wrapper = document.getElementById('canvas-wrapper');
                     if (!wrapper) return;
 
-                    const centerX = parseFloat(data.viewport.scroll_x) || (STATE.canvasSize / 2);
-                    const centerY = parseFloat(data.viewport.scroll_y) || (STATE.canvasSize / 2);
+                    const centerX = parseFloat(vp.scroll_x) || (STATE.canvasSize / 2);
+                    const centerY = parseFloat(vp.scroll_y) || (STATE.canvasSize / 2);
 
-                    // Spatial Transition: Smoothly scroll and zoom to the new level perspective
                     wrapper.scrollTo({
                         left: (centerX * STATE.scale) - (wrapper.clientWidth  / 2),
                         top: (centerY * STATE.scale) - (wrapper.clientHeight / 2),
-                        behavior: initial ? 'auto' : 'smooth' // Animated transition during manual level switches
+                        behavior: (initial || useLocal) ? 'auto' : 'smooth'
                     });
                     
                     setTimeout(() => { STATE.isInitializing = false; }, 200);
                 });
-            } else if (initial && !nid) {
-                centerView();
-                STATE.isInitializing = false;
             } else {
+                if (initial && !nid) centerView();
                 STATE.isInitializing = false;
+            }
+
+            // --- Reliability Guardian ---
+            // Initialize the Transactional Sync Worker if this is the first boot
+            if (initial && !window.SYNC_GUARDIAN_INIT) {
+                window.SYNC_GUARDIAN_INIT = true;
+                setInterval(processSyncQueue, 30000);
+                
+                // --- Resource Maintenance ---
+                // Prune stale viewport caches to prevent LocalStorage bloat
+                pruneLocalStorage();
+                
+                console.debug("Whiteboard: Transactional Sync Guardian active.");
             }
 
             // Remote Centering Dispatch: If a target note ID is in the context, center it after stabilization
@@ -370,19 +401,18 @@ function setupHeartbeat(canvasId) {
         if (isInteracting) return;
 
         try {
-            const resp = await fetch(`/notes/api/sync/heartbeat/${canvasId}`);
+            // High-Precision Sync: Include layer_id to only trigger updates when the active perspective changes.
+            const resp = await fetch(`/notes/api/sync/heartbeat/${canvasId}?layer_id=${STATE.activeLayerId}`);
             const data = await resp.json();
 
             if (data.success && data.last_mutation) {
                 // Reactive Trigger: If the server reports a newer mutation than our local state
                 if (STATE.last_mutation && data.last_mutation > STATE.last_mutation) {
                     // Execution Reality: Only update the local baseline AFTER successful state re-hydration.
-                    // This ensures the client remains at the previous mutation state if a fetch/render fails.
-                    if (await loadState(false, canvasId)) {
+                    if (await loadState(false, canvasId, null, STATE.activeLayerId)) {
                         STATE.last_mutation = data.last_mutation;
                     }
                 } else {
-                    // Update baseline even if no change (ensures we stay in sync with server clock)
                     STATE.last_mutation = data.last_mutation;
                 }
             }
@@ -1036,13 +1066,13 @@ function focusMostRecentNote() {
  * @param {number|string} id - The note ID.
  * @returns {void}
  */
-function centerOnNote(id) {
+async function centerOnNote(id) {
     const note = STATE.notes.find(n => n.id == id);
     if (!note) return;
 
     // Level Isolation Recovery: Switch level if the target note is not on the active layer
     if (note.layer_id && note.layer_id != STATE.activeLayerId) {
-        switchLevel(note.layer_id);
+        await switchLevel(note.layer_id);
     }
 
     const wrapper = document.getElementById('canvas-wrapper');
@@ -1164,44 +1194,158 @@ function onViewportScroll() {
 }
 
 /**
- * Schedules a debounced viewport save to the backend.
- * @returns {void}
+ * Persistence Tier: Mirrors the current perspective to the browser's persistent storage.
+ * This provides zero-latency restoration and protects against session-destroying crashes.
  */
-function scheduleViewportSave() {
-    clearTimeout(STATE.vpSaveTimer);
-    STATE.vpSaveTimer = setTimeout(persistViewport, 1000);
-}
-
-/**
- * Sends the current scale and scroll position to the backend for persistence.
- * @returns {Promise<void>}
- */
-async function persistViewport() {
+function updateLocalViewportCache() {
+    if (!STATE.canvas_id || !STATE.activeLayerId || !STATE.userid) return;
+    
     const wrapper = document.getElementById('canvas-wrapper');
     if (!wrapper) return;
 
-    // Persist Canonical Canvas-Center Coordinates (Scale-Independent)
-    const centerX = (wrapper.scrollLeft + wrapper.clientWidth  / 2) / STATE.scale;
-    const centerY = (wrapper.scrollTop  + wrapper.clientHeight / 2) / STATE.scale;
-
-    const res = await apiPost('/notes/api/viewport', {
-        canvas_id: STATE.canvas_id,
+    const cacheKey = `whiteboard_vp_u${STATE.userid}_c${STATE.canvas_id}_l${STATE.activeLayerId}`;
+    const payload = {
         scale:    STATE.scale,
-        scroll_x: centerX,
-        scroll_y: centerY,
-        layer_id: STATE.activeLayerId
-    });
-
-    if (res && res.success) {
-        STATE.last_mutation = res.last_mutation;
+        scroll_x: (wrapper.scrollLeft + wrapper.clientWidth  / 2) / STATE.scale,
+        scroll_y: (wrapper.scrollTop  + wrapper.clientHeight / 2) / STATE.scale,
+        ts:       Date.now()
+    };
+    
+    try {
+        localStorage.setItem(cacheKey, JSON.stringify(payload));
+    } catch (e) {
+        // Silently fail if storage is full
     }
 }
 
 /**
- * Immediate Persistence: Bypasses the debounce timer for lifecycle events.
+ * Retrieval Tier: Fetches the last known optimistic state for a given context.
+ */
+function getLocalViewport(canvasId, layerId) {
+    if (!STATE.userid) return null;
+    const cacheKey = `whiteboard_vp_u${STATE.userid}_c${canvasId}_l${layerId}`;
+    const raw = localStorage.getItem(cacheKey);
+    if (!raw) return null;
+    
+    try {
+        const parsed = JSON.parse(raw);
+        // Expiration check: If it's older than 7 days, ignore it
+        if (Date.now() - parsed.ts > 86400000 * 7) return null;
+        return parsed;
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
+ * Reliability Guardian: Processes the synchronization queue to ensure no state is lost.
+ */
+async function processSyncQueue() {
+    if (STATE.isSyncing || STATE.syncQueue.length === 0) return;
+    
+    STATE.isSyncing = true;
+    const items = [...STATE.syncQueue];
+    STATE.syncQueue = []; // Clear for processing
+    
+    const failedItems = [];
+    
+    for (const item of items) {
+        try {
+            const res = await fetch('/notes/api/viewport', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRF-Token': item.token 
+                },
+                body: item.params,
+                keepalive: true
+            });
+            
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        } catch (e) {
+            failedItems.push(item);
+        }
+    }
+    
+    if (failedItems.length > 0) {
+        STATE.syncQueue = [...failedItems, ...STATE.syncQueue];
+    }
+    
+    STATE.isSyncing = false;
+}
+
+/**
+ * Maintenance Engine: Prunes stale viewport cache entries to prevent LocalStorage bloat.
+ * Follows an LRU (Least Recently Used) policy: Removes entries older than 30 days
+ * or caps the total unique board/layer caches at 50.
+ */
+function pruneLocalStorage() {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('whiteboard_vp_')) {
+            try {
+                const val = JSON.parse(localStorage.getItem(key));
+                keys.push({ key, ts: val.ts || 0 });
+            } catch (e) {
+                // Corrupt data: Prune immediately
+                localStorage.removeItem(key);
+            }
+        }
+    }
+
+    // Sort by timestamp (Oldest First)
+    keys.sort((a, b) => a.ts - b.ts);
+
+    const THIRTY_DAYS = 86400000 * 30;
+    const now = Date.now();
+    const limit = 50;
+
+    // Prune logic: Expired or Over-limit
+    keys.forEach((item, index) => {
+        const isExpired = (now - item.ts > THIRTY_DAYS);
+        const isOverLimit = (keys.length - index > limit);
+        
+        if (isExpired || isOverLimit) {
+            localStorage.removeItem(item.key);
+        }
+    });
+    
+    if (keys.length > limit) {
+        console.debug(`Whiteboard: Memory Pruning complete. Removed ${keys.length - limit} stale perspective(s).`);
+    }
+}
+
+/**
+ * Schedules a debounced viewport save to the backend.
+ * Also mirrors the state to local storage for zero-latency restoration.
  * @returns {void}
  */
-function saveViewportImmediate() {
+function scheduleViewportSave() {
+    if (STATE.isInitializing) return;
+    
+    updateLocalViewportCache(); // Optimistic mirror (Synchronous)
+
+    clearTimeout(STATE.vpSaveTimer);
+    STATE.vpSaveTimer = setTimeout(persistViewport, 1500);
+}
+
+/**
+ * Perspective Persistence: Synchronizes the current camera state with the backend.
+ * Integrates with the Retry Queue to handle network instability.
+ */
+async function persistViewport() {
+    const wrapper = document.getElementById('canvas-wrapper');
+    if (!wrapper || STATE.isInitializing) return;
+
+    await saveViewportImmediate();
+}
+
+/**
+ * Persistent Viewport Handshake: Captures and commits the current perspective.
+ * Used during lifecycle transitions (layer/canvas switches) to prevent state loss.
+ */
+async function saveViewportImmediate() {
     const wrapper = document.getElementById('canvas-wrapper');
     if (!wrapper) return;
 
@@ -1209,21 +1353,44 @@ function saveViewportImmediate() {
     const centerX = (wrapper.scrollLeft + wrapper.clientWidth  / 2) / STATE.scale;
     const centerY = (wrapper.scrollTop  + wrapper.clientHeight / 2) / STATE.scale;
 
-    // Use raw fetch with keepalive for absolute persistence during unload
+    // Security: Inject CSRF token from meta tags for authoritative state commitment
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
     const params = new URLSearchParams({
-        canvas_id: STATE.canvas_id,
-        scale:    STATE.scale,
-        scroll_x: centerX,
-        scroll_y: centerY,
-        layer_id: STATE.activeLayerId
+        canvas_id:  STATE.canvas_id,
+        scale:      STATE.scale,
+        scroll_x:   centerX,
+        scroll_y:   centerY,
+        layer_id:   STATE.activeLayerId
     });
 
-    fetch('/notes/api/viewport', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params,
-        keepalive: true
-    }).catch(err => console.debug('Immediate save silent-failed during unload:', err));
+    try {
+        const res = await fetch('/notes/api/viewport', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRF-Token': csrfToken 
+            },
+            body: params,
+            keepalive: true
+        });
+        
+        if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+        return res;
+    } catch (err) {
+        console.debug('Sync delayed: Pushing perspective to retry queue.', err);
+        
+        // Context-Aware De-duplication: If an item for this canvas/layer is already pending,
+        // remove it so the new (fresher) perspective takes precedence.
+        const cid = STATE.canvas_id;
+        const lid = STATE.activeLayerId;
+        STATE.syncQueue = STATE.syncQueue.filter(item => {
+            const p = new URLSearchParams(item.params);
+            return !(p.get('canvas_id') == cid && p.get('layer_id') == lid);
+        });
+
+        STATE.syncQueue.push({ params: params.toString(), token: csrfToken, ts: Date.now() });
+    }
 }
 
 /**
@@ -2238,7 +2405,8 @@ window.switchLevel = async function(id) {
 window.moveLevel = async function(direction) {
     if (STATE.isSwitchingLayer) return;
 
-    let nextLevel = STATE.activeLayerId + direction;
+    // Type Safety: Ensure activeLayerId is treated as a number to prevent string concatenation
+    let nextLevel = Number(STATE.activeLayerId) + direction;
     
     // Circular Loop Resolution: 1 <-> 99 wrapping
     if (nextLevel > 99) nextLevel = 1;
@@ -2417,8 +2585,8 @@ async function handleSearchResultClick(id) {
         if (note.canvas_id && note.canvas_id != STATE.canvas_id) {
             await switchCanvas(note.canvas_id, id);
         } else {
-            // Local focus navigation: Move viewport immediately
-            centerOnNote(id);
+            // Local focus navigation: Await layer transition before moving camera
+            await centerOnNote(id);
         }
     } catch (err) {
         console.error('Navigation Error:', err);
@@ -2559,10 +2727,12 @@ async function switchCanvas(id, targetNoteId = null) {
         return;
     }
     
-    STATE.canvas_id = id;
-    showLoadingOverlay('Cleaning canvas...');
-    
     try {
+        // Perspective Lock: Save the outgoing canvas state before switching context
+        await saveViewportImmediate();
+        
+        STATE.canvas_id = id;
+        showLoadingOverlay('Cleaning canvas...');
         await loadState(true, id, targetNoteId);
     } finally {
         // Zero-Trust Termination: Always clear the splash screen
