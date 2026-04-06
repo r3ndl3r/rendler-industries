@@ -21,8 +21,8 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 5000px !important;
-    height: 5000px !important;
+    width: 50000px !important;
+    height: 50000px !important;
     transform-origin: 0 0;
     /* 10px Grid Feedback */
     background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
