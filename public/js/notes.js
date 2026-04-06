@@ -951,17 +951,39 @@ function centerOnNote(id) {
 /**
  * Applies STATE.scale to the canvas element via CSS transform.
  * Uses transform-origin: 0 0 so coords stay relative to the top-left.
+ * Synchronizes the visual CSS scale with the scrollable layout area.
  * @returns {void}
  */
 function applyScale() {
     const canvas = document.getElementById('notes-canvas');
-    if (!canvas) return;
-    canvas.style.transform       = `scale(${STATE.scale})`;
+    const wrapper = document.getElementById('canvas-wrapper');
+    if (!canvas || !wrapper) return;
+
+    // Apply visual transformation
+    canvas.style.transform = `scale(${STATE.scale})`;
     canvas.style.transformOrigin = '0 0';
+
+    // Synchronize scrollable area via an in-flow spacer
+    // Since #notes-canvas is absolute, we need this to define the container's scrollWidth/scrollHeight
+    let spacer = document.getElementById('canvas-scroll-spacer');
+    if (!spacer) {
+        spacer = document.createElement('div');
+        spacer.id = 'canvas-scroll-spacer';
+        // Add after canvas to avoid z-index/overlap issues if any
+        wrapper.appendChild(spacer);
+    }
+    
+    const scaledSize = Math.ceil(STATE.canvasSize * STATE.scale);
+    spacer.style.width  = scaledSize + 'px';
+    spacer.style.height = scaledSize + 'px';
+
+    // Force a synchronous reflow to ensure the container's scrollHeight/scrollWidth 
+    // are updated before any immediate scrollTo calls (e.g., in centering logic).
+    void wrapper.scrollWidth;
 
     // Update the scale indicator badge
     const badge = document.getElementById('scale-badge');
-    if (badge) badge.textContent = `${Math.round(STATE.scale * 100)}%`;
+    if (badge) badge.textContent = Math.round(STATE.scale * 100) + '%';
 }
 
 /**
@@ -1115,8 +1137,8 @@ function deleteNote(id) {
  * @returns {void}
  */
 function handleCanvasMouseDown(e) {
-    // Only trigger panning if clicking directly on the canvas background
-    if (e.target.id !== 'notes-canvas') return;
+    // Only trigger panning if clicking directly on the canvas background or the wrapper
+    if (e.target.id !== 'notes-canvas' && e.target.id !== 'canvas-wrapper') return;
     if (e.button !== 0) return; // Left-click only
 
     const wrapper = document.getElementById('canvas-wrapper');
