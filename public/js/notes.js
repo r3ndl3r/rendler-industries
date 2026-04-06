@@ -491,7 +491,7 @@ function createNoteElement(note, canEdit = true) {
                         👁️
                     </button>
                     <button class="btn-icon-collapse" onclick="toggleCollapse(${note.id})" title="Toggle Collapse">
-                        ${note.is_collapsed ? '➕' : '➖'}
+                        ${note.is_collapsed ? '🔻' : '🔺'}
                     </button>
                     <button class="btn-icon-edit" onclick="toggleInlineEdit(this, ${note.id})" title="Edit Content" ${canEdit ? '' : 'disabled'}>
                         ✏️
@@ -852,8 +852,8 @@ async function syncNotePosition(id, type = 'normal') {
         title: note.title,
         x: parseInt(el.style.left),
         y: parseInt(el.style.top),
-        width: el.offsetWidth,
-        height: el.offsetHeight,
+        width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
+        height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
         z_index: el.style.zIndex,
         content: note.content,
         color: note.color,
@@ -1327,16 +1327,23 @@ async function copyViewContent() {
  * Inline Core: Toggles the editing state for a specific note element.
  * @param {HTMLElement} btn - The clicked button reference.
  * @param {number|string} id - The note ID.
- * @returns {void}
+ * @returns {Promise<void>}
  */
-function toggleInlineEdit(btn, id) {
+async function toggleInlineEdit(btn, id) {
     const el   = document.getElementById(`note-${id}`);
     const note = STATE.notes.find(n => n.id == id);
     if (!el || !note) return;
 
-    const isEditing = el.classList.toggle('is-editing');
     const textarea  = el.querySelector('textarea');
     const titleInp  = el.querySelector('.inline-title-input');
+    
+    // Activation Guard: If the note is currently collapsed, expansion is mandatory 
+    // before entering edit mode to prevent dimension corruption in the persistence layer.
+    if (!el.classList.contains('is-editing') && note.is_collapsed) {
+        await toggleCollapse(id);
+    }
+
+    const isEditing = el.classList.toggle('is-editing');
 
     if (isEditing) {
         // Mode Transition: Enable Interaction & Focus
@@ -1383,8 +1390,8 @@ async function saveNoteInline(id) {
         layer_id: note.layer_id || STATE.activeLayerId,
         x: note.x,
         y: note.y,
-        width: el.offsetWidth,
-        height: el.offsetHeight,
+        width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
+        height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
         z_index: el.style.zIndex,
         is_collapsed: note.is_collapsed,
         is_options_expanded: note.is_options_expanded
@@ -1495,7 +1502,7 @@ async function toggleCollapse(id) {
     // Icon Synchronization: Reflect new state without board re-render
     const collapseBtn = el.querySelector('.btn-icon-collapse');
     if (collapseBtn) {
-        collapseBtn.innerHTML = note.is_collapsed ? '➕' : '➖';
+        collapseBtn.innerHTML = note.is_collapsed ? '🔻' : '🔺';
     }
 
     el.classList.add('pending');
@@ -2787,8 +2794,8 @@ async function toggleNoteCheckbox(event, noteId, lineIndex) {
         layer_id: note.layer_id || STATE.activeLayerId,
         x: note.x,
         y: note.y,
-        width: el ? el.offsetWidth : note.width,
-        height: el ? el.offsetHeight : note.height,
+        width:  note.is_collapsed ? (note.width  || (el ? el.offsetWidth : 0))  : (el ? el.offsetWidth : note.width),
+        height: note.is_collapsed ? (note.height || (el ? el.offsetHeight : 0)) : (el ? el.offsetHeight : note.height),
         z_index: el ? el.style.zIndex : note.z_index,
         is_collapsed: note.is_collapsed,
         is_options_expanded: note.is_options_expanded
