@@ -12,7 +12,7 @@
     <script src="/js/vendor/heic2any.min.js"></script>
 % end
 
-<div class="app-container">
+<div class="admin-container app-container">
     <div class="header-bar">
         <h1>🧾 <span>Receipts</span></h1>
         <div class="manage-actions">
@@ -132,7 +132,7 @@
             </div>
             <div class="modal-actions edit-modal-actions">
                 <button type="button" id="btnApplyAI" class="btn-ai-apply hidden" title="Apply AI-digitized data to these fields">
-                    🤖 Use AI Data
+                    🧠 Use AI Data
                 </button>
                 <button type="submit" class="btn-primary">💾 Save</button>
             </div>
@@ -183,13 +183,13 @@
 <div id="eReceiptModal" class="modal-overlay">
     <div class="modal-content ereceipt-modal-content">
         <div class="modal-header ereceipt-header">
-            <h3>🤖 Electronic Receipt</h3>
+            <h3>🧠 Electronic Receipt</h3>
             <span class="close-btn" onclick="closeEReceiptModal()">&times;</span>
         </div>
         <div class="modal-body ereceipt-body" id="eReceiptContent">
             <div class="component-loading">
                 <div class="loading-scan-line"></div>
-                <span class="loading-icon-pulse">🤖</span>
+                <span class="loading-icon-pulse">🧠</span>
                 <p class="loading-label">Digitizing with AI...</p>
                 <p class="loading-sub">Analyzing items and structured data</p>
             </div>
