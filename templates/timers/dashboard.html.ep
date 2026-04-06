@@ -9,7 +9,7 @@
     <script src="/js/timers/dashboard.js"></script>
 % end
 
-<div class="timers-container app-container">
+<div class="admin-container app-container">
     <div id="timersGrid" class="timers-grid">
         <div class="component-loading">
             <div class="loading-scan-line"></div>
