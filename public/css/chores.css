@@ -554,12 +554,11 @@ select.game-input-premium option {
         flex-shrink: 0;
     }
 
-    /* Vertically center action button on right edge */
+    /* Anchor action button to top-right on mobile cards */
     #historyTable td.col-actions { 
         position: absolute;
-        top: 50%;
+        top: 1.25rem;
         right: 1.25rem;
-        transform: translateY(-50%);
         width: auto !important;
         padding: 0 !important;
         display: flex !important;
