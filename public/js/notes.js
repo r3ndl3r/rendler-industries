@@ -32,7 +32,14 @@ const STATE = {
     isEditingNote:  false,          // Inline Editor Active State
     activeLayerId:  1,               // Level Isolation Filter (1-99)
     isSwitchingLayer: false,         // Interaction Guard: Prevents overlapping transitions
-    note_map:       {}               // Metadata Registry for [note:#] resolution
+    note_map:       {},              // Metadata Registry for [note:#] resolution
+    autoScroll: {
+        lastEvent: null,
+        frame:     null,
+        active:    false,
+        margin:    80,             // Proximity triggers (px)
+        maxSpeed:  15              // Peak velocity at absolute edge
+    }
 };
 
 /**
@@ -641,6 +648,11 @@ function makeDraggable(el) {
 
     function elementDrag(e) {
         e.preventDefault();
+        
+        // Context Capture: Required for asynchronous auto-scroll updates
+        STATE.autoScroll.lastEvent = e;
+        checkAutoScrollProximity(e);
+
         pos1 = pos3 - e.clientX;
         pos2 = pos4 - e.clientY;
         pos3 = e.clientX;
@@ -650,7 +662,7 @@ function makeDraggable(el) {
         let newX = el.offsetLeft - (pos1 / STATE.scale);
         let newY = el.offsetTop - (pos2 / STATE.scale);
 
-        // 10px Grid Snapping and Canvas-Boundary Entrapment (5000px)
+        // 10px Grid Snapping and Canvas-Boundary Entrapment (50,000px)
         newX = Math.round(newX / STATE.snapGrid) * STATE.snapGrid;
         newY = Math.round(newY / STATE.snapGrid) * STATE.snapGrid;
 
@@ -665,6 +677,7 @@ function makeDraggable(el) {
     function closeDragElement() {
         el.classList.remove('dragging');
         STATE.isDragging = false;
+        stopAutoScroll(); // Clear active animation loops
         document.removeEventListener('mouseup', closeDragElement);
         document.removeEventListener('mousemove', elementDrag);
         
@@ -724,6 +737,10 @@ function toggleStickyMove(e, id) {
 function updateStickyMove(e) {
     if (!STATE.pickedNoteId) return;
     
+    // Context Capture: Required for asynchronous auto-scroll updates
+    STATE.autoScroll.lastEvent = e;
+    checkAutoScrollProximity(e);
+
     const el = document.getElementById(`note-${STATE.pickedNoteId}`);
     if (!el) return;
 
@@ -738,7 +755,7 @@ function updateStickyMove(e) {
     newX -= STATE.dragOffset.x;
     newY -= STATE.dragOffset.y;
 
-    // 10px Grid Snapping and Canvas-Boundary Entrapment (5000px)
+    // 10px Grid Snapping and Canvas-Boundary Entrapment (50,000px)
     newX = Math.round(newX / STATE.snapGrid) * STATE.snapGrid;
     newY = Math.round(newY / STATE.snapGrid) * STATE.snapGrid;
 
@@ -750,12 +767,114 @@ function updateStickyMove(e) {
 }
 
 /**
+ * Dynamic Edge Detection: Evaluates cursor proximity to viewport boundaries
+ * @param {MouseEvent} e - The mouse event.
+ * @returns {void}
+ */
+function checkAutoScrollProximity(e) {
+    const wrapper = document.getElementById('canvas-wrapper');
+    if (!wrapper) return;
+
+    const rect = wrapper.getBoundingClientRect();
+    const { margin } = STATE.autoScroll;
+    
+    let velX = 0;
+    let velY = 0;
+
+    // Threshold Analysis: Proportional speed based on edge proximity
+    if (e.clientX < rect.left + margin) {
+        velX = -normalizeSpeed(rect.left + margin - e.clientX);
+    } else if (e.clientX > rect.right - margin) {
+        velX = normalizeSpeed(e.clientX - (rect.right - margin));
+    }
+
+    if (e.clientY < rect.top + margin) {
+        velY = -normalizeSpeed(rect.top + margin - e.clientY);
+    } else if (e.clientY > rect.bottom - margin) {
+        velY = normalizeSpeed(e.clientY - (rect.bottom - margin));
+    }
+
+    if (velX !== 0 || velY !== 0) {
+        startAutoScroll(velX, velY);
+    } else {
+        stopAutoScroll();
+    }
+}
+
+/**
+ * Velocity Normalizer: Converts pixel proximity into controlled scroll velocity
+ * @param {number} dist - Distance into the margin.
+ * @returns {number} - Calculated speed.
+ */
+function normalizeSpeed(dist) {
+    const ratio = Math.min(dist / STATE.autoScroll.margin, 1);
+    return ratio * STATE.autoScroll.maxSpeed;
+}
+
+/**
+ * Initiates the Auto-Scroll animation loop.
+ * @param {number} vx - Horizontal velocity.
+ * @param {number} vy - Vertical velocity.
+ * @returns {void}
+ */
+function startAutoScroll(vx, vy) {
+    STATE.autoScroll.vx = vx;
+    STATE.autoScroll.vy = vy;
+
+    if (STATE.autoScroll.active) return;
+    STATE.autoScroll.active = true;
+
+    const loop = () => {
+        if (!STATE.autoScroll.active) return;
+
+        const wrapper = document.getElementById('canvas-wrapper');
+        wrapper.scrollLeft += STATE.autoScroll.vx;
+        wrapper.scrollTop  += STATE.autoScroll.vy;
+
+        // Force Re-calculation: Re-trigger the active drag/move logic with the latest event
+        const lastE = STATE.autoScroll.lastEvent;
+        if (lastE) {
+            if (STATE.isDragging) {
+                // For direct drag, we dispatch a new event to trigger transition calculations
+                const event = new MouseEvent('mousemove', {
+                    clientX: lastE.clientX,
+                    clientY: lastE.clientY,
+                    bubbles: true
+                });
+                document.dispatchEvent(event);
+            } else if (STATE.pickedNoteId) {
+                // For Pick & Place, we can call the update directly
+                updateStickyMove(lastE);
+            }
+        }
+
+        STATE.autoScroll.frame = requestAnimationFrame(loop);
+    };
+
+    STATE.autoScroll.frame = requestAnimationFrame(loop);
+}
+
+/**
+ * Terminates the Auto-Scroll animation sequence.
+ * @returns {void}
+ */
+function stopAutoScroll() {
+    if (!STATE.autoScroll.active) return;
+    STATE.autoScroll.active = false;
+    if (STATE.autoScroll.frame) {
+        cancelAnimationFrame(STATE.autoScroll.frame);
+    }
+}
+
+/**
  * Finalizes the 'Pick & Place' action, anchoring the note and syncing to MariaDB.
  * @returns {void}
  */
 function dropStickyNote() {
     if (!STATE.pickedNoteId) return;
     
+    stopAutoScroll(); // Clear active animation loops
+
     const id = STATE.pickedNoteId;
     const el = document.getElementById(`note-${id}`);
     
