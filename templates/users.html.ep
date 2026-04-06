@@ -1,7 +1,7 @@
 <%# /templates/users.html.ep %>
 
-% layout 'default';
-<% title '👥 User Management'; %>
+% layout 'default', hide_navbar_title => 1, favicon => '👥';
+<% title 'Users'; %>
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/users.css">
@@ -10,7 +10,7 @@
 
 <div class="admin-container app-container">
     <div class="header-bar">
-        <h1>👥 <span>Identity Hub</span></h1>
+        <h1>👥 <span>Manage Users</span></h1>
         <div class="manage-actions">
             <button id="addUserBtn" class="btn-primary" onclick="openAddUserModal()">
                 ➕ Add User
