@@ -315,13 +315,14 @@ sub run_reminder_maintenance {
                 $c->db->mark_reminder_sent($r->{id}, $intended_at);
             }
             $processed_reminder_ids{$r->{id}} = 1;
+        }
 
-            my $msg = "🔔 REMINDER 🔔\n\n$r->{title}\n\n$r->{description}\n\nhttps://rendler.org/reminders";
-            if ($c->notify_user($r->{user_id}, $msg, "Reminder: $r->{title}")) {
-                $stats->{notified}++;
-            } else {
-                $stats->{errors}++;
-            }
+        # Dispatch notification to EVERY recipient in the join list
+        my $msg = "🔔 REMINDER 🔔\n\n$r->{title}\n\n$r->{description}\n\nhttps://rendler.org/reminders";
+        if ($c->notify_user($r->{user_id}, $msg, "Reminder: $r->{title}")) {
+            $stats->{notified}++;
+        } else {
+            $stats->{errors}++;
         }
     }
 
