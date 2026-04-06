@@ -15,6 +15,12 @@
 
 /* --- 1. Base Layout --- */
 
+.admin-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 100vh;
+}
+
 .timers-container {
     max-width: 1400px;
     margin: 0 auto;
@@ -240,6 +246,10 @@
 .timers-table td {
     border-top: 1px solid #334155;
     color: #e2e8f0;
+}
+
+.timers-table .action-buttons {
+    justify-content: flex-start;
 }
 
 .timers-table tbody tr:hover {
@@ -505,13 +515,12 @@
     
     .timers-table tr {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr auto;
         grid-template-areas:
-            "user category"
-            "name name"
-            "status status"
-            "used remaining"
-            "actions actions";
+            "user category actions"
+            "name name actions"
+            "status status actions"
+            "used remaining actions";
         gap: 0.75rem;
         background: #1e293b;
         border: 1px solid rgba(255, 255, 255, 0.1);
@@ -554,10 +563,18 @@
     .timers-table .actions-cell {
         grid-area: actions;
         display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 0 !important;
+        border: none !important;
+        margin-left: 0.5rem;
+    }
+
+    .timers-table .actions-cell .action-buttons {
+        flex-direction: column;
+        gap: 8px;
         justify-content: center;
-        gap: 1rem;
-        padding-top: 0.75rem !important;
-        border-top: 1px solid #334155;
     }
     
     .timers-table .limit-cell { display: none; }
