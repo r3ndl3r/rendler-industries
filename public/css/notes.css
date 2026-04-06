@@ -10,7 +10,7 @@
     background: #0b1121;
     position: relative;
     box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.6);
-    border: none; /* Edget-to-edge parity */
+    border: none; /* Edge-to-edge parity */
 }
 
 #canvas-wrapper {
@@ -67,7 +67,7 @@
 .floating-actions {
     position: fixed;
     bottom: 30px;
-    right: 30px;
+    right: 12px;
     display: flex;
     flex-direction: column;
     align-items: flex-end; /* Right-Alignment anchor */
@@ -79,7 +79,7 @@
 .floating-info {
     position: fixed;
     bottom: 30px;
-    left: 30px;
+    left: 12px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -90,7 +90,7 @@
 /* Vertical Level Selection Stack (Left Anchor) */
 .level-switcher-container {
     position: fixed;
-    left: 20px;
+    left: 12px;
     top: 50%;
     transform: translateY(-50%);
     display: flex;
@@ -115,8 +115,8 @@
 }
 
 .level-btn {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.75rem;
+    height: 2.75rem;
     border-radius: 50%;
     background: rgba(30, 41, 59, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -141,8 +141,9 @@
 }
 
 .level-btn svg {
-    width: 0.9rem;
-    height: 0.9rem;
+    width: 2.4rem;
+    height: 2.4rem;
+    pointer-events: none;
 }
 
 .level-indicator-pill {
@@ -183,9 +184,10 @@
 }
 
 .fab-btn:hover {
-    transform: scale(1.1) translateY(-5px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
-    border-color: rgba(255, 255, 255, 0.3);
+    transform: scale(1.15); /* Themed Pop-Out */
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.7);
+    border-color: rgba(255, 255, 255, 0.4);
+    filter: brightness(1.25);
 }
 
 .fab-btn:active {
@@ -211,7 +213,7 @@
 }
 
 .fab-btn.btn-icon-square:hover {
-    transform: scale(1.05) translateX(-5px); /* Align to side on hover */
+    transform: scale(1.15); /* Themed Pop-Out */
     background: rgba(59, 130, 246, 0.5); /* Global Blue Glow */
     border-color: rgba(59, 130, 246, 0.8);
     color: #fff;
@@ -305,7 +307,7 @@
 
 .sticky-note:hover {
     border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-4px) scale(1.01); /* Lift effect on hover */
+    transform: scale(1.02); /* Centered scale transition for hover emphasis */
     box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6), 
                 0 0 20px var(--note-accent, rgba(59, 130, 246, 0.3)),
                 inset 0 0 15px rgba(255, 255, 255, 0.08); 
@@ -1200,8 +1202,10 @@
     gap: 0.3125em; /* 5px */
     width: max-content;
     max-width: 0;
+    height: 100%;
     opacity: 0;
-    overflow: hidden;
+    /* Visible overflow allows hover scale effects to bleed outside container */
+    overflow: visible;
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
 }
@@ -1210,6 +1214,9 @@
     max-width: 18.0em; /* Expanded volume for 8 buttons including Copy Level tool */
     opacity: 1;
     pointer-events: auto;
+    /* Re-enable overflow clipping only for the closed-to-open transition if needed, 
+       but visible is required for the hover pop effect. */
+    overflow: visible;
 }
 
 .layer-target-btn.active {
@@ -1740,7 +1747,7 @@
 .canvas-manager-toggle {
     position: fixed;
     top: 85px;
-    right: 24px;
+    right: 12px;
     z-index: 10001;
     display: flex;
     flex-direction: column;
@@ -1749,8 +1756,7 @@
 }
 
 .canvas-manager-toggle:hover {
-    transform: scale(1.2) rotate(5deg);
-    filter: brightness(1.2);
+    filter: brightness(1.15);
 }
 
 .canvas-manager-modal-content {
@@ -2240,9 +2246,11 @@ input:checked + .switch-sm .slider:before {
 }
 
 .note-actions-drawer button:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.2);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    transform: scale(1.15); /* Themed Pop-Out */
+    filter: brightness(1.3) contrast(1.1);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5), 0 5px 15px rgba(0,0,0,0.4);
+    z-index: 10; /* Ensure popped button stays on top of siblings */
+    margin: 0 2px; /* Small horizontal spread to avoid overlapping adjacent glyphs */
 }
 
 .note-actions-drawer button svg,
