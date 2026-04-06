@@ -29,6 +29,12 @@
     </div>
 </div>
 
+<div class="radar-minimap-container" id="radar-container">
+    <div class="radar-handle" onclick="toggleRadar()" title="Toggle Navigator Radar">🗺️</div>
+    <canvas id="radar-pings" width="160" height="160"></canvas>
+    <div id="radar-viewport"></div>
+</div>
+
 <div class="canvas-container" id="canvas-wrapper">
     <div id="notes-canvas">
         <div id="canvas-skeleton" class="component-loading">
