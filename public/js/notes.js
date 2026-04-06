@@ -485,7 +485,7 @@ function createNoteElement(note, canEdit = true) {
                         📦
                     </button>
                     <button class="btn-icon-level-copy" onclick="openLayerActionModal(${note.id})" title="Copy to Level" ${canEdit ? '' : 'disabled'}>
-                        📑
+                        📚
                     </button>
                     <button class="btn-icon-view" onclick="viewNote(${note.id})" title="Quick View">
                         👁️
@@ -1114,10 +1114,11 @@ function saveViewportImmediate() {
 function deleteNote(id) {
     showConfirmModal({
         title: 'Delete Note',
-        icon: 'trash',
+        icon: '🗑️',
         message: 'Are you sure you want to remove this sticky note? It will be moved to the Recycle Bin.',
         danger: true,
         confirmText: 'DELETE',
+        confirmIcon: '🗑️',
         hideCancel: true,
         onConfirm: async () => {
             const res = await apiPost('/notes/api/delete', { id: id, canvas_id: STATE.canvas_id });
@@ -1337,8 +1338,7 @@ async function toggleInlineEdit(btn, id) {
     const textarea  = el.querySelector('textarea');
     const titleInp  = el.querySelector('.inline-title-input');
     
-    // Activation Guard: If the note is currently collapsed, expansion is mandatory 
-    // before entering edit mode to prevent dimension corruption in the persistence layer.
+    // Expand collapsed notes before editing to prevent dimension corruption
     if (!el.classList.contains('is-editing') && note.is_collapsed) {
         await toggleCollapse(id);
     }
@@ -1499,7 +1499,7 @@ async function toggleCollapse(id) {
     note.is_collapsed = note.is_collapsed ? 0 : 1;
     el.classList.toggle('collapsed', !!note.is_collapsed);
     
-    // Icon Synchronization: Reflect new state without board re-render
+    // Reflect new collapse state in the toggle button
     const collapseBtn = el.querySelector('.btn-icon-collapse');
     if (collapseBtn) {
         collapseBtn.innerHTML = note.is_collapsed ? '🔻' : '🔺';
@@ -1865,7 +1865,7 @@ function closeCreateModal() {
 function openLayerActionModal(id) {
     window.showConfirmModal({
         title: 'Clone to Level',
-        icon: 'level_copy',
+        icon: '📚',
         message: 'Specify the target level:',
         width: 'small',
         hideCancel: true,
@@ -1874,10 +1874,10 @@ function openLayerActionModal(id) {
         input: {
             type: 'number',
             placeholder: 'Level #',
-            value: STATE.activeLayerId
+            value: ''
         },
-        confirmText: 'Duplicate',
-        confirmIcon: 'level_copy',
+        confirmText: 'Clone',
+        confirmIcon: '📚',
         onConfirm: async (val) => {
             const level = parseInt(val);
             if (isNaN(level) || level < 1 || level > 99) {
@@ -1898,7 +1898,7 @@ function openLayerActionModal(id) {
 window.openJumpToLevelModal = function() {
     window.showConfirmModal({
         title: 'Jump to Level',
-        icon: 'level',
+        icon: '📚',
         message: 'Specify level to view:',
         width: 'small',
         hideCancel: true,
@@ -1909,10 +1909,10 @@ window.openJumpToLevelModal = function() {
             placeholder: 'Level #',
             min: 1,
             max: 99,
-            value: STATE.activeLayerId
+            value: ''
         },
         confirmText: 'Go',
-        confirmIcon: 'home',
+        confirmIcon: '📚',
         onConfirm: async (val) => {
             const level = Math.floor(Math.abs(parseInt(val)));
             if (isNaN(level) || level < 1 || level > 99) {
@@ -2199,7 +2199,7 @@ async function copyNoteId(e, id) {
     
     try {
         await navigator.clipboard.writeText(id);
-        showToast(`📋 Note ID #${id} copied to clipboard`, 'success');
+        showToast(`Note ID #${id} copied to clipboard`, 'success');
     } catch (err) {
         console.error('Copy Note ID failed:', err);
         showToast('Failed to copy ID', 'error');
@@ -2386,12 +2386,12 @@ async function deleteCanvas(e, id) {
     
     window.showConfirmModal({
         title: 'Delete Board?',
-        icon: 'delete',
+        icon: '🗑️',
         message: 'This will permanently destroy all notes and images on this board. This action cannot be undone.',
         danger: true,
         hideCancel: true,
         confirmText: 'DELETE',
-        confirmIcon: 'delete',
+        confirmIcon: '🗑️',
         onConfirm: async () => {
             const res = await apiPost('/notes/api/canvases/delete', { canvas_id: id });
             if (res && res.success) {
@@ -2531,11 +2531,11 @@ function confirmRevoke(canvasId, username) {
         title: 'Revoke Access',
         message: `Are you sure you want to revoke access for <strong>${username}</strong>?`,
         subMessage: 'They will immediately lose all permissions to this board.',
-        icon: 'delete',
+        icon: '🗑️',
         danger: true,
         hideCancel: true,
         confirmText: 'DELETE',
-        confirmIcon: 'delete',
+        confirmIcon: '🗑️',
         onConfirm: async () => {
             await revokeShare(canvasId, username);
         }
@@ -2731,9 +2731,10 @@ function showBoardInfo() {
 
     showConfirmModal({
         title: 'Guide',
-        icon: 'info',
+        icon: 'ℹ️',
         message: helpContent,
         confirmText: 'Got it',
+        confirmIcon: 'ℹ️',
         hideCancel: true,
         width: 'medium'
     });
@@ -2910,9 +2911,10 @@ function renderBin(notes) {
 async function restoreNote(id) {
     showConfirmModal({
         title: 'Restore Note',
-        icon: 'reset',
+        icon: '🔄',
         message: `Restore this note to the current board at level ${STATE.activeLayerId}?`,
         confirmText: 'RESTORE',
+        confirmIcon: '🔄',
         hideCancel: true,
         onConfirm: async () => {
             showLoadingOverlay('Restoring piece...');
@@ -2950,10 +2952,11 @@ async function restoreNote(id) {
 function confirmPurge(id) {
     showConfirmModal({
         title: 'Permanent Delete',
-        icon: 'trash',
+        icon: '🗑️',
         message: 'Are you sure you want to permanently delete this note? This action cannot be undone.',
         danger: true,
         confirmText: 'PURGE',
+        confirmIcon: '🗑️',
         hideCancel: true,
         onConfirm: async () => {
             const res = await apiPost('/notes/api/purge', { id: id });
