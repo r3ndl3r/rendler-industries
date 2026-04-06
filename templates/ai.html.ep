@@ -1,7 +1,7 @@
 <%# /templates/ai.html.ep %>
 
-% layout 'default';
-% title '🧠 Family Pulse AI';
+% layout 'default', hide_navbar_title => 1, favicon => '🧠';
+% title 'Family AI';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/ai.css">
@@ -10,7 +10,7 @@
 
 <div class="ai-container app-container">
     <div class="header-bar">
-        <h1>🤖 <span>AI Assistant</span></h1>
+        <h1>🧠 <span>Family AI</span></h1>
         <div class="manage-actions">
             <button class="btn-secondary" onclick="clearChat()">🗑️ Clear History</button>
         </div>
