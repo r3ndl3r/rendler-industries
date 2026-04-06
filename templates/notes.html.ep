@@ -1,7 +1,7 @@
 <%# /templates/notes.html.ep %>
 
-% layout 'default';
-<% title '📓 Whiteboard'; %>
+% layout 'default', navbar_title => '📒 Notebook', favicon => '📒';
+<% title 'Notebook'; %>
 
 <% content_for 'head' => begin %>
     <link rel="stylesheet" href="/css/notes.css">
@@ -25,7 +25,7 @@
 </div>
 
 <div class="canvas-container" id="canvas-wrapper">
-    <div id="notes-canvas" data-icons='<%== icons_json %>'>
+    <div id="notes-canvas">
         <div id="canvas-skeleton" class="component-loading">
             <div class="loading-scan-line"></div>
             <span class="loading-icon-pulse">📝</span>
