@@ -1,7 +1,7 @@
 <%# /templates/clipboard.html.ep %>
 
-% layout 'default';
-% title '📋 Clipboard';
+% layout 'default', hide_navbar_title => 1, favicon => '📋';
+% title 'Clipboard';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/clipboard.css">
@@ -10,7 +10,7 @@
 
 <div class="admin-container app-container">
     <div class="header-bar">
-        <h1>📋 <span>Instant Cloud Clipboard</span></h1>
+        <h1>📋 <span>Clipboard</span></h1>
         <div class="manage-actions">
             <button class="action-btn" onclick="openModal()">+ Add</button>
         </div>
