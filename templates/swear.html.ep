@@ -1,7 +1,7 @@
 <%# /templates/swear.html.ep %>
 
-% layout 'default';
-<% title '🤬 Swear Jar'; %>
+% layout 'default', hide_navbar_title => 1, favicon => '🤬';
+<% title 'Swear Jar'; %>
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/swear.css">
@@ -10,7 +10,7 @@
 
 <div class="swear-container app-container">
     <div class="header-bar">
-        <h1>🤬 <span>The Fine Jar</span></h1>
+        <h1>🤬 <span>Swear Jar</span></h1>
         <div class="manage-actions">
             <button class="btn-secondary toggle-view-btn" id="toggleViewBtn" onclick="SwearModule.toggleView()">
                 <span class="view-dashboard-text">⚙️ Manage</span>
