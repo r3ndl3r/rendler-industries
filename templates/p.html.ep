@@ -1,7 +1,7 @@
 <%# /templates/p.html.ep %>
 
-% layout 'default';
-% title '🔒 Phone Numbers';
+% layout 'default', hide_navbar_title => 1, favicon => '📞';
+% title 'Phone Numbers';
 
 % content_for 'head' => begin
     <style>
@@ -88,7 +88,7 @@
 % end
 
 <div class="phone-container">
-    <h1>📱 Phone Numbers</h1>
+    <h1>📞 Phone Numbers</h1>
     
     <div class="contact-card">
         <div class="contact-name">👨 DAD</div>
