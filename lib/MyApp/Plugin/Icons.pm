@@ -48,6 +48,24 @@ sub register {
         return { users => $user_icons };
     });
 
+    # render_favicon($optional_emoji) - Renders SVG-based emoji favicon Data URI.
+    # Pattern: <%= render_favicon '🚀' %> OR <%= render_favicon %> (uses $c->stash('favicon'))
+    # Fallback: If no emoji is provided, it returns the global /favicon.ico link.
+    $app->helper(render_favicon => sub {
+        my ($c, $emoji) = @_;
+        my $e = $emoji // $c->stash('favicon');
+        
+        # If no emoji is provided or stashed, fallback to the legacy physical favicon
+        unless ($e) {
+            return Mojo::ByteStream->new('<link rel="icon" href="/favicon.ico" type="image/x-icon">');
+        }
+
+        # Use an SVG Data URI to render the emoji as a sharp, high-res favicon.
+        my $svg = qq{<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>$e</text></svg>">};
+        
+        return Mojo::ByteStream->new($svg);
+    });
+
     # 3. Scheduled Background Refresh (Every 5 minutes)
     Mojo::IOLoop->recurring(300 => sub {
         eval {
