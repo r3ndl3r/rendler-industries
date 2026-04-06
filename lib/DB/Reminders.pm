@@ -184,7 +184,7 @@ sub DB::get_due_reminders {
         WHERE r.is_active = 1
           AND FIND_IN_SET(?, r.days_of_week)
           AND r.reminder_time LIKE ?
-          AND (r.last_run_at IS NULL OR DATE(r.last_run_at) < CURRENT_DATE)
+          AND (r.last_run_at IS NULL OR r.last_run_at < DATE_SUB(NOW(), INTERVAL 12 HOUR))
     };
     
     return $self->{dbh}->selectall_arrayref($sql, { Slice => {} }, $day_num, "$current_time%");
