@@ -1,7 +1,7 @@
 <%# /templates/notifications.html.ep %>
 
-% layout 'default';
-% title '🔔 Notification History';
+% layout 'default', hide_navbar_title => 1, favicon => '🔔';
+% title 'Notifications';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/notifications.css">
@@ -10,7 +10,7 @@
 
 <div class="app-container">
     <div class="header-bar">
-        <h1>🔔 <span>Live Alerts</span></h1>
+        <h1>🔔 <span>Notifications</span></h1>
         <div class="manage-actions">
             <button type="button" class="action-btn btn-danger-soft" onclick="openPruneModal()">
                 🗑️ Prune Logs
