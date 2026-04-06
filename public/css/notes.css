@@ -730,6 +730,11 @@
     transform: scale(1.02); /* Subtle hover parallax effect */
 }
 
+.sticky-note.is-editing .btn-icon-collapse {
+    pointer-events: none;
+    opacity: 0.3;
+}
+
 /* State-Driven Collapse Toggle */
 .sticky-note.collapsed {
     height: auto !important;
