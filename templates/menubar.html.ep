@@ -3,9 +3,11 @@
 <div class="navbar">   
     <div class="navbar-brand">
         <button class="menu-btn" onclick="toggleMenu()">☰</button>
-        <div class="navbar-title">
-            <%= title %>
-        </div>
+        <% unless (stash('hide_navbar_title')) { %>
+            <div class="navbar-title">
+                <%= stash('navbar_title') // title %>
+            </div>
+        <% } %>
     </div>
     <a href="<%= is_logged_in() ? '/quick' : '/' %>" class="navbar-home" title="Home">
         <img src="/files/serve/53" alt="Home">
