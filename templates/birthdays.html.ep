@@ -1,7 +1,7 @@
 <%# /templates/birthdays.html.ep %>
 
-% layout 'default';
-% title '🎂 Birthdays';
+% layout 'default', hide_navbar_title => 1, favicon => '🎂';
+% title 'Birthdays';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/birthdays.css">
