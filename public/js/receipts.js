@@ -249,7 +249,7 @@ function renderReceipts(append = false, batch = null) {
                 <div class="store-icon-wrapper">
                     ${getStoreLogoHtml(r.store_name)}
                     <strong>${escapeHtml(r.store_name || 'Unknown')}</strong>
-                    ${r.ai_json ? `<span class="ai-badge" title="AI Digitized">🤖</span>` : ''}
+                    ${r.ai_json ? `<span class="ai-badge" title="AI Digitized">🧠</span>` : ''}
                 </div>
                 ${r.description ? `<br><small class="receipt-description">${escapeHtml(r.description)}</small>` : ''}
             </td>
@@ -265,7 +265,7 @@ function renderReceipts(append = false, batch = null) {
                             data-ai-json="${escapeHtml(r.ai_json || "")}"
                             data-store-icon="${getStoreLogoUrl(r.store_name)}"
                             onclick="viewElectronicReceipt(this.dataset.receiptId, 0, this.dataset.aiJson, this.dataset.storeIcon)" 
-                            title="Electronic">🤖</button>
+                            title="Electronic">🧠</button>
                     ${(r.uploaded_by === STATE.currentUser || STATE.isAdmin) ? `
                         <button type="button" class="btn-icon-crop" onclick="openCropModal('${r.id}')" title="Refine">✂️</button>
                         <button type="button" class="btn-icon-bonus" onclick="triggerOCR('${r.id}')" title="OCR Scan" id="ocr-btn-${r.id}">🔍</button>
