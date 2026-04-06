@@ -1,7 +1,7 @@
 <%# /templates/quiz/questions.html.ep %>
 
-% layout 'default';
-% title '🦘 Australian Citizenship Quiz';
+% layout 'default', hide_navbar_title => 1, favicon => '🦘';
+% title 'Australian Citizenship Quiz';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/quiz/questions.css">
