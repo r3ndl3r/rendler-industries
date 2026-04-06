@@ -90,28 +90,35 @@
 /* Vertical Level Selection Stack (Left Anchor) */
 .level-switcher-container {
     position: fixed;
-    left: 12px;
+    left: 20px;
     top: 50%;
     transform: translateY(-50%);
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start; /* Stabilize button alignment */
     gap: 0.5rem;
-    padding: 0.8rem 0.6rem; /* Balanced, symmetrical padding for arrow-centric UI */
-    background: rgba(15, 23, 42, 0.7);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 100px;
+    padding: 0;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
     z-index: 10000;
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6),
-                inset 0 0 15px rgba(255, 255, 255, 0.03);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .level-tracks {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start; /* Anchor all controls to the left */
     gap: 0.5rem;
+}
+
+.level-column-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centrally-center relative to each other's axes */
+    gap: 0.5rem;
+    width: 2.75rem; /* Match parent/button width */
 }
 
 .level-btn {
@@ -147,22 +154,56 @@
 }
 
 .level-indicator-pill {
-    width: 2.75rem;
+    width: auto;
+    min-width: 2.75rem;
     height: 2.75rem;
-    border-radius: 50%;
-    background: #3b82f6;
-    border: 1px solid #60a5fa;
+    padding: 0 0.5rem;
+    border-radius: 100px;
+    background: rgba(59, 130, 246, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(59, 130, 246, 0.4);
     color: #fff;
     font-weight: 800;
     font-size: 0.95rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2),
+                inset 0 0 10px rgba(59, 130, 246, 0.1);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
     user-select: none;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.level-num {
+    font-weight: 800;
+}
+
+.level-alias {
+    font-size: 0.75rem;
+    font-weight: 600;
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.9;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+}
+
+.btn-level-rename {
+    width: 2.2rem !important;
+    height: 2.2rem !important;
+    font-size: 0.9rem !important;
+    background: rgba(30, 41, 59, 0.6) !important;
+    opacity: 0.5;
+}
+
+.btn-level-rename:hover {
+    opacity: 1;
+    background: rgba(59, 130, 246, 0.4) !important;
 }
 
 .fab-btn {
@@ -2347,3 +2388,74 @@ input:checked + .switch-sm .slider:before {
     height: 75vh;
 }
 
+
+/* Quick Access Modal Components */
+.modal-prompt-row {
+    display: flex !important;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 24px !important;
+}
+
+.modal-prompt-row .modal-prompt-input {
+    flex: 1;
+    margin-bottom: 0 !important;
+}
+
+.modal-divider-short {
+    width: 60%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4), transparent);
+    margin: 1.5rem auto;
+    border: none;
+}
+
+.quick-jump-section {
+    width: 100%;
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+.quick-jump-title {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.quick-jump-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 0.25rem;
+}
+
+.quick-jump-link {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+    padding: 0.4rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+}
+
+.quick-jump-link:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+.quick-jump-link:active {
+    transform: translateY(0);
+}
