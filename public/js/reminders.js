@@ -466,7 +466,9 @@ function getNextOccurrence(timeStr, daysStr, lastRunAt = '') {
     let hasRunToday = false;
     if (lastRunAt) {
         const lastRun = new Date(lastRunAt.replace(' ', 'T'));
-        if (lastRun.toDateString() === now.toDateString()) hasRunToday = true;
+        const todayAtTarget = new Date(now);
+        todayAtTarget.setHours(h, m, 0, 0);
+        if (lastRun >= todayAtTarget) hasRunToday = true;
     }
 
     for (let offset = 0; offset <= 7; offset++) {
