@@ -2016,6 +2016,25 @@ function openLayerActionModal(id) {
  * @returns {void}
  */
 window.openJumpToLevelModal = function() {
+    // Internal: Shared Modal Cleanup Engine
+    // Restores the global modal to its default state after custom layout modifications.
+    const cleanupModal = () => {
+        const promptContainer = document.getElementById('globalConfirmPromptContainer');
+        const actionsContainer = document.getElementById('globalConfirmModalActions');
+        const modalContent = document.getElementById('globalConfirmModalContent');
+
+        if (promptContainer) {
+            promptContainer.classList.remove('modal-prompt-row');
+            const goBtn = promptContainer.querySelector('.btn-go-row');
+            if (goBtn) goBtn.remove();
+        }
+        if (actionsContainer) actionsContainer.classList.remove('hidden');
+        if (modalContent) {
+            const injection = modalContent.querySelector('.quick-access-injection');
+            if (injection) injection.remove();
+        }
+    };
+
     // Analytics: Identify all layers that currently contain notes, excluding the active one
     const activeLayers = [...new Set(STATE.notes.map(n => n.layer_id))]
         .filter(id => id != STATE.activeLayerId)
@@ -2038,12 +2057,14 @@ window.openJumpToLevelModal = function() {
         },
         confirmText: 'Go',
         confirmIcon: '📚',
+        onCancel: cleanupModal, // Clean up if dismissed via Esc/X/Overlay
         onConfirm: async (val) => {
             const level = Math.floor(Math.abs(parseInt(val)));
             if (isNaN(level) || level < 1 || level > 99) {
                 showToast('Please enter a valid level (1-99)', 'error');
                 throw new Error('Invalid level');
             }
+            cleanupModal(); // Clean up before navigation/close
             await window.switchLevel(level);
         }
     });
@@ -2070,6 +2091,7 @@ window.openJumpToLevelModal = function() {
                 if (isNaN(level) || level < 1 || level > 99) {
                     showToast('Please enter a valid level (1-99)', 'error');
                 } else {
+                    cleanupModal(); // Local cleanup before closure
                     window.switchLevel(level);
                     window.closeConfirmModal();
                 }
@@ -2094,7 +2116,7 @@ window.openJumpToLevelModal = function() {
                         ${activeLayers.map(id => {
                             const alias = STATE.layer_map[id];
                             const label = alias ? `${id} - ${alias}` : `Level ${id}`;
-                            return `<a href="javascript:void(0)" class="quick-jump-link" onclick="window.switchLevel(${id}); window.closeConfirmModal();">${window.escapeHtml(label)}</a>`;
+                            return `<a href="javascript:void(0)" class="quick-jump-link" onclick="(${cleanupModal.toString()})(); window.switchLevel(${id}); window.closeConfirmModal();">${window.escapeHtml(label)}</a>`;
                         }).join('')}
                     </div>
                 </div>
