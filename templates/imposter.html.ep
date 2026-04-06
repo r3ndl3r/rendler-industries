@@ -1,7 +1,7 @@
 <%# /templates/imposter.html.ep %>
 
-% layout 'default';
-% title '👨‍🚀 Imposter';
+% layout 'default', hide_navbar_title => 1, favicon => '🕵️';
+% title 'Imposter';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/imposter.css">
