@@ -276,11 +276,11 @@
         word-break: break-all !important;
     }
     
+    /* Anchor action button to top-right on mobile cards */
     .col-actions { 
         position: absolute;
-        top: 50%;
+        top: 1.25rem;
         right: 1rem;
-        transform: translateY(-50%);
         width: auto !important;
         padding: 0 !important;
         display: flex !important;
@@ -300,7 +300,28 @@
     .detail-item.full-width { grid-column: auto; }
 }
 
-/* Local Utilities */
+/* Utility Alignment (Local) */
 .text-left { text-align: left !important; }
 .text-center { text-align: center !important; }
 .text-right { text-align: right !important; }
+
+/* Aggressive Detail Modal Spacing Reductions */
+#detailModal .modal-content {
+    padding: 1rem !important;
+    max-width: 450px;
+}
+
+#detailModal .modal-header {
+    margin-bottom: 0.75rem !important;
+    padding-bottom: 0.5rem !important;
+}
+
+#detailModal .modal-body {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+#detailModal .detail-grid {
+    gap: 0 !important;
+    display: block !important;
+}
