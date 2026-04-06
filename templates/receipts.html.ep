@@ -1,7 +1,7 @@
 <%# /templates/receipts.html.ep %>
 
-% layout 'default';
-% title '🧾 Shopping Receipts Ledger';
+% layout 'default', hide_navbar_title => 1, favicon =>  '🧾' ;
+% title 'Shopping Receipts Ledger';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/files.css">
