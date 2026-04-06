@@ -1,7 +1,7 @@
 <%# /templates/points.html.ep %>
 
-% layout 'default';
-% title '🏆 Point Standings';
+% layout 'default', hide_navbar_title => 1, favicon => '🪙';
+% title 'Points';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/points.css">
@@ -10,14 +10,14 @@
 
 <div class="app-container">
     <div class="header-bar">
-        <h1>🏆 <span>Point Standings</span></h1>
+        <h1>🪙 <span>Points</span></h1>
         <div class="manage-actions">
         </div>
     </div>
 
     <div id="points-loading" class="component-loading">
         <div class="loading-scan-line"></div>
-        <span class="loading-icon-pulse">💰</span>
+        <span class="loading-icon-pulse">🪙</span>
         <p class="loading-label">Synchronizing point ledger...</p>
     </div>
 
