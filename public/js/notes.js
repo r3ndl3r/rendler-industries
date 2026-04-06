@@ -31,6 +31,7 @@ const STATE = {
     isResizing:     false,          // Note Dimensions State
     isEditingNote:  false,          // Inline Editor Active State
     activeLayerId:  1,               // Level Isolation Filter (1-99)
+    layer_map:      {},              // Shared Level Aliases { layer_id => alias }
     isSwitchingLayer: false,         // Interaction Guard: Prevents overlapping transitions
     note_map:       {},              // Metadata Registry for [note:#] resolution
     autoScroll: {
@@ -258,6 +259,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             // State Synchronization: Baseline alignment with backend truth
             STATE.last_mutation = data.last_mutation;
             STATE.note_map      = data.note_map || {};
+            STATE.layer_map     = data.layer_map || {};
 
             STATE.share_list = data.share_list || [];
             
@@ -286,9 +288,8 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                 if (data.viewport.layer_id) {
                     STATE.activeLayerId = parseInt(data.viewport.layer_id);
                     
-                    // Update the new Directional Indicator
-                    const display = document.getElementById('level-display');
-                    if (display) display.textContent = `${STATE.activeLayerId}`;
+                    // Update the new Directional Indicator with alias awareness
+                    updateLevelDisplay();
                 }
 
                 requestAnimationFrame(() => {
@@ -2015,6 +2016,11 @@ function openLayerActionModal(id) {
  * @returns {void}
  */
 window.openJumpToLevelModal = function() {
+    // Analytics: Identify all layers that currently contain notes, excluding the active one
+    const activeLayers = [...new Set(STATE.notes.map(n => n.layer_id))]
+        .filter(id => id != STATE.activeLayerId)
+        .sort((a,b) => a - b);
+
     window.showConfirmModal({
         title: 'Jump to Level',
         icon: '📚',
@@ -2041,6 +2047,64 @@ window.openJumpToLevelModal = function() {
             await window.switchLevel(level);
         }
     });
+
+    // Interaction UX: Move the Go button next to the input for a more compact row
+    const promptContainer = document.getElementById('globalConfirmPromptContainer');
+    const actionsContainer = document.getElementById('globalConfirmModalActions');
+    const promptInput     = document.getElementById('globalConfirmPromptInput');
+
+    if (promptContainer && actionsContainer && promptInput) {
+        // Hide standard actions and switch prompt to a row layout
+        actionsContainer.classList.add('hidden');
+        promptContainer.classList.add('modal-prompt-row');
+
+        // Inject the Go button next to the input if not already present
+        if (!promptContainer.querySelector('.btn-go-row')) {
+            const goBtn = document.createElement('button');
+            goBtn.className = 'btn-primary btn-go-row';
+            goBtn.innerHTML = '➤ Go';
+            goBtn.style.padding = '0.75rem 1.25rem';
+            goBtn.onclick = () => {
+                const val = promptInput.value;
+                const level = Math.floor(Math.abs(parseInt(val)));
+                if (isNaN(level) || level < 1 || level > 99) {
+                    showToast('Please enter a valid level (1-99)', 'error');
+                } else {
+                    window.switchLevel(level);
+                    window.closeConfirmModal();
+                }
+            };
+            promptContainer.appendChild(goBtn);
+        }
+    }
+
+    // UX Enhancement: Inject the Quick Access section if active layers are detected
+    if (activeLayers.length > 0) {
+        const modalContent = document.getElementById('globalConfirmModalContent');
+        if (modalContent) {
+            // Sanitization: Remove any previous injections to prevent duplication
+            const existing = modalContent.querySelector('.quick-access-injection');
+            if (existing) existing.remove();
+
+            const quickAccessHtml = `
+                <hr class="modal-divider-short">
+                <div class="quick-jump-section">
+                    <div class="quick-jump-title">🚀 QUICK ACCESS</div>
+                    <div class="quick-jump-list">
+                        ${activeLayers.map(id => {
+                            const alias = STATE.layer_map[id];
+                            const label = alias ? `${id} - ${alias}` : `Level ${id}`;
+                            return `<a href="javascript:void(0)" class="quick-jump-link" onclick="window.switchLevel(${id}); window.closeConfirmModal();">${window.escapeHtml(label)}</a>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+            const div = document.createElement('div');
+            div.className = 'quick-access-injection';
+            div.innerHTML = quickAccessHtml;
+            modalContent.appendChild(div);
+        }
+    }
 }
 
 /**
@@ -2162,6 +2226,81 @@ window.moveLevel = async function(direction) {
 }
 
 /**
+ * Updates the visual level indicator, displaying descriptive aliases if configured.
+ * @returns {void}
+ */
+function updateLevelDisplay() {
+    const display = document.getElementById('level-display');
+    if (!display) return;
+    
+    // Retrieve the shared alias from the global metadata map
+    const alias = STATE.layer_map[STATE.activeLayerId];
+    
+    if (alias) {
+        // High-Fidelity Branding: Show Level Number + Descriptive Alias
+        display.innerHTML = `<span class="level-num">${STATE.activeLayerId}</span>&nbsp;-&nbsp;<span class="level-alias">${window.escapeHtml(alias)}</span>`;
+        display.title = `Level ${STATE.activeLayerId}: ${alias} (Click to Jump/Rename)`;
+    } else {
+        // Minimalist Fallback: Show Number Only
+        display.textContent = `${STATE.activeLayerId}`;
+        display.title = `Level ${STATE.activeLayerId} (Click to Jump/Rename)`;
+    }
+}
+
+/**
+ * Opens the interactive level renaming modal.
+ * Persists the new alias to the shared canvas_layers registry.
+ * @returns {void}
+ */
+window.renameCurrentLevel = function() {
+    const currentAlias = STATE.layer_map[STATE.activeLayerId] || '';
+    
+    // Permission Pre-flight: Check if user has edit access to the board
+    const currentCanvas = STATE.canvases.find(c => c.id == STATE.canvas_id);
+    if (currentCanvas && !currentCanvas.can_edit) {
+        showToast('You do not have permission to rename levels on this board.', 'error');
+        return;
+    }
+
+    window.showConfirmModal({
+        title: 'Rename Level ' + STATE.activeLayerId,
+        icon: '✏️',
+        message: 'Enter a descriptive name for this level:',
+        width: 'small',
+        autoFocus: true,
+        hideCancel: true, // Simplified UI: No cancel button
+        input: {
+            type: 'text',
+            placeholder: 'Level Name (e.g. Household Admin)',
+            value: currentAlias,
+            maxLength: 100
+        },
+        confirmText: 'Save', // Cleaned up label
+        onConfirm: async (newName) => {
+            try {
+                const res = await apiPost('/notes/api/layer/rename', {
+                    canvas_id: STATE.canvas_id,
+                    layer_id: STATE.activeLayerId,
+                    name: newName.trim()
+                });
+                
+                if (res && res.success) {
+                    // Update global state and re-render display
+                    STATE.layer_map = res.layer_map || {};
+                    updateLevelDisplay();
+                    showToast('Level renamed successfully', 'success');
+                } else {
+                    showToast(res.error || 'Failed to rename level', 'error');
+                }
+            } catch (e) {
+                console.error('Rename failure:', e);
+                showToast('Network error during rename', 'error');
+            }
+        }
+    });
+}
+
+/**
  * Discovery Engine: Orchestrates local filtering or global board-wide search.
  * @param {string} queryText - The raw search input.
  * @returns {void}
@@ -2226,8 +2365,7 @@ function renderSearchResults(results, isGlobal) {
                 <div class="search-result-path">
                     📓 ${escapeHtml(note.canvas_name || 'Board')} 
                     <span class="path-separator">❯</span> 
-                    Level ${note.layer_id || 1} 
-                    <span class="path-separator">❯</span>
+                    Level ${note.layer_id || 1}${note.layer_alias ? ` - ${escapeHtml(note.layer_alias)}` : ''} 
                 </div>
                 <div class="search-result-title">${escapeHtml(note.title || 'Untitled Note')}</div>
                 <div class="search-result-snippet">${escapeHtml(note.content || '').substring(0, 80)}${note.content && note.content.length > 80 ? '...' : ''}</div>
