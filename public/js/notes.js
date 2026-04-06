@@ -12,7 +12,7 @@ const STATE = {
     notes:      [],
     editMode:   true,     // Permanent Edit Mode: Always draggable
     user_id:    null,
-    canvasSize: 5000,
+    canvasSize: 50000,
     snapGrid:   10,
     scale:      1.0,      // Current CSS transform scale
     canvas_id:  null,     // Active Whiteboard Context (Dynamic resolution)
