@@ -13,14 +13,28 @@
     border: none; /* Edget-to-edge parity */
 }
 
-#notes-canvas {
-    width: 5000px;
-    height: 5000px;
+#canvas-wrapper {
     position: relative;
+}
+
+#notes-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5000px !important;
+    height: 5000px !important;
+    transform-origin: 0 0;
     /* 10px Grid Feedback */
     background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
     background-size: 20px 20px;
     cursor: grab;
+    z-index: 1;
+}
+
+#canvas-scroll-spacer {
+    position: relative;
+    pointer-events: none;
+    z-index: 0;
 }
 
 /* Floating Board Branding Pill - Center Top (Under Menubar) */
