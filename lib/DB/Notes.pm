@@ -518,20 +518,31 @@ sub DB::rename_canvas {
 # Returns:
 #   String : ISO-8601 formatted timestamp or undef.
 sub DB::get_board_mutation_time {
-    my ($self, $id) = @_;
+    my ($self, $canvas_id, $layer_id) = @_;
     $self->ensure_connection;
 
-    # Aggregate Check: Determine 'freshness' from both canvas metadata and note content
+    # Aggregate Check: Determine 'freshness' from both canvas metadata and layer-specific content
+    # If layer_id is omitted, we check board-wide for global context (Initial Load).
+    # If provided, we isolate triggers to the user's active perspective.
     my $sql = "SELECT GREATEST(
                     COALESCE(MAX(c.updated_at), '1970-01-01 00:00:00'),
                     COALESCE(MAX(n.updated_at), '1970-01-01 00:00:00')
                ) as last_mutation
-               FROM canvases c
-               LEFT JOIN notes n ON n.canvas_id = c.id
-               WHERE c.id = ?";
+               FROM canvases c";
+    
+    my $join_on = "n.canvas_id = c.id";
+    my @params;
+    
+    if ($layer_id) {
+        $join_on .= " AND n.layer_id = ?";
+        push @params, $layer_id;
+    }
+    
+    $sql .= " LEFT JOIN notes n ON $join_on WHERE c.id = ?";
+    push @params, $canvas_id;
     
     my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute($id);
+    $sth->execute(@params);
     my ($time) = $sth->fetchrow_array();
     
     return $time;
