@@ -172,11 +172,20 @@ function viewDetails(id) {
     if (!log) return;
 
     const content = document.getElementById('detailContent');
+    if (!content) return;
 
     content.innerHTML = `
-        <div class="detail-item full-width">
-            <div class="empty-state">🔔 No pending notifications.</div>
+        <div class="detail-item full-width" style="margin: 0; padding: 0;">
+            <div class="detail-value message-full-box" style="margin: 0; padding: 0; border: none; background: transparent; line-height: 1.4;">${escapeHtml(log.message || '')}</div>
         </div>
+        ${log.status === 'failed' && log.error_log ? `
+            <div class="detail-item full-width" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <label style="font-size: 0.6rem; opacity: 0.4; margin-bottom: 0.25rem;">Error Trace</label>
+                <div class="detail-value error-box" style="padding: 0.4rem; font-size: 0.75rem; border-radius: 4px;">
+                    ${escapeHtml(log.error_log)}
+                </div>
+            </div>
+        ` : ''}
     `;
 
     document.getElementById('detailModal').classList.add('show');
