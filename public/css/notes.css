@@ -143,6 +143,13 @@
     transform: scale(1.1);
 }
 
+.level-btn.active {
+    background: rgba(59, 130, 246, 0.3) !important;
+    color: #3b82f6 !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+}
+
 .level-btn:active {
     transform: scale(0.95);
 }
@@ -230,6 +237,84 @@
 .btn-level-rename:hover {
     opacity: 1;
     background: rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Canvas Radar (Minimap) Styling - Toggle Drawer Mode */
+.radar-minimap-container {
+    position: fixed;
+    top: 65px; 
+    left: -160px; /* Fully docked: only the handle sticks out */
+    width: 160px;
+    height: 160px;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-left: none;
+    border-radius: 0 12px 12px 0;
+    z-index: 9500; 
+    overflow: visible; /* Required to show the handle when docked */
+    cursor: crosshair;
+    box-shadow: 5px 0 20px rgba(0, 0, 0, 0.4);
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.radar-minimap-container.is-open {
+    left: 0;
+    background: rgba(15, 23, 42, 0.7);
+    border-color: rgba(59, 130, 246, 0.6);
+    box-shadow: 10px 0 40px rgba(0, 0, 0, 0.8);
+}
+
+/* Tactile Handle: The click-target for visibility */
+.radar-handle {
+    position: absolute;
+    top: 10px;
+    right: -32px;
+    width: 32px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    z-index: 9501;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+}
+
+.radar-handle:hover {
+    background: rgba(59, 130, 246, 0.4);
+    color: #fff;
+}
+
+#radar-pings {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#radar-viewport {
+    position: absolute;
+    border: 1.5px solid #3b82f6;
+    background: rgba(59, 130, 246, 0.12); /* Slightly higher visibility for scrubbing */
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.4),
+                inset 0 0 5px rgba(59, 130, 246, 0.1);
+    pointer-events: auto; /* Required for grabbing/scrubbing */
+    cursor: grab;
+    z-index: 2;
+    border-radius: 2px;
+}
+
+#radar-viewport:active {
+    cursor: grabbing;
 }
 
 .fab-btn {
