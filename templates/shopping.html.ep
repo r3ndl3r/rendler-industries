@@ -1,7 +1,7 @@
 <%# /templates/shopping.html.ep %>
 
-% layout 'default';
-% title '🛒 Shopping List';
+% layout 'default', hide_navbar_title => 1, favicon => '🛒';
+% title 'Shopping List';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/shopping.css">
