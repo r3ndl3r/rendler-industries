@@ -1,7 +1,7 @@
 <%# /templates/weather.html.ep %>
 
-% layout 'default';
-<% title '☀️ Weather Dashboard'; %>
+% layout 'default', hide_navbar_title => 1, favicon => '☀️';
+<% title 'Weather Dashboard'; %>
 
 % content_for 'head' => begin
   <link rel="stylesheet" href="/css/weather.css">
@@ -11,7 +11,7 @@
 
 <div class="weather-container app-container">
   <div class="header-bar">
-    <h1>☀️ <span>Weather Locations</span></h1>
+    <h1>☀️ <span>Weather Dashboard</span></h1>
     <% if (is_admin) { %>
     <div class="manage-actions">
         <button class="btn-primary" id="btnShowAddLocation" title="Track New Location">
