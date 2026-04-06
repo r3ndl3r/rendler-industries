@@ -1,7 +1,7 @@
 <%# /templates/timers/dashboard.html.ep %>
 
-% layout 'default';
-% title '🕒 My Timers';
+% layout 'default', hide_navbar_title => 1, favicon => '🕒';
+% title 'My Timers';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/timers.css">
