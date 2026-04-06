@@ -1,7 +1,7 @@
 <%# /templates/todo.html.ep %>
 
-% layout 'default';
-% title '✅ Todo List';
+% layout 'default', hide_navbar_title => 1, favicon => '✅';
+% title 'Todo';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/todo.css">
@@ -10,7 +10,7 @@
 
 <div class="todo-container app-container">
     <div class="header-bar">
-        <h1>✅ <span>Todo List</span></h1>
+        <h1>✅ <span>Todo</span></h1>
         <div class="manage-actions"></div>
     </div>
 
