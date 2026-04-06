@@ -174,23 +174,49 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
     user-select: none;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.level-indicator-pill:hover,
+.level-indicator-pill.is-active {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), 
+                inset 0 0 15px rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.8);
+    background: rgba(59, 130, 246, 0.25);
 }
 
 .level-num {
     font-weight: 800;
 }
 
+/* Layer Alias Transition Logic */
+.level-alias-meta {
+    display: inline-flex;
+    align-items: center;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 1;
+    max-width: 300px; /* Expand to reveal */
+}
+
+/* Hidden State: Triggered after 2 seconds via JS or default */
+.level-alias-meta.is-hidden {
+    opacity: 0;
+    max-width: 0;
+    pointer-events: none;
+}
+
+/* Interaction: reveal on hover regardless of auto-hide state */
+.level-indicator-pill:hover .level-alias-meta {
+    opacity: 1 !important;
+    max-width: 300px !important;
+}
+
 .level-alias {
     font-size: 0.75rem;
-    font-weight: 600;
-    max-width: 120px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    opacity: 0.9;
+    font-weight: 500;
     letter-spacing: 0.02em;
-    pointer-events: none;
 }
 
 .btn-level-rename {
