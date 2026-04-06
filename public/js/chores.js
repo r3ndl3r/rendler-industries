@@ -147,8 +147,7 @@ function renderChores() {
 
     grid.innerHTML = STATE.active_chores.map(c => {
         const isTargeted = !!c.assigned_to;
-        const iconName = isTargeted ? (c.assigned_username?.toLowerCase() || 'user') : 'globe';
-        const iconHtml = window.getUserIcon(iconName) || '🌐';
+        const iconHtml = isTargeted ? window.getUserIcon(c.assigned_username) : '🌍';
         const badgeText = isTargeted 
             ? ((STATE.is_admin && !STATE.is_child) ? `Assigned to ${escapeHtml(c.assigned_username || 'User')}` : 'Assigned to You')
             : 'Global Chore';
@@ -378,8 +377,7 @@ function renderQuickAdd() {
     }
 
     container.innerHTML = STATE.quick_add_chores.map(c => {
-        const iconName = c.assigned_username ? c.assigned_username.toLowerCase() : 'globe';
-        const iconHtml = window.getUserIcon(iconName) || '🌐';
+        const iconHtml = c.assigned_username ? window.getUserIcon(c.assigned_username) : '🌍';
         return `
             <div class="repost-item" onclick="fillChoreForm('${escapeHtml(c.title)}', ${c.points}, '${c.assigned_to || ''}')">
                 <span class="repost-icon">${iconHtml}</span>
