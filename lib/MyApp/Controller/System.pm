@@ -59,7 +59,7 @@ sub run_chore_reminders {
     my $stale_chores = $c->db->get_stale_chores_and_mark();
     return unless @$stale_chores;
 
-    my $admins = $c->db->get_admins() || [];
+    my $kids = $c->db->get_child_users() || [];
 
     for my $chore (@$stale_chores) {
         my $target_name = $chore->{target_user} // 'Everyone';
@@ -73,8 +73,8 @@ sub run_chore_reminders {
         if ($chore->{assigned_to}) {
             $c->notify_user($chore->{assigned_to}, $msg, "Pending Chore: $chore->{title}");
         } else {
-            for my $admin (@$admins) {
-                $c->notify_user($admin->{id}, $msg, "Pending Chore: $chore->{title}");
+            for my $k (@$kids) {
+                $c->notify_user($k->{id}, $msg, "Pending Chore: $chore->{title}");
             }
         }
         $c->app->log->info("Chores: Automated nag dispatched for chore $chore->{id}.");
