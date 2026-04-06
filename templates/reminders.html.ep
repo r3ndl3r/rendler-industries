@@ -1,7 +1,7 @@
 <%# /templates/reminders.html.ep %>
 
-% layout 'default';
-% title '🔔 Manage Reminders';
+% layout 'default', hide_navbar_title => 1, favicon => '🔔';
+% title 'Reminders';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/reminders.css">
