@@ -9,7 +9,7 @@
 
     <script>const APP_TZ = "<%= config 'timezone' %>";</script>
 
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <%= render_favicon %>
     <meta name="csrf-token" content="<%= csrf_token %>">
 
     <%# Global Style Dependencies %>
