@@ -88,6 +88,7 @@ sub api_state {
         viewport      => $viewport,
         share_list    => $share_list,
         note_map      => $c->db->get_all_accessible_note_metadata($user_id),
+        layer_map     => $c->db->get_canvas_layers($cid),
         last_mutation => $c->db->get_board_mutation_time($cid)
     });
 }
@@ -462,6 +463,38 @@ sub api_purge {
         $c->render(json => { success => 1 });
     } else {
         $c->render(json => { success => 0, error => 'Purge Failed or Permission Denied' });
+    }
+}
+
+# Updates the descriptive name for a specific board level.
+# Route: POST /notes/api/layer/rename
+sub api_layer_rename {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id();
+    my $canvas_id = $c->param('canvas_id');
+    my $layer_id  = int($c->param('layer_id') // 0);
+    my $name      = trim($c->param('name') // '');
+
+    # Logic-Pure Validation: Layers must be in the 1-99 range
+    return $c->render(json => { success => 0, error => 'Invalid level' }) if $layer_id < 1 || $layer_id > 99;
+    
+    # 1. Authority Check: Requires EDIT access to the targeted board
+    unless ($c->db->check_canvas_access($canvas_id, $user_id, 1)) {
+        return $c->render(json => { success => 0, error => 'Permission Denied' }, status => 403);
+    }
+
+    if ($c->db->save_layer_alias($canvas_id, $layer_id, $name)) {
+        # Global sync pulse
+        $c->db->touch_canvas($canvas_id);
+        
+        $c->render(json => { 
+            success   => 1, 
+            layer_map => $c->db->get_canvas_layers($canvas_id) 
+        });
+    } else {
+        $c->render(json => { success => 0, error => 'Update failed' });
     }
 }
 
