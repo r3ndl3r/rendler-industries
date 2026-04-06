@@ -1,7 +1,7 @@
 <%# /templates/meals.html.ep %>
 
-% layout 'default';
-<% title '🍲 Meal Planner'; %>
+% layout 'default', hide_navbar_title => 1, favicon => '🍽️';
+<% title 'Meals Planner'; %>
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/meals.css">
@@ -10,7 +10,7 @@
 
 <div class="meals-container app-container">
     <div class="header-bar">
-        <h1>🍲 <span>Family Table</span></h1>
+        <h1>🍽️ <span>Meals Planner</span></h1>
         <div class="header-meta">
             <%# Admin Management Actions %>
             <div id="adminActions" class="manage-actions">
