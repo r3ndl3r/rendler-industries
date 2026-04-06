@@ -174,6 +174,23 @@ sub DB::get_family_users {
     return $sth->fetchall_arrayref({});
 }
 
+# Retrieves list of approved child users.
+# Parameters: None
+# Returns:
+#   ArrayRef of HashRefs containing user details.
+sub DB::get_child_users {
+    my ($self) = @_;
+    
+    $self->ensure_connection;
+    
+    # Strict Privacy: Filter by is_child and status at the database level.
+    my $sql = "SELECT id, username, email, discord_id, emoji FROM users WHERE is_child = 1 AND status = 'approved' ORDER BY username ASC";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute();
+    
+    return $sth->fetchall_arrayref({});
+}
+
 # Retrieves list of approved administrative users.
 # Parameters: None
 # Returns:
