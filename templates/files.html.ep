@@ -1,7 +1,7 @@
 <%# /templates/files.html.ep %>
 
-% layout 'default';
-<% title '📁 Files'; %>
+% layout 'default', hide_navbar_title => 1, favicon => '📁';
+<% title 'Files'; %>
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/files.css">
@@ -10,7 +10,7 @@
 
 <div class="admin-container app-container">
     <div class="header-bar">
-        <h1>📁 <span>Binary Vault</span></h1>
+        <h1>📁 <span>Files</span></h1>
         <% if (stash('is_admin')) { %>
             <div class="manage-actions">
                 <button type="button" class="btn-primary" onclick="openUploadModal()">
