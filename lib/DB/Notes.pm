@@ -53,18 +53,19 @@ sub DB::get_global_search_notes {
     my $term = "%$query%";
     # Combine notes with parent canvases while enforcing ACL visibility
     my $sql = "
-        SELECT n.*, c.name as canvas_name
+        SELECT n.*, c.name as canvas_name, cl.alias as layer_alias
         FROM notes n
         JOIN canvases c ON n.canvas_id = c.id
+        LEFT JOIN canvas_layers cl ON n.canvas_id = cl.canvas_id AND n.layer_id = cl.layer_id
         WHERE (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
         AND n.is_deleted = 0
-        AND (n.title LIKE ? OR n.content LIKE ?)
+        AND (n.title LIKE ? OR n.content LIKE ? OR cl.alias LIKE ?)
         ORDER BY n.updated_at DESC
         LIMIT 50
     ";
     
     my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute($user_id, $user_id, $term, $term);
+    $sth->execute($user_id, $user_id, $term, $term, $term);
     return $sth->fetchall_arrayref({});
 }
 
@@ -611,6 +612,42 @@ sub DB::purge_note {
     
     $self->touch_canvas($cid) if $count;
     return $count;
+}
+
+# --- Shared Layer Aliasing ---
+
+# Retrieves all layer aliases for a specific canvas.
+# Returns: HashRef { layer_id => alias }
+sub DB::get_canvas_layers {
+    my ($self, $canvas_id) = @_;
+    $self->ensure_connection;
+
+    my $sql = "SELECT layer_id, alias FROM canvas_layers WHERE canvas_id = ?";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute($canvas_id);
+
+    my %map;
+    while (my ($lid, $alias) = $sth->fetchrow_array()) {
+        $map{$lid} = $alias;
+    }
+    return \%map;
+}
+
+# Persists a descriptive name for a specific canvas level.
+# Parameters:
+#   canvas_id : Target workspace.
+#   layer_id  : Level number (1-99).
+#   alias     : Descriptive name.
+# Returns:
+#   Boolean success.
+sub DB::save_layer_alias {
+    my ($self, $canvas_id, $layer_id, $alias) = @_;
+    $self->ensure_connection;
+
+    my $sql = "INSERT INTO canvas_layers (canvas_id, layer_id, alias) VALUES (?, ?, ?)
+               ON DUPLICATE KEY UPDATE alias = VALUES(alias)";
+    my $sth = $self->{dbh}->prepare($sql);
+    return $sth->execute($canvas_id, $layer_id, $alias);
 }
 
 1;
