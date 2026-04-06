@@ -1,7 +1,7 @@
 <%# /templates/medication.html.ep %>
 
-% layout 'default';
-% title '💊 Medication Tracker';
+% layout 'default', hide_navbar_title => 1, favicon => '💊';
+% title 'Medication Tracker';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/medication.css">
@@ -10,7 +10,7 @@
 
 <div class="medication-container app-container">
     <div class="header-bar">
-        <h1>💊 <span>Medication</span></h1>
+        <h1>💊 <span>Medication Tracker</span></h1>
         <div class="manage-actions" id="admin-actions">
             <button class="btn-primary" onclick="openDoseModal()">➕ Log</button>
             <button class="action-btn registry-btn" onclick="openRegistryModal()">⚙️ Manage</button>
