@@ -1,7 +1,7 @@
 <%# /templates/settings.html.ep %>
 
-% layout 'default';
-% title '⚙️ Settings';
+% layout 'default', hide_navbar_title => 1, favicon => '⚙️';
+% title 'Settings';
 
 % content_for 'head' => begin
   <link rel="stylesheet" href="/css/settings.css">
