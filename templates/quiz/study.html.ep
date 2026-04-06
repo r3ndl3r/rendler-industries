@@ -1,7 +1,7 @@
 <%# /templates/quiz/study.html.ep %>
 
-% layout 'default';
-% title '🦘 Quiz Study Guide - All Questions & Answers';
+% layout 'default', hide_navbar_title => 1, favicon => '🦘';
+% title 'Quiz Study Guide - All Questions & Answers';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/quiz/questions.css">
