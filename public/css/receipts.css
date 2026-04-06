@@ -549,25 +549,68 @@
     .files-table thead { display: none; }
     .files-table, .files-table tbody { display: block; background: transparent; box-shadow: none; border: none; }
     .files-table tr {
-        display: block; background: #1e293b; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.75rem; border: 1px solid #334155; position: relative; padding-left: 4.5rem;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 0.55rem;
+        background: #1e293b; 
+        border-radius: 0.75rem; 
+        padding: 1rem 0.75rem 0.25rem 0.75rem; 
+        margin-bottom: 0.75rem; 
+        border: 1px solid #334155; 
+        position: relative; 
     }
-    .files-table td { display: block; padding: 0.25rem 0; border: none; width: 100% !important; text-align: left !important; }
+    .files-table td:not(.col-icon):not(.col-actions) { 
+        grid-column: 2; 
+        display: block; 
+        padding: 0.18rem 0; 
+        border: none; 
+        width: 100% !important; 
+        text-align: left !important;
+    }
+
     .files-table td::before {
-        content: attr(data-label); font-weight: 600; color: #94a3b8; text-transform: uppercase; font-size: 0.7rem; margin-right: 0.5rem; min-width: 80px; display: inline-block;
+        content: attr(data-label); 
+        font-weight: 600; 
+        color: #94a3b8; 
+        text-transform: uppercase; 
+        font-size: 0.7rem; 
+        margin-right: 0.5rem; 
+        min-width: 80px; 
+        display: inline-block;
     }
-    .col-icon { position: absolute; left: 0.75rem; top: 1.5rem; width: 3rem !important; display: flex; justify-content: center; font-size: 2rem; padding: 0 !important; }
-    .col-icon::before { content: none !important; }
-    
-    /* Action Button Container Aligned with Files standard */
-    .action-buttons { 
+
+    .col-icon { 
+        grid-column: 1;
+        grid-row: 1 / span 10;
+        width: 3rem !important; 
         display: flex; 
         justify-content: center; 
-        gap: 0.5rem; 
-        margin-top: 0.5rem; 
-        padding-top: 0.75rem; 
-        border-top: 1px solid #334155;
-        margin-left: -3.5rem;
-        width: calc(100% + 3.5rem);
+        align-items: flex-start;
+        font-size: 2rem; 
+        padding: 0.2rem 0 !important; 
+        position: static !important;
+    }
+
+    .col-icon::before { content: none !important; }
+
+    /* Full-height action column on the right */
+    .files-table td.col-actions { 
+        grid-column: 3;
+        grid-row: 1 / span 10;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 0 !important;
+    }
+
+    .action-buttons { 
+        display: flex; 
+        flex-direction: column;
+        gap: 0.4rem; 
+        border: none !important;
+        width: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     .col-actions::before { content: none !important; }
 
