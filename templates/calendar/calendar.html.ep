@@ -1,7 +1,7 @@
 <%# /templates/calendar/calendar.html.ep %>
 
-% layout 'default';
-% title '📅 Family Calendar';
+% layout 'default', navbar_title => '📅 Family Calendar', 'favicon' => '📅';
+% title 'Family Calendar';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/calendar.css">
