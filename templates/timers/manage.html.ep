@@ -9,7 +9,7 @@
     <script src="/js/timers/manage.js"></script>
 % end
 
-<div class="app-container">
+<div class="admin-container app-container">
     <div class="header-bar">
         <h1>🕒 <span>Timers</span></h1>
         <div class="manage-actions">
