@@ -119,11 +119,9 @@ sub api_add {
         } else {
             my $msg = "✨ **New Chore** ✨\n\n🌍 **GLOBAL CHORE** 🌍\n\n$title (+$points pts)\n\n*First to finish and mark as done gets the points!*\n\n$base_url";
             # Broadcast to all children for global pool chores
-            my $all_users = $c->db->get_all_users();
-            foreach my $u (@$all_users) {
-                if ($u->{is_child} && !$u->{is_admin}) {
-                    $c->notify_user($u->{id}, $msg, "New Global Chore Available");
-                }
+            my $kids = $c->db->get_child_users();
+            foreach my $k (@$kids) {
+                $c->notify_user($k->{id}, $msg, "New Global Chore Available");
             }
         }
     }
