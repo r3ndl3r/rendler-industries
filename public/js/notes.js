@@ -42,7 +42,8 @@ const STATE = {
         maxSpeed:  15              // Peak velocity at absolute edge
     },
     syncQueue:      [],              // Transactional Retry Container
-    isSyncing:      false            // Flow Control: Prevents concurrent flush cycles
+    isSyncing:      false,           // Flow Control: Prevents concurrent flush cycles
+    aliasTimer:     null             // Lifecycle Handle: Auto-hide delay for level names
 };
 
 /**
@@ -1482,7 +1483,8 @@ function handleCanvasMouseUp() {
  * @returns {void}
  */
 function handleCanvasWheel(e) {
-    if (!e.ctrlKey) return; // Only zoom when Ctrl is held
+    // Primary Interaction: Use the wheel for zooming by default (no CTRL required).
+    // This aligns with professional whiteboard/mapping tools when panning-by-drag is active.
     e.preventDefault();
 
     const wrapper = document.getElementById('canvas-wrapper');
@@ -2428,8 +2430,25 @@ function updateLevelDisplay() {
     
     if (alias) {
         // High-Fidelity Branding: Show Level Number + Descriptive Alias
-        display.innerHTML = `<span class="level-num">${STATE.activeLayerId}</span>&nbsp;-&nbsp;<span class="level-alias">${window.escapeHtml(alias)}</span>`;
+        // The .is-active class triggers a blue glow around the pill
+        display.classList.add('is-active');
+        display.innerHTML = `
+            <span class="level-num">${STATE.activeLayerId}</span>
+            <span class="level-alias-meta">
+                &nbsp;-&nbsp;<span class="level-alias">${window.escapeHtml(alias)}</span>
+            </span>
+        `;
         display.title = `Level ${STATE.activeLayerId}: ${alias} (Click to Jump/Rename)`;
+
+        // Perspective Persistence: Auto-hide the alias after 2 seconds to keep the UI minimalist
+        const meta = display.querySelector('.level-alias-meta');
+        if (meta) {
+            clearTimeout(STATE.aliasTimer);
+            STATE.aliasTimer = setTimeout(() => {
+                meta.classList.add('is-hidden');
+                display.classList.remove('is-active');
+            }, 2000);
+        }
     } else {
         // Minimalist Fallback: Show Number Only
         display.textContent = `${STATE.activeLayerId}`;
@@ -3173,7 +3192,7 @@ function showBoardInfo() {
             <ul class="board-guide-list">
                 <li><strong>Double Click</strong> - Create a new note at cursor</li>
                 <li><strong>Ctrl+V</strong> - Paste image to create an Image Note</li>
-                <li><strong>Ctrl+Wheel</strong> - Zoom in/out to scale the perspective</li>
+                <li><strong>Mouse Wheel</strong> - Zoom in/out to scale the perspective</li>
             </ul>
         </div>
     `;
