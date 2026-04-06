@@ -174,7 +174,7 @@ function openTransactionModal(userId, username, type) {
     document.getElementById('transactionType').value = type;
     
     const title = document.getElementById('modalTitle');
-    title.innerHTML = `💰 ${type.toUpperCase()} for ${escapeHtml(username)}`;
+    title.innerHTML = `🪙 ${type.toUpperCase()} for ${escapeHtml(username)}`;
     
     document.getElementById('transactionAmount').value = (type === 'reward' ? '1' : '');
     document.getElementById('transactionReason').value = '';
