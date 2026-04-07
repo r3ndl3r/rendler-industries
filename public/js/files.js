@@ -3,9 +3,9 @@
 /**
  * File Management Controller Module
  * 
- * This module manages the Platform Binary Vault interface using a 100% 
- * AJAX-driven architecture. It handles large multipart uploads, 
- * state-driven ledger rendering, and granular ACL synchronization.
+ * This module manages the Platform Binary Vault interface using a dynamic,
+ * state-driven architecture. It handles large multipart uploads,
+ * automated ledger rendering, and granular ACL synchronization.
  * 
  * Features:
  * - Single Source of Truth state-driven rendering from /files/api/state
@@ -105,7 +105,7 @@ function renderTable() {
             </td>
             <td data-label="Filename">
                 <div class="file-name-cell">
-                    <strong>${escapeHtml(file.original_filename)}</strong>
+                    <strong title="${escapeHtml(file.original_filename)}">${escapeHtml(file.original_filename)}</strong>
                     ${file.description ? `<br><small class="file-desc">${escapeHtml(file.description)}</small>` : ''}
                 </div>
             </td>
@@ -223,7 +223,7 @@ function closePermissionModal() {
 
 /**
  * Action: submitFileUpload
- * Orchestrates the multipart binary transfer via AJAX.
+ * Orchestrates the multipart binary transfer.
  * 
  * @async
  * @param {Event} event - Triggering form event.
