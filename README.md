@@ -63,10 +63,10 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <p align="center">
   <img src="public/images/screenshots/calendar_main.png" height="130" />
+  <img src="public/images/screenshots/calendar_event_details.png" height="130" />
 </p>,
 
 <p align="center">
-  <img src="public/images/screenshots/calendar_event_details.png" height="130" />
   <img src="public/images/screenshots/calendar_edit_event.png" height="130" />
   <img src="public/images/screenshots/calendar_manage.png" height="130" />
 </p>
@@ -89,9 +89,6 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <p align="center">
   <img src="public/images/screenshots/reminders.png" height="130" />
-</p>
-
-<p align="center">
   <img src="public/images/screenshots/reminders_edit.png" height="130" />
 </p>
 
@@ -113,15 +110,9 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Media Embedding:** Direct image pasting and `[image:ID:scale]` embedding for high-fidelity visual documentation.
 <p align="center">
   <img src="public/images/screenshots/sticky_notes_canvas.png" height="130" />
-</p>
-
-<p align="center">
   <img src="public/images/screenshots/sticky_notes_boards.png" height="130" />
   <img src="public/images/screenshots/sticky_notes_settings.png" height="130" />
   <img src="public/images/screenshots/sticky_notes_jump.png" height="130" />
-</p>
-
-<p align="center">
   <img src="public/images/screenshots/sticky_notes_guide.png" height="130" />
 </p>
 
@@ -136,9 +127,6 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <p align="center">
   <img src="public/images/screenshots/receipt_ledger.png" height="130" />
-</p>
-
-<p align="center">
   <img src="public/images/screenshots/receipt_refine.png" height="130" />
   <img src="public/images/screenshots/receipt_detail.png" height="130" />
 </p>
