@@ -379,7 +379,7 @@ function renderQuickAdd() {
     container.innerHTML = STATE.quick_add_chores.map(c => {
         const iconHtml = c.assigned_username ? window.getUserIcon(c.assigned_username) : '🌍';
         return `
-            <div class="repost-item" onclick="fillChoreForm('${escapeHtml(c.title)}', ${c.points}, '${c.assigned_to || ''}')">
+            <div class="repost-item" title="${escapeHtml(c.title)}" onclick="fillChoreForm('${escapeHtml(c.title)}', ${c.points}, '${c.assigned_to || ''}')">
                 <span class="repost-icon">${iconHtml}</span>
                 <span class="repost-title">${escapeHtml(c.title)}</span>
                 <span class="repost-pts">+${c.points}</span>
