@@ -448,6 +448,7 @@ select.game-input-premium option {
     transition: all 0.2s;
     font-size: 0.75rem;
     white-space: nowrap;
+    max-width: 260px;
 }
 
 .repost-item:hover {
@@ -459,6 +460,9 @@ select.game-input-premium option {
 .repost-title {
     color: rgba(255, 255, 255, 0.8);
     font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .repost-pts { color: var(--accent-green); font-weight: 800; font-size: 0.7rem; }
