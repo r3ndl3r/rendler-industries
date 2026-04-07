@@ -50,14 +50,11 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **System Variables:** Centralized management of application constants, such as **Timer Reset Hours** and **Quiet Hour** configurations.
 
 <details>
-<summary>🔍 <b>View Screenshot (Global Settings)</b></summary>
-
-<div align="center">
-
-![Global Settings](./public/images/screenshots/global_settings.png)
-
-</div>
-
+  <summary>🔍 <b>View Screenshot (Global Settings)</b></summary>
+  <br>
+  <a href="public/images/screenshots/global_settings.png?raw=true">
+    <img src="public/images/screenshots/global_settings.png" width="100%" alt="Global Settings">
+  </a>
 </details>
 
 ### 🧠 Family Pulse AI (`/ai`)
@@ -82,27 +79,25 @@ The system features a redundant, priority-weighted alert engine for real-time an
     *   **Color Coding:** Categorize events (Doctor, School, Social) with dynamic hex-code styling.
 
 <details>
-<summary>🔍 <b>View Screenshots (Main Views)</b></summary>
-
-<div align="center">
-
-![Calendar Main](./public/images/screenshots/calendar_main.png)
-![Calendar Details](./public/images/screenshots/calendar_event_details.png)
-
-</div>
-
+  <summary>🔍 <b>View Screenshots (Main Views)</b></summary>
+  <br>
+  <a href="public/images/screenshots/calendar_main.png?raw=true">
+    <img src="public/images/screenshots/calendar_main.png" width="100%" alt="Calendar Main">
+  </a>
+  <a href="public/images/screenshots/calendar_event_details.png?raw=true">
+    <img src="public/images/screenshots/calendar_event_details.png" width="100%" alt="Calendar Details">
+  </a>
 </details>
 
 <details>
-<summary>🔍 <b>View Screenshots (Management)</b></summary>
-
-<div align="center">
-
-![Edit Event](./public/images/screenshots/calendar_edit_event.png)
-![Calendar Manage](./public/images/screenshots/calendar_manage.png)
-
-</div>
-
+  <summary>🔍 <b>View Screenshots (Management)</b></summary>
+  <br>
+  <a href="public/images/screenshots/calendar_edit_event.png?raw=true">
+    <img src="public/images/screenshots/calendar_edit_event.png" width="100%" alt="Edit Event">
+  </a>
+  <a href="public/images/screenshots/calendar_manage.png?raw=true">
+    <img src="public/images/screenshots/calendar_manage.png" width="100%" alt="Manage Calendar">
+  </a>
 </details>
 
 ### 🧹 Bounty Board & Chores (`/chores`)
@@ -128,14 +123,11 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Smart Registry:** Shared medication database with default dosages for lightning-fast entry.
 
 <details>
-<summary>🔍 <b>View Screenshot (Medication Dashboard)</b></summary>
-
-<div align="center">
-
-![Medication Tracker](./public/images/screenshots/medication_tracker.png)
-
-</div>
-
+  <summary>🔍 <b>View Screenshot (Medication Dashboard)</b></summary>
+  <br>
+  <a href="public/images/screenshots/medication_tracker.png?raw=true">
+    <img src="public/images/screenshots/medication_tracker.png" width="100%" alt="Medication Tracker">
+  </a>
 </details>
 
 ### 🔔 Smart Reminders (`/reminders`)
@@ -145,15 +137,14 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Self-Cleaning:** Automated deletion of "One-off" reminders after successful delivery.
 
 <details>
-<summary>🔍 <b>View Screenshots (Reminder Suite)</b></summary>
-
-<div align="center">
-
-![Reminders Main](./public/images/screenshots/reminders.png)
-![Reminders Edit](./public/images/screenshots/reminders_edit.png)
-
-</div>
-
+  <summary>🔍 <b>View Screenshots (Reminder Suite)</b></summary>
+  <br>
+  <a href="public/images/screenshots/reminders.png?raw=true">
+    <img src="public/images/screenshots/reminders.png" width="100%" alt="Reminders">
+  </a>
+  <a href="public/images/screenshots/reminders_edit.png?raw=true">
+    <img src="public/images/screenshots/reminders_edit.png" width="100%" alt="Edit Reminder">
+  </a>
 </details>
 
 ### 🛒 Collaborative Shopping & Todo (`/shopping`, `/todo`)
@@ -161,15 +152,14 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **User Scoping:** Todo lists are private and segregated, while Shopping lists are shared family-wide.
 
 <details>
-<summary>🔍 <b>View Screenshots (List Management)</b></summary>
-
-<div align="center">
-
-![Shopping List](./public/images/screenshots/shopping_list.png)
-![Todo List](./public/images/screenshots/todo_list.png)
-
-</div>
-
+  <summary>🔍 <b>View Screenshots (List Management)</b></summary>
+  <br>
+  <a href="public/images/screenshots/shopping_list.png?raw=true">
+    <img src="public/images/screenshots/shopping_list.png" width="100%" alt="Shopping List">
+  </a>
+  <a href="public/images/screenshots/todo_list.png?raw=true">
+    <img src="public/images/screenshots/todo_list.png" width="100%" alt="Todo List">
+  </a>
 </details>
 
 ### 📓 Sticky Notes & Virtual Whiteboard (`/notes`)
@@ -182,18 +172,23 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Media Embedding:** Direct image pasting and `[image:ID:scale]` embedding for high-fidelity visual documentation.
 
 <details>
-<summary>🔍 <b>View Screenshots (Canvas Interaction)</b></summary>
-
-<div align="center">
-
-![Sticky Canvas](./public/images/screenshots/sticky_notes_canvas.png)
-![Sticky Boards](./public/images/screenshots/sticky_notes_boards.png)
-![Sticky Settings](./public/images/screenshots/sticky_notes_settings.png)
-![Sticky Jump](./public/images/screenshots/sticky_notes_jump.png)
-![Sticky Guide](./public/images/screenshots/sticky_notes_guide.png)
-
-</div>
-
+  <summary>🔍 <b>View Screenshots (Canvas Interaction)</b></summary>
+  <br>
+  <a href="public/images/screenshots/sticky_notes_canvas.png?raw=true">
+    <img src="public/images/screenshots/sticky_notes_canvas.png" width="100%" alt="Canvas View">
+  </a>
+  <a href="public/images/screenshots/sticky_notes_boards.png?raw=true">
+    <img src="public/images/screenshots/sticky_notes_boards.png" width="100%" alt="Boards View">
+  </a>
+  <a href="public/images/screenshots/sticky_notes_settings.png?raw=true">
+    <img src="public/images/screenshots/sticky_notes_settings.png" width="100%" alt="Settings">
+  </a>
+  <a href="public/images/screenshots/sticky_notes_jump.png?raw=true">
+    <img src="public/images/screenshots/sticky_notes_jump.png" width="100%" alt="Jump Navigation">
+  </a>
+  <a href="public/images/screenshots/sticky_notes_guide.png?raw=true">
+    <img src="public/images/screenshots/sticky_notes_guide.png" width="100%" alt="User Guide">
+  </a>
 </details>
 
 ---
@@ -213,16 +208,17 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Heuristic Extraction:** Custom Perl Regex engine parses store names, dates, and currency totals from raw text.
 
 <details>
-<summary>🔍 <b>View Screenshots (OCR Engine)</b></summary>
-
-<div align="center">
-
-![Receipt Ledger](./public/images/screenshots/receipt_ledger.png)
-![Receipt Refine](./public/images/screenshots/receipt_refine.png)
-![Receipt Detail](./public/images/screenshots/receipt_detail.png)
-
-</div>
-
+  <summary>🔍 <b>View Screenshots (OCR Engine)</b></summary>
+  <br>
+  <a href="public/images/screenshots/receipt_ledger.png?raw=true">
+    <img src="public/images/screenshots/receipt_ledger.png" width="100%" alt="Receipt Ledger">
+  </a>
+  <a href="public/images/screenshots/receipt_refine.png?raw=true">
+    <img src="public/images/screenshots/receipt_refine.png" width="100%" alt="Refine View">
+  </a>
+  <a href="public/images/screenshots/receipt_detail.png?raw=true">
+    <img src="public/images/screenshots/receipt_detail.png" width="100%" alt="Receipt Detail">
+  </a>
 </details>
 
 ### 🤬 The Swear Jar Ledger (`/swear`)
@@ -239,14 +235,11 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Lightweight Metadata:** Fast browsing via optimized queries that exclude heavy binary content during list operations.
 
 <details>
-<summary>🔍 <b>View Screenshot (File Manager)</b></summary>
-
-<div align="center">
-
-![File Manager](./public/images/screenshots/file_manager.png)
-
-</div>
-
+  <summary>🔍 <b>View Screenshot (File Manager)</b></summary>
+  <br>
+  <a href="public/images/screenshots/file_manager.png?raw=true">
+    <img src="public/images/screenshots/file_manager.png" width="100%" alt="File Manager">
+  </a>
 </details>
 
 ---
@@ -282,15 +275,14 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Threshold Styling:** Dynamic color-coded alerts based on temperature and wind intensity for rapid visual auditing.
 
 <details>
-<summary>🔍 <b>View Screenshots (Meteorological Dashboard)</b></summary>
-
-<div align="center">
-
-![Weather Dashboard](./public/images/screenshots/weather_dashboard.png)
-![Weather Details](./public/images/screenshots/weather_details.png)
-
-</div>
-
+  <summary>🔍 <b>View Screenshots (Meteorological Dashboard)</b></summary>
+  <br>
+  <a href="public/images/screenshots/weather_dashboard.png?raw=true">
+    <img src="public/images/screenshots/weather_dashboard.png" width="100%" alt="Weather Dashboard">
+  </a>
+  <a href="public/images/screenshots/weather_details.png?raw=true">
+    <img src="public/images/screenshots/weather_details.png" width="100%" alt="Weather Details">
+  </a>
 </details>
 
 ### ⏱ Household Timers (`/timers`)
@@ -299,14 +291,11 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Bonus Time:** Administrative interface for granting extra time to specific user sessions.
 
 <details>
-<summary>🔍 <b>View Screenshot (Timer Management)</b></summary>
-
-<div align="center">
-
-![Timer Management](./public/images/screenshots/timer_management.png)
-
-</div>
-
+  <summary>🔍 <b>View Screenshot (Timer Management)</b></summary>
+  <br>
+  <a href="public/images/screenshots/timer_management.png?raw=true">
+    <img src="public/images/screenshots/timer_management.png" width="100%" alt="Timer Management">
+  </a>
 </details>
 
 ### 🎂 Birthday Tracker (`/birthdays`)
@@ -317,15 +306,14 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Clipboard:** Cross-device pastebin with instant notifications for user `rendler`.
 
 <details>
-<summary>🔍 <b>View Screenshots (Utilities)</b></summary>
-
-<div align="center">
-
-![Go Links](./public/images/screenshots/go_links.png)
-![Clipboard](./public/images/screenshots/clipboard.png)
-
-</div>
-
+  <summary>🔍 <b>View Screenshots (Utilities)</b></summary>
+  <br>
+  <a href="public/images/screenshots/go_links.png?raw=true">
+    <img src="public/images/screenshots/go_links.png" width="100%" alt="Go Links">
+  </a>
+  <a href="public/images/screenshots/clipboard.png?raw=true">
+    <img src="public/images/screenshots/clipboard.png" width="100%" alt="Clipboard">
+  </a>
 </details>
 
 ---
