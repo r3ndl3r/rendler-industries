@@ -50,7 +50,13 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **System Variables:** Centralized management of application constants, such as **Timer Reset Hours** and **Quiet Hour** configurations.
 
 <p align="center">
-  <img src="public/images/screenshots/global_settings.png" height="130" />
+  <details>
+    <summary>
+      <img src="public/images/screenshots/global_settings.png" height="130" />
+    </summary>
+    <br>
+    <img src="public/images/screenshots/global_settings.png" width="100%" />
+  </details>
 </p>
 
 ### 🧠 Family Pulse AI (`/ai`)
@@ -77,13 +83,27 @@ The system features a redundant, priority-weighted alert engine for real-time an
     *   **Color Coding:** Categorize events (Doctor, School, Social) with dynamic hex-code styling.
 
 <p align="center">
-  <img src="public/images/screenshots/calendar_main.png" height="130" />
-  <img src="public/images/screenshots/calendar_event_details.png" height="130" />
+  <details>
+    <summary>
+      <img src="public/images/screenshots/calendar_main.png" height="130" />
+      <img src="public/images/screenshots/calendar_event_details.png" height="130" />
+    </summary>
+    <br>
+    <img src="public/images/screenshots/calendar_main.png" width="100%" />
+    <img src="public/images/screenshots/calendar_event_details.png" width="100%" />
+  </details>
 </p>
 
 <p align="center">
-  <img src="public/images/screenshots/calendar_edit_event.png" height="130" />
-  <img src="public/images/screenshots/calendar_manage.png" height="130" />
+  <details>
+    <summary>
+      <img src="public/images/screenshots/calendar_edit_event.png" height="130" />
+      <img src="public/images/screenshots/calendar_manage.png" height="130" />
+    </summary>
+    <br>
+    <img src="public/images/screenshots/calendar_edit_event.png" width="100%" />
+    <img src="public/images/screenshots/calendar_manage.png" width="100%" />
+  </details>
 </p>
 
 ### 🧹 Bounty Board & Chores (`/chores`)
@@ -113,7 +133,13 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Smart Registry:** Shared medication database with default dosages for lightning-fast entry.
 
 <p align="center">
-  <img src="public/images/screenshots/medication_tracker.png" height="130" />
+  <details>
+    <summary>
+      <img src="public/images/screenshots/medication_tracker.png" height="130" />
+    </summary>
+    <br>
+    <img src="public/images/screenshots/medication_tracker.png" width="100%" />
+  </details>
 </p>
 
 ### 🔔 Smart Reminders (`/reminders`)
@@ -123,8 +149,15 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Self-Cleaning:** Automated deletion of "One-off" reminders after successful delivery.
 
 <p align="center">
-  <img src="public/images/screenshots/reminders.png" height="130" />
-  <img src="public/images/screenshots/reminders_edit.png" height="130" />
+  <details>
+    <summary>
+      <img src="public/images/screenshots/reminders.png" height="130" />
+      <img src="public/images/screenshots/reminders_edit.png" height="130" />
+    </summary>
+    <br>
+    <img src="public/images/screenshots/reminders.png" width="100%" />
+    <img src="public/images/screenshots/reminders_edit.png" width="100%" />
+  </details>
 </p>
 
 ### 🛒 Collaborative Shopping & Todo (`/shopping`, `/todo`)
@@ -132,8 +165,15 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **User Scoping:** Todo lists are private and segregated, while Shopping lists are shared family-wide.
 
 <p align="center">
-  <img src="public/images/screenshots/shopping_list.png" height="130" />
-  <img src="public/images/screenshots/todo_list.png" height="130" />
+  <details>
+    <summary>
+      <img src="public/images/screenshots/shopping_list.png" height="130" />
+      <img src="public/images/screenshots/todo_list.png" height="130" />
+    </summary>
+    <br>
+    <img src="public/images/screenshots/shopping_list.png" width="100%" />
+    <img src="public/images/screenshots/todo_list.png" width="100%" />
+  </details>
 </p>
 
 ### 📓 Sticky Notes & Virtual Whiteboard (`/notes`)
@@ -146,11 +186,21 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Media Embedding:** Direct image pasting and `[image:ID:scale]` embedding for high-fidelity visual documentation.
 
 <p align="center">
-  <img src="public/images/screenshots/sticky_notes_canvas.png" height="130" />
-  <img src="public/images/screenshots/sticky_notes_boards.png" height="130" />
-  <img src="public/images/screenshots/sticky_notes_settings.png" height="130" />
-  <img src="public/images/screenshots/sticky_notes_jump.png" height="130" />
-  <img src="public/images/screenshots/sticky_notes_guide.png" height="130" />
+  <details>
+    <summary>
+      <img src="public/images/screenshots/sticky_notes_canvas.png" height="130" />
+      <img src="public/images/screenshots/sticky_notes_boards.png" height="130" />
+      <img src="public/images/screenshots/sticky_notes_settings.png" height="130" />
+      <img src="public/images/screenshots/sticky_notes_jump.png" height="130" />
+      <img src="public/images/screenshots/sticky_notes_guide.png" height="130" />
+    </summary>
+    <br>
+    <img src="public/images/screenshots/sticky_notes_canvas.png" width="100%" />
+    <img src="public/images/screenshots/sticky_notes_boards.png" width="100%" />
+    <img src="public/images/screenshots/sticky_notes_settings.png" width="100%" />
+    <img src="public/images/screenshots/sticky_notes_jump.png" width="100%" />
+    <img src="public/images/screenshots/sticky_notes_guide.png" width="100%" />
+  </details>
 </p>
 
 ---
@@ -172,9 +222,17 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Heuristic Extraction:** Custom Perl Regex engine parses store names, dates, and currency totals from raw text.
 
 <p align="center">
-  <img src="public/images/screenshots/receipt_ledger.png" height="130" />
-  <img src="public/images/screenshots/receipt_refine.png" height="130" />
-  <img src="public/images/screenshots/receipt_detail.png" height="130" />
+  <details>
+    <summary>
+      <img src="public/images/screenshots/receipt_ledger.png" height="130" />
+      <img src="public/images/screenshots/receipt_refine.png" height="130" />
+      <img src="public/images/screenshots/receipt_detail.png" height="130" />
+    </summary>
+    <br>
+    <img src="public/images/screenshots/receipt_ledger.png" width="100%" />
+    <img src="public/images/screenshots/receipt_refine.png" width="100%" />
+    <img src="public/images/screenshots/receipt_detail.png" width="100%" />
+  </details>
 </p>
 
 ### 🤬 The Swear Jar Ledger (`/swear`)
@@ -193,7 +251,13 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Lightweight Metadata:** Fast browsing via optimized queries that exclude heavy binary content during list operations.
 
 <p align="center">
-  <img src="public/images/screenshots/file_manager.png" height="130" />
+  <details>
+    <summary>
+      <img src="public/images/screenshots/file_manager.png" height="130" />
+    </summary>
+    <br>
+    <img src="public/images/screenshots/file_manager.png" width="100%" />
+  </details>
 </p>
 
 ---
@@ -229,8 +293,15 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Threshold Styling:** Dynamic color-coded alerts based on temperature and wind intensity for rapid visual auditing.
 
 <p align="center">
-  <img src="public/images/screenshots/weather_dashboard.png" height="130" />
-  <img src="public/images/screenshots/weather_details.png" height="130" />
+  <details>
+    <summary>
+      <img src="public/images/screenshots/weather_dashboard.png" height="130" />
+      <img src="public/images/screenshots/weather_details.png" height="130" />
+    </summary>
+    <br>
+    <img src="public/images/screenshots/weather_dashboard.png" width="100%" />
+    <img src="public/images/screenshots/weather_details.png" width="100%" />
+  </details>
 </p>
 
 ### ⏱ Household Timers (`/timers`)
@@ -239,7 +310,13 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Bonus Time:** Administrative interface for granting extra time to specific user sessions.
 
 <p align="center">
-  <img src="public/images/screenshots/timer_management.png" height="130" />
+  <details>
+    <summary>
+      <img src="public/images/screenshots/timer_management.png" height="130" />
+    </summary>
+    <br>
+    <img src="public/images/screenshots/timer_management.png" width="100%" />
+  </details>
 </p>
 
 ### 🎂 Birthday Tracker (`/birthdays`)
@@ -250,8 +327,15 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Clipboard:** Cross-device pastebin with instant notifications for user `rendler`.
 
 <p align="center">
-  <img src="public/images/screenshots/go_links.png" height="130" />
-  <img src="public/images/screenshots/clipboard.png" height="130" />
+  <details>
+    <summary>
+      <img src="public/images/screenshots/go_links.png" height="130" />
+      <img src="public/images/screenshots/clipboard.png" height="130" />
+    </summary>
+    <br>
+    <img src="public/images/screenshots/go_links.png" width="100%" />
+    <img src="public/images/screenshots/clipboard.png" width="100%" />
+  </details>
 </p>
 
 ---
