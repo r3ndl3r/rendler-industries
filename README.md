@@ -27,6 +27,11 @@ The system features a redundant, priority-weighted alert engine for real-time an
 3.  **Gmail/SMTP:** Redundant email delivery for complex data (like Calendar invitations, impending event reminders, or receipt exports).
 4.  **Pushover:** Mobile-first emergency alerts for critical infrastructure events.
 
+### **🧠 AI & OCR Infrastructure**
+*   **Gemini 2.0 Engine:** Integrated LLM for context-aware household automation and conversational support.
+*   **Vision & OCR Pipeline:** Custom high-fidelity processing using ImageMagick and Tesseract for document digitization.
+*   **Intelligent Caching:** SHA-256 fingerprinting for Translation and TTS (Text-to-Speech) results to ensure rapid, cost-effective API utilization.
+
 ---
 
 ## 👑 Administrative & Orchestration
@@ -48,6 +53,16 @@ The system features a redundant, priority-weighted alert engine for real-time an
   <img src="public/images/screenshots/global_settings.png" height="130" />
 </p>
 
+### 🧠 Family Pulse AI (`/ai`)
+*   **Gemini 2.0 Integration:** Powered by Google's Gemini 2.0 Flash model for lightning-fast analysis and household reasoning.
+*   **Dashboard Awareness:** Generates real-time context snapshots across all modules (Medication, Calendar, Shopping, Swear Jar) to provide holistic household advice.
+*   **Multimodal Vision:** Direct integration with the File Vault and Receipt pipeline for image-based analysis and automated data entry.
+*   **Persistent Memory:** Maintains long-term conversational history to ensure continuity in complex planning tasks.
+
+<p align="center">
+  *Screenshots coming soon...*
+</p>
+
 ---
 
 ## 📅 Productivity Suite
@@ -64,11 +79,31 @@ The system features a redundant, priority-weighted alert engine for real-time an
 <p align="center">
   <img src="public/images/screenshots/calendar_main.png" height="130" />
   <img src="public/images/screenshots/calendar_event_details.png" height="130" />
-</p>,
+</p>
 
 <p align="center">
   <img src="public/images/screenshots/calendar_edit_event.png" height="130" />
   <img src="public/images/screenshots/calendar_manage.png" height="130" />
+</p>
+
+### 🧹 Bounty Board & Chores (`/chores`)
+*   **Point-Based Economy:** Gamified household management where completing chores earns transferable reward points.
+*   **Atomic Claiming:** Conflict-free claiming system ensures only one family member can claim a "bounty" at a time.
+*   **Admin Quick-Add:** Dynamic templates based on historical chore data for rapid board updates.
+*   **Historical Audit:** Detailed tracking of completed tasks, including completion timestamps and assigned contributors.
+
+<p align="center">
+  *Screenshots coming soon...*
+</p>
+
+### 🍲 Collaborative Meal Planner (`/meals`)
+*   **4-Day Rolling Window:** Dynamic schedule management with automated plan generation.
+*   **Democratic Voting:** Family members can suggest meals and vote on favorites to reach a consensus.
+*   **Meal Vault:** Centralized autocomplete database of historical family favorites for effortless entry.
+*   **Admin Lock-in:** Finalize daily choices and set "Blackout" reasons for special events or eating out.
+
+<p align="center">
+  *Screenshots coming soon...*
 </p>
 
 ### 💊 Medication Tracker (`/medication`)
@@ -103,11 +138,13 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 ### 📓 Sticky Notes & Virtual Whiteboard (`/notes`)
 *   **Infinite Canvas:** High-fidelity sticky note orchestration with real-time panning and zooming (60 FPS).
+    *   **Intuitive Controls:** Natural panning (Mouse Wheel) and precise zooming (CTRL + Mouse Wheel) for professional-grade navigation.
 *   **Integrated Markdown:** 
     *   **Interactive Task Lists:** Native `- [ ]` and `- [x]` toggles for lifecycle management.
     *   **Styling Engine:** Supports `**bold**`, `*italic*`, and `[color:#hex]` accentuation.
     *   **Cross-Linking:** Deep-link between notes using `[note:ID]` syntax.
 *   **Media Embedding:** Direct image pasting and `[image:ID:scale]` embedding for high-fidelity visual documentation.
+
 <p align="center">
   <img src="public/images/screenshots/sticky_notes_canvas.png" height="130" />
   <img src="public/images/screenshots/sticky_notes_boards.png" height="130" />
@@ -118,7 +155,16 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 ---
 
-## 💰 Financial & Data Management
+## 💰 Financial & Behavioral Management
+
+### 🏆 Gamification & Child Rewards (`/points`)
+*   **Child-Centric Ledger:** Dedicated point tracking for children to manage earned rewards from chores and behavioral milestones.
+*   **Transaction Audit:** Full historical visibility for both parents and children into all deposits and expenditures.
+*   **Global Leaderboard:** Comparative balance tracking to encourage healthy household participation.
+
+<p align="center">
+  *Screenshots coming soon...*
+</p>
 
 ### 🧾 Receipt Archiving & OCR Pipeline (`/receipts`)
 *   **Automated Parsing:** Uses an advanced **ImageMagick + Tesseract OCR** pipeline.
@@ -132,13 +178,19 @@ The system features a redundant, priority-weighted alert engine for real-time an
 </p>
 
 ### 🤬 The Swear Jar Ledger (`/swear`)
-*   **100% SPA Architecture:** Real-time ledger updates and transaction management without page reloads.
-*   **Polymorphic Ledger:** Unified tracking of fines, payments, and expenditures.
+*   **Polymorphic Ledger:** Unified tracking of fines, payments, and expenditures with 100% AJAX synchronization.
+*   **Shame Leaderboard:** Real-time net-debt calculation (Fines vs. Payments) to ensure family accountability.
 *   **Smart Reconciliation:** Automated debt settlement logic (FIFO) upon jar deposits.
+*   **AI Context Integration:** Financial data is fed into the Gemini AI snapshot for behavioral analysis.
 
-### 📁 Secure File Manager (`/files`)
-*   **BLOB Storage:** Secure database-backed storage for arbitrary binaries.
+<p align="center">
+  *Screenshots coming soon...*
+</p>
+
+### 📁 Secure File Vault (`/files`)
+*   **BLOB Storage:** Secure database-backed storage for arbitrary binaries with download tracking.
 *   **Permission Control:** Granular access management (Admin-only vs. Specific User whitelists).
+*   **Lightweight Metadata:** Fast browsing via optimized queries that exclude heavy binary content during list operations.
 
 <p align="center">
   <img src="public/images/screenshots/file_manager.png" height="130" />
