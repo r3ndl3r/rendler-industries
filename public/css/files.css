@@ -4,7 +4,7 @@
     box-sizing: border-box;
 }
 
-.admin-container {
+.app-container {
     max-width: 1200px;
     margin: 0 auto;
     min-height: 100vh;
@@ -19,10 +19,14 @@
     font-size: 1.5rem;
 }
 
-.col-filename strong {
+.col-filename strong, .file-name-cell strong {
     color: #fff;
     display: block;
     margin-bottom: 0.25rem;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .file-desc {
@@ -30,12 +34,15 @@
     font-size: 0.8rem;
 }
 
-.col-uploader, .col-date, .col-size {
+.col-uploader, .col-date, .col-size, 
+.files-table td[data-label="Date"], 
+.files-table td[data-label="Size"] {
     color: #94a3b8;
     font-size: 0.875rem;
+    white-space: nowrap;
 }
 
-.col-size {
+.col-size, .files-table td[data-label="Size"] {
     font-family: monospace;
 }
 
@@ -101,7 +108,8 @@
     border-radius: 0.75rem;
     padding: 2rem 1rem;
     text-align: center;
-    background: #0f172a;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
     cursor: pointer;
     position: relative;
 }
@@ -121,12 +129,12 @@
 
 /* Mobile */
 @media (max-width: 768px) {
-    .admin-container h1 { font-size: 1.5rem; }
+    .app-container h1 { font-size: 1.5rem; }
     .manage-header { flex-direction: column; gap: 1rem; }
     .files-table thead { display: none; }
     .files-table, .files-table tbody { display: block; background: transparent; box-shadow: none; }
     .files-table tr {
-        display: block; background: #1e293b; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.75rem; border: 1px solid #334155; position: relative; padding-left: 4.5rem;
+        display: block; background: var(--glass-bg); backdrop-filter: blur(8px); border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.75rem; border: 1px solid var(--glass-border); position: relative; padding-left: 4.5rem;
     }
     .files-table td { display: block; padding: 0.25rem 0; border: none; width: 100% !important; text-align: left !important; }
     .files-table td::before {
