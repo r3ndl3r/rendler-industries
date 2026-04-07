@@ -45,7 +45,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **System Variables:** Centralized management of application constants, such as **Timer Reset Hours** and **Quiet Hour** configurations.
 
 <p align="center">
-  <img src="public/images/screenshots/global_settings.png" width="90%" />
+  <img src="public/images/screenshots/global_settings.png" width="75%" />
 </p>
 
 ---
@@ -62,7 +62,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
     *   **Color Coding:** Categorize events (Doctor, School, Social) with dynamic hex-code styling.
 
 <p align="center">
-  <img src="public/images/screenshots/calendar_main.png" width="90%" />
+  <img src="public/images/screenshots/calendar_main.png" width="75%" />
 </p>
 
 <p align="center">
@@ -78,7 +78,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Smart Registry:** Shared medication database with default dosages for lightning-fast entry.
 
 <p align="center">
-  <img src="public/images/screenshots/medication_tracker.png" width="90%" />
+  <img src="public/images/screenshots/medication_tracker.png" width="75%" />
 </p>
 
 ### 🔔 Smart Reminders (`/reminders`)
@@ -88,7 +88,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Self-Cleaning:** Automated deletion of "One-off" reminders after successful delivery.
 
 <p align="center">
-  <img src="public/images/screenshots/reminders.png" width="90%" />
+  <img src="public/images/screenshots/reminders.png" width="75%" />
 </p>
 
 <p align="center">
@@ -112,7 +112,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
     *   **Cross-Linking:** Deep-link between notes using `[note:ID]` syntax.
 *   **Media Embedding:** Direct image pasting and `[image:ID:scale]` embedding for high-fidelity visual documentation.
 <p align="center">
-  <img src="public/images/screenshots/sticky_notes_canvas.png" width="90%" />
+  <img src="public/images/screenshots/sticky_notes_canvas.png" width="75%" />
 </p>
 
 <p align="center">
@@ -135,7 +135,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Heuristic Extraction:** Custom Perl Regex engine parses store names, dates, and currency totals from raw text.
 
 <p align="center">
-  <img src="public/images/screenshots/receipt_ledger.png" width="90%" />
+  <img src="public/images/screenshots/receipt_ledger.png" width="75%" />
 </p>
 
 <p align="center">
@@ -153,7 +153,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Permission Control:** Granular access management (Admin-only vs. Specific User whitelists).
 
 <p align="center">
-  <img src="public/images/screenshots/file_manager.png" width="90%" />
+  <img src="public/images/screenshots/file_manager.png" width="75%" />
 </p>
 
 ---
@@ -199,7 +199,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Bonus Time:** Administrative interface for granting extra time to specific user sessions.
 
 <p align="center">
-  <img src="public/images/screenshots/timer_management.png" width="90%" />
+  <img src="public/images/screenshots/timer_management.png" width="75%" />
 </p>
 
 ### 🎂 Birthday Tracker (`/birthdays`)
