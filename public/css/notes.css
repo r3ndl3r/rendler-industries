@@ -2569,3 +2569,18 @@ input:checked + .switch-sm .slider:before {
 .quick-jump-link:active {
     transform: translateY(0);
 }
+
+/* Cleanup Classes: Migrated from JavaScript Inline Styles */
+.btn-go-row {
+    padding: 0.75rem 1.25rem !important;
+}
+
+.empty-board-hint {
+    text-align: center;
+    padding: 2.5rem 1.25rem;
+    color: #64748b;
+}
+
+.note-text-hex {
+    color: var(--text-color);
+}
