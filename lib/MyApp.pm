@@ -593,8 +593,9 @@ sub startup {
     $auth->post('/notes/api/upload')->to('notes#api_upload');
     $auth->post('/notes/api/viewport')->to('notes#api_save_viewport');
     $auth->get('/notes/serve/:note_id')->to('notes#serve_blob');
+    $auth->get('/notes/attachment/serve/:blob_id')->to('notes#serve_attachment_blob');
     
-    # Platform Expansion: Multi-Canvas & Collaborative Switching
+    # Multi-Canvas & Collaborative Switching
     $auth->post('/notes/api/canvases/create')->to('notes#api_canvas_create');
     $auth->post('/notes/api/canvases/delete')->to('notes#api_canvas_delete');
     $auth->post('/notes/api/canvases/rename')->to('notes#api_canvas_rename');
@@ -604,11 +605,13 @@ sub startup {
     $auth->get('/notes/api/bin')->to('notes#api_bin');
     $auth->post('/notes/api/restore')->to('notes#api_restore');
     $auth->post('/notes/api/purge')->to('notes#api_purge');
+    $auth->post('/notes/api/attachment/delete')->to('notes#api_attachment_delete');
+    $auth->post('/notes/api/attachment/rename')->to('notes#api_attachment_rename');
     $auth->post('/notes/api/layer/rename')->to('notes#api_layer_rename');
 
-    # --- Whiteboard Real-Time Synchronization (Reactive AJAX) ---
-    # Mutation Heartbeat for cross-session/cross-worker consistency.
-    $auth->get('/notes/api/sync/heartbeat/:canvas_id')->to('notes#api_heartbeat');
+    # Real-Time Synchronization 
+    # Mutation Heartbeat for cross-session/cross-worker consistency
+    $auth->get('/notes/api/heartbeat/:canvas_id')->to('notes#api_heartbeat');
 
     # --- Room Tracker Routes ---
     $family->get('/room')->to('room#index');

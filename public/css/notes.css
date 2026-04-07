@@ -1,5 +1,7 @@
 /* /public/css/notes.css */
 
+.hidden { display: none !important; }
+
 /* Core Canvas Layout */
 .canvas-container {
     width: 100%;
@@ -44,9 +46,9 @@
     left: 50%;
     transform: translateX(-50%);
     padding: 0.5em 1.25em;
-    background: rgba(30, 41, 59, 0.75);
+    background: rgba(30, 41, 59, 0.85);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(59, 130, 246, 0.3);
+    border: 1px solid rgba(59, 130, 246, 0.35);
     border-radius: 100px;
     color: #f8fafc;
     font-size: 0.85rem;
@@ -54,13 +56,375 @@
     display: flex;
     align-items: center;
     gap: 0.625em;
-    z-index: 1000;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 
+    z-index: 1001;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
                 inset 0 0 15px rgba(59, 130, 246, 0.1);
-    pointer-events: none; /* Non-intrusive metadata */
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: auto;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     letter-spacing: 0.05em;
     text-transform: uppercase;
+    user-select: none;
+}
+
+.board-branding-pill:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.7);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
+                0 0 18px rgba(59, 130, 246, 0.3),
+                inset 0 0 15px rgba(59, 130, 246, 0.15);
+    transform: translateX(-50%) translateY(-1px);
+}
+
+.pill-chevron {
+    opacity: 0.6;
+    transition: transform 0.25s ease, opacity 0.2s ease;
+    flex-shrink: 0;
+}
+
+.board-branding-pill[aria-expanded="true"] .pill-chevron {
+    transform: rotate(180deg);
+    opacity: 1;
+}
+
+/* ============================================================================
+   CANVAS QUICK-SWITCHER DROPDOWN
+   ============================================================================ */
+
+.canvas-quick-switcher {
+    position: fixed;
+    top: 98px; /* pill height + gap */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 320px;
+    background: rgba(15, 23, 42, 0.97);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 14px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7),
+                0 0 0 1px rgba(255, 255, 255, 0.04),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    z-index: 1002;
+    overflow: hidden;
+    animation: cqs-slide-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cqs-slide-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.97); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0)     scale(1);    }
+}
+
+.cqs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cqs-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: rgba(148, 163, 184, 0.9);
+}
+
+.cqs-close-btn {
+    background: none;
+    border: none;
+    color: rgba(148, 163, 184, 0.6);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.cqs-close-btn:hover {
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.cqs-list {
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 0.375rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.cqs-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    border: 1px solid transparent;
+}
+
+.cqs-item:hover {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.cqs-item.cqs-item--active {
+    background: rgba(59, 130, 246, 0.18);
+    border-color: rgba(59, 130, 246, 0.35);
+    cursor: default;
+}
+
+.cqs-item-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.cqs-item--active .cqs-item-icon {
+    background: rgba(59, 130, 246, 0.25);
+}
+
+.cqs-item-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.cqs-item-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cqs-item-meta {
+    font-size: 0.72rem;
+    color: rgba(148, 163, 184, 0.65);
+    margin-top: 1px;
+}
+
+.cqs-item-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #60a5fa;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    border-radius: 4px;
+    padding: 1px 5px;
+    flex-shrink: 0;
+}
+
+/* Inline Note References & Embedded Content */
+.note-ref {
+    display: inline-block;
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    padding: 0 3px;
+    border-radius: 2px;
+    font-size: 0.9em;
+    cursor: pointer;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    transition: all 0.2s ease;
+    text-decoration: none;
+    margin: 0 1px;
+    line-height: 1.2;
+}
+
+.note-ref:hover {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: #60a5fa;
+    transform: translateY(-1px);
+}
+
+/* Compact Asset Rendering: Embedded Images */
+.note-embedded-wrap {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 2px 0; /* Minimized for tight text integration */
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    max-width: 100%;
+}
+
+.note-embedded-wrap:hover {
+    transform: translateY(-1px);
+    border-color: rgba(59, 130, 246, 0.4);
+    background: rgba(30, 41, 59, 0.7);
+}
+
+.note-iframe-wrap {
+    margin: 10px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    flex: 1; /* Allow growth if in flex container */
+    min-height: 150px;
+}
+
+.note-iframe-wrap.iframe-fill {
+    height: 100%;
+    min-height: 300px;
+}
+
+.note-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.note-iframe-wrap iframe {
+    display: block;
+    border: none;
+}
+
+.note-embedded-img {
+    width: 100%;
+    display: block;
+    height: auto;
+    max-height: 600px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.note-embedded-caption {
+    padding: 3px 10px; /* Compacted height */
+    font-size: 0.7em; /* Refined for less prominence */
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(255, 255, 255, 0.35);
+    background: rgba(0, 0, 0, 0.2);
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all 0.2s ease;
+}
+
+.note-embedded-wrap:hover .note-embedded-caption {
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.checkbox-row-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.checkbox-row-inline:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.checkbox-row-inline.checked {
+    color: #94a3b8;
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+/* Checkbox Graphic Element */
+.cb {
+    width: 1.1em;
+    height: 1.1em;
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.2);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    font-size: 0.8em;
+    line-height: 1;
+}
+
+.checkbox-row-inline:hover .cb {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.cb.checked {
+    background: #10b981;
+    border-color: #10b981;
+}
+
+.cb.checked::after {
+    content: '✓';
+    color: white;
+    font-weight: bold;
+}
+
+/* Interaction Feedback: Pulses and Highlighting */
+.checkbox-row-inline:active .cb {
+    transform: scale(0.9);
+}
+
+.note-check-trigger.pending .cb {
+    animation: cb-pulse 1s infinite alternate;
+    opacity: 0.7;
+}
+
+@keyframes cb-pulse {
+    0% { transform: scale(1); filter: brightness(1); }
+    100% { transform: scale(1.1); filter: brightness(1.3); }
+}
+
+/* Note Link Styling (Internal Navigation Buttons) */
+.note-link-trigger {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    gap: 4px;
+    padding: 0 8px;
+    height: 1.5em;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 4px;
+    color: #60a5fa;
+    font-size: 0.85em;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    width: fit-content;
+    max-width: 90%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 2px;
+}
+
+.note-link-trigger:hover {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: #60a5fa;
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.note-link-trigger::before {
+    content: '🔗';
+    font-size: 0.9em;
 }
 
 /* Floating Action Button (FAB) Stack */
@@ -404,10 +768,10 @@
     min-width: 15em;
     min-height: 7.5em; /* 120px */
     border-radius: 0.75em; /* Rounded corners for note cards */
-    padding: 0.9375em; /* 15px */
+    padding: 0.25em; /* 4px - Tight edge-to-edge density */
     display: flex;
     flex-direction: column;
-    gap: 0.625em; /* 10px */
+    gap: 0.25em; /* 4px */
     cursor: default;
     user-select: none;
     background: rgba(30, 41, 59, 0.7);
@@ -434,15 +798,15 @@
     100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Pick & Place: Flight Mode */
 .sticky-note.note-picked {
     z-index: 10000 !important;
-    transform: translateY(-10px) scale(1.05);
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 30px var(--note-accent, #3b82f6);
+    transform: translateY(-3px) scale(1.0) !important;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4), 0 0 10px var(--note-accent, rgba(59, 130, 246, 0.4)) !important;
     border-style: dashed;
     border-width: 2px;
     opacity: 0.95;
     cursor: move;
+    transition: transform 0.1s ease-out, box-shadow 0.1s ease-out !important;
 }
 
 /* Focus highlight animation */
@@ -462,6 +826,7 @@
     box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6), 
                 0 0 20px var(--note-accent, rgba(59, 130, 246, 0.3)),
                 inset 0 0 15px rgba(255, 255, 255, 0.08); 
+    transform: translateY(-2px);
 }
 
 /* Inline Editing State */
@@ -561,12 +926,13 @@
     word-break: break-word;
     overflow-wrap: break-word;
     user-select: text;
+    overflow-y: auto; /* Allow the textarea to scroll naturally without hijacking canvas */
 }
 
 /* Interactive Todo / Checkbox Engine */
 .note-text-viewer {
     width: 100%;
-    height: 100%;
+    display: block;
     padding: 0.5em; /* 8px padding parity */
     color: #e5e7eb;
     font-family: 'Inter', sans-serif;
@@ -579,6 +945,14 @@
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
     user-select: text;
+}
+
+.note-text-section {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
 }
 
 .sticky-note.is-editing .note-text-viewer {
@@ -677,7 +1051,6 @@
     border-color: #3b82f6;
     color: #fff;
     box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
-    transform: translateY(-1px);
 }
 
 .note-link:active {
@@ -746,48 +1119,7 @@
     opacity: 0.8;
 }
 
-/* Embedded Image Note Formatting */
-.note-embedded-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-    padding: 0;
-    /* Offset-neutral layout for inline-block media within pre-wrap text flow */
-    margin: 0 !important;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    overflow: hidden;
-}
-
-.note-embedded-wrap:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(59, 130, 246, 0.3);
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-    transform: translateY(-2px);
-}
-
-.note-embedded-img {
-    width: 100%;
-    border-radius: 4px;
-    display: block;
-}
-
-.note-embedded-caption {
-    margin: 4px 0 3px 0;
-    font-size: 0.78em;
-    font-family: 'JetBrains Mono', monospace;
-    color: rgba(255, 255, 255, 0.5);
-    text-align: center;
-    font-style: italic;
-    letter-spacing: 0.02em;
-}
-
-.note-embedded-wrap:hover .note-embedded-caption {
-    color: #3b82f6;
-}
+/* Presentation styling for missing or inaccessible embedded image resources */
 
 /* Presentation styling for missing or inaccessible embedded image resources */
 .note-embedded-broken {
@@ -962,7 +1294,8 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     position: relative;
     background: transparent !important;
 }
@@ -1189,6 +1522,16 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+#create-note-color-hex {
+    width: 5.5rem;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    border-radius: 4px;
+    padding: 4px;
+}
+
 #edit-note-color {
     width: 32px;
     height: 32px;
@@ -1210,8 +1553,8 @@
     justify-content: space-between;
     align-items: center;
     height: 2.5em; /* 40px */
-    padding: 0 0.5em 0 1.25em; /* Layout: Right-anchored trigger */
-    margin: 0.625em 0.625em 0 0.625em; /* 10px */
+    padding: 0 0.5em 0 0.8em; 
+    margin: 0.25em 0.25em 0 0.25em;
     background: linear-gradient(45deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.4) 50%, rgba(15, 23, 42, 0.7) 100%);
     background-size: 200% 200%;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1249,8 +1592,8 @@
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 
     /* Placement: Shifted into the specific left-gutter padding of the header */
-    margin-left: -0.65em;
-    margin-right: 0.25em;
+    margin-left: -0.4em;
+    margin-right: 0.5em;
 }
 
 .note-id-hash:hover {
@@ -1302,13 +1645,14 @@
 
 .inline-color-input {
     display: none;
-    width: 24px;
-    height: 24px;
-    margin-left: -6px; /* Horizontal gutter offset for inline color swatch */
-    margin-right: 14px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: none;
+    width: 28px;
+    height: 28px;
+    margin-left: 0.25em;
+    margin-right: 0.75em;
+    border-radius: 8px; /* Match button aesthetics */
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
     cursor: pointer;
     padding: 0;
     overflow: hidden;
@@ -1327,17 +1671,30 @@
 
 .inline-color-input::-webkit-color-swatch {
     border: none;
-    border-radius: 50%;
+    border-radius: 8px;
 }
 
 .sticky-note.is-editing .inline-color-input {
     display: block;
 }
 
+.file-name-display.is-editing-text {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    padding: 2px 8px;
+    outline: none;
+    cursor: text;
+    min-width: 80px;
+    display: inline-block;
+    color: var(--note-accent, #3b82f6) !important;
+}
+
 .note-actions {
     display: flex;
     align-items: center;
     gap: 0.3125em; /* 5px */
+    margin-left: 0.75em; /* Create separation from title box */
 }
 
 /* Global Action Override for Disabled State */
@@ -1351,23 +1708,27 @@
     display: flex;
     align-items: center;
     gap: 0.3125em; /* 5px */
-    width: max-content;
-    max-width: 0;
-    height: 100%;
+    position: absolute;
+    top: -46px; 
+    left: 10px;
+    padding: 6px;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
     opacity: 0;
-    /* Visible overflow allows hover scale effects to bleed outside container */
-    overflow: visible;
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
+    overflow: visible;
+    transform: translateY(15px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 100;
 }
 
 .note-actions-drawer.expanded {
-    max-width: 18.0em; /* Expanded volume for 8 buttons including Copy Level tool */
     opacity: 1;
     pointer-events: auto;
-    /* Re-enable overflow clipping only for the closed-to-open transition if needed, 
-       but visible is required for the hover pop effect. */
-    overflow: visible;
+    transform: translateY(0) scale(1);
 }
 
 .layer-target-btn.active {
@@ -1432,12 +1793,19 @@
     min-height: 80px;
     max-height: 600px;
     overflow-y: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: block; /* Removed flex centering to prevent 'pushed off' bugs */
+    flex-shrink: 0;  /* Prevent container from collapsing when attachments grow */
     position: relative; /* Anchor for emoji picker trigger */
     backdrop-filter: blur(8px);
     box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
+}
+
+.create-preview-image {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
 .modal-overlay.active, .modal-overlay.show {
@@ -1446,14 +1814,7 @@
     pointer-events: auto !important;
 }
 
-.create-preview-image {
-    max-width: 100%;
-    max-height: 300px;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    object-fit: contain;
-}
+/* Content Separators and Form Feedback Cluster */
 
 .create-preview-text {
     width: 100%;
@@ -1491,13 +1852,21 @@
     cursor: pointer;
     font-size: 0.8rem;
     font-family: monospace;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     padding: 0;
+}
+
+.btn-icon-drawer.active {
+    transform: rotate(90deg); /* Pointing Up! */
 }
 
 .btn-icon-drawer:hover {
     background: #64748b;
     transform: scale(1.1);
+}
+
+.btn-icon-drawer.active:hover {
+    transform: rotate(90deg) scale(1.1);
 }
 
 /* Global Square Icon Buttons on Note Cards (High-Density Profile) */
@@ -1542,54 +1911,6 @@
 .btn-icon-link:hover     { border-color: rgba(217, 70, 239, 0.5); }
 .btn-icon-move:hover     { border-color: rgba(139, 92, 246, 0.5); }
 
-/* Responsive normalization */
-@media (max-width: 768px) {
-    .note-modal-content {
-        width: 96vw;
-        height: 98vh; /* Maximize vertical volume on mobile */
-        border-radius: 16px;
-    }
-
-    .note-view-pre-max {
-        padding: 20px 15px; /* Minimal mobile padding */
-        font-size: 0.75rem; /* Micro-titration for phone density */
-    }
-
-    .note-modal-footer {
-        height: 80px;
-        padding: 0 20px;
-        justify-content: space-between; /* Dock to sides to prevent collision */
-    }
-
-    .note-modal-footer .custom-color-picker-container {
-        position: static; /* Remove the floating anchor */
-    }
-
-    .note-modal-header {
-        padding: 15px 20px 5px 20px;
-        gap: 10px;
-    }
-
-    .note-modal-title-input, .note-modal-title-display {
-        font-size: 1.3rem; /* Micro-titration for phone density */
-    }
-
-    .note-modal-close {
-        top: 4px;
-        right: 4px;
-        font-size: 1.1rem; /* Discrete Precision Titration */
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: transparent;
-    }
-
-    #create-note-color-hex {
-        display: none !important;
-    }
-}
 /* --- Paste Modal Centering --- */
 .create-modal-footer-right {
     display: flex !important;
@@ -1598,7 +1919,7 @@
     width: 100% !important;
     height: 4rem;
     padding-right: 1.8rem !important;
-    gap: 0 !important;
+    gap: 12px !important;
 }
 
 #create-note-btn {
@@ -1841,6 +2162,8 @@
     font-size: 1.05rem;
     font-family: 'Inter', sans-serif;
     outline: none;
+    user-select: text;
+    pointer-events: auto;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -1849,26 +2172,11 @@
     box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
 }
 
+
 .create-modal-input::placeholder {
     color: rgba(255, 255, 255, 0.2);
 }
 
-/* Mobile normalization for Search Grid */
-@media (max-width: 768px) {
-    .search-results-grid {
-        padding: 15px;
-        max-height: calc(98vh - 120px);
-    }
-    
-    .search-result-item {
-        padding: 12px;
-        gap: 15px;
-    }
-    
-    .search-result-item:hover {
-        transform: none; /* Avoid horizontal shift on touch */
-    }
-}
 /* Draft Tip: Subtle immutability indicator */
 .create-edit-tip {
     position: absolute;
@@ -2086,6 +2394,12 @@
 .settings-vertical-stack input {
     width: 100%;
     box-sizing: border-box;
+}
+
+.settings-save-actions {
+    margin-top: 15px;
+    border-top: none;
+    padding-top: 0;
 }
 
 .settings-input-row input {
@@ -2376,6 +2690,7 @@ input:checked + .switch-sm .slider:before {
 .btn-icon-view { background: #10b981; }
 .btn-icon-collapse { background: #3b82f6; }
 .btn-icon-edit { background: #f59e0b; }
+.btn-icon-upload { background: #8b5cf6; } /* Violet for Attachment Updates */
 .btn-icon-delete { background: #ef4444; }
 
 /* Global Override: Glassmorphic Button Base */
@@ -2583,4 +2898,732 @@ input:checked + .switch-sm .slider:before {
 
 .note-text-hex {
     color: var(--text-color);
+}
+
+/* File Note Specific Styling */
+.note-file-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+.note-file-link {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: #f8fafc;
+    transition: all 0.3s ease;
+}
+
+.note-file-link .file-icon {
+    font-size: 2.5rem;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+}
+
+.note-file-link :is(.file-name, .file-name-display) {
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-align: center;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    width: 100%;
+    max-width: 100%;
+    opacity: 0.8;
+    cursor: pointer;
+}
+.sticky-note.is-editing .file-name-display {
+    cursor: text;
+}
+
+.note-file-link:hover .file-icon {
+    transform: scale(1.1);
+}
+
+/* Creation Preview for Files */
+.create-preview-file {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: #94a3b8;
+}
+
+.file-icon-large {
+    font-size: 4rem;
+    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.6));
+}
+
+.create-preview-file p {
+    font-size: 0.9rem;
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    word-break: break-all;
+}
+
+/* Dual-Rendering Separators */
+.note-separator, .note-separator-draft {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1) 20%, rgba(255, 255, 255, 0.1) 80%, transparent);
+    margin: 1rem 0;
+    width: 100%;
+}
+
+.note-separator-draft {
+    margin: 1.5rem 0;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Responsive normalization */
+@media (max-width: 768px) {
+    .note-modal-content {
+        width: 96vw;
+        height: 98vh; /* Maximize vertical volume on mobile */
+        border-radius: 16px;
+    }
+
+    .note-view-pre-max {
+        padding: 20px 15px; /* Minimal mobile padding */
+        font-size: 0.75rem; /* Micro-titration for phone density */
+    }
+
+    .note-modal-footer {
+        height: 80px;
+        padding: 0 20px;
+        justify-content: space-between; /* Dock to sides to prevent collision */
+    }
+
+    .note-modal-footer .custom-color-picker-container {
+        position: static; /* Remove the floating anchor */
+    }
+
+    .note-modal-header {
+        padding: 15px 20px 5px 20px;
+        gap: 10px;
+    }
+
+    .note-modal-title-input, .note-modal-title-display {
+        font-size: 1.3rem; /* Micro-titration for phone density */
+    }
+
+    .note-modal-close {
+        top: 4px;
+        right: 4px;
+        font-size: 1.1rem; /* Discrete Precision Titration */
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+    }
+
+    #create-note-color-hex {
+        display: none !important;
+    }
+
+    .search-results-grid {
+        padding: 15px;
+        max-height: calc(98vh - 120px);
+    }
+    
+    .search-result-item {
+        padding: 12px;
+        gap: 15px;
+    }
+    
+    .search-result-item:hover {
+        transform: none; /* Avoid horizontal shift on touch */
+    }
+}
+
+.hidden-input {
+    display: none !important;
+}
+
+.note-content, .note-file-container, .note-image-container {
+    position: relative; /* Anchor for absolute elements like the upload button */
+}
+
+.note-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Vertical Stack Layout: Multi-attachment notes displayed as rows with filenames */
+.note-attachment-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    width: 100%;
+}
+
+.attachment-item-stack {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.625rem;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    width: 100%;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    text-decoration: none;
+    color: #f8fafc;
+    cursor: pointer;
+    position: relative;
+}
+
+.attachment-item-stack:hover {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.attachment-thumb-stack {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.attachment-icon-stack {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.375rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+/* Filename inside a stack item: takes remaining space, editable when in edit mode */
+.attachment-item-stack .file-name-display {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.85;
+    cursor: default;
+}
+
+.sticky-note.is-editing .attachment-item-stack .file-name-display {
+    cursor: text;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    word-break: break-all;
+}
+
+.attachment-item-stack .file-name-display.is-editing-text {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    padding: 2px 6px;
+    outline: none;
+}
+
+/* Image Banner Item: full-width column layout, no fixed height */
+.attachment-item-stack--image {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+    cursor: zoom-in;
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Full-width image inside the banner */
+.attachment-full-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
+    border-radius: 4px 4px 0 0;
+    transition: transform 0.3s ease;
+}
+
+.attachment-item-stack--image:hover .attachment-full-img {
+    transform: scale(1.01);
+}
+
+/* Image filename: hidden in view mode, shown only in edit mode */
+.attachment-item-stack--image .file-name-display {
+    display: none;
+    flex: none;
+    white-space: normal;
+    width: 100%;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.sticky-note.is-editing .attachment-item-stack--image .file-name-display {
+    display: block;
+}
+
+/* Float controls anchor to top-right of image banner */
+.attachment-item-stack--image .attachment-float-controls {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+}
+
+.note-attachment-reel {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 10px 5px;
+    margin-bottom: 5px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    flex: 1;
+    align-items: center;
+}
+
+.attachment-item-reel {
+    flex: 0 0 auto;
+    height: 100%;
+    max-height: 100%;
+    aspect-ratio: 1/1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+    cursor: pointer;
+}
+
+.attachment-item-reel:hover {
+    transform: scale(1.02);
+    border-color: var(--note-accent, #3b82f6);
+}
+
+.attachment-item-reel img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.note-attachment-reel::-webkit-scrollbar {
+    height: 4px;
+}
+
+.note-attachment-reel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+.pdf-viewer-content {
+    width: 90vw;
+    height: 90vh;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+}
+
+.pdf-body {
+    flex: 1;
+    overflow: hidden;
+    background: #0f172a;
+}
+
+#pdf-frame {
+    border: none;
+    background: white;
+}
+
+.btn-danger-outline {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    transition: all 0.2s ease;
+}
+
+.btn-danger-outline:hover {
+    background: #ef4444;
+    color: white;
+}
+
+.create-modal-textarea {
+    width: 100%;
+    min-height: 10rem; /* Reduced to provide more space for attachments */
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #f8fafc;
+    padding: 1rem;
+    font-size: 1rem;
+    resize: vertical;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.create-modal-textarea:focus {
+    border-color: #3b82f6;
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.footer-attachment-preview .attachment-item-reel {
+    position: relative;
+    flex: 0 0 auto;
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(30, 41, 59, 0.4);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.footer-attachment-preview .attachment-item-reel:hover {
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+}
+
+.attachment-item-reel.pending-delete {
+    opacity: 0.4;
+    filter: grayscale(1);
+    border-color: #ef4444;
+}
+
+.attachment-thumb-reel {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.attachment-icon-reel {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+/* Action Drawer Trigger Logic ... (Replaced by .attachment-float-controls) */
+
+.attachment-controls {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+}
+
+.attachment-actions-group {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+}
+
+#upload-note-btn {
+    background: #8b5cf6 !important; /* Unified Violet Theme */
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 0 16px !important;
+    height: 38px !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+}
+
+#upload-note-btn:hover {
+    background: #7c3aed !important;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+    transform: translateY(-1px);
+}
+
+#purge-attachment-btn {
+    background: #ef4444 !important; /* Unified Danger Theme */
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 0 16px !important;
+    height: 38px !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+}
+
+#purge-attachment-btn:hover {
+    background: #dc2626 !important;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    transform: translateY(-1px);
+}
+
+.footer-reel-item {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.5);
+    overflow: hidden;
+}
+
+.footer-reel-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.footer-reel-icon {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.footer-reel-delete {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 18px;
+    height: 18px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+
+.footer-reel-item.pending-delete {
+    opacity: 0.3;
+    filter: grayscale(1);
+    border-color: #ef4444;
+}
+
+
+/* ============================================================================
+   HERO IMAGE & FULL-SCALE VIEWER ENGINE
+   ============================================================================ */
+
+.note-hero-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: transparent;
+    border-radius: 6px;
+    cursor: zoom-in;
+    transition: all 0.3s ease;
+}
+
+.note-hero-container:hover {
+    box-shadow: inset 0 0 40px rgba(59, 130, 246, 0.1);
+}
+
+.note-hero-img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    border-radius: 4px;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.note-hero-container:hover .note-hero-img {
+    transform: scale(1.01);
+}
+
+/* Hero image filename: hidden in view mode, shown only in edit mode */
+.note-hero-container .file-name-display {
+    display: none;
+}
+
+.sticky-note.is-editing .note-hero-container .file-name-display {
+    display: block !important;
+}
+
+/* ============================================================================
+   ATTACHMENT CONTROL SYSTEM (RESTORED DUAL-ACTION)
+   ============================================================================ */
+
+.attachment-float-controls {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transform: translateY(-5px);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 20;
+    pointer-events: none; /* Only allow button clicks to bubble if open */
+}
+
+/* Hero, Reel & Stack Hover Triggers */
+.note-hero-container:hover .attachment-float-controls,
+.attachment-item-reel:hover .attachment-float-controls,
+.attachment-item-stack:hover .attachment-float-controls {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* Edit mode: float controls always visible on all attachment containers */
+.sticky-note.is-editing .note-hero-container .attachment-float-controls,
+.sticky-note.is-editing .attachment-item-stack .attachment-float-controls {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* Squared Themed Buttons for Attachments */
+.hero-action-btn, .reel-action-btn {
+    width: 24px;
+    height: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px; /* Themed squared-rect */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 11px;
+    color: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+}
+
+.hero-action-btn:hover, .reel-action-btn:hover {
+    transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* Explicit Inline Upload Button (CLIP) Styling */
+/* Inline Upload Button: hidden by default, revealed only in edit mode */
+.note-inline-upload-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px dashed rgba(139, 92, 246, 0.4);
+    border-radius: 10px; /* Match header button radius */
+    color: #a78bfa;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.sticky-note.is-editing .note-inline-upload-btn {
+    display: flex;
+}
+
+/* When note already has attachments (not text-only), the inline btn is still shown 
+   in the header as a shortcut to add MORE items. */
+
+.note-inline-upload-btn:hover {
+    background: rgba(139, 92, 246, 0.3);
+    border-color: #a78bfa;
+    transform: scale(1.1);
+}
+
+/* Modal Implementation for Image Viewer */
+.image-viewer-content {
+    max-width: 90vw !important;
+    width: auto !important;
+    background: rgba(15, 23, 42, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.image-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #000;
+    min-height: 300px;
+    max-height: 75vh;
+    overflow: auto;
+}
+
+#image-viewer-display {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    animation: image-zoom-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes image-zoom-in {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.image-viewer-content .note-modal-footer {
+    padding: 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================================================
+   MODAL ATTACHMENT PREVIEW OVERRIDES (SPECIFICITY RECOVERY)
+   ============================================================================ */
+
+.footer-attachment-preview {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    margin: 15px 0 !important;
+    padding: 10px !important;
+    min-height: 20px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.footer-attachment-preview .attachment-item-reel {
+    width: 36px !important;
+    height: 36px !important;
+    flex: 0 0 36px !important; /* Lock flex growth */
+}
+
+.footer-attachment-preview .attachment-icon-reel {
+    font-size: 1.2rem !important; /* Compact icons for modal */
+}
+
+.footer-attachment-preview .attachment-thumb-reel {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
 }

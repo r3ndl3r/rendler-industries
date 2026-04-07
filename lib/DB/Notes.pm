@@ -37,7 +37,25 @@ sub DB::get_user_notes {
     my $sth = $self->{dbh}->prepare($sql);
     $sth->execute($canvas_id);
     
-    return $sth->fetchall_arrayref({});
+    my $notes = $sth->fetchall_arrayref({});
+    
+    # Attach 'Reel' Multi-files
+    if (@$notes) {
+        my $sql_blobs = "SELECT id as blob_id, note_id, filename, mime_type, file_size FROM note_blobs WHERE note_id IN (SELECT id FROM notes WHERE canvas_id = ? AND is_deleted = 0)";
+        my $sth_blobs = $self->{dbh}->prepare($sql_blobs);
+        $sth_blobs->execute($canvas_id);
+        
+        my %blobs;
+        while (my $row = $sth_blobs->fetchrow_hashref()) {
+            push @{$blobs{$row->{note_id}}}, $row;
+        }
+        
+        foreach my $n (@$notes) {
+            $n->{attachments} = $blobs{$n->{id}} || [];
+        }
+    }
+    
+    return $notes;
 }
 
 # Performs an ACL-aware search across all whiteboards accessible to the user.
@@ -59,14 +77,32 @@ sub DB::get_global_search_notes {
         LEFT JOIN canvas_layers cl ON n.canvas_id = cl.canvas_id AND n.layer_id = cl.layer_id
         WHERE (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
         AND n.is_deleted = 0
-        AND (n.title LIKE ? OR n.content LIKE ? OR cl.alias LIKE ?)
+        AND (n.title LIKE ? OR n.content LIKE ? OR n.filename LIKE ? OR cl.alias LIKE ?)
         ORDER BY n.updated_at DESC
         LIMIT 50
-    ";
-    
-    my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute($user_id, $user_id, $term, $term, $term);
-    return $sth->fetchall_arrayref({});
+        ";
+
+        my $sth = $self->{dbh}->prepare($sql);
+        $sth->execute($user_id, $user_id, $term, $term, $term, $term);
+        my $notes = $sth->fetchall_arrayref({});
+        
+        if (@$notes) {
+            my @note_ids = map { $_->{id} } @$notes;
+            my $placeholders = join(',', map { '?' } @note_ids);
+            my $sql_blobs = "SELECT id as blob_id, note_id, filename, mime_type, file_size FROM note_blobs WHERE note_id IN ($placeholders)";
+            my $sth_blobs = $self->{dbh}->prepare($sql_blobs);
+            $sth_blobs->execute(@note_ids);
+            
+            my %blobs;
+            while (my $row = $sth_blobs->fetchrow_hashref()) {
+                push @{$blobs{$row->{note_id}}}, $row;
+            }
+            foreach my $n (@$notes) {
+                $n->{attachments} = $blobs{$n->{id}} || [];
+            }
+        }
+        
+        return $notes;
 }
 
 # Synchronizes or creates a sticky note, respecting EDIT permissions.
@@ -93,33 +129,33 @@ sub DB::save_note {
     my $id;
     if ($p->{id}) {
         # Update existing note
-        my $sql = "UPDATE notes SET title = ?, content = ?, x = ?, y = ?, width = ?, height = ?, 
+        my $sql = "UPDATE notes SET title = ?, content = ?, filename = ?, x = ?, y = ?, width = ?, height = ?, 
                    color = ?, z_index = ?, is_collapsed = ?, is_options_expanded = ?, layer_id = ? 
                    WHERE id = ?";
         my $sth = $self->{dbh}->prepare($sql);
         $sth->execute(
-            $p->{title}, $p->{content}, $p->{x}, $p->{y}, $p->{width}, $p->{height},
-            $p->{color}, $p->{z_index}, $p->{is_collapsed}, $p->{is_options_expanded} // 0, 
+            $p->{title}, $p->{content}, $p->{filename}, $p->{x}, $p->{y}, $p->{width}, $p->{height},
+            $p->{color}, $p->{z_index}, $p->{is_collapsed}, $p->{is_options_expanded} // 0,
             $p->{layer_id} // 1, $p->{id}
         );
         $id = $p->{id};
     } else {
         # Insert new note
-        my $sql = "INSERT INTO notes (user_id, canvas_id, type, title, content, x, y, width, height, color, z_index, is_collapsed, is_options_expanded, layer_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        my $sql = "INSERT INTO notes (user_id, canvas_id, type, title, content, filename, x, y, width, height, color, z_index, is_collapsed, is_options_expanded, layer_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         my $sth = $self->{dbh}->prepare($sql);
         $sth->execute(
-            $p->{user_id}, $cid, $p->{type} // 'text', $p->{title}, $p->{content}, $p->{x}, $p->{y}, 
+            $p->{user_id}, $cid, $p->{type} // 'text', $p->{title}, $p->{content}, $p->{filename}, $p->{x}, $p->{y}, 
             $p->{width}, $p->{height}, $p->{color}, $p->{z_index}, $p->{is_collapsed} // 0,
             $p->{is_options_expanded} // 0, $p->{layer_id} // 1
         );
         $id = int($self->{dbh}->last_insert_id(undef, undef, 'notes', 'id'));
         $self->touch_canvas($cid); # Forward-Moving Signal
 
-        # Binary Deep-Copy Logic: If this is an 'image' clone, replicate the blob association
-        if (($p->{type} // '') eq 'image' && $p->{source_id} && $id) {
-            my $sql_b = "INSERT INTO note_blobs (note_id, file_data, mime_type, file_size) 
-                         SELECT ?, file_data, mime_type, file_size FROM note_blobs WHERE note_id = ?";
+        # Binary Deep-Copy Logic: Replicate the blob association for binary types
+        if ((($p->{type} // '') eq 'image' || ($p->{type} // '') eq 'file') && $p->{source_id} && $id) {
+            my $sql_b = "INSERT INTO note_blobs (note_id, file_data, mime_type, file_size, filename) 
+                         SELECT ?, file_data, mime_type, file_size, filename FROM note_blobs WHERE note_id = ?";
             my $sth_b = $self->{dbh}->prepare($sql_b);
             $sth_b->execute($id, $p->{source_id});
         }
@@ -138,7 +174,9 @@ sub DB::get_all_accessible_note_metadata {
     $self->ensure_connection;
 
     my $sql = "
-        SELECT n.id, n.title, n.canvas_id, n.type
+        SELECT n.id, n.title, n.canvas_id, n.type, n.content, n.filename,
+               n.x, n.y, n.width, n.height, n.z_index, n.layer_id, 
+               n.is_collapsed, n.is_options_expanded
         FROM notes n
         JOIN canvases c ON n.canvas_id = c.id
         WHERE (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
@@ -149,13 +187,24 @@ sub DB::get_all_accessible_note_metadata {
     $sth->execute($user_id, $user_id);
     
     my %map;
+    
+    my @note_ids;
     while (my $row = $sth->fetchrow_hashref()) {
-        $map{$row->{id}} = {
-            title     => $row->{title},
-            type      => $row->{type},
-            canvas_id => int($row->{canvas_id})
-        };
+        $row->{attachments} = [];
+        $map{$row->{id}} = $row;
+        push @note_ids, $row->{id};
     }
+    
+    if (@note_ids) {
+        my $placeholders = join(',', map { '?' } @note_ids);
+        my $sql_b = "SELECT id as blob_id, note_id, filename, mime_type, file_size FROM note_blobs WHERE note_id IN ($placeholders)";
+        my $sth_b = $self->{dbh}->prepare($sql_b);
+        $sth_b->execute(@note_ids);
+        while (my $b = $sth_b->fetchrow_hashref()) {
+            push @{$map{$b->{note_id}}->{attachments}}, $b;
+        }
+    }
+    
     return \%map;
 }
 
@@ -239,19 +288,60 @@ sub DB::check_note_ownership {
 # Returns: Void.
 # Note: Blobs are absolute-anchored by note_id, which is unique across the module.
 sub DB::store_note_blob {
-    my ($self, $note_id, $file_data, $mime_type, $file_size) = @_;
+    my ($self, $note_id, $file_data, $mime_type, $file_size, $filename) = @_;
     $self->ensure_connection;
 
-    # Purge existing blobs for this note (Single image per note pattern)
-    $self->{dbh}->do("DELETE FROM note_blobs WHERE note_id = ?", undef, $note_id);
-
-    my $sql = "INSERT INTO note_blobs (note_id, mime_type, file_size, file_data) VALUES (?, ?, ?, ?)";
+    # Multiple blobs per note are supported; inserts do not replace existing records.
+    my $sql = "INSERT INTO note_blobs (note_id, mime_type, file_size, file_data, filename) VALUES (?, ?, ?, ?, ?)";
     my $sth = $self->{dbh}->prepare($sql);
     $sth->bind_param(1, $note_id);
     $sth->bind_param(2, $mime_type);
     $sth->bind_param(3, $file_size);
     $sth->bind_param(4, $file_data, SQL_BLOB);
+    $sth->bind_param(5, $filename);
     $sth->execute();
+    return $self->{dbh}->last_insert_id(undef, undef, 'note_blobs', 'id');
+}
+
+# Deletes specific blobs (Reel purge logic).
+# Note: Security enforced at controller level via note ownership.
+sub DB::delete_blobs {
+    my ($self, $note_id, $blob_ids) = @_;
+    return 0 unless ref $blob_ids eq 'ARRAY' && @$blob_ids;
+    $self->ensure_connection;
+    my $placeholders = join(',', map { '?' } @$blob_ids);
+    my $sql = "DELETE FROM note_blobs WHERE note_id = ? AND id IN ($placeholders)";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute($note_id, @$blob_ids);
+    return $sth->rows;
+}
+
+# Updates the display filename for a specific binary attachment.
+# Parameters:
+#   blob_id : Integer ID of the target blob record.
+#   note_id : Parent note ID (used to scope the update atomically).
+#   filename : New descriptive filename string.
+# Returns:
+#   Boolean success.
+sub DB::update_blob_filename {
+    my ($self, $blob_id, $note_id, $filename) = @_;
+    $self->ensure_connection;
+
+    my $sql = "UPDATE note_blobs SET filename = ? WHERE id = ? AND note_id = ?";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute($filename, $blob_id, $note_id);
+    return $sth->rows > 0 ? 1 : 0;
+}
+
+# Updates an existing note to become a binary type (image or file).
+# Sets the new type and filename metadata while preserving any existing text content.
+sub DB::promote_note_to_binary {
+    my ($self, $note_id, $type, $filename) = @_;
+    $self->ensure_connection;
+
+    my $sql = "UPDATE notes SET type = ?, filename = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+    my $sth = $self->{dbh}->prepare($sql);
+    return $sth->execute($type, $filename, $note_id);
 }
 
 # Retrieves binary content for a specific note, respecting privacy.
@@ -271,10 +361,24 @@ sub DB::get_note_blob {
     
     return undef unless $cid && $self->check_canvas_access($cid, $user_id, 0);
 
-    my $sth = $self->{dbh}->prepare("SELECT * FROM note_blobs WHERE note_id = ? LIMIT 1");
+    my $sth = $self->{dbh}->prepare("SELECT * FROM note_blobs WHERE note_id = ? ORDER BY id ASC LIMIT 1");
     $sth->execute($note_id);
     
     return $sth->fetchrow_hashref();
+}
+
+# New precisely targeted reel attachment fetcher
+sub DB::get_blob_by_id {
+    my ($self, $blob_id, $user_id) = @_;
+    $self->ensure_connection;
+
+    my $sql = "SELECT nb.*, n.canvas_id FROM note_blobs nb JOIN notes n ON nb.note_id = n.id WHERE nb.id = ?";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute($blob_id);
+    my $blob = $sth->fetchrow_hashref();
+    
+    return undef unless $blob && $self->check_canvas_access($blob->{canvas_id}, $user_id, 0);
+    return $blob;
 }
 
 # Retrieves viewport state for a canvas, respecting sharing visibility.
@@ -471,23 +575,23 @@ sub DB::copy_note {
     return 0 unless $self->check_canvas_access($new_canvas_id, $user_id, 1);
 
     # 2. Deep-Copy: Insert new note record with identical metadata
-    my $sql = "INSERT INTO notes (user_id, canvas_id, type, title, content, x, y, width, height, color, z_index, is_collapsed, is_options_expanded)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    my $sql = "INSERT INTO notes (user_id, canvas_id, type, title, content, filename, x, y, width, height, color, z_index, is_collapsed, is_options_expanded, layer_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     my $sth_i = $self->{dbh}->prepare($sql);
     $sth_i->execute(
-        $user_id, $new_canvas_id, $note->{type}, $note->{title}, $note->{content},
+        $user_id, $new_canvas_id, $note->{type}, $note->{title}, $note->{content}, $note->{filename},
         $note->{x}, $note->{y}, $note->{width}, $note->{height}, $note->{color},
-        $note->{z_index}, $note->{is_collapsed}, $note->{is_options_expanded}
+        $note->{z_index}, $note->{is_collapsed}, $note->{is_options_expanded}, $note->{layer_id} // 1
     );
     
     my $new_id = int($self->{dbh}->last_insert_id(undef, undef, 'notes', 'id'));
     
     $self->touch_canvas($new_canvas_id); # Forward-Moving Signal
 
-    # 3. Binary Deep-Copy: If it's an image, clone the BLOB to the new ID
-    if ($note->{type} eq 'image' && $new_id) {
-        my $sql_b = "INSERT INTO note_blobs (note_id, file_data, mime_type, file_size)
-                     SELECT ?, file_data, mime_type, file_size FROM note_blobs WHERE note_id = ?";
+    # 3. Binary Deep-Copy: Replicate the BLOB for binary types
+    if (($note->{type} eq 'image' || $note->{type} eq 'file') && $new_id) {
+        my $sql_b = "INSERT INTO note_blobs (note_id, file_data, mime_type, file_size, filename)
+                     SELECT ?, file_data, mime_type, file_size, filename FROM note_blobs WHERE note_id = ?";
         my $sth_b = $self->{dbh}->prepare($sql_b);
         $sth_b->execute($new_id, $note_id);
     }
@@ -524,30 +628,33 @@ sub DB::get_board_mutation_time {
     # Aggregate Check: Determine 'freshness' from both canvas metadata and layer-specific content
     # If layer_id is omitted, we check board-wide for global context (Initial Load).
     # If provided, we isolate triggers to the user's active perspective.
-    my $sql = "SELECT GREATEST(
+    my $sql;
+    my @params;
+
+    if ($layer_id) {
+        # Include canvas-level updated_at so renames and touch_canvas events propagate to the layer heartbeat
+        $sql = "SELECT GREATEST(
+                    COALESCE((SELECT MAX(updated_at) FROM notes WHERE canvas_id = ? AND layer_id = ? AND is_deleted = 0), '1970-01-01 00:00:00'),
+                    COALESCE((SELECT updated_at FROM canvases WHERE id = ?), '1970-01-01 00:00:00')
+                )";
+        push @params, $canvas_id, $layer_id, $canvas_id;
+    } else {
+        $sql = "SELECT GREATEST(
                     COALESCE(MAX(c.updated_at), '1970-01-01 00:00:00'),
                     COALESCE(MAX(n.updated_at), '1970-01-01 00:00:00')
-               ) as last_mutation
-               FROM canvases c";
-    
-    my $join_on = "n.canvas_id = c.id";
-    my @params;
-    
-    if ($layer_id) {
-        $join_on .= " AND n.layer_id = ?";
-        push @params, $layer_id;
+                ) as last_mutation
+                FROM canvases c
+                LEFT JOIN notes n ON n.canvas_id = c.id AND n.is_deleted = 0
+                WHERE c.id = ?";
+        push @params, $canvas_id;
     }
-    
-    $sql .= " LEFT JOIN notes n ON $join_on WHERE c.id = ?";
-    push @params, $canvas_id;
-    
+
     my $sth = $self->{dbh}->prepare($sql);
     $sth->execute(@params);
     my ($time) = $sth->fetchrow_array();
-    
-    return $time;
-}
 
+    return $time;
+    }
 # --- Bin & Recovery Operations ---
 
 # Retrieves all soft-deleted notes for a user across all accessible canvases.

@@ -73,9 +73,6 @@ sub api_state {
     # 3. Session Persistence: Resolve the viewport (Specific layer or most recent)
     my $viewport = $c->db->get_viewport($user_id, $cid, $lid);
     
-    # Update the last-viewed timestamp for the resolved level
-    $c->db->save_viewport($user_id, $cid, $viewport->{scale}, $viewport->{scroll_x}, $viewport->{scroll_y}, $viewport->{layer_id});
-    
     my $notes      = $c->db->get_user_notes($user_id, $cid);
     my $share_list = $c->db->get_canvas_shares($cid);
 
@@ -114,6 +111,7 @@ sub api_save {
         type                => $c->param('type') // 'text',
         title               => trim($c->param('title') // 'Untitled Note'),
         content             => trim($c->param('content') // ''),
+        filename            => trim($c->param('filename') // ''),
         x                   => int($c->param('x') // 2500),
         y                   => int($c->param('y') // 2500),
         width               => int($c->param('width') // 280),
@@ -127,7 +125,16 @@ sub api_save {
     my $result_id = $c->db->save_note($params);
 
     unless (defined $result_id) {
-        return $c->render(json => { success => 0, error => 'Permission Denied' }, status => 403);
+        return $c->render(json => { success => 0, error => 'Board Permission Denied (Read-Only?)' }, status => 403);
+    }
+    
+    # Optional Purge: Process any attachments marked for deletion in this save cycle
+    my $deleted_blobs_json = $c->param('deleted_blobs');
+    if ($deleted_blobs_json) {
+        my $deleted_blobs = Mojo::JSON::decode_json($deleted_blobs_json);
+        if (ref $deleted_blobs eq 'ARRAY' && @$deleted_blobs) {
+            $c->db->delete_blobs($result_id, $deleted_blobs);
+        }
     }
 
     $c->render(json => {
@@ -151,7 +158,11 @@ sub api_delete {
     my $canvas_id = $c->param('canvas_id');
     my $user_id   = $c->current_user_id();
 
-    $c->db->delete_note($id, $user_id);
+    my $ok = $c->db->delete_note($id, $user_id);
+
+    unless ($ok) {
+        return $c->render(json => { success => 0, error => 'Permission Denied or Note Not Found' }, status => 403);
+    }
 
     $c->render(json => {
         success       => 1,
@@ -200,13 +211,17 @@ sub api_upload {
         return $c->render(json => { success => 0, error => "Permission Denied" }, status => 403);
     }
 
+    my $mime_type = $upload->headers->content_type || 'application/octet-stream';
+    my $type = ($mime_type =~ m/^image\//) ? 'image' : 'file';
+
     if (!$note_id && $upload) {
         $note_id = $c->db->save_note({
             user_id      => $user_id,
             canvas_id    => $canvas_id,
-            type         => 'image',
+            type         => $type,
             title        => $c->param('title') // $upload->filename,
-            content      => $upload->filename,
+            content      => trim($c->param('content') // ''),
+            filename     => $upload->filename,
             x            => $c->param('x') // 0,
             y            => $c->param('y') // 0,
             width        => 400,
@@ -216,6 +231,9 @@ sub api_upload {
             is_collapsed        => 0,
             is_options_expanded => int($c->param('is_options_expanded') // 0)
         });
+    } elsif ($note_id && $upload) {
+        # Edge Case Fix: Update existing note metadata to reflect binary conversion
+        $c->db->promote_note_to_binary($note_id, $type, $upload->filename);
     }
 
     unless ($upload && $note_id) {
@@ -223,10 +241,11 @@ sub api_upload {
     }
 
     my $file_data = $upload->asset->slurp;
-    my $mime_type = $upload->headers->content_type || 'image/png';
+    # Recalculate MIME/size for blob storage
+    $mime_type = $upload->headers->content_type || ($type eq 'image' ? 'image/png' : 'application/octet-stream');
     my $file_size = $upload->size;
 
-    $c->db->store_note_blob($note_id, $file_data, $mime_type, $file_size);
+    $c->db->store_note_blob($note_id, $file_data, $mime_type, $file_size, $upload->filename);
 
     $c->render(json => {
         success       => 1,
@@ -236,7 +255,63 @@ sub api_upload {
     });
 }
 
-# Serves raw binary content for an image note.
+# Permanently removes a single binary attachment from a note.
+# Route: POST /notes/api/attachment/delete
+# Parameters: note_id, blob_id, canvas_id
+sub api_attachment_delete {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id();
+    my $note_id   = $c->param('note_id');
+    my $blob_id   = $c->param('blob_id');
+    my $canvas_id = $c->param('canvas_id');
+
+    # Security Gate: Verify the user owns the note containing the blob
+    unless ($c->db->check_note_ownership($note_id, $user_id)) {
+        return $c->render(json => { success => 0, error => "Permission Denied" }, status => 403);
+    }
+
+    # Atomic Deletion
+    $c->db->delete_blobs($note_id, [$blob_id]);
+
+    $c->render(json => {
+        success       => 1,
+        notes         => $c->db->get_user_notes($user_id, $canvas_id),
+        last_mutation => $c->db->get_board_mutation_time($canvas_id)
+    });
+}
+
+# Updates the display filename for a specific binary attachment in-place.
+# Route: POST /notes/api/attachment/rename
+# Parameters: note_id, blob_id, canvas_id, filename
+sub api_attachment_rename {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id();
+    my $note_id   = $c->param('note_id');
+    my $blob_id   = $c->param('blob_id');
+    my $canvas_id = $c->param('canvas_id');
+    my $filename  = Mojo::Util::trim($c->param('filename') // '');
+
+    return $c->render(json => { success => 0, error => 'Filename required' }) unless length($filename) >= 1;
+
+    # Security Gate: Verify the user owns the note containing the blob
+    unless ($c->db->check_note_ownership($note_id, $user_id)) {
+        return $c->render(json => { success => 0, error => 'Permission Denied' }, status => 403);
+    }
+
+    my $ok = $c->db->update_blob_filename($blob_id, $note_id, $filename);
+
+    $c->render(json => {
+        success       => $ok ? 1 : 0,
+        notes         => $c->db->get_user_notes($user_id, $canvas_id),
+        last_mutation => $c->db->get_board_mutation_time($canvas_id)
+    });
+}
+
+# Serves raw binary content for an image note (Legacy fallback returns first blob)
 # Route: GET /notes/serve/:note_id
 sub serve_blob {
     my $c = shift;
@@ -244,14 +319,35 @@ sub serve_blob {
 
     my $note_id = $c->stash('note_id');
     my $user_id = $c->current_user_id();
-    
+
     my $blob = $c->db->get_note_blob($note_id, $user_id);
     return $c->render(text => 'Not found or Unauthorized', status => 403) unless $blob;
 
+    my $filename    = $blob->{filename} || "note_attachment_$note_id";
+    my $disposition = ($blob->{mime_type} =~ m/^image\//) ? 'inline' : 'attachment';
+    $c->res->headers->content_disposition("$disposition; filename=\"$filename\"");
     $c->res->headers->content_type($blob->{mime_type});
     $c->render(data => $blob->{file_data});
 }
 
+# Serves precisely targeted reel attachments.
+# Route: GET /notes/attachment/serve/:blob_id
+sub serve_attachment_blob {
+    my $c = shift;
+    return $c->render(text => 'Unauthorized', status => 403) unless $c->is_logged_in;
+
+    my $blob_id = $c->stash('blob_id');
+    my $user_id = $c->current_user_id();
+
+    my $blob = $c->db->get_blob_by_id($blob_id, $user_id);
+    return $c->render(text => 'Not found or Unauthorized', status => 403) unless $blob;
+
+    my $filename    = $blob->{filename} || "attachment_$blob_id";
+    my $disposition = ($blob->{mime_type} =~ m/^(image\/|application\/pdf)/) ? 'inline' : 'attachment';
+    $c->res->headers->content_disposition("$disposition; filename=\"$filename\"");
+    $c->res->headers->content_type($blob->{mime_type});
+    $c->render(data => $blob->{file_data});
+}
 # --- Multi-Canvas API Expansion ---
 
 # Initializes a new canonical board record.
@@ -308,6 +404,10 @@ sub api_canvas_share {
     # 2. Target Resolution
     my $target_id = $c->db->get_user_id($target);
     return $c->render(json => { success => 0, error => 'User not found' }) unless $target_id;
+
+    # Self-Share Guard: Owners cannot add themselves as a collaborator
+    return $c->render(json => { success => 0, error => 'Cannot share a board with yourself' })
+        if $target_id == $user_id;
 
     if ($revoke) {
         $c->db->unshare_canvas($canvas_id, $target_id);
@@ -396,6 +496,8 @@ sub api_canvas_rename {
 # Used by the client-side AJAX poller for cross-session consistency.
 sub api_heartbeat {
     my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
     my $canvas_id = $c->stash('canvas_id');
     my $layer_id  = $c->param('layer_id');
     my $user_id   = $c->current_user_id();

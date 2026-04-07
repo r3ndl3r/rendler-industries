@@ -5,11 +5,30 @@
 
 <% content_for 'head' => begin %>
     <link rel="stylesheet" href="/css/notes.css">
-    <script src="/js/notes.js"></script>
+
+    <script src="/js/notes/api.js"></script>
+    <script src="/js/notes/rendering.js"></script>
+    <script src="/js/notes/interactions.js"></script>
+    <script src="/js/notes/attachments.js"></script>
+    <script src="/js/notes/modals.js"></script>
+    <script src="/js/notes/radar.js"></script>
+    <script src="/js/notes/core.js"></script>
 <% end %>
 
-<div class="board-branding-pill" id="active-board-branding">
+<div class="board-branding-pill" id="active-board-branding" onclick="toggleCanvasQuickSwitch()" title="Switch Canvas" role="button" aria-haspopup="listbox" aria-expanded="false">
     <span id="active-board-name-pill">Loading Canvas...</span>
+    <svg class="pill-chevron" viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+        <path d="M4 9l8 7 8-7z"/>
+    </svg>
+</div>
+
+<!-- Canvas Quick-Switcher Dropdown -->
+<div id="canvas-quick-switcher" class="canvas-quick-switcher hidden" role="listbox">
+    <div class="cqs-header">
+        <span class="cqs-title">📒 Switch Canvas</span>
+        <button class="cqs-close-btn" onclick="closeCanvasQuickSwitch()" title="Close">✕</button>
+    </div>
+    <div id="cqs-list" class="cqs-list"></div>
 </div>
 
 <div class="level-switcher-container">
@@ -122,8 +141,12 @@
                 </div>
             </div>
 
-            <div id="create-note-preview" class="create-preview-glass">
+            <div id="create-note-content" class="create-preview-glass">
             </div>
+
+
+            <%# Attachment staging area: queued files shown before save %>
+            <div id="footer-attachment-preview" class="footer-attachment-preview"></div>
         </div>
         <div class="note-modal-footer modal-actions-center create-modal-footer-right">
             <div class="custom-color-picker-container">
@@ -132,13 +155,24 @@
                     <input type="text" id="create-note-color-hex" value="#f59e0b" maxlength="7" class="font-mono">
                 </div>
             </div>
+            <input type="file" id="create-note-file-input" class="hidden-input">
+            <div class="attachment-controls">
+                <div class="attachment-actions-group">
+                    <button id="upload-note-btn" class="btn-secondary" title="Upload File or Image">
+                        <span id="upload-btn-icon">📁</span> <span id="upload-btn-text">Upload</span>
+                    </button>
+                    <button id="purge-attachment-btn" class="btn-danger hidden" title="Purge All Attachments">
+                        🗑️ Purge
+                    </button>
+                </div>
+            </div>
+            
             <button id="create-note-btn" class="btn-primary">
-                <span id="draft-btn-icon">📋</span> <span id="draft-btn-text">Create</span>
+                <span id="draft-btn-icon">💾</span> <span id="draft-btn-text">Save</span>
             </button>
         </div>
     </div>
 </div>
-
 <div id="note-search-modal" class="modal-overlay">
     <div class="note-modal-content search-modal-glass">
         <div class="note-modal-header">
@@ -237,7 +271,7 @@
                 <label class="settings-label">Board Name</label>
                 <div class="settings-vertical-stack">
                     <input type="text" id="edit-canvas-name" class="create-modal-input" placeholder="Board name...">
-                    <div class="modal-actions modal-actions-center" style="margin-top: 15px; border-top: none; padding-top: 0;">
+                    <div class="modal-actions modal-actions-center settings-save-actions">
                         <button id="save-canvas-name-btn" class="btn-primary">💾 Save</button>
                     </div>
                 </div>
@@ -257,5 +291,33 @@
         </div>
     </div>
 </div>
+</div>
 
-
+<div id="pdf-viewer-modal" class="modal-overlay">
+    <div class="note-modal-content pdf-viewer-content">
+        <div class="note-modal-header">
+            <h3 id="pdf-viewer-title">📄 PDF Viewer</h3>
+            <span class="close-btn note-modal-close" data-close="modal">&times;</span>
+        </div>
+        <div class="note-modal-body no-padding pdf-body">
+            <iframe id="pdf-frame" src="" type="application/pdf" width="100%" height="100%"></iframe>
+        </div>
+        <div class="note-modal-footer modal-actions-center">
+            <a id="pdf-download-link" href="#" class="btn-primary" download>📥 Download PDF</a>
+        </div>
+    </div>
+</div>
+<div id="image-viewer-modal" class="modal-overlay">
+    <div class="note-modal-content image-viewer-content">
+        <div class="note-modal-header">
+            <h3 id="image-viewer-title">🖼️ Image Viewer</h3>
+            <span class="close-btn note-modal-close" data-close="modal">&times;</span>
+        </div>
+        <div class="note-modal-body no-padding image-body">
+            <img id="image-viewer-display" src="" alt="Full View">
+        </div>
+        <div class="note-modal-footer modal-actions-center">
+            <a id="image-download-link" href="#" class="btn-primary" download>📥 Download Original</a>
+        </div>
+    </div>
+</div>
