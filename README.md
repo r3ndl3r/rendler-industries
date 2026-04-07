@@ -49,15 +49,12 @@ The system features a redundant, priority-weighted alert engine for real-time an
 ### ⚙️ Global Settings (`/settings`)
 *   **System Variables:** Centralized management of application constants, such as **Timer Reset Hours** and **Quiet Hour** configurations.
 
+<details>
+<summary>🔍 <b>View Screenshot (Global Settings)</b></summary>
 <p align="center">
-  <details>
-    <summary>
-      <img src="public/images/screenshots/global_settings.png" height="130" />
-    </summary>
-    <br>
-    <img src="public/images/screenshots/global_settings.png" width="100%" />
-  </details>
+  <img src="public/images/screenshots/global_settings.png" width="800" />
 </p>
+</details>
 
 ### 🧠 Family Pulse AI (`/ai`)
 *   **Gemini 2.0 Integration:** Powered by Google's Gemini 2.0 Flash model for lightning-fast analysis and household reasoning.
@@ -65,9 +62,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Multimodal Vision:** Direct integration with the File Vault and Receipt pipeline for image-based analysis and automated data entry.
 *   **Persistent Memory:** Maintains long-term conversational history to ensure continuity in complex planning tasks.
 
-<p align="center">
-  *Screenshots coming soon...*
-</p>
+> *Screenshots coming soon...*
 
 ---
 
@@ -82,29 +77,21 @@ The system features a redundant, priority-weighted alert engine for real-time an
     *   **Proactive Reminders:** Multi-channel alerting (Discord, Email, Gotify, Pushover) triggered before event start times for specific attendees.
     *   **Color Coding:** Categorize events (Doctor, School, Social) with dynamic hex-code styling.
 
+<details>
+<summary>🔍 <b>View Screenshots (Main Views)</b></summary>
 <p align="center">
-  <details>
-    <summary>
-      <img src="public/images/screenshots/calendar_main.png" height="130" />
-      <img src="public/images/screenshots/calendar_event_details.png" height="130" />
-    </summary>
-    <br>
-    <img src="public/images/screenshots/calendar_main.png" width="100%" />
-    <img src="public/images/screenshots/calendar_event_details.png" width="100%" />
-  </details>
+  <img src="public/images/screenshots/calendar_main.png" width="800" />
+  <img src="public/images/screenshots/calendar_event_details.png" width="800" />
 </p>
+</details>
 
+<details>
+<summary>🔍 <b>View Screenshots (Management)</b></summary>
 <p align="center">
-  <details>
-    <summary>
-      <img src="public/images/screenshots/calendar_edit_event.png" height="130" />
-      <img src="public/images/screenshots/calendar_manage.png" height="130" />
-    </summary>
-    <br>
-    <img src="public/images/screenshots/calendar_edit_event.png" width="100%" />
-    <img src="public/images/screenshots/calendar_manage.png" width="100%" />
-  </details>
+  <img src="public/images/screenshots/calendar_edit_event.png" width="800" />
+  <img src="public/images/screenshots/calendar_manage.png" width="800" />
 </p>
+</details>
 
 ### 🧹 Bounty Board & Chores (`/chores`)
 *   **Point-Based Economy:** Gamified household management where completing chores earns transferable reward points.
@@ -112,9 +99,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Admin Quick-Add:** Dynamic templates based on historical chore data for rapid board updates.
 *   **Historical Audit:** Detailed tracking of completed tasks, including completion timestamps and assigned contributors.
 
-<p align="center">
-  *Screenshots coming soon...*
-</p>
+> *Screenshots coming soon...*
 
 ### 🍲 Collaborative Meal Planner (`/meals`)
 *   **4-Day Rolling Window:** Dynamic schedule management with automated plan generation.
@@ -122,9 +107,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Meal Vault:** Centralized autocomplete database of historical family favorites for effortless entry.
 *   **Admin Lock-in:** Finalize daily choices and set "Blackout" reasons for special events or eating out.
 
-<p align="center">
-  *Screenshots coming soon...*
-</p>
+> *Screenshots coming soon...*
 
 ### 💊 Medication Tracker (`/medication`)
 *   **Integrated Reminders:** Automated follow-up alert scheduling (1-12h) directly from the dose reset modal.
@@ -132,15 +115,12 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Modern Selection UI:** Interactive pill-button selectors for delay and recipients to eliminate dropdown friction.
 *   **Smart Registry:** Shared medication database with default dosages for lightning-fast entry.
 
+<details>
+<summary>🔍 <b>View Screenshot (Medication Dashboard)</b></summary>
 <p align="center">
-  <details>
-    <summary>
-      <img src="public/images/screenshots/medication_tracker.png" height="130" />
-    </summary>
-    <br>
-    <img src="public/images/screenshots/medication_tracker.png" width="100%" />
-  </details>
+  <img src="public/images/screenshots/medication_tracker.png" width="800" />
 </p>
+</details>
 
 ### 🔔 Smart Reminders (`/reminders`)
 *   **Real-time Synchronization:** 100% SPA implementation with 60s background polling and live countdowns.
@@ -148,33 +128,25 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Multi-User Mapping:** Link multiple recipients to a single alert via Discord and Gotify.
 *   **Self-Cleaning:** Automated deletion of "One-off" reminders after successful delivery.
 
+<details>
+<summary>🔍 <b>View Screenshots (Reminder Suite)</b></summary>
 <p align="center">
-  <details>
-    <summary>
-      <img src="public/images/screenshots/reminders.png" height="130" />
-      <img src="public/images/screenshots/reminders_edit.png" height="130" />
-    </summary>
-    <br>
-    <img src="public/images/screenshots/reminders.png" width="100%" />
-    <img src="public/images/screenshots/reminders_edit.png" width="100%" />
-  </details>
+  <img src="public/images/screenshots/reminders.png" width="800" />
+  <img src="public/images/screenshots/reminders_edit.png" width="800" />
 </p>
+</details>
 
 ### 🛒 Collaborative Shopping & Todo (`/shopping`, `/todo`)
 *   **Live Sync:** AJAX-driven status toggles for real-time synchronization across the household.
 *   **User Scoping:** Todo lists are private and segregated, while Shopping lists are shared family-wide.
 
+<details>
+<summary>🔍 <b>View Screenshots (List Management)</b></summary>
 <p align="center">
-  <details>
-    <summary>
-      <img src="public/images/screenshots/shopping_list.png" height="130" />
-      <img src="public/images/screenshots/todo_list.png" height="130" />
-    </summary>
-    <br>
-    <img src="public/images/screenshots/shopping_list.png" width="100%" />
-    <img src="public/images/screenshots/todo_list.png" width="100%" />
-  </details>
+  <img src="public/images/screenshots/shopping_list.png" width="800" />
+  <img src="public/images/screenshots/todo_list.png" width="800" />
 </p>
+</details>
 
 ### 📓 Sticky Notes & Virtual Whiteboard (`/notes`)
 *   **Infinite Canvas:** High-fidelity sticky note orchestration with real-time panning and zooming (60 FPS).
@@ -185,23 +157,16 @@ The system features a redundant, priority-weighted alert engine for real-time an
     *   **Cross-Linking:** Deep-link between notes using `[note:ID]` syntax.
 *   **Media Embedding:** Direct image pasting and `[image:ID:scale]` embedding for high-fidelity visual documentation.
 
+<details>
+<summary>🔍 <b>View Screenshots (Canvas Interaction)</b></summary>
 <p align="center">
-  <details>
-    <summary>
-      <img src="public/images/screenshots/sticky_notes_canvas.png" height="130" />
-      <img src="public/images/screenshots/sticky_notes_boards.png" height="130" />
-      <img src="public/images/screenshots/sticky_notes_settings.png" height="130" />
-      <img src="public/images/screenshots/sticky_notes_jump.png" height="130" />
-      <img src="public/images/screenshots/sticky_notes_guide.png" height="130" />
-    </summary>
-    <br>
-    <img src="public/images/screenshots/sticky_notes_canvas.png" width="100%" />
-    <img src="public/images/screenshots/sticky_notes_boards.png" width="100%" />
-    <img src="public/images/screenshots/sticky_notes_settings.png" width="100%" />
-    <img src="public/images/screenshots/sticky_notes_jump.png" width="100%" />
-    <img src="public/images/screenshots/sticky_notes_guide.png" width="100%" />
-  </details>
+  <img src="public/images/screenshots/sticky_notes_canvas.png" width="800" />
+  <img src="public/images/screenshots/sticky_notes_boards.png" width="800" />
+  <img src="public/images/screenshots/sticky_notes_settings.png" width="800" />
+  <img src="public/images/screenshots/sticky_notes_jump.png" width="800" />
+  <img src="public/images/screenshots/sticky_notes_guide.png" width="800" />
 </p>
+</details>
 
 ---
 
@@ -212,28 +177,21 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Transaction Audit:** Full historical visibility for both parents and children into all deposits and expenditures.
 *   **Global Leaderboard:** Comparative balance tracking to encourage healthy household participation.
 
-<p align="center">
-  *Screenshots coming soon...*
-</p>
+> *Screenshots coming soon...*
 
 ### 🧾 Receipt Archiving & OCR Pipeline (`/receipts`)
 *   **Automated Parsing:** Uses an advanced **ImageMagick + Tesseract OCR** pipeline.
 *   **Image Pre-processing:** Automated grayscale conversion, sharpening, and 40% threshold deskewing.
 *   **Heuristic Extraction:** Custom Perl Regex engine parses store names, dates, and currency totals from raw text.
 
+<details>
+<summary>🔍 <b>View Screenshots (OCR Engine)</b></summary>
 <p align="center">
-  <details>
-    <summary>
-      <img src="public/images/screenshots/receipt_ledger.png" height="130" />
-      <img src="public/images/screenshots/receipt_refine.png" height="130" />
-      <img src="public/images/screenshots/receipt_detail.png" height="130" />
-    </summary>
-    <br>
-    <img src="public/images/screenshots/receipt_ledger.png" width="100%" />
-    <img src="public/images/screenshots/receipt_refine.png" width="100%" />
-    <img src="public/images/screenshots/receipt_detail.png" width="100%" />
-  </details>
+  <img src="public/images/screenshots/receipt_ledger.png" width="800" />
+  <img src="public/images/screenshots/receipt_refine.png" width="800" />
+  <img src="public/images/screenshots/receipt_detail.png" width="800" />
 </p>
+</details>
 
 ### 🤬 The Swear Jar Ledger (`/swear`)
 *   **Polymorphic Ledger:** Unified tracking of fines, payments, and expenditures with 100% AJAX synchronization.
@@ -241,24 +199,19 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Smart Reconciliation:** Automated debt settlement logic (FIFO) upon jar deposits.
 *   **AI Context Integration:** Financial data is fed into the Gemini AI snapshot for behavioral analysis.
 
-<p align="center">
-  *Screenshots coming soon...*
-</p>
+> *Screenshots coming soon...*
 
 ### 📁 Secure File Vault (`/files`)
 *   **BLOB Storage:** Secure database-backed storage for arbitrary binaries with download tracking.
 *   **Permission Control:** Granular access management (Admin-only vs. Specific User whitelists).
 *   **Lightweight Metadata:** Fast browsing via optimized queries that exclude heavy binary content during list operations.
 
+<details>
+<summary>🔍 <b>View Screenshot (File Manager)</b></summary>
 <p align="center">
-  <details>
-    <summary>
-      <img src="public/images/screenshots/file_manager.png" height="130" />
-    </summary>
-    <br>
-    <img src="public/images/screenshots/file_manager.png" width="100%" />
-  </details>
+  <img src="public/images/screenshots/file_manager.png" width="800" />
 </p>
+</details>
 
 ---
 
@@ -292,32 +245,25 @@ The system features a redundant, priority-weighted alert engine for real-time an
     *   **Deep Metrics:** High-fidelity tracking of UV Index, Humidity, Moon Phases, Wind Chill, and Visibility.
 *   **Threshold Styling:** Dynamic color-coded alerts based on temperature and wind intensity for rapid visual auditing.
 
+<details>
+<summary>🔍 <b>View Screenshots (Meteorological Dashboard)</b></summary>
 <p align="center">
-  <details>
-    <summary>
-      <img src="public/images/screenshots/weather_dashboard.png" height="130" />
-      <img src="public/images/screenshots/weather_details.png" height="130" />
-    </summary>
-    <br>
-    <img src="public/images/screenshots/weather_dashboard.png" width="100%" />
-    <img src="public/images/screenshots/weather_details.png" width="100%" />
-  </details>
+  <img src="public/images/screenshots/weather_dashboard.png" width="800" />
+  <img src="public/images/screenshots/weather_details.png" width="800" />
 </p>
+</details>
 
 ### ⏱ Household Timers (`/timers`)
 *   **Limit Enforcement:** Weekday vs. Weekend daily minute limits per device category.
 *   **Quiet Hours:** Automatic start-blocking during configured quiet periods (e.g., 9PM - 7AM).
 *   **Bonus Time:** Administrative interface for granting extra time to specific user sessions.
 
+<details>
+<summary>🔍 <b>View Screenshot (Timer Management)</b></summary>
 <p align="center">
-  <details>
-    <summary>
-      <img src="public/images/screenshots/timer_management.png" height="130" />
-    </summary>
-    <br>
-    <img src="public/images/screenshots/timer_management.png" width="100%" />
-  </details>
+  <img src="public/images/screenshots/timer_management.png" width="800" />
 </p>
+</details>
 
 ### 🎂 Birthday Tracker (`/birthdays`)
 *   **Cyclical Sort:** Specialized SQL engine that ranks birthdays by nearest upcoming date, regardless of the current year.
@@ -326,17 +272,13 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Go Links:** Internal URL shortener with visit analytics.
 *   **Clipboard:** Cross-device pastebin with instant notifications for user `rendler`.
 
+<details>
+<summary>🔍 <b>View Screenshots (Utilities)</b></summary>
 <p align="center">
-  <details>
-    <summary>
-      <img src="public/images/screenshots/go_links.png" height="130" />
-      <img src="public/images/screenshots/clipboard.png" height="130" />
-    </summary>
-    <br>
-    <img src="public/images/screenshots/go_links.png" width="100%" />
-    <img src="public/images/screenshots/clipboard.png" width="100%" />
-  </details>
+  <img src="public/images/screenshots/go_links.png" width="800" />
+  <img src="public/images/screenshots/clipboard.png" width="800" />
 </p>
+</details>
 
 ---
 
