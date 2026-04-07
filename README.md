@@ -96,6 +96,24 @@ The system features a redundant, priority-weighted alert engine for real-time an
   <img src="public/images/screenshots/todo_list.png" width="48%" />
 </p>
 
+### 📓 Sticky Notes & Virtual Whiteboard (`/notes`)
+*   **Infinite Canvas:** High-fidelity sticky note orchestration with real-time panning and zooming (60 FPS).
+*   **Integrated Markdown:** 
+    *   **Interactive Task Lists:** Native `- [ ]` and `- [x]` toggles for lifecycle management.
+    *   **Styling Engine:** Supports `**bold**`, `*italic*`, and `[color:#hex]` accentuation.
+    *   **Cross-Linking:** Deep-link between notes using `[note:ID]` syntax.
+*   **Media Embedding:** Direct image pasting and `[image:ID:scale]` embedding for high-fidelity visual documentation.
+<p align="center">
+  <img src="public/images/screenshots/sticky_notes_boards.png" width="32%" />
+  <img src="public/images/screenshots/sticky_notes_settings.png" width="32%" />
+  <img src="public/images/screenshots/sticky_notes_jump.png" width="32%" />
+</p>
+
+<p align="center">
+  <img src="public/images/screenshots/sticky_notes_guide.png" width="48%" />
+  <img src="public/images/screenshots/sticky_notes_canvas.png" width="48%" />
+</p>
+
 ---
 
 ## 💰 Financial & Data Management
