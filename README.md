@@ -166,11 +166,17 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 ## 🏖 Specialized & Utility
 
-### 🏖 Chelsea Weather Dashboard (`/chelsea`)
-*   **Linear Interpolation Engine:** Scrapes 3-hour source data from Windfinder and interpolates it into granular **2-hour blocks**.
-*   **Threshold Styling:** Color-coded temperature and wind intensity classes for fast visual analysis.
+### 🌦 Weather Dashboard (`/weather`)
+*   **Multi-Location Tracking:** Real-time meteorological data for multiple global locations (e.g., Mitcham, Chelsea, Bangkok).
+*   **Advanced Detail Engine:** 
+    *   **Interpolated Forecasting:** Scrapes source data and interpolates it into granular 2-hour blocks with temperature trend graphing.
+    *   **Deep Metrics:** High-fidelity tracking of UV Index, Humidity, Moon Phases, Wind Chill, and Visibility.
+*   **Threshold Styling:** Dynamic color-coded alerts based on temperature and wind intensity for rapid visual auditing.
 
-![Chelsea Forecast](public/images/screenshots/chelsea_forecast.png)
+<p align="center">
+  <img src="public/images/screenshots/weather_dashboard.png" width="48%" />
+  <img src="public/images/screenshots/weather_details.png" width="48%" />
+</p>
 
 ### ⏱ Household Timers (`/timers`)
 *   **Limit Enforcement:** Weekday vs. Weekend daily minute limits per device category.
