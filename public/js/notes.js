@@ -363,8 +363,6 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                 // --- Resource Maintenance ---
                 // Prune stale viewport caches to prevent LocalStorage bloat
                 pruneLocalStorage();
-                
-                console.debug("Whiteboard: Transactional Sync Guardian active.");
             }
 
             // Remote Centering Dispatch: If a target note ID is in the context, center it after stabilization
@@ -376,7 +374,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         } else {
             showToast('Failed to load whiteboard state', 'error');
             if (initial) {
-                STATE.notes = []; // Purge potentially conflicting notes from previous board
+                STATE.notes = []; // Reset collection before data re-hydration
                 STATE.isInitializing = false;
             }
         }
@@ -397,8 +395,8 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
 }
 
 /**
- * Reactive AJAX Heartbeat Engine
- * Periodically polls the server for workspace mutations to ensure cross-session consistency.
+ * Reactive Heartbeat Engine
+ * Periodically polls the server for workspace mutations.
  * @param {number} canvasId - The workspace to monitor.
  * @returns {void}
  */
@@ -1341,10 +1339,6 @@ function pruneLocalStorage() {
             localStorage.removeItem(item.key);
         }
     });
-    
-    if (keys.length > limit) {
-        console.debug(`Whiteboard: Memory Pruning complete. Removed ${keys.length - limit} stale perspective(s).`);
-    }
 }
 
 /**
@@ -1409,7 +1403,7 @@ async function saveViewportImmediate() {
         if (!res.ok) throw new Error(`Server responded with ${res.status}`);
         return res;
     } catch (err) {
-        console.debug('Sync delayed: Pushing perspective to retry queue.', err);
+        // Transactional Failure: Mirror the perspective to the retry queue for background flush.
         
         // Context-Aware De-duplication: If an item for this canvas/layer is already pending,
         // remove it so the new (fresher) perspective takes precedence.
@@ -1762,41 +1756,48 @@ function handleCanvasMouseUp() {
  * @returns {void}
  */
 function handleCanvasWheel(e) {
-    // Primary Interaction: Use the wheel for zooming by default (no CTRL required).
-    // This aligns with professional whiteboard/mapping tools when panning-by-drag is active.
-    e.preventDefault();
-
     const wrapper = document.getElementById('canvas-wrapper');
     if (!wrapper) return;
 
-    const oldScale = STATE.scale;
-    const step     = 0.1;
-    
-    if (e.deltaY < 0) {
-        STATE.scale = Math.min(SCALE_MAX, Math.round((STATE.scale + step) * 10) / 10);
+    // CTRL + Wheel: Zooming
+    if (e.ctrlKey) {
+        e.preventDefault();
+
+        const oldScale = STATE.scale;
+        const step     = 0.1;
+        
+        if (e.deltaY < 0) {
+            STATE.scale = Math.min(SCALE_MAX, Math.round((STATE.scale + step) * 10) / 10);
+        } else {
+            STATE.scale = Math.max(SCALE_MIN, Math.round((STATE.scale - step) * 10) / 10);
+        }
+
+        if (STATE.scale === oldScale) return;
+
+        // Viewport-relative mouse positions
+        const rect = wrapper.getBoundingClientRect();
+        const mouseVX = e.clientX - rect.left;
+        const mouseVY = e.clientY - rect.top;
+
+        // Canvas-space coordinates under the cursor
+        const canvasMX = (wrapper.scrollLeft + mouseVX) / oldScale;
+        const canvasMY = (wrapper.scrollTop  + mouseVY) / oldScale;
+
+        applyScale();
+
+        // Adjust scroll to keep the cursor fixed on the canvas coordinate
+        wrapper.scrollLeft = canvasMX * STATE.scale - mouseVX;
+        wrapper.scrollTop  = canvasMY * STATE.scale - mouseVY;
+
+        updateRadar();
+        scheduleViewportSave();
     } else {
-        STATE.scale = Math.max(SCALE_MIN, Math.round((STATE.scale - step) * 10) / 10);
+        // Default: Panning (No key required)
+        e.preventDefault();
+        wrapper.scrollLeft += e.deltaX;
+        wrapper.scrollTop  += e.deltaY;
+        updateRadar();
     }
-
-    if (STATE.scale === oldScale) return;
-
-    // Viewport-relative mouse positions
-    const rect = wrapper.getBoundingClientRect();
-    const mouseVX = e.clientX - rect.left;
-    const mouseVY = e.clientY - rect.top;
-
-    // Canvas-space coordinates under the cursor
-    const canvasMX = (wrapper.scrollLeft + mouseVX) / oldScale;
-    const canvasMY = (wrapper.scrollTop  + mouseVY) / oldScale;
-
-    applyScale();
-
-    // Adjust scroll to keep the cursor fixed on the canvas coordinate
-    wrapper.scrollLeft = canvasMX * STATE.scale - mouseVX;
-    wrapper.scrollTop  = canvasMY * STATE.scale - mouseVY;
-
-    updateRadar();
-    scheduleViewportSave();
 }
 
 /**
@@ -2533,8 +2534,8 @@ window.openJumpToLevelModal = function() {
             const goBtn = document.createElement('button');
             goBtn.className = 'btn-primary btn-go-row';
             goBtn.innerHTML = '➤ Go';
-            goBtn.style.padding = '0.75rem 1.25rem';
-            goBtn.onclick = () => {
+            
+            const submitLevel = () => {
                 const val = promptInput.value;
                 const level = Math.floor(Math.abs(parseInt(val)));
                 if (isNaN(level) || level < 1 || level > 99) {
@@ -2545,6 +2546,17 @@ window.openJumpToLevelModal = function() {
                     window.closeConfirmModal();
                 }
             };
+
+            goBtn.onclick = submitLevel;
+            
+            // Standard keyboard interaction: Allow Enter key to trigger submission
+            promptInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    submitLevel();
+                }
+            };
+
             promptContainer.appendChild(goBtn);
         }
     }
@@ -3332,7 +3344,7 @@ function openMoveModal(e, id) {
     });
     
     if (list.children.length === 0) {
-        list.innerHTML = '<p style="text-align:center; padding:20px; color:#64748b;">No other editable boards found.</p>';
+        list.innerHTML = '<p class="empty-board-hint">No other editable boards found.</p>';
     }
 
     modal.classList.add('active');
@@ -3415,8 +3427,8 @@ function formatNoteContent(content, noteId) {
         // 3. Color Tags (Themed names or Custom HEX)
         formatted = formatted.replace(/\[color:(\w+|#[0-9a-fA-F]{3,6})\](.*?)\[\/color\]/g, (match, selector, text) => {
             const isHex = selector.startsWith('#');
-            const style = isHex ? `style="color: ${selector}"` : '';
-            const className = isHex ? '' : `note-text-${selector.toLowerCase()}`;
+            const style = isHex ? `style="--text-color: ${selector}"` : '';
+            const className = isHex ? 'note-text-hex' : `note-text-${selector.toLowerCase()}`;
             return `<span class="${className}" ${style}>${text}</span>`;
         });
 
@@ -3472,7 +3484,8 @@ function showBoardInfo() {
             <ul class="board-guide-list">
                 <li><strong>Double Click</strong> - Create a new note at cursor</li>
                 <li><strong>Ctrl+V</strong> - Paste image to create an Image Note</li>
-                <li><strong>Mouse Wheel</strong> - Zoom in/out to scale the perspective</li>
+                <li><strong>Mouse Wheel</strong> - Pan in any direction</li>
+                <li><strong>Ctrl + Mouse Wheel</strong> - Zoom in/out to scale the perspective</li>
             </ul>
         </div>
     `;
