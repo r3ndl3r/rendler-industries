@@ -57,6 +57,13 @@ CREATE TABLE `calendar_events` (
   KEY `idx_calendar_emoji` (`has_emoji`),
   CONSTRAINT `calendar_events_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `canvas_layers` (
+  `canvas_id` int(11) NOT NULL,
+  `layer_id` int(11) NOT NULL,
+  `alias` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`canvas_id`,`layer_id`),
+  CONSTRAINT `canvas_layers_ibfk_1` FOREIGN KEY (`canvas_id`) REFERENCES `canvases` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `canvas_shares` (
   `canvas_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -281,6 +288,7 @@ CREATE TABLE `note_blobs` (
   `file_size` int(11) DEFAULT NULL,
   `file_data` longblob DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `filename` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_note` (`note_id`),
   CONSTRAINT `fk_blobs_note` FOREIGN KEY (`note_id`) REFERENCES `notes` (`id`) ON DELETE CASCADE
@@ -289,9 +297,10 @@ CREATE TABLE `notes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `canvas_id` int(11) NOT NULL DEFAULT 1,
-  `type` enum('text','image') NOT NULL DEFAULT 'text',
+  `type` enum('text','image','file') NOT NULL DEFAULT 'text',
   `title` varchar(255) DEFAULT 'Untitled Note',
   `content` text DEFAULT NULL,
+  `filename` varchar(255) DEFAULT NULL,
   `x` int(11) DEFAULT 2500,
   `y` int(11) DEFAULT 2500,
   `width` int(11) DEFAULT 280,
@@ -579,6 +588,7 @@ CREATE TABLE `users` (
   `is_family` tinyint(1) DEFAULT 0,
   `status` varchar(20) NOT NULL DEFAULT 'pending',
   `is_child` tinyint(1) DEFAULT 0,
+  `emoji` varchar(10) DEFAULT '?',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email` (`email`)
