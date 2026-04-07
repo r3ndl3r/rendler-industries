@@ -44,7 +44,9 @@ The system features a redundant, priority-weighted alert engine for real-time an
 ### ⚙️ Global Settings (`/settings`)
 *   **System Variables:** Centralized management of application constants, such as **Timer Reset Hours** and **Quiet Hour** configurations.
 
-![Global Settings](public/images/screenshots/global_settings.png)
+<p align="center">
+  <img src="public/images/screenshots/global_settings.png" width="90%" />
+</p>
 
 ---
 
@@ -59,7 +61,9 @@ The system features a redundant, priority-weighted alert engine for real-time an
     *   **Proactive Reminders:** Multi-channel alerting (Discord, Email, Gotify, Pushover) triggered before event start times for specific attendees.
     *   **Color Coding:** Categorize events (Doctor, School, Social) with dynamic hex-code styling.
 
-![Calendar Main View](public/images/screenshots/calendar_main.png)
+<p align="center">
+  <img src="public/images/screenshots/calendar_main.png" width="90%" />
+</p>
 
 <p align="center">
   <img src="public/images/screenshots/calendar_event_details.png" width="32%" />
@@ -73,7 +77,9 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Modern Selection UI:** Interactive pill-button selectors for delay and recipients to eliminate dropdown friction.
 *   **Smart Registry:** Shared medication database with default dosages for lightning-fast entry.
 
-![Medication Tracker](public/images/screenshots/medication_tracker.png)
+<p align="center">
+  <img src="public/images/screenshots/medication_tracker.png" width="90%" />
+</p>
 
 ### 🔔 Smart Reminders (`/reminders`)
 *   **Real-time Synchronization:** 100% SPA implementation with 60s background polling and live countdowns.
@@ -81,7 +87,9 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Multi-User Mapping:** Link multiple recipients to a single alert via Discord and Gotify.
 *   **Self-Cleaning:** Automated deletion of "One-off" reminders after successful delivery.
 
-![Reminders](public/images/screenshots/reminders.png)
+<p align="center">
+  <img src="public/images/screenshots/reminders.png" width="90%" />
+</p>
 
 <p align="center">
   <img src="public/images/screenshots/reminders_edit.png" width="32%" />
@@ -104,14 +112,17 @@ The system features a redundant, priority-weighted alert engine for real-time an
     *   **Cross-Linking:** Deep-link between notes using `[note:ID]` syntax.
 *   **Media Embedding:** Direct image pasting and `[image:ID:scale]` embedding for high-fidelity visual documentation.
 <p align="center">
+  <img src="public/images/screenshots/sticky_notes_canvas.png" width="90%" />
+</p>
+
+<p align="center">
   <img src="public/images/screenshots/sticky_notes_boards.png" width="32%" />
   <img src="public/images/screenshots/sticky_notes_settings.png" width="32%" />
   <img src="public/images/screenshots/sticky_notes_jump.png" width="32%" />
 </p>
 
 <p align="center">
-  <img src="public/images/screenshots/sticky_notes_guide.png" width="48%" />
-  <img src="public/images/screenshots/sticky_notes_canvas.png" width="48%" />
+  <img src="public/images/screenshots/sticky_notes_guide.png" width="60%" />
 </p>
 
 ---
@@ -123,7 +134,9 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Image Pre-processing:** Automated grayscale conversion, sharpening, and 40% threshold deskewing.
 *   **Heuristic Extraction:** Custom Perl Regex engine parses store names, dates, and currency totals from raw text.
 
-![Receipt Ledger](public/images/screenshots/receipt_ledger.png)
+<p align="center">
+  <img src="public/images/screenshots/receipt_ledger.png" width="90%" />
+</p>
 
 <p align="center">
   <img src="public/images/screenshots/receipt_refine.png" width="48%" />
@@ -139,7 +152,9 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **BLOB Storage:** Secure database-backed storage for arbitrary binaries.
 *   **Permission Control:** Granular access management (Admin-only vs. Specific User whitelists).
 
-![File Manager](public/images/screenshots/file_manager.png)
+<p align="center">
+  <img src="public/images/screenshots/file_manager.png" width="90%" />
+</p>
 
 ---
 
@@ -183,7 +198,9 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Quiet Hours:** Automatic start-blocking during configured quiet periods (e.g., 9PM - 7AM).
 *   **Bonus Time:** Administrative interface for granting extra time to specific user sessions.
 
-![Timer Management](public/images/screenshots/timer_management.png)
+<p align="center">
+  <img src="public/images/screenshots/timer_management.png" width="90%" />
+</p>
 
 ### 🎂 Birthday Tracker (`/birthdays`)
 *   **Cyclical Sort:** Specialized SQL engine that ranks birthdays by nearest upcoming date, regardless of the current year.
