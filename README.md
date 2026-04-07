@@ -51,9 +51,13 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <details>
 <summary>🔍 <b>View Screenshot (Global Settings)</b></summary>
-<p align="center">
-  <img src="public/images/screenshots/global_settings.png" width="800" />
-</p>
+
+<div align="center">
+
+![Global Settings](./public/images/screenshots/global_settings.png)
+
+</div>
+
 </details>
 
 ### 🧠 Family Pulse AI (`/ai`)
@@ -79,18 +83,26 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <details>
 <summary>🔍 <b>View Screenshots (Main Views)</b></summary>
-<p align="center">
-  <img src="public/images/screenshots/calendar_main.png" width="800" />
-  <img src="public/images/screenshots/calendar_event_details.png" width="800" />
-</p>
+
+<div align="center">
+
+![Calendar Main](./public/images/screenshots/calendar_main.png)
+![Calendar Details](./public/images/screenshots/calendar_event_details.png)
+
+</div>
+
 </details>
 
 <details>
 <summary>🔍 <b>View Screenshots (Management)</b></summary>
-<p align="center">
-  <img src="public/images/screenshots/calendar_edit_event.png" width="800" />
-  <img src="public/images/screenshots/calendar_manage.png" width="800" />
-</p>
+
+<div align="center">
+
+![Edit Event](./public/images/screenshots/calendar_edit_event.png)
+![Calendar Manage](./public/images/screenshots/calendar_manage.png)
+
+</div>
+
 </details>
 
 ### 🧹 Bounty Board & Chores (`/chores`)
@@ -117,9 +129,13 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <details>
 <summary>🔍 <b>View Screenshot (Medication Dashboard)</b></summary>
-<p align="center">
-  <img src="public/images/screenshots/medication_tracker.png" width="800" />
-</p>
+
+<div align="center">
+
+![Medication Tracker](./public/images/screenshots/medication_tracker.png)
+
+</div>
+
 </details>
 
 ### 🔔 Smart Reminders (`/reminders`)
@@ -130,10 +146,14 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <details>
 <summary>🔍 <b>View Screenshots (Reminder Suite)</b></summary>
-<p align="center">
-  <img src="public/images/screenshots/reminders.png" width="800" />
-  <img src="public/images/screenshots/reminders_edit.png" width="800" />
-</p>
+
+<div align="center">
+
+![Reminders Main](./public/images/screenshots/reminders.png)
+![Reminders Edit](./public/images/screenshots/reminders_edit.png)
+
+</div>
+
 </details>
 
 ### 🛒 Collaborative Shopping & Todo (`/shopping`, `/todo`)
@@ -142,10 +162,14 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <details>
 <summary>🔍 <b>View Screenshots (List Management)</b></summary>
-<p align="center">
-  <img src="public/images/screenshots/shopping_list.png" width="800" />
-  <img src="public/images/screenshots/todo_list.png" width="800" />
-</p>
+
+<div align="center">
+
+![Shopping List](./public/images/screenshots/shopping_list.png)
+![Todo List](./public/images/screenshots/todo_list.png)
+
+</div>
+
 </details>
 
 ### 📓 Sticky Notes & Virtual Whiteboard (`/notes`)
@@ -159,13 +183,17 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <details>
 <summary>🔍 <b>View Screenshots (Canvas Interaction)</b></summary>
-<p align="center">
-  <img src="public/images/screenshots/sticky_notes_canvas.png" width="800" />
-  <img src="public/images/screenshots/sticky_notes_boards.png" width="800" />
-  <img src="public/images/screenshots/sticky_notes_settings.png" width="800" />
-  <img src="public/images/screenshots/sticky_notes_jump.png" width="800" />
-  <img src="public/images/screenshots/sticky_notes_guide.png" width="800" />
-</p>
+
+<div align="center">
+
+![Sticky Canvas](./public/images/screenshots/sticky_notes_canvas.png)
+![Sticky Boards](./public/images/screenshots/sticky_notes_boards.png)
+![Sticky Settings](./public/images/screenshots/sticky_notes_settings.png)
+![Sticky Jump](./public/images/screenshots/sticky_notes_jump.png)
+![Sticky Guide](./public/images/screenshots/sticky_notes_guide.png)
+
+</div>
+
 </details>
 
 ---
@@ -186,11 +214,15 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <details>
 <summary>🔍 <b>View Screenshots (OCR Engine)</b></summary>
-<p align="center">
-  <img src="public/images/screenshots/receipt_ledger.png" width="800" />
-  <img src="public/images/screenshots/receipt_refine.png" width="800" />
-  <img src="public/images/screenshots/receipt_detail.png" width="800" />
-</p>
+
+<div align="center">
+
+![Receipt Ledger](./public/images/screenshots/receipt_ledger.png)
+![Receipt Refine](./public/images/screenshots/receipt_refine.png)
+![Receipt Detail](./public/images/screenshots/receipt_detail.png)
+
+</div>
+
 </details>
 
 ### 🤬 The Swear Jar Ledger (`/swear`)
@@ -208,9 +240,13 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <details>
 <summary>🔍 <b>View Screenshot (File Manager)</b></summary>
-<p align="center">
-  <img src="public/images/screenshots/file_manager.png" width="800" />
-</p>
+
+<div align="center">
+
+![File Manager](./public/images/screenshots/file_manager.png)
+
+</div>
+
 </details>
 
 ---
@@ -247,10 +283,14 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <details>
 <summary>🔍 <b>View Screenshots (Meteorological Dashboard)</b></summary>
-<p align="center">
-  <img src="public/images/screenshots/weather_dashboard.png" width="800" />
-  <img src="public/images/screenshots/weather_details.png" width="800" />
-</p>
+
+<div align="center">
+
+![Weather Dashboard](./public/images/screenshots/weather_dashboard.png)
+![Weather Details](./public/images/screenshots/weather_details.png)
+
+</div>
+
 </details>
 
 ### ⏱ Household Timers (`/timers`)
@@ -260,9 +300,13 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <details>
 <summary>🔍 <b>View Screenshot (Timer Management)</b></summary>
-<p align="center">
-  <img src="public/images/screenshots/timer_management.png" width="800" />
-</p>
+
+<div align="center">
+
+![Timer Management](./public/images/screenshots/timer_management.png)
+
+</div>
+
 </details>
 
 ### 🎂 Birthday Tracker (`/birthdays`)
@@ -274,10 +318,14 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <details>
 <summary>🔍 <b>View Screenshots (Utilities)</b></summary>
-<p align="center">
-  <img src="public/images/screenshots/go_links.png" width="800" />
-  <img src="public/images/screenshots/clipboard.png" width="800" />
-</p>
+
+<div align="center">
+
+![Go Links](./public/images/screenshots/go_links.png)
+![Clipboard](./public/images/screenshots/clipboard.png)
+
+</div>
+
 </details>
 
 ---
