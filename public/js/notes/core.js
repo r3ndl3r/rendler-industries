@@ -57,7 +57,9 @@ const STATE = {
     radarScrubLast: { x: 0, y: 0 },   // Delta Tracking: Powering the 'Precision Gearbox'
     pendingDeletes: [],               // Attachments queued for removal in the current edit session
     pinchStartDist: null,             // Mobile Gestures: Distance baseline
-    pinchStartScale: null             // Mobile Gestures: Scale baseline
+    pinchStartScale: null,            // Mobile Gestures: Scale baseline
+    wrapperEl:      null,             // Cached DOM Handle: #canvas-wrapper
+    canvasEl:       null              // Cached DOM Handle: #notes-canvas
 };
 
 /**
@@ -88,11 +90,16 @@ window.addEventListener('beforeunload', () => {
  * @returns {void}
  */
 async function initNotes() {
-    await loadState(true); // Establish initial perspective
+    // 1. Initial Cache: Establish DOM handles BEFORE any logic runs
+    STATE.canvasEl  = document.getElementById('notes-canvas');
+    STATE.wrapperEl = document.getElementById('canvas-wrapper');
+
+    // 2. Hydration: Pull state from backend (now has access to handles for scroll/positioning)
+    await loadState(true); 
 
     // Event Delegation for Canvas Interactions
-    const canvas  = document.getElementById('notes-canvas');
-    const wrapper = document.getElementById('canvas-wrapper');
+    const canvas  = STATE.canvasEl;
+    const wrapper = STATE.wrapperEl;
     if (canvas && wrapper) {
         if (typeof handleCanvasDoubleClick === 'function') canvas.addEventListener('dblclick', handleCanvasDoubleClick);
         if (typeof handleCanvasMouseDown === 'function') canvas.addEventListener('mousedown', handleCanvasMouseDown);
@@ -488,7 +495,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                 }
 
                 // Force a layout reflow for accurate scrollWidth/Height
-                const wrapper = document.getElementById('canvas-wrapper');
+                const wrapper = STATE.wrapperEl;
                 if (wrapper) {
                     const centerX = parseFloat(vp.scroll_x) || (STATE.canvasSize / 2);
                     const centerY = parseFloat(vp.scroll_y) || (STATE.canvasSize / 2);
@@ -601,3 +608,18 @@ function setupHeartbeat(canvasId) {
         }
     }, 2000); // 2s Cycle: Responsive real-time experience
 }
+
+/**
+ * Cache Invalidation: Nullifies DOM handles to prevent stale references 
+ * across full-board re-renders or dynamic context switches.
+ */
+function clearDOMCache() {
+    STATE.wrapperEl = null;
+    STATE.canvasEl  = null;
+}
+
+// Global Exposure Block
+window.loadState = loadState;
+window.initNotes = initNotes;
+window.clearDOMCache = clearDOMCache;
+window.STATE = STATE;

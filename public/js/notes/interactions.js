@@ -99,8 +99,8 @@ function toggleStickyMove(e, id) {
     if (!note || !el) return;
 
     // Capture the dynamic delta between the cursor and the note's origin
-    const wrapper = document.getElementById('canvas-wrapper');
-    const rect    = wrapper.getBoundingClientRect();
+    const wrapper = STATE.wrapperEl;
+    const rect    = wrapper?.getBoundingClientRect();
     
     // Logic: (Current Cursor Position on Canvas) - (Note Origin)
     const cursorX = (e.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
@@ -146,8 +146,8 @@ function updateStickyMove(e) {
     const el = document.getElementById(`note-${STATE.pickedNoteId}`);
     if (!el) return;
 
-    const wrapper = document.getElementById('canvas-wrapper');
-    const rect    = wrapper.getBoundingClientRect();
+    const wrapper = STATE.wrapperEl;
+    const rect    = wrapper?.getBoundingClientRect();
     
     // Calculate cursor position relative to the canvas origin, accounting for scroll and scale
     let newX = (e.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
@@ -174,7 +174,7 @@ function updateStickyMove(e) {
  * @returns {void}
  */
 function checkAutoScrollProximity(e) {
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     const rect = wrapper.getBoundingClientRect();
@@ -229,7 +229,7 @@ function startAutoScroll(vx, vy) {
     const loop = () => {
         if (!STATE.autoScroll.active) return;
 
-        const wrapper = document.getElementById('canvas-wrapper');
+        const wrapper = STATE.wrapperEl;
         wrapper.scrollLeft += STATE.autoScroll.vx;
         wrapper.scrollTop  += STATE.autoScroll.vy;
 
@@ -362,7 +362,7 @@ function handleGlobalKeydown(e) {
  * @returns {void}
  */
 function centerView() {
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
     const scrollX = (STATE.canvasSize / 2) * STATE.scale - (wrapper.clientWidth / 2);
     const scrollY = (STATE.canvasSize / 2) * STATE.scale - (wrapper.clientHeight / 2);
@@ -413,7 +413,7 @@ async function centerOnNote(id) {
         }
     }
 
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     // Helper: Execute the actual scroll and highlight
@@ -461,8 +461,8 @@ async function centerOnNote(id) {
  * @returns {void}
  */
 function applyScale() {
-    const canvas = document.getElementById('notes-canvas');
-    const wrapper = document.getElementById('canvas-wrapper');
+    const canvas = STATE.canvasEl;
+    const wrapper = STATE.wrapperEl;
     if (!canvas || !wrapper) return;
 
     // Apply visual transformation
@@ -497,7 +497,7 @@ function applyScale() {
  * @returns {void}
  */
 function zoomIn() {
-    const wrapper  = document.getElementById('canvas-wrapper');
+    const wrapper  = STATE.wrapperEl;
     if (!wrapper) return;
     const oldScale = STATE.scale;
 
@@ -523,7 +523,7 @@ function zoomIn() {
  * @returns {void}
  */
 function zoomOut() {
-    const wrapper  = document.getElementById('canvas-wrapper');
+    const wrapper  = STATE.wrapperEl;
     if (!wrapper) return;
     const oldScale = STATE.scale;
 
@@ -566,7 +566,7 @@ function onViewportScroll() {
 function updateLocalViewportCache() {
     if (!STATE.canvas_id || !STATE.activeLayerId || !STATE.user_id) return;
     
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     const cacheKey = `whiteboard_vp_u${STATE.user_id}_c${STATE.canvas_id}_l${STATE.activeLayerId}`;
@@ -697,7 +697,7 @@ function scheduleViewportSave() {
  * Integrates with the Retry Queue to handle network instability.
  */
 async function persistViewport() {
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper || STATE.isInitializing) return;
 
     await saveViewportImmediate();
@@ -708,7 +708,7 @@ async function persistViewport() {
  * Used during lifecycle transitions (layer/canvas switches) to prevent state loss.
  */
 async function saveViewportImmediate() {
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     // Clear any pending debounced save since we are firing now
@@ -823,7 +823,7 @@ function handleCanvasMouseDown(e) {
     if (e.target.id !== 'notes-canvas' && e.target.id !== 'canvas-wrapper') return;
     if (e.button !== 0) return; // Parity: Left-click only for focal background panning
 
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     STATE.isPanning = true;
@@ -845,7 +845,7 @@ function handleCanvasMouseDown(e) {
 function handleCanvasMouseMove(e) {
     if (!STATE.isPanning) return;
 
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     const dx = e.clientX - STATE.panStart.x;
@@ -874,7 +874,7 @@ function handleCanvasMouseUp() {
  * @param {WheelEvent} e - The wheel event.
  */
 function handleCanvasWheel(e) {
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     // CTRL + Wheel: Anchored Zooming
@@ -943,7 +943,7 @@ function handleCanvasDoubleClick(e) {
     // Creation Logic: Only allow new note creation on the actual background layers.
     if (e.target.id !== 'notes-canvas' && e.target.id !== 'canvas-wrapper') return;
 
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
     
     const rect = wrapper.getBoundingClientRect();
@@ -1295,7 +1295,7 @@ async function handleNoteLinkClick(id) {
     }
 
     // C. Precise Centering: Smooth scroll to align the note in the viewport center
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (wrapper) {
         const rect   = wrapper.getBoundingClientRect();
         const center = { 
@@ -1477,7 +1477,7 @@ async function copyNoteLink(id) {
  * @param {TouchEvent} e - The touch event.
  */
 function handleCanvasTouchStart(e) {
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     if (e.touches.length === 1) {
@@ -1515,7 +1515,7 @@ function handleCanvasTouchStart(e) {
  * @param {TouchEvent} e - The touch event.
  */
 function handleCanvasTouchMove(e) {
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     if (e.touches.length === 1 && STATE.isPanning) {
