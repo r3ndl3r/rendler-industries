@@ -13,6 +13,45 @@ function initResizable(el, note) {
     let startX, startY, startWidth, startHeight;
     let isResizing = false;
 
+    // 1. Logic Scoped Hoisting: Both handlers are declared at the initResizable scope
+    // to ensure they are accessible to the event listeners below.
+    const doResize = (e) => {
+        if (!isResizing) return;
+        
+        let newWidth  = startWidth + (e.clientX - startX) / STATE.scale;
+        let newHeight = startHeight + (e.clientY - startY) / STATE.scale;
+        
+        newWidth  = Math.round(newWidth / STATE.snapGrid) * STATE.snapGrid;
+        newHeight = Math.round(newHeight / STATE.snapGrid) * STATE.snapGrid;
+        
+        const maxWidth  = STATE.canvasSize - note.x;
+        const maxHeight = STATE.canvasSize - note.y;
+        
+        newWidth  = Math.max(240, Math.min(newWidth, maxWidth));
+        newHeight = Math.max(54, Math.min(newHeight, maxHeight));
+        
+        el.style.width  = `${newWidth}px`;
+        el.style.height = `${newHeight}px`;
+    };
+
+    const stopResize = () => {
+        if (!isResizing) return;
+        isResizing = false;
+        STATE.isResizing = false;
+        
+        document.removeEventListener('mousemove', doResize);
+        document.removeEventListener('mouseup', stopResize);
+        el.classList.remove('resizing');
+        
+        const finalWidth  = parseInt(el.style.width, 10);
+        const finalHeight = parseInt(el.style.height, 10);
+        
+        note.width  = finalWidth;
+        note.height = finalHeight;
+        
+        if (typeof syncNotePosition === 'function') syncNotePosition(note.id);
+    };
+
     handle.addEventListener('mousedown', (e) => {
         if (!STATE.editMode) return;
         e.stopPropagation();
@@ -30,48 +69,6 @@ function initResizable(el, note) {
         document.addEventListener('mouseup', stopResize);
         el.classList.add('resizing');
     });
-
-    function doResize(e) {
-        if (!isResizing) return;
-        
-        // Resolution-independent sizing with scale-awareness
-        let newWidth  = startWidth + (e.clientX - startX) / STATE.scale;
-        let newHeight = startHeight + (e.clientY - startY) / STATE.scale;
-        
-        // 10px Grid Snapping Parity
-        newWidth  = Math.round(newWidth / STATE.snapGrid) * STATE.snapGrid;
-        newHeight = Math.round(newHeight / STATE.snapGrid) * STATE.snapGrid;
-        
-        // Constraint Logic: Min-Size and Canvas-Boundary Entrapment
-        const maxWidth  = STATE.canvasSize - note.x;
-        const maxHeight = STATE.canvasSize - note.y;
-        
-        newWidth  = Math.max(240, Math.min(newWidth, maxWidth));
-        newHeight = Math.max(54, Math.min(newHeight, maxHeight));
-        
-        el.style.width  = `${newWidth}px`;
-        el.style.height = `${newHeight}px`;
-    }
-
-    function stopResize() {
-        if (!isResizing) return;
-        isResizing = false;
-        STATE.isResizing = false;
-        
-        document.removeEventListener('mousemove', doResize);
-        document.removeEventListener('mouseup', stopResize);
-        el.classList.remove('resizing');
-        
-        // State Synchronization: Persist dimensions to the database
-        const finalWidth  = parseInt(el.style.width, 10);
-        const finalHeight = parseInt(el.style.height, 10);
-        
-        note.width  = finalWidth;
-        note.height = finalHeight;
-        
-        // Trigger atomic save
-        if (typeof syncNotePosition === 'function') syncNotePosition(note.id);
-    }
 }
 
 /**
@@ -79,86 +76,6 @@ function initResizable(el, note) {
  * @param {HTMLElement} el - The note element.
  * @returns {void}
  */
-function makeDraggable(el) {
-    const handle = el.querySelector('.note-drag-handle-container');
-    if (!handle) return;
-    
-    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-
-    handle.addEventListener('mousedown', dragMouseDown);
-
-    function dragMouseDown(e) {
-        if (!STATE.editMode) return;
-        
-        // Safety Guard: If clicking an interactive input, release control to the browser
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-        // Check if the click was on the header or an icon within it
-        if (!e.target.closest('.note-drag-handle-container')) return;
-        
-        e.preventDefault();
-        
-        // --- 1. Focus Management (Z-Index) ---
-        const noteId = el.dataset.id;
-        const note   = STATE.notes.find(n => n.id == noteId);
-        const maxZ = Math.max(...STATE.notes.map(n => n.z_index || 1), 1);
-        if (note && note.z_index < maxZ) {
-            const newZ = maxZ + 1;
-            note.z_index = newZ;
-            el.style.zIndex = newZ;
-            if (typeof syncNotePosition === 'function') syncNotePosition(noteId, 'silent');
-        }
-
-        // Logic-Pure Movement: Layering is handled by the focus listener in rendering.js
-        el.classList.add('dragging');
-        STATE.isDragging = true;
-        
-        pos3 = e.clientX;
-        pos4 = e.clientY;
-        document.addEventListener('mouseup', closeDragElement);
-        document.addEventListener('mousemove', elementDrag);
-    }
-
-    function elementDrag(e) {
-        e.preventDefault();
-        
-        // Context Capture: Required for asynchronous auto-scroll updates
-        STATE.autoScroll.lastEvent = e;
-        if (typeof checkAutoScrollProximity === 'function') checkAutoScrollProximity(e);
-
-        pos1 = pos3 - e.clientX;
-        pos2 = pos4 - e.clientY;
-        pos3 = e.clientX;
-        pos4 = e.clientY;
-
-        // Scale-Aware Vector Displacement: Divide delta by current viewport scale
-        let newX = el.offsetLeft - (pos1 / STATE.scale);
-        let newY = el.offsetTop - (pos2 / STATE.scale);
-
-        // 10px Grid Snapping and Canvas-Boundary Entrapment (50,000px)
-        newX = Math.round(newX / STATE.snapGrid) * STATE.snapGrid;
-        newY = Math.round(newY / STATE.snapGrid) * STATE.snapGrid;
-
-        // Clamping Logic: Coordinate overflow is prevented
-        newX = Math.max(0, Math.min(newX, STATE.canvasSize - el.offsetWidth));
-        newY = Math.max(0, Math.min(newY, STATE.canvasSize - el.offsetHeight));
-
-        el.style.left = `${newX}px`;
-        el.style.top = `${newY}px`;
-    }
-
-    function closeDragElement() {
-        el.classList.remove('dragging');
-        STATE.isDragging = false;
-        if (typeof stopAutoScroll === 'function') stopAutoScroll(); // Clear active animation loops
-        document.removeEventListener('mouseup', closeDragElement);
-        document.removeEventListener('mousemove', elementDrag);
-        
-        // State Synchronization: Persist position to the database
-        if (typeof syncNotePosition === 'function') syncNotePosition(el.dataset.id);
-    }
-}
-
 /**
  * Pick & Place (Sticky Move) Orchestrator.
  * Transitions a note into 'flight mode' where it follows the cursor without a held click.
@@ -168,6 +85,7 @@ function makeDraggable(el) {
  */
 function toggleStickyMove(e, id) {
     const el = document.getElementById(`note-${id}`);
+    const intId = parseInt(id);
     
     // Safety Guard: Disable Pick and Place if the note is in Active Edit Mode
     if (el && el.classList.contains('is-editing')) return;
@@ -177,7 +95,7 @@ function toggleStickyMove(e, id) {
         return;
     }
 
-    const note = STATE.notes.find(n => n.id == id);
+    const note = STATE.notes.find(n => n.id == intId);
     if (!note || !el) return;
 
     // Capture the dynamic delta between the cursor and the note's origin
@@ -193,16 +111,18 @@ function toggleStickyMove(e, id) {
         y: cursorY - note.y
     };
 
-    // --- 1. Focus Management (Z-Index) ---
+    // --- 1. Focus Management (Z-Index Promotion) ---
     const maxZ = Math.max(...STATE.notes.map(n => n.z_index || 1), 1);
     if (note.z_index < maxZ) {
         const newZ = maxZ + 1;
         note.z_index = newZ;
         el.style.zIndex = newZ;
-        if (typeof syncNotePosition === 'function') syncNotePosition(id, 'silent');
+        if (typeof syncNotePosition === 'function') syncNotePosition(intId, 'silent');
     }
 
-    STATE.pickedNoteId = id;
+    // --- 2. Activation Logic (Flight Mode) ---
+    STATE.pickedNoteId = intId;
+    STATE.lastPickTime = Date.now(); // Interaction Guard: Prevents immediate drop re-triggering
     STATE.originalPos  = { x: note.x, y: note.y, z: el.style.zIndex };
     
     el.classList.add('note-picked');
@@ -313,21 +233,10 @@ function startAutoScroll(vx, vy) {
         wrapper.scrollLeft += STATE.autoScroll.vx;
         wrapper.scrollTop  += STATE.autoScroll.vy;
 
-        // Force Re-calculation: Re-trigger the active drag/move logic with the latest event
         const lastE = STATE.autoScroll.lastEvent;
-        if (lastE) {
-            if (STATE.isDragging) {
-                // For direct drag, we dispatch a new event to trigger transition calculations
-                const event = new MouseEvent('mousemove', {
-                    clientX: lastE.clientX,
-                    clientY: lastE.clientY,
-                    bubbles: true
-                });
-                document.dispatchEvent(event);
-            } else if (STATE.pickedNoteId) {
-                // For Pick & Place, we can call the update directly
-                updateStickyMove(lastE);
-            }
+        if (lastE && STATE.pickedNoteId) {
+            // Re-trigger the active move logic with the latest event
+            updateStickyMove(lastE);
         }
 
         STATE.autoScroll.frame = requestAnimationFrame(loop);
@@ -407,8 +316,16 @@ function cancelStickyMove() {
  */
 function handleGlobalClick(e) {
     if (STATE.pickedNoteId) {
-        // Guard: If clicking the drag handle container that initiated the pick-up, absorb and exit
-        if (e.target.closest('.note-drag-handle-container')) return;
+        // Isolation Guard: If we just picked this up (<300ms ago), prevent the current click 
+        // bubble from triggering an immediate drop.
+        if (STATE.lastPickTime && (Date.now() - STATE.lastPickTime < 300)) return;
+
+        // Targeted Guard: Only absorb the click if it's on the drag handle of the CURRENTLY picked note.
+        // This allows clicking on OTHER notes' handles to proceed to a drop-and-pick sequence.
+        const clickedNote = e.target.closest('.sticky-note');
+        if (clickedNote && String(clickedNote.dataset.id) === String(STATE.pickedNoteId)) {
+            if (e.target.closest('.note-drag-handle-container')) return;
+        }
         
         e.preventDefault();
         e.stopPropagation();
@@ -827,7 +744,78 @@ async function saveViewportImmediate() {
  * @param {MouseEvent} e - The mouse event.
  */
 function handleCanvasMouseDown(e) {
-    // Standard Panning: Initiated by Left-Click on the workspace background or container wrapper.
+    // 1. Note Header Actions: Centralized delegation for all note-level buttons
+    const hashBtn    = e.target.closest('.note-id-hash');
+    const collapseBtn = e.target.closest('.btn-icon-collapse');
+    const editBtn     = e.target.closest('.btn-icon-edit');
+    const copyBtn     = e.target.closest('.btn-icon-copy');
+    const linkBtn     = e.target.closest('.btn-icon-link');
+    const uploadBtn   = e.target.closest('.btn-icon-upload');
+    const moveBtn     = e.target.closest('.btn-icon-move');
+    const levelBtn    = e.target.closest('.btn-icon-level-copy');
+    const viewBtn     = e.target.closest('.btn-icon-view');
+    const deleteBtn   = e.target.closest('.btn-icon-delete:not(.reel-action-btn):not(.hero-action-btn)');
+
+    if (e.button === 0) {
+        const noteEl = e.target.closest('.sticky-note');
+        if (noteEl) {
+            const id = noteEl.dataset.id;
+            if (id) {
+                if (hashBtn && typeof copyNoteId === 'function') {
+                    copyNoteId(id);
+                    return;
+                }
+                if (collapseBtn && typeof toggleCollapse === 'function') {
+                    toggleCollapse(id);
+                    return;
+                }
+                if (editBtn && typeof toggleInlineEdit === 'function') {
+                    toggleInlineEdit(editBtn, id);
+                    return;
+                }
+                if (copyBtn && typeof copyNoteToClipboard === 'function') {
+                    copyNoteToClipboard(id);
+                    return;
+                }
+                if (linkBtn && typeof copyNoteLink === 'function') {
+                    copyNoteLink(id);
+                    return;
+                }
+                if (uploadBtn && typeof triggerInlineUpload === 'function') {
+                    triggerInlineUpload(id);
+                    return;
+                }
+                if (moveBtn && typeof openMoveModal === 'function') {
+                    openMoveModal(e, id);
+                    return;
+                }
+                if (levelBtn && typeof openLayerActionModal === 'function') {
+                    openLayerActionModal(id);
+                    return;
+                }
+                if (viewBtn && typeof viewNote === 'function') {
+                    viewNote(id);
+                    return;
+                }
+                if (deleteBtn && typeof deleteNote === 'function') {
+                    deleteNote(id);
+                    return;
+                }
+            }
+        }
+    }
+
+    // 2. Pick & Place Detection: If the user clicks a note's title bar/drag handle
+    const handle = e.target.closest('.note-drag-handle-container');
+    if (handle && e.button === 0) {
+        const noteId = handle.closest('.sticky-note')?.dataset.id;
+        if (noteId) {
+            toggleStickyMove(e, noteId);
+            return; // Exit: Do not initiate panning if picking a note
+        }
+    }
+
+    // 2. Standard Panning: Initiated by Left-Click on the workspace background or container wrapper.
     if (e.target.id !== 'notes-canvas' && e.target.id !== 'canvas-wrapper') return;
     if (e.button !== 0) return; // Parity: Left-click only for focal background panning
 
@@ -925,8 +913,15 @@ function handleCanvasWheel(e) {
         // ONLY hijack scroll if we are not hovering over a sticky note's scrollable content
         if (!e.target.closest('.sticky-note')) {
             e.preventDefault();
-            wrapper.scrollLeft += e.deltaX;
-            wrapper.scrollTop  += e.deltaY;
+            
+            // Shift + Vertical Wheel = Horizontal Scroll (Browser Parity)
+            if (e.shiftKey && !e.deltaX) {
+                wrapper.scrollLeft += e.deltaY;
+            } else {
+                wrapper.scrollLeft += e.deltaX;
+                wrapper.scrollTop  += e.deltaY;
+            }
+            
             if (typeof updateRadar === 'function') updateRadar();
         }
     }
@@ -979,7 +974,6 @@ async function saveNoteInline(id) {
     
     const colorInput = el.querySelector('.inline-color-input');
     const color      = colorInput ? colorInput.value : (note.color || '#fef3c7');
-    const editBtn    = el.querySelector('.btn-icon-edit');
 
     // Filename Sync: Collect per-blob renames from the DOM.
     // Each .file-name-display[data-blob-id] maps a blob to its updated name.
@@ -1050,15 +1044,19 @@ async function saveNoteInline(id) {
             const accentColor = typeof normalizeColorHex === 'function' ? normalizeColorHex(color) : color;
             el.style.setProperty('--note-accent', accentColor);
             
+            STATE.isEditingNote = false;
+            
+            // UI Cleanup: Exit edit mode visually and restore button state
             el.classList.remove('is-editing');
             if (textarea) textarea.readOnly = true;
-            if (editBtn) {
-                editBtn.innerHTML = '✏️';
-                editBtn.title     = 'Edit Content';
-                editBtn.classList.remove('pulse-glow');
+
+            const btnIcon = el.querySelector('.btn-icon-edit');
+            if (btnIcon) {
+                btnIcon.innerHTML = '✏️';
+                btnIcon.title     = 'Edit Content';
+                btnIcon.classList.remove('pulse-glow');
             }
 
-            STATE.isEditingNote = false;
             showToast('Note Saved', 'success');
         }
     } finally {
@@ -1166,7 +1164,7 @@ async function toggleInlineEdit(btn, id) {
         // No inline style override needed here.
 
         const textSect = el.querySelector('.note-text-section');
-        if (textSect) textSect.style.display = ''; // force show empty editor
+        if (textSect) textSect.classList.remove('hidden'); // force show empty editor
 
         // Enable inline rename on hero image filename display
         const filenameDisplay = el.querySelector('.note-hero-container .file-name-display');
@@ -1211,7 +1209,7 @@ async function toggleInlineEdit(btn, id) {
         const txt = textarea ? textarea.value : '';
         const textSect = el.querySelector('.note-text-section');
         if (textSect && (!txt || txt.trim() === '')) {
-            textSect.style.display = 'none'; // hide if empty after save
+            textSect.classList.add('hidden'); // hide if empty after save
         }
 
         const filenameDisplay = el.querySelector('.note-hero-container .file-name-display');
@@ -1380,6 +1378,48 @@ async function toggleNoteCheckbox(event, id, lineIndex) {
     }
 }
 /**
+ * Universal Clipboard Driver: Synchronizes text to the OS clipboard.
+ * Gracefully handles unsecured contexts (non-HTTPS) via legacy fallback.
+ * @param {string} text - The payload to copy.
+ * @returns {Promise<boolean>} - Success state.
+ */
+async function copyToClipboard(text) {
+    if (!text) return false;
+
+    // 1. Primary Strategy: Modern Clipboard API (Secure Context Required)
+    if (navigator.clipboard && window.isSecureContext) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch (err) {
+            console.warn('Modern Clipboard API failed, attempting fallback:', err);
+        }
+    }
+
+    // 2. Secondary Strategy: Dynamic Textarea Elevation (Unsecured Context Fallback)
+    try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        
+        // Hide from layout and perspective
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        return successful;
+    } catch (err) {
+        console.error('Unified Clipboard Failure:', err);
+        return false;
+    }
+}
+
+/**
  * System Clipboard Interface: Synchronizes note content to the local OS clipboard.
  * Formats the payload as a structured text block (Title + Content).
  * @param {number|string} id - The note ID.
@@ -1394,14 +1434,9 @@ async function copyNoteToClipboard(id) {
 
     const text = `${note.title || 'Untitled Note'}\n${'='.repeat(note.title ? note.title.length : 13)}\n\n${note.content || ''}`;
 
-    try {
-        if (navigator.clipboard) {
-            await navigator.clipboard.writeText(text);
-            showToast(`${getIcon ? getIcon('ok') : '✅'} Note Copied`, 'success');
-        } else {
-            throw new Error('Clipboard API unavailable');
-        }
-    } catch (err) {
+    if (await copyToClipboard(text)) {
+        showToast('Note Copied', 'success');
+    } else {
         showToast('Copy failed: Unsecured context?', 'error');
     }
 }
@@ -1409,12 +1444,13 @@ async function copyNoteToClipboard(id) {
 /**
  * Copies the raw Note ID to the clipboard.
  * @param {number|string} id - The note ID.
+ * @returns {Promise<void>}
  */
 async function copyNoteId(id) {
-    try {
-        await navigator.clipboard.writeText(`#${id}`);
-        showToast(`${getIcon ? getIcon('ok') : '✅'} ID Copied`, 'success');
-    } catch (err) {
+    if (!id) return;
+    if (await copyToClipboard(`${id}`)) {
+        showToast('ID Copied', 'success');
+    } else {
         showToast('Copy failed', 'error');
     }
 }
@@ -1424,10 +1460,115 @@ async function copyNoteId(id) {
  * @param {number|string} id - The note ID.
  */
 async function copyNoteLink(id) {
-    try {
-        await navigator.clipboard.writeText(`[note:${id}]`);
-        showToast(`${getIcon ? getIcon('ok') : '✅'} Link Tag Copied`, 'success');
-    } catch (err) {
+    if (await copyToClipboard(`[note:${id}]`)) {
+        showToast('Link Tag Copied', 'success');
+    } else {
         showToast('Copy failed', 'error');
     }
+}
+
+/**
+ * Mobile Touch Start: Initiates panning or pinch-zooming.
+ * @param {TouchEvent} e - The touch event.
+ */
+function handleCanvasTouchStart(e) {
+    const wrapper = document.getElementById('canvas-wrapper');
+    if (!wrapper) return;
+
+    if (e.touches.length === 1) {
+        // Single Finger: Panning (Matches handleCanvasMouseDown)
+        const touch = e.touches[0];
+        
+        // Audit: Ensure we aren't touching a note's interactive content
+        if (e.target.closest('.sticky-note')) return;
+
+        STATE.isPanning = true;
+        STATE.panStart = {
+            x: touch.clientX,
+            y: touch.clientY,
+            scrollX: wrapper.scrollLeft,
+            scrollY: wrapper.scrollTop
+        };
+        e.preventDefault();
+    } else if (e.touches.length === 2) {
+        // Dual Finger: Pinch-to-Zoom Baseline
+        STATE.isPanning = false; // Disable panning during zoom
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        
+        STATE.pinchStartDist = Math.hypot(
+            touch2.clientX - touch1.clientX,
+            touch2.clientY - touch1.clientY
+        );
+        STATE.pinchStartScale = STATE.scale;
+        e.preventDefault();
+    }
+}
+
+/**
+ * Mobile Touch Move: Updates coordinates for panning or scaling.
+ * @param {TouchEvent} e - The touch event.
+ */
+function handleCanvasTouchMove(e) {
+    const wrapper = document.getElementById('canvas-wrapper');
+    if (!wrapper) return;
+
+    if (e.touches.length === 1 && STATE.isPanning) {
+        // Panning: Update scroll offsets
+        const touch = e.touches[0];
+        const dx = touch.clientX - STATE.panStart.x;
+        const dy = touch.clientY - STATE.panStart.y;
+        
+        wrapper.scrollLeft = STATE.panStart.scrollX - dx;
+        wrapper.scrollTop  = STATE.panStart.scrollY - dy;
+        
+        if (typeof updateRadar === 'function') updateRadar();
+        e.preventDefault();
+    } else if (e.touches.length === 2 && STATE.pinchStartDist) {
+        // Pinch-to-Zoom: Calculating scale delta
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        
+        const currentDist = Math.hypot(
+            touch2.clientX - touch1.clientX,
+            touch2.clientY - touch1.clientY
+        );
+        
+        const zoomRatio = currentDist / STATE.pinchStartDist;
+        const newScale = Math.round(Math.min(2.0, Math.max(0.1, STATE.pinchStartScale * zoomRatio)) * 10) / 10;
+        
+        if (newScale !== STATE.scale) {
+            const oldScale = STATE.scale;
+            STATE.scale = newScale;
+            
+            // Focal Point: Calculate the center between the two fingers
+            const rect = wrapper.getBoundingClientRect();
+            const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
+            const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+            
+            // Canvas-space anchoring
+            const canvasX = (wrapper.scrollLeft + centerX) / oldScale;
+            const canvasY = (wrapper.scrollTop  + centerY) / oldScale;
+            
+            if (typeof applyScale === 'function') applyScale();
+            
+            // Adjust scroll to keep pinch-center fixed
+            wrapper.scrollLeft = canvasX * STATE.scale - centerX;
+            wrapper.scrollTop  = canvasY * STATE.scale - centerY;
+            
+            if (typeof updateRadar === 'function') updateRadar();
+            if (typeof scheduleViewportSave === 'function') scheduleViewportSave();
+        }
+        e.preventDefault();
+    }
+}
+
+/**
+ * Mobile Touch End: Lifecycle cleanup.
+ * @param {TouchEvent} e - The touch event.
+ */
+function handleCanvasTouchEnd(e) {
+    STATE.isPanning = false;
+    STATE.pinchStartDist = null;
+    STATE.pinchStartScale = null;
 }
