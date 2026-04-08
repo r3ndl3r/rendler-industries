@@ -1,5 +1,8 @@
 // /public/js/notes/rendering.js
 
+// Persistence Layer for Error Reporting: Prevents console spam during heartbeat cycles
+window._renderErrors = new Set();
+
 /**
  * Renders all sticky notes and updates the UI state.
  * @returns {void}
@@ -24,67 +27,75 @@ function renderUI() {
     const canEdit       = currentCanvas ? currentCanvas.can_edit : 1;
 
     STATE.notes.forEach(note => {
-        // Isolation Filter: Only render notes belonging to the current active level
-        // Use loose equality (==) to handle string vs number mismatches from JSON
-        if (note.layer_id != STATE.activeLayerId) return;
-        activeIds.add(note.id.toString());
+        try {
+            // Isolation Filter: Only render notes belonging to the current active level
+            // Use loose equality (==) to handle string vs number mismatches from JSON
+            if (note.layer_id != STATE.activeLayerId) return;
+            activeIds.add(note.id.toString());
 
-        const existing = existingMap[note.id.toString()];
-        
-        if (existing) {
-            // Update Existing: Surgical property updates to preserve focus/scroll
-            // Skip update if the user is currently interacting with this specific note
-            if (existing.classList.contains('is-editing') || (STATE.pickedNoteId == note.id)) return;
-
-            // Atomic Synchronicity: Check if we need to update position/z-index
-            const curX = parseInt(existing.style.left);
-            const curY = parseInt(existing.style.top);
-            const curZ = parseInt(existing.style.zIndex);
+            const existing = existingMap[note.id.toString()];
             
-            if (curX != note.x) existing.style.left = `${note.x}px`;
-            if (curY != note.y) existing.style.top = `${note.y}px`;
-            if (curZ != note.z_index) existing.style.zIndex = note.z_index || 1;
+            if (existing) {
+                // Update Existing: Surgical property updates to preserve focus/scroll
+                // Skip update if the user is currently interacting with this specific note
+                if (existing.classList.contains('is-editing') || (STATE.pickedNoteId == note.id)) return;
 
-            // Content Reconciliation: Only update HTML if content/title changed
-            // This prevents the "flash" inside the note and maintains text selection
-            const curTitle = existing.querySelector('.note-title-slot')?.textContent;
-            if (curTitle !== (note.title || 'Untitled Note')) {
-                const titleInput = existing.querySelector('.inline-title-input');
-                const titleSlot  = existing.querySelector('.note-title-slot');
-                if (titleInput) titleInput.value = note.title || '';
-                if (titleSlot)  titleSlot.textContent = note.title || 'Untitled Note';
-            }
+                // Atomic Synchronicity: Check if we need to update position/z-index
+                const curX = parseInt(existing.style.left);
+                const curY = parseInt(existing.style.top);
+                const curZ = parseInt(existing.style.zIndex);
+                
+                if (curX != note.x) existing.style.left = `${note.x}px`;
+                if (curY != note.y) existing.style.top = `${note.y}px`;
+                if (curZ != note.z_index) existing.style.zIndex = note.z_index || 1;
 
-            // Collapse state sync
-            if (note.is_collapsed && !existing.classList.contains('collapsed')) {
-                existing.classList.add('collapsed');
-                const btn = existing.querySelector('.btn-icon-collapse');
-                if (btn) btn.innerHTML = '🔻';
-            } else if (!note.is_collapsed && existing.classList.contains('collapsed')) {
-                existing.classList.remove('collapsed');
-                const btn = existing.querySelector('.btn-icon-collapse');
-                if (btn) btn.innerHTML = '🔺';
-            }
+                // Content Reconciliation: Only update HTML if content/title changed
+                // This prevents the "flash" inside the note and maintains text selection
+                const curTitle = existing.querySelector('.note-title-slot')?.textContent;
+                if (curTitle !== (note.title || 'Untitled Note')) {
+                    const titleInput = existing.querySelector('.inline-title-input');
+                    const titleSlot  = existing.querySelector('.note-title-slot');
+                    if (titleInput) titleInput.value = note.title || '';
+                    if (titleSlot)  titleSlot.textContent = note.title || 'Untitled Note';
+                }
 
-            // Attachment & Content Reconciliation: 
-            // We compare the rendered attachment count to detect changes (Deletion/Upload)
-            const currentAttachments = existing.querySelectorAll('.attachment-item-stack, .note-hero-container').length;
-            const newAttachmentsCount = (note.attachments || []).length;
-            
-            if (currentAttachments !== newAttachmentsCount) {
-                // DOM Diff detected: Perform a surgical content swap to reflect new binary state
-                const contentDiv = existing.querySelector('.note-content');
-                if (contentDiv) {
-                    contentDiv.innerHTML = generateNoteContentHtml(note, canEdit);
+                // Collapse state sync
+                if (note.is_collapsed && !existing.classList.contains('collapsed')) {
+                    existing.classList.add('collapsed');
+                    const btn = existing.querySelector('.btn-icon-collapse');
+                    if (btn) btn.innerHTML = '🔻';
+                } else if (!note.is_collapsed && existing.classList.contains('collapsed')) {
+                    existing.classList.remove('collapsed');
+                    const btn = existing.querySelector('.btn-icon-collapse');
+                    if (btn) btn.innerHTML = '🔺';
+                }
+
+                // Attachment & Content Reconciliation: 
+                // We compare the rendered attachment count to detect changes (Deletion/Upload)
+                const currentAttachments = existing.querySelectorAll('.attachment-item-stack, .note-hero-container').length;
+                const newAttachmentsCount = (note.attachments || []).length;
+                
+                if (currentAttachments !== newAttachmentsCount) {
+                    // DOM Diff detected: Perform a surgical content swap to reflect new binary state
+                    const contentDiv = existing.querySelector('.note-content');
+                    if (contentDiv) {
+                        contentDiv.innerHTML = generateNoteContentHtml(note, canEdit);
+                    }
+                }
+            } else {
+                // Creation: New note entered the active isolation layer
+                const noteEl = createNoteElement(note, canEdit);
+                canvas.appendChild(noteEl);
+                
+                if (STATE.editMode && canEdit) {
+                    initResizable(noteEl, note);
                 }
             }
-        } else {
-            // Creation: New note entered the active isolation layer
-            const noteEl = createNoteElement(note, canEdit);
-            canvas.appendChild(noteEl);
-            
-            if (STATE.editMode && canEdit) {
-                initResizable(noteEl, note);
+        } catch (e) {
+            // Deduplication Guard: Only log the first occurrence of a specific note failure per session/load
+            if (!window._renderErrors.has(note.id)) {
+                window._renderErrors.add(note.id);
+                console.error(`[renderUI] Failed to render note ${note.id}:`, e);
             }
         }
     });

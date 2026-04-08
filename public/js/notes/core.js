@@ -407,6 +407,9 @@ async function initNotes() {
 async function loadState(initial = false, canvas_id = null, targetNoteId = null, layer_id = null) {
     STATE.isSyncing = true;
     if (initial) STATE.isInitializing = true; // Protect interface state during initial hydration
+
+    // Reset rendering error baseline on every state hydration to allow re-reporting of persistent issues
+    if (window._renderErrors) window._renderErrors.clear();
     
     // Resolve context: Prioritize URL param -> Current State -> Backend Default (null)
     const urlParams = new URLSearchParams(window.location.search);
