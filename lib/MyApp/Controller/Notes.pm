@@ -268,8 +268,8 @@ sub api_attachment_delete {
     my $blob_id   = $c->param('blob_id');
     my $canvas_id = $c->param('canvas_id');
 
-    # Security Gate: Verify the user owns the note containing the blob
-    unless ($c->db->check_note_ownership($note_id, $user_id)) {
+    # Security Gate: Verify EDIT access to the board containing the note
+    unless ($c->db->check_note_edit_permission($note_id, $user_id)) {
         return $c->render(json => { success => 0, error => "Permission Denied" }, status => 403);
     }
 
@@ -298,8 +298,8 @@ sub api_attachment_rename {
 
     return $c->render(json => { success => 0, error => 'Filename required' }) unless length($filename) >= 1;
 
-    # Security Gate: Verify the user owns the note containing the blob
-    unless ($c->db->check_note_ownership($note_id, $user_id)) {
+    # Security Gate: Verify EDIT access to the board containing the note
+    unless ($c->db->check_note_edit_permission($note_id, $user_id)) {
         return $c->render(json => { success => 0, error => 'Permission Denied' }, status => 403);
     }
 

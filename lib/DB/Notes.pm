@@ -279,6 +279,23 @@ sub DB::check_note_ownership {
     return $sth->fetchrow_array ? 1 : 0;
 }
 
+# Authority Check: Ensures user has board-level EDIT permission for a specific note.
+# Used for collaborative asset management (attachments).
+sub DB::check_note_edit_permission {
+    my ($self, $note_id, $user_id) = @_;
+    $self->ensure_connection;
+
+    # Fetch the canvas this note belongs to
+    my $sth = $self->{dbh}->prepare("SELECT canvas_id FROM notes WHERE id = ?");
+    $sth->execute($note_id);
+    my ($canvas_id) = $sth->fetchrow_array();
+    
+    return 0 unless $canvas_id;
+    
+    # If the user has EDIT access to the canvas, they can manage note assets
+    return $self->check_canvas_access($canvas_id, $user_id, 1);
+}
+
 # Stores binary data for an image-based note.
 # Parameters:
 #   note_id   : Parent note identifier.
