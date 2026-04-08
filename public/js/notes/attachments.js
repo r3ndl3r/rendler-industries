@@ -14,6 +14,7 @@ function handleFileSelection(e) {
 
     // Unified completion path for both Async (Image) and Sync (Generic File) flows
     const finalize = (data = null) => {
+        if (!DRAFT_NOTE) return;
         // 1. Maintain the Multi-File Reel Queue
         if (!DRAFT_NOTE.pendingFiles) DRAFT_NOTE.pendingFiles = [];
         DRAFT_NOTE.pendingFiles.push({ 
@@ -51,17 +52,16 @@ function handleFileSelection(e) {
 }
 
 /**
- * Immediate Atomic Deletion: Removes a file from the note and MariaDB instantly.
- * No more 'pending removal' feedback; the file is simply gone upon confirmation.
+ * Individual Attachment Deletion: Removes a file from the note and database instantly.
  */
-function queueAttachmentDelete(noteId, blobId) {
+function confirmAttachmentRemoval(noteId, blobId) {
     // Context Resolution: Use provided ID or active draft ID
     const activeNoteId = noteId || DRAFT_NOTE?.id;
 
     window.showConfirmModal({
-        title: 'Delete Attachment',
-        message: 'Are you sure you want to permanently remove this file? This action CANNOT be undone.',
-        confirmText: 'Delete Now',
+        title: 'Remove Attachment',
+        message: 'Are you sure you want to remove this attachment? This action cannot be undone.',
+        confirmText: 'Remove',
         confirmIcon: '🗑️',
         icon: '⚠️',
         hideCancel: true,
@@ -91,11 +91,10 @@ function queueAttachmentDelete(noteId, blobId) {
                     if (typeof renderUI === 'function') renderUI();
                     
                     renderCreateFooterReel(note ? note.attachments : []);
-                    showToast('Attachment permanently deleted', 'success');
+                    showToast('Attachment removed', 'success');
                 }
             } else {
                 // Case B: In-Memory Draft (Local removal only)
-                // This shouldn't normally happen with blobIds, but we handle for safety
                 if (typeof renderDraftReel === 'function') renderDraftReel();
                 showToast('Attachment removed from draft', 'info');
             }
@@ -127,12 +126,11 @@ function renderCreateFooterReel(attachments) {
     // 1. Existing Attachments
     attachments.forEach(att => {
         const id = att.blob_id || att.id;
-        const isDeleted = (STATE.pendingDeletes || []).includes(id);
         const isImg = (att.mime_type && att.mime_type.startsWith('image/')) || (att.data && att.data.startsWith('data:image'));
         const isPdf = (att.mime_type === 'application/pdf') || (att.filename && att.filename.toLowerCase().endsWith('.pdf'));
 
         const item = document.createElement('div');
-        item.className = `attachment-item-reel ${isDeleted ? 'pending-delete' : ''}`;
+        item.className = 'attachment-item-reel';
         item.title = att.filename || 'Attachment';
         
         if (isImg) {
@@ -154,7 +152,7 @@ function renderCreateFooterReel(attachments) {
         del.title = 'Remove';
         del.onclick = (e) => {
             e.stopPropagation();
-            queueAttachmentDelete(null, id);
+            confirmAttachmentRemoval(null, id);
         };
         
         // Wrap controls in the standard float container
@@ -220,6 +218,7 @@ function renderCreateFooterReel(attachments) {
 }
 
 function renderDraftReel() {
+    if (!DRAFT_NOTE) return;
     const wrap = document.getElementById('footer-attachment-preview');
     if (!wrap) return;
     
@@ -381,3 +380,11 @@ async function handleGlobalClipPaste(e) {
 }
 
 
+window.confirmAttachmentRemoval = confirmAttachmentRemoval;
+window.removePendingUpload        = removePendingUpload;
+window.renderCreateFooterReel     = renderCreateFooterReel;
+window.triggerInlineUpload        = triggerInlineUpload;
+window.handleFileSelection        = handleFileSelection;
+window.handleInlineFileSelection  = handleInlineFileSelection;
+window.initDropZones              = initDropZones;
+window.handleGlobalClipPaste      = handleGlobalClipPaste;
