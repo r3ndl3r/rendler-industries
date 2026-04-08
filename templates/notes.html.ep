@@ -161,9 +161,6 @@
                     <button id="upload-note-btn" class="btn-secondary" title="Upload File or Image">
                         <span id="upload-btn-icon">📁</span> <span id="upload-btn-text">Upload</span>
                     </button>
-                    <button id="purge-attachment-btn" class="btn-danger hidden" title="Purge All Attachments">
-                        🗑️ Purge
-                    </button>
                 </div>
             </div>
             
