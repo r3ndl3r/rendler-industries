@@ -23,88 +23,87 @@
 /* Grid Layout */
 .tile-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 20px;
 }
 
-/* Base Tile Style */
+/* Base Tile Style (Glassmorphism) */
 .tile {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background-color: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 8px;
-    padding: 20px 10px;
+    background: rgba(30, 41, 59, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 25px 15px;
     text-decoration: none;
-    color: #e0e0e0;
-    transition: all 0.2s ease-in-out;
+    color: #e2e8f0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
-    min-height: 100px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    min-height: 120px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .tile:hover {
     transform: translateY(-5px);
-    background-color: #252525;
-    border-color: #555;
+    background: rgba(30, 41, 59, 0.6);
+    border-color: rgba(144, 202, 249, 0.3);
     text-decoration: none;
     color: white;
-    box-shadow: 0 8px 15px rgba(0,0,0,0.5);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.5);
 }
 
 /* Icon Styling */
 .icon {
-    font-size: 2.5rem;
-    margin-bottom: 10px;
+    font-size: 2.8rem;
+    margin-bottom: 12px;
     line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
 .label {
     font-size: 1rem;
-    font-weight: bold;
+    font-weight: 600;
     text-align: center;
-}
-
-/* Specific Tile Colors */
-
-/* Login/Register */
-.tile.login:hover, .tile.register:hover {
-    border-color: #69f0ae;
-    color: #69f0ae;
+    letter-spacing: 0.2px;
 }
 
 /* Admin Tiles */
 .tile.admin {
-    background-color: #1e1515; /* Slight red tint for admin */
-    border-color: #4a2c2c;
+    background: rgba(45, 30, 30, 0.4); /* Deep red glass tint */
+    border-color: rgba(239, 68, 68, 0.15);
 }
 .tile.admin:hover {
-    border-color: #ffb74d;
-    color: #ffb74d;
+    border-color: #f59e0b;
+    color: #f59e0b;
+    background: rgba(45, 30, 30, 0.6);
 }
 
 /* Danger / Restart */
 .tile.danger {
-    background-color: #2a0f0f;
-    border-color: #d32f2f;
-    /* Reset button styles since it's a <button> */
+    background: rgba(127, 29, 29, 0.4);
+    border-color: rgba(239, 68, 68, 0.3);
     font-family: inherit;
     width: 100%; 
 }
 .tile.danger:hover {
-    background-color: #d32f2f;
+    background: rgba(239, 68, 68, 0.6);
+    border-color: #ef4444;
     color: white;
 }
 
 /* Logout */
 .tile.logout {
-    border-color: #d32f2f;
-    color: #ef9a9a;
+    background: rgba(30, 41, 59, 0.3);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
 }
 .tile.logout:hover {
-    background-color: #d32f2f;
+    background: rgba(239, 68, 68, 0.5);
+    border-color: #ef4444;
     color: white;
 }
 
@@ -112,33 +111,45 @@
 .separator {
     grid-column: 1 / -1;
     height: 1px;
-    background: #333;
-    margin: 20px 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    margin: 40px 0 20px;
     position: relative;
 }
 
 .separator::after {
-    content: "ADMINISTRATION";
+    content: attr(data-label);
     position: absolute;
     top: -10px;
     left: 50%;
     transform: translateX(-50%);
-    background: black;
-    padding: 0 10px;
-    color: #555;
-    font-size: 0.8rem;
-    font-weight: bold;
+    background: #050c1d;
+    padding: 0 15px;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
 }
 
-/* Mobile Responsiveness */
+/* Mobile Responsiveness: 3 Column Layout */
 @media (max-width: 600px) {
     .tile-grid {
-        grid-template-columns: repeat(2, 1fr); /* 2 columns on mobile */
+        grid-template-columns: repeat(3, 1fr); /* 3 items per row */
+        gap: 12px;
+    }
+    .tile {
+        padding: 15px 8px;
+        min-height: 100px;
+        border-radius: 12px;
     }
     .icon {
         font-size: 2rem;
+        margin-bottom: 8px;
     }
     .label {
-        font-size: 0.9rem;
+        font-size: 0.75rem;
+        line-height: 1.2;
+    }
+    .separator {
+        margin: 30px 0 15px;
     }
 }
