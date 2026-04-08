@@ -420,8 +420,13 @@ function formatNoteContent(content, noteId) {
 
     // 7. Transformation: [iframe:url] or [iframe:url|height]
     processedContent = processedContent.replace(/\[iframe:(.*?)(?:\|(\d+))?\]/g, (match, url, height) => {
+        const trimmedUrl = url.trim();
+        // Validation: Only allow absolute http/https URLs to prevent relative path 404s and security risks
+        if (!/^https?:\/\//i.test(trimmedUrl)) {
+            return match; // Return as literal text if it's not a valid web URL
+        }
         const style = height ? `style="height: ${height}px;"` : 'class="iframe-fill"';
-        return `<div class="note-iframe-wrap" ${style}><iframe src="${url.trim()}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe></div>`;
+        return `<div class="note-iframe-wrap" ${style}><iframe src="${trimmedUrl}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe></div>`;
     });
 
     // 8. Transformation: Raw URL Linkification (http/https)
