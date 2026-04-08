@@ -250,7 +250,6 @@ async function initNotes() {
                     if (drawer && note) {
                         drawer.classList.toggle('expanded');
                         note.is_options_expanded = drawer.classList.contains('expanded') ? 1 : 0;
-                        toggleBtn.innerHTML = note.is_options_expanded ? '❮' : '⋯';
                         toggleBtn.classList.toggle('active', !!note.is_options_expanded);
                         if (typeof syncNotePosition === 'function') syncNotePosition(noteId, 'silent');
                     }
