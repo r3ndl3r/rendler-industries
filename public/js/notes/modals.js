@@ -323,17 +323,19 @@ function renderCanvasList() {
     
     container.innerHTML = '';
     
-    STATE.canvases.forEach(canvas => {
+    STATE.canvases.forEach((canvas, index) => {
         const item = document.createElement('div');
         item.className = `canvas-item ${canvas.id == STATE.canvas_id ? 'active' : ''}`;
+        item.draggable = true;
+        item.dataset.index = index;
         
         const isOwner = canvas.is_owner;
         
         item.innerHTML = `
+            <div class="canvas-drag-handle" title="Drag to reorder">⠿</div>
             <div class="canvas-info" onclick="switchCanvas(${canvas.id})">
                 <div class="canvas-name-row">
                     <span class="canvas-name">${escapeHtml(canvas.name)}</span>
-                    ${canvas.id == STATE.canvas_id ? `<span class="active-badge">🧠 Active</span>` : ''}
                 </div>
                 <div class="canvas-meta">
                     ${isOwner ? 'Owned by you' : 'Shared by ' + (canvas.owner_name || 'System')}
@@ -344,16 +346,65 @@ function renderCanvasList() {
                     <button class="btn-icon-square btn-sm btn-primary" onclick="openBoardSettings(${canvas.id})" title="Board Settings">
                         ⚙️
                     </button>
-                ` : ''}
-                ${isOwner && canvas.name !== 'Your Notebook' ? `
-                    <button class="btn-icon-square btn-sm btn-danger" onclick="deleteCanvas(event, ${canvas.id})" title="Delete Board">
-                        🗑️
-                    </button>
+                    ${canvas.name !== 'My Notebook' ? `
+                        <button class="btn-icon-square btn-sm btn-danger" onclick="deleteCanvas(event, ${canvas.id})" title="Delete Board">
+                            🗑️
+                        </button>
+                    ` : ''}
                 ` : ''}
             </div>
         `;
+
+        // ID-Based D&D Handshake
+        item.ondragstart = (e) => {
+            e.dataTransfer.setData('source-id', canvas.id);
+            item.classList.add('is-dragging');
+        };
+
+        item.ondragend = () => {
+            item.classList.remove('is-dragging');
+            container.querySelectorAll('.canvas-item').forEach(el => el.classList.remove('drag-over'));
+        };
+
+        item.ondragover = (e) => {
+            e.preventDefault();
+            item.classList.add('drag-over');
+        };
+
+        item.ondragleave = () => {
+            item.classList.remove('drag-over');
+        };
+
+        item.ondrop = (e) => {
+            e.preventDefault();
+            const sourceId = parseInt(e.dataTransfer.getData('source-id'));
+            const targetId = canvas.id;
+            
+            if (sourceId === targetId) return;
+
+            // Reconstruct array locally
+            const sourceIndex = STATE.canvases.findIndex(c => c.id === sourceId);
+            const targetIndex = STATE.canvases.findIndex(c => c.id === targetId);
+
+            if (sourceIndex !== -1 && targetIndex !== -1) {
+                const movedItem = STATE.canvases.splice(sourceIndex, 1)[0];
+                STATE.canvases.splice(targetIndex, 0, movedItem);
+                
+                renderCanvasList();
+                syncCanvasOrder();
+            }
+        };
+
         container.appendChild(item);
     });
+}
+
+/**
+ * Persists the current board sequence to the database.
+ */
+async function syncCanvasOrder() {
+    const orderMap = STATE.canvases.map((c, i) => ({ id: c.id, order: i }));
+    await apiPost('/notes/api/canvases/reorder', orderMap);
 }
 
 /**
@@ -830,6 +881,7 @@ function renderShareList(id, shares = null) {
         item.className = 'share-item';
         item.innerHTML = `
             <div class="share-user-info">
+                <span class="user-icon-pill">${window.getUserIcon(share.username)}</span>
                 <span class="share-username">${window.escapeHtml(share.username)}</span>
             </div>
             <div class="share-actions">
@@ -991,7 +1043,7 @@ function setupUserSearch() {
         clearTimeout(debounce);
         const query = e.target.value.trim();
         if (query.length < 2) {
-            document.getElementById('user-search-results').style.display = 'none';
+            document.getElementById('user-search-results').classList.add('hidden');
             return;
         }
 
@@ -1001,16 +1053,26 @@ function setupUserSearch() {
             
             const resultsWrap = document.getElementById('user-search-results');
             resultsWrap.innerHTML = '';
-            resultsWrap.style.display = 'block';
+            resultsWrap.classList.remove('hidden');
+
+            if (users.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'search-result-item no-click';
+                empty.style.justifyContent = 'center';
+                empty.style.color = 'var(--text-dim)';
+                empty.textContent = 'No users found';
+                resultsWrap.appendChild(empty);
+                return;
+            }
 
             users.forEach(user => {
                 const item = document.createElement('div');
-                item.className = 'user-search-item';
-                item.textContent = user.username;
+                item.className = 'search-result-item';
+                item.innerHTML = `<span class="user-icon-pill">${window.getUserIcon(user.username)}</span> ${user.username}`;
                 item.onclick = () => {
                     const canvasId = document.getElementById('save-canvas-name-btn')?.dataset.canvasId;
                     addUserToBoard(canvasId || STATE.canvas_id, user.username);
-                    resultsWrap.style.display = 'none';
+                    resultsWrap.classList.add('hidden');
                     input.value = '';
                 };
                 resultsWrap.appendChild(item);
@@ -1093,6 +1155,11 @@ async function showCreateNoteModal(type, data, editId = null) {
 
     container.innerHTML = '';
     DRAFT_NOTE = { type, data, id: editId, pendingFiles: [] };
+    
+    // Clipboard Lifecycle: If we are pasting an image, populate the pending queue immediately
+    if (type === 'image' && data) {
+        DRAFT_NOTE.pendingFiles.push({ type: 'image', data: data, filename: 'pasted_image.png' });
+    }
 
     let note = null;
     if (editId) {
@@ -1145,8 +1212,8 @@ async function showCreateNoteModal(type, data, editId = null) {
         STATE.pendingDeletes = []; // Reset deletions queue
         if (typeof renderCreateFooterReel === 'function') renderCreateFooterReel(note.attachments || []);
     } else if (data && footerPreviewWrap) {
-        // Handle pasted data if any
-        if (typeof renderCreateFooterReel === 'function') renderCreateFooterReel([{ id: 'pasted', type, data, filename: type === 'text' ? '' : 'pasted_asset' }]);
+        // Handle pasted data if any: renderCreateFooterReel will automatically pick up DRAFT_NOTE.pendingFiles
+        if (typeof renderCreateFooterReel === 'function') renderCreateFooterReel([]);
     }
 
     // Attachment UI Sync
@@ -1156,7 +1223,7 @@ async function showCreateNoteModal(type, data, editId = null) {
         const isOwner = note ? (note.user_id == STATE.user_id) : true;
         const hasAttachments = (note && note.attachments && note.attachments.length > 0) || 
                                (DRAFT_NOTE && DRAFT_NOTE.pendingFiles && DRAFT_NOTE.pendingFiles.length > 0);
-        purgeBtn.style.display = (hasAttachments && isOwner) ? 'flex' : 'none';
+        purgeBtn.classList.toggle('hidden', !(hasAttachments && isOwner));
         purgeBtn.onclick = () => { if (typeof confirmPurgeAll === 'function') confirmPurgeAll(); };
     }
 
@@ -1361,7 +1428,7 @@ function renderQuickSwitcher() {
     list.innerHTML = '';
     (STATE.canvases || []).forEach(canvas => {
         const isActive = canvas.id == STATE.canvas_id;
-        const icon     = isActive ? '📋' : (canvas.is_owner ? '📒' : '🔗');
+        const icon     = isActive ? '📖' : (canvas.is_owner ? '📒' : '🔗');
         const meta     = canvas.is_owner
             ? 'Owned by you'
             : `Shared by ${canvas.owner_name || 'System'}`;
@@ -1391,20 +1458,20 @@ function renderQuickSwitcher() {
 
 /**
  * Toggles the quick-switcher panel open/closed.
- * Safe to call from the pill onclick.
+ * Transitioning to class-based visibility (Zero Style Manipulation).
  */
 function toggleCanvasQuickSwitch() {
     const panel = document.getElementById('canvas-quick-switcher');
     const pill  = document.getElementById('active-board-branding');
     if (!panel) return;
 
-    const isOpen = panel.style.display !== 'none';
-    if (isOpen) {
-        closeCanvasQuickSwitch();
-    } else {
-        renderQuickSwitcher();
-        panel.style.display = 'block';
+    const isHidden = panel.classList.contains('hidden');
+    if (isHidden) {
+        if (typeof renderQuickSwitcher === 'function') renderQuickSwitcher();
+        panel.classList.remove('hidden');
         if (pill) pill.setAttribute('aria-expanded', 'true');
+    } else {
+        closeCanvasQuickSwitch();
     }
 }
 
@@ -1414,15 +1481,68 @@ function toggleCanvasQuickSwitch() {
 function closeCanvasQuickSwitch() {
     const panel = document.getElementById('canvas-quick-switcher');
     const pill  = document.getElementById('active-board-branding');
-    if (panel) panel.style.display = 'none';
+    if (panel) panel.classList.add('hidden');
     if (pill)  pill.setAttribute('aria-expanded', 'false');
+}
+
+/**
+ * Header Interactions Initializer.
+ * Binds all header-level actions to prevent legacy inline onclick hooks.
+ */
+function setupHeaderInteractions() {
+    // 1. Branding Pill (Canvas Switcher)
+    const brandingPill = document.getElementById('active-board-branding');
+    if (brandingPill) {
+        brandingPill.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleCanvasQuickSwitch();
+        });
+    }
+
+    // 2. Switcher Close Button
+    const closeBtn = document.querySelector('.cqs-close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeCanvasQuickSwitch();
+        });
+    }
+
+    // 3. Level Layer Navigation
+    const levelUp = document.querySelector('.btn-level-up');
+    if (levelUp) {
+        levelUp.addEventListener('click', () => {
+            if (typeof moveLevel === 'function') moveLevel(1);
+        });
+    }
+
+    const levelDown = document.querySelector('.btn-level-down');
+    if (levelDown) {
+        levelDown.addEventListener('click', () => {
+            if (typeof moveLevel === 'function') moveLevel(-1);
+        });
+    }
+
+    const levelDisplay = document.getElementById('level-display');
+    if (levelDisplay) {
+        levelDisplay.addEventListener('click', () => {
+            if (typeof openJumpToLevelModal === 'function') openJumpToLevelModal();
+        });
+    }
+
+    const levelRename = document.querySelector('.btn-level-rename');
+    if (levelRename) {
+        levelRename.addEventListener('click', () => {
+            if (typeof renameCurrentLevel === 'function') renameCurrentLevel();
+        });
+    }
 }
 
 // Dismiss panel when clicking outside
 document.addEventListener('click', (e) => {
     const panel = document.getElementById('canvas-quick-switcher');
     const pill  = document.getElementById('active-board-branding');
-    if (!panel || panel.style.display === 'none') return;
+    if (!panel || panel.classList.contains('hidden')) return;
     if (panel.contains(e.target) || pill.contains(e.target)) return;
     closeCanvasQuickSwitch();
 }, true);
@@ -1430,3 +1550,7 @@ document.addEventListener('click', (e) => {
 window.toggleCanvasQuickSwitch = toggleCanvasQuickSwitch;
 window.closeCanvasQuickSwitch  = closeCanvasQuickSwitch;
 window.renderQuickSwitcher     = renderQuickSwitcher;
+window.setupHeaderInteractions = setupHeaderInteractions;
+
+// Initialization: Register listeners on module load
+document.addEventListener('DOMContentLoaded', setupHeaderInteractions);
