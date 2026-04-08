@@ -80,8 +80,12 @@ sub api_add {
     my $user_id = $c->current_user_id;
     my $is_one_off = $c->param('is_one_off') ? 1 : 0;
     
+    # Chore Integration (Admin Only)
+    my $is_chore = $c->param('is_chore') ? 1 : 0;
+    my $chore_points = ($c->is_admin && $is_chore) ? int($c->param('chore_points') // 0) : undef;
+    
     eval {
-        $c->db->create_reminder($title, $desc, $days_str, $time, $user_id, \@uids, $is_one_off);
+        $c->db->create_reminder($title, $desc, $days_str, $time, $user_id, \@uids, $is_one_off, $chore_points);
     };
     
     if ($@) {
@@ -121,9 +125,13 @@ sub api_update {
     
     my $days_str = join(',', @days);
     my $is_one_off = $c->param('is_one_off') ? 1 : 0;
+
+    # Chore Integration (Admin Only)
+    my $is_chore = $c->param('is_chore') ? 1 : 0;
+    my $chore_points = ($c->is_admin && $is_chore) ? int($c->param('chore_points') // 0) : undef;
     
     eval {
-        $c->db->update_reminder($id, $title, $desc, $days_str, $time, \@uids, $is_one_off);
+        $c->db->update_reminder($id, $title, $desc, $days_str, $time, \@uids, $is_one_off, $chore_points);
     };
     
     if ($@) {
