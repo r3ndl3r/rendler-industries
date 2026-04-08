@@ -112,7 +112,7 @@ function toggleStickyMove(e, id) {
     };
 
     // --- 1. Focus Management (Z-Index Promotion) ---
-    const maxZ = Math.max(...STATE.notes.map(n => n.z_index || 1), 1);
+    const maxZ = STATE.notes.reduce((max, n) => Math.max(max, n.z_index || 1), 1);
     if (note.z_index < maxZ) {
         const newZ = maxZ + 1;
         note.z_index = newZ;
@@ -1319,7 +1319,7 @@ async function handleNoteLinkClick(id) {
     if (el) {
         el.classList.add('pulse-glow');
         const oldZ = el.style.zIndex;
-        const maxZ = Math.max(...STATE.notes.map(n => n.z_index || 1), 1);
+        const maxZ = STATE.notes.reduce((max, n) => Math.max(max, n.z_index || 1), 1);
         el.style.zIndex = maxZ + 1;
         
         setTimeout(() => {

@@ -354,7 +354,7 @@ async function handleFileDrop(file, x, y, customTitle = null) {
     formData.append('file',      file);
     formData.append('x',         Math.round(x));
     formData.append('y',         Math.round(y));
-    formData.append('z_index',   Math.max(...STATE.notes.map(n => n.z_index || 0), 0) + 1);
+    formData.append('z_index',   STATE.notes.reduce((max, n) => Math.max(max, n.z_index || 0), 0) + 1);
     formData.append('canvas_id', STATE.canvas_id);
     formData.append('layer_id',  STATE.activeLayerId);
     

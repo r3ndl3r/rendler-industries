@@ -72,7 +72,7 @@ async function executeCreateNote() {
     } : {
         x: Math.round(canvasCX / 10) * 10 - 140,
         y: Math.round(canvasCY / 10) * 10 - 100,
-        z_index: Math.max(...STATE.notes.map(n => n.z_index || 0), 0) + 1,
+        z_index: STATE.notes.reduce((max, n) => Math.max(max, n.z_index || 0), 0) + 1,
         is_collapsed: 0,
         is_options_expanded: 0
     };
