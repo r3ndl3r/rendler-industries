@@ -438,7 +438,7 @@
     flex-direction: column;
     align-items: flex-end; /* Right-Alignment anchor */
     gap: 0.675em; /* 20% Increase: 9px -> 10.8px equivalent */
-    z-index: 10000;
+    z-index: 1000; /* Above canvas, below modals */
 }
 
 /* Symmetrical Info FAB cluster (Left-Anchored) */
@@ -450,7 +450,7 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.675em;
-    z-index: 10000;
+    z-index: 1000; /* Above canvas, below modals */
 }
 
 /* Vertical Level Selection Stack (Left Anchor) */
@@ -814,7 +814,7 @@
 /* Focus highlight animation */
 .sticky-note.highlight-pulse {
     animation: noteHighlightPulse 2s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 99999 !important;
+    z-index: 1000; /* High enough to clear canvas, low enough to stay under modals */
 }
 
 @keyframes noteHighlightPulse {
@@ -1438,9 +1438,20 @@
 }
 
 /* Color Picker promoted to left-aligned section */
+/* Color Picker promoted to left-aligned section on desktop, fluid on mobile */
 .note-modal-footer .custom-color-picker-container {
     position: absolute;
     left: 40px;
+}
+
+@media screen and (max-width: 480px) {
+    .note-modal-footer .custom-color-picker-container {
+        position: absolute;
+        left: 15px; /* Tucked to far left for mobile to avoid button overlap */
+        width: auto;
+        display: flex;
+        justify-content: flex-start;
+    }
 }
 
 .modal-close-floating {
@@ -1550,6 +1561,27 @@
     color: #e2e8f0;
     border-radius: 4px;
     padding: 4px;
+}
+
+#create-note-color {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    border-radius: 4px; /* Crisp Square aesthetic as requested */
+    cursor: pointer;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+#create-note-color::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+#create-note-color::-webkit-color-swatch {
+    border: none;
+    border-radius: 2px;
 }
 
 #edit-note-color {
@@ -1847,7 +1879,9 @@
 
 .create-preview-text {
     width: 100%;
-    height: 25rem;
+    min-height: 12rem;
+    height: auto;
+    overflow-y: hidden; /* Prevent scrollbar artifacts while growing */
     background: transparent;
     border: none;
     outline: none;
@@ -1980,20 +2014,30 @@
 
 #note-create-modal .note-modal-body {
     padding-top: 1.25rem;
+    overflow-y: visible; /* Disable internal scrollbars for document-style expansion */
+    flex: none; /* Prevent flex-shaping from capping content height */
 }
 
 #note-create-modal .note-modal-content {
     width: 600px;
     max-width: 96vw;
     height: auto;
-    max-height: 92vh;
-    margin: 2vh auto;
+    max-height: none; /* Release viewport constraint for native page scrolling */
+    margin: 5vh auto; 
+    overflow: visible; 
 }
 
 #note-create-modal .note-modal-footer {
-    height: 4rem;
-    border-top: none !important; /* Force removal of separation line */
+    height: auto;
+    min-height: 4.5rem;
+    padding: 1rem;
+    border-top: none !important;
     background: transparent !important;
+    display: flex;
+    flex-wrap: wrap; /* Allow stacking on mobile */
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
 
 /* --- Unified Drafting Utility Hooks --- */
@@ -2264,13 +2308,24 @@
     transition: all 0.3s ease;
 }
 
+/* Interactive Interaction: Successful Copy Pulse (Green Highlight) */
+.copy-success-pulse {
+    animation: copySuccessPulse 0.8s ease-out;
+}
+
+@keyframes copySuccessPulse {
+    0% { background: rgba(16, 185, 129, 0.2); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    50% { background: rgba(16, 185, 129, 0.4); box-shadow: 0 0 15px 5px rgba(16, 185, 129, 0.2); }
+    100% { background: transparent; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
 /* --- Multi-Canvas Manager UI (Professional Overhaul) --- */
 
 .canvas-manager-toggle {
     position: fixed;
     top: 85px;
     right: 12px;
-    z-index: 10001;
+    z-index: 1000; /* Above the canvas but below the modal layer */
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -3609,7 +3664,8 @@ input:checked + .switch-sm .slider:before {
 /* Hero, Reel & Stack Hover Triggers */
 .sticky-note.is-editing .note-hero-container:hover .attachment-float-controls,
 .sticky-note.is-editing .attachment-item-reel:hover .attachment-float-controls,
-.sticky-note.is-editing .attachment-item-stack:hover .attachment-float-controls {
+.sticky-note.is-editing .attachment-item-stack:hover .attachment-float-controls,
+.note-modal-content .attachment-item-reel:hover .attachment-float-controls {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
@@ -3718,26 +3774,47 @@ input:checked + .switch-sm .slider:before {
 .footer-attachment-preview {
     display: flex !important;
     flex-wrap: wrap !important;
-    gap: 12px !important;
+    gap: 20px !important; /* Increased gap for better definition */
     margin: 15px 0 !important;
     padding: 10px !important;
     min-height: 20px !important;
+    justify-content: center !important; /* Centered as requested */
     border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
 .footer-attachment-preview .attachment-item-reel {
-    width: 36px !important;
-    height: 36px !important;
-    flex: 0 0 36px !important; /* Lock flex growth */
+    width: 64px !important; /* Bigger icons as requested */
+    height: 84px !important; /* Accommodate label */
+    flex: 0 0 64px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    background: transparent !important;
+    border: none !important;
+    position: relative !important;
+}
+
+.attachment-label-reel {
+    font-size: 10px !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    width: 100% !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    text-align: center !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    margin-top: 6px !important;
 }
 
 .footer-attachment-preview .attachment-icon-reel {
-    font-size: 1.2rem !important; /* Compact icons for modal */
+    font-size: 2rem !important; /* Significantly bigger icons */
 }
 
 .footer-attachment-preview .attachment-thumb-reel {
-    width: 100% !important;
-    height: 100% !important;
+    width: 64px !important;
+    height: 64px !important;
     object-fit: cover !important;
+    border-radius: 4px !important;
 }
 
