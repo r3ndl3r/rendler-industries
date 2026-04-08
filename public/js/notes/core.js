@@ -56,7 +56,6 @@ const STATE = {
     aliasTimer:     null,            // Lifecycle Handle: Auto-hide delay for level names
     isScrubbing:    false,           // Interaction Layer: Active radar-panning state
     radarScrubLast: { x: 0, y: 0 },   // Delta Tracking: Powering the 'Precision Gearbox'
-    pendingDeletes: [],               // Attachments queued for removal in the current edit session
     pinchStartDist: null,             // Mobile Gestures: Distance baseline
     pinchStartScale: null,            // Mobile Gestures: Scale baseline
     wrapperEl:      null,             // Cached DOM Handle: #canvas-wrapper
@@ -357,7 +356,6 @@ async function initNotes() {
     window.restoreNote = typeof restoreNote !== 'undefined' ? restoreNote : null;
 
     window.deleteNote = typeof deleteNote !== 'undefined' ? deleteNote : null;
-    window.queueAttachmentDelete = typeof queueAttachmentDelete !== 'undefined' ? queueAttachmentDelete : null;
     window.removePendingUpload = typeof removePendingUpload !== 'undefined' ? removePendingUpload : null;
     window.toggleInlineEdit = typeof toggleInlineEdit !== 'undefined' ? toggleInlineEdit : null;
     window.copyNoteLink = typeof copyNoteLink !== 'undefined' ? copyNoteLink : null;
