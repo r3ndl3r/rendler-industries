@@ -72,6 +72,21 @@
                     <div class="recipients-selector" id="addRecipientsSelector">
                     </div>
                 </div>
+
+                <% if (is_admin) { %>
+                    <div class="admin-chore-section">
+                        <div class="form-group checkbox-group no-margin">
+                            <label class="chore-sync-labeled">
+                                <input type="checkbox" name="is_chore" id="addIsChore" onchange="toggleChorePoints('add')">
+                                🔗 <strong>Sync as Chore</strong>
+                            </label>
+                        </div>
+                        <div class="form-group chore-points-input hidden" id="addChorePointsContainer">
+                            <label>Reward Points</label>
+                            <input type="number" name="chore_points" id="addChorePoints" class="game-input" value="0" min="0">
+                        </div>
+                    </div>
+                <% } %>
             </div>
             <div class="modal-actions modal-actions-center">
                 <button type="submit" class="btn-primary">🔔 Create</button>
@@ -126,6 +141,21 @@
                     <div class="recipients-selector" id="editRecipientsSelector">
                     </div>
                 </div>
+
+                <% if (is_admin) { %>
+                    <div class="admin-chore-section">
+                        <div class="form-group checkbox-group no-margin">
+                            <label class="chore-sync-labeled">
+                                <input type="checkbox" name="is_chore" id="editIsChore" onchange="toggleChorePoints('edit')">
+                                🔗 <strong>Sync as Chore</strong>
+                            </label>
+                        </div>
+                        <div class="form-group chore-points-input hidden" id="editChorePointsContainer">
+                            <label>Reward Points</label>
+                            <input type="number" name="chore_points" id="editChorePoints" class="game-input" value="0" min="0">
+                        </div>
+                    </div>
+                <% } %>
             </div>
             <div class="modal-actions modal-actions-center">
                 <button type="submit" class="btn-primary">💾 Save</button>
