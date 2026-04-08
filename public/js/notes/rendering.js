@@ -288,7 +288,7 @@ function generateNoteContentHtml(note, canEdit) {
                         <img src="/notes/attachment/serve/${firstAtt.blob_id}" class="note-hero-img" alt="${window.escapeHtml(firstAtt.filename)}">
                         <div class="file-name-display" data-blob-id="${firstAtt.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(firstAtt.filename)}</div>
                         <div class="attachment-float-controls">
-                            <button class="btn-icon-delete hero-action-btn edit-mode-only" onclick="event.stopPropagation(); queueAttachmentDelete(${note.id}, ${firstAtt.blob_id})" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
+                            <button class="btn-icon-delete hero-action-btn edit-mode-only" onclick="event.stopPropagation(); confirmAttachmentRemoval(${note.id}, ${firstAtt.blob_id})" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                         </div>
                     </div>
                 `;
@@ -306,7 +306,7 @@ function generateNoteContentHtml(note, canEdit) {
                             <div class="file-name-display" data-blob-id="${firstAtt.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(firstAtt.filename)}</div>
                         </div>
                         <div class="attachment-float-controls">
-                            <button class="btn-icon-delete hero-action-btn edit-mode-only" onclick="event.stopPropagation(); queueAttachmentDelete(${note.id}, ${firstAtt.blob_id})" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
+                            <button class="btn-icon-delete hero-action-btn edit-mode-only" onclick="event.stopPropagation(); confirmAttachmentRemoval(${note.id}, ${firstAtt.blob_id})" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                         </div>
                     </div>
                 `;
@@ -329,7 +329,7 @@ function generateNoteContentHtml(note, canEdit) {
                             <img src="/notes/attachment/serve/${att.blob_id}" class="attachment-full-img" alt="${window.escapeHtml(att.filename)}">
                             <div class="file-name-display" data-blob-id="${att.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(att.filename)}</div>
                             <div class="attachment-float-controls">
-                                <button class="btn-icon-delete reel-action-btn edit-mode-only" onclick="event.stopPropagation(); queueAttachmentDelete(${note.id}, ${att.blob_id})" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
+                                <button class="btn-icon-delete reel-action-btn edit-mode-only" onclick="event.stopPropagation(); confirmAttachmentRemoval(${note.id}, ${att.blob_id})" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                             </div>
                         </div>`;
                 } else {
@@ -339,7 +339,7 @@ function generateNoteContentHtml(note, canEdit) {
                             <div class="attachment-icon-stack">${isPdf ? '📄' : '📁'}</div>
                             <div class="file-name-display" data-blob-id="${att.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(att.filename)}</div>
                             <div class="attachment-float-controls">
-                                <button class="btn-icon-delete reel-action-btn edit-mode-only" onclick="event.stopPropagation(); queueAttachmentDelete(${note.id}, ${att.blob_id})" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
+                                <button class="btn-icon-delete reel-action-btn edit-mode-only" onclick="event.stopPropagation(); confirmAttachmentRemoval(${note.id}, ${att.blob_id})" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                             </div>
                         </div>`;
                 }
