@@ -161,16 +161,14 @@ async function initNotes() {
     // Attachment Layer: Handle local file selection triggers
     const uploadBtn = document.getElementById('upload-note-btn');
     const fileInput = document.getElementById('create-note-file-input');
-    const purgeBtn  = document.getElementById('purge-attachment-btn');
+
 
     if (uploadBtn && fileInput) {
         uploadBtn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', handleFileSelection);
     }
     
-    if (purgeBtn) {
-        purgeBtn.addEventListener('click', purgeAllDraftAttachments);
-    }
+
     
     // Canvas Manager Listeners
     const addCanvasBtn = document.getElementById('add-canvas-btn');
@@ -347,7 +345,7 @@ async function initNotes() {
     window.openBinModal = openBinModal;
     window.closeBinModal = closeBinModal;
     window.restoreNote = typeof restoreNote !== 'undefined' ? restoreNote : null;
-    window.confirmPurge = typeof confirmPurge !== 'undefined' ? confirmPurge : null;
+
     window.deleteNote = typeof deleteNote !== 'undefined' ? deleteNote : null;
     window.queueAttachmentDelete = typeof queueAttachmentDelete !== 'undefined' ? queueAttachmentDelete : null;
     window.removePendingUpload = typeof removePendingUpload !== 'undefined' ? removePendingUpload : null;
