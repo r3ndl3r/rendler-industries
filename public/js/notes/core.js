@@ -565,7 +565,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
 
 
     // Context Persistence: Synchronize Mutation Heartbeat to the active board
-    setupHeartbeat(STATE.canvas_id);
+    setupHeartbeat();
 
     return true;
 }
@@ -573,18 +573,23 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
 /**
  * Reactive Heartbeat Engine
  * Periodically polls the server for workspace mutations.
- * @param {number} canvasId - The workspace to monitor.
+ * 
+ * Exposed on `window` to allow auxiliary modules (modals.js, api.js) to trigger
+ * a polling reset after context switches without importing core.js.
  * @returns {void}
  */
-function setupHeartbeat(canvasId) {
+window.setupHeartbeat = function setupHeartbeat() {
+    const canvasId = STATE.canvas_id;
     if (!canvasId) return;
 
     if (STATE.heartbeatTimer) clearInterval(STATE.heartbeatTimer);
     
     STATE.heartbeatTimer = setInterval(async () => {
+        // Inner Guard: Protect against mid-teardown ticks or race conditions
+        if (!STATE.canvas_id || STATE.isInitializing) return;
+
         // Interaction Inhibition: Prevent state hydration during active gestures
-        const isInteracting = STATE.isInitializing || 
-                              STATE.isPanning      || 
+        const isInteracting = STATE.isPanning      || 
                               STATE.isDragging     || 
                               STATE.isResizing     || 
                               STATE.isEditingNote  || 
@@ -596,12 +601,12 @@ function setupHeartbeat(canvasId) {
         if (isInteracting || STATE.isSyncing) return;
         
         try {
-            const res = await fetch(`/notes/api/heartbeat/${canvasId}?layer_id=${STATE.activeLayerId}`);
+            // Now using dynamic STATE.canvas_id to survive context shifts without closure traps
+            const res = await fetch(`/notes/api/heartbeat/${STATE.canvas_id}?layer_id=${STATE.activeLayerId}`);
             const data = await res.json();
             
             if (data.success && data.last_mutation !== STATE.last_mutation) {
-                // Remote Mutation Detected: Refresh state to align with reality
-                await loadState(false, canvasId, null, STATE.activeLayerId);
+                await loadState(false, STATE.canvas_id, null, STATE.activeLayerId);
             }
         } catch (e) {
             // Heartbeat failures are non-critical (Network jitter)
