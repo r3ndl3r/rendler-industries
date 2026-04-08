@@ -84,7 +84,6 @@ function renderUI() {
             canvas.appendChild(noteEl);
             
             if (STATE.editMode && canEdit) {
-                makeDraggable(noteEl);
                 initResizable(noteEl, note);
             }
         }
@@ -186,11 +185,11 @@ function createNoteElement(note, canEdit = true) {
 
     div.innerHTML = `
         <div class="note-header">
-            <span class="note-id-hash" onclick="copyNoteId(event, ${note.id})" title="Click to copy Note ID #${note.id}">#</span>
+            <span class="note-id-hash" data-id="${note.id}" title="Click to copy Note ID #${note.id}">#</span>
             <input type="color" class="inline-color-input" value="${accentColor}" 
                    oninput="updateNoteAccent(this, ${note.id})" title="Change Note Color" ${canEdit ? '' : 'disabled'}>
             
-            <div class="note-drag-handle-container" onclick="toggleStickyMove(event, ${note.id})" title="Click anywhere in the title bar to Pick and Place (Sticky Move)">
+            <div class="note-drag-handle-container" title="Click anywhere in the title bar to Pick and Place (Sticky Move)">
                 <div class="note-title-slot">
                     ${window.escapeHtml(note.title || 'Untitled Note')}
                 </div>
@@ -200,38 +199,38 @@ function createNoteElement(note, canEdit = true) {
             </div>
             <div class="note-actions">
                 <div class="note-actions-drawer ${note.is_options_expanded ? 'expanded' : ''}" id="drawer-${note.id}">
-                    <button class="btn-icon-copy" onclick="copyNoteToClipboard(${note.id})" title="Copy to Clipboard">
+                    <button class="btn-icon-copy" title="Copy to Clipboard">
                         📋
                     </button>
-                    <button class="btn-icon-link" onclick="copyNoteLink(${note.id})" title="Copy Direct Link">
+                    <button class="btn-icon-link" title="Copy Direct Link">
                         🔗
                     </button>
                     <button class="btn-icon-upload note-inline-upload-btn ${(note.attachments || []).length > 0 ? '' : 'text-only-upload'}" 
-                            onclick="triggerInlineUpload(${note.id})" title="Add Attachment" 
+                            title="Add Attachment" 
                             ${canEdit ? '' : 'style="display:none;" disabled'}>
                         📎
                     </button>
-                    <button class="btn-icon-move" onclick="openMoveModal(event, ${note.id})" title="Copy to Canvas" ${canEdit ? '' : 'disabled'}>
+                    <button class="btn-icon-move" title="Copy to Canvas" ${canEdit ? '' : 'disabled'}>
                         📦
                     </button>
-                    <button class="btn-icon-level-copy" onclick="openLayerActionModal(${note.id})" title="Copy to Level" ${canEdit ? '' : 'disabled'}>
+                    <button class="btn-icon-level-copy" title="Copy to Level" ${canEdit ? '' : 'disabled'}>
                         📚
                     </button>
-                    <button class="btn-icon-view" onclick="viewNote(${note.id})" title="Quick View">
+                    <button class="btn-icon-view" title="Quick View">
                         👁️
                     </button>
-                    <button class="btn-icon-delete" onclick="deleteNote(${note.id})" title="Delete Note" ${canEdit ? '' : 'disabled'}>
+                    <button class="btn-icon-delete" title="Delete Note" ${canEdit ? '' : 'disabled'}>
                         🗑️
                     </button>
                 </div>
-                <button class="btn-icon-drawer ${note.is_options_expanded ? 'active' : ''}" data-id="${note.id}" title="Toggle Actions">
-                    ${note.is_options_expanded ? '❮' : '⋯'}
-                </button>
-                <button class="btn-icon-collapse" onclick="toggleCollapse(${note.id})" title="${note.is_collapsed ? 'Expand' : 'Collapse'} Note">
+                <button class="btn-icon-collapse" title="${note.is_collapsed ? 'Expand' : 'Collapse'} Note">
                     ${note.is_collapsed ? '🔻' : '🔺'}
                 </button>
-                <button class="btn-icon-edit" onclick="toggleInlineEdit(this, ${note.id})" title="Edit Content" ${canEdit ? '' : 'disabled'}>
+                <button class="btn-icon-edit" title="Edit Content" ${canEdit ? '' : 'disabled'}>
                     ✏️
+                </button>
+                <button class="btn-icon-drawer ${note.is_options_expanded ? 'active' : ''}" data-id="${note.id}" title="Toggle Actions">
+                    ${note.is_options_expanded ? '❮' : '⋯'}
                 </button>
                 <input type="file" id="inline-file-${note.id}" class="hidden-input" onchange="handleInlineFileSelection(event, ${note.id})">
             </div>
@@ -274,7 +273,7 @@ function generateNoteContentHtml(note, canEdit) {
                         <img src="/notes/attachment/serve/${firstAtt.blob_id}" class="note-hero-img" alt="${window.escapeHtml(firstAtt.filename)}">
                         <div class="file-name-display" data-blob-id="${firstAtt.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(firstAtt.filename)}</div>
                         <div class="attachment-float-controls">
-                            <button class="btn-icon-delete hero-action-btn" onclick="event.stopPropagation(); queueAttachmentDelete(${note.id}, ${firstAtt.blob_id})" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
+                            <button class="btn-icon-delete hero-action-btn edit-mode-only" onclick="event.stopPropagation(); queueAttachmentDelete(${note.id}, ${firstAtt.blob_id})" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                         </div>
                     </div>
                 `;
@@ -292,7 +291,7 @@ function generateNoteContentHtml(note, canEdit) {
                             <div class="file-name-display" data-blob-id="${firstAtt.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(firstAtt.filename)}</div>
                         </div>
                         <div class="attachment-float-controls">
-                            <button class="btn-icon-delete hero-action-btn" onclick="event.stopPropagation(); queueAttachmentDelete(${note.id}, ${firstAtt.blob_id})" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
+                            <button class="btn-icon-delete hero-action-btn edit-mode-only" onclick="event.stopPropagation(); queueAttachmentDelete(${note.id}, ${firstAtt.blob_id})" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                         </div>
                     </div>
                 `;
@@ -315,7 +314,7 @@ function generateNoteContentHtml(note, canEdit) {
                             <img src="/notes/attachment/serve/${att.blob_id}" class="attachment-full-img" alt="${window.escapeHtml(att.filename)}">
                             <div class="file-name-display" data-blob-id="${att.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(att.filename)}</div>
                             <div class="attachment-float-controls">
-                                <button class="btn-icon-delete reel-action-btn" onclick="event.stopPropagation(); queueAttachmentDelete(${note.id}, ${att.blob_id})" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
+                                <button class="btn-icon-delete reel-action-btn edit-mode-only" onclick="event.stopPropagation(); queueAttachmentDelete(${note.id}, ${att.blob_id})" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                             </div>
                         </div>`;
                 } else {
@@ -325,7 +324,7 @@ function generateNoteContentHtml(note, canEdit) {
                             <div class="attachment-icon-stack">${isPdf ? '📄' : '📁'}</div>
                             <div class="file-name-display" data-blob-id="${att.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(att.filename)}</div>
                             <div class="attachment-float-controls">
-                                <button class="btn-icon-delete reel-action-btn" onclick="event.stopPropagation(); queueAttachmentDelete(${note.id}, ${att.blob_id})" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
+                                <button class="btn-icon-delete reel-action-btn edit-mode-only" onclick="event.stopPropagation(); queueAttachmentDelete(${note.id}, ${att.blob_id})" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                             </div>
                         </div>`;
                 }
@@ -425,7 +424,12 @@ function formatNoteContent(content, noteId) {
         return `<div class="note-iframe-wrap" ${style}><iframe src="${url.trim()}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe></div>`;
     });
 
-    // 8. Transformation: Basic Markdown & Line Breaks
+    // 8. Transformation: Raw URL Linkification (http/https)
+    processedContent = processedContent.replace(/(^|\s)(https?:\/\/[^\s<]+)/g, (match, prefix, url) => {
+        return `${prefix}<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" onclick="event.stopPropagation()">${url}</a>`;
+    });
+
+    // 9. Transformation: Basic Markdown & Line Breaks
     processedContent = processedContent
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -469,3 +473,7 @@ window.formatBytes = function(bytes, decimals = 1) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
+
+// Global Orchestration Handlers
+window.generateNoteContentHtml = typeof generateNoteContentHtml !== 'undefined' ? generateNoteContentHtml : null;
+window.renderUI = typeof renderUI !== 'undefined' ? renderUI : null;
