@@ -287,6 +287,8 @@ function dropStickyNote() {
 function cancelStickyMove() {
     if (!STATE.pickedNoteId || !STATE.originalPos) return;
     
+    stopAutoScroll(); // Atomic termination of physics/auto-scroll engine
+    
     const id = STATE.pickedNoteId;
     const el = document.getElementById(`note-${id}`);
     const note = STATE.notes.find(n => n.id == id);
@@ -341,7 +343,10 @@ function handleGlobalClick(e) {
 function handleGlobalKeydown(e) {
     if (e.key === 'Escape') {
         if (STATE.pickedNoteId) {
+            e.preventDefault();
+            e.stopPropagation();
             cancelStickyMove();
+            return; // Terminate signal to prevent modal closing if picking was active
         }
         
         // Also close any active modals
