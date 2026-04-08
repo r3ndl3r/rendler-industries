@@ -716,13 +716,16 @@ sub DB::restore_note {
     my ($self, $note_id, $user_id, $canvas_id, $layer_id, $x, $y) = @_;
     $self->ensure_connection;
 
-    # 1. Fetch note and check ownership
+    # 1. Fetch note and check ownership (Ensure user owns the note they are restoring)
     my $sth_n = $self->{dbh}->prepare("SELECT id FROM notes WHERE id = ? AND user_id = ?");
     $sth_n->execute($note_id, $user_id);
     my ($exists) = $sth_n->fetchrow_array();
     return 0 unless $exists;
 
-    # 2. Final Restoration (Contextual)
+    # 2. Security Gate: Verify EDIT access to the target canvas environment
+    return 0 unless $self->check_canvas_access($canvas_id, $user_id, 1);
+
+    # 3. Final Restoration (Contextual)
     my $sql_r = "UPDATE notes SET is_deleted = 0, canvas_id = ?, layer_id = ?, x = ?, y = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
     my $sth_r = $self->{dbh}->prepare($sql_r);
     $sth_r->execute($canvas_id, $layer_id, $x, $y, $note_id);
