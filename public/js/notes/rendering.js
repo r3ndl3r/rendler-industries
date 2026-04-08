@@ -70,13 +70,20 @@ function renderUI() {
                     if (btn) btn.innerHTML = '🔺';
                 }
 
-                // Attachment & Content Reconciliation: 
-                // We compare the rendered attachment count to detect changes (Deletion/Upload)
-                const currentAttachments = existing.querySelectorAll('.attachment-item-stack, .note-hero-container').length;
-                const newAttachmentsCount = (note.attachments || []).length;
+                // Attachment Identity Reconciliation (High-Fidelity Signature)
+                // We compare sorted signatures (blob_id:filename) to detect renames and swaps
+                const newSig = (note.attachments || [])
+                    .map(a => `${a.blob_id}:${encodeURIComponent(a.filename || '')}`)
+                    .sort()
+                    .join('|');
+
+                const domSig = Array.from(existing.querySelectorAll('.file-name-display[data-blob-id]'))
+                    .map(el => `${el.dataset.blobId}:${encodeURIComponent(el.textContent.trim() || '')}`)
+                    .sort()
+                    .join('|');
                 
-                if (currentAttachments !== newAttachmentsCount) {
-                    // DOM Diff detected: Perform a surgical content swap to reflect new binary state
+                if (domSig !== newSig) {
+                    // DOM Identity Diff detected: Perform a surgical content hydration
                     const contentDiv = existing.querySelector('.note-content');
                     if (contentDiv) {
                         contentDiv.innerHTML = generateNoteContentHtml(note, canEdit);
