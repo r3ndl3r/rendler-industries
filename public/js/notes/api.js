@@ -130,63 +130,7 @@ async function syncNotePosition(id, type = 'normal') {
     }
 }
 
-/**
- * Toggles the checkbox state within a note and persists to the backend.
- */
-async function toggleNoteCheckbox(event, noteId, lineIndex) {
-    if (event) event.stopPropagation();
-    const note = STATE.notes.find(n => n.id == noteId);
-    if (!note) return;
 
-    const isChecked = event.target.checked !== undefined ? event.target.checked : !/\[[xX\*]\]/.test(note.content.split('\n')[lineIndex]);
-    const lines = note.content.split('\n');
-    const line  = lines[lineIndex];
-
-    if (line) {
-        if (isChecked) {
-            lines[lineIndex] = line.replace(/\[[ ]?\]/, '[x]');
-        } else {
-            lines[lineIndex] = line.replace(/\[[xX\*]\]/, '[ ]');
-        }
-    }
-
-    const newContent = lines.join('\n');
-    note.content     = newContent; // Optimistic UI update
-
-    const el = document.getElementById(`note-${noteId}`);
-    const params = {
-        id: noteId,
-        canvas_id: STATE.canvas_id,
-        title: note.title,
-        content: newContent,
-        filename: note.filename || '',
-        color: note.color,
-        layer_id: note.layer_id || STATE.activeLayerId,
-        x: note.x,
-        y: note.y,
-        width:  note.is_collapsed ? (note.width  || (el ? el.offsetWidth : 0))  : (el ? el.offsetWidth : note.width),
-        height: note.is_collapsed ? (note.height || (el ? el.offsetHeight : 0)) : (el ? el.offsetHeight : note.height),
-        z_index: el ? el.style.zIndex : note.z_index,
-        is_collapsed: note.is_collapsed
-    };
-
-    try {
-        const res = await apiPost('/notes/api/save', params);
-        if (res && res.success) {
-            STATE.notes         = res.notes;
-            STATE.last_mutation = res.last_mutation;
-            STATE.note_map      = res.note_map || STATE.note_map;
-            
-            const viewer = el ? el.querySelector('.note-text-viewer') : null;
-            if (viewer && typeof formatNoteContent === 'function') {
-                viewer.innerHTML = formatNoteContent(newContent, noteId);
-            }
-        }
-    } catch (err) {
-        console.error('Checkbox sync failed:', err);
-        showToast('Failed to sync checkbox state', 'error');
-    }
-}
 
 /**
  * Recycle Bin Fetch
