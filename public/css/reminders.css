@@ -362,3 +362,36 @@
 @media (max-width: 768px) {
     .reminders-grid { grid-template-columns: 1fr; }
 }
+
+.admin-chore-section {
+    margin-top: 1.5rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08); /* Standard Glass Border */
+    background: rgba(59, 130, 246, 0.04);              /* Standard Surface Accent */
+    border-radius: 0.75rem; 
+    padding: 1rem;
+}
+
+.chore-sync-labeled {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-color);
+    font-size: 0.95rem;
+}
+
+.chore-sync-labeled input {
+    width: 1.15rem;
+    height: 1.15rem;
+    cursor: pointer;
+}
+
+.chore-points-input {
+    margin-top: 1rem;
+    animation: fadeInSlide 0.3s ease-out;
+}
+
+@keyframes fadeInSlide {
+    from { opacity: 0; transform: translateY(-0.75rem); }
+    to { opacity: 1; transform: translateY(0); }
+}
