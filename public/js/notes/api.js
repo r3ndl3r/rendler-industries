@@ -146,12 +146,7 @@ async function restoreNote(id, canvas_id, layer_id, x, y) {
     return await apiPost('/notes/api/restore', { id, canvas_id, layer_id, x, y });
 }
 
-/**
- * Permanent Purge
- */
-async function purgeNote(id) {
-    return await apiPost('/notes/api/purge', { id: id });
-}
+
 
 /**
  * Canvas Management
