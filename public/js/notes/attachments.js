@@ -153,13 +153,16 @@ function confirmPurgeAll() {
         danger: true,
         onConfirm: async () => {
             let successTriggered = false;
+            let failCount = 0;
 
             // 1. Backend Purge for existing DB attachments
             if (DRAFT_NOTE.id) {
                 const note = STATE.notes.find(n => n.id == DRAFT_NOTE.id);
                 if (note && note.attachments && note.attachments.length > 0) {
-                    // Optimized Deletion: Single batch removal if possible, otherwise sequential
-                    for (const att of note.attachments) {
+                    // Capture a snapshot to prevent iteration over a potentially changing collection
+                    const toDelete = [...note.attachments];
+                    
+                    for (const att of toDelete) {
                         const res = await apiPost('/notes/api/attachment/delete', {
                             note_id: DRAFT_NOTE.id,
                             blob_id: att.blob_id,
@@ -169,6 +172,8 @@ function confirmPurgeAll() {
                             STATE.notes = res.notes;
                             STATE.last_mutation = res.last_mutation;
                             successTriggered = true;
+                        } else {
+                            failCount++;
                         }
                     }
                 }
@@ -183,7 +188,11 @@ function confirmPurgeAll() {
             const note = DRAFT_NOTE.id ? STATE.notes.find(n => n.id == DRAFT_NOTE.id) : null;
             renderCreateFooterReel(note ? note.attachments : []);
             
-            showToast('All attachments permanently purged', 'success');
+            if (failCount > 0) {
+                showToast(`Purge partial: ${failCount} files failed to delete`, 'warning');
+            } else {
+                showToast('All attachments permanently purged', 'success');
+            }
         }
     });
 }
