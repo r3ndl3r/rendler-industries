@@ -1540,7 +1540,7 @@ function handleCanvasTouchMove(e) {
         );
         
         const zoomRatio = currentDist / STATE.pinchStartDist;
-        const newScale = Math.round(Math.min(2.0, Math.max(0.1, STATE.pinchStartScale * zoomRatio)) * 10) / 10;
+        const newScale = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN, STATE.pinchStartScale * zoomRatio)) * 10) / 10;
         
         if (newScale !== STATE.scale) {
             const oldScale = STATE.scale;
