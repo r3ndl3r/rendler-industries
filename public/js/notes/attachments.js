@@ -8,68 +8,45 @@ function handleFileSelection(e) {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Type Normalization: Images get special rendering, others become generic 'file'
+    // Type Normalization: Images get special rendering/previews, others become generic 'file'
     const isImage = file.type.startsWith('image/');
     const type = isImage ? 'image' : 'file';
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        const data = event.target.result;
+    // Unified completion path for both Async (Image) and Sync (Generic File) flows
+    const finalize = (data = null) => {
+        // 1. Maintain the Multi-File Reel Queue
+        if (!DRAFT_NOTE.pendingFiles) DRAFT_NOTE.pendingFiles = [];
+        DRAFT_NOTE.pendingFiles.push({ 
+            file, 
+            data, 
+            type, 
+            filename: file.name 
+        });
 
-        // Update the active drafting context
-        DRAFT_NOTE = {
-            ...DRAFT_NOTE,
-            type: type,
-            data: data,
-            filename: file.name
-        };
+        // 2. Refresh the draft context metadata
+        DRAFT_NOTE.type = type;
+        if (data) DRAFT_NOTE.data = data;
+        DRAFT_NOTE.filename = file.name;
 
-        // UI Synchronization: Refresh the footer preview
+        // 3. UI Optimization: Auto-fill title if currently primitive/untitled
         const titleInput = document.getElementById('create-note-title');
-        const footerPreviewWrap = document.getElementById('footer-attachment-preview');
-
-        if (footerPreviewWrap) {
-            // Support multiple files in DRAFT
-            if (!DRAFT_NOTE.pendingFiles) DRAFT_NOTE.pendingFiles = [];
-            DRAFT_NOTE.pendingFiles.push({ file, data, type });
-            
-            renderDraftReel();
-        }
-
         if (titleInput && (!titleInput.value || titleInput.value === 'Untitled Note' || titleInput.value === 'Add Note')) {
             titleInput.value = file.name;
         }
 
+        // 4. Update Reel & Notify
+        renderDraftReel();
         showToast(`File attached: ${file.name}`, 'success');
     };
 
     if (isImage) {
+        // Images require a DataURL for the reel preview
+        const reader = new FileReader();
+        reader.onload = (event) => finalize(event.target.result);
         reader.readAsDataURL(file);
     } else {
-        // For generic files, we don't need a data preview, just the metadata
-        DRAFT_NOTE = {
-            ...DRAFT_NOTE,
-            type: 'file',
-            data: null,
-            file: file, // Store the raw file object for multipart upload
-            filename: file.name
-        };
-
-        // UI Synchronization: Refresh the footer preview
-        const footerPreviewWrap = document.getElementById('footer-attachment-preview');
-        if (footerPreviewWrap) {
-            if (!DRAFT_NOTE.pendingFiles) DRAFT_NOTE.pendingFiles = [];
-            DRAFT_NOTE.pendingFiles.push({ file, type: 'file', filename: file.name });
-            
-            renderDraftReel();
-        }
-
-        const titleInput = document.getElementById('create-note-title');
-        if (titleInput && (!titleInput.value || titleInput.value === 'Untitled Note' || titleInput.value === 'Add Note')) {
-            titleInput.value = file.name;
-        }
-
-        showToast(`File selected: ${file.name}`, 'info');
+        // Generic files don't need a preview; bypass the reader to avoid dead-code callbacks
+        finalize(null);
     }
 }
 
