@@ -185,7 +185,7 @@ function createNoteElement(note, canEdit = true) {
 
     div.innerHTML = `
         <div class="note-header">
-            <span class="note-id-hash" data-id="${note.id}" title="Click to copy Note ID #${note.id}">#</span>
+            <span class="note-id-hash" data-id="${note.id}" title="Copy Content to Clipboard">📋</span>
             <input type="color" class="inline-color-input" value="${accentColor}" 
                    oninput="updateNoteAccent(this, ${note.id})" title="Change Note Color" ${canEdit ? '' : 'disabled'}>
             
@@ -199,9 +199,6 @@ function createNoteElement(note, canEdit = true) {
             </div>
             <div class="note-actions">
                 <div class="note-actions-drawer ${note.is_options_expanded ? 'expanded' : ''}" id="drawer-${note.id}">
-                    <button class="btn-icon-copy" title="Copy to Clipboard">
-                        📋
-                    </button>
                     <button class="btn-icon-link" title="Copy Direct Link">
                         🔗
                     </button>

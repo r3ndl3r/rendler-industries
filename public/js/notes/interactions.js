@@ -748,7 +748,6 @@ function handleCanvasMouseDown(e) {
     const hashBtn    = e.target.closest('.note-id-hash');
     const collapseBtn = e.target.closest('.btn-icon-collapse');
     const editBtn     = e.target.closest('.btn-icon-edit');
-    const copyBtn     = e.target.closest('.btn-icon-copy');
     const linkBtn     = e.target.closest('.btn-icon-link');
     const uploadBtn   = e.target.closest('.btn-icon-upload');
     const moveBtn     = e.target.closest('.btn-icon-move');
@@ -761,8 +760,8 @@ function handleCanvasMouseDown(e) {
         if (noteEl) {
             const id = noteEl.dataset.id;
             if (id) {
-                if (hashBtn && typeof copyNoteId === 'function') {
-                    copyNoteId(id);
+                if (hashBtn && typeof copyNoteToClipboard === 'function') {
+                    copyNoteToClipboard(id);
                     return;
                 }
                 if (collapseBtn && typeof toggleCollapse === 'function') {
@@ -771,10 +770,6 @@ function handleCanvasMouseDown(e) {
                 }
                 if (editBtn && typeof toggleInlineEdit === 'function') {
                     toggleInlineEdit(editBtn, id);
-                    return;
-                }
-                if (copyBtn && typeof copyNoteToClipboard === 'function') {
-                    copyNoteToClipboard(id);
                     return;
                 }
                 if (linkBtn && typeof copyNoteLink === 'function') {
