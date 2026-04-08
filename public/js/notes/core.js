@@ -37,6 +37,7 @@ const STATE = {
     panStart:       { x:0, y:0, scrollX:0, scrollY:0 },
     last_mutation:  null,           // Synchronization Baseline
     heartbeatTimer: null,           // Active Polling Reference
+    lastPolledCanvasId: null,      // Context Shift Guard: Prevents redundant timer resets
     isResizing:     false,          // Note Dimensions State
     isEditingNote:  false,          // Inline Editor Active State
     activeLayerId:  1,               // Level Isolation Filter (1-99)
@@ -96,7 +97,9 @@ async function initNotes() {
 
     // 2. Hydration: Pull state from backend (now has access to handles for scroll/positioning)
     await loadState(true); 
-
+    
+    // 3. Synchronization: Establish the reactive heartbeat after initial hydration
+    setupHeartbeat();
     // Event Delegation for Canvas Interactions
     const canvas  = STATE.canvasEl;
     const wrapper = STATE.wrapperEl;
@@ -402,6 +405,7 @@ async function initNotes() {
  * @returns {Promise<void>}
  */
 async function loadState(initial = false, canvas_id = null, targetNoteId = null, layer_id = null) {
+    STATE.isSyncing = true;
     if (initial) STATE.isInitializing = true; // Protect interface state during initial hydration
     
     // Resolve context: Prioritize URL param -> Current State -> Backend Default (null)
@@ -441,7 +445,6 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             }
 
             // URL Parameter Lifecycle: Standardize on a clean, board-agnostic URL.
-            // The backend already persists the 'last viewed' board and level, so we clear volatile parameters.
             const url = new URL(window.location.href);
             if (url.searchParams.has('canvas_id') || url.searchParams.has('note_id') || url.searchParams.has('layer_id')) {
                 url.searchParams.delete('canvas_id');
@@ -451,19 +454,15 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             }
 
             // --- Layer Context Synchronization ---
-            // 1. If a specific level was explicitly requested (e.g. switchLevel), anchor it.
             if (layer_id) {
                 STATE.activeLayerId = parseInt(layer_id);
                 if (typeof updateLevelDisplay === 'function') updateLevelDisplay();
             } 
-            // 2. If no level was requested (initial load), but the server returned a viewport context,
-            // we MUST adopt the server's layer ID as the truth before checking local cache.
             else if (data.viewport && data.viewport.layer_id) {
                 STATE.activeLayerId = parseInt(data.viewport.layer_id);
             }
 
             // --- Viewport Restoration Strategy ---
-            // Fetch the last known optimistic state for the NOW RESOLVED context.
             const localVp = (typeof getLocalViewport === 'function') ? getLocalViewport(tid || STATE.canvas_id, STATE.activeLayerId) : null;
             
             let serverTs = 0;
@@ -482,15 +481,12 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                 
                 STATE.scale = parseFloat(vp.scale) || 1.0;
                 
-                // CRITICAL: applyScale must happen synchronously to update #canvas-scroll-spacer 
-                // BEFORE we calculate scroll offsets.
                 if (typeof applyScale === 'function') applyScale();
 
                 if (vp.layer_id) {
                     STATE.activeLayerId = parseInt(vp.layer_id);
                     if (typeof updateLevelDisplay === 'function') updateLevelDisplay();
                 } else {
-                    // Safety fallback: if viewport has no layer_id (legacy or fallback), ensure display matches current
                     if (typeof updateLevelDisplay === 'function') updateLevelDisplay();
                 }
 
@@ -514,13 +510,9 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                     if (typeof centerView === 'function') centerView();
                 }
                 
-                // If this was just a data refresh (heartbeat), we MUST update the active ID trackers 
-                // but NOT touch the camera.
                 if (tid) STATE.canvas_id = parseInt(tid);
                 if (layer_id) STATE.activeLayerId = parseInt(layer_id);
 
-                // If we have a nid, we don't set isInitializing = false here; 
-                // we let the nid block below handle it or the timeout.
                 if (!nid) STATE.isInitializing = false;
             }
 
@@ -531,12 +523,12 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                 if (typeof pruneLocalStorage === 'function') pruneLocalStorage();
             }
 
-            // Remote Centering Dispatch: If a target note ID is in the context, center it after stabilization
+            // Remote Centering Dispatch
             if (nid) {
                 requestAnimationFrame(() => {
                     setTimeout(() => {
                         if (typeof centerOnNote === 'function') {
-                            centerOnNote(nid).then(() => {
+                            centerOnNote(nid).finally(() => {
                                 STATE.isInitializing = false;
                             });
                         } else {
@@ -547,25 +539,19 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             }
         } else {
             showToast('Failed to load whiteboard state', 'error');
-            if (initial) {
-                STATE.notes = []; // Reset collection before data re-hydration
-                STATE.isInitializing = false;
-            }
+            if (initial) STATE.notes = [];
         }
     } catch (err) {
         console.error('loadState Error:', err);
-        if (initial) {
-            STATE.notes = [];
-            STATE.isInitializing = false;
-        }
+        if (initial) STATE.notes = [];
+    } finally {
+        STATE.isSyncing = false;
+        // Global Safety Reset: Ensure interface is unlocked if not in a designated stabilization phase (centering callback owns it)
+        if (!nid) STATE.isInitializing = false;
     }
+
     // Render UI after all state is consolidated
     if (typeof renderUI === 'function') renderUI();
-
-
-
-    // Context Persistence: Synchronize Mutation Heartbeat to the active board
-    setupHeartbeat();
 
     return true;
 }
@@ -582,7 +568,19 @@ window.setupHeartbeat = function setupHeartbeat() {
     const canvasId = STATE.canvas_id;
     if (!canvasId) return;
 
-    if (STATE.heartbeatTimer) clearInterval(STATE.heartbeatTimer);
+    // Fast-Exit Guard: Avoid unintended debouncing if heartrate is already aligned
+    if (STATE.heartbeatTimer && STATE.lastPolledCanvasId === canvasId) {
+        return;
+    }
+
+    // Synchronous Teardown: Ensure no duplicate intervals exist during context shifts
+    if (STATE.heartbeatTimer) {
+        clearInterval(STATE.heartbeatTimer);
+        STATE.heartbeatTimer = null;
+    }
+    
+    // Lock the context immediately to prevent race conditions during async initialization
+    STATE.lastPolledCanvasId = canvasId;
     
     STATE.heartbeatTimer = setInterval(async () => {
         // Inner Guard: Protect against mid-teardown ticks or race conditions
@@ -601,7 +599,7 @@ window.setupHeartbeat = function setupHeartbeat() {
         if (isInteracting || STATE.isSyncing) return;
         
         try {
-            // Now using dynamic STATE.canvas_id to survive context shifts without closure traps
+            // Heartbeat remains stable across level switches (dynamic STATE read)
             const res = await fetch(`/notes/api/heartbeat/${STATE.canvas_id}?layer_id=${STATE.activeLayerId}`);
             const data = await res.json();
             
