@@ -468,17 +468,17 @@ sub DB::get_available_canvases {
 
     # Fetch owned boards + shared boards in a unified set
     my $sql = "
-        SELECT c.*, u.username as owner_name, 1 as is_owner, 1 as can_edit
+        SELECT c.*, u.username as owner_name, 1 as is_owner, 1 as can_edit, c.sort_order as user_sort
         FROM canvases c
         JOIN users u ON c.user_id = u.id
         WHERE c.user_id = ?
         UNION
-        SELECT c.*, u.username as owner_name, 0 as is_owner, cs.can_edit
+        SELECT c.*, u.username as owner_name, 0 as is_owner, cs.can_edit, cs.sort_order as user_sort
         FROM canvases c
         JOIN users u ON c.user_id = u.id
         JOIN canvas_shares cs ON c.id = cs.canvas_id
         WHERE cs.user_id = ?
-        ORDER BY created_at ASC
+        ORDER BY user_sort ASC, created_at ASC
     ";
     
     my $sth = $self->{dbh}->prepare($sql);
@@ -493,9 +493,32 @@ sub DB::create_canvas {
 
     my $sql = "INSERT INTO canvases (user_id, name) VALUES (?, ?)";
     my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute($user_id, $name // 'Untitled Workspace');
+    $sth->execute($user_id, $name // 'My Notebook');
     
     return $self->{dbh}->last_insert_id(undef, undef, 'canvases', 'id');
+}
+
+# Updates the relative sequence of boards for a user.
+sub DB::update_canvas_order {
+    my ($self, $user_id, $order_map) = @_;
+    $self->ensure_connection;
+
+    # Hierarchical Update: Update own record OR share record
+    my $sql_owner = "UPDATE canvases SET sort_order = ? WHERE id = ? AND user_id = ?";
+    my $sql_share = "UPDATE canvas_shares SET sort_order = ? WHERE canvas_id = ? AND user_id = ?";
+    
+    my $sth_owner = $self->{dbh}->prepare($sql_owner);
+    my $sth_share = $self->{dbh}->prepare($sql_share);
+
+    foreach my $item (@$order_map) {
+        # Try updating as owner
+        my $rows = $sth_owner->execute($item->{order}, $item->{id}, $user_id);
+        
+        # If no rows affected, they aren't owner; try share record
+        if ($rows eq '0E0') {
+            $sth_share->execute($item->{order}, $item->{id}, $user_id);
+        }
+    }
 }
 
 # Purges a board and all associated contents (Owner only).
