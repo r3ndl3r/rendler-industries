@@ -87,6 +87,7 @@ function queueAttachmentDelete(noteId, blobId) {
         confirmText: 'Delete Now',
         confirmIcon: '🗑️',
         icon: '⚠️',
+        hideCancel: true,
         danger: true,
         onConfirm: async () => {
             // Case A: Existing Database Record (Requires API call)
@@ -101,10 +102,17 @@ function queueAttachmentDelete(noteId, blobId) {
                     STATE.notes = res.notes;
                     STATE.last_mutation = res.last_mutation;
                     
-                    // UI Refresh: Sync both the world and the local modal
+                    const note = STATE.notes.find(n => n.id == activeNoteId);
+                    
+                    // Surgical DOM Refinement: Update the note's inline attachment view immediately
+                    const contentEl = document.querySelector(`#note-${activeNoteId} .note-content`);
+                    if (contentEl && typeof generateNoteContentHtml === 'function') {
+                        contentEl.innerHTML = generateNoteContentHtml(note, note.user_id == STATE.user_id);
+                    }
+
+                    // Global Persistence: Trigger a standard UI reconcile (background)
                     if (typeof renderUI === 'function') renderUI();
                     
-                    const note = STATE.notes.find(n => n.id == activeNoteId);
                     renderCreateFooterReel(note ? note.attachments : []);
                     showToast('Attachment permanently deleted', 'success');
                 }
@@ -272,7 +280,7 @@ function renderCreateFooterReel(attachments) {
     const purgeBtn = document.getElementById('purge-attachment-btn');
     if (purgeBtn) {
         const hasAttachments = (attachments.length > 0) || (DRAFT_NOTE && DRAFT_NOTE.pendingFiles && DRAFT_NOTE.pendingFiles.length > 0);
-        purgeBtn.style.display = hasAttachments ? 'flex' : 'none';
+        purgeBtn.classList.toggle('hidden', !hasAttachments);
     }
 }
 
