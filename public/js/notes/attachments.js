@@ -248,7 +248,37 @@ async function handleInlineFileSelection(e, id) {
         const uploadRes = await apiPost('/notes/api/upload', formData);
         if (uploadRes && uploadRes.success) {
             STATE.last_mutation = uploadRes.last_mutation;
-            await loadState(false, STATE.canvas_id);
+            
+            // 1. Memory Sync: Update local note collection from the response data
+            if (uploadRes.notes) {
+                STATE.notes = uploadRes.notes;
+            }
+
+            // 2. Surgical DOM Update: Refresh only the affected note
+            const note = STATE.notes.find(n => n.id == id);
+            const noteEl = document.getElementById(`note-${id}`);
+            const contentEl = noteEl?.querySelector('.note-content');
+            
+            if (note && contentEl && typeof generateNoteContentHtml === 'function') {
+                const currentCanvas = STATE.canvases.find(c => c.id == STATE.canvas_id);
+                const canEdit = currentCanvas ? currentCanvas.can_edit : 1;
+                
+                // Re-render the note body (resolves text/image/reel/file states)
+                contentEl.innerHTML = generateNoteContentHtml(note, canEdit);
+                
+                // Refresh Action Drawer: Toggle class if this is the first attachment for a text note
+                const uploadBtn = noteEl.querySelector('.note-inline-upload-btn');
+                if (uploadBtn) {
+                    uploadBtn.classList.toggle('text-only-upload', (note.attachments || []).length === 0);
+                }
+
+                // Radar Sync: Ensure spatial preview is updated
+                if (typeof updateRadar === 'function') updateRadar();
+            } else {
+                // Robustness Fallback: Revert to full reload if DOM target is missing or malformed
+                if (typeof loadState === 'function') await loadState(false, STATE.canvas_id);
+            }
+
             showToast('Attachment added', 'success');
         } else {
             showToast('Failed to upload attachment', 'error');
