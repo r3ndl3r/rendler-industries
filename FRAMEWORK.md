@@ -72,7 +72,6 @@ Choose the reference pattern that matches your data complexity. Copy structure f
 Don't reinvent the wheel. Use these pre-built "Power Tools" for rapid development:
 
 ### Frontend (JavaScript - `public/js/default.js`)
-*   **Icons**: `getIcon('name')` returns symbols from the centralized `assets/emoji.json`.
 *   **AJAX**: `apiPost(url, data)` handles JSON POSTs with built-in CSRF and error handling.
 *   **Modals**: `showConfirmModal({ title, message, onConfirm })` is the primary tool for terminal actions.
 *   **UI**: `showToast('Saved!', 'success')` for notifications.
