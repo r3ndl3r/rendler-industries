@@ -1,7 +1,7 @@
 // /public/js/notes/api.js
 
 /**
- * Standard AJAX Wrapper with CSRF Protection.
+ * Standard HTTP Request Wrapper with CSRF Protection.
  * @param {string} url - API endpoint.
  * @param {Object|FormData} params - Request payload.
  * @returns {Promise<Object>} - Server response.
@@ -14,11 +14,16 @@ async function apiPost(url, params) {
         'X-CSRF-Token': csrfToken
     };
 
-    if (!isFormData) {
+    let body;
+    if (isFormData) {
+        body = params;
+    } else if (Array.isArray(params)) {
+        headers['Content-Type'] = 'application/json';
+        body = JSON.stringify(params);
+    } else {
         headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        body = new URLSearchParams(params);
     }
-
-    const body = isFormData ? params : new URLSearchParams(params);
 
     try {
         const response = await fetch(url, {
