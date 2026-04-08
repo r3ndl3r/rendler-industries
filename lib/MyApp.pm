@@ -599,6 +599,7 @@ sub startup {
     $auth->post('/notes/api/canvases/create')->to('notes#api_canvas_create');
     $auth->post('/notes/api/canvases/delete')->to('notes#api_canvas_delete');
     $auth->post('/notes/api/canvases/rename')->to('notes#api_canvas_rename');
+    $auth->post('/notes/api/canvases/reorder')->to('notes#api_canvas_reorder');
     $auth->post('/notes/api/canvases/share')->to('notes#api_canvas_share');
     $auth->get('/notes/api/users/search')->to('notes#api_user_search');
     $auth->post('/notes/api/notes/copy')->to('notes#api_copy_note');
