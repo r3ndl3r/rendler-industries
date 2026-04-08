@@ -97,6 +97,12 @@ async function initNotes() {
         if (typeof handleCanvasDoubleClick === 'function') canvas.addEventListener('dblclick', handleCanvasDoubleClick);
         if (typeof handleCanvasMouseDown === 'function') canvas.addEventListener('mousedown', handleCanvasMouseDown);
         if (typeof handleCanvasWheel === 'function') wrapper.addEventListener('wheel', handleCanvasWheel, { passive: false });
+
+        // Mobile Support: Unified Touch Delegation (Registered once during init)
+        if (typeof handleCanvasTouchStart === 'function') canvas.addEventListener('touchstart', handleCanvasTouchStart, { passive: false });
+        if (typeof handleCanvasTouchMove === 'function')  canvas.addEventListener('touchmove',  handleCanvasTouchMove,  { passive: false });
+        if (typeof handleCanvasTouchEnd === 'function')   canvas.addEventListener('touchend',   handleCanvasTouchEnd,   { passive: false });
+        if (typeof handleCanvasTouchCancel === 'function') canvas.addEventListener('touchcancel', handleCanvasTouchEnd,  { passive: false });
     }
     
     // Global Panning & Scrubbing Listeners
@@ -551,15 +557,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
     // Render UI after all state is consolidated
     if (typeof renderUI === 'function') renderUI();
 
-    // Mobile Support: Unified Touch Delegation
-    const canvas  = document.getElementById('notes-canvas');
-    const wrapper = document.getElementById('canvas-wrapper');
-    if (canvas && wrapper) {
-        if (typeof handleCanvasTouchStart === 'function') canvas.addEventListener('touchstart', handleCanvasTouchStart, { passive: false });
-        if (typeof handleCanvasTouchMove === 'function')  canvas.addEventListener('touchmove',  handleCanvasTouchMove,  { passive: false });
-        if (typeof handleCanvasTouchEnd === 'function')   canvas.addEventListener('touchend',   handleCanvasTouchEnd,   { passive: false });
-        if (typeof handleCanvasTouchCancel === 'function') canvas.addEventListener('touchcancel', handleCanvasTouchEnd,  { passive: false });
-    }
+
 
     // Context Persistence: Synchronize Mutation Heartbeat to the active board
     setupHeartbeat(STATE.canvas_id);
