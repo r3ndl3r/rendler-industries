@@ -934,16 +934,17 @@ function handleCanvasWheel(e) {
  * @returns {void}
  */
 function handleCanvasDoubleClick(e) {
-    if (!STATE.editMode) return;
-    // Authority Filter: Only trigger on actual canvas background, not on existing notes
-    if (e.target.id !== 'notes-canvas') return;
+    if (!STATE.editMode || STATE.pickedNoteId) return;
+
+    // Creation Logic: Only allow new note creation on the actual background layers.
+    if (e.target.id !== 'notes-canvas' && e.target.id !== 'canvas-wrapper') return;
 
     const wrapper = document.getElementById('canvas-wrapper');
     if (!wrapper) return;
     
     const rect = wrapper.getBoundingClientRect();
     
-    // Logic: (Cursor Position) - (Wrapper Offset) / Scale = Absolute Canvas Coordinates
+    // Geometry Calculation: Offset cursor by scroll/scale to find absolute whiteboard space
     const x = (e.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
     const y = (e.clientY - rect.top  + wrapper.scrollTop)  / STATE.scale;
 
