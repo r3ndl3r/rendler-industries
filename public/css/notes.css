@@ -831,6 +831,15 @@
     transform: translateY(-2px);
 }
 
+/* Uncouple Hover: Suppress note-level glow when specifically interacting with actions or drawer */
+.sticky-note:hover:has(.note-actions:hover),
+.sticky-note:hover:has(.note-actions-drawer:hover) {
+    transform: none !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 
+                inset 0 0 12px rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
 /* Inline Editing State */
 .sticky-note.is-editing {
     border-color: var(--note-accent, #3b82f6) !important;
@@ -1706,6 +1715,7 @@
     align-items: center;
     gap: 0.3125em; /* 5px */
     margin-left: 0.75em; /* Create separation from title box */
+    position: relative; /* Anchor for absolute-positioned drawer */
 }
 
 /* Global Action Override for Disabled State */
@@ -1714,24 +1724,26 @@
     cursor: not-allowed !important;
 }
 
-/* Immersive Action Drawer Engine */
+/* Immersive Action Drawer Engine: Horizontal Protrusion */
 .note-actions-drawer {
     display: flex;
+    flex-direction: row;
     align-items: center;
-    gap: 0.3125em; /* 5px */
+    gap: 0.3125em; /* 5px - 1:1 spacing preserved */
     position: absolute;
-    top: -46px; 
-    left: 10px;
+    top: 50%; /* Center anchor relative to the action container */
+    left: calc(100% + 20px); /* External coordinate offset to clear note radius */
+    right: auto;
     padding: 6px;
     background: rgba(15, 23, 42, 0.95);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); /* Constant base shadow for depth */
     opacity: 0;
     pointer-events: none;
     overflow: visible;
-    transform: translateY(15px) scale(0.95);
+    transform: translateY(-50%) translateX(-10px) scale(0.95); /* Precise vertical centering + slide */
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 100;
 }
@@ -1739,7 +1751,13 @@
 .note-actions-drawer.expanded {
     opacity: 1;
     pointer-events: auto;
-    transform: translateY(0) scale(1);
+    transform: translateY(-50%) translateX(0) scale(1);
+}
+/* Enhanced Interactive Glow: Accent shadow active only on drawer focus/hover */
+.note-actions-drawer:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 
+                0 0 25px var(--note-accent, rgba(59, 130, 246, 0.4));
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .layer-target-btn.active {
@@ -1868,16 +1886,20 @@
 }
 
 .btn-icon-drawer.active {
-    transform: rotate(90deg); /* Pointing Up! */
+    transform: rotateY(180deg); /* Flips original 'left' chevron to point 'right' */
+    background: #334155;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
 .btn-icon-drawer:hover {
     background: #64748b;
-    transform: scale(1.1);
+    filter: brightness(1.2);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
 }
 
 .btn-icon-drawer.active:hover {
-    transform: rotate(90deg) scale(1.1);
+    transform: rotateY(180deg); /* Maintain flip during hover */
+    filter: brightness(1.2);
 }
 
 /* Global Square Icon Buttons on Note Cards (High-Density Profile) */
@@ -2808,7 +2830,6 @@ input:checked + .switch-sm .slider:before {
     filter: brightness(1.3) contrast(1.1);
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.5), 0 5px 15px rgba(0,0,0,0.4);
     z-index: 10; /* Ensure popped button stays on top of siblings */
-    margin: 0 2px; /* Small horizontal spread to avoid overlapping adjacent glyphs */
 }
 
 .note-actions-drawer button svg,
