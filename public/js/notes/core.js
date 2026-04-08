@@ -30,13 +30,13 @@ const STATE = {
     vpSaveTimer: null,    // Debounce handle for viewport persistence
     isInitializing: false, // Prevents save-during-load race conditions
     pickedNoteId:   null,  // Active 'Pick & Place' record
+    lastPickTime:   null,  // Interaction Guard: Prevent immediate drop re-triggering
     originalPos:    null,  // Restore-point for 'Escape-to-Cancel'
     dragOffset:     { x: 0, y: 0 }, // Dynamic delta for 'Pick & Place'
     isPanning:      false,          // Drag-to-Scroll State
     panStart:       { x:0, y:0, scrollX:0, scrollY:0 },
     last_mutation:  null,           // Synchronization Baseline
     heartbeatTimer: null,           // Active Polling Reference
-    isDragging:     false,          // Note Movement State
     isResizing:     false,          // Note Dimensions State
     isEditingNote:  false,          // Inline Editor Active State
     activeLayerId:  1,               // Level Isolation Filter (1-99)
@@ -55,8 +55,9 @@ const STATE = {
     aliasTimer:     null,            // Lifecycle Handle: Auto-hide delay for level names
     isScrubbing:    false,           // Interaction Layer: Active radar-panning state
     radarScrubLast: { x: 0, y: 0 },   // Delta Tracking: Powering the 'Precision Gearbox'
-    showRadar:      localStorage.getItem('notes_show_radar') === 'true', // Persistence: Defaults to closed
-    pendingDeletes: []               // Attachments queued for removal in the current edit session
+    pendingDeletes: [],               // Attachments queued for removal in the current edit session
+    pinchStartDist: null,             // Mobile Gestures: Distance baseline
+    pinchStartScale: null             // Mobile Gestures: Scale baseline
 };
 
 /**
@@ -226,7 +227,7 @@ async function initNotes() {
                 
                 // --- 2. Focus Management (Z-Index) ---
                 const maxZ = Math.max(...STATE.notes.map(n => n.z_index || 1), 1);
-                if (!isTrigger && note && note.z_index < maxZ) {
+                if (note && note.z_index < maxZ) {
                     const newZ = maxZ + 1;
                     note.z_index = newZ;
                     noteEl.style.zIndex = newZ;
@@ -550,6 +551,16 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
     }
     // Render UI after all state is consolidated
     if (typeof renderUI === 'function') renderUI();
+
+    // Mobile Support: Unified Touch Delegation
+    const canvas  = document.getElementById('notes-canvas');
+    const wrapper = document.getElementById('canvas-wrapper');
+    if (canvas && wrapper) {
+        if (typeof handleCanvasTouchStart === 'function') canvas.addEventListener('touchstart', handleCanvasTouchStart, { passive: false });
+        if (typeof handleCanvasTouchMove === 'function')  canvas.addEventListener('touchmove',  handleCanvasTouchMove,  { passive: false });
+        if (typeof handleCanvasTouchEnd === 'function')   canvas.addEventListener('touchend',   handleCanvasTouchEnd,   { passive: false });
+        if (typeof handleCanvasTouchCancel === 'function') canvas.addEventListener('touchcancel', handleCanvasTouchEnd,  { passive: false });
+    }
 
     // Context Persistence: Synchronize Mutation Heartbeat to the active board
     setupHeartbeat(STATE.canvas_id);
