@@ -151,13 +151,13 @@ function processRadarNavigation(e, mode = 'smooth') {
         // --- Precision Gearbox (Relative Delta Mode) ---
         // Instead of absolute positioning (which is sensitive), we use a dampened delta.
         // Sensitivity: 0.2 (Moves the camera 5x slower than mouse motion)
-        const sensitivity = 0.25;
+        const sensitivity = 0.2;
         const deltaMX = e.clientX - STATE.radarScrubLast.x;
         const deltaMY = e.clientY - STATE.radarScrubLast.y;
         
-        // Logical Delta: Translate mousepx -> logicalpx -> apply dampening
-        const logicalDeltaX = (deltaMX / miniScale) * sensitivity;
-        const logicalDeltaY = (deltaMY / miniScale) * sensitivity;
+        // Logical Delta: Apply dampening directly to the mouse movement, then convert to board units
+        const logicalDeltaX = (deltaMX * sensitivity) / miniScale;
+        const logicalDeltaY = (deltaMY * sensitivity) / miniScale;
 
         wrapper.scrollLeft += logicalDeltaX * STATE.scale;
         wrapper.scrollTop  += logicalDeltaY * STATE.scale;
