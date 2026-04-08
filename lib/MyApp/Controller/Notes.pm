@@ -8,7 +8,7 @@ use Mojo::Util qw(trim);
 # Controller for the /notes Whiteboard module.
 #
 # Features:
-#   - Single-request handshake for initial SPA state.
+#   - Consolidated state-handshake for atomic module bootstrapping.
 #   - Atomic persistence for draggable sticky note coordinates.
 #   - Multipart image upload processing with binary BLOB storage.
 #   - Multi-canvas management with collaborative sharing and permission-aware ACL.
@@ -41,7 +41,7 @@ sub api_state {
     # 1. Verification: Determine the active Board context via tiered priority
     if (!scalar @$canvases) {
         # Initialize default notebook for new users
-        my $new_id = int($c->db->create_canvas($user_id, 'Your Notebook'));
+        my $new_id = int($c->db->create_canvas($user_id, 'My Notebook'));
         $canvases = $c->db->get_available_canvases($user_id);
     }
 
@@ -218,9 +218,10 @@ sub api_upload {
         $note_id = $c->db->save_note({
             user_id      => $user_id,
             canvas_id    => $canvas_id,
+            layer_id     => $c->param('layer_id') // 1,
             type         => $type,
             title        => $c->param('title') // $upload->filename,
-            content      => trim($c->param('content') // ''),
+            content      => $c->param('content') // '',
             filename     => $upload->filename,
             x            => $c->param('x') // 0,
             y            => $c->param('y') // 0,
@@ -385,6 +386,24 @@ sub api_canvas_delete {
     $c->render(json => { success => 1 });
 }
 
+# Updates the display sequence of boards via drag-and-drop.
+sub api_canvas_reorder {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id();
+    my $order_map = $c->req->json; # Expects [{id: X, order: Y}, ...]
+
+    unless ($order_map && ref $order_map eq 'ARRAY') {
+        return $c->render(json => { success => 0, error => 'Invalid payload' });
+    }
+
+    # Explicit authority check: only the owner or the current user (for their share record) can update sort order.
+    $c->db->update_canvas_order($user_id, $order_map);
+
+    $c->render(json => { success => 1 });
+}
+
 # Manages shared access permissions.
 sub api_canvas_share {
     my $c = shift;
@@ -493,7 +512,7 @@ sub api_canvas_rename {
 # --- Real-Time Sync Heartbeat ---
 
 # Returns the latest mutation timestamp for a specific workspace.
-# Used by the client-side AJAX poller for cross-session consistency.
+# Used by the mutation listener for cross-session state reconciliation.
 sub api_heartbeat {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
