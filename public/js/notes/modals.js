@@ -1122,6 +1122,9 @@ async function renderBinList() {
                         <button class="btn-icon-square btn-success" onclick="restoreNote(${note.id})" title="Restore Note">
                             🔄
                         </button>
+                        <button class="btn-icon-square btn-danger" onclick="confirmPurge(${note.id})" title="Permanently Delete">
+                            🗑️
+                        </button>
                     </div>
                 </div>
             `;
@@ -1221,8 +1224,16 @@ async function showCreateNoteModal(type, data, editId = null) {
         if (typeof renderCreateFooterReel === 'function') renderCreateFooterReel(note.attachments || []);
     } else if (data && footerPreviewWrap) {
         // Handle pasted data if any: renderCreateFooterReel will automatically pick up DRAFT_NOTE.pendingFiles
-        if (typeof renderCreateFooterReel === 'function') renderCreateFooterReel([]);
-    }
+        if (typeof renderCreateFooterReel === 'function') renderCreateFooterReel([]);    // Attachment UI Sync
+    const purgeBtn = document.getElementById('purge-attachment-btn');
+    if (purgeBtn) {
+        // Ownership Gate: Only the note creator can purge all attachments
+        const isOwner = note ? (note.user_id == STATE.user_id) : true;
+        const hasAttachments = (note && note.attachments && note.attachments.length > 0) || 
+                               (DRAFT_NOTE && DRAFT_NOTE.pendingFiles && DRAFT_NOTE.pendingFiles.length > 0);
+        purgeBtn.classList.toggle('hidden', !(hasAttachments && isOwner));
+        purgeBtn.onclick = () => { if (typeof confirmPurgeAll === 'function') confirmPurgeAll(); };
+    }    }
 
 
 
@@ -1281,6 +1292,64 @@ async function restoreNote(id) {
     });
 }
 
+/**
+ * Confirmation logic for permanent deletion of a specific archived note.
+ * @param {number} id - Target note ID.
+ */
+function confirmPurge(id) {
+    window.showConfirmModal({
+        title: 'Permanent Delete',
+        icon: '🗑️',
+        message: 'Are you sure you want to permanently delete this note? This action cannot be undone.',
+        danger: true,
+        confirmText: 'PURGE',
+        confirmIcon: '🗑️',
+        hideCancel: true,
+        onConfirm: async () => {
+            const res = await apiPost('/notes/api/purge', { id: id });
+            if (res && res.success) {
+                if (typeof openBinModal === 'function') openBinModal(); // Refresh Bin List
+                showToast('Note permanently removed', 'success');
+            }
+        }
+    });
+}
+
+/**
+ * Draft Context Helper: Purges all attachments from the current draft note.
+ */
+function confirmPurgeAll() {
+    window.showConfirmModal({
+        title: 'Purge All Attachments',
+        icon: '🗑️',
+        message: 'Are you sure you want to remove ALL attachments from this note? They will be permanently deleted once you SAVE.',
+        danger: true,
+        confirmText: 'Purge All',
+        onConfirm: () => {
+            // 1. Queue all existing for deletion
+            if (DRAFT_NOTE && DRAFT_NOTE.id) {
+                const note = STATE.notes.find(n => n.id == DRAFT_NOTE.id);
+                if (note && note.attachments) {
+                    note.attachments.forEach(att => {
+                        if (!STATE.pendingDeletes.includes(att.blob_id)) {
+                            STATE.pendingDeletes.push(att.blob_id);
+                        }
+                    });
+                }
+            }
+            // 2. Clear pending uploads
+            if (DRAFT_NOTE) DRAFT_NOTE.pendingFiles = [];
+            
+            // 3. Refresh UI
+            const note = DRAFT_NOTE && DRAFT_NOTE.id ? STATE.notes.find(n => n.id == DRAFT_NOTE.id) : null;
+            if (typeof renderCreateFooterReel === 'function') {
+                renderCreateFooterReel(note ? note.attachments : []);
+            }
+            showToast('All attachments marked for removal', 'warning');
+        }
+    });
+}
+
 
 
 // Global Exposure
@@ -1308,6 +1377,8 @@ window.openBinModal = openBinModal;
 window.closeBinModal = closeBinModal;
 window.renderBinList = renderBinList;
 window.restoreNote = restoreNote;
+window.confirmPurge = confirmPurge;
+window.confirmPurgeAll = confirmPurgeAll;
 window.copyViewContent = copyViewContent;
 window.openJumpToLevelModal = openJumpToLevelModal;
 
