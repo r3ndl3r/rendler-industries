@@ -232,7 +232,7 @@ async function initNotes() {
                 const isTrigger = e.target.closest('.note-check-trigger, .note-link-trigger, .reel-action-btn, .btn-icon-drawer');
                 
                 // --- 2. Focus Management (Z-Index) ---
-                const maxZ = Math.max(...STATE.notes.map(n => n.z_index || 1), 1);
+                const maxZ = STATE.notes.reduce((max, n) => Math.max(max, n.z_index || 1), 1);
                 if (note && note.z_index < maxZ) {
                     const newZ = maxZ + 1;
                     note.z_index = newZ;
