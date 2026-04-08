@@ -387,7 +387,15 @@ function formatNoteContent(content, noteId) {
 
     // 3. TRANSFORMATION: [color:#hex]...[/color]
     processedContent = processedContent.replace(/\[color:(#?[a-zA-Z0-9]+)\](.*?)\[\/color\]/g, (match, color, text) => {
-        return `<span style="color: ${color}">${text}</span>`;
+        // Security Hardening: Validate hex or system-named color allowlist
+        const isHex = /^#[0-9a-fA-F]{3,8}$/.test(color);
+        const systemColors = ['yellow', 'blue', 'pink', 'orange', 'violet', 'indigo', 'slate', 'green', 'red'];
+        const isNamed = systemColors.includes(color.toLowerCase());
+
+        if (isHex || isNamed) {
+            return `<span style="color: ${color}">${text}</span>`;
+        }
+        return text; // Fail-safe: Render plain text if identifier is invalid
     });
 
     // 4. TRANSFORMATION: [note:123] Reference Resolution
