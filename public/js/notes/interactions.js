@@ -422,7 +422,11 @@ async function centerOnNote(id) {
         const nh = Number(note.height || (noteEl ? noteEl.offsetHeight : 200));
 
         const centerX = nx + (nw / 2);
-        const centerY = ny + (nh / 2);
+        
+        // Smart Vertical Anchor: For long notes, prioritize showing the header.
+        // We anchor to 25% of the viewport height if the note is tall, keeping the title bar visible.
+        const viewportHeight = wrapper.clientHeight / STATE.scale;
+        const centerY        = ny + Math.min(nh / 2, viewportHeight / 4);
 
         const scrollX = (centerX * STATE.scale) - (wrapper.clientWidth  / 2);
         const scrollY = (centerY * STATE.scale) - (wrapper.clientHeight / 2);
