@@ -114,65 +114,7 @@ function removePendingUpload(index) {
     }
 }
 
-/**
- * Atomic Purge: Permanently removes ALL attachments from the note and clears the pending reel.
- * Triggers instant backend deletion for existing records.
- */
-function confirmPurgeAll() {
-    if (!DRAFT_NOTE) return;
 
-    window.showConfirmModal({
-        title: 'Purge All Attachments',
-        message: 'Are you sure you want to PERMANENTLY delete ALL attachments from this note? This cannot be undone.',
-        confirmText: 'Purge Now',
-        confirmIcon: '🗑️',
-        icon: '⚠️',
-        danger: true,
-        onConfirm: async () => {
-            let successTriggered = false;
-            let failCount = 0;
-
-            // 1. Backend Purge for existing DB attachments
-            if (DRAFT_NOTE.id) {
-                const note = STATE.notes.find(n => n.id == DRAFT_NOTE.id);
-                if (note && note.attachments && note.attachments.length > 0) {
-                    // Capture a snapshot to prevent iteration over a potentially changing collection
-                    const toDelete = [...note.attachments];
-                    
-                    for (const att of toDelete) {
-                        const res = await apiPost('/notes/api/attachment/delete', {
-                            note_id: DRAFT_NOTE.id,
-                            blob_id: att.blob_id,
-                            canvas_id: STATE.canvas_id
-                        });
-                        if (res && res.success) {
-                            STATE.notes = res.notes;
-                            STATE.last_mutation = res.last_mutation;
-                            successTriggered = true;
-                        } else {
-                            failCount++;
-                        }
-                    }
-                }
-            }
-
-            // 2. Clear local memory queue
-            DRAFT_NOTE.pendingFiles = [];
-
-            // 3. UI Synchronization
-            if (successTriggered && typeof renderUI === 'function') renderUI();
-            
-            const note = DRAFT_NOTE.id ? STATE.notes.find(n => n.id == DRAFT_NOTE.id) : null;
-            renderCreateFooterReel(note ? note.attachments : []);
-            
-            if (failCount > 0) {
-                showToast(`Purge partial: ${failCount} files failed to delete`, 'warning');
-            } else {
-                showToast('All attachments permanently purged', 'success');
-            }
-        }
-    });
-}
 
 /**
  * Multi-File Reel Renderers
@@ -221,6 +163,12 @@ function renderCreateFooterReel(attachments) {
         ctrls.appendChild(del);
         item.appendChild(ctrls);
         
+        // Dynamic Label: Show the filename below the icon/thumb
+        const label = document.createElement('div');
+        label.className = 'attachment-label-reel';
+        label.textContent = att.filename || 'Untitled';
+        item.appendChild(label);
+        
         wrap.appendChild(item);
     });
 
@@ -258,16 +206,17 @@ function renderCreateFooterReel(attachments) {
             ctrls.appendChild(del);
             item.appendChild(ctrls);
             
+            // Dynamic Label: Show the filename below the icon/thumb
+            const label = document.createElement('div');
+            label.className = 'attachment-label-reel';
+            label.textContent = p.filename || 'New File';
+            item.appendChild(label);
+            
             wrap.appendChild(item);
         });
     }
 
-    // Toggle the main purge button visibility
-    const purgeBtn = document.getElementById('purge-attachment-btn');
-    if (purgeBtn) {
-        const hasAttachments = (attachments.length > 0) || (DRAFT_NOTE && DRAFT_NOTE.pendingFiles && DRAFT_NOTE.pendingFiles.length > 0);
-        purgeBtn.classList.toggle('hidden', !hasAttachments);
-    }
+
 }
 
 function renderDraftReel() {
@@ -401,6 +350,4 @@ async function handleGlobalClipPaste(e) {
     }
 }
 
-function purgeAllDraftAttachments() {
-    if (typeof confirmPurgeAll === 'function') confirmPurgeAll();
-}
+
