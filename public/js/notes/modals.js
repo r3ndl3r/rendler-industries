@@ -56,7 +56,7 @@ async function executeCreateNote() {
     const attachmentType = DRAFT_NOTE.type === 'text' ? (note?.type || 'text') : DRAFT_NOTE.type;
     const finalType      = attachmentType === 'text' ? 'text' : attachmentType;
 
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
     const canvasCX = (wrapper.scrollLeft + wrapper.clientWidth / 2) / STATE.scale;
     const canvasCY = (wrapper.scrollTop + wrapper.clientHeight / 2) / STATE.scale;
@@ -1267,7 +1267,7 @@ async function restoreNote(id) {
             showLoadingOverlay('Restoring piece...');
             
             // Calculate current logical center for placement
-            const wrapper = document.getElementById('canvas-wrapper');
+            const wrapper = STATE.wrapperEl;
             const canvasCX = (wrapper.scrollLeft + wrapper.clientWidth / 2) / STATE.scale;
             const canvasCY = (wrapper.scrollTop + wrapper.clientHeight / 2) / STATE.scale;
 

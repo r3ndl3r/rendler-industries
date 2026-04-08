@@ -5,7 +5,7 @@
  * @returns {void}
  */
 function renderUI() {
-    const canvas = document.getElementById('notes-canvas');
+    const canvas = STATE.canvasEl;
     if (!canvas) return;
     
     // Non-Destructive Reconciliation: Instead of clearing the canvas (flashing), 

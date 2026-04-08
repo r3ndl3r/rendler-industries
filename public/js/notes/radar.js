@@ -13,7 +13,7 @@ function drawRadarPings() {
     const canvas = document.getElementById('radar-pings');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     // Clear the radar surface
@@ -71,7 +71,7 @@ function drawRadarPings() {
  * Radar Sync: Transposes the main viewport's coordinates onto the Magnifier window.
  */
 function syncRadarViewport() {
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     const view    = document.getElementById('radar-viewport');
     if (!wrapper || !view || !STATE.radarWindow) return;
 
@@ -133,7 +133,7 @@ function handleRadarMouseUp() {
  */
 function processRadarNavigation(e, mode = 'smooth') {
     const container = document.getElementById('radar-container');
-    const wrapper   = document.getElementById('canvas-wrapper');
+    const wrapper   = STATE.wrapperEl;
     if (!container || !wrapper || !STATE.radarWindow) return;
 
     const rect = container.getBoundingClientRect();
@@ -185,7 +185,7 @@ function handleRadarWheel(e) {
     // Prevent page-level scroll artifacts
     e.preventDefault();
 
-    const wrapper = document.getElementById('canvas-wrapper');
+    const wrapper = STATE.wrapperEl;
     const container = document.getElementById('radar-container');
     if (!wrapper || !container || !STATE.radarWindow) return;
 
