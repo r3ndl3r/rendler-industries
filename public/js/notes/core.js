@@ -511,8 +511,8 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                 
                 // If this was just a data refresh (heartbeat), we MUST update the active ID trackers 
                 // but NOT touch the camera.
-                if (tid) STATE.canvas_id = tid;
-                if (layer_id) STATE.activeLayerId = layer_id;
+                if (tid) STATE.canvas_id = parseInt(tid);
+                if (layer_id) STATE.activeLayerId = parseInt(layer_id);
 
                 // If we have a nid, we don't set isInitializing = false here; 
                 // we let the nid block below handle it or the timeout.
