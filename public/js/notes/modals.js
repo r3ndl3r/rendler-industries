@@ -424,6 +424,7 @@ async function switchCanvas(id, targetNoteId = null) {
         STATE.canvas_id = id;
         showLoadingOverlay('Cleaning canvas...');
         await loadState(true, id, targetNoteId);
+        window.setupHeartbeat();
         // Persist the new context as the most recent immediately
         if (typeof saveViewportImmediate === 'function') await saveViewportImmediate();
     } finally {
