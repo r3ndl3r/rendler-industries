@@ -230,7 +230,7 @@ function createNoteElement(note, canEdit = true) {
                     ✏️
                 </button>
                 <button class="btn-icon-drawer ${note.is_options_expanded ? 'active' : ''}" data-id="${note.id}" title="Toggle Actions">
-                    ${note.is_options_expanded ? '❮' : '⋯'}
+                    ❮
                 </button>
                 <input type="file" id="inline-file-${note.id}" class="hidden-input" onchange="handleInlineFileSelection(event, ${note.id})">
             </div>
