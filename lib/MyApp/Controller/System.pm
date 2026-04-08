@@ -321,6 +321,22 @@ sub run_reminder_maintenance {
         my $msg = "🔔 REMINDER 🔔\n\n$r->{title}\n\n$r->{description}\n\nhttps://rendler.org/reminders";
         if ($c->notify_user($r->{user_id}, $msg, "Reminder: $r->{title}")) {
             $stats->{notified}++;
+            
+            # Automated chore generation for child recipients
+            if (defined $r->{chore_points} && $r->{is_child}) {
+                my $chore_ok = eval {
+                    $c->db->add_chore($r->{title}, $r->{chore_points}, $r->{user_id});
+                    1;
+                };
+
+                if ($chore_ok) {
+                    $c->app->log->info("Chores: Created automatic chore from reminder $r->{id} for user $r->{user_id}.");
+                    my $chore_msg = "📋 **New Chore Linked:** '$r->{title}' is now on your board for $r->{chore_points} pts!";
+                    $c->notify_user($r->{user_id}, $chore_msg, "New Chore: $r->{title}");
+                } else {
+                    $c->app->log->error("Chores: Failed to create auto-chore from reminder $r->{id}: $@");
+                }
+            }
         } else {
             $stats->{errors}++;
         }
