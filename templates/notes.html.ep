@@ -15,33 +15,33 @@
     <script src="/js/notes/core.js"></script>
 <% end %>
 
-<div class="board-branding-pill" id="active-board-branding" onclick="toggleCanvasQuickSwitch()" title="Switch Canvas" role="button" aria-haspopup="listbox" aria-expanded="false">
+<div class="board-branding-pill" id="active-board-branding" title="Switch Canvas" role="button" aria-haspopup="listbox" aria-expanded="false">
     <span id="active-board-name-pill">Loading Canvas...</span>
     <svg class="pill-chevron" viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
         <path d="M4 9l8 7 8-7z"/>
     </svg>
 </div>
 
-<!-- Canvas Quick-Switcher Dropdown -->
+<%# Canvas Quick-Switcher Dropdown %>
 <div id="canvas-quick-switcher" class="canvas-quick-switcher hidden" role="listbox">
     <div class="cqs-header">
         <span class="cqs-title">📒 Switch Canvas</span>
-        <button class="cqs-close-btn" onclick="closeCanvasQuickSwitch()" title="Close">✕</button>
+        <button class="cqs-close-btn" title="Close">✕</button>
     </div>
     <div id="cqs-list" class="cqs-list"></div>
 </div>
 
 <div class="level-switcher-container">
     <div class="level-tracks">
-        <button class="level-btn btn-level-up" onclick="moveLevel(1)" title="Move up one layer">
+        <button class="level-btn btn-level-up" title="Move up one layer">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 17l8-10 8 10z"/></svg>
         </button>
-        <div class="level-indicator-pill" id="level-display" title="Jump to Level" onclick="openJumpToLevelModal()">1</div>
+        <div class="level-indicator-pill" id="level-display" title="Jump to Level">1</div>
         <div class="level-column-group">
-            <button class="level-btn btn-level-down" onclick="moveLevel(-1)" title="Move down one layer">
+            <button class="level-btn btn-level-down" title="Move down one layer">
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 7l8 10 8-10z"/></svg>
             </button>
-            <button class="level-btn btn-level-rename" onclick="renameCurrentLevel()" title="Rename this level">
+            <button class="level-btn btn-level-rename" title="Rename this level">
                 ✏️
             </button>
         </div>
@@ -281,7 +281,7 @@
                 <h4>📋 Manage Collaborators</h4>
                 <div class="search-container">
                     <input type="text" id="user-search-input" placeholder="Search by username..." autocomplete="off">
-                    <div id="user-search-results" class="user-search-results"></div>
+                    <div id="user-search-results" class="user-search-results hidden"></div>
                 </div>
                 
                 <div id="canvas-share-list" class="share-list">
