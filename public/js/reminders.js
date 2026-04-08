@@ -229,7 +229,7 @@ function renderReminderCard(r) {
  */
 function renderSelectors() {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((name, i) => ({ id: i + 1, label: name }));
-    const recipients = STATE.recipients.map(u => ({ id: u.id, label: escapeHtml(u.username) }));
+    const recipients = STATE.recipients.map(u => ({ id: u.id, label: `${window.getUserIcon?.(u.username) ?? ''} ${escapeHtml(u.username)}`.trim() }));
     
     // Render Day Grids
     renderSelectorGrid('addDaysSelector', days, { name: 'days[]', prefix: 'addDay', type: 'day' });
@@ -304,6 +304,16 @@ function openEditModal(id) {
             const cb = document.getElementById(`editRecipient${uid}`);
             if (cb) cb.checked = true;
         });
+    }
+
+    // Admin Chore Sync
+    const isChore = r.chore_points != null;
+    const isChoreCb = document.getElementById('editIsChore');
+    if (isChoreCb) {
+        isChoreCb.checked = isChore;
+        const ptsInput = document.getElementById('editChorePoints');
+        if (ptsInput) ptsInput.value = isChore ? r.chore_points : 0;
+        toggleChorePoints('edit');
     }
 
     if (modal) {
@@ -541,6 +551,18 @@ function updateCountdowns() {
 }
 
 /**
+ * Toggles visibility of reward-point inputs based on chore-sync status.
+ * @param {string} type - Modal context ('add' or 'edit').
+ */
+function toggleChorePoints(type) {
+    const isChore = document.getElementById(`${type}IsChore`)?.checked;
+    const container = document.getElementById(`${type}ChorePointsContainer`);
+    if (container) {
+        container.classList.toggle('hidden', !isChore);
+    }
+}
+
+/**
  * --- Global Exposure ---
  */
 window.openAddModal = openAddModal;
@@ -553,3 +575,4 @@ window.toggleDay = toggleDay;
 window.handleAdd = handleAdd;
 window.handleEdit = handleEdit;
 window.loadState = loadState;
+window.toggleChorePoints = toggleChorePoints;
