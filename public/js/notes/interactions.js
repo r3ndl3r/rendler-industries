@@ -556,6 +556,7 @@ function onViewportScroll() {
     }
     
     // CRITICAL: Scroll events MUST trigger the debounced save to capture panning
+    STATE.viewportDirty = true; // Shield: Protect this local scroll from heartbeat overrides
     scheduleViewportSave();
 }
 
@@ -689,7 +690,7 @@ function scheduleViewportSave() {
     updateLocalViewportCache(); // Optimistic mirror (Synchronous)
 
     clearTimeout(STATE.vpSaveTimer);
-    STATE.vpSaveTimer = setTimeout(persistViewport, 1500);
+    STATE.vpSaveTimer = setTimeout(persistViewport, 800); // Tightened window (1.5s -> 0.8s) for better responsiveness
 }
 
 /**
@@ -700,6 +701,9 @@ async function persistViewport() {
     const wrapper = STATE.wrapperEl;
     if (!wrapper || STATE.isInitializing) return;
 
+    // Logic: Once the debounce timer triggers, we treat the local mutation as 'committing'.
+    // This allows heartbeats to resume synchronization while the async save is in flight.
+    STATE.viewportDirty = false; 
     await saveViewportImmediate();
 }
 
@@ -711,7 +715,8 @@ async function saveViewportImmediate() {
     const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
-    // Clear any pending debounced save since we are firing now
+    // Clear flags: Local state is now safe to be overwritten by server truth
+    STATE.viewportDirty = false;
     clearTimeout(STATE.vpSaveTimer);
 
     // Persist Canonical Canvas-Center Coordinates (Scale-Independent)
