@@ -865,7 +865,8 @@
     display: none !important;
 }
 
-.sticky-note.is-editing .edit-mode-only {
+.sticky-note.is-editing .edit-mode-only,
+.sticky-note.can-edit:not(.is-editing):hover .attachment-float-controls .edit-mode-only {
     display: flex !important;
 }
 
@@ -3662,9 +3663,10 @@ input:checked + .switch-sm .slider:before {
 }
 
 /* Hero, Reel & Stack Hover Triggers */
-.sticky-note.is-editing .note-hero-container:hover .attachment-float-controls,
-.sticky-note.is-editing .attachment-item-reel:hover .attachment-float-controls,
-.sticky-note.is-editing .attachment-item-stack:hover .attachment-float-controls,
+/* Enabled for all users to allow access to granular copy buttons */
+.note-hero-container:hover .attachment-float-controls,
+.attachment-item-reel:hover .attachment-float-controls,
+.attachment-item-stack:hover .attachment-float-controls,
 .note-modal-content .attachment-item-reel:hover .attachment-float-controls {
     opacity: 1;
     transform: translateY(0);
@@ -3697,8 +3699,15 @@ input:checked + .switch-sm .slider:before {
 }
 
 .hero-action-btn:hover, .reel-action-btn:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: #3b82f6;
+    color: #fff;
     transform: scale(1.1);
-    border-color: rgba(255, 255, 255, 0.6);
+}
+
+.btn-icon-copy {
+    color: #3b82f6; /* Indigo accent for granular copy actions */
+    font-size: 0.9em;
 }
 
 /* Explicit Inline Upload Button (CLIP) Styling */
