@@ -30,6 +30,7 @@ const STATE = {
     vpSaveTimer: null,    // Debounce handle for viewport persistence
     isInitializing: false, // Prevents save-during-load race conditions
     maxZ:           1,     // Global Depth Tracking: Accelerates "Bring to Front" actions to O(1)
+    viewportDirty:  false, // Mutation Guard: Prevents heartbeat from overwriting unsaved local scrolls
     pickedNoteId:   null,  // Active 'Pick & Place' record
     lastPickTime:   null,  // Interaction Guard: Prevent immediate drop re-triggering
     originalPos:    null,  // Restore-point for 'Escape-to-Cancel'
@@ -479,7 +480,8 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             let useLocal = localVp && (localVp.ts > serverTs);
 
             // This prevents the 2s heartbeat from "jumping" the camera back to a stale position while the user is panning.
-            const shouldRestoreViewport = initial || nid || isContextChange;
+            // MODIFICATION: Check viewportDirty flag to ensure local mutations aren't overwritten by stale server state.
+            const shouldRestoreViewport = (initial || nid || isContextChange) && !STATE.viewportDirty;
 
             if (shouldRestoreViewport && (useLocal || data.viewport)) {
                 const vp = useLocal ? localVp : data.viewport;
@@ -535,6 +537,12 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                         if (typeof centerOnNote === 'function') {
                             centerOnNote(nid).finally(() => {
                                 STATE.isInitializing = false;
+                                //Intent Clearance: Prevent subsequent heartbeats from repetitive snapping
+                                const url = new URL(window.location.href);
+                                if (url.searchParams.has('note_id')) {
+                                    url.searchParams.delete('note_id');
+                                    window.history.replaceState({ canvas_id: STATE.canvas_id }, '', url);
+                                }
                             });
                         } else {
                             STATE.isInitializing = false;
