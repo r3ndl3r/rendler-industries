@@ -448,13 +448,25 @@ function formatNoteContent(content, noteId) {
         if (!/^https?:\/\//i.test(trimmedUrl)) {
             return match; // Return as literal text if it's not a valid web URL
         }
-        const style = height ? `style="height: ${height}px;"` : 'class="iframe-fill"';
-        return `<div class="note-iframe-wrap" ${style}><iframe src="${trimmedUrl}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe></div>`;
+
+        const safeUrl = window.escapeHtml(encodeURI(trimmedUrl));
+        
+        // Use numeric coercion for dimensions to prevent attribute injection. 
+        // NaN/0 both correctly fall back to the fill class.
+        const safeHeight = parseInt(height, 10);
+        const style = safeHeight ? `style="height: ${safeHeight}px;"` : 'class="iframe-fill"';
+        
+        return `<div class="note-iframe-wrap" ${style}><iframe src="${safeUrl}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe></div>`;
     });
 
     // 8. Transformation: Raw URL Linkification (http/https)
     processedContent = processedContent.replace(/(^|\s)(https?:\/\/[^\s<]+)/g, (match, prefix, url) => {
-        return `${prefix}<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" onclick="event.stopPropagation()">${url}</a>`;
+        // High-Fidelity URL Protection: 
+        // href gets structural encoding (encodeURI) + attribute escaping (escapeHtml)
+        // visible text only gets HTML escaping to preserve characters like 'résumé' for the user.
+        const safeUrl  = window.escapeHtml(encodeURI(url));
+        const safeText = window.escapeHtml(url);
+        return `${prefix}<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="note-external-link" onclick="event.stopPropagation()">${safeText}</a>`;
     });
 
     // 9. Transformation: Basic Markdown & Line Breaks
