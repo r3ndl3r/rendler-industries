@@ -354,6 +354,21 @@ function handleGlobalKeydown(e) {
         if (typeof closeCreateModal === 'function') closeCreateModal();
         if (typeof closeSearchModal === 'function') closeSearchModal();
     }
+    
+    // Ctrl + S: Board-wide Save Interception
+    // Prevents the annoying browser "Save Page" dialog from appearing while on the whiteboard.
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        
+        // If a note is currently being edited, trigger a save for it even if focus is lost
+        if (STATE.isEditingNote) {
+            const activeNote = document.querySelector('.sticky-note.is-editing');
+            if (activeNote) {
+                const id = activeNote.dataset.id;
+                if (id) saveNoteInline(id, true);
+            }
+        }
+    }
 }
 
 
@@ -968,7 +983,7 @@ function handleCanvasDoubleClick(e) {
  * @param {number|string} id - The note ID.
  * @returns {Promise<void>}
  */
-async function saveNoteInline(id) {
+async function saveNoteInline(id, stayInEditMode = false) {
     const el   = document.getElementById(`note-${id}`);
     const note = STATE.note_map[id]; // Use global map for SSO truth
     if (!el || !note) return;
@@ -1054,25 +1069,26 @@ async function saveNoteInline(id) {
             const accentColor = typeof normalizeColorHex === 'function' ? normalizeColorHex(color) : color;
             el.style.setProperty('--note-accent', accentColor);
             
-            STATE.isEditingNote = false;
-            
-            // UI Cleanup: Exit edit mode visually and restore button state
-            el.classList.remove('is-editing');
-            if (textarea) textarea.readOnly = true;
+            // UI Cleanup: Exit edit mode visually and restore button state ONLY if not doing an incremental save
+            if (!stayInEditMode) {
+                STATE.isEditingNote = false;
+                el.classList.remove('is-editing');
+                if (textarea) textarea.readOnly = true;
 
-            const btnIcon = el.querySelector('.btn-icon-edit');
-            if (btnIcon) {
-                btnIcon.innerHTML = '✏️';
-                btnIcon.title     = 'Edit Content';
-                btnIcon.classList.remove('pulse-glow');
+                const btnIcon = el.querySelector('.btn-icon-edit');
+                if (btnIcon) {
+                    btnIcon.innerHTML = '✏️';
+                    btnIcon.title     = 'Edit Content';
+                    btnIcon.classList.remove('pulse-glow');
+                }
             }
 
             showToast('Note Saved', 'success');
         }
     } finally {
         el.classList.remove('pending');
-        // Always release the edit guard so the heartbeat is not permanently inhibited after a failed save
-        STATE.isEditingNote = false;
+        // Always release the edit guard so the heartbeat is not permanently inhibited AFTER a final terminal save
+        if (!stayInEditMode) STATE.isEditingNote = false;
     }
 }
 
@@ -1243,14 +1259,24 @@ async function toggleInlineEdit(btn, id) {
  * @param {number|string} id - The note ID.
  */
 function handleNoteKeydown(e, id) {
-    // Ctrl + Enter: Instant Save
+    // Ctrl + Enter: Instant Save & Close
     if (e.ctrlKey && e.key === 'Enter') {
         const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
         if (btn && document.getElementById(`note-${id}`).classList.contains('is-editing')) {
             e.preventDefault();
             toggleInlineEdit(btn, id);
         }
-    } else if (e.key === 'Escape') {
+    } 
+    // Ctrl + S: Incremental Save (Stay in Editor)
+    else if (e.ctrlKey && e.key === 's') {
+        const el = document.getElementById(`note-${id}`);
+        if (el && el.classList.contains('is-editing')) {
+            e.preventDefault();  // Stop Browser Save Dialog
+            e.stopPropagation(); // Stop event from bubbling to global handler
+            saveNoteInline(id, true);
+        }
+    }
+    else if (e.key === 'Escape') {
         const el = document.getElementById(`note-${id}`);
         if (el && el.classList.contains('is-editing')) {
             const btn = el.querySelector('.btn-icon-edit');
