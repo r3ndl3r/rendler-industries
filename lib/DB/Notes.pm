@@ -33,29 +33,50 @@ sub DB::get_user_notes {
     # Security Gate: Verify the user has at least READ access to this canvas
     return [] unless $self->check_canvas_access($canvas_id, $user_id, 0);
 
-    my $sql = "SELECT * FROM notes WHERE canvas_id = ? AND is_deleted = 0 ORDER BY z_index ASC, updated_at DESC";
+    # Consolidated Fetch Pattern: Single round-trip for notes and attachments.
+    # The 'blob_' prefix is used as a namespace separator for application-level grouping;
+    # do NOT alias primary note columns with this prefix.
+    my $sql = "
+        SELECT 
+            n.*,
+            b.id as blob_id, b.note_id as blob_note_id, b.filename as blob_filename, 
+            b.mime_type as blob_mime, b.file_size as blob_size
+        FROM notes n
+        LEFT JOIN note_blobs b ON n.id = b.note_id
+        WHERE n.canvas_id = ? AND n.is_deleted = 0 
+        ORDER BY n.z_index ASC, n.updated_at DESC, b.id ASC
+    ";
+    
     my $sth = $self->{dbh}->prepare($sql);
     $sth->execute($canvas_id);
     
-    my $notes = $sth->fetchall_arrayref({});
-    
-    # Attach 'Reel' Multi-files
-    if (@$notes) {
-        my $sql_blobs = "SELECT id as blob_id, note_id, filename, mime_type, file_size FROM note_blobs WHERE note_id IN (SELECT id FROM notes WHERE canvas_id = ? AND is_deleted = 0)";
-        my $sth_blobs = $self->{dbh}->prepare($sql_blobs);
-        $sth_blobs->execute($canvas_id);
+    my $notesArr = [];
+    my %note_map; # Local lookup for grouping attachments
+
+    while (my $row = $sth->fetchrow_hashref()) {
+        my $nid = $row->{id};
         
-        my %blobs;
-        while (my $row = $sth_blobs->fetchrow_hashref()) {
-            push @{$blobs{$row->{note_id}}}, $row;
+        # Primary Record Initialization (Self-maintaining hash construction)
+        if (!$note_map{$nid}) {
+            my $note = { map { $_ => $row->{$_} } grep { !/^blob_/ } keys %$row };
+            $note->{attachments} = [];
+            $note_map{$nid} = $note;
+            push @$notesArr, $note;
         }
-        
-        foreach my $n (@$notes) {
-            $n->{attachments} = $blobs{$n->{id}} || [];
+
+        # Attachment Aggregation: Restore note_id parity for downstream consumers
+        if ($row->{blob_id}) {
+            push @{$note_map{$nid}->{attachments}}, {
+                blob_id   => $row->{blob_id},
+                note_id   => $row->{blob_note_id},
+                filename  => $row->{blob_filename},
+                mime_type => $row->{blob_mime},
+                file_size => $row->{blob_size}
+            };
         }
     }
     
-    return $notes;
+    return $notesArr;
 }
 
 # Performs an ACL-aware search across all whiteboards accessible to the user.
