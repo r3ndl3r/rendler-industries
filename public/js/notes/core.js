@@ -70,6 +70,12 @@ const STATE = {
  */
 let DRAFT_NOTE = null;
 
+// Selection Containment: Blinder Pattern state
+let _selBlocked = [];
+let _selectionGuardInit = false;
+
+
+
 // Scale bounds
 const SCALE_MIN  = 0.1;
 const SCALE_MAX  = 3.00;
@@ -126,6 +132,42 @@ async function initNotes() {
         if (typeof handleCanvasMouseUp === 'function') handleCanvasMouseUp(e);
         if (typeof handleRadarMouseUp === 'function') handleRadarMouseUp(e);
     });
+
+    // ─── Selection Containment ── Selection Blinder Pattern ───────────────────
+    // REASON: Chrome's drag-selection pipeline is synchronous and extends into
+    // adjacent DOM nodes before any JS selectionchange handler can intervene.
+    // By setting user-select: none on all OTHER note viewers at mousedown, the
+    // browser has no selectable targets to spill into.
+    // Restored unconditionally on mouseup to leave no permanent style side-effects.
+    if (!_selectionGuardInit) {
+        document.addEventListener('mousedown', (e) => {
+            const sourceNote = e.target.closest('.sticky-note');
+            if (!sourceNote) {
+                _selBlocked = [];
+                return;
+            }
+
+            _selBlocked = [];
+            document.querySelectorAll('.note-text-viewer').forEach((el) => {
+                if (sourceNote.contains(el)) return;  // leave source note alone
+                el.style.setProperty('user-select',         'none', 'important');
+                el.style.setProperty('-webkit-user-select', 'none', 'important');
+                _selBlocked.push(el);
+            });
+        }, { capture: true });
+
+        document.addEventListener('mouseup', () => {
+            _selBlocked.forEach((el) => {
+                el.style.removeProperty('user-select');
+                el.style.removeProperty('-webkit-user-select');
+            });
+            _selBlocked = [];
+        }, { capture: true });
+
+        _selectionGuardInit = true;
+    }
+
+
     
     // Window Resize Bridge: Recalculate spatial metadata on geometry changes
     window.addEventListener('resize', () => {
