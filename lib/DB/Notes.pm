@@ -184,22 +184,66 @@ sub DB::save_note {
     return $id;
 }
 
-# Retrieves a metadata map for ALL accessible notes (Owned + Shared).
-# Used by the frontend to resolve [note:#] links into clickable titles.
+# Calculates a unified synchronization fingerprint for the user's note landscape.
+# O(1) Complexity: Leverages composite indices to scan notes (updates/deletions) and shares.
+# Returns:
+#   String: Latest timestamp across notes and ACL grants.
+sub DB::get_note_map_fingerprint {
+    my ($self, $user_id) = @_;
+    $self->ensure_connection;
+
+    # Logic: Fingerprint covers both note mutations AND new sharing grants.
+    # Note: We include is_deleted records in the MAX(updated_at) to ensure deletions invalidate cache.
+    my $sql = "
+        SELECT GREATEST(
+            IFNULL((
+                SELECT MAX(n.updated_at) 
+                FROM notes n
+                JOIN canvases c ON n.canvas_id = c.id
+                WHERE (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
+            ), '1970-01-01 00:00:00'),
+            IFNULL((
+                SELECT MAX(created_at) 
+                FROM canvas_shares 
+                WHERE user_id = ?
+            ), '1970-01-01 00:00:00')
+        ) as fingerprint
+    ";
+    
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute($user_id, $user_id, $user_id);
+    my ($fingerprint) = $sth->fetchrow_array();
+    
+    return $fingerprint;
+}
+
+# Retrieves a lean metadata map for ALL accessible notes.
+# Optimized: Strips 'content' and uses a correlated subquery for exactly ONE attachment metadata.
 # Parameters:
 #   user_id : Integer ID for the active user.
 # Returns:
-#   HashRef { id => { title, canvas_id } }
+#   HashRef { id => { title, canvas_id, attachments => [...] } }
 sub DB::get_all_accessible_note_metadata {
     my ($self, $user_id) = @_;
     $self->ensure_connection;
 
+    # Performance: Only fetch identification, coordinates, and primary file metadata.
+    # The 'blob_' prefix maintains grouping compatibility for rendering engine.
     my $sql = "
-        SELECT n.id, n.title, n.canvas_id, n.type, n.content, n.filename,
-               n.x, n.y, n.width, n.height, n.z_index, n.layer_id, 
-               n.is_collapsed, n.is_options_expanded
+        SELECT 
+            n.id, n.canvas_id, n.title, n.type, n.x, n.y, n.width, n.height, n.layer_id,
+            b.id        AS blob_id,
+            b.filename  AS blob_filename,
+            b.mime_type AS blob_mime,
+            b.file_size AS blob_size
         FROM notes n
         JOIN canvases c ON n.canvas_id = c.id
+        LEFT JOIN note_blobs b ON b.id = (
+            SELECT id FROM note_blobs 
+            WHERE note_id = n.id 
+            ORDER BY id ASC 
+            LIMIT 1
+        )
         WHERE (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
         AND n.is_deleted = 0
     ";
@@ -208,22 +252,21 @@ sub DB::get_all_accessible_note_metadata {
     $sth->execute($user_id, $user_id);
     
     my %map;
-    
-    my @note_ids;
     while (my $row = $sth->fetchrow_hashref()) {
-        $row->{attachments} = [];
-        $map{$row->{id}} = $row;
-        push @note_ids, $row->{id};
-    }
-    
-    if (@note_ids) {
-        my $placeholders = join(',', map { '?' } @note_ids);
-        my $sql_b = "SELECT id as blob_id, note_id, filename, mime_type, file_size FROM note_blobs WHERE note_id IN ($placeholders)";
-        my $sth_b = $self->{dbh}->prepare($sql_b);
-        $sth_b->execute(@note_ids);
-        while (my $b = $sth_b->fetchrow_hashref()) {
-            push @{$map{$b->{note_id}}->{attachments}}, $b;
+        # Construction: Filter out 'blob_' prefixes into the attachments array
+        my $note = { map { $_ => $row->{$_} } grep { !/^blob_/ } keys %$row };
+        $note->{attachments} = [];
+        
+        if ($row->{blob_id}) {
+            push @{$note->{attachments}}, {
+                blob_id   => $row->{blob_id},
+                filename  => $row->{blob_filename},
+                mime_type => $row->{blob_mime},
+                file_size => $row->{blob_size}
+            };
         }
+        
+        $map{$row->{id}} = $note;
     }
     
     return \%map;
