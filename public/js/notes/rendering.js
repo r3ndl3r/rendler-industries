@@ -459,17 +459,23 @@ function formatNoteContent(content, noteId) {
         return `<div class="note-iframe-wrap" ${style}><iframe src="${safeUrl}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe></div>`;
     });
 
-    // 8. Transformation: Raw URL Linkification (http/https)
-    processedContent = processedContent.replace(/(^|\s)(https?:\/\/[^\s<]+)/g, (match, prefix, url) => {
+    // 8. Transformation: Markdown Links [Label](URL)
+    processedContent = processedContent.replace(/\[(.*?)\]\((https?:\/\/[^\s\)]+)\)/g, (match, label, url) => {
         // High-Fidelity URL Protection: 
         // href gets structural encoding (encodeURI) + attribute escaping (escapeHtml)
-        // visible text only gets HTML escaping to preserve characters like 'résumé' for the user.
+        const safeUrl  = window.escapeHtml(encodeURI(url));
+        const safeText = window.escapeHtml(label);
+        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="note-external-link" onclick="event.stopPropagation()">${safeText}</a>`;
+    });
+
+    // 9. Transformation: Raw URL Linkification (http/https)
+    processedContent = processedContent.replace(/(^|\s)(https?:\/\/[^\s<]+)/g, (match, prefix, url) => {
         const safeUrl  = window.escapeHtml(encodeURI(url));
         const safeText = window.escapeHtml(url);
         return `${prefix}<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="note-external-link" onclick="event.stopPropagation()">${safeText}</a>`;
     });
 
-    // 9. Transformation: Basic Markdown & Line Breaks
+    // 10. Transformation: Basic Markdown & Line Breaks
     processedContent = processedContent
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
