@@ -918,19 +918,25 @@ function handleCanvasMouseUp() {
  * @param {WheelEvent} e - The wheel event.
  */
 function handleCanvasWheel(e) {
-    e.preventDefault(); // Must remain unconditional to prevent native scroll behavior during init
-    if (STATE.isInitializing) return;
+    // 1. Initialization Shield: Selective blocking to prevent viewport jumps during hydration
+    if (STATE.isInitializing) {
+        if (!e.target.closest('.sticky-note')) e.preventDefault();
+        return;
+    }
 
     const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
-    // CTRL + Wheel: Anchored Zooming
+    // 2. Mutual Exclusion: Manual wheel activity overrides the auto-scroll engine
+    if (typeof stopAutoScroll === 'function') stopAutoScroll();
+
+    // 3. CTRL + Wheel: Anchored Zooming
     if (e.ctrlKey) {
+        e.preventDefault(); // Always block browser zoom when within the whiteboard context
 
         const oldScale = STATE.scale;
         const step     = 0.1;
         
-        // Scale Clamps: 0.1 (Radar only) to 2.0 (High Precision)
         if (e.deltaY < 0) {
             STATE.scale = Math.min(2.0, Math.round((STATE.scale + step) * 10) / 10);
         } else {
@@ -939,12 +945,10 @@ function handleCanvasWheel(e) {
 
         if (STATE.scale === oldScale) return;
 
-        // Viewport-relative mouse positions for anchor calculation
         const rect = wrapper.getBoundingClientRect();
         const mouseVX = e.clientX - rect.left;
         const mouseVY = e.clientY - rect.top;
 
-        // Canvas-space coordinates under the cursor for focal consistency
         const canvasMX = (wrapper.scrollLeft + mouseVX) / oldScale;
         const canvasMY = (wrapper.scrollTop  + mouseVY) / oldScale;
 
@@ -952,24 +956,26 @@ function handleCanvasWheel(e) {
             applyScale();
         }
 
-        // Adjust scroll to keep the cursor fixed on the canvas coordinate (Anchor effect)
         wrapper.scrollLeft = canvasMX * STATE.scale - mouseVX;
         wrapper.scrollTop  = canvasMY * STATE.scale - mouseVY;
 
         if (typeof updateRadar === 'function') updateRadar();
         if (typeof scheduleViewportSave === 'function') scheduleViewportSave();
     } else {
-        // Plane Panning: Scrolling with no keys pressed
+        // 4. Plane Panning: Scrolling with no keys pressed
         // ONLY hijack scroll if we are not hovering over a sticky note's scrollable content
         if (!e.target.closest('.sticky-note')) {
             e.preventDefault();
             
+            // Interaction Physics: 1.5x multiplier to compensate for large canvas distances
+            const multiplier = 1.5;
+
             // Shift + Vertical Wheel = Horizontal Scroll (Browser Parity)
             if (e.shiftKey && !e.deltaX) {
-                wrapper.scrollLeft += e.deltaY;
+                wrapper.scrollLeft += (e.deltaY * multiplier);
             } else {
-                wrapper.scrollLeft += e.deltaX;
-                wrapper.scrollTop  += e.deltaY;
+                wrapper.scrollLeft += (e.deltaX * multiplier);
+                wrapper.scrollTop  += (e.deltaY * multiplier);
             }
             
             if (typeof updateRadar === 'function') updateRadar();
