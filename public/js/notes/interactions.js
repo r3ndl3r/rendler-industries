@@ -53,6 +53,7 @@ function initResizable(el, note) {
     };
 
     handle.addEventListener('mousedown', (e) => {
+        if (STATE.isInitializing) return;
         if (!STATE.editMode) return;
         e.stopPropagation();
         e.preventDefault();
@@ -84,6 +85,7 @@ function initResizable(el, note) {
  * @returns {void}
  */
 function toggleStickyMove(e, id) {
+    if (STATE.isInitializing) return;
     const el = document.getElementById(`note-${id}`);
     const intId = parseInt(id);
     
@@ -354,6 +356,7 @@ function handleGlobalClick(e) {
  * @returns {void}
  */
 function handleGlobalKeydown(e) {
+    if (STATE.isInitializing) return;
     if (e.key === 'Escape') {
         if (STATE.pickedNoteId) {
             e.preventDefault();
@@ -793,6 +796,7 @@ async function saveViewportImmediate() {
  * @param {MouseEvent} e - The mouse event.
  */
 function handleCanvasMouseDown(e) {
+    if (STATE.isInitializing) return;
     // 1. Note Header Actions: Centralized delegation for all note-level buttons
     const hashBtn    = e.target.closest('.note-id-hash');
     const collapseBtn = e.target.closest('.btn-icon-collapse');
@@ -914,12 +918,14 @@ function handleCanvasMouseUp() {
  * @param {WheelEvent} e - The wheel event.
  */
 function handleCanvasWheel(e) {
+    e.preventDefault(); // Must remain unconditional to prevent native scroll behavior during init
+    if (STATE.isInitializing) return;
+
     const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     // CTRL + Wheel: Anchored Zooming
     if (e.ctrlKey) {
-        e.preventDefault();
 
         const oldScale = STATE.scale;
         const step     = 0.1;
@@ -978,6 +984,7 @@ function handleCanvasWheel(e) {
  * @returns {void}
  */
 function handleCanvasDoubleClick(e) {
+    if (STATE.isInitializing) return;
     if (!STATE.editMode || STATE.pickedNoteId) return;
 
     // Creation Logic: Only allow new note creation on the actual background layers.
