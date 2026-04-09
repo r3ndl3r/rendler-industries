@@ -112,9 +112,9 @@ function toggleStickyMove(e, id) {
     };
 
     // --- 1. Focus Management (Z-Index Promotion) ---
-    const maxZ = STATE.notes.reduce((max, n) => Math.max(max, n.z_index || 1), 1);
-    if (note.z_index < maxZ) {
-        const newZ = maxZ + 1;
+    // Optimization: Skip re-scanning all notes. Use cached STATE.maxZ.
+    if (note.z_index < STATE.maxZ) {
+        const newZ = ++STATE.maxZ;
         note.z_index = newZ;
         el.style.zIndex = newZ;
         if (typeof syncNotePosition === 'function') syncNotePosition(intId, 'silent');
@@ -1324,8 +1324,10 @@ async function handleNoteLinkClick(id) {
     if (el) {
         el.classList.add('pulse-glow');
         const oldZ = el.style.zIndex;
-        const maxZ = STATE.notes.reduce((max, n) => Math.max(max, n.z_index || 1), 1);
-        el.style.zIndex = maxZ + 1;
+        
+        // Promotion: Temporary foreground priority during highlighting.
+        // We use maxZ + 1 but don't persist it globally since it's transient.
+        el.style.zIndex = STATE.maxZ + 1;
         
         setTimeout(() => {
             if (el) {

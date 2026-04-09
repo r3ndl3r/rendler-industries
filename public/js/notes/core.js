@@ -29,6 +29,7 @@ const STATE = {
     share_list: [],       // ACL for the current board
     vpSaveTimer: null,    // Debounce handle for viewport persistence
     isInitializing: false, // Prevents save-during-load race conditions
+    maxZ:           1,     // Global Depth Tracking: Accelerates "Bring to Front" actions to O(1)
     pickedNoteId:   null,  // Active 'Pick & Place' record
     lastPickTime:   null,  // Interaction Guard: Prevent immediate drop re-triggering
     originalPos:    null,  // Restore-point for 'Escape-to-Cancel'
@@ -239,9 +240,9 @@ async function initNotes() {
                 const isTrigger = e.target.closest('.note-check-trigger, .note-link-trigger, .reel-action-btn, .btn-icon-drawer');
                 
                 // --- 2. Focus Management (Z-Index) ---
-                const maxZ = STATE.notes.reduce((max, n) => Math.max(max, n.z_index || 1), 1);
-                if (note && note.z_index < maxZ) {
-                    const newZ = maxZ + 1;
+                // Logic: Promote to foreground only if not already top-level
+                if (note && note.z_index < STATE.maxZ) {
+                    const newZ = ++STATE.maxZ;
                     note.z_index = newZ;
                     noteEl.style.zIndex = newZ;
                     if (typeof syncNotePosition === 'function') syncNotePosition(noteId, 'silent');
@@ -437,6 +438,9 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             STATE.layer_map     = data.layer_map || {};
 
             STATE.share_list = data.share_list || [];
+            
+            // Interaction Optimization: Calculate global Z-index baseline once per hydration
+            STATE.maxZ = STATE.notes.reduce((max, n) => Math.max(max, n.z_index || 1), 1);
             
             // Sync Branding Pill
             const canvasObj = STATE.canvases.find(c => c.id == STATE.canvas_id);
