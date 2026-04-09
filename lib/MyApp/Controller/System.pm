@@ -127,8 +127,11 @@ sub run_meals_maintenance {
     # 2. Lock-in (Exactly 2 PM)
     if ($hour == 14 && $minute == 0) {
         my $today_plan = $c->db->get_active_plan(0)->[0]; # user_id=0 (system context)
-        # Check status again - another worker might have already locked it
-        if ($today_plan && $today_plan->{status} eq 'open') {
+        
+        # Guard Clause: Ensure we only perform 2PM automation once per day across all workers
+        if ($today_plan && $today_plan->{status} eq 'open' && !$today_plan->{reminder_2pm_sent}) {
+            # Mark as sent immediately to prevent other workers from firing while we process
+            $c->db->{dbh}->do("UPDATE meal_plan SET reminder_2pm_sent = 1 WHERE id = ?", undef, $today_plan->{id});
             my $suggestions = $today_plan->{suggestions};
             
             if (scalar @$suggestions > 0) {
@@ -143,8 +146,12 @@ sub run_meals_maintenance {
                     # Let's just lock it to 'open' and rely on the minute check.
                     my $admin_msg = "⚖️ MEAL PLANNER TIE: Today's meal plan is TIED. Please go to /meals and pick a winner!\n\nhttps://rendler.org/meals";
                     my $admins = $c->db->get_admins();
+                    
+                    # De-duplicate recipients by Discord ID
+                    my %seen_discord;
                     foreach my $a (@$admins) {
-                        $c->send_discord_dm($a->{discord_id}, $admin_msg, $a->{id}) if $a->{discord_id};
+                        next if !$a->{discord_id} || $seen_discord{$a->{discord_id}}++;
+                        $c->send_discord_dm($a->{discord_id}, $admin_msg, $a->{id});
                     }
                     push @{$stats->{actions}}, "Notified admins of tie";
                 } else {
@@ -154,21 +161,27 @@ sub run_meals_maintenance {
                     # Notify everyone of the final choice
                     my $announcement = "🍽️ TODAY'S MENU LOCKED: $winner->{meal_name} wins with $winner->{vote_count} votes! (Suggested by $winner->{suggested_by_name})\n\nhttps://rendler.org/meals";
                     my $users = $c->db->get_family_users();
+                    
+                    # De-duplicate recipients by Discord ID
+                    my %seen_discord;
                     foreach my $u (@$users) {
-                        if ($u->{discord_id}) {
-                            $c->send_discord_dm($u->{discord_id}, $announcement, $u->{id});
-                        }
+                        next if !$u->{discord_id} || $seen_discord{$u->{discord_id}}++;
+                        $c->send_discord_dm($u->{discord_id}, $announcement, $u->{id});
                     }
                     push @{$stats->{actions}}, "Locked in: $winner->{meal_name}";
                 }
             } else {
-                # No suggestions at 2PM? Notify admin
-                my $admin_msg = "⚠️ MEAL PLANNER EMPTY: No suggestions made by 2PM. Please set a blackout or manual meal.\n\nhttps://rendler.org/meals";
-                my $admins = $c->db->get_admins();
-                foreach my $a (@$admins) {
-                    $c->send_discord_dm($a->{discord_id}, $admin_msg, $a->{id}) if $a->{discord_id};
+                # No suggestions at 2PM? Notify Family (Widened from Admin-only)
+                my $remind_msg = "⚠️ MEAL PLANNER EMPTY: No suggestions made by 2PM. Please set a blackout or manual meal.\n\nhttps://rendler.org/meals";
+                my $users = $c->db->get_family_users();
+                
+                # De-duplicate recipients by Discord ID
+                my %seen_discord;
+                foreach my $u (@$users) {
+                    next if !$u->{discord_id} || $seen_discord{$u->{discord_id}}++;
+                    $c->send_discord_dm($u->{discord_id}, $remind_msg, $u->{id});
                 }
-                push @{$stats->{actions}}, "Notified admins of empty plan";
+                push @{$stats->{actions}}, "Notified family of empty plan";
             }
         }
     }
