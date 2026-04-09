@@ -177,7 +177,20 @@ function checkAutoScrollProximity(e) {
     const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
+    // Do not auto-pan while user is manually panning — would cause double-scroll
+    if (STATE.isPanning) {
+        stopAutoScroll();
+        return;
+    }
+
+    // Do not trigger if cursor is outside the wrapper bounds entirely
     const rect = wrapper.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right ||
+        e.clientY < rect.top  || e.clientY > rect.bottom) {
+        stopAutoScroll();
+        return;
+    }
+
     const { margin } = STATE.autoScroll;
     
     let velX = 0;
