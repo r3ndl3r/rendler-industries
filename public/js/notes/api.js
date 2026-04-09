@@ -82,7 +82,11 @@ function deleteNote(id) {
         onConfirm: async () => {
             const res = await apiPost('/notes/api/delete', { id: id, canvas_id: STATE.canvas_id });
             if (res && res.success) {
-                STATE.notes         = res.notes;
+                if (typeof window.mergeNoteState === 'function') {
+                    window.mergeNoteState(res.notes);
+                } else {
+                    STATE.notes = res.notes;
+                }
                 STATE.last_mutation = res.last_mutation;
                 if (typeof renderUI === 'function') renderUI();
                 showToast('Note moved to Recycle Bin', 'success');
@@ -121,7 +125,11 @@ async function syncNotePosition(id, type = 'normal') {
     try {
         const res = await apiPost('/notes/api/save', params);
         if (res && res.success) {
-            STATE.notes = res.notes; // State Sync
+            if (typeof window.mergeNoteState === 'function') {
+                window.mergeNoteState(res.notes);
+            } else {
+                STATE.notes = res.notes;
+            }
             STATE.last_mutation = res.last_mutation;
             STATE.note_map      = res.note_map || STATE.note_map;
         }
@@ -299,13 +307,13 @@ async function copyNoteToLevel(id, newLevelId) {
         });
 
         if (res && res.success) {
-            STATE.notes         = res.notes;
+            if (typeof window.mergeNoteState === 'function') {
+                window.mergeNoteState(res.notes);
+            } else {
+                STATE.notes = res.notes;
+            }
             STATE.last_mutation = res.last_mutation;
             STATE.note_map      = res.note_map || STATE.note_map;
-            showToast(`Note copied to Level ${newLevelId}`, 'success');
-            
-            // If we copied to the SAME level, re-render immediately.
-            // If we copied to a DIFFERENT level, the note won't appear until we switch.
             if (newLevelId == STATE.activeLayerId && typeof renderUI === 'function') {
                 renderUI();
             }

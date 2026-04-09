@@ -37,7 +37,7 @@ function initResizable(el, note) {
     const stopResize = () => {
         if (!isResizing) return;
         isResizing = false;
-        STATE.isResizing = false;
+        STATE.isResizing = null;
         
         document.removeEventListener('mousemove', doResize);
         document.removeEventListener('mouseup', stopResize);
@@ -58,7 +58,7 @@ function initResizable(el, note) {
         e.preventDefault();
         
         isResizing = true;
-        STATE.isResizing = true;
+        STATE.isResizing = note.id;
         startX = e.clientX;
         startY = e.clientY;
         const style = window.getComputedStyle(el);
@@ -1084,7 +1084,7 @@ async function saveNoteInline(id, stayInEditMode = false) {
             
             // UI Cleanup: Exit edit mode visually and restore button state ONLY if not doing an incremental save
             if (!stayInEditMode) {
-                STATE.isEditingNote = false;
+                STATE.isEditingNote = null;
                 el.classList.remove('is-editing');
                 if (textarea) textarea.readOnly = true;
 
@@ -1101,7 +1101,7 @@ async function saveNoteInline(id, stayInEditMode = false) {
     } finally {
         el.classList.remove('pending');
         // Always release the edit guard so the heartbeat is not permanently inhibited AFTER a final terminal save
-        if (!stayInEditMode) STATE.isEditingNote = false;
+        if (!stayInEditMode) STATE.isEditingNote = null;
     }
 }
 
@@ -1193,7 +1193,7 @@ async function toggleInlineEdit(btn, id) {
 
     if (isEditing) {
         // Mode Transition: Enable Interaction & Focus
-        STATE.isEditingNote  = true;
+        STATE.isEditingNote  = id;
         
         btn.innerHTML = '💾';
         btn.title     = 'Save Changes';
@@ -1305,7 +1305,7 @@ function handleNoteKeydown(e, id) {
                 btn.innerHTML = '✏️';
                 btn.classList.remove('pulse-glow');
             }
-            STATE.isEditingNote = false;
+            STATE.isEditingNote = null;
         }
     }
 }
