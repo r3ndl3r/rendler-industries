@@ -369,7 +369,34 @@ async function handleGlobalClipPaste(e) {
             reader.readAsDataURL(blob);
             break;
         } else if (item.type === 'text/plain') {
-            item.getAsString((text) => {
+            item.getAsString(async (text) => {
+                // 🚀 Smart Paste: Detect internal whiteboard asset URLs
+                // This enables a seamless "Link-to-Asset" conversion during copy-paste workflows.
+                const attMatch = text.trim().match(/\/notes\/attachment\/serve\/(\d+)/);
+                if (attMatch && typeof showCreateNoteModal === 'function') {
+                    const blobId = attMatch[1];
+                    try {
+                        const res = await fetch(`/notes/attachment/serve/${blobId}`);
+                        if (res.ok) {
+                            const contentType = res.headers.get('Content-Type');
+                            const isImage     = contentType && contentType.startsWith('image/');
+                            
+                            if (isImage) {
+                                const blob    = await res.blob();
+                                const dataUrl = await new Promise(resolve => {
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => resolve(ev.target.result);
+                                    reader.readAsDataURL(blob);
+                                });
+                                showCreateNoteModal('image', dataUrl);
+                                return;
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('Smart Paste resolution failed, falling back to text:', err);
+                    }
+                }
+
                 if (typeof showCreateNoteModal === 'function') {
                     showCreateNoteModal('text', text);
                 }

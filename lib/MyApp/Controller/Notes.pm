@@ -345,6 +345,7 @@ sub serve_blob {
     my $disposition = ($blob->{mime_type} =~ m/^image\//) ? 'inline' : 'attachment';
     $c->res->headers->content_disposition("$disposition; filename=\"$filename\"");
     $c->res->headers->content_type($blob->{mime_type});
+    $c->res->headers->header('Access-Control-Allow-Origin' => '*');
     $c->render(data => $blob->{file_data});
 }
 
@@ -364,6 +365,7 @@ sub serve_attachment_blob {
     my $disposition = ($blob->{mime_type} =~ m/^(image\/|application\/pdf)/) ? 'inline' : 'attachment';
     $c->res->headers->content_disposition("$disposition; filename=\"$filename\"");
     $c->res->headers->content_type($blob->{mime_type});
+    $c->res->headers->header('Access-Control-Allow-Origin' => '*');
     $c->render(data => $blob->{file_data});
 }
 # --- Multi-Canvas API Expansion ---

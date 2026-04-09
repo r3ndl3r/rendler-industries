@@ -1416,30 +1416,48 @@ async function toggleNoteCheckbox(event, id, lineIndex) {
     }
 }
 /**
- * Universal Clipboard Driver: Synchronizes text to the OS clipboard.
+ * System Clipboard Interface: Synchronizes text and optionally image data to the local OS.
  * Gracefully handles unsecured contexts (non-HTTPS) via legacy fallback.
- * @param {string} text - The payload to copy.
+ * @param {string} text - The text payload to copy.
+ * @param {Blob} imageBlob - Optional PNG blob for rich media copying.
  * @returns {Promise<boolean>} - Success state.
  */
-async function copyToClipboard(text) {
-    if (!text) return false;
+async function copyToClipboard(text, imageBlob = null) {
+    if ((typeof text !== 'string' || text.length === 0) && !imageBlob) return false;
 
     // 1. Primary Strategy: Modern Clipboard API (Secure Context Required)
     if (navigator.clipboard && window.isSecureContext) {
         try {
-            await navigator.clipboard.writeText(text);
-            return true;
+            if (imageBlob && window.ClipboardItem) {
+                // Construct a multi-type clipboard item (Text + Image)
+                const data = {
+                    'text/plain': new Blob([text || ''], { type: 'text/plain' })
+                };
+                
+                // Note: Standard browser clipboard API strictly requires PNG for image storage
+                if (imageBlob.type === 'image/png') {
+                    data['image/png'] = imageBlob;
+                }
+                
+                const item = new ClipboardItem(data);
+                await navigator.clipboard.write([item]);
+                return true;
+            } else if (text) {
+                await navigator.clipboard.writeText(text);
+                return true;
+            }
         } catch (err) {
             console.warn('Modern Clipboard API failed, attempting fallback:', err);
         }
     }
 
     // 2. Secondary Strategy: Dynamic Textarea Elevation (Unsecured Context Fallback)
+    // IMPORTANT: Images CANNOT be copied in non-secure contexts due to browser security policies.
+    if (!text) return false;
     try {
         const textArea = document.createElement("textarea");
         textArea.value = text;
         
-        // Hide from layout and perspective
         textArea.style.position = "fixed";
         textArea.style.left = "-9999px";
         textArea.style.top = "0";
@@ -1447,6 +1465,7 @@ async function copyToClipboard(text) {
         
         textArea.focus();
         textArea.select();
+        textArea.setSelectionRange(0, 99999);
         
         const successful = document.execCommand('copy');
         document.body.removeChild(textArea);
@@ -1459,23 +1478,102 @@ async function copyToClipboard(text) {
 
 /**
  * System Clipboard Interface: Synchronizes note content to the local OS clipboard.
- * Formats the payload as a structured text block (Title + Content).
+ * Formats the payload as a structured text block while attempting rich media copy.
  * @param {number|string} id - The note ID.
  * @returns {Promise<void>}
  */
 async function copyNoteToClipboard(id) {
-    const note = STATE.note_map[id];
+    const note = STATE.notes.find(n => n.id == id) || STATE.note_map[id];
     if (!note) {
         showToast('Note data not found', 'error');
         return;
     }
 
-    const text = `${note.title || 'Untitled Note'}\n${'='.repeat(note.title ? note.title.length : 13)}\n\n${note.content || ''}`;
+    let text = note.content || '';
+    const attachments = note.attachments || [];
+    const firstBlobId = note.blob_id || (attachments[0] ? attachments[0].blob_id : null);
+    
+    // 1. Build Comprehensive Text Payload (Names + Public URLs)
+    const attachmentLines = new Set();
+    const publicUrls      = [];
+    
+    if (note.filename) attachmentLines.add(note.filename);
+    
+    attachments.forEach(a => {
+        if (a.filename) attachmentLines.add(a.filename);
+        if (a.blob_id) {
+            publicUrls.push(`${window.location.origin}/notes/attachment/serve/${a.blob_id}`);
+        }
+    });
 
-    if (await copyToClipboard(text)) {
-        showToast('Note Copied', 'success');
+    // Handle legacy single-asset notes without explicit attachments array
+    if (firstBlobId && publicUrls.length === 0) {
+        publicUrls.push(`${window.location.origin}/notes/attachment/serve/${firstBlobId}`);
+    }
+
+    if (attachmentLines.size > 0 || publicUrls.length > 0) {
+        let attSection = Array.from(attachmentLines).join('\n');
+        if (publicUrls.length > 0) {
+            attSection += (attSection ? '\n' : '') + publicUrls.join('\n');
+        }
+        text = text ? `${text}\n\n${attSection}` : attSection;
+    }
+
+    // Last Resort Fallback: Ensure even metadata-only notes copy something
+    if ((!text || text.trim().length === 0) && note.title) {
+        text = note.title;
+    }
+
+    if (!text || text.trim().length === 0) {
+        showToast('Note is completely empty', 'info');
+        return;
+    }
+
+    // 2. Rich Media Strategy: Attempt to fetch and copy the first image payload
+    let imageBlob = null;
+    const firstImageAtt = attachments.find(a => a.mime_type?.startsWith('image/'));
+    const isImageNote   = note.type === 'image' || !!firstImageAtt;
+    const targetBlobId  = firstImageAtt ? firstImageAtt.blob_id : (note.blob_id || firstBlobId);
+
+    if (isImageNote && targetBlobId && window.isSecureContext) {
+        try {
+            const res  = await fetch(`/notes/attachment/serve/${targetBlobId}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const raw  = await res.blob();
+            
+            // Interaction Optimization: Browsers strictly require PNG for clipboard storage.
+            if (raw.type !== 'image/png') {
+                const img = new Image();
+                img.crossOrigin = "anonymous"; // Stability: Prevent canvas tainting
+                img.src = URL.createObjectURL(raw);
+                
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = () => reject(new Error('Image load failed'));
+                });
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                
+                imageBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+                URL.revokeObjectURL(img.src);
+            } else {
+                imageBlob = raw;
+            }
+        } catch (e) {
+            console.warn('Rich media fetch failed, falling back to text payload only:', e);
+            // Non-critical: We don't toast here to avoid spamming the user if they're on a slow connection.
+            // The text payload (URLs + Filenames) will still be copied.
+        }
+    }
+
+    if (await copyToClipboard(text, imageBlob)) {
+        showToast(imageBlob ? 'Image & Content Copied' : 'Content Copied', 'success');
     } else {
-        showToast('Copy failed: Unsecured context?', 'error');
+        showToast('Clipboard access denied', 'error');
     }
 }
 
