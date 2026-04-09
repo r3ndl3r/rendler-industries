@@ -39,9 +39,10 @@ const STATE = {
     panStart:       { x:0, y:0, scrollX:0, scrollY:0 },
     last_mutation:  null,           // Synchronization Baseline
     heartbeatTimer: null,           // Active Polling Reference
+    heartbeatController: null,      // AbortController: Standardizes request cancellation
     lastPolledCanvasId: null,      // Context Shift Guard: Prevents redundant timer resets
-    isResizing:     false,          // Note Dimensions State
-    isEditingNote:  false,          // Inline Editor Active State
+    isResizing:     null,          // Interaction ID: Stores active Note ID for merging (formerly boolean)
+    isEditingNote:  null,          // Interaction ID: Stores active Note ID for merging (formerly boolean)
     activeLayerId:  1,               // Level Isolation Filter (1-99)
     layer_map:      {},              // Shared Level Aliases { layer_id => alias }
     isSwitchingLayer: false,         // Interaction Guard: Prevents overlapping transitions
@@ -469,6 +470,7 @@ async function initNotes() {
  * @returns {Promise<void>}
  */
 async function loadState(initial = false, canvas_id = null, targetNoteId = null, layer_id = null) {
+    if (STATE.isSyncing) return false; // Hard Guard: Prevents re-entrant hydration cycles
     STATE.isSyncing = true;
     if (initial) STATE.isInitializing = true; // Protect interface state during initial hydration
 
@@ -496,7 +498,11 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         const isContextChange = (tid && tid != STATE.canvas_id) || (layer_id && layer_id != STATE.activeLayerId);
 
         if (data.success) {
-            STATE.notes    = data.notes    || [];
+            if (typeof mergeNoteState === 'function') {
+                mergeNoteState(data.notes || []);
+            } else {
+                STATE.notes = data.notes || [];
+            }
             STATE.canvases = data.canvases || [];
             STATE.user_id  = data.user_id;
             STATE.canvas_id  = data.canvas_id; // Resolved active context
@@ -635,11 +641,44 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         if (!nid) STATE.isInitializing = false;
     }
 
-    // Render UI after all state is consolidated.
-    // Executed unconditionally to ensure the loading skeleton is removed even on failure.
+    // Render UI after all state is consolidated
     if (typeof renderUI === 'function') renderUI();
 
     return true;
+}
+
+/**
+ * Surgical State Hydration
+ * Merges incoming note data while preserving local state for notes currently being manipulated.
+ * @param {Array} incomingNotes - Fresh note records from the backend.
+ */
+function mergeNoteState(incomingNotes) {
+    const activeIds = new Set();
+    if (STATE.pickedNoteId !== null) activeIds.add(String(STATE.pickedNoteId));
+    if (STATE.isResizing   !== null) activeIds.add(String(STATE.isResizing));
+    if (STATE.isEditingNote !== null) activeIds.add(String(STATE.isEditingNote));
+
+    // 1. Integration: Update existing and inject new records
+    incomingNotes.forEach(incoming => {
+        const idStr = String(incoming.id);
+        if (activeIds.has(idStr)) return; // Lockout: Preserve local unsynced state for active notes
+
+        const existing = STATE.notes.find(n => n.id == incoming.id);
+        if (existing) {
+            // Efficiency: Sync all properties into the existing object reference
+            Object.assign(existing, incoming);
+        } else {
+            STATE.notes.push(incoming);
+        }
+    });
+
+    // 2. Pruning: Remove notes that are missing from the server scope
+    const incomingIds = new Set(incomingNotes.map(n => String(n.id)));
+    STATE.notes = STATE.notes.filter(n => {
+        const idStr = String(n.id);
+        // Safety: Keep notes even if missing from server if they are active (prevents deletion mid-drag)
+        return incomingIds.has(idStr) || activeIds.has(idStr);
+    });
 }
 
 /**
@@ -659,19 +698,30 @@ window.setupHeartbeat = function setupHeartbeat() {
         return;
     }
 
-    // Synchronous Teardown: Ensure no duplicate intervals exist during context shifts
+    // Synchronous Teardown: Ensure no duplicate intervals/controllers exist during context shifts
     if (STATE.heartbeatTimer) {
-        clearInterval(STATE.heartbeatTimer);
+        clearTimeout(STATE.heartbeatTimer);
         STATE.heartbeatTimer = null;
     }
     
+    // Abort in-flight requests from the previous context to prevent stale hydration
+    if (STATE.heartbeatController) {
+        STATE.heartbeatController.abort();
+        STATE.heartbeatController = null;
+    }
+
     // Lock the context immediately to prevent race conditions during async initialization
     STATE.lastPolledCanvasId = canvasId;
     
-    STATE.heartbeatTimer = setInterval(async () => {
+    async function poll() {
         // Inner Guard: Protect against mid-teardown ticks or race conditions
-        if (!STATE.canvas_id || STATE.isInitializing) return;
+        if (!STATE.canvas_id || STATE.isInitializing) {
+            STATE.heartbeatTimer = setTimeout(poll, 2000);
+            return;
+        }
 
+        const layerId = STATE.activeLayerId; // Capture current context baseline
+        
         // Interaction Inhibition: Prevent state hydration during active gestures
         const isInteracting = STATE.isPanning      || 
                               STATE.isResizing     || 
@@ -681,20 +731,42 @@ window.setupHeartbeat = function setupHeartbeat() {
                               ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) ||
                               document.hidden;
 
-        if (isInteracting || STATE.isSyncing) return;
-        
+        if (isInteracting || STATE.isSyncing) {
+            STATE.heartbeatTimer = setTimeout(poll, 2000);
+            return;
+        }
+
+        // Fresh controller for this specific request cycle
+        STATE.heartbeatController = new AbortController();
+        const signal = STATE.heartbeatController.signal;
+
         try {
-            // Heartbeat remains stable across level switches (dynamic STATE read)
-            const res = await fetch(`/notes/api/heartbeat/${STATE.canvas_id}?layer_id=${STATE.activeLayerId}`);
+            const res = await fetch(`/notes/api/heartbeat/${STATE.canvas_id}?layer_id=${STATE.activeLayerId}`, { signal });
             const data = await res.json();
             
             if (data.success && data.last_mutation !== STATE.last_mutation) {
-                await loadState(false, STATE.canvas_id, null, STATE.activeLayerId);
+                // Perform hydration only if context hasn't changed during the fetch
+                if (STATE.canvas_id === canvasId && STATE.activeLayerId === layerId && !signal.aborted) {
+                    await loadState(false, STATE.canvas_id, null, STATE.activeLayerId);
+                }
             }
         } catch (e) {
-            // Heartbeat failures are non-critical (Network jitter)
+            // AbortError is expected and silent during transitions
+            if (e.name !== 'AbortError') {
+                console.warn('Heartbeat suppressed:', e.message);
+            }
+        } finally {
+            STATE.heartbeatController = null;
+            // Generation Check: Only reschedule if this loop is still the active context baseline.
+            // This prevents a 'ghost loop' from resurrecting after an AbortError during context switch.
+            if (STATE.lastPolledCanvasId === canvasId) {
+                STATE.heartbeatTimer = setTimeout(poll, 2000);
+            }
         }
-    }, 2000); // 2s Cycle: Responsive real-time experience
+    }
+
+    // Initiate the recursive loop
+    STATE.heartbeatTimer = setTimeout(poll, 2000);
 }
 
 /**
@@ -709,5 +781,6 @@ function clearDOMCache() {
 // Global Exposure Block
 window.loadState = loadState;
 window.initNotes = initNotes;
+window.mergeNoteState = mergeNoteState;
 window.clearDOMCache = clearDOMCache;
 window.STATE = STATE;
