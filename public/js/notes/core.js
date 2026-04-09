@@ -46,6 +46,7 @@ const STATE = {
     layer_map:      {},              // Shared Level Aliases { layer_id => alias }
     isSwitchingLayer: false,         // Interaction Guard: Prevents overlapping transitions
     note_map:       {},              // Metadata Registry for [note:#] resolution
+    note_map_hash:  null,            // Synchronization Fingerprint: Enables O(1) heartbeat handshake
     autoScroll: {
         lastEvent: null,
         frame:     null,
@@ -420,6 +421,10 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         let query = tid ? `?canvas_id=${tid}` : '';
         if (nid) query += (query ? '&' : '?') + `note_id=${nid}`;
         if (layer_id) query += (query ? '&' : '?') + `layer_id=${layer_id}`;
+        
+        // 🚀 Protocol Enhancement: Delta-Sync Handshake
+        // Supplying the local hash allows the server to skip the heavy metadata payload.
+        if (STATE.note_map_hash) query += (query ? '&' : '?') + `note_map_hash=${encodeURIComponent(STATE.note_map_hash)}`;
 
         const response = await fetch(`/notes/api/state${query}`);
         const data = await response.json();
@@ -435,10 +440,14 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             
             // State Synchronization: Baseline alignment with backend truth
             STATE.last_mutation = data.last_mutation;
-            STATE.note_map      = data.note_map || {};
-            STATE.layer_map     = data.layer_map || {};
+            
+            // Delta Resolution: Only hydrate metadata if the server provided a fresh object.
+            // Otherwise, preserve existing mapping to save bandwidth and UI processing lock.
+            if (data.note_map) STATE.note_map = data.note_map;
+            STATE.note_map_hash = data.note_map_hash;
 
-            STATE.share_list = data.share_list || [];
+            STATE.layer_map     = data.layer_map || {};
+            STATE.share_list    = data.share_list || [];
             
             // Interaction Optimization: Calculate global Z-index baseline once per hydration
             STATE.maxZ = STATE.notes.reduce((max, n) => Math.max(max, n.z_index || 1), 1);
