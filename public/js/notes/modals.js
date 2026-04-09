@@ -721,6 +721,7 @@ function showBoardInfo() {
                 <li><strong>Ctrl+V</strong> - Paste image to create an Image Note</li>
                 <li><strong>Mouse Wheel</strong> - Pan in any direction</li>
                 <li><strong>Ctrl + Mouse Wheel</strong> - Zoom in/out to scale the perspective</li>
+                <li><strong>Ctrl + F</strong> - Open internal board search</li>
             </ul>
         </div>
     `;
