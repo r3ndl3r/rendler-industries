@@ -1510,12 +1510,12 @@ async function copyToClipboard(text, imageBlob = null) {
 }
 
 /**
- * System Clipboard Interface: Synchronizes note content to the local OS clipboard.
- * Formats the payload as a structured text block while attempting rich media copy.
+ * Universal Clipboard Interface: Handles both full-note copying and specific asset extraction.
  * @param {number|string} id - The note ID.
+ * @param {number|string|null} targetBlobId - Optional specific attachment to copy.
  * @returns {Promise<void>}
  */
-async function copyNoteToClipboard(id) {
+async function copyNoteToClipboard(id, targetBlobId = null) {
     const note = STATE.notes.find(n => n.id == id) || STATE.note_map[id];
     if (!note) {
         showToast('Note data not found', 'error');
@@ -1524,6 +1524,38 @@ async function copyNoteToClipboard(id) {
 
     let text = note.content || '';
     const attachments = note.attachments || [];
+    
+    // Multi-Item Detection: Determines if we should pivot from standard 'Rich Copy' to 'Granular Copy'
+    const hasText = text.trim().length > 0;
+    const isMultiItem = (attachments.length > 1) || (attachments.length === 1 && hasText);
+
+    // CASE A: Targeted Copy (Single Image from a multi-item stack)
+    if (targetBlobId) {
+        const imageBlob = await fetchAndNormalizeImage(targetBlobId);
+        if (imageBlob && await copyToClipboard(null, imageBlob)) {
+            showToast('Image Copied to Clipboard', 'success');
+        } else {
+            showToast(imageBlob ? 'Clipboard access denied' : 'Failed to prepare image for clipboard', 'error');
+        }
+        return;
+    }
+
+    // CASE B: Global Note Copy (The title bar 📋 action)
+    // If the note has multiple items, the title bar button only targets the text for clarity.
+    if (isMultiItem) {
+        if (!text.trim()) {
+            showToast('Use the 📋 buttons on each image to copy', 'info');
+            return;
+        }
+        if (await copyToClipboard(text)) {
+            showToast('Text Content Copied', 'success');
+        } else {
+            showToast('Clipboard access denied', 'error');
+        }
+        return;
+    }
+
+    // CASE C: Legacy/Simple Note Copy (Rich Media Strategy)
     const firstBlobId = note.blob_id || (attachments[0] ? attachments[0].blob_id : null);
     
     // 1. Build Comprehensive Text Payload (Names + Public URLs)
@@ -1531,15 +1563,11 @@ async function copyNoteToClipboard(id) {
     const publicUrls      = [];
     
     if (note.filename) attachmentLines.add(note.filename);
-    
     attachments.forEach(a => {
         if (a.filename) attachmentLines.add(a.filename);
-        if (a.blob_id) {
-            publicUrls.push(`${window.location.origin}/notes/attachment/serve/${a.blob_id}`);
-        }
+        if (a.blob_id) publicUrls.push(`${window.location.origin}/notes/attachment/serve/${a.blob_id}`);
     });
 
-    // Handle legacy single-asset notes without explicit attachments array
     if (firstBlobId && publicUrls.length === 0) {
         publicUrls.push(`${window.location.origin}/notes/attachment/serve/${firstBlobId}`);
     }
@@ -1552,61 +1580,68 @@ async function copyNoteToClipboard(id) {
         text = text ? `${text}\n\n${attSection}` : attSection;
     }
 
-    // Last Resort Fallback: Ensure even metadata-only notes copy something
     if ((!text || text.trim().length === 0) && note.title) {
         text = note.title;
     }
 
-    if (!text || text.trim().length === 0) {
-        showToast('Note is completely empty', 'info');
-        return;
-    }
-
-    // 2. Rich Media Strategy: Attempt to fetch and copy the first image payload
+    // 2. Rich Media Hybrid: Attempt to fetch and copy the first image payload alongside text
     let imageBlob = null;
     const firstImageAtt = attachments.find(a => a.mime_type?.startsWith('image/'));
     const isImageNote   = note.type === 'image' || !!firstImageAtt;
-    const targetBlobId  = firstImageAtt ? firstImageAtt.blob_id : (note.blob_id || firstBlobId);
+    const fallbackBlobId  = firstImageAtt ? firstImageAtt.blob_id : (note.blob_id || firstBlobId);
 
-    if (isImageNote && targetBlobId && window.isSecureContext) {
-        try {
-            const res  = await fetch(`/notes/attachment/serve/${targetBlobId}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const raw  = await res.blob();
-            
-            // Interaction Optimization: Browsers strictly require PNG for clipboard storage.
-            if (raw.type !== 'image/png') {
-                const img = new Image();
-                img.crossOrigin = "anonymous"; // Stability: Prevent canvas tainting
-                img.src = URL.createObjectURL(raw);
-                
-                await new Promise((resolve, reject) => {
-                    img.onload = resolve;
-                    img.onerror = () => reject(new Error('Image load failed'));
-                });
-                
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                
-                imageBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-                URL.revokeObjectURL(img.src);
-            } else {
-                imageBlob = raw;
-            }
-        } catch (e) {
-            console.warn('Rich media fetch failed, falling back to text payload only:', e);
-            // Non-critical: We don't toast here to avoid spamming the user if they're on a slow connection.
-            // The text payload (URLs + Filenames) will still be copied.
-        }
+    if (isImageNote && fallbackBlobId && window.isSecureContext) {
+        imageBlob = await fetchAndNormalizeImage(fallbackBlobId);
+    }
+
+    if (!text?.trim() && !imageBlob) {
+        showToast('Note is empty', 'info');
+        return;
     }
 
     if (await copyToClipboard(text, imageBlob)) {
         showToast(imageBlob ? 'Image & Content Copied' : 'Content Copied', 'success');
     } else {
         showToast('Clipboard access denied', 'error');
+    }
+}
+
+/**
+ * Fetches an image, normalizes it to PNG, and prepares it for clipboard ingestion.
+ * @param {number|string} blobId - Database blob ID.
+ */
+async function fetchAndNormalizeImage(blobId) {
+    if (!window.isSecureContext) return null;
+    try {
+        const res = await fetch(`/notes/attachment/serve/${blobId}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const raw = await res.blob();
+        
+        // Browsers strictly require PNG (and sometimes JPEG) for clipboard storage.
+        if (raw.type !== 'image/png') {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = URL.createObjectURL(raw);
+            
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = () => reject(new Error('Image load failed'));
+            });
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            
+            const pngBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+            URL.revokeObjectURL(img.src);
+            return pngBlob;
+        }
+        return raw;
+    } catch (e) {
+        console.warn(`[fetchAndNormalizeImage] Failed for blob ${blobId}:`, e);
+        return null;
     }
 }
 

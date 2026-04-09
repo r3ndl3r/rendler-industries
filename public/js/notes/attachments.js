@@ -304,9 +304,11 @@ function initDropZones() {
         e.preventDefault();
         canvas.classList.remove('drag-active');
 
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            await handleFileDrop(files[0], e.offsetX, e.offsetY);
+        const files = Array.from(e.dataTransfer.files || []);
+        for (let i = 0; i < files.length; i++) {
+            // Spatial Staggering: Offset subsequent note positions to avoid perfect stacking
+            const offset = i * 20;
+            await handleFileDrop(files[i], e.offsetX + offset, e.offsetY + offset);
         }
     });
 }
@@ -357,51 +359,90 @@ async function handleGlobalClipPaste(e) {
     const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
     if (!items) return;
 
-    for (const item of items) {
-        if (item.type.indexOf('image') !== -1) {
-            const blob = item.getAsFile();
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                if (typeof showCreateNoteModal === 'function') {
-                    showCreateNoteModal('image', event.target.result);
-                }
-            };
-            reader.readAsDataURL(blob);
-            break;
-        } else if (item.type === 'text/plain') {
-            item.getAsString(async (text) => {
-                // 🚀 Smart Paste: Detect internal whiteboard asset URLs
-                // This enables a seamless "Link-to-Asset" conversion during copy-paste workflows.
-                const attMatch = text.trim().match(/\/notes\/attachment\/serve\/(\d+)/);
-                if (attMatch && typeof showCreateNoteModal === 'function') {
-                    const blobId = attMatch[1];
-                    try {
-                        const res = await fetch(`/notes/attachment/serve/${blobId}`);
-                        if (res.ok) {
-                            const contentType = res.headers.get('Content-Type');
-                            const isImage     = contentType && contentType.startsWith('image/');
-                            
-                            if (isImage) {
-                                const blob    = await res.blob();
-                                const dataUrl = await new Promise(resolve => {
-                                    const reader = new FileReader();
-                                    reader.onload = (ev) => resolve(ev.target.result);
-                                    reader.readAsDataURL(blob);
-                                });
-                                showCreateNoteModal('image', dataUrl);
-                                return;
-                            }
-                        }
-                    } catch (err) {
-                        console.warn('Smart Paste resolution failed, falling back to text:', err);
+    let textPayload = null;
+
+    // 1. Identification Phase: Map items to indexed slots for deterministic processing
+    // We treat text/plain and images as our primary artifacts.
+    const processingSlots = Array.from(items).map(async (item, index) => {
+        if (item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+                return new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => resolve({ 
+                        index, 
+                        type: 'image', 
+                        data: ev.target.result 
+                    });
+                    reader.readAsDataURL(file);
+                });
+            }
+        } else if (item.type === 'text/plain' && !textPayload) {
+            const text = await new Promise(resolve => item.getAsString(resolve));
+            textPayload = text;
+            return { index, type: 'text', data: text };
+        }
+        return null;
+    });
+
+    // 2. Collection Phase: Execute all reads concurrently
+    const results = (await Promise.all(processingSlots))
+        .filter(r => r && r.type === 'image')
+        .sort((a, b) => a.index - b.index);
+
+    // 3. Creation Orchestration: Ensure order and namespace integrity
+    if (results.length > 0) {
+        // CASE A: Image-Primary Paste (potentially with accompanying text)
+        // Deterministic: The FIRST image in the clipboard sequence becomes the 'Hero'
+        const primary = results.shift();
+        
+        if (typeof showCreateNoteModal === 'function') {
+            // Logic Note: showCreateNoteModal initializes DRAFT_NOTE synchronously.
+            // We pass the unique filename for the primary image to ensure descriptive consistency.
+            const modalPromise = showCreateNoteModal('image', primary.data, null, textPayload, `pasted_${Date.now()}_${primary.index}.png`);
+            
+            if (results.length > 0 && DRAFT_NOTE) {
+                results.forEach(img => {
+                    DRAFT_NOTE.pendingFiles.push({ 
+                        type: 'image', 
+                        data: img.data, 
+                        // Collision Protection: Use the unique item index to avoid duplicate filenames
+                        filename: `pasted_${Date.now()}_${img.index}.png` 
+                    });
+                });
+                if (typeof renderDraftReel === 'function') renderDraftReel();
+            }
+            await modalPromise;
+        }
+    } else if (textPayload) {
+        // CASE B: Text-Only Paste (with Smart-Reference detection)
+        const text = textPayload.trim();
+
+        const attMatch = text.match(/\/notes\/attachment\/serve\/(\d+)/);
+        if (attMatch && typeof showCreateNoteModal === 'function') {
+            const blobId = attMatch[1];
+            try {
+                const res = await fetch(`/notes/attachment/serve/${blobId}`);
+                if (res.ok) {
+                    const contentType = res.headers.get('Content-Type');
+                    if (contentType && contentType.startsWith('image/')) {
+                        const blob    = await res.blob();
+                        const dataUrl = await new Promise(resolve => {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => resolve(ev.target.result);
+                            reader.readAsDataURL(blob);
+                        });
+                        showCreateNoteModal('image', dataUrl);
+                        return;
                     }
                 }
+            } catch (err) {
+                console.warn('Smart Paste resolution failed:', err);
+            }
+        }
 
-                if (typeof showCreateNoteModal === 'function') {
-                    showCreateNoteModal('text', text);
-                }
-            });
-            break;
+        if (typeof showCreateNoteModal === 'function') {
+            showCreateNoteModal('text', text);
         }
     }
 }

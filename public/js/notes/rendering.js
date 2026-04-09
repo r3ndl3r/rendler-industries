@@ -184,7 +184,7 @@ function updateLevelDisplay() {
  */
 function createNoteElement(note, canEdit = true) {
     const div = document.createElement('div');
-    div.className = `sticky-note ${note.is_collapsed ? 'collapsed' : ''}`;
+    div.className = `sticky-note ${note.is_collapsed ? 'collapsed' : ''} ${canEdit ? 'can-edit' : ''}`;
     div.id = `note-${note.id}`;
     div.dataset.id = note.id;
     
@@ -277,6 +277,10 @@ function generateNoteContentHtml(note, canEdit) {
     const attachments = note.attachments || [];
     const isHeroCandidate = (attachments.length === 1);
     
+    // Multi-Item Detection: Determines if we should show granular asset controls
+    const hasText = note.content && note.content.trim().length > 0;
+    const isMultiItem = (attachments.length > 1) || (attachments.length === 1 && hasText);
+
     if (attachments.length > 0) {
         const firstAtt = attachments[0];
         const firstIsImg = firstAtt.mime_type && firstAtt.mime_type.startsWith('image/');
@@ -288,6 +292,7 @@ function generateNoteContentHtml(note, canEdit) {
                         <img src="/notes/attachment/serve/${firstAtt.blob_id}" class="note-hero-img" alt="${window.escapeHtml(firstAtt.filename)}">
                         <div class="file-name-display" data-blob-id="${firstAtt.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(firstAtt.filename)}</div>
                         <div class="attachment-float-controls">
+                            ${isMultiItem ? `<button class="btn-icon-copy hero-action-btn" onclick="event.stopPropagation(); copyNoteToClipboard(${note.id}, ${firstAtt.blob_id})" title="Copy Image">📋</button>` : ''}
                             <button class="btn-icon-delete hero-action-btn edit-mode-only" onclick="event.stopPropagation(); confirmAttachmentRemoval(${note.id}, ${firstAtt.blob_id})" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                         </div>
                     </div>
@@ -329,6 +334,7 @@ function generateNoteContentHtml(note, canEdit) {
                             <img src="/notes/attachment/serve/${att.blob_id}" class="attachment-full-img" alt="${window.escapeHtml(att.filename)}">
                             <div class="file-name-display" data-blob-id="${att.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(att.filename)}</div>
                             <div class="attachment-float-controls">
+                                <button class="btn-icon-copy reel-action-btn" onclick="event.stopPropagation(); copyNoteToClipboard(${note.id}, ${att.blob_id})" title="Copy Image">📋</button>
                                 <button class="btn-icon-delete reel-action-btn edit-mode-only" onclick="event.stopPropagation(); confirmAttachmentRemoval(${note.id}, ${att.blob_id})" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                             </div>
                         </div>`;

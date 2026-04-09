@@ -1146,7 +1146,7 @@ async function renderBinList() {
  * @param {number|string|null} editId - Optional ID if editing.
  * @returns {Promise<void>}
  */
-async function showCreateNoteModal(type, data, editId = null) {
+async function showCreateNoteModal(type, data, editId = null, initialText = null, filename = null) {
     const modal       = document.getElementById('note-create-modal');
     const container   = document.getElementById('create-note-content');
     const titleInput  = document.getElementById('create-note-title');
@@ -1164,7 +1164,11 @@ async function showCreateNoteModal(type, data, editId = null) {
     
     // Clipboard Lifecycle: If we are pasting an image, populate the pending queue immediately
     if (type === 'image' && data) {
-        DRAFT_NOTE.pendingFiles.push({ type: 'image', data: data, filename: 'pasted_image.png' });
+        DRAFT_NOTE.pendingFiles.push({ 
+            type: 'image', 
+            data: data, 
+            filename: filename || 'pasted_image.png' 
+        });
     }
 
     let note = null;
@@ -1211,8 +1215,9 @@ async function showCreateNoteModal(type, data, editId = null) {
     if (note) {
         editor.value = note.content || '';
     } else if (data && typeof data === 'string' && type === 'text') {
-        // Guard: only accept string payloads (clipboard paste). 
         editor.value = data;
+    } else if (initialText) {
+        editor.value = initialText;
     }
 
     container.appendChild(editor);
