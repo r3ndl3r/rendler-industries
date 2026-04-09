@@ -76,6 +76,22 @@ sub api_state {
     my $notes      = $c->db->get_user_notes($user_id, $cid);
     my $share_list = $c->db->get_canvas_shares($cid);
 
+    # 🚀 Performance Optimization: Delta Handshake
+    # Logic: If the client provides a hash that matches our DB fingerprint, we skip the O(N) metadata fetch.
+    my $client_hash = $c->param('note_map_hash') || '';
+    my $fingerprint = $c->db->get_note_map_fingerprint($user_id);
+    
+    my $note_map;
+    if (!defined $fingerprint) {
+        # Recovery: If fingerprint lookup fails, force a full fetch to maintain data integrity
+        $note_map    = $c->db->get_all_accessible_note_metadata($user_id);
+        $fingerprint = ''; 
+    } else {
+        $note_map = ($client_hash ne $fingerprint) 
+                  ? $c->db->get_all_accessible_note_metadata($user_id) 
+                  : undef;
+    }
+
     $c->render(json => {
         success       => 1,
         canvas_id     => int($cid),
@@ -84,7 +100,8 @@ sub api_state {
         canvases      => $canvases,
         viewport      => $viewport,
         share_list    => $share_list,
-        note_map      => $c->db->get_all_accessible_note_metadata($user_id),
+        note_map      => $note_map,
+        note_map_hash => $fingerprint,
         layer_map     => $c->db->get_canvas_layers($cid),
         last_mutation => $c->db->get_board_mutation_time($cid)
     });
