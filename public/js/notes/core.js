@@ -51,7 +51,7 @@ const STATE = {
         lastEvent: null,
         frame:     null,
         active:    false,
-        margin:    80,             // Proximity triggers (px)
+        margin:    15,             // Proximity triggers (px)
         maxSpeed:  15              // Peak velocity at absolute edge
     },
     syncQueue:      [],              // Transactional Retry Container
@@ -127,10 +127,22 @@ async function initNotes() {
     window.addEventListener('mousemove', (e) => {
         if (typeof handleCanvasMouseMove === 'function') handleCanvasMouseMove(e);
         if (typeof handleRadarMouseMove === 'function') handleRadarMouseMove(e);
+        // Free-roam auto-pan: evaluate edge proximity on every mouse move
+        if (typeof checkAutoScrollProximity === 'function') checkAutoScrollProximity(e);
     });
     window.addEventListener('mouseup', (e) => {
         if (typeof handleCanvasMouseUp === 'function') handleCanvasMouseUp(e);
         if (typeof handleRadarMouseUp === 'function') handleRadarMouseUp(e);
+    });
+
+    // Stop auto-pan when mouse exits the browser viewport (taskbar, OS chrome, etc.)
+    document.addEventListener('mouseleave', () => {
+        if (typeof stopAutoScroll === 'function') stopAutoScroll();
+    });
+
+    // Stop auto-pan when the window loses focus (Alt+Tab, clicking taskbar, etc.)
+    window.addEventListener('blur', () => {
+        if (typeof stopAutoScroll === 'function') stopAutoScroll();
     });
 
     // ─── Selection Containment ── Selection Blinder Pattern ───────────────────
@@ -143,6 +155,10 @@ async function initNotes() {
         document.addEventListener('mousedown', (e) => {
             const sourceNote = e.target.closest('.sticky-note');
             if (!sourceNote) {
+                _selBlocked.forEach(el => {
+                    el.style.removeProperty('user-select');
+                    el.style.removeProperty('-webkit-user-select');
+                });
                 _selBlocked = [];
                 return;
             }
@@ -284,8 +300,8 @@ async function initNotes() {
                 const isTrigger = e.target.closest('.note-check-trigger, .note-link-trigger, .reel-action-btn, .btn-icon-drawer');
                 
                 // --- 2. Focus Management (Z-Index) ---
-                // Logic: Promote to foreground only if not already top-level
-                if (note && note.z_index < STATE.maxZ) {
+                // Logic: Promote to foreground only if not already top-level and not clicking a trigger
+                if (!isTrigger && note && note.z_index < STATE.maxZ) {
                     const newZ = ++STATE.maxZ;
                     note.z_index = newZ;
                     noteEl.style.zIndex = newZ;
@@ -372,6 +388,11 @@ async function initNotes() {
     // Persist scroll position on scroll (debounced)
     if (wrapper) {
         if (typeof onViewportScroll === 'function') wrapper.addEventListener('scroll', onViewportScroll);
+        
+        // Stop auto-pan immediately when cursor exits the canvas viewport
+        wrapper.addEventListener('mouseleave', () => {
+            if (typeof stopAutoScroll === 'function') stopAutoScroll();
+        });
     }
 
     // Interaction: Activate Drag-and-Drop File Engine
@@ -614,7 +635,8 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         if (!nid) STATE.isInitializing = false;
     }
 
-    // Render UI after all state is consolidated
+    // Render UI after all state is consolidated.
+    // Executed unconditionally to ensure the loading skeleton is removed even on failure.
     if (typeof renderUI === 'function') renderUI();
 
     return true;
@@ -652,7 +674,6 @@ window.setupHeartbeat = function setupHeartbeat() {
 
         // Interaction Inhibition: Prevent state hydration during active gestures
         const isInteracting = STATE.isPanning      || 
-                              STATE.isDragging     || 
                               STATE.isResizing     || 
                               STATE.isEditingNote  || 
                               STATE.pickedNoteId   || 
