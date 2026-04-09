@@ -158,6 +158,7 @@ function closeCreateModal() {
  * PDF Viewer Logic
  */
 function openPDFViewer(blobId, filename) {
+    if (STATE.isInitializing) return;
     const modal = document.getElementById('pdf-viewer-modal');
     const frame = document.getElementById('pdf-frame');
     const title = document.getElementById('pdf-viewer-title');
@@ -190,6 +191,7 @@ function closePDFViewer() {
  * Image Visualization: Displays board attachments at full scale.
  */
 function viewNoteImage(noteId, blobId) {
+    if (STATE.isInitializing) return;
     const modal = document.getElementById('image-viewer-modal');
     const img   = document.getElementById('image-viewer-display');
     const title = document.getElementById('image-viewer-title');
@@ -281,6 +283,7 @@ function renameCurrentLevel() {
  * @returns {void}
  */
 function openSearchModal() {
+    if (STATE.isInitializing) return;
     const modal = document.getElementById('note-search-modal');
     const input = document.getElementById('note-search-input');
     if (!modal || !input) return;
@@ -304,6 +307,7 @@ function closeSearchModal() {
 }
 
 function openCanvasManager() {
+    if (STATE.isInitializing) return;
     const modal = document.getElementById('canvas-manager-modal');
     if (modal) {
         renderCanvasList();
@@ -663,6 +667,7 @@ function closeBoardSettings() {
 }
 
 function openBinModal() {
+    if (STATE.isInitializing) return;
     const modal = document.getElementById('note-bin-modal');
     if (modal) {
         renderBinList();
