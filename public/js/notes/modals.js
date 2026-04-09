@@ -1488,14 +1488,14 @@ function setupHeaderInteractions() {
     const levelUp = document.querySelector('.btn-level-up');
     if (levelUp) {
         levelUp.addEventListener('click', () => {
-            if (typeof moveLevel === 'function') moveLevel(1);
+            if (typeof moveLevel === 'function') moveLevel(-1);
         });
     }
 
     const levelDown = document.querySelector('.btn-level-down');
     if (levelDown) {
         levelDown.addEventListener('click', () => {
-            if (typeof moveLevel === 'function') moveLevel(-1);
+            if (typeof moveLevel === 'function') moveLevel(1);
         });
     }
 

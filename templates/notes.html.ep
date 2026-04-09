@@ -33,12 +33,12 @@
 
 <div class="level-switcher-container">
     <div class="level-tracks">
-        <button class="level-btn btn-level-up" title="Move up one layer">
+        <button class="level-btn btn-level-up" title="Decrement Level (-1)">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 17l8-10 8 10z"/></svg>
         </button>
         <div class="level-indicator-pill" id="level-display" title="Jump to Level">1</div>
         <div class="level-column-group">
-            <button class="level-btn btn-level-down" title="Move down one layer">
+            <button class="level-btn btn-level-down" title="Increment Level (+1)">
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 7l8 10 8-10z"/></svg>
             </button>
             <button class="level-btn btn-level-rename" title="Rename this level">
