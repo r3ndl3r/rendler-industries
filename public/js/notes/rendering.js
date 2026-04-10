@@ -4,6 +4,21 @@
 window._renderErrors = new Set();
 
 /**
+ * Dynamic Module Injection: NoteParser
+ * Ensures the secure tokenizer is loaded before use without requiring HTML modification.
+ */
+(function() {
+    if (typeof NoteParser === 'undefined') {
+        const script = document.createElement('script');
+        script.src = '/js/notes/note-parser.js';
+        script.async = true; // Allow parallel fetch
+        // Synchronization: Trigger a fresh render once the module is available
+        script.onload = () => { if (typeof renderUI === 'function') renderUI(); };
+        document.head.appendChild(script);
+    }
+})();
+
+/**
  * Renders all sticky notes and updates the UI state.
  * @returns {void}
  */
@@ -382,123 +397,13 @@ function generateNoteContentHtml(note, canEdit) {
 function formatNoteContent(content, noteId) {
     if (!content) return '';
 
-    // 1. SECURITY: Split content into lines and escape each line individually.
-    // This preserves \n for later <br> conversion while preventing XSS.
-    let escapedLines = content.split('\n').map(line => window.escapeHtml(line));
+    // Safety Gate: Ensure Parser is loaded. If not, emit safe literal text.
+    if (typeof NoteParser === 'undefined') {
+        console.warn('NoteParser not ready; falling back to literal rendering.');
+        return window.escapeHtml(content).replace(/\n/g, '<br>');
+    }
 
-    // 2. TRANSFORMATION: Checkboxes / Todo Lists
-    let processedContent = escapedLines.map((line, index) => {
-        // High-Fidelity Regex: Matches [], [ ], [x], and [X] at the start of the line (ignoring indentation)
-        const match = line.match(/^(\s*)\[( |x|)\](.*)$/);
-        if (match) {
-            const prefix   = match[1];
-            const state    = match[2];
-            const text     = match[3].trim();
-            const checked  = state === 'x';
-            const checkedClass = checked ? 'checked' : '';
-            
-            return `${prefix}<span class="checkbox-row-inline note-check-trigger ${checkedClass}" data-note-id="${noteId}" data-index="${index}"><span class="cb ${checkedClass}"></span>${text}</span>`;
-        }
-        return line;
-    }).join('\n');
-
-    // 3. TRANSFORMATION: [color:#hex]...[/color]
-    processedContent = processedContent.replace(/\[color:(#?[a-zA-Z0-9]+)\](.*?)\[\/color\]/g, (match, color, text) => {
-        // Security Hardening: Validate hex or system-named color allowlist
-        const isHex = /^#[0-9a-fA-F]{3,8}$/.test(color);
-        const systemColors = ['yellow', 'blue', 'pink', 'orange', 'violet', 'indigo', 'slate', 'green', 'red'];
-        const isNamed = systemColors.includes(color.toLowerCase());
-
-        if (isHex || isNamed) {
-            return `<span style="color: ${color}">${text}</span>`;
-        }
-        return text; // Fail-safe: Render plain text if identifier is invalid
-    });
-
-    // 4. TRANSFORMATION: [note:123] Reference Resolution
-    processedContent = processedContent.replace(/\[note:(\d+)\]/g, (match, id) => {
-        const target = STATE.note_map[id];
-        const safeTitle = target ? window.escapeHtml(target.title || target) : `Note #${id}`;
-        return `<span class="note-ref note-link-trigger" data-target-id="${id}" title="Jump to Note: ${safeTitle}">${safeTitle}</span>`;
-    });
-
-    // 5. TRANSFORMATION: [img:id|width] or [image:id:scale]
-    processedContent = processedContent.replace(/\[(?:img|image):(\d+)(?:[:|](\d+(?:\.\d+)?))?\]/g, (match, id, val) => {
-        const meta = STATE.note_map[id];
-        let width = 100;
-        if (val) {
-            width = parseFloat(val) <= 1.0 ? parseFloat(val) * 100 : parseFloat(val);
-        }
-
-        // Resolving the Image Source: Checking both direct properties and attachment arrays
-        const attachments = meta ? (meta.attachments || []) : [];
-        const blobId      = (meta && meta.blob_id) ? meta.blob_id : (attachments[0] ? attachments[0].blob_id : null);
-        const src         = blobId ? `/notes/attachment/serve/${blobId}` : `/notes/serve/${id}`;
-        const safeTitle   = meta   ? window.escapeHtml(meta.title || id) : `Image #${id}`;
-        
-        // Interaction Logic: Direct viewing for blobs, navigation as fallback
-        const viewAction = blobId ? `if(typeof viewNoteImage === 'function') viewNoteImage(${id}, ${blobId});` : `if(typeof handleNoteLinkClick === 'function') handleNoteLinkClick(${id});`;
-
-        // Metadata Breakdown
-        const att         = attachments[0] || {};
-        const ext         = att.mime_type ? att.mime_type.split('/')[1].toUpperCase() : 'IMG';
-        const sizeStr     = att.file_size ? `${window.formatBytes(att.file_size)}` : '';
-        const metaInfo    = [ext, sizeStr, `#${id}`].filter(Boolean).join(' • ');
-
-        return `<div class="note-embedded-wrap" onclick="${viewAction} event.stopPropagation();" title="View: ${safeTitle}" style="width: ${width}%;"><img src="${src}" class="note-embedded-img" alt="${safeTitle}" loading="lazy"><div class="note-embedded-caption">🖼️ ${safeTitle} (${metaInfo})</div></div>`;
-    });
-
-    // 6. Transformation: [file:123]
-    processedContent = processedContent.replace(/\[file:(\d+)\]/g, (match, id) => {
-        const meta        = STATE.note_map[id];
-        const attachments = meta ? (meta.attachments || []) : [];
-        const blobId      = (meta && meta.blob_id) ? meta.blob_id : (attachments[0] ? attachments[0].blob_id : null);
-        const src         = blobId ? `/notes/attachment/serve/${blobId}` : `/notes/serve/${id}`;
-        const safeTitle   = meta   ? window.escapeHtml(meta.title || id) : `File #${id}`;
-        return `<a href="${src}" class="note-ref" download onclick="event.stopPropagation()"><span class="global-icon">📁</span> ${safeTitle}</a>`;
-    });
-
-    // 7. Transformation: [iframe:url] or [iframe:url|height]
-    processedContent = processedContent.replace(/\[iframe:(.*?)(?:\|(\d+))?\]/g, (match, url, height) => {
-        const trimmedUrl = url.trim();
-        // Validation: Only allow absolute http/https URLs to prevent relative path 404s and security risks
-        if (!/^https?:\/\//i.test(trimmedUrl)) {
-            return match; // Return as literal text if it's not a valid web URL
-        }
-
-        const safeUrl = window.escapeHtml(encodeURI(trimmedUrl));
-        
-        // Use numeric coercion for dimensions to prevent attribute injection. 
-        // NaN/0 both correctly fall back to the fill class.
-        const safeHeight = parseInt(height, 10);
-        const style = safeHeight ? `style="height: ${safeHeight}px;"` : 'class="iframe-fill"';
-        
-        return `<div class="note-iframe-wrap" ${style}><iframe src="${safeUrl}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe></div>`;
-    });
-
-    // 8. Transformation: Markdown Links [Label](URL)
-    processedContent = processedContent.replace(/\[(.*?)\]\((https?:\/\/[^\s\)]+)\)/g, (match, label, url) => {
-        // High-Fidelity URL Protection: 
-        // href gets structural encoding (encodeURI) + attribute escaping (escapeHtml)
-        const safeUrl  = window.escapeHtml(encodeURI(url));
-        const safeText = window.escapeHtml(label);
-        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="note-external-link" onclick="event.stopPropagation()">${safeText}</a>`;
-    });
-
-    // 9. Transformation: Raw URL Linkification (http/https)
-    processedContent = processedContent.replace(/(^|\s)(https?:\/\/[^\s<]+)/g, (match, prefix, url) => {
-        const safeUrl  = window.escapeHtml(encodeURI(url));
-        const safeText = window.escapeHtml(url);
-        return `${prefix}<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="note-external-link" onclick="event.stopPropagation()">${safeText}</a>`;
-    });
-
-    // 10. Transformation: Basic Markdown & Line Breaks
-    processedContent = processedContent
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/\n/g, '<br>');
-
-    return processedContent;
+    return NoteParser.parse(content, noteId);
 }
 
 /**
@@ -509,6 +414,7 @@ function formatNoteContent(content, noteId) {
 function normalizeColorHex(color) {
     if (!color) return '#fef3c7';
     
+    // Core Project Palette: Semantic tokens mapped to canonical hex
     const map = {
         'yellow':  '#f59e0b',
         'blue':    '#3b82f6',
@@ -518,7 +424,13 @@ function normalizeColorHex(color) {
         'indigo':  '#6366f1',
         'slate':   '#64748b',
         'green':   '#22c55e',
-        'red':     '#ef4444'
+        'red':     '#ef4444',
+        // Semantic Extensions
+        'accent':  '#3b82f6',
+        'info':    '#3b82f6',
+        'success': '#10b981',
+        'danger':  '#ef4444',
+        'warning': '#f59e0b'
     };
     
     return map[color.toLowerCase()] || (color.startsWith('#') ? color : '#f59e0b');
@@ -538,5 +450,6 @@ window.formatBytes = function(bytes, decimals = 1) {
 };
 
 // Global Orchestration Handlers
+window.normalizeColorHex = typeof normalizeColorHex !== 'undefined' ? normalizeColorHex : null;
 window.generateNoteContentHtml = typeof generateNoteContentHtml !== 'undefined' ? generateNoteContentHtml : null;
 window.renderUI = typeof renderUI !== 'undefined' ? renderUI : null;
