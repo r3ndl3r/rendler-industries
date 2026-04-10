@@ -282,8 +282,14 @@ sub startup {
         run_maintenance => sub {
             my $c = shift;
 
+            # Level 1: Simultaneous Execution Lock (Session-based)
             my ($lock) = $c->db->{dbh}->selectrow_array("SELECT GET_LOCK('mojo_maintenance', 0)");
             return unless $lock;
+
+            # Level 2: Sequential/Minute Lock (Timestamp-based)
+            # Ensures the task runs exactly once per minute across all workers
+            my $epoch_min = int(time / 60);
+            return unless $c->db->try_acquire_maintenance_lock($epoch_min);
 
             $c->log->info("Background maintenance: Lock acquired. Starting tasks...");
 
