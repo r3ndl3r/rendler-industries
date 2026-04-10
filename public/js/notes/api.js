@@ -66,6 +66,12 @@ async function apiGet(url) {
 }
 
 /**
+ * Positional Sync Orchestration: Prevents server saturation during rapid coordinate 
+ * adjustments by collapsing multiple micro-moves into a single "Final State" save.
+ */
+const POSITION_SYNC_TIMERS = new Map();
+
+/**
  * Note Deletion Bridge (Soft-Delete)
  * Moves a note to the Recycle Bin rather than immediate destruction.
  * @param {number} id - Target note ID.
@@ -80,6 +86,13 @@ function deleteNote(id) {
         confirmIcon: '🗑️',
         hideCancel: true,
         onConfirm: async () => {
+            // Atomic Cleanup: Flush any pending positional syncs before deletion
+            if (POSITION_SYNC_TIMERS.has(id)) {
+                clearTimeout(POSITION_SYNC_TIMERS.get(id));
+                POSITION_SYNC_TIMERS.delete(id);
+                if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
+            }
+
             const res = await apiPost('/notes/api/delete', { id: id, canvas_id: STATE.canvas_id });
             if (res && res.success) {
                 if (typeof window.mergeNoteState === 'function') {
@@ -98,14 +111,66 @@ function deleteNote(id) {
 /**
  * Synchronizes position data to the backend.
  */
-async function syncNotePosition(id, type = 'normal') {
+async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
     const el = document.getElementById(`note-${id}`);
     const note = STATE.notes.find(n => n.id == id);
     if (!el || !note) return;
 
+    // --- Debounce Strategy ---
+    if (debounceMs > 0) {
+        // Atomic Lock Acquisition: Ensure the note is protected while the user is still 'jittering'
+        if (!POSITION_SYNC_TIMERS.has(id)) {
+            if (typeof window.addActiveSync === 'function') window.addActiveSync(id);
+        }
+
+        if (POSITION_SYNC_TIMERS.has(id)) {
+            clearTimeout(POSITION_SYNC_TIMERS.get(id));
+        }
+
+        const timer = setTimeout(async () => {
+            // Atomic Registry Release: Clear state immediately before flight to allow independent 
+            // protection for subsequent interactions during the API cycle.
+            POSITION_SYNC_TIMERS.delete(id);
+
+            // Re-capture fresh DOM coordinates at the moment the timer fires
+            const latestParams = {
+                id: id,
+                canvas_id: STATE.canvas_id,
+                title: note.title,
+                x: parseInt(el.style.left),
+                y: parseInt(el.style.top),
+                width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
+                height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
+                z_index: el.style.zIndex,
+                content: STATE.note_map[id]?.content || note.content,
+                filename: note.filename,
+                color: note.color,
+                layer_id: note.layer_id || 1,
+                is_collapsed: note.is_collapsed,
+                is_options_expanded: note.is_options_expanded || 0
+            };
+
+            try {
+                const res = await apiPost('/notes/api/save', latestParams);
+                if (res && res.success) {
+                    if (typeof window.mergeNoteState === 'function') {
+                        window.mergeNoteState(res.notes);
+                    } else {
+                        STATE.notes = res.notes;
+                    }
+                    STATE.last_mutation = res.last_mutation;
+                }
+            } finally {
+                if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
+            }
+        }, debounceMs);
+
+        POSITION_SYNC_TIMERS.set(id, timer);
+        return;
+    }
+
+    // --- Immediate Fire Path (Legacy & Administrative Syncs) ---
     if (type !== 'silent') el.classList.add('pending');
-    
-    // Regression Guard: Prevent heartbeat from overwriting in-flight data.
     if (typeof window.addActiveSync === 'function') window.addActiveSync(id);
 
     const params = {

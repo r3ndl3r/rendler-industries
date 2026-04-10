@@ -100,8 +100,8 @@ function initResizable(el, note) {
         document.removeEventListener('mouseup', stopResize);
         el.classList.remove('resizing');
         
-        // Final Sync to Server/Backend
-        if (typeof syncNotePosition === 'function') syncNotePosition(note.id, 'normal');
+        // Final Sync to Server/Backend (300ms Debounce)
+        if (typeof syncNotePosition === 'function') syncNotePosition(note.id, 'normal', 300);
     };
 
     handles.forEach(h => {
@@ -353,8 +353,8 @@ function dropStickyNote() {
     if (el) el.classList.remove('note-picked');
     document.removeEventListener('mousemove', updateStickyMove);
     
-    // State Synchronization: Persist position to the database
-    if (typeof syncNotePosition === 'function') syncNotePosition(id);
+    // State Synchronization: Persist position to the database (300ms Debounce)
+    if (typeof syncNotePosition === 'function') syncNotePosition(id, 'normal', 300);
     showToast('Note placed', 'success');
 }
 
