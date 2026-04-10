@@ -1474,7 +1474,7 @@ async function handleNoteLinkClick(id) {
 async function toggleNoteCheckbox(event, id, lineIndex) {
     if (event) event.stopPropagation(); // Shield from background canvas triggers
 
-    const note = STATE.note_map[id];
+    const note = STATE.notes.find(n => n.id == id);
     if (!note) return;
 
     const lines = (note.content || '').split('\n');
@@ -1493,11 +1493,13 @@ async function toggleNoteCheckbox(event, id, lineIndex) {
     
     // Update local content state
     const newContent = lines.map((l, i) => i === lineIndex ? `${prefix}[${newState}]${text}` : l).join('\n');
+    // State Sync: Direct mutation of the note object (Source of Truth)
     note.content = newContent;
+    
+    // Safety Sync: Ensure the metadata registry is also updated to prevent stale [note:id] renders
     if (STATE.note_map[id]) STATE.note_map[id].content = newContent;
 
-    
-    // UI Synchronization: Update the visual viewer and the hidden textarea
+    // UI Synchronization: Immediate feedback for the user to prevent interaction lag
     const el = document.getElementById(`note-${id}`);
     if (el) {
         const viewer   = el.querySelector('.note-text-viewer');
@@ -1506,7 +1508,7 @@ async function toggleNoteCheckbox(event, id, lineIndex) {
         if (textarea) textarea.value   = note.content;
     }
 
-    // Persistent Sync: Avoid disrupting user perspective with full re-renders
+    // Persistent Sync: Commitment to the database
     if (typeof saveNoteInline === 'function') {
         await saveNoteInline(id);
     }

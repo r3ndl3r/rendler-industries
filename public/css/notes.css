@@ -249,6 +249,44 @@
     transform: translateY(-1px);
 }
 
+/* Glassmorphic Code Formatting */
+code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    background: rgba(15, 23, 42, 0.45); /* Alpha-blended slate */
+    color: #93c5fd; /* Softened blue token */
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08); /* Unified subtle surround */
+    font-size: 0.85em;
+    margin: 0 2px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(4px);
+    vertical-align: middle;
+}
+
+pre {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.12); /* Subtle frame */
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.85rem;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5),
+                inset 0 0 12px rgba(59, 130, 246, 0.05); /* Internal depth */
+}
+
+pre code {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: #f8fafc;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
+
 /* Compact Asset Rendering: Embedded Images */
 .note-embedded-wrap {
     display: inline-block;
@@ -267,6 +305,26 @@
     transform: translateY(-1px);
     border-color: rgba(59, 130, 246, 0.4);
     background: rgba(30, 41, 59, 0.7);
+}
+
+/* Structural Formatting Components */
+.note-hr {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 1.25rem 0;
+    opacity: 0.5;
+}
+
+.note-bullet {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #60a5fa; /* Theme Active Blue */
+    margin-right: 0.5rem;
+    vertical-align: middle;
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+    margin-bottom: 2px;
 }
 
 .note-iframe-wrap {
