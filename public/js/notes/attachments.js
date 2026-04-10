@@ -69,7 +69,7 @@ function confirmAttachmentRemoval(noteId, blobId) {
         onConfirm: async () => {
             // Case A: Existing Database Record (Requires API call)
             if (activeNoteId) {
-                const res = await apiPost('/notes/api/attachment/delete', {
+                const res = await NoteAPI.post('/notes/api/attachment/delete', {
                     note_id: activeNoteId,
                     blob_id: blobId,
                     canvas_id: STATE.canvas_id
@@ -248,7 +248,7 @@ async function handleInlineFileSelection(e, id) {
     if (el) el.classList.add('pending');
 
     try {
-        const uploadRes = await apiPost('/notes/api/upload', formData);
+        const uploadRes = await NoteAPI.post('/notes/api/upload', formData);
         if (uploadRes && uploadRes.success) {
             STATE.last_mutation = uploadRes.last_mutation;
             
@@ -390,7 +390,7 @@ async function handleFileDrop(file, x, y, customTitle = null) {
         formData.append('title', customTitle);
     }
 
-    const uploadRes = await apiPost('/notes/api/upload', formData);
+    const uploadRes = await NoteAPI.post('/notes/api/upload', formData);
     if (uploadRes && uploadRes.success) {
         STATE.last_mutation = uploadRes.last_mutation;
         await loadState(false, STATE.canvas_id);
@@ -484,19 +484,17 @@ async function handleGlobalClipPaste(e) {
         if (attMatch && typeof showCreateNoteModal === 'function') {
             const blobId = attMatch[1];
             try {
-                const res = await fetch(`/notes/attachment/serve/${blobId}`);
-                if (res.ok) {
-                    const contentType = res.headers.get('Content-Type');
-                    if (contentType && contentType.startsWith('image/')) {
-                        const blob    = await res.blob();
-                        const dataUrl = await new Promise(resolve => {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => resolve(ev.target.result);
-                            reader.readAsDataURL(blob);
-                        });
-                        showCreateNoteModal('image', dataUrl);
-                        return;
-                    }
+                // Migration: Centralized media transport with automated session expiry handling
+                const resBlob = await NoteAPI.blob(`/notes/attachment/serve/${blobId}`);
+                
+                if (resBlob && resBlob.type.startsWith('image/')) {
+                    const dataUrl = await new Promise(resolve => {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => resolve(ev.target.result);
+                        reader.readAsDataURL(resBlob);
+                    });
+                    showCreateNoteModal('image', dataUrl);
+                    return;
                 }
             } catch (err) {
                 console.warn('Smart Paste resolution failed:', err);
