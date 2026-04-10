@@ -910,6 +910,33 @@ sub DB::save_layer_alias {
     return $sth->execute($canvas_id, $layer_id, $alias);
 }
 
+# Deletes an alias for a specific canvas level.
+sub DB::delete_layer_alias {
+    my ($self, $canvas_id, $layer_id) = @_;
+    $self->ensure_connection;
+    my $sql = "DELETE FROM canvas_layers WHERE canvas_id = ? AND layer_id = ?";
+    return $self->{dbh}->do($sql, undef, $canvas_id, $layer_id);
+}
+
+# Migrates all notes from one layer to another within a canvas.
+# Features:
+#   - Atomic update of layer_id for all non-deleted notes.
+#   - Merges content if the target layer is already populated.
+#   - Returns the number of notes migrated.
+sub DB::move_layer_content {
+    my ($self, $canvas_id, $from_id, $to_id) = @_;
+    $self->ensure_connection;
+
+    # 1. Migrate the notes
+    my $sql = "UPDATE notes SET layer_id = ? WHERE canvas_id = ? AND layer_id = ? AND is_deleted = 0";
+    my $rows = $self->{dbh}->do($sql, undef, $to_id, $canvas_id, $from_id);
+
+    # 2. Cleanup: If the source had an alias, it might now be orphaned. 
+    # Logic: We don't automatically delete it, but the UI should handle the empty layer normally.
+    
+    return $rows;
+}
+
 # --- Background Maintenance Operations ---
 
 # Attempts to clean up deleted notes that have no blobs or dependencies.
