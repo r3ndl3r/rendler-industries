@@ -247,4 +247,30 @@ sub DB::mark_emoji_processed {
     return $sth->execute($id) > 0;
 }
 
+# Attempts to acquire a persistent maintenance lock for a specific minute.
+# Parameters:
+#   epoch_min : Integer representing the current epoch minute
+# Returns:
+#   Boolean : True if the lock was successfully acquired for this minute
+sub DB::try_acquire_maintenance_lock {
+    my ($self, $epoch_min) = @_;
+    $self->ensure_connection;
+
+    # 1. Auto-init the tracking key if it doesn't exist
+    $self->{dbh}->do(
+        "INSERT IGNORE INTO app_secrets (key_name, secret_value) VALUES ('system_maintenance_last_run', '0')"
+    );
+
+    # 2. Atomic claim: Only update if the stored minute is behind the current one
+    # Uses CAST as UNSIGNED for safe integer comparison of the TEXT column
+    my $sql = "UPDATE app_secrets " .
+              "SET    secret_value = ? " .
+              "WHERE  key_name = 'system_maintenance_last_run' " .
+              "AND    (CAST(secret_value AS UNSIGNED) < ? OR secret_value IS NULL)";
+    
+    my $rows = $self->{dbh}->do($sql, undef, $epoch_min, $epoch_min);
+    
+    return ($rows && $rows > 0) ? 1 : 0;
+}
+
 1;
