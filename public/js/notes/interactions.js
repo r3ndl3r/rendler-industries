@@ -11,15 +11,31 @@ function initResizable(el, note) {
     if (!handles.length) return;
 
     let startX, startY, startWidth, startHeight, startLeft, startTop;
+    let startScrollLeft, startScrollTop; // Captured at mousedown for canvas-space delta
+    let startRectLeft, startRectTop;     // Static baseline for viewport-relative math
     let isResizing = false;
     let direction = 'se'; // Default
-
     const doResize = (e) => {
         if (!isResizing) return;
 
-        // Calculate delta from fixed start, scaled to canvas coordinates
-        const deltaX = (e.clientX - startX) / STATE.scale;
-        const deltaY = (e.clientY - startY) / STATE.scale;
+        // Capture latest event for auto-scroll re-triggering
+        STATE.autoScroll.lastEvent = e;
+
+        const wrapper = STATE.wrapperEl;
+        const currentRect = wrapper.getBoundingClientRect();
+
+        // Calculate delta in Canvas Space (compensates for scroll and viewport shifts)
+        // currentMouse: mouse relative to canvas origin NOW
+        const currentMouseX = (e.clientX - currentRect.left + wrapper.scrollLeft) / STATE.scale;
+        const currentMouseY = (e.clientY - currentRect.top  + wrapper.scrollTop)  / STATE.scale;
+
+        // baseMouse: mouse relative to canvas origin at START
+        // static baselines prevent 'cancellation' bugs during auto-scroll/layout shifts
+        const baseMouseX = (startX - startRectLeft + startScrollLeft) / STATE.scale;
+        const baseMouseY = (startY - startRectTop  + startScrollTop)  / STATE.scale;
+
+        const deltaX = currentMouseX - baseMouseX;
+        const deltaY = currentMouseY - baseMouseY;
         const snap = STATE.snapGrid || 10;
 
         // Fixed Anchors (The corner opposite to the moving handle)
@@ -95,6 +111,7 @@ function initResizable(el, note) {
         if (!isResizing) return;
         isResizing = false;
         STATE.isResizing = null;
+        STATE.activeResizeHandler = null;
         
         document.removeEventListener('mousemove', doResize);
         document.removeEventListener('mouseup', stopResize);
@@ -127,6 +144,15 @@ function initResizable(el, note) {
             startHeight = parseInt(style.height, 10);
             startLeft   = parseInt(style.left, 10);
             startTop    = parseInt(style.top, 10);
+
+            const rect = STATE.wrapperEl.getBoundingClientRect();
+            startRectLeft   = rect.left;
+            startRectTop    = rect.top;
+            startScrollLeft = STATE.wrapperEl.scrollLeft;
+            startScrollTop  = STATE.wrapperEl.scrollTop;
+            
+            // Expose handler to the global animation loop for auto-growth
+            STATE.activeResizeHandler = doResize;
             
             document.addEventListener('mousemove', doResize);
             document.addEventListener('mouseup', stopResize);
@@ -312,9 +338,14 @@ function startAutoScroll(vx, vy) {
         wrapper.scrollTop  += STATE.autoScroll.vy;
 
         const lastE = STATE.autoScroll.lastEvent;
-        if (lastE && STATE.pickedNoteId) {
+        if (lastE) {
             // Re-trigger the active move logic with the latest event
-            updateStickyMove(lastE);
+            if (STATE.pickedNoteId) updateStickyMove(lastE);
+
+            // Re-trigger the active resize logic (Auto-Growth) 
+            // Idempotency Note: If mouse is also moving, doResize fires twice per frame 
+            // but results are consistent as they rely on the same persistent event state.
+            if (STATE.activeResizeHandler) STATE.activeResizeHandler(lastE);
         }
 
         STATE.autoScroll.frame = requestAnimationFrame(loop);
