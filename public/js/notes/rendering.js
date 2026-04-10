@@ -306,8 +306,9 @@ function createNoteElement(note, canEdit = true) {
 function generateNoteContentHtml(note, canEdit) {
     let textHtml = '';
     const viewerHtml = formatNoteContent(note.content || '', note.id);
+    const isTextEmpty = (!note.content || note.content.trim() === '');
     textHtml = `
-        <div class="note-text-section" ${(!note.content || note.content.trim() === '') ? 'style="display:none;"' : ''}>
+        <div class="note-text-section ${isTextEmpty ? 'hidden' : ''}">
             <div class="note-text-viewer" data-id="${note.id}">${viewerHtml}</div>
             <textarea readonly onkeydown="handleNoteKeydown(event, ${note.id})">${window.escapeHtml(note.content || '')}</textarea>
         </div>

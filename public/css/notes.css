@@ -1039,6 +1039,10 @@ pre code {
     width: 100%;
 }
 
+.sticky-note.is-editing .note-text-section {
+    display: flex !important; /* Force visibility for editing even if empty; overrides global .hidden */
+}
+
 .sticky-note.is-editing .note-text-viewer {
     display: none;
 }
