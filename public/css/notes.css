@@ -865,9 +865,13 @@
     display: none !important;
 }
 
-.sticky-note.is-editing .edit-mode-only,
-.sticky-note.can-edit:not(.is-editing):hover .attachment-float-controls .edit-mode-only {
+.sticky-note.is-editing .edit-mode-only {
     display: flex !important;
+}
+
+/* Edit Mode: Pivot from extraction to administration (Hide copy buttons) */
+.sticky-note.is-editing .btn-icon-copy {
+    display: none !important;
 }
 
 .pulse-glow {
