@@ -887,20 +887,21 @@
     100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
 }
 
-/* Modern Crisp Resize Handle */
+/* Multi-Corner Resize Handles */
 .note-resize-handle {
     position: absolute;
-    right: 0.125em;
-    bottom: 0.125em;
-    width: 1em;
-    height: 1em;
-    cursor: nwse-resize;
+    width: 14px;
+    height: 14px;
     z-index: 100;
-    opacity: 0.2;
+    opacity: 0;
     transition: opacity 0.2s;
-    background: linear-gradient(135deg, transparent 50%, rgba(255, 255, 255, 0.6) 50%);
-    border-radius: 0 0 0.5em 0;
+    background: transparent;
 }
+
+.note-resize-handle.nw { top: 0; left: 0; cursor: nw-resize; }
+.note-resize-handle.ne { top: 0; right: 0; cursor: ne-resize; }
+.note-resize-handle.sw { bottom: 0; left: 0; cursor: sw-resize; }
+.note-resize-handle.se { bottom: 0; right: 0; cursor: se-resize; }
 
 .sticky-note:hover .note-resize-handle {
     opacity: 0.6;
