@@ -1151,9 +1151,9 @@ async function saveNoteInline(id, stayInEditMode = false) {
     try {
         const res = await NoteAPI.post('/notes/api/save', params);
         if (res && res.success) {
-            if (typeof window.mergeNoteState === 'function') {
+            if (res.notes && typeof window.mergeNoteState === 'function') {
                 window.mergeNoteState(res.notes);
-            } else {
+            } else if (res.notes) {
                 STATE.notes = res.notes;
             }
             STATE.last_mutation = res.last_mutation;
@@ -1183,9 +1183,9 @@ async function saveNoteInline(id, stayInEditMode = false) {
                         filename:  newName
                     });
                     if (renameRes && renameRes.success) {
-                        if (typeof window.mergeNoteState === 'function') {
+                        if (renameRes.notes && typeof window.mergeNoteState === 'function') {
                             window.mergeNoteState(renameRes.notes);
-                        } else {
+                        } else if (renameRes.notes) {
                             STATE.notes = renameRes.notes;
                         }
                         STATE.last_mutation = renameRes.last_mutation;
@@ -1259,9 +1259,9 @@ async function toggleCollapse(id) {
         });
         
         if (res && res.success) {
-            if (typeof window.mergeNoteState === 'function') {
+            if (res.notes && typeof window.mergeNoteState === 'function') {
                 window.mergeNoteState(res.notes);
-            } else {
+            } else if (res.notes) {
                 STATE.notes = res.notes;
             }
             STATE.last_mutation = res.last_mutation;
@@ -1874,3 +1874,147 @@ function handleCanvasTouchEnd(e) {
     STATE.pinchStartDist = null;
     STATE.pinchStartScale = null;
 }
+
+/**
+ * Orchestrates the 'Jump to Level' right-click management suite.
+ * Spawns a premium glassmorphism menu with 'Rename' and 'Move Level' capabilities.
+ */
+function showLevelContextMenu(e) {
+    if (STATE.isInitializing) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const pill = document.getElementById('level-display');
+    if (!pill) return;
+
+    // Cleanup: Remove any existing context menus before spawning a new one
+    document.querySelectorAll('.context-menu').forEach(m => m.remove());
+
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    
+    // Logic: Absolute Anchoring. Position the menu relative to the pill's right edge
+    const rect = pill.getBoundingClientRect();
+    const x = rect.right + 15; // 15px gap from the pill
+    const y = rect.top + (rect.height / 2); // Pill's vertical center
+    
+    menu.style.left = `${x}px`;
+    menu.style.top  = `${y}px`;
+
+    menu.innerHTML = `
+        <div class="context-menu-item" onclick="showLevelRenameModal()">
+            <span class="item-icon">✏️</span>
+            <span>Rename Level</span>
+        </div>
+        <div class="context-menu-item" onclick="showLevelMoveModal()">
+            <span class="item-icon">🚀</span>
+            <span>Move Level to...</span>
+        </div>
+    `;
+
+    document.body.appendChild(menu);
+
+    // Global: Close menu on any subsequent click elsewhere
+    const closeMenu = () => {
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+    };
+    // Defer attachment to prevent the current menu-spawning click from closing it immediately
+    setTimeout(() => document.addEventListener('click', closeMenu), 10);
+}
+
+/**
+ * Triggers the themed Rename Layer dialog.
+ */
+function showLevelRenameModal() {
+    const currentName = STATE.layer_map[STATE.activeLayerId] || '';
+    
+    window.showConfirmModal({
+        title: 'Rename Level ' + STATE.activeLayerId,
+        icon: '✏️',
+        message: 'Provide a descriptive name for this layer:',
+        confirmText: 'Save Name',
+        confirmIcon: '💾',
+        input: {
+            type: 'text',
+            placeholder: 'e.g. Drafts, Planning, Archive...',
+            value: currentName
+        },
+        onConfirm: async (val) => {
+            const res = await NoteAPI.post('/notes/api/layer/rename', {
+                canvas_id: STATE.canvas_id,
+                layer_id: STATE.activeLayerId,
+                name: val
+            });
+            
+            if (res && res.success) {
+                if (res.layer_map) STATE.layer_map = res.layer_map;
+                if (typeof updateLevelDisplay === 'function') updateLevelDisplay();
+                showToast('Level renamed', 'success');
+            }
+        }
+    });
+}
+
+/**
+ * Triggers the themed Move Layer migration dialog.
+ */
+function showLevelMoveModal() {
+    window.showConfirmModal({
+        title: 'Move Level Content',
+        icon: '🚀',
+        message: `Migrate all notes from Level ${STATE.activeLayerId} to a new destination. <br><small>Target layer content will be merged.</small>`,
+        confirmText: 'Migrate Content',
+        confirmIcon: '🚀',
+        danger: true,
+        input: {
+            type: 'number',
+            placeholder: 'Target Level (1-99)',
+            min: 1,
+            max: 99
+        },
+        onConfirm: async (val) => {
+            const targetId = parseInt(val);
+            if (isNaN(targetId) || targetId < 1 || targetId > 99) {
+                showToast('Invalid target level', 'error');
+                throw new Error('Invalid level');
+            }
+            if (targetId === STATE.activeLayerId) {
+                showToast('Cannot move to current level', 'warning');
+                return;
+            }
+
+            showLoadingOverlay('Migrating notes...');
+            try {
+                const res = await NoteAPI.post('/notes/api/layers/move', {
+                    canvas_id: STATE.canvas_id,
+                    from_id: STATE.activeLayerId,
+                    to_id: targetId
+                });
+
+                if (res && res.success) {
+                    showToast(res.message || 'Notes migrated', 'success');
+                    // Context Switch: Automatically jump to the target level to see the results
+                    if (typeof window.switchLevel === 'function') await window.switchLevel(targetId);
+                }
+            } finally {
+                hideLoadingOverlay();
+            }
+        }
+    });
+}
+
+// Initialization: Attach listeners once the UI core is ready
+const setupLevelManagement = () => {
+    const pill = document.getElementById('level-display');
+    if (pill) {
+        pill.addEventListener('contextmenu', showLevelContextMenu);
+        // Also allow left-clicking the pill to jump (optional, depends on if we want to keep dblclick logic)
+    }
+};
+
+// Export hooks for global availability
+window.showLevelContextMenu = showLevelContextMenu;
+window.setupLevelManagement = setupLevelManagement;
+window.showLevelRenameModal = showLevelRenameModal;
+window.showLevelMoveModal   = showLevelMoveModal;
