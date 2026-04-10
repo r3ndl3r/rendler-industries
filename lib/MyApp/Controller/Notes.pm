@@ -679,4 +679,32 @@ sub api_layer_rename {
     }
 }
 
+# Migrates all notes from one layer to another.
+sub api_move_layer {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id();
+    my $canvas_id = $c->param('canvas_id');
+    my $from      = int($c->param('from_id') // 0);
+    my $to        = int($c->param('to_id')   // 0);
+
+    return $c->render(json => { success => 0, error => 'Source level must be 1-99' }) if $from < 1 || $from > 99;
+    return $c->render(json => { success => 0, error => 'Target level must be 1-99' }) if $to < 1 || $to > 99;
+    return $c->render(json => { success => 0, error => 'Target level is same as source' }) if $from == $to;
+
+    # Security: Verify edit access
+    return $c->render(json => { success => 0, error => 'Read-Only' }, status => 403) 
+        unless $c->db->check_canvas_access($canvas_id, $user_id, 1);
+
+    my $rows  = $c->db->move_layer_content($canvas_id, $from, $to);
+    my $count = int($rows) || 0;
+
+    return $c->render(json => { 
+        success => 1, 
+        count   => $count,
+        message => "Migrated $count notes to Level $to"
+    });
+}
+
 1;
