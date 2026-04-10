@@ -151,6 +151,9 @@ async function initNotes() {
         if (typeof handleCanvasTouchMove === 'function')  canvas.addEventListener('touchmove',  handleCanvasTouchMove,  { passive: false });
         if (typeof handleCanvasTouchEnd === 'function')   canvas.addEventListener('touchend',   handleCanvasTouchEnd,   { passive: false });
         if (typeof handleCanvasTouchCancel === 'function') canvas.addEventListener('touchcancel', handleCanvasTouchEnd,  { passive: false });
+        
+        // 4. Interaction Layer: Attach specialized module managers
+        if (typeof setupLevelManagement === 'function') setupLevelManagement();
     }
     
     // Global Panning & Scrubbing Listeners
@@ -213,8 +216,6 @@ async function initNotes() {
         _selectionGuardInit = true;
     }
 
-
-    
     // Window Resize Bridge: Recalculate spatial metadata on geometry changes
     window.addEventListener('resize', () => {
         if (typeof updateRadar === 'function') updateRadar();
