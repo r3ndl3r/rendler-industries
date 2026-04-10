@@ -58,6 +58,7 @@ const STATE = {
     activeSyncs: new Map(),        // Anti-Regression Registry: Tracks Note IDs with in-flight API transactions
     syncQueue:      [],              // Transactional Retry Container
     isSyncing:      false,           // Flow Control: Prevents concurrent flush cycles
+    pendingContext: null,            // Context Queue: Stores board/layer switches blocked by active sync
     aliasTimer:     null,            // Lifecycle Handle: Auto-hide delay for level names
     isScrubbing:    false,           // Interaction Layer: Active radar-panning state
     radarScrubLast: { x: 0, y: 0 },   // Delta Tracking: Powering the 'Precision Gearbox'
@@ -496,7 +497,18 @@ async function initNotes() {
  * @returns {Promise<void>}
  */
 async function loadState(initial = false, canvas_id = null, targetNoteId = null, layer_id = null) {
-    if (STATE.isSyncing) return false; // Hard Guard: Prevents re-entrant hydration cycles
+    if (STATE.isSyncing) {
+        // Anti-Dropout Protocol: Only queue IF this is a genuine context change (not a recurrent heartbeat)
+        const isExplicitSwitch = initial 
+            || (canvas_id && canvas_id != STATE.canvas_id) 
+            || targetNoteId 
+            || (layer_id && layer_id != STATE.activeLayerId);
+
+        if (isExplicitSwitch) {
+            STATE.pendingContext = { initial, canvas_id, targetNoteId, layer_id };
+        }
+        return false; 
+    }
     // Resolve context: Prioritize URL param -> Current State -> Backend Default (null)
     const urlParams = new URLSearchParams(window.location.search);
     const tid = canvas_id || urlParams.get('canvas_id') || STATE.canvas_id;
@@ -672,6 +684,16 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         if (initial) STATE.notes = [];
     } finally {
         STATE.isSyncing = false;
+        
+        // Context Dequeue: Trigger the most recent queued switch once the lock is released
+        if (STATE.pendingContext) {
+            const ctx = STATE.pendingContext;
+            STATE.pendingContext = null; // Atomic clearance to prevent re-entrant loops
+            
+            // Execute the queued switch. Non-blocking call ensures current stack completes.
+            loadState(ctx.initial, ctx.canvas_id, ctx.targetNoteId, ctx.layer_id);
+        }
+
         // Global Safety Reset: Ensure interface is unlocked if not in a designated stabilization phase (centering callback owns it)
         if (!nid) STATE.isInitializing = false;
     }
