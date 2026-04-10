@@ -621,6 +621,7 @@ sub startup {
     $auth->post('/notes/api/attachment/delete')->to('notes#api_attachment_delete');
     $auth->post('/notes/api/attachment/rename')->to('notes#api_attachment_rename');
     $auth->post('/notes/api/layer/rename')->to('notes#api_layer_rename');
+    $auth->post('/notes/api/layers/move')->to('notes#api_move_layer');
 
     # Real-Time Synchronization 
     # Mutation Heartbeat for cross-session/cross-worker consistency
