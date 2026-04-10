@@ -307,6 +307,11 @@ sub startup {
                 $sys->run_chore_reminders($now);
                 $sys->run_weather_maintenance($now);
 
+                # Nightly Normalization Gate (3:00 AM)
+                if ($now->hour == 3 && $now->minute == 0) {
+                    $sys->run_notes_znorm_maintenance();
+                }
+
                 # Asynchronous Emoji Task: Correct lock release chain
                 $sys->run_emoji_maintenance_p()->then(sub {
                     my $emoji_stats = shift;

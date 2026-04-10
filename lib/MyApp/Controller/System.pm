@@ -691,4 +691,13 @@ sub run_emoji_maintenance_p {
     return $promise;
 }
 
+# Maintenance: Daily normalization of whiteboard z-indices.
+sub run_notes_znorm_maintenance {
+    my $self = shift;
+    my $rows = $self->db->normalize_note_z_indices();
+    if ($rows > 0) {
+        $self->app->log->info("Notes Maintenance: Normalized $rows z-index values across canvases.");
+    }
+}
+
 1;

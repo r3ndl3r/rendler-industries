@@ -36,9 +36,13 @@ function renderUI() {
             const existing = existingMap[note.id.toString()];
             
             if (existing) {
-                // Update Existing: Surgical property updates to preserve focus/scroll
-                // Skip update if the user is currently interacting with this specific note
-                if (existing.classList.contains('is-editing') || (STATE.pickedNoteId == note.id)) return;
+                // Skip update if the user is currently interacting with this specific note OR it is in-flight to the API
+                if (
+                    existing.classList.contains('is-editing') ||
+                    (STATE.pickedNoteId == note.id)           ||
+                    (STATE.isResizing   == note.id)           ||
+                    STATE.activeSyncs.has(String(note.id))
+                ) return;
 
                 // Atomic Synchronicity: Check if we need to update position/z-index
                 const curX = parseInt(existing.style.left);

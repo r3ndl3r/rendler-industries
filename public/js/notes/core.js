@@ -55,6 +55,7 @@ const STATE = {
         margin:    15,             // Proximity triggers (px)
         maxSpeed:  15              // Peak velocity at absolute edge
     },
+    activeSyncs: new Map(),        // Anti-Regression Registry: Tracks Note IDs with in-flight API transactions
     syncQueue:      [],              // Transactional Retry Container
     isSyncing:      false,           // Flow Control: Prevents concurrent flush cycles
     aliasTimer:     null,            // Lifecycle Handle: Auto-hide delay for level names
@@ -64,6 +65,31 @@ const STATE = {
     pinchStartScale: null,            // Mobile Gestures: Scale baseline
     wrapperEl:      null,             // Cached DOM Handle: #canvas-wrapper
     canvasEl:       null              // Cached DOM Handle: #notes-canvas
+};
+
+/**
+ * Registers a note as 'in-flight' to the API.
+ * This prevents the heartbeat from overwriting the DOM while a save is pending.
+ * @param {number|string} noteId 
+ */
+window.addActiveSync = function(noteId) {
+    const key = String(noteId); // Boundary Normalization: Ensures Map lookup parity
+    const count = STATE.activeSyncs.get(key) || 0;
+    STATE.activeSyncs.set(key, count + 1);
+};
+
+/**
+ * Unregisters a note once the API call completes.
+ * @param {number|string} noteId 
+ */
+window.removeActiveSync = function(noteId) {
+    const key = String(noteId); // Boundary Normalization: Ensures Map lookup parity
+    const count = STATE.activeSyncs.get(key);
+    if (count > 1) {
+        STATE.activeSyncs.set(key, count - 1);
+    } else {
+        STATE.activeSyncs.delete(key);
+    }
 };
 
 /**
@@ -657,6 +683,12 @@ function mergeNoteState(incomingNotes) {
     if (STATE.pickedNoteId !== null) activeIds.add(String(STATE.pickedNoteId));
     if (STATE.isResizing   !== null) activeIds.add(String(STATE.isResizing));
     if (STATE.isEditingNote !== null) activeIds.add(String(STATE.isEditingNote));
+    
+    // Anti-Regression Lockout: Preserve local state for notes in-flight to the API
+    // Any note currently in-flight to the API is locked out of hydration
+    STATE.activeSyncs.forEach((count, id) => {
+        if (count > 0) activeIds.add(String(id));
+    });
 
     // 1. Integration: Update existing and inject new records
     incomingNotes.forEach(incoming => {
