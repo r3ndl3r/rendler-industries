@@ -95,7 +95,7 @@ async function executeCreateNote() {
             ...coords
         };
 
-        const res = await apiPost('/notes/api/save', params);
+        const res = await NoteAPI.post('/notes/api/save', params);
         if (res && res.success) {
             const noteId = res.id;
             STATE.last_mutation = res.last_mutation;
@@ -111,12 +111,14 @@ async function executeCreateNote() {
                     if (pending.file) {
                         formData.append('file', pending.file);
                     } else if (pending.data && pending.data.startsWith('data:')) {
-                        const blob = await (await fetch(pending.data)).blob();
+                        // Migration: Centralized transport handles binary extraction
+                        const blob = await NoteAPI.blob(pending.data);
+                        if (!blob) continue; // Aborted or session expired
                         const timestamp = new Date().getTime();
                         formData.append('file', blob, pending.filename || `paste_${timestamp}.png`);
                     }
                     
-                    const uploadRes = await apiPost('/notes/api/upload', formData);
+                    const uploadRes = await NoteAPI.post('/notes/api/upload', formData);
                     if (uploadRes && uploadRes.success) {
                         STATE.last_mutation = uploadRes.last_mutation;
                     }
@@ -256,7 +258,7 @@ function renameCurrentLevel() {
         confirmText: 'Save',
         onConfirm: async (newName) => {
             try {
-                const res = await apiPost('/notes/api/layer/rename', {
+                const res = await NoteAPI.post('/notes/api/layer/rename', {
                     canvas_id: STATE.canvas_id,
                     layer_id: STATE.activeLayerId,
                     name: newName.trim()
@@ -407,7 +409,7 @@ function renderCanvasList() {
  */
 async function syncCanvasOrder() {
     const orderMap = STATE.canvases.map((c, i) => ({ id: c.id, order: i }));
-    await apiPost('/notes/api/canvases/reorder', orderMap);
+    await NoteAPI.post('/notes/api/canvases/reorder', orderMap);
 }
 
 /**
@@ -442,7 +444,7 @@ async function switchCanvas(id, targetNoteId = null) {
  * Orchestrates new board creation.
  */
 async function createCanvas(name) {
-    const res = await apiPost('/notes/api/canvases/create', { name });
+    const res = await NoteAPI.post('/notes/api/canvases/create', { name });
     if (res && res.success) {
         document.getElementById('new-canvas-name').value = '';
         switchCanvas(res.id);
@@ -456,7 +458,7 @@ async function createCanvas(name) {
  * @returns {Promise<void>}
  */
 async function updateBoardName(id, name) {
-    const res = await apiPost('/notes/api/canvases/rename', { canvas_id: id, name });
+    const res = await NoteAPI.post('/notes/api/canvases/rename', { canvas_id: id, name });
     if (res && res.success) {
         showToast('Board renamed successfully', 'success');
         
@@ -501,7 +503,7 @@ async function deleteCanvas(e, id) {
         confirmText: 'DELETE',
         confirmIcon: '🗑️',
         onConfirm: async () => {
-            const res = await apiPost('/notes/api/canvases/delete', { canvas_id: id });
+            const res = await NoteAPI.post('/notes/api/canvases/delete', { canvas_id: id });
             if (res && res.success) {
                 if (id == STATE.canvas_id) {
                     await loadState(true);
@@ -579,7 +581,7 @@ async function openBoardSettings(id) {
     if (!modal) return;
     
     // Refresh board state to ensure ACL/Share list is current
-    const res = await apiGet(`/notes/api/state?canvas_id=${id}`);
+    const res = await NoteAPI.get(`/notes/api/state?canvas_id=${id}`);
     if (!res || !res.success) {
         showToast('Failed to fetch board settings', 'error');
         return;
@@ -618,7 +620,7 @@ async function openBoardSettings(id) {
  * ACL Discovery Engine: Facilitates adding new collaborators to a board.
  */
 async function addUserToBoard(canvasId, username) {
-    const res = await apiPost('/notes/api/canvases/share', { canvas_id: canvasId, username, can_edit: 1 });
+    const res = await NoteAPI.post('/notes/api/canvases/share', { canvas_id: canvasId, username, can_edit: 1 });
     if (res && res.success) {
         if (canvasId == STATE.canvas_id) STATE.share_list = res.share_list;
         renderShareList(canvasId, res.share_list);
@@ -627,7 +629,7 @@ async function addUserToBoard(canvasId, username) {
 }
 
 async function updateSharePermission(canvasId, username, canEdit) {
-    const res = await apiPost('/notes/api/canvases/share', { canvas_id: canvasId, username, can_edit: canEdit });
+    const res = await NoteAPI.post('/notes/api/canvases/share', { canvas_id: canvasId, username, can_edit: canEdit });
     if (res && res.success) {
         if (canvasId == STATE.canvas_id) STATE.share_list = res.share_list;
         showToast('Permissions updated', 'success');
@@ -645,7 +647,7 @@ function confirmRevoke(canvasId, username) {
         confirmText: 'DELETE',
         confirmIcon: '🗑️',
         onConfirm: async () => {
-            const res = await apiPost('/notes/api/canvases/share', { canvas_id: canvasId, username, revoke: 1 });
+            const res = await NoteAPI.post('/notes/api/canvases/share', { canvas_id: canvasId, username, revoke: 1 });
             if (res && res.success) {
                 if (canvasId == STATE.canvas_id) STATE.share_list = res.share_list;
                 renderShareList(canvasId, res.share_list);
@@ -928,7 +930,7 @@ async function filterSearch(queryText) {
 
     SEARCH_DEBOUNCE_TIMER = setTimeout(async () => {
         if (isGlobal) {
-            const data = await apiGet(`/notes/api/search?q=${encodeURIComponent(query)}`);
+            const data = await NoteAPI.get(`/notes/api/search?q=${encodeURIComponent(query)}`);
             renderSearchResults(data || [], true);
         } else {
             const q = query.toLowerCase();
@@ -1054,7 +1056,7 @@ function setupUserSearch() {
         }
 
         debounce = setTimeout(async () => {
-            const data = await apiGet(`/notes/api/users/search?q=${encodeURIComponent(query)}`);
+            const data = await NoteAPI.get(`/notes/api/users/search?q=${encodeURIComponent(query)}`);
             const users = Array.isArray(data) ? data : (data.users || []);
             
             const resultsWrap = document.getElementById('user-search-results');
@@ -1097,7 +1099,7 @@ async function renderBinList() {
     container.innerHTML = `<div class="loading-bin">⌛ Retrieving archived notes...</div>`;
 
     try {
-        const data = await apiGet(`/notes/api/bin?canvas_id=${STATE.canvas_id}`);
+        const data = await NoteAPI.get(`/notes/api/bin?canvas_id=${STATE.canvas_id}`);
 
         if (!data.success || !data.notes || data.notes.length === 0) {
             container.innerHTML = `
@@ -1281,7 +1283,7 @@ async function restoreNote(id) {
             const canvasCX = (wrapper.scrollLeft + wrapper.clientWidth / 2) / STATE.scale;
             const canvasCY = (wrapper.scrollTop + wrapper.clientHeight / 2) / STATE.scale;
 
-            const res = await apiPost('/notes/api/restore', { 
+            const res = await NoteAPI.post('/notes/api/restore', { 
                 id: id, 
                 canvas_id: STATE.canvas_id, 
                 layer_id: STATE.activeLayerId,
@@ -1316,7 +1318,7 @@ function confirmNotePurge(id) {
         confirmIcon: '🗑️',
         hideCancel: true,
         onConfirm: async () => {
-            const res = await apiPost('/notes/api/purge', { id: id });
+            const res = await NoteAPI.post('/notes/api/purge', { id: id });
             if (res && res.success) {
                 if (typeof openBinModal === 'function') openBinModal(); // Refresh Bin List
                 showToast('Note permanently removed', 'success');

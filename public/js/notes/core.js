@@ -497,16 +497,26 @@ async function initNotes() {
  */
 async function loadState(initial = false, canvas_id = null, targetNoteId = null, layer_id = null) {
     if (STATE.isSyncing) return false; // Hard Guard: Prevents re-entrant hydration cycles
+    // Resolve context: Prioritize URL param -> Current State -> Backend Default (null)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tid = canvas_id || urlParams.get('canvas_id') || STATE.canvas_id;
+    const nid = targetNoteId || urlParams.get('note_id'); // Deep-link or search-target detection
+    // Context Transition Logic: Initial loads are intentionally treated as full switches 
+    // to ensure downstream UI (viewports, centering) hydrates correctly on first load.
+    const isContextChange = initial || (tid && tid != STATE.canvas_id) || (layer_id && layer_id != STATE.activeLayerId);
+
+    // Atomic Context Switch: Only terminate signals if we are moving to a different board/session
+    // This allows heartbeat-triggered refreshes to proceed without aborting their own orchestrator.
+    if (isContextChange) {
+        if (STATE.heartbeatController) STATE.heartbeatController.abort();
+        if (STATE.heartbeatTimer) clearTimeout(STATE.heartbeatTimer);
+    }
+
     STATE.isSyncing = true;
     if (initial) STATE.isInitializing = true; // Protect interface state during initial hydration
 
     // Reset rendering error baseline on every state hydration to allow re-reporting of persistent issues
     if (window._renderErrors) window._renderErrors.clear();
-    
-    // Resolve context: Prioritize URL param -> Current State -> Backend Default (null)
-    const urlParams = new URLSearchParams(window.location.search);
-    const tid = canvas_id || urlParams.get('canvas_id') || STATE.canvas_id;
-    const nid = targetNoteId || urlParams.get('note_id'); // Deep-link or search-target detection
 
     try {
         let query = tid ? `?canvas_id=${tid}` : '';
@@ -517,11 +527,10 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         // Supplying the local hash allows the server to skip the heavy metadata payload.
         if (STATE.note_map_hash) query += (query ? '&' : '?') + `note_map_hash=${encodeURIComponent(STATE.note_map_hash)}`;
 
-        const response = await fetch(`/notes/api/state${query}`);
-        const data = await response.json();
+        const data = await NoteAPI.get(`/notes/api/state${query}`);
+        if (!data) return; // Aborted or session expired
         
-        // Logic Gate PRE-FLIGHT: Calculate if this is a context change BEFORE we update STATE
-        const isContextChange = (tid && tid != STATE.canvas_id) || (layer_id && layer_id != STATE.activeLayerId);
+        // Logic Gate PRE-FLIGHT: Update UI only if not aborted (tid/layer already resolved above)
 
         if (data.success) {
             if (typeof mergeNoteState === 'function') {
@@ -752,6 +761,9 @@ window.setupHeartbeat = function setupHeartbeat() {
     // Lock the context immediately to prevent race conditions during async initialization
     STATE.lastPolledCanvasId = canvasId;
     
+    // Lifecycle Management: Session-based signal for background polling
+    STATE.heartbeatController = new AbortController();
+
     async function poll() {
         // Inner Guard: Protect against mid-teardown ticks or race conditions
         if (!STATE.canvas_id || STATE.isInitializing) {
@@ -775,27 +787,24 @@ window.setupHeartbeat = function setupHeartbeat() {
             return;
         }
 
-        // Fresh controller for this specific request cycle
-        STATE.heartbeatController = new AbortController();
-        const signal = STATE.heartbeatController.signal;
-
         try {
-            const res = await fetch(`/notes/api/heartbeat/${STATE.canvas_id}?layer_id=${STATE.activeLayerId}`, { signal });
-            const data = await res.json();
+            const res = await NoteAPI.get(`/notes/api/heartbeat/${STATE.canvas_id}?layer_id=${STATE.activeLayerId}`, { 
+                signal: STATE.heartbeatController.signal 
+            });
             
-            if (data.success && data.last_mutation !== STATE.last_mutation) {
+            if (res && res.success && res.last_mutation !== STATE.last_mutation) {
                 // Perform hydration only if context hasn't changed during the fetch
-                if (STATE.canvas_id === canvasId && STATE.activeLayerId === layerId && !signal.aborted) {
+                if (STATE.canvas_id === canvasId && STATE.activeLayerId === layerId) {
                     await loadState(false, STATE.canvas_id, null, STATE.activeLayerId);
                 }
             }
         } catch (e) {
-            // AbortError is expected and silent during transitions
+            // Error Handling: Standard network failures are handled by NoteAPI.
+            // Local processing errors are logged here.
             if (e.name !== 'AbortError') {
-                console.warn('Heartbeat suppressed:', e.message);
+                console.error('Heartbeat Processing Error:', e);
             }
         } finally {
-            STATE.heartbeatController = null;
             // Generation Check: Only reschedule if this loop is still the active context baseline.
             // This prevents a 'ghost loop' from resurrecting after an AbortError during context switch.
             if (STATE.lastPolledCanvasId === canvasId) {

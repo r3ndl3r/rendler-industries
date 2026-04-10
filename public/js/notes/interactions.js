@@ -718,21 +718,9 @@ async function processSyncQueue() {
     const failedItems = [];
     
     for (const item of items) {
-        try {
-            const res = await fetch('/notes/api/viewport', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRF-Token': item.token 
-                },
-                body: item.params,
-                keepalive: true
-            });
-            
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        } catch (e) {
-            failedItems.push(item);
-        }
+        // Migration: NoteAPI handles CSRF and error management internally
+        const res = await NoteAPI.post('/notes/api/viewport', item.params, { keepalive: true });
+        if (!res) failedItems.push(item);
     }
     
     if (failedItems.length > 0) {
@@ -835,21 +823,10 @@ async function saveViewportImmediate() {
         layer_id:   STATE.activeLayerId
     });
 
-    try {
-        const res = await fetch('/notes/api/viewport', {
-            method:  'POST',
-            headers: { 
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRF-Token': csrfToken 
-            },
-            // keepalive: true ensures the request survives a page teardown (beforeunload)
-            keepalive: true,
-            body: params.toString()
-        });
-        
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    } catch (e) {
-        // Fallback: If immediate save fails, queue it for the Reliability Guardian
+    // Persistence Layer: Centralized transport handles CSRF and lifecycle signals
+    const res = await NoteAPI.post('/notes/api/viewport', params, { keepalive: true });
+    if (!res) {
+        // Failure Recovery: If the direct commit fails, queue it for background retry
         STATE.syncQueue.push({ params: params.toString(), token: csrfToken, ts: Date.now() });
     }
 }
@@ -1125,7 +1102,7 @@ async function saveNoteInline(id, stayInEditMode = false) {
     };
 
     try {
-        const res = await apiPost('/notes/api/save', params);
+        const res = await NoteAPI.post('/notes/api/save', params);
         if (res && res.success) {
             if (typeof window.mergeNoteState === 'function') {
                 window.mergeNoteState(res.notes);
@@ -1152,7 +1129,7 @@ async function saveNoteInline(id, stayInEditMode = false) {
                 const newName  = display.textContent.trim();
                 const origName = blobMap[blobId];
                 if (blobId && newName && newName !== origName) {
-                    const renameRes = await apiPost('/notes/api/attachment/rename', {
+                    const renameRes = await NoteAPI.post('/notes/api/attachment/rename', {
                         note_id:   id,
                         blob_id:   blobId,
                         canvas_id: STATE.canvas_id,
@@ -1221,7 +1198,7 @@ async function toggleCollapse(id) {
     el.classList.add('pending');
     
     try {
-        const res = await apiPost('/notes/api/save', {
+        const res = await NoteAPI.post('/notes/api/save', {
             id: id,
             canvas_id: STATE.canvas_id,
             title: note.title,
@@ -1690,9 +1667,9 @@ async function copyNoteToClipboard(id, targetBlobId = null) {
 async function fetchAndNormalizeImage(blobId) {
     if (!window.isSecureContext) return null;
     try {
-        const res = await fetch(`/notes/attachment/serve/${blobId}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const raw = await res.blob();
+        // Centralized media transport with silent abort support
+        const raw = await NoteAPI.blob(`/notes/attachment/serve/${blobId}`);
+        if (!raw) return null; // Aborted or session expired
         
         // Browsers strictly require PNG (and sometimes JPEG) for clipboard storage.
         if (raw.type !== 'image/png') {

@@ -1,69 +1,115 @@
 // /public/js/notes/api.js
 
 /**
- * Standard HTTP Request Wrapper with CSRF Protection.
- * @param {string} url - API endpoint.
- * @param {Object|FormData} params - Request payload.
- * @returns {Promise<Object>} - Server response.
+ * NoteAPI: Centralized AJAX Orchestrator for the Whiteboard Module.
+ * Provides a standardized, signal-aware transport layer with built-in CSRF 
+ * protection, session management, and silent abort handling.
  */
-async function apiPost(url, params) {
-    const isFormData = params instanceof FormData;
-    const csrfToken  = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-    const headers = {
-        'X-CSRF-Token': csrfToken
-    };
-
-    let body;
-    if (isFormData) {
-        body = params;
-    } else if (Array.isArray(params)) {
-        headers['Content-Type'] = 'application/json';
-        body = JSON.stringify(params);
-    } else {
-        headers['Content-Type'] = 'application/x-www-form-urlencoded';
-        body = new URLSearchParams(params);
-    }
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: headers,
-            body: body
-        });
-        
-        if (response.status === 403) {
-            const data = await response.json();
-            if (data.error) {
-                showToast(data.error, 'error');
-            } else {
-                console.error('CSRF/Auth Failure (403) for:', url);
-                showToast('Session mismatch or expired. Please refresh the page.', 'error');
+window.NoteAPI = {
+    /**
+     * Standard GET Wrapper.
+     * @param {string} url - Target endpoint.
+     * @param {Object} options - { signal: AbortSignal }
+     */
+    async get(url, options = {}) {
+        try {
+            const response = await fetch(url, { signal: options.signal });
+            
+            // Session Guard: Centralized 403 handling
+            if (response.status === 403) {
+                window.location.href = '/login';
+                return null;
             }
-            return { success: false, error: 'Unauthorized' };
+
+            const data = await response.json();
+            if (data.error && !data.success) {
+                showToast(data.error, 'error');
+            }
+            return data;
+        } catch (err) {
+            // Signal Management: Silence intentional context-switch abortions
+            if (err.name === 'AbortError') return null;
+            console.error('NoteAPI Get Error:', err);
+            showToast('Network request failed', 'error');
+            return null;
+        }
+    },
+
+    /**
+     * Standard POST Wrapper (Supports JSON, Form-encoded, and FormData).
+     * @param {string} url - Target endpoint.
+     * @param {Object|FormData} params - Payload.
+     * @param {Object} options - { signal: AbortSignal }
+     */
+    async post(url, params, options = {}) {
+        const isFormData = params instanceof FormData;
+        const csrfToken  = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        const headers = { 'X-CSRF-Token': csrfToken };
+        let body;
+
+        if (isFormData) {
+            body = params;
+        } else if (Array.isArray(params)) {
+            headers['Content-Type'] = 'application/json';
+            body = JSON.stringify(params);
+        } else {
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            body = new URLSearchParams(params);
         }
 
-        const data = await response.json();
-        if (data.error && !data.success) {
-            showToast(data.error, 'error');
-        }
-        return data;
-    } catch (err) {
-        console.error('API Post Error:', err);
-        showToast('Network request failed', 'error');
-        return { success: false, error: 'Network Error' };
-    }
-}
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: headers,
+                body: body,
+                signal: options.signal,
+                keepalive: options.keepalive
+            });
+            
+            // Session Guard: Hard redirect on expiry
+            if (response.status === 403) {
+                window.location.href = '/login';
+                return null;
+            }
 
-async function apiGet(url) {
-    try {
-        const response = await fetch(url);
-        return await response.json();
-    } catch (err) {
-        console.error('API Get Error:', err);
-        return { success: false, error: 'Network Error' };
+            const data = await response.json();
+            if (data.error && !data.success) {
+                showToast(data.error, 'error');
+            }
+            return data;
+        } catch (err) {
+            if (err.name === 'AbortError') return null;
+            console.error('NoteAPI Post Error:', err);
+            showToast('Network request failed', 'error');
+            return null;
+        }
+    },
+
+    /**
+     * Binary Fragment/Image Orchestrator.
+     * Ensures consistent security handling even for media transfers.
+     */
+    async blob(url, options = {}) {
+        try {
+            const response = await fetch(url, { signal: options.signal });
+            
+            // Binary Session Guard: Redirect on 403 to prevent silent binary failure
+            if (response.status === 403) {
+                window.location.href = '/login';
+                return null;
+            }
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.blob();
+        } catch (err) {
+            if (err.name === 'AbortError') return null;
+            console.error('NoteAPI Blob Error:', err);
+            showToast('Media fetch failed', 'error');
+            return null;
+        }
     }
-}
+};
 
 /**
  * Positional Sync Orchestration: Prevents server saturation during rapid coordinate 
@@ -93,7 +139,7 @@ function deleteNote(id) {
                 if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
             }
 
-            const res = await apiPost('/notes/api/delete', { id: id, canvas_id: STATE.canvas_id });
+            const res = await NoteAPI.post('/notes/api/delete', { id: id, canvas_id: STATE.canvas_id });
             if (res && res.success) {
                 if (typeof window.mergeNoteState === 'function') {
                     window.mergeNoteState(res.notes);
@@ -151,7 +197,7 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
             };
 
             try {
-                const res = await apiPost('/notes/api/save', latestParams);
+                const res = await NoteAPI.post('/notes/api/save', latestParams);
                 if (res && res.success) {
                     if (typeof window.mergeNoteState === 'function') {
                         window.mergeNoteState(res.notes);
@@ -191,7 +237,7 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
     };
 
     try {
-        const res = await apiPost('/notes/api/save', params);
+        const res = await NoteAPI.post('/notes/api/save', params);
         if (res && res.success) {
             if (typeof window.mergeNoteState === 'function') {
                 window.mergeNoteState(res.notes);
@@ -212,14 +258,14 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
  * Recycle Bin Fetch
  */
 async function loadBin() {
-    return await apiGet('/notes/api/bin');
+    return await NoteAPI.get('/notes/api/bin');
 }
 
 /**
  * Restoration Engine
  */
 async function restoreNote(id, canvas_id, layer_id, x, y) {
-    return await apiPost('/notes/api/restore', { id, canvas_id, layer_id, x, y });
+    return await NoteAPI.post('/notes/api/restore', { id, canvas_id, layer_id, x, y });
 }
 
 
@@ -228,22 +274,22 @@ async function restoreNote(id, canvas_id, layer_id, x, y) {
  * Canvas Management
  */
 async function renameCanvas(canvas_id, name) {
-    return await apiPost('/notes/api/canvases/rename', { canvas_id, name });
+    return await NoteAPI.post('/notes/api/canvases/rename', { canvas_id, name });
 }
 
 async function deleteCanvasApi(canvas_id) {
-    return await apiPost('/notes/api/canvases/delete', { canvas_id });
+    return await NoteAPI.post('/notes/api/canvases/delete', { canvas_id });
 }
 
 async function createCanvas(name) {
-    return await apiPost('/notes/api/canvases/create', { name });
+    return await NoteAPI.post('/notes/api/canvases/create', { name });
 }
 
 /**
  * Sharing & ACL
  */
 async function addShare(canvas_id, username) {
-    const res = await apiPost('/notes/api/canvases/share', { canvas_id, username, can_edit: 1 });
+    const res = await NoteAPI.post('/notes/api/canvases/share', { canvas_id, username, can_edit: 1 });
     if (res && res.success) {
         // State Synchronization: Only update if the modified board is active
         if (canvas_id == STATE.canvas_id) {
@@ -258,7 +304,7 @@ async function addShare(canvas_id, username) {
 }
 
 async function updateSharePermission(canvasId, username, canEdit) {
-    const res = await apiPost('/notes/api/canvases/share', { canvas_id: canvasId, username, can_edit: canEdit });
+    const res = await NoteAPI.post('/notes/api/canvases/share', { canvas_id: canvasId, username, can_edit: canEdit });
     if (res && res.success) {
         if (canvasId == STATE.canvas_id) {
             STATE.share_list = res.share_list;
@@ -269,7 +315,7 @@ async function updateSharePermission(canvasId, username, canEdit) {
 }
 
 async function revokeShare(canvasId, username) {
-    const res = await apiPost('/notes/api/canvases/share', { canvas_id: canvasId, username, revoke: 1 });
+    const res = await NoteAPI.post('/notes/api/canvases/share', { canvas_id: canvasId, username, revoke: 1 });
     if (res && res.success) {
         // State Synchronization: Re-align shared list baseline
         if (canvasId == STATE.canvas_id) {
@@ -289,7 +335,7 @@ async function revokeShare(canvasId, username) {
 async function updateShare(canvas_id, username, can_edit, revoke = 0) {
     const params = { canvas_id, username, can_edit };
     if (revoke) params.revoke = 1;
-    return await apiPost('/notes/api/canvases/share', params);
+    return await NoteAPI.post('/notes/api/canvases/share', params);
 }
 
 /**
@@ -335,7 +381,7 @@ async function moveLevel(direction) {
  * Copy/Clone Actions
  */
 async function copyNoteToBoard(id, canvas_id) {
-    const res = await apiPost('/notes/api/notes/copy', { id, canvas_id });
+    const res = await NoteAPI.post('/notes/api/notes/copy', { id, canvas_id });
     if (res && res.success) {
         showToast('Note copied to board', 'success');
         if (typeof closeMoveModal === 'function') closeMoveModal();
@@ -356,7 +402,7 @@ async function copyNoteToLevel(id, newLevelId) {
     if (el) el.classList.add('pending');
 
     try {
-        const res = await apiPost('/notes/api/save', {
+        const res = await NoteAPI.post('/notes/api/save', {
             id: null, // Force creation of a NEW record
             source_id: id, // Link for binary deep-copy (images)
             canvas_id: STATE.canvas_id,
