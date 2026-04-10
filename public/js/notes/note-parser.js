@@ -40,19 +40,24 @@ const NoteParser = (() => {
     };
 
     /**
-     * Identifies the end of a depth-balanced component block.
-     * Returns -1 if the string ends with a non-zero depth.
+     * Pre-calculates the matching bracket positions for the entire text.
+     * Uses a stack-based O(n) approach to enable O(1) lookups during parsing.
+     * @param {string} text - The content to index.
+     * @returns {Map} - Map of opening bracket index to closing bracket index.
      */
-    const findBalancedSpan = (text, startIdx) => {
-        let depth = 0;
-        for (let i = startIdx; i < text.length; i++) {
-            if (text[i] === '[') depth++;
-            if (text[i] === ']') {
-                depth--;
-                if (depth === 0) return i;
+    const buildBracketIndex = (text) => {
+        const index = new Map();
+        const stack = [];
+        for (let i = 0; i < text.length; i++) {
+            if (text[i] === '[') {
+                stack.push(i);
+            } else if (text[i] === ']') {
+                if (stack.length > 0) {
+                    index.set(stack.pop(), i);
+                }
             }
         }
-        return -1;
+        return index;
     };
 
     /**
@@ -181,6 +186,7 @@ const NoteParser = (() => {
         parse: (text, noteId) => {
             if (!text) return '';
             
+            const bracketIndex = buildBracketIndex(text);
             let output = '';
             let cursor = 0;
             let isLineStart = true;
@@ -245,9 +251,9 @@ const NoteParser = (() => {
                     }
                 }
 
-                // 2. Component Scanning: Balanced Brackets
+                // 2. Component Scanning: O(1) Balanced Bracket Lookup
                 if (char === '[') {
-                    const endIdx = findBalancedSpan(text, cursor);
+                    const endIdx = bracketIndex.get(cursor) ?? -1;
 
                     // Unbalanced bracket: emit literal [ and continue
                     if (endIdx === -1) {
