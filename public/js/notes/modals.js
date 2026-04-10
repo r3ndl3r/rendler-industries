@@ -1529,12 +1529,6 @@ function setupHeaderInteractions() {
         });
     }
 
-    const levelRename = document.querySelector('.btn-level-rename');
-    if (levelRename) {
-        levelRename.addEventListener('click', () => {
-            if (typeof renameCurrentLevel === 'function') renameCurrentLevel();
-        });
-    }
 }
 
 // Dismiss panel when clicking outside
