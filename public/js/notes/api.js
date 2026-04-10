@@ -141,9 +141,9 @@ function deleteNote(id) {
 
             const res = await NoteAPI.post('/notes/api/delete', { id: id, canvas_id: STATE.canvas_id });
             if (res && res.success) {
-                if (typeof window.mergeNoteState === 'function') {
+                if (res.notes && typeof window.mergeNoteState === 'function') {
                     window.mergeNoteState(res.notes);
-                } else {
+                } else if (res.notes) {
                     STATE.notes = res.notes;
                 }
                 STATE.last_mutation = res.last_mutation;
@@ -413,9 +413,9 @@ async function copyNoteToLevel(id, newLevelId) {
         });
 
         if (res && res.success) {
-            if (typeof window.mergeNoteState === 'function') {
+            if (res.notes && typeof window.mergeNoteState === 'function') {
                 window.mergeNoteState(res.notes);
-            } else {
+            } else if (res.notes) {
                 STATE.notes = res.notes;
             }
             STATE.last_mutation = res.last_mutation;
