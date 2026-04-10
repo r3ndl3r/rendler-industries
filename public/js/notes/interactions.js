@@ -1104,8 +1104,9 @@ async function saveNoteInline(id, stayInEditMode = false) {
     const noteLevelFilename = noteFilenameEl ? noteFilenameEl.textContent.trim() : (note.filename || '');
 
     el.classList.add('pending');
-    
     // Interaction Locking: Maintain state integrity during flight
+    if (typeof window.addActiveSync === 'function') window.addActiveSync(id);
+
     const params = {
         id: id,
         canvas_id: STATE.canvas_id,
@@ -1126,9 +1127,12 @@ async function saveNoteInline(id, stayInEditMode = false) {
     try {
         const res = await apiPost('/notes/api/save', params);
         if (res && res.success) {
-            STATE.notes         = res.notes;
+            if (typeof window.mergeNoteState === 'function') {
+                window.mergeNoteState(res.notes);
+            } else {
+                STATE.notes = res.notes;
+            }
             STATE.last_mutation = res.last_mutation;
-            STATE.note_map      = res.note_map || STATE.note_map;
             
             // Targeted DOM Update: Refresh viewer and title without board re-render
             const viewer = el.querySelector('.note-text-viewer');
@@ -1155,7 +1159,11 @@ async function saveNoteInline(id, stayInEditMode = false) {
                         filename:  newName
                     });
                     if (renameRes && renameRes.success) {
-                        STATE.notes         = renameRes.notes;
+                        if (typeof window.mergeNoteState === 'function') {
+                            window.mergeNoteState(renameRes.notes);
+                        } else {
+                            STATE.notes = renameRes.notes;
+                        }
                         STATE.last_mutation = renameRes.last_mutation;
                     }
                 }
@@ -1183,6 +1191,7 @@ async function saveNoteInline(id, stayInEditMode = false) {
         }
     } finally {
         el.classList.remove('pending');
+        if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
         // Always release the edit guard so the heartbeat is not permanently inhibited AFTER a final terminal save
         if (!stayInEditMode) STATE.isEditingNote = null;
     }
@@ -1229,9 +1238,12 @@ async function toggleCollapse(id) {
         });
         
         if (res && res.success) {
-            STATE.notes         = res.notes;
+            if (typeof window.mergeNoteState === 'function') {
+                window.mergeNoteState(res.notes);
+            } else {
+                STATE.notes = res.notes;
+            }
             STATE.last_mutation = res.last_mutation;
-            STATE.note_map      = res.note_map || STATE.note_map;
         }
     } finally {
         el.classList.remove('pending');

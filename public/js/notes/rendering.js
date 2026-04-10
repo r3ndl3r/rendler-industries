@@ -72,17 +72,16 @@ function renderUI() {
                 if (note.height && curH != note.height) existing.style.height = `${note.height}px`;
                 if (curZ != note.z_index) existing.style.zIndex = note.z_index || 1;
 
-                // Content Reconciliation: Only update HTML if content/title changed
-                // This prevents the "flash" inside the note and maintains text selection
-                const curTitle = existing.querySelector('.note-title-slot')?.textContent;
-                if (curTitle !== (note.title || 'Untitled Note')) {
+                // --- Content & Identity Reconciliation ---
+                // Targeted hydration: Update viewer ONLY if content or title changed
+                const titleSlot = existing.querySelector('.note-title-slot');
+                if (titleSlot && titleSlot.textContent !== (note.title || 'Untitled Note')) {
+                    titleSlot.textContent = note.title || 'Untitled Note';
                     const titleInput = existing.querySelector('.inline-title-input');
-                    const titleSlot  = existing.querySelector('.note-title-slot');
                     if (titleInput) titleInput.value = note.title || '';
-                    if (titleSlot)  titleSlot.textContent = note.title || 'Untitled Note';
                 }
 
-                // Collapse state sync
+                // --- Collapse State Sync (Persisted DB State) ---
                 if (note.is_collapsed && !existing.classList.contains('collapsed')) {
                     existing.classList.add('collapsed');
                     const btn = existing.querySelector('.btn-icon-collapse');
@@ -93,8 +92,12 @@ function renderUI() {
                     if (btn) btn.innerHTML = '🔺';
                 }
 
-                // Attachment Identity Reconciliation (High-Fidelity Signature)
-                // We compare sorted signatures (blob_id:filename) to detect renames and swaps
+                // Hoist viewer reference for Priority reconciliation
+                const viewer = existing.querySelector('.note-text-viewer');
+
+                // --- Attachment Identity Reconciliation (Priority 1) ---
+                // We compare sorted signatures (blob_id:filename) to detect renames and swaps.
+                // An attachment change triggers a full content re-render, which includes text.
                 const newSig = (note.attachments || [])
                     .map(a => `${a.blob_id}:${encodeURIComponent(a.filename || '')}`)
                     .sort()
@@ -106,11 +109,20 @@ function renderUI() {
                     .join('|');
                 
                 if (domSig !== newSig) {
-                    // DOM Identity Diff detected: Perform a surgical content hydration
                     const contentDiv = existing.querySelector('.note-content');
                     if (contentDiv) {
                         contentDiv.innerHTML = generateNoteContentHtml(note, canEdit);
+                        // Refresh the content tracking baseline after a full content re-render
+                        existing.dataset.lastContent = note.content;
                     }
+                } 
+                // --- Content & Identity Reconciliation (Priority 2) ---
+                // Targeted hydration: Only update viewer if attachments didn't change but text did.
+                else if (viewer && existing.dataset.lastContent !== note.content) {
+                    viewer.innerHTML = formatNoteContent(note.content, note.id);
+                    const textarea = existing.querySelector('textarea');
+                    if (textarea) textarea.value = note.content || '';
+                    existing.dataset.lastContent = note.content;
                 }
             } else {
                 // Creation: New note entered the active isolation layer
@@ -210,6 +222,8 @@ function createNoteElement(note, canEdit = true) {
     div.className = `sticky-note ${note.is_collapsed ? 'collapsed' : ''} ${canEdit ? 'can-edit' : ''}`;
     div.id = `note-${note.id}`;
     div.dataset.id = note.id;
+    // Atomic Context: Capture content baseline for reconciliation
+    div.dataset.lastContent = note.content || '';
     
     // Apply custom accent color via CSS variable
     const accentColor = normalizeColorHex(note.color);
