@@ -393,7 +393,20 @@ async function handleFileDrop(file, x, y, customTitle = null) {
     const uploadRes = await NoteAPI.post('/notes/api/upload', formData);
     if (uploadRes && uploadRes.success) {
         STATE.last_mutation = uploadRes.last_mutation;
-        await loadState(false, STATE.canvas_id);
+        
+        // Surgical Synchronization: Update memory and redraw only what is necessary
+        if (uploadRes.notes) {
+            if (typeof window.mergeNoteState === 'function') {
+                window.mergeNoteState(uploadRes.notes);
+            } else {
+                STATE.notes = uploadRes.notes;
+            }
+            if (typeof renderUI === 'function') renderUI();
+        } else {
+            // Fallback: Use full hydration if the response is missing the fresh dataset
+            await loadState(false, STATE.canvas_id);
+        }
+
         showToast('Note Created with Attachment', 'success');
     }
 }
