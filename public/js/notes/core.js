@@ -53,7 +53,9 @@ const STATE = {
         frame:     null,
         active:    false,
         margin:    15,             // Proximity triggers (px)
-        maxSpeed:  15              // Peak velocity at absolute edge
+        maxSpeed:  15,             // Peak velocity at absolute edge
+        startTime: null,           // Intentionality Timestamp
+        delay:     200             // Milliseconds of hold required to trigger
     },
     activeSyncs: new Map(),        // Anti-Regression Registry: Tracks Note IDs with in-flight API transactions
     syncQueue:      [],              // Transactional Retry Container

@@ -300,10 +300,25 @@ function checkAutoScrollProximity(e) {
         velY = normalizeSpeed(e.clientY - (rect.bottom - margin));
     }
 
-    if (velX !== 0 || velY !== 0) {
-        startAutoScroll(velX, velY);
+    const isNearEdge = (velX !== 0 || velY !== 0);
+    const shouldBypass = STATE.autoScroll.active || STATE.isResizing;
+
+    // Active Bypass: If already scrolling OR resizing, update velocity immediately
+    if (shouldBypass) {
+        if (isNearEdge) startAutoScroll(velX, velY);
+        else stopAutoScroll();
+        return;
+    }
+
+    // Intentionality Delay: Apply 200ms threshold for initial trigger
+    if (isNearEdge) {
+        if (!STATE.autoScroll.startTime) {
+            STATE.autoScroll.startTime = Date.now();
+        } else if (Date.now() - STATE.autoScroll.startTime >= STATE.autoScroll.delay) {
+            startAutoScroll(velX, velY);
+        }
     } else {
-        stopAutoScroll();
+        STATE.autoScroll.startTime = null;
     }
 }
 
@@ -359,6 +374,7 @@ function startAutoScroll(vx, vy) {
  * @returns {void}
  */
 function stopAutoScroll() {
+    STATE.autoScroll.startTime = null; // Reset delay tracking
     if (!STATE.autoScroll.active) return;
     STATE.autoScroll.active = false;
     if (STATE.autoScroll.frame) {
