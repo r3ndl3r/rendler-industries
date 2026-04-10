@@ -725,7 +725,7 @@ function mergeNoteState(incomingNotes) {
     // We rebuild from 'incomingNotes' to ensure we only update entries that were 
     // actually provided, respecting the 'activeIds' locks inside the merge loop above.
     incomingNotes.forEach(n => {
-        STATE.note_map[n.id] = n;
+        if (!activeIds.has(String(n.id))) STATE.note_map[n.id] = n;
     });
 }
 
