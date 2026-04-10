@@ -70,8 +70,8 @@ async function executeCreateNote() {
         is_collapsed: note.is_collapsed,
         is_options_expanded: note.is_options_expanded
     } : {
-        x: Math.round(canvasCX / 10) * 10 - 140,
-        y: Math.round(canvasCY / 10) * 10 - 100,
+        x: DRAFT_NOTE.x !== null ? DRAFT_NOTE.x : (Math.round(canvasCX / 10) * 10 - 140),
+        y: DRAFT_NOTE.y !== null ? DRAFT_NOTE.y : (Math.round(canvasCY / 10) * 10 - 100),
         z_index: ++STATE.maxZ,
         is_collapsed: 0,
         is_options_expanded: 0
@@ -1146,7 +1146,7 @@ async function renderBinList() {
  * @param {number|string|null} editId - Optional ID if editing.
  * @returns {Promise<void>}
  */
-async function showCreateNoteModal(type, data, editId = null, initialText = null, filename = null) {
+async function showCreateNoteModal(type, data, editId = null, initialText = null, filename = null, coords = null) {
     const modal       = document.getElementById('note-create-modal');
     const container   = document.getElementById('create-note-content');
     const titleInput  = document.getElementById('create-note-title');
@@ -1160,7 +1160,14 @@ async function showCreateNoteModal(type, data, editId = null, initialText = null
 
 
     container.innerHTML = '';
-    DRAFT_NOTE = { type, data, id: editId, pendingFiles: [] };
+    DRAFT_NOTE = { 
+        type, 
+        data, 
+        id: editId, 
+        pendingFiles: [],
+        x: coords ? coords.x : null,
+        y: coords ? coords.y : null
+    };
     
     // Clipboard Lifecycle: If we are pasting an image, populate the pending queue immediately
     if (type === 'image' && data) {
