@@ -184,6 +184,38 @@ sub DB::save_note {
     return $id;
 }
 
+# Surgical coordinate and dimension synchronization.
+# Parameters:
+#   params : HashRef { id, user_id, x, y, width, height, z_index, is_collapsed, is_options_expanded, layer_id }
+# Returns:
+#   Integer or undef if unauthorized.
+sub DB::save_note_geometry {
+    my ($self, $p) = @_;
+    $self->ensure_connection;
+
+    # Authority: Resolve Board context via record ID to prevent cross-canvas manipulation
+    my $id = $p->{id};
+    my ($cid) = $self->{dbh}->selectrow_array("SELECT canvas_id FROM notes WHERE id = ?", undef, $id);
+    
+    return undef unless $cid && $self->check_canvas_access($cid, $p->{user_id}, 1);
+
+    my $sql = "UPDATE notes SET x = ?, y = ?, width = ?, height = ?, z_index = ?, 
+               is_collapsed = ?, is_options_expanded = ?, layer_id = ? 
+               WHERE id = ?";
+    
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute(
+        $p->{x}, $p->{y}, $p->{width}, $p->{height}, $p->{z_index},
+        $p->{is_collapsed} // 0, $p->{is_options_expanded} // 0,
+        $p->{layer_id} // 1, $id
+    );
+
+    # Signal board mutation to trigger cross-session polling invalidation
+    $self->touch_canvas($cid);
+
+    return ($id, $cid);
+}
+
 # Calculates a unified synchronization fingerprint for the user's note landscape.
 # O(1) Complexity: Leverages composite indices to scan notes (updates/deletions) and shares.
 # Returns:

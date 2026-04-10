@@ -164,6 +164,45 @@ sub api_save {
     });
 }
 
+# Surgical persistence for note geometry (Move/Resize/Collapse).
+# Route: POST /notes/api/geometry
+# Description: Prevents stale payload race conditions by specifically ignoring 'content' and 'title'.
+sub api_save_geometry {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id = $c->current_user_id();
+    my $id      = $c->param('id');
+    
+    # 1. Parameter Extraction: Positional and Structural data ONLY
+    my $params = {
+        user_id             => $user_id,
+        id                  => $id,
+        x                   => int($c->param('x') // 0),
+        y                   => int($c->param('y') // 0),
+        width               => int($c->param('width') // 0),
+        height              => int($c->param('height') // 0),
+        z_index             => int($c->param('z_index') // 1),
+        is_collapsed        => int($c->param('is_collapsed') // 0),
+        is_options_expanded => int($c->param('is_options_expanded') // 0),
+        layer_id            => int($c->param('layer_id') // 1)
+    };
+
+    # 2. Board Context & Authority: Perform surgical coordinate sync
+    my ($result_id, $canvas_id) = $c->db->save_note_geometry($params);
+
+    unless (defined $result_id) {
+        return $c->render(json => { success => 0, error => 'Board Permission Denied' }, status => 403);
+    }
+    
+    $c->render(json => {
+        success       => 1,
+        id            => int($result_id),
+        canvas_id     => int($canvas_id),
+        last_mutation => $c->db->get_board_mutation_time($canvas_id)
+    });
+}
+
 # Permanently removes a note record.
 # Route: POST /notes/api/delete
 # Parameters: id, canvas_id

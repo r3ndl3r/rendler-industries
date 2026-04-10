@@ -750,8 +750,9 @@ function showBoardInfo() {
  * @returns {void}
  */
 function openJumpToLevelModal() {
+    const activeLevel = parseInt(STATE.activeLayerId);
+    
     // Internal: Shared Modal Cleanup Engine
-    // Restores the global modal to its default state after custom layout modifications.
     const cleanupModal = () => {
         const promptContainer = document.getElementById('globalConfirmPromptContainer');
         const actionsContainer = document.getElementById('globalConfirmModalActions');
@@ -764,56 +765,69 @@ function openJumpToLevelModal() {
         }
         if (actionsContainer) actionsContainer.classList.remove('hidden');
         if (modalContent) {
-            const injection = modalContent.querySelector('.quick-access-injection');
+            const injection = modalContent.querySelector('.level-navigator-injection');
             if (injection) injection.remove();
         }
     };
 
-    // Analytics: Identify all layers that currently contain notes, excluding the active one
-    const activeLayers = [...new Set(STATE.notes.map(n => n.layer_id))]
-        .filter(id => id != STATE.activeLayerId)
-        .sort((a,b) => a - b);
+    // 1. Data Aggregation: Calculate note counts for each level used in the current canvas
+    const levelStats = {};
+    (STATE.notes || []).forEach(n => {
+        const lid = parseInt(n.layer_id);
+        levelStats[lid] = (levelStats[lid] || 0) + 1;
+    });
+
+    // 2. Structure Discovery: Combine populated levels AND levels with aliases (Names)
+    const discoverySet = new Set(Object.keys(levelStats).map(id => parseInt(id)));
+    // Include any levels from the layer_map that have defined names/aliases
+    Object.keys(STATE.layer_map || {}).forEach(id => {
+        const lid = parseInt(id);
+        if (STATE.layer_map[id]) discoverySet.add(lid);
+    });
+
+    // 3. Extraction: Exclude the active level and sort
+    const targetLevels = Array.from(discoverySet)
+        .filter(id => id != activeLevel)
+        .sort((a, b) => a - b);
 
     window.showConfirmModal({
         title: 'Jump to Level',
         icon: '📚',
-        message: 'Specify level to view:',
+        message: 'Select a layer to navigate to:',
         width: 'small',
         hideCancel: true,
         noEmoji: true,
         autoFocus: true,
         input: {
             type: 'number',
-            placeholder: 'Level #',
+            placeholder: 'Or enter level #...',
             min: 1,
             max: 99,
             value: ''
         },
         confirmText: 'Go',
         confirmIcon: '📚',
-        onCancel: cleanupModal, // Clean up if dismissed via Esc/X/Overlay
+        onCancel: cleanupModal,
         onConfirm: async (val) => {
             const level = Math.floor(Math.abs(parseInt(val)));
             if (isNaN(level) || level < 1 || level > 99) {
                 showToast('Please enter a valid level (1-99)', 'error');
                 throw new Error('Invalid level');
             }
-            cleanupModal(); // Clean up before navigation/close
+            cleanupModal();
             if (typeof window.switchLevel === 'function') await window.switchLevel(level);
         }
     });
 
-    // Interaction UX: Move the Go button next to the input for a more compact row
+    // Interaction UX: Align Go button with the numeric input
     const promptContainer = document.getElementById('globalConfirmPromptContainer');
     const actionsContainer = document.getElementById('globalConfirmModalActions');
     const promptInput     = document.getElementById('globalConfirmPromptInput');
 
     if (promptContainer && actionsContainer && promptInput) {
-        // Hide standard actions and switch prompt to a row layout
         actionsContainer.classList.add('hidden');
         promptContainer.classList.add('modal-prompt-row');
 
-        // Inject the Go button next to the input if not already present
         if (!promptContainer.querySelector('.btn-go-row')) {
             const goBtn = document.createElement('button');
             goBtn.className = 'btn-primary btn-go-row';
@@ -822,54 +836,49 @@ function openJumpToLevelModal() {
             const submitLevel = () => {
                 const val = promptInput.value;
                 const level = Math.floor(Math.abs(parseInt(val)));
-                if (isNaN(level) || level < 1 || level > 99) {
-                    showToast('Please enter a valid level (1-99)', 'error');
-                } else {
-                    cleanupModal(); // Local cleanup before closure
+                if (!isNaN(level) && level >= 1 && level <= 99) {
+                    cleanupModal();
                     if (typeof window.switchLevel === 'function') window.switchLevel(level);
                     window.closeConfirmModal();
+                } else {
+                    showToast('Valid level # required', 'error');
                 }
             };
-
             goBtn.onclick = submitLevel;
-            
-            // Standard keyboard interaction: Allow Enter key to trigger submission
-            promptInput.onkeydown = (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    submitLevel();
-                }
-            };
-
+            promptInput.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); submitLevel(); } };
             promptContainer.appendChild(goBtn);
         }
     }
 
-    // UX Enhancement: Inject the Quick Access section if active layers are detected
-    if (activeLayers.length > 0) {
+    // High-Fidelity Navigation: Inject the Vertical Card List
+    if (targetLevels.length > 0) {
         const modalContent = document.getElementById('globalConfirmModalContent');
         if (modalContent) {
-            // Sanitization: Remove any previous injections to prevent duplication
-            const existing = modalContent.querySelector('.quick-access-injection');
+            const existing = modalContent.querySelector('.level-navigator-injection');
             if (existing) existing.remove();
 
-            const quickAccessHtml = `
-                <hr class="modal-divider-short">
-                <div class="quick-jump-section">
-                    <div class="quick-jump-title">🚀 QUICK ACCESS</div>
-                    <div class="quick-jump-list">
-                        ${activeLayers.map(id => {
-                            const alias = STATE.layer_map[id];
-                            const label = alias ? `${id} - ${alias}` : `Level ${id}`;
-                            return `<a href="javascript:void(0)" class="quick-jump-link" onclick="(${cleanupModal.toString()})(); if (typeof window.switchLevel === 'function') window.switchLevel(${id}); window.closeConfirmModal();">${window.escapeHtml(label)}</a>`;
-                        }).join('')}
+            const injection = document.createElement('div');
+            injection.className = 'level-navigator-injection';
+            
+            let listHtml = '<div class="level-list-container">';
+            targetLevels.forEach(id => {
+                const alias = STATE.layer_map[id];
+                const count = levelStats[id] || 0;
+                listHtml += `
+                    <div class="level-item" onclick="(${cleanupModal.toString()})(); if (typeof window.switchLevel === 'function') window.switchLevel(${id}); window.closeConfirmModal();">
+                        <div class="level-icon-stack">${count > 0 ? '📚' : '📄'}</div>
+                        <div class="level-info-main">
+                            <span class="level-title-row">Level ${id} ${alias ? `— ${window.escapeHtml(alias)}` : ''}</span>
+                            <span class="level-meta-row">${count > 0 ? `${count} ${count === 1 ? 'note' : 'notes'} on this layer` : 'No notes yet'}</span>
+                        </div>
+                        <div class="level-jump-arrow">❯</div>
                     </div>
-                </div>
-            `;
-            const div = document.createElement('div');
-            div.className = 'quick-access-injection';
-            div.innerHTML = quickAccessHtml;
-            modalContent.appendChild(div);
+                `;
+            });
+            listHtml += '</div>';
+
+            injection.innerHTML = `<hr class="modal-divider-short">${listHtml}`;
+            promptContainer.parentNode.appendChild(injection);
         }
     }
 }
