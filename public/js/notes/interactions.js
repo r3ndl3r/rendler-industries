@@ -7,31 +7,88 @@
  * @returns {void}
  */
 function initResizable(el, note) {
-    const handle = el.querySelector('.note-resize-handle');
-    if (!handle) return;
+    const handles = el.querySelectorAll('.note-resize-handle');
+    if (!handles.length) return;
 
-    let startX, startY, startWidth, startHeight;
+    let startX, startY, startWidth, startHeight, startLeft, startTop;
     let isResizing = false;
+    let direction = 'se'; // Default
 
-    // 1. Logic Scoped Hoisting: Both handlers are declared at the initResizable scope
-    // to ensure they are accessible to the event listeners below.
     const doResize = (e) => {
         if (!isResizing) return;
-        
-        let newWidth  = startWidth + (e.clientX - startX) / STATE.scale;
-        let newHeight = startHeight + (e.clientY - startY) / STATE.scale;
-        
-        newWidth  = Math.round(newWidth / STATE.snapGrid) * STATE.snapGrid;
-        newHeight = Math.round(newHeight / STATE.snapGrid) * STATE.snapGrid;
-        
-        const maxWidth  = STATE.canvasSize - note.x;
-        const maxHeight = STATE.canvasSize - note.y;
-        
-        newWidth  = Math.max(240, Math.min(newWidth, maxWidth));
-        newHeight = Math.max(54, Math.min(newHeight, maxHeight));
-        
-        el.style.width  = `${newWidth}px`;
-        el.style.height = `${newHeight}px`;
+
+        // Calculate delta from fixed start, scaled to canvas coordinates
+        const deltaX = (e.clientX - startX) / STATE.scale;
+        const deltaY = (e.clientY - startY) / STATE.scale;
+        const snap = STATE.snapGrid || 10;
+
+        // Fixed Anchors (The corner opposite to the moving handle)
+        const fixedRight  = startLeft + startWidth;
+        const fixedBottom = startTop  + startHeight;
+
+        let newW = startWidth;
+        let newH = startHeight;
+        let newX = startLeft;
+        let newY = startTop;
+
+        switch (direction) {
+            case 'se': {
+                const snappedRight  = Math.round((startLeft + startWidth + deltaX) / snap) * snap;
+                const snappedBottom = Math.round((startTop + startHeight + deltaY) / snap) * snap;
+                newW = snappedRight - startLeft;
+                newH = snappedBottom - startTop;
+                break;
+            }
+
+            case 'sw': {
+                const snappedLeft = Math.round((startLeft + deltaX) / snap) * snap;
+                newW = fixedRight - snappedLeft;
+                newH = Math.round((startHeight + deltaY) / snap) * snap;
+                newX = newW < 240 ? fixedRight - 240 : snappedLeft;
+                break;
+            }
+
+            case 'ne': {
+                const snappedRight = Math.round((startLeft + startWidth + deltaX) / snap) * snap;
+                const snappedTop   = Math.round((startTop + deltaY) / snap) * snap;
+                newW = snappedRight - startLeft;
+                newH = fixedBottom - snappedTop;
+                newY = newH < 54 ? fixedBottom - 54 : snappedTop;
+                break;
+            }
+
+            case 'nw': {
+                const snpL = Math.round((startLeft + deltaX) / snap) * snap;
+                const snpT = Math.round((startTop + deltaY) / snap) * snap;
+                newW = fixedRight - snpL;
+                newH = fixedBottom - snpT;
+                newX = newW < 240 ? fixedRight - 240 : snpL;
+                newY = newH < 54 ? fixedBottom - 54 : snpT;
+                break;
+            }
+        }
+
+        // Apply Clamps & Canvas Boundaries
+        const minW = 240;
+        const minH = 54;
+        const maxXY = STATE.canvasSize - 100; // Small buffer for edge
+
+        newW = Math.max(minW, Math.min(newW, direction.includes('e') ? STATE.canvasSize - startLeft : fixedRight));
+        newH = Math.max(minH, Math.min(newH, direction.includes('s') ? STATE.canvasSize - startTop : fixedBottom));
+        newX = Math.max(0, Math.min(newX, maxXY));
+        newY = Math.max(0, Math.min(newY, maxXY));
+
+        // Atomic DOM Application
+        el.style.width  = `${newW}px`;
+        el.style.height = `${newH}px`;
+        el.style.left   = `${newX}px`;
+        el.style.top    = `${newY}px`;
+
+        // Immediate State Update (Prevents "Double-Write" lag)
+        note.width  = newW;
+        note.height = newH;
+        note.x = newX;
+        note.y = newY;
     };
 
     const stopResize = () => {
@@ -43,32 +100,38 @@ function initResizable(el, note) {
         document.removeEventListener('mouseup', stopResize);
         el.classList.remove('resizing');
         
-        const finalWidth  = parseInt(el.style.width, 10);
-        const finalHeight = parseInt(el.style.height, 10);
-        
-        note.width  = finalWidth;
-        note.height = finalHeight;
-        
-        if (typeof syncNotePosition === 'function') syncNotePosition(note.id);
+        // Final Sync to Server/Backend
+        if (typeof syncNotePosition === 'function') syncNotePosition(note.id, 'normal');
     };
 
-    handle.addEventListener('mousedown', (e) => {
-        if (STATE.isInitializing) return;
-        if (!STATE.editMode) return;
-        e.stopPropagation();
-        e.preventDefault();
-        
-        isResizing = true;
-        STATE.isResizing = note.id;
-        startX = e.clientX;
-        startY = e.clientY;
-        const style = window.getComputedStyle(el);
-        startWidth = parseInt(style.width, 10);
-        startHeight = parseInt(style.height, 10);
-        
-        document.addEventListener('mousemove', doResize);
-        document.addEventListener('mouseup', stopResize);
-        el.classList.add('resizing');
+    handles.forEach(h => {
+        h.addEventListener('mousedown', (e) => {
+            if (STATE.isInitializing || !STATE.editMode) return;
+            e.stopPropagation();
+            e.preventDefault();
+            
+            isResizing = true;
+            STATE.isResizing = note.id;
+            
+            // Determine interaction mode from handle class
+            if (h.classList.contains('nw')) direction = 'nw';
+            else if (h.classList.contains('ne')) direction = 'ne';
+            else if (h.classList.contains('sw')) direction = 'sw';
+            else direction = 'se';
+
+            startX = e.clientX;
+            startY = e.clientY;
+            
+            const style = window.getComputedStyle(el);
+            startWidth  = parseInt(style.width, 10);
+            startHeight = parseInt(style.height, 10);
+            startLeft   = parseInt(style.left, 10);
+            startTop    = parseInt(style.top, 10);
+            
+            document.addEventListener('mousemove', doResize);
+            document.addEventListener('mouseup', stopResize);
+            el.classList.add('resizing');
+        });
     });
 }
 

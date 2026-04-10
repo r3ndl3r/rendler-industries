@@ -43,10 +43,14 @@ function renderUI() {
                 // Atomic Synchronicity: Check if we need to update position/z-index
                 const curX = parseInt(existing.style.left);
                 const curY = parseInt(existing.style.top);
+                const curW = parseInt(existing.style.width);
+                const curH = parseInt(existing.style.height);
                 const curZ = parseInt(existing.style.zIndex);
                 
                 if (curX != note.x) existing.style.left = `${note.x}px`;
                 if (curY != note.y) existing.style.top = `${note.y}px`;
+                if (note.width  && curW != note.width)  existing.style.width  = `${note.width}px`;
+                if (note.height && curH != note.height) existing.style.height = `${note.height}px`;
                 if (curZ != note.z_index) existing.style.zIndex = note.z_index || 1;
 
                 // Content Reconciliation: Only update HTML if content/title changed
@@ -253,7 +257,10 @@ function createNoteElement(note, canEdit = true) {
         <div class="note-content">
             ${contentHtml}
         </div>
-        <div class="note-resize-handle" ${canEdit ? '' : 'style="display:none;"'}></div>
+        <div class="note-resize-handle nw" ${canEdit ? '' : 'style="display:none;"'}></div>
+        <div class="note-resize-handle ne" ${canEdit ? '' : 'style="display:none;"'}></div>
+        <div class="note-resize-handle sw" ${canEdit ? '' : 'style="display:none;"'}></div>
+        <div class="note-resize-handle se" ${canEdit ? '' : 'style="display:none;"'}></div>
     `;
 
     return div;
