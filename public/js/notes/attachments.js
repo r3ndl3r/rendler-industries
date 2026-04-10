@@ -76,7 +76,11 @@ function confirmAttachmentRemoval(noteId, blobId) {
                 });
                 
                 if (res && res.success) {
-                    STATE.notes = res.notes;
+                    if (typeof window.mergeNoteState === 'function') {
+                        window.mergeNoteState(res.notes);
+                    } else {
+                        STATE.notes = res.notes;
+                    }
                     STATE.last_mutation = res.last_mutation;
                     
                     const note = STATE.notes.find(n => n.id == activeNoteId);
@@ -250,7 +254,11 @@ async function handleInlineFileSelection(e, id) {
             
             // 1. Memory Sync: Update local note collection from the response data
             if (uploadRes.notes) {
-                STATE.notes = uploadRes.notes;
+                if (typeof window.mergeNoteState === 'function') {
+                    window.mergeNoteState(uploadRes.notes);
+                } else {
+                    STATE.notes = uploadRes.notes;
+                }
             }
 
             // 2. Surgical DOM Update: Refresh only the affected note

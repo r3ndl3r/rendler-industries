@@ -711,6 +711,13 @@ function mergeNoteState(incomingNotes) {
         // Safety: Keep notes even if missing from server if they are active (prevents deletion mid-drag)
         return incomingIds.has(idStr) || activeIds.has(idStr);
     });
+
+    // 3. Mapping Reliability: Rebuild the note_map from the provided server data.
+    // We rebuild from 'incomingNotes' to ensure we only update entries that were 
+    // actually provided, respecting the 'activeIds' locks inside the merge loop above.
+    incomingNotes.forEach(n => {
+        STATE.note_map[n.id] = n;
+    });
 }
 
 /**

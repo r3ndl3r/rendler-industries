@@ -134,7 +134,6 @@ async function syncNotePosition(id, type = 'normal') {
                 STATE.notes = res.notes;
             }
             STATE.last_mutation = res.last_mutation;
-            STATE.note_map      = res.note_map || STATE.note_map;
         }
     } finally {
         if (type !== 'silent') el.classList.remove('pending');
@@ -317,7 +316,6 @@ async function copyNoteToLevel(id, newLevelId) {
                 STATE.notes = res.notes;
             }
             STATE.last_mutation = res.last_mutation;
-            STATE.note_map      = res.note_map || STATE.note_map;
             if (newLevelId == STATE.activeLayerId && typeof renderUI === 'function') {
                 renderUI();
             }
