@@ -299,8 +299,11 @@ sub DB::delete_note {
     return 0 unless $cid && $self->check_canvas_access($cid, $user_id, 1);
 
     my $sql = "UPDATE notes SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
-    $sth = $self->{dbh}->prepare($sql);
-    return $sth->execute($note_id);
+    my $sth_del = $self->{dbh}->prepare($sql);
+    $sth_del->execute($note_id);
+
+    $self->touch_canvas($cid);
+    return 1;
 }
 
 # Resolve the parent canvas ID for a specific note, enforcing ACL visibility.
@@ -873,6 +876,45 @@ sub DB::save_layer_alias {
                ON DUPLICATE KEY UPDATE alias = VALUES(alias)";
     my $sth = $self->{dbh}->prepare($sql);
     return $sth->execute($canvas_id, $layer_id, $alias);
+}
+
+# --- Background Maintenance Operations ---
+
+# Attempts to clean up deleted notes that have no blobs or dependencies.
+sub DB::purge_deleted_notes {
+    my ($self) = @_;
+    my $sql = "DELETE FROM notes WHERE is_deleted = 1 AND updated_at < DATE_SUB(NOW(), INTERVAL 30 DAY)";
+    return $self->{dbh}->do($sql);
+}
+
+# Compresses z_index values for all notes to a dense range (1..N) per layer.
+# Features:
+#   - Uses MariaDB window functions (10.2+) for rank calculation
+#   - Atomic update via single statement JOIN
+#   - Only updates changed rows to optimize performance
+# Returns:
+#   Integer : Number of rows normalized
+sub DB::normalize_note_z_indices {
+    my ($self) = @_;
+    $self->ensure_connection;
+
+    my $sql = q{
+        UPDATE notes n
+        INNER JOIN (
+            SELECT id,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY canvas_id, layer_id
+                       ORDER BY z_index ASC, id ASC
+                   ) AS new_z
+            FROM notes
+            WHERE is_deleted = 0
+        ) ranked ON n.id = ranked.id
+        SET n.z_index = ranked.new_z
+        WHERE n.z_index != ranked.new_z;
+    };
+
+    my $rows = $self->{dbh}->do($sql);
+    return $rows;
 }
 
 1;

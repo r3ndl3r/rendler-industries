@@ -104,6 +104,9 @@ async function syncNotePosition(id, type = 'normal') {
     if (!el || !note) return;
 
     if (type !== 'silent') el.classList.add('pending');
+    
+    // Regression Guard: Prevent heartbeat from overwriting in-flight data.
+    if (typeof window.addActiveSync === 'function') window.addActiveSync(id);
 
     const params = {
         id: id,
@@ -135,6 +138,7 @@ async function syncNotePosition(id, type = 'normal') {
         }
     } finally {
         if (type !== 'silent') el.classList.remove('pending');
+        if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
     }
 }
 
