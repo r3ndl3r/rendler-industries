@@ -537,13 +537,7 @@ pre code {
     gap: 0.5rem;
 }
 
-.level-column-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Centrally-center relative to each other's axes */
-    gap: 0.5rem;
-    width: 2.75rem; /* Match parent/button width */
-}
+
 
 .level-btn {
     width: 2.75rem;
@@ -2617,6 +2611,75 @@ pre code {
 .level-item:hover .level-jump-arrow {
     opacity: 0.8;
     color: var(--accent);
+}
+
+/* --- Context Menu Design System --- */
+.context-menu {
+    position: fixed;
+    z-index: 9999;
+    min-width: 180px;
+    background: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(0, 0, 0, 0.1);
+    animation: menu-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform-origin: left center;
+    transform: translateY(-50%); /* Core centering - avoid JS/CSS conflict */
+}
+
+@keyframes menu-pop {
+    from { 
+        opacity: 0; 
+        transform: translateY(-50%) scale(0.95) translateX(-5px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(-50%) scale(1) translateX(0); 
+    }
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    color: var(--text-color);
+    font-size: 0.95rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.context-menu-item:hover {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent);
+}
+
+.context-menu-item .item-icon {
+    font-size: 1.25rem;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.context-menu-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 6px 4px;
+}
+
+/* Ensure mobile long-press doesn't trigger native selection on pills */
+.level-indicator-pill {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .canvas-info {
