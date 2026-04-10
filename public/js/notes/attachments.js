@@ -302,13 +302,67 @@ function initDropZones() {
 
     canvas.addEventListener('drop', async (e) => {
         e.preventDefault();
+        if (STATE.isInitializing) return;
         canvas.classList.remove('drag-active');
 
         const files = Array.from(e.dataTransfer.files || []);
-        for (let i = 0; i < files.length; i++) {
-            // Spatial Staggering: Offset subsequent note positions to avoid perfect stacking
-            const offset = i * 20;
-            await handleFileDrop(files[i], e.offsetX + offset, e.offsetY + offset);
+        if (files.length === 0) return;
+
+        // 1. Identify and Parse: Collect files into indexed slots for deterministic ordering
+        const processingSlots = files.map((file, i) => ({ index: i, file }));
+        const results = await Promise.all(processingSlots.map(slot => {
+            return new Promise(resolve => {
+                if (slot.file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => resolve({ index: slot.index, data: ev.target.result, file: slot.file });
+                    reader.readAsDataURL(slot.file);
+                } else {
+                    // Non-Image files are passed through without a preview DataURL
+                    resolve({ index: slot.index, data: null, file: slot.file });
+                }
+            });
+        }));
+
+        // 2. Deterministic Ordering
+        results.sort((a, b) => a.index - b.index);
+
+        // 3. Coordinate Calculation: Map cursor to unscaled canvas space
+        const wrapper = STATE.wrapperEl;
+        const rect    = wrapper?.getBoundingClientRect();
+        if (!rect) return;
+
+        let canvasX = (e.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
+        let canvasY = (e.clientY - rect.top  + wrapper.scrollTop)  / STATE.scale;
+
+        // Apply grid snapping (10px) and centering offset (-140, -100) to match viewport logic
+        const snap = STATE.snapGrid || 10;
+        canvasX = Math.round((canvasX - 140) / snap) * snap;
+        canvasY = Math.round((canvasY - 100) / snap) * snap;
+
+        // 4. Modal Activation: Select primary artifact and open draft
+        const imageResult = results.find(r => r.data !== null);
+        const primary = imageResult || results[0];
+        const remaining = results.filter(r => r !== primary);
+        const type = imageResult ? 'image' : 'text';
+
+        if (typeof showCreateNoteModal === 'function') {
+            // Logic Note: showCreateNoteModal initializes DRAFT_NOTE synchronously.
+            showCreateNoteModal(type, primary.data, null, null, primary.file.name, { x: canvasX, y: canvasY });
+            
+            // 5. Atomic Hydration: Queue remaining files into the draft immediately
+            if (DRAFT_NOTE) {
+                remaining.forEach(res => {
+                    DRAFT_NOTE.pendingFiles.push({
+                        type: res.data ? 'image' : 'file',
+                        data: res.data,
+                        file: res.file,
+                        filename: res.file.name
+                    });
+                });
+                
+                // Refresh the modal UI to show the attachment reel
+                if (typeof renderDraftReel === 'function') renderDraftReel();
+            }
         }
     });
 }
