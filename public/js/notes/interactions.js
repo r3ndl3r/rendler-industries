@@ -1245,18 +1245,15 @@ async function toggleCollapse(id) {
     el.classList.add('pending');
     
     try {
-        const res = await NoteAPI.post('/notes/api/save', {
+        const res = await NoteAPI.post('/notes/api/geometry', {
             id: id,
             canvas_id: STATE.canvas_id,
-            title: note.title,
             is_collapsed: note.is_collapsed,
             is_options_expanded: note.is_options_expanded,
-            content: note.content,
             x: note.x,
             y: note.y,
             width: note.width,
             height: note.height,
-            color: note.color,
             z_index: note.z_index,
             layer_id: note.layer_id || 1
         });

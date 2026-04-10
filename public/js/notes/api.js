@@ -182,26 +182,22 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
             const latestParams = {
                 id: id,
                 canvas_id: STATE.canvas_id,
-                title: note.title,
                 x: parseInt(el.style.left),
                 y: parseInt(el.style.top),
                 width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
                 height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
                 z_index: el.style.zIndex,
-                content: STATE.note_map[id]?.content || note.content,
-                filename: note.filename,
-                color: note.color,
                 layer_id: note.layer_id || 1,
                 is_collapsed: note.is_collapsed,
                 is_options_expanded: note.is_options_expanded || 0
             };
 
             try {
-                const res = await NoteAPI.post('/notes/api/save', latestParams);
+                const res = await NoteAPI.post('/notes/api/geometry', latestParams);
                 if (res && res.success) {
-                    if (typeof window.mergeNoteState === 'function') {
+                    if (res.notes && typeof window.mergeNoteState === 'function') {
                         window.mergeNoteState(res.notes);
-                    } else {
+                    } else if (res.notes) {
                         STATE.notes = res.notes;
                     }
                     STATE.last_mutation = res.last_mutation;
@@ -222,26 +218,22 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
     const params = {
         id: id,
         canvas_id: STATE.canvas_id,
-        title: note.title,
         x: parseInt(el.style.left),
         y: parseInt(el.style.top),
         width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
         height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
         z_index: el.style.zIndex,
-        content: STATE.note_map[id]?.content || note.content,
-        filename: note.filename,
-        color: note.color,
         layer_id: note.layer_id || 1,
         is_collapsed: note.is_collapsed,
         is_options_expanded: note.is_options_expanded || 0
     };
 
     try {
-        const res = await NoteAPI.post('/notes/api/save', params);
+        const res = await NoteAPI.post('/notes/api/geometry', params);
         if (res && res.success) {
-            if (typeof window.mergeNoteState === 'function') {
+            if (res.notes && typeof window.mergeNoteState === 'function') {
                 window.mergeNoteState(res.notes);
-            } else {
+            } else if (res.notes) {
                 STATE.notes = res.notes;
             }
             STATE.last_mutation = res.last_mutation;

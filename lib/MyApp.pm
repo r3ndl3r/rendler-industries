@@ -600,6 +600,7 @@ sub startup {
     $auth->get('/notes/api/state')->to('notes#api_state');
     $auth->get('/notes/api/search')->to('notes#api_search');
     $auth->post('/notes/api/save')->to('notes#api_save');
+    $auth->post('/notes/api/geometry')->to('notes#api_save_geometry');
     $auth->post('/notes/api/delete')->to('notes#api_delete');
     $auth->post('/notes/api/upload')->to('notes#api_upload');
     $auth->post('/notes/api/viewport')->to('notes#api_save_viewport');

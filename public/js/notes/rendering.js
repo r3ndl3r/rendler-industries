@@ -123,6 +123,20 @@ function renderUI() {
                     const textarea = existing.querySelector('textarea');
                     if (textarea) textarea.value = note.content || '';
                     existing.dataset.lastContent = note.content;
+
+                    // Visibility Synchronization: Dynamically toggle the container box to prevent layout voids
+                    const textSection = existing.querySelector('.note-text-section');
+                    if (textSection) {
+                        const isEmpty = (!note.content || note.content.trim() === '');
+                        textSection.classList.toggle('hidden', isEmpty);
+                        
+                        // Separator Reconciliation: If attachments exist, we must re-render the content area 
+                        // to ensure the <hr> correctly appears/disappears based on the new text state.
+                        if ((note.attachments || []).length > 0) {
+                            const contentDiv = existing.querySelector('.note-content');
+                            if (contentDiv) contentDiv.innerHTML = generateNoteContentHtml(note, canEdit);
+                        }
+                    }
                 }
             } else {
                 // Creation: New note entered the active isolation layer
@@ -395,10 +409,10 @@ function generateNoteContentHtml(note, canEdit) {
         }
     }
 
-    const hasBoth = textHtml && (attachments.length > 0);
+    const showSeparator = !isTextEmpty && (attachments.length > 0);
     return `
         ${textHtml}
-        ${hasBoth ? '<hr class="note-separator">' : ''}
+        ${showSeparator ? '<hr class="note-separator">' : ''}
         ${attachmentHtml}
     `;
 }
