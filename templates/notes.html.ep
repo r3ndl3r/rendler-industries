@@ -57,6 +57,21 @@
             <p class="loading-label">Loading Whiteboard...</p>
         </div>
     </div>
+
+<div class="canvas-lock-overlay" id="canvas-lock-overlay" style="display: none;">
+    <div class="lock-card">
+        <div class="lock-icon">🔒</div>
+        <h2>Canvas Locked</h2>
+        <p>This workspace is password protected.</p>
+        <div class="lock-form">
+            <input type="password" id="unlock-password" placeholder="Enter password..." autocomplete="current-password">
+            <div class="modal-actions-center">
+                <button class="btn-primary" id="btn-unlock-canvas">
+                    <span>Unlock Workspace</span>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="canvas-manager-toggle" id="right-actions-stack">
@@ -280,6 +295,14 @@
                     <!-- Collaborators Populated Here -->
                 </div>
             </div>
+
+            <div class="security-section">
+                <h4>🔒 Privacy & Security</h4>
+                <p class="modal-instruction-text">Protect this board with a password to hide its content from others and your global radar.</p>
+                <div id="board-security-content" class="security-actions-stack">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -313,3 +336,5 @@
         </div>
     </div>
 </div>
+
+
