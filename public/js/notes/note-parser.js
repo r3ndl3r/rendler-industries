@@ -182,9 +182,215 @@ const NoteParser = (() => {
         }
     };
 
+    /**
+     * High-Performance Dashboard Decorator:
+     * Renders a line of text as a high-fidelity Bookmark Tile.
+     * Logic: Sequential Resolver (Native -> Proxy -> Emoji) with a [emoji]:1 or :1 Override.
+     */
+    const renderBookmarkTile = (line, forceEmoji = false) => {
+        const segments = line.split('|');
+        if (segments.length < 2) return window.escapeHtml(line);
+
+        let labelPart   = segments[0].trim();
+        const urlPart   = segments[1].trim();
+        const iconPart  = segments.length >= 3 ? segments.slice(2).join('|').trim() : null;
+
+        const url = getSafeUrl(urlPart);
+        if (!url) return window.escapeHtml(line);
+
+        // 1. Emoji Extraction Architecture: Isolate the leading symbol from the label
+        const emojiMatch = labelPart.match(/^([\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u26FF]|[\u2700-\u27BF]|\u231A|\u231B|\u23E9-\u23EC|\u23F0|\u23F3|\u25FD|\u25FE|\u2614|\u2615|\u2648-\u2653|\u267F|\u2693|\u26A1|\u26AA|\u26AB|\u26BD|\u26BE|\u26C4|\u26C5|\u26D4|\u26E9|\u26EA|\u2702|\u2705|\u2708-\u270C|\u270F|\u2712|\u2714|\u2716|\u2728|\u2733|\u2734|\u2744|\u2747|\u274C|\u274E|\u2753-\u2755|\u2757|\u2763|\u2764|\u2795-\u2797|\u27A1|\u27B0|\u27BF|\u2934|\u2935|\u2B05-\u2B07|\u2B1B|\u2B1C|\u2B50|\u2B55|\u3030|\u303D|\u3297|\u3299])\s*(.*)/);
+
+        const fallbackEmoji = emojiMatch ? emojiMatch[1] : '🔗';
+        let labelText       = emojiMatch ? emojiMatch[2] : labelPart;
+
+        // 2. Control Sequence Sanitization: Remove ':1 ' (colon-one-space) flags from the visual label.
+        // Match only ':1' followed by a space or end-of-string to avoid truncating ':100', ':1st', etc.
+        if (labelText.startsWith(':1 ') || labelText === ':1') {
+            labelText = labelText.substring(2).trim();
+        }
+
+        // 3. Custom Icon Resolution: Smart Pathing and Sanitization
+        // relative paths (starting with /) are resolved against the target URL's origin.
+        let customIconUrl = null;
+        if (iconPart) {
+            let resolvedIconPath = iconPart;
+            if (iconPart.startsWith('/')) {
+                try {
+                    resolvedIconPath = new URL(urlPart).origin + iconPart;
+                } catch(e) {
+                    resolvedIconPath = null;
+                }
+            }
+            if (resolvedIconPath) {
+                customIconUrl = getSafeUrl(resolvedIconPath);
+            }
+        }
+
+        // 4. Hostname extraction for mesh/private detection and favicon cascade
+        let safeHostname = 'link';
+        try { safeHostname = new URL(urlPart).hostname; } catch(e) {}
+
+        const isMesh = safeHostname.endsWith('.ts.net') || safeHostname.endsWith('.local') || safeHostname.endsWith('.home')
+            || /^192\.168\./.test(safeHostname)
+            || /^10\./.test(safeHostname)
+            || /^172\.(1[6-9]|2\d|3[01])\./.test(safeHostname)
+            || safeHostname === 'localhost'
+            || /^127\./.test(safeHostname);
+
+        // Force Emoji Override: mesh hosts (without icon override) or [emoji]:1 flag
+        if (forceEmoji || (isMesh && !customIconUrl)) {
+            return `
+                <a href="${url}" target="_blank" rel="noopener noreferrer" class="note-bookmark-tile" onclick="event.stopPropagation()">
+                    <div class="note-bookmark-icon">
+                        <div class="note-bookmark-emoji-fallback">${fallbackEmoji}</div>
+                    </div>
+                    <div class="note-bookmark-label">${window.escapeHtml(labelText || 'Link')}</div>
+                    <div class="note-bookmark-arrow">❯</div>
+                </a>
+            `;
+        }
+
+        // 5. Favicon Cascade: Custom -> Origin favicon.ico -> Google Proxy -> Emoji
+        // The cascade is driven entirely by data attributes read inside the onerror handler,
+        // keeping all URLs out of the inline JS string to prevent injection.
+        const originUrl    = new URL(urlPart).origin;
+        const faviconUrl   = window.escapeHtml(`${originUrl}/favicon.ico`);
+        const proxyUrl     = window.escapeHtml(`https://www.google.com/s2/favicons?domain=${safeHostname}&sz=64&default_icon=404`);
+
+        // Determine the initial src: custom icon if provided, otherwise origin favicon.ico.
+        const initialSrc = customIconUrl ?? faviconUrl;
+
+        // data-favicon-url: the origin favicon.ico (skipped as first attempt when custom icon is used)
+        // data-proxy-url:   the Google proxy fallback
+        // data-custom-url:  signals that the first attempt is a custom icon, not the origin favicon.ico,
+        //                   so the onerror handler knows to try origin favicon.ico next before the proxy.
+        const customAttr = customIconUrl ? `data-custom-url="1" data-favicon-url="${faviconUrl}"` : '';
+
+        return `
+            <a href="${url}" target="_blank" rel="noopener noreferrer" class="note-bookmark-tile" onclick="event.stopPropagation()">
+                <div class="note-bookmark-icon">
+                    <img src="${initialSrc}" 
+                         class="note-bookmark-favicon" 
+                         alt="" 
+                         ${customAttr}
+                         data-proxy-url="${proxyUrl}"
+                         onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none';"
+                         onerror="
+                             if (this.dataset.customUrl && !this.dataset.triedFavicon) {
+                                 this.dataset.triedFavicon = true;
+                                 this.src = this.dataset.faviconUrl;
+                             } else if (!this.dataset.triedProxy) {
+                                 this.dataset.triedProxy = true;
+                                 this.src = this.dataset.proxyUrl;
+                             } else {
+                                 this.style.display = 'none';
+                                 this.nextElementSibling.style.display = 'flex';
+                             }
+                         ">
+                    <div class="note-bookmark-emoji-fallback">${fallbackEmoji}</div>
+                </div>
+                <div class="note-bookmark-label">${window.escapeHtml(labelText || 'Link')}</div>
+                <div class="note-bookmark-arrow">❯</div>
+            </a>
+        `;
+    };
+
+    /**
+     * High-Fidelity Category Header:
+     * Transforms a note title (e.g., "Label | IconURL") into a glassmorphism header segment.
+     */
+    const renderCategoryHeader = (title) => {
+        if (!title) return '';
+        const pipeIdx = title.indexOf('|');
+        
+        // Extract components with or without pipe
+        const labelPart = pipeIdx !== -1 ? title.substring(0, pipeIdx).trim() : title.trim();
+        const iconPart  = pipeIdx !== -1 ? title.substring(pipeIdx + 1).trim() : null;
+
+        // Standard Emoji Extraction (Emoji is the first symbol or defaults to folder)
+        const emojiMatch = labelPart.match(/^([\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u26FF]|[\u2700-\u27BF]|\u231A|\u231B|\u23E9-\u23EC|\u23F0|\u23F3|\u25FD|\u25FE|\u2614|\u2615|\u2648-\u2653|\u267F|\u2693|\u26A1|\u26AA|\u26AB|\u26BD|\u26BE|\u26C4|\u26C5|\u26D4|\u26E9|\u26EA|\u2702|\u2705|\u2708-\u270C|\u270F|\u2712|\u2714|\u2716|\u2728|\u2733|\u2734|\u2744|\u2747|\u274C|\u274E|\u2753-\u2755|\u2757|\u2763|\u2764|\u2795-\u2797|\u27A1|\u27B0|\u27BF|\u2934|\u2935|\u2B05-\u2B07|\u2B1B|\u2B1C|\u2B50|\u2B55|\u3030|\u303D|\u3297|\u3299])\s*(.*)/);
+        const fallbackEmoji = emojiMatch ? emojiMatch[1] : '📁';
+        const labelText     = emojiMatch ? emojiMatch[2] : labelPart;
+
+        let iconHtml = '';
+        // Only accept absolute http/https URLs for category header icons.
+        // Relative paths are rejected because there is no target URL to resolve them against
+        // (unlike renderBookmarkTile which has urlPart for origin resolution).
+        const iconUrl = (iconPart && /^https?:\/\//i.test(iconPart.trim())) ? getSafeUrl(iconPart) : null;
+
+        if (iconUrl) {
+            iconHtml = `
+                <div class="note-bookmark-icon">
+                    <img src="${iconUrl}" 
+                         class="note-bookmark-favicon" 
+                         alt="" 
+                         onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none';"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="note-bookmark-emoji-fallback" style="display:none;">${fallbackEmoji}</div>
+                </div>
+            `;
+        } else {
+            // No URL provided, use the extracted or default emoji
+            iconHtml = `
+                <div class="note-bookmark-icon">
+                    <div class="note-bookmark-emoji-fallback">${fallbackEmoji}</div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="note-title-category">
+                ${iconHtml}
+                <div class="note-category-label">${window.escapeHtml(labelText || labelPart)}</div>
+            </div>
+        `;
+    };
+
+    /**
+     * Strict Dashboard Detection:
+     * Operates as a fast pre-scan to avoid unnecessary complex tokenization.
+     */
+    const isDashboardFormat = (text) => {
+        if (!text?.trim()) return false;
+        
+        // Split and filter for content lines, ignoring control sequences
+        const lines = text.split('\n')
+            .map(l => l.trim())
+            .filter(l => l.length > 0 && !l.includes('[emoji]:1'));
+
+        if (lines.length === 0) return false;
+
+        return lines.every(line => {
+            const segments = line.split('|');
+            if (segments.length < 2) return false;
+            // Validate the URL segment (second pipe-delimited field) as a strict absolute URL.
+            // Trim and test only the URL portion — ignore optional third icon segment.
+            const urlSegment = segments[1].trim();
+            return /^https?:\/\/[^\s|]+/i.test(urlSegment);
+        });
+    };
+
     return {
+        isDashboard: isDashboardFormat,
+        renderHeader: renderCategoryHeader,
         parse: (text, noteId) => {
             if (!text) return '';
+            
+            // 0. Dashboard Mode (Fast-Path Optimization)
+            // If the note content is identified as a pure bookmark list, bypass the 
+            // character-by-character scanner and use the specialized tile renderer.
+            if (isDashboardFormat(text)) {
+                // Support [emoji]:1 global flag only. Shorthand ':1 ' is too ambiguous
+                // (matches label text like "Step 1: ...") and is excluded as a trigger.
+                const forceEmoji = text.includes('[emoji]:1'); 
+                
+                return text.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0 && !line.includes('[emoji]:1'))
+                    .map(line => renderBookmarkTile(line, forceEmoji))
+                    .join('');
+            }
             
             const bracketIndex = buildBracketIndex(text);
             let output = '';
