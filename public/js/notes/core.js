@@ -58,6 +58,7 @@ const STATE = {
         delay:     200             // Milliseconds of hold required to trigger
     },
     activeSyncs: new Map(),        // Anti-Regression Registry: Tracks Note IDs with in-flight API transactions
+    lastBoardScrollTime: 0,        // Continuity Guard: Prevents note-hijack during board scrolling
     syncQueue:      [],              // Transactional Retry Container
     isSyncing:      false,           // Flow Control: Prevents concurrent flush cycles
     pendingContext: null,            // Context Queue: Stores board/layer switches blocked by active sync

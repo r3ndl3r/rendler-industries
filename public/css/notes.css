@@ -21,6 +21,12 @@
     overflow: hidden; 
 }
 
+/* Pan Continuity: Disable note interactions when active layout panning is engaged */
+#canvas-wrapper.is-panning-board .sticky-note {
+    pointer-events: none !important;
+    user-select: none !important;
+}
+
 #notes-canvas {
     position: relative;
     width: 50000px !important;
@@ -153,6 +159,14 @@
     padding: 0.375rem;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.note-text-viewer,
+.note-attachment-stack,
+.sticky-note textarea {
+    scrollbar-width: thin;
+    scrollbar-color: var(--note-accent) transparent;
+    overscroll-behavior: contain; /* Prevents scroll chaining to the board */
 }
 
 .cqs-item {
