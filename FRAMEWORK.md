@@ -76,11 +76,6 @@ Don't reinvent the wheel. Use these pre-built "Power Tools" for rapid developmen
 *   **Modals**: `showConfirmModal({ title, message, onConfirm })` is the primary tool for terminal actions.
 *   **UI**: `showToast('Saved!', 'success')` for notifications.
 
-### Backend (Perl - `Icons.pm` Helpers)
-*   **Icons**: `<%= icon('edit') %>` for use in templates. Draws from the same JSON source as JS.
-*   **Authorization**: `$c->is_admin`, `$c->is_family`, `$c->is_logged_in`.
-*   **Centralized Registry**: Update `assets/emoji.json` to change icons application-wide.
-
 ---
 
 ## ⚙️ 6. Background Tasks (Maintenance)
