@@ -57,6 +57,7 @@
             <p class="loading-label">Loading Whiteboard...</p>
         </div>
     </div>
+</div>
 
 <div class="canvas-lock-overlay" id="canvas-lock-overlay" style="display: none;">
     <div class="lock-card">
@@ -300,7 +301,6 @@
             </div>
         </div>
     </div>
-</div>
 </div>
 
 <div id="pdf-viewer-modal" class="modal-overlay">
