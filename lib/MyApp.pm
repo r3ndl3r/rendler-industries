@@ -305,6 +305,7 @@ sub startup {
                 $sys->run_meals_maintenance($now);
                 $sys->run_room_reminders($now);
                 $sys->run_chore_reminders($now);
+                $sys->run_notes_lock_maintenance();
                 $sys->run_weather_maintenance($now);
 
                 # Nightly Normalization Gate (3:00 AM)
@@ -606,6 +607,8 @@ sub startup {
     $auth->post('/notes/api/viewport')->to('notes#api_save_viewport');
     $auth->get('/notes/serve/:note_id')->to('notes#serve_blob');
     $auth->get('/notes/attachment/serve/:blob_id')->to('notes#serve_attachment_blob');
+    $auth->post('/notes/api/lock')->to('notes#api_lock');
+    $auth->post('/notes/api/unlock')->to('notes#api_unlock');
     
     # Multi-Canvas & Collaborative Switching
     $auth->post('/notes/api/canvases/create')->to('notes#api_canvas_create');
