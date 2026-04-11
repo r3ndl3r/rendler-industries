@@ -70,7 +70,8 @@ const STATE = {
     wrapperEl:      null,             // Cached DOM Handle: #canvas-wrapper
     canvasEl:       null,             // Cached DOM Handle: #notes-canvas
     unlockedCanvases: new Set(),      // Session Privacy: Tracks IDs of protected boards currently unlocked
-    isLocked:       false             // Privacy State: Single source of truth for visibility
+    isLocked:       false,            // Privacy State: Single source of truth for visibility
+    hoveredNoteId:  null              // Interactivity Context: ID of the note currently under the cursor
 };
 
 /**
@@ -333,6 +334,10 @@ async function initNotes() {
     
     // Global Panning & Scrubbing Listeners
     window.addEventListener('mousemove', (e) => {
+        // Track the note currently under the mouse to enable context-aware keyboard shortcuts (CTRL+E)
+        const noteEl = e.target.closest('.sticky-note');
+        STATE.hoveredNoteId = noteEl ? noteEl.dataset.id : null;
+
         if (typeof handleCanvasMouseMove === 'function') handleCanvasMouseMove(e);
         if (typeof handleRadarMouseMove === 'function') handleRadarMouseMove(e);
         // Free-roam auto-pan: evaluate edge proximity on every mouse move

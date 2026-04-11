@@ -500,6 +500,18 @@ function handleGlobalKeydown(e) {
         }
     }
 
+    // Ctrl + E: Toggle Edit Mode for the hovered or active note
+    if (e.ctrlKey && e.key === 'e') {
+        e.preventDefault();
+        const targetId = STATE.isEditingNote || STATE.hoveredNoteId;
+        if (targetId) {
+            const btn = document.querySelector(`#note-${targetId} .btn-icon-edit`);
+            if (btn && typeof toggleInlineEdit === 'function') {
+                toggleInlineEdit(btn, targetId);
+            }
+        }
+    }
+
     // Ctrl + F: Board-wide Search Interception
     // Overrides browser default search which often fails on oversized absolute canvas elements.
     if (e.ctrlKey && e.key === 'f') {
@@ -1455,6 +1467,15 @@ function handleNoteKeydown(e, id) {
             e.preventDefault();  // Stop Browser Save Dialog
             e.stopPropagation(); // Stop event from bubbling to global handler
             saveNoteInline(id, true);
+        }
+    }
+    // Ctrl + E: Exit/Save Edit Mode
+    else if (e.ctrlKey && e.key === 'e') {
+        const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
+        if (btn && document.getElementById(`note-${id}`).classList.contains('is-editing')) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleInlineEdit(btn, id);
         }
     }
     else if (e.key === 'Escape') {
