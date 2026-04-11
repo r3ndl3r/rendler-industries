@@ -72,6 +72,9 @@ const STATE = {
     unlockedCanvases: new Set(),      // Session Privacy: Tracks IDs of protected boards currently unlocked
     isLocked:       false,            // Privacy State: Single source of truth for visibility
     hoveredNoteId:  null,             // Interactivity Context: ID of the note currently under the cursor
+    pickedWidth:    0,                // Cache: Width captured at start of flight
+    pickedHeight:   0,                // Cache: Height captured at start of flight
+    activeRectBaseline: null,         // Cache: Wrapper BoundingClientRect at flight start
     sessionId: (() => {
         const genId = () => {
             if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -102,7 +105,8 @@ const STATE = {
 /**
  * Registers a note as 'in-flight' to the API.
  * This prevents the heartbeat from overwriting the DOM while a save is pending.
- * @param {number|string} noteId 
+ * @param {number|string} noteId - The identifier of the note.
+ * @returns {void}
  */
 window.addActiveSync = function(noteId) {
     const key = String(noteId); // Boundary Normalization: Ensures Map lookup parity
@@ -112,7 +116,8 @@ window.addActiveSync = function(noteId) {
 
 /**
  * Unregisters a note once the API call completes.
- * @param {number|string} noteId 
+ * @param {number|string} noteId - The identifier of the note.
+ * @returns {void}
  */
 window.removeActiveSync = function(noteId) {
     const key = String(noteId); // Boundary Normalization: Ensures Map lookup parity
@@ -142,6 +147,8 @@ const SCALE_STEP = 0.1;
 
 /**
  * Renders the privacy shield over the canvas area.
+ * @param {boolean} autoFocus - Whether to focus the password field immediately.
+ * @returns {void}
  */
 window.showLockedOverlay = function(autoFocus = true) {
     const overlay = document.getElementById('canvas-lock-overlay');
@@ -162,6 +169,7 @@ window.showLockedOverlay = function(autoFocus = true) {
 
 /**
  * Removes the privacy shield and restores canvas clarity.
+ * @returns {void}
  */
 window.hideLockedOverlay = function() {
     const overlay = document.getElementById('canvas-lock-overlay');
@@ -174,6 +182,7 @@ window.hideLockedOverlay = function() {
 
 /**
  * Communicates with the backend to verify password and unlock the board.
+ * @returns {Promise<void>}
  */
 window.apiUnlockCanvas = async function() {
     const input = document.getElementById('unlock-password');
@@ -270,7 +279,8 @@ window.apiUnlockCanvas = async function() {
 
 /**
  * Manually locks a board by clearing its session-unlock status.
- * @param {number} canvasId - The canvas to lock.
+ * @param {number|string} canvasId - The canvas ID to lock.
+ * @returns {Promise<void>}
  */
 window.apiLockCanvas = async function(canvasId) {
     if (!canvasId) return;
@@ -327,7 +337,8 @@ window.addEventListener('beforeunload', () => {
 
 /**
  * Initializes the whiteboard module.
- * @returns {void}
+ * Attaches global listeners and hydrates initial state.
+ * @returns {Promise<void>}
  */
 async function initNotes() {
     // 1. Initial Cache: Establish DOM handles BEFORE any logic runs
@@ -360,7 +371,7 @@ async function initNotes() {
     // Global Panning & Scrubbing Listeners
     window.addEventListener('mousemove', (e) => {
         // Track the note currently under the mouse to enable context-aware keyboard shortcuts (CTRL+E)
-        const noteEl = e.target.closest('.sticky-note');
+        const noteEl = e.target.closest?.('.sticky-note');
         STATE.hoveredNoteId = noteEl ? noteEl.dataset.id : null;
 
         if (typeof handleCanvasMouseMove === 'function') handleCanvasMouseMove(e);
@@ -955,10 +966,11 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
 }
 
 /**
- * Surgical State Hydration
+ * Surgical State Hydration.
  * Merges incoming note data while preserving local state for notes currently being manipulated.
  * @param {Array} incomingNotes - Fresh note records from the backend.
  * @param {number|string|null} forceUpdateId - Force merge for this specific ID (bypasses edit-mode lockout).
+ * @returns {void}
  */
 function mergeNoteState(incomingNotes, forceUpdateId = null) {
     const activeIds = new Set();
@@ -1132,6 +1144,7 @@ window.setupHeartbeat = function setupHeartbeat() {
 /**
  * Cache Invalidation: Nullifies DOM handles to prevent stale references 
  * across full-board re-renders or dynamic context switches.
+ * @returns {void}
  */
 function clearDOMCache() {
     STATE.wrapperEl = null;
