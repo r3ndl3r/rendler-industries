@@ -2013,8 +2013,31 @@ const setupLevelManagement = () => {
     }
 };
 
+const setupSecurityInteractions = () => {
+    const unlockInput = document.getElementById('unlock-password');
+    if (!unlockInput || unlockInput.dataset.listenerActive) return;
+
+    const unlockBtn = document.getElementById('btn-unlock-canvas');
+    if (unlockBtn) {
+        unlockBtn.addEventListener('click', () => {
+            if (typeof window.apiUnlockCanvas === 'function') window.apiUnlockCanvas();
+        });
+    }
+
+    unlockInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            if (typeof window.apiUnlockCanvas === 'function') window.apiUnlockCanvas();
+        }
+    });
+
+    // Flag written AFTER all listeners are registered — accurately
+    // provides authoritative signal for listener registration state.
+    unlockInput.dataset.listenerActive = 'true';
+};
+
 // Export hooks for global availability
 window.showLevelContextMenu = showLevelContextMenu;
 window.setupLevelManagement = setupLevelManagement;
 window.showLevelRenameModal = showLevelRenameModal;
 window.showLevelMoveModal   = showLevelMoveModal;
+window.setupSecurityInteractions = setupSecurityInteractions;
