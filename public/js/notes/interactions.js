@@ -427,6 +427,10 @@ function cancelStickyMove() {
         // Revert local state object
         note.x = STATE.originalPos.x;
         note.y = STATE.originalPos.y;
+        if (STATE.originalPos.z !== undefined) note.z_index = STATE.originalPos.z;
+
+        // Global Sync: Restore server-side z-index and coordinates
+        if (typeof syncNotePosition === 'function') syncNotePosition(id, 'silent');
     }
     
     STATE.pickedNoteId = null;
@@ -966,6 +970,7 @@ function handleCanvasMouseDown(e) {
     if (!wrapper) return;
 
     STATE.isPanning = true;
+    STATE.wrapperEl?.classList.add('is-panning-board');
     STATE.panStart = {
         x: e.clientX,
         y: e.clientY,
@@ -1000,9 +1005,8 @@ function handleCanvasMouseMove(e) {
  * @returns {void}
  */
 function handleCanvasMouseUp() {
-    if (!STATE.isPanning) return;
-    
     STATE.isPanning = false;
+    STATE.wrapperEl?.classList.remove('is-panning-board');
     document.body.style.cursor = '';
     
     // Viewport persistence is automatically handled by the wrapper's scroll listener
@@ -1060,9 +1064,38 @@ function handleCanvasWheel(e) {
         if (typeof scheduleViewportSave === 'function') scheduleViewportSave();
     } else {
         // 4. Plane Panning: Scrolling with no keys pressed
-        // ONLY hijack scroll if we are not hovering over a sticky note's scrollable content
-        if (!e.target.closest('.sticky-note')) {
+        
+        // Continuity Guard: If we are already panning the board (via drag or recent wheel scroll),
+        // we do not allow notes to hijack the interaction.
+        const isContinuingBoardScroll = (Date.now() - (STATE.lastBoardScrollTime || 0)) < 250;
+        const panLocked = STATE.isPanning || isContinuingBoardScroll;
+
+        // Contextual Interaction Check: Determine if the wheel event should be consumed 
+        // by a scrollable sub-element of a sticky note.
+        let shouldConsume = false;
+
+        const scrollable = e.target.closest('.note-text-viewer, .note-attachment-stack, textarea');
+        let capturedY = false;
+
+        if (scrollable && !panLocked) {
+            const isScrollable = scrollable.scrollHeight > scrollable.clientHeight;
+            if (isScrollable) {
+                // If the user is scrolling horizontally (or Shift+Wheel), we do NOT capture the gesture
+                // for the note, as notes only have vertical scrollbars.
+                if (e.deltaX === 0 && !e.shiftKey) {
+                    capturedY = true;
+                    // Yield to native engine for purely vertical scroll
+                    return; 
+                }
+                capturedY = true;
+            }
+        }
+
+        if (!capturedY || e.deltaX !== 0 || e.shiftKey) {
             e.preventDefault();
+
+            // Mark the intent as "Board Scroll" to maintain continuity
+            STATE.lastBoardScrollTime = Date.now();
             
             // Interaction Physics: 1.5x multiplier to compensate for large canvas distances
             const multiplier = 1.5;
@@ -1072,7 +1105,10 @@ function handleCanvasWheel(e) {
                 wrapper.scrollLeft += (e.deltaY * multiplier);
             } else {
                 wrapper.scrollLeft += (e.deltaX * multiplier);
-                wrapper.scrollTop  += (e.deltaY * multiplier);
+                // Only move the board vertically if the note hasn't captured that axis
+                if (!capturedY) {
+                    wrapper.scrollTop  += (e.deltaY * multiplier);
+                }
             }
             
             if (typeof updateRadar === 'function') updateRadar();
