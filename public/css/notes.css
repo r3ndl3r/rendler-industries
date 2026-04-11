@@ -2749,6 +2749,8 @@ pre code {
     display: flex;
     flex-direction: column;
     gap: 24px;
+    overflow-y: auto;
+    min-height: 0; /* Stabilizes flex-box overflow calculations */
 }
 
 .settings-group {
