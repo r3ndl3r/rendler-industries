@@ -1445,7 +1445,12 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
             textarea.focus();
 
             // UI Logic: Dynamic height adaptation for text entry
+            // Optimization: Skip auto-expansion for Dashboard notelets to prevent layout jumps 
+            // when editing long URL lists. Let the textarea handle internal scrolling instead.
+            const isDashboard = el.classList.contains('is-dashboard-note');
+            
             const adaptNoteHeight = () => {
+                if (isDashboard) return; // Maintain stable footprint for dashboards
                 if (textarea.scrollHeight > textarea.clientHeight) {
                     const diff = textarea.scrollHeight - textarea.clientHeight;
                     el.style.height = `${el.offsetHeight + diff}px`;
