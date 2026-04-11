@@ -47,10 +47,12 @@ sub DB::get_user_notes {
     my $sql = "
         SELECT 
             n.*,
+            lu.username as locking_user_name,
             b.id as blob_id, b.note_id as blob_note_id, b.filename as blob_filename, 
             b.mime_type as blob_mime, b.file_size as blob_size
         FROM notes n
         LEFT JOIN note_blobs b ON n.id = b.note_id
+        LEFT JOIN users lu ON n.locked_by_user_id = lu.id
         WHERE n.canvas_id = ? AND n.is_deleted = 0 
         ORDER BY n.z_index ASC, n.updated_at DESC, b.id ASC
     ";
@@ -165,16 +167,52 @@ sub DB::save_note {
 
     my $id;
     if ($p->{id}) {
-        # Update existing note
+        # Persistence: Atomic record updates
+        # We only allow the update if:
+        # 1. A valid session ID is provided
+        # 2. The note is not locked
+        # 3. The note is locked by the CURRENT session
+        # 4. The lock has expired (5-minute window)
+        return -1 unless defined $p->{session_id} && length $p->{session_id};
+
         my $sql = "UPDATE notes SET title = ?, content = ?, filename = ?, x = ?, y = ?, width = ?, height = ?, 
                    color = ?, z_index = ?, is_collapsed = ?, is_options_expanded = ?, layer_id = ? 
-                   WHERE id = ?";
+                   WHERE id = ? 
+                   AND (
+                       locked_by_session_id IS NULL 
+                       OR locked_by_session_id = ? 
+                       OR locked_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 MINUTE)
+                   )";
         my $sth = $self->{dbh}->prepare($sql);
         $sth->execute(
             $p->{title}, $p->{content}, $p->{filename}, $p->{x}, $p->{y}, $p->{width}, $p->{height},
             $p->{color}, $p->{z_index}, $p->{is_collapsed}, $p->{is_options_expanded} // 0,
-            $p->{layer_id} // 1, $p->{id}
+            $p->{layer_id} // 1, $p->{id}, $p->{session_id}
         );
+        
+        # Reliability: Handle no-op vs lock rejections
+        if ($sth->rows == 0) {
+            my $row_exists = $self->{dbh}->selectrow_array(
+                "SELECT 1 FROM notes WHERE id = ?", undef, $p->{id}
+            ) // 0;
+            
+            unless ($row_exists) {
+                return undef;
+            }
+
+            my ($can_update) = $self->{dbh}->selectrow_array(
+                "SELECT 1 FROM notes 
+                 WHERE id = ? 
+                 AND (
+                    locked_by_session_id IS NULL 
+                    OR locked_by_session_id = ? 
+                    OR locked_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 MINUTE)
+                 )",
+                undef, $p->{id}, $p->{session_id} // ''
+            );
+            return -1 unless $can_update;
+        }
+
         $id = $p->{id};
     } else {
         # Insert new note
@@ -200,6 +238,87 @@ sub DB::save_note {
     return $id;
 }
 
+# Collaborative Locking: Acquires exclusive edit rights for a specific user session.
+# Returns: 1 on success, 0 if already locked by another session.
+sub DB::lock_note {
+    my ($self, $note_id, $user_id, $session_id) = @_;
+    $self->ensure_connection;
+
+    # 1. Authority: Ensure user can EDIT the board containing this note
+    my $cid = $self->get_canvas_for_note_id($note_id, $user_id);
+    return 0 unless $cid && $self->check_canvas_access($cid, $user_id, 1);
+
+    # 2. Atomic Acquisition: Set lock ONLY if empty, expired, or already held by this session
+    # We use a 5-minute (300s) stale-lock window.
+    my $sql = "
+        UPDATE notes 
+        SET locked_by_user_id = ?, locked_by_session_id = ?, locked_at = CURRENT_TIMESTAMP
+        WHERE id = ? 
+        AND (
+            locked_by_session_id IS NULL 
+            OR locked_by_session_id = ? 
+            OR locked_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 MINUTE)
+        )
+    ";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute($user_id, $session_id, $note_id, $session_id);
+
+    if ($sth->rows > 0) {
+        $self->touch_canvas($cid); # Signal real-time sync
+        return 1;
+    }
+
+    # Zero rows may mean no-op re-lock (same session, same-second CURRENT_TIMESTAMP).
+    # Verify the session already holds the lock before reporting failure.
+    my ($already_holds) = $self->{dbh}->selectrow_array(
+        "SELECT 1 FROM notes WHERE id = ? AND locked_by_session_id = ?",
+        undef, $note_id, $session_id
+    );
+    if ($already_holds) {
+        $self->touch_canvas($cid);
+        return 1;
+    }
+    return 0;
+}
+
+# Collaborative Locking: Explicitly releases edit rights.
+sub DB::unlock_note {
+    my ($self, $note_id, $user_id, $session_id) = @_;
+    $self->ensure_connection;
+
+    # Administrative override for stranded collaborative locks.
+    # Regular users can only unlock notes they own the session for.
+    my $cid = $self->get_canvas_for_note_id($note_id, $user_id);
+    return 0 unless $cid; # Fail fast if canvas context is missing (note deleted?)
+
+    my $is_owner = $self->{dbh}->selectrow_array("SELECT 1 FROM canvases WHERE id = ? AND user_id = ?", undef, $cid, $user_id);
+
+    my $sql = "UPDATE notes SET locked_by_user_id = NULL, locked_by_session_id = NULL, locked_at = NULL WHERE id = ?";
+    my @params = ($note_id);
+
+    if (!$is_owner) {
+        $sql .= " AND locked_by_session_id = ?";
+        push @params, $session_id;
+    }
+
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute(@params);
+    
+    if ($sth->rows > 0) {
+        $self->touch_canvas($cid);
+        return 1;
+    }
+    return 0;
+}
+
+# Collaborative Locking: Prunes abandoned locks across the entire note landscape.
+sub DB::clear_expired_note_locks {
+    my ($self, $timeout_min) = @_;
+    $self->ensure_connection;
+    my $min = $timeout_min // 5;
+    $self->{dbh}->do("UPDATE notes SET locked_by_user_id = NULL, locked_by_session_id = NULL, locked_at = NULL WHERE locked_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL ? MINUTE)", undef, $min);
+}
+
 # Surgical coordinate and dimension synchronization.
 # Parameters:
 #   params : HashRef { id, user_id, x, y, width, height, z_index, is_collapsed, is_options_expanded, layer_id }
@@ -215,16 +334,48 @@ sub DB::save_note_geometry {
     
     return undef unless $cid && $self->check_canvas_access($cid, $p->{user_id}, 1);
 
+    # Surgical coordinate and dimension synchronization: Atomic Lock Enforcement
+    return -1 unless defined $p->{session_id} && length $p->{session_id};
+
     my $sql = "UPDATE notes SET x = ?, y = ?, width = ?, height = ?, z_index = ?, 
                is_collapsed = ?, is_options_expanded = ?, layer_id = ? 
-               WHERE id = ?";
+               WHERE id = ?
+               AND (
+                   locked_by_session_id IS NULL 
+                   OR locked_by_session_id = ? 
+                   OR locked_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 MINUTE)
+               )";
     
     my $sth = $self->{dbh}->prepare($sql);
     $sth->execute(
         $p->{x}, $p->{y}, $p->{width}, $p->{height}, $p->{z_index},
         $p->{is_collapsed} // 0, $p->{is_options_expanded} // 0,
-        $p->{layer_id} // 1, $id
+        $p->{layer_id} // 1, $id, $p->{session_id}
     );
+
+    # Logic: If zero rows were updated, we verify eligibility to differentiate
+    # between a no-op geometry sync and a lock-based rejection.
+    if ($sth->rows == 0) {
+        my $row_exists = $self->{dbh}->selectrow_array(
+            "SELECT 1 FROM notes WHERE id = ?", undef, $id
+        ) // 0;
+        
+        unless ($row_exists) {
+            return undef; # Note missing/deleted
+        }
+
+        my ($can_update) = $self->{dbh}->selectrow_array(
+            "SELECT 1 FROM notes 
+             WHERE id = ? 
+             AND (
+                locked_by_session_id IS NULL 
+                OR locked_by_session_id = ? 
+                OR locked_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 MINUTE)
+             )",
+            undef, $id, $p->{session_id} // ''
+        );
+        return -1 unless $can_update;
+    }
 
     # Signal board mutation to trigger cross-session polling invalidation
     $self->touch_canvas($cid);
@@ -286,12 +437,14 @@ sub DB::get_all_accessible_note_metadata {
     my $sql = "
         SELECT 
             n.id, n.canvas_id, n.title, n.type, n.x, n.y, n.width, n.height, n.layer_id,
+            n.locked_by_user_id, n.locked_by_session_id, lu.username as locking_user_name,
             b.id        AS blob_id,
             b.filename  AS blob_filename,
             b.mime_type AS blob_mime,
             b.file_size AS blob_size
         FROM notes n
         JOIN canvases c ON n.canvas_id = c.id
+        LEFT JOIN users lu ON n.locked_by_user_id = lu.id
         LEFT JOIN note_blobs b ON b.id = (
             SELECT id FROM note_blobs 
             WHERE note_id = n.id 
