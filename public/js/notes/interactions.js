@@ -1151,6 +1151,23 @@ async function saveNoteInline(id, stayInEditMode = false) {
     try {
         const res = await NoteAPI.post('/notes/api/save', params);
         if (res && res.success) {
+            // UI Cleanup: Exit edit mode visually and restore button state BEFORE the merge lockout logic triggers
+            if (!stayInEditMode && STATE.isEditingNote === id) {
+                STATE.isEditingNote = null;
+                el.classList.remove('is-editing');
+                if (textarea) textarea.readOnly = true;
+
+                const btnIcon = el.querySelector('.btn-icon-edit');
+                if (btnIcon) {
+                    btnIcon.innerHTML = '✏️';
+                    btnIcon.title     = 'Edit Content';
+                    btnIcon.classList.remove('pulse-glow');
+                }
+            }
+
+            // Sync Lockout Release: Clear the 'in-flight' status before merging to allow the authoritative update
+            if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
+
             if (res.notes && typeof window.mergeNoteState === 'function') {
                 window.mergeNoteState(res.notes);
             } else if (res.notes) {
@@ -1197,27 +1214,11 @@ async function saveNoteInline(id, stayInEditMode = false) {
             const accentColor = typeof normalizeColorHex === 'function' ? normalizeColorHex(color) : color;
             el.style.setProperty('--note-accent', accentColor);
             
-            // UI Cleanup: Exit edit mode visually and restore button state ONLY if not doing an incremental save
-            if (!stayInEditMode) {
-                STATE.isEditingNote = null;
-                el.classList.remove('is-editing');
-                if (textarea) textarea.readOnly = true;
-
-                const btnIcon = el.querySelector('.btn-icon-edit');
-                if (btnIcon) {
-                    btnIcon.innerHTML = '✏️';
-                    btnIcon.title     = 'Edit Content';
-                    btnIcon.classList.remove('pulse-glow');
-                }
-            }
-
             showToast('Note Saved', 'success');
         }
     } finally {
         el.classList.remove('pending');
         if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
-        // Always release the edit guard so the heartbeat is not permanently inhibited AFTER a final terminal save
-        if (!stayInEditMode) STATE.isEditingNote = null;
     }
 }
 
