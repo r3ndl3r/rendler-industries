@@ -67,7 +67,9 @@ const STATE = {
     pinchStartDist: null,             // Mobile Gestures: Distance baseline
     pinchStartScale: null,            // Mobile Gestures: Scale baseline
     wrapperEl:      null,             // Cached DOM Handle: #canvas-wrapper
-    canvasEl:       null              // Cached DOM Handle: #notes-canvas
+    canvasEl:       null,             // Cached DOM Handle: #notes-canvas
+    unlockedCanvases: new Set(),      // Session Privacy: Tracks IDs of protected boards currently unlocked
+    isLocked:       false             // Privacy State: Single source of truth for visibility
 };
 
 /**
@@ -111,9 +113,181 @@ const SCALE_MIN  = 0.1;
 const SCALE_MAX  = 3.00;
 const SCALE_STEP = 0.1;
 
-window.addEventListener('load', () => {
-    initNotes();
-});
+/**
+ * Renders the privacy shield over the canvas area.
+ */
+window.showLockedOverlay = function(autoFocus = true) {
+    const overlay = document.getElementById('canvas-lock-overlay');
+    if (!overlay) return;
+
+    STATE.isLocked = true;
+    STATE.notes = [];
+    STATE.note_map = {};
+    STATE.note_map_hash = null;
+    overlay.style.display = 'flex';
+
+    const input = document.getElementById('unlock-password');
+    if (input) {
+        input.value = '';
+        if (autoFocus) input.focus();
+    }
+};
+
+/**
+ * Removes the privacy shield and restores canvas clarity.
+ */
+window.hideLockedOverlay = function() {
+    const overlay = document.getElementById('canvas-lock-overlay');
+    if (!overlay) return;
+
+    STATE.isLocked = false;
+    overlay.style.display = 'none';
+};
+
+
+/**
+ * Communicates with the backend to verify password and unlock the board.
+ */
+window.apiUnlockCanvas = async function() {
+    const input = document.getElementById('unlock-password');
+    const password = input?.value;
+    if (!password) return showToast('Password is required', 'error');
+
+    const targetCanvasId = STATE.canvas_id;
+    const targetLayerId  = STATE.activeLayerId;
+    showLoadingOverlay(`⏳ Unlocking...`);
+    try {
+        const res = await NoteAPI.post('/notes/api/unlock_canvas', { 
+            canvas_id: targetCanvasId, 
+            password: password 
+        });
+
+        if (res && res.success) {
+            // Context Drift Guard: Ensure user hasn't navigated away during the request
+            if (STATE.canvas_id !== targetCanvasId || STATE.activeLayerId !== targetLayerId) {
+                hideLoadingOverlay();
+                return;
+            }
+
+            // Sync unlock state from server response immediately so canvas manager/switcher
+            // reflect the new status even if loadState is delayed below.
+            if (res.unlocked_canvases) {
+                STATE.unlockedCanvases = new Set(res.unlocked_canvases.map(id => parseInt(id)));
+            }
+
+            // Spin-wait for any concurrent sync to clear before hydrating state.
+            // Prevents isSyncing guard from silently returning false and leaving isLocked=true.
+            if (STATE.isSyncing) {
+                await new Promise(resolve => {
+                    const deadline = Date.now() + 3000;
+                    const poll = setInterval(() => {
+                        if (!STATE.isSyncing || Date.now() >= deadline) { 
+                            clearInterval(poll); 
+                            resolve(); 
+                        }
+                    }, 30);
+                });
+            }
+
+            if (STATE.canvas_id !== targetCanvasId || STATE.activeLayerId !== targetLayerId) {
+                hideLoadingOverlay();
+                return;
+            }
+
+            try {
+                // State Synchronization: Defer hiding the overlay until AFTER data is loaded.
+                // Ensures if loadState fails, the user is still presented with the lock/retry interface.
+                await loadState(false, targetCanvasId, null, targetLayerId);
+
+                if (!STATE.isLocked) {
+                    // Success Path: loadState confirmed the board is accessible.
+                    // Note: hideLockedOverlay() is already called within loadState's successful else branch.
+                    showToast('Access granted', 'success');
+                } else {
+                    // Concurrent Restriction: Handle board state transition during content fetch.
+                    showToast('Board was re-locked. Please try again.', 'error');
+                }
+            } catch (loadErr) {
+                if (STATE.canvas_id === targetCanvasId && STATE.activeLayerId === targetLayerId) {
+                    if (typeof showLockedOverlay === 'function') showLockedOverlay();
+                }
+                
+                // Authoritative Error Feedback: Ensure no failure path is silent.
+                // The normalization contract in loadState ensures a consistent rejection experience.
+                showToast('Failed to load board content. Please try again.', 'error');
+            }
+        } else {
+            // Enhanced Feedback: Show error toast on failure
+            showToast(res?.error || 'Access denied', 'error');
+
+            const card = document.querySelector('.lock-card');
+            if (card) {
+                card.classList.add('lock-shake');
+                setTimeout(() => card.classList.remove('lock-shake'), 500);
+            }
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+        }
+    } catch (e) {
+        console.error('Unlock error:', e);
+        showToast('Failed to contact server. Please try again.', 'error');
+        if (STATE.canvas_id === targetCanvasId && STATE.activeLayerId === targetLayerId) {
+            if (typeof showLockedOverlay === 'function') showLockedOverlay();
+        }
+    } finally {
+        hideLoadingOverlay();
+    }
+};
+
+/**
+ * Manually locks a board by clearing its session-unlock status.
+ * @param {number} canvasId - The canvas to lock.
+ */
+window.apiLockCanvas = async function(canvasId) {
+    if (!canvasId) return;
+
+    showLoadingOverlay(`⏳ Locking...`);
+    try {
+        const res = await NoteAPI.post('/notes/api/lock_canvas', { canvas_id: canvasId });
+        if (res && res.success) {
+            showToast('Board locked', 'info');
+            
+            // Global State Sync
+            if (res.unlocked_canvases) {
+                STATE.unlockedCanvases = new Set(res.unlocked_canvases.map(id => parseInt(id)));
+            } else {
+                STATE.unlockedCanvases.delete(parseInt(canvasId));
+            }
+
+            // If we locked the CURRENT board, we must blur it immediately
+            if (canvasId == STATE.canvas_id) {
+                try {
+                    // State Idempotency: Interaction triggers are handled by loadState.
+                    // Correctly handles UI transition, preventing double-animation and double-focus flashes.
+                    await loadState(false, canvasId, null, STATE.activeLayerId);
+                } catch (loadErr) {
+                    // State fetch failed post-lock: heartbeat will correct 
+                    // STATE.isLocked within the next 2s tick.
+                    showToast('Failed to refresh board state. Please wait.', 'error');
+                }
+            }
+            // Always refresh lock-status UIs regardless of which canvas was locked.
+            if (typeof renderQuickSwitcher === 'function') renderQuickSwitcher();
+            if (typeof renderCanvasList === 'function') renderCanvasList();
+        } else {
+            showToast(res?.error || 'Failed to lock board', 'error');
+        }
+    } catch (e) {
+        console.error('Locking error:', e);
+        showToast('Failed to lock board. Please try again.', 'error');
+    } finally {
+        hideLoadingOverlay();
+    }
+};
+
+window.addEventListener('load', initNotes);
 
 // State Synchronization: Save viewport before reload
 window.addEventListener('beforeunload', () => {
@@ -485,8 +659,11 @@ async function initNotes() {
     window.moveLevel = typeof moveLevel !== 'undefined' ? moveLevel : null;
     window.openJumpToLevelModal = typeof openJumpToLevelModal !== 'undefined' ? openJumpToLevelModal : null;
     window.switchLevel = typeof switchLevel !== 'undefined' ? switchLevel : null;
-    window.saveNoteInline = typeof saveNoteInline !== 'undefined' ? saveNoteInline : null;
     window.editNote = typeof editNote !== 'undefined' ? editNote : null;
+    window.saveNoteInline = typeof saveNoteInline !== 'undefined' ? saveNoteInline : null;
+
+    // 5. Security Context: Attach privacy lock listeners
+    if (typeof setupSecurityInteractions === 'function') setupSecurityInteractions();
 }
 
 
@@ -548,11 +725,24 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         // Logic Gate PRE-FLIGHT: Update UI only if not aborted (tid/layer already resolved above)
 
         if (data.success) {
-            if (typeof mergeNoteState === 'function') {
-                mergeNoteState(data.notes || []);
-            } else {
-                STATE.notes = data.notes || [];
+            if (data.unlocked_canvases) {
+                STATE.unlockedCanvases = new Set(data.unlocked_canvases.map(id => parseInt(id)));
             }
+
+            if (data.is_locked) {
+                STATE.notes = [];
+                STATE.note_map = {};
+                STATE.note_map_hash = null;
+                if (typeof showLockedOverlay === 'function') showLockedOverlay(false);
+            } else {
+                if (typeof hideLockedOverlay === 'function') hideLockedOverlay();
+                if (typeof mergeNoteState === 'function') {
+                    mergeNoteState(data.notes || []);
+                } else {
+                    STATE.notes = data.notes || [];
+                }
+            }
+
             STATE.canvases = data.canvases || [];
             STATE.user_id  = data.user_id;
             STATE.canvas_id  = data.canvas_id; // Resolved active context
@@ -560,10 +750,12 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             // State Synchronization: Baseline alignment with backend truth
             STATE.last_mutation = data.last_mutation;
             
-            // Delta Resolution: Only hydrate metadata if the server provided a fresh object.
-            // Otherwise, preserve existing mapping to save bandwidth and UI processing lock.
-            if (data.note_map) STATE.note_map = data.note_map;
-            STATE.note_map_hash = data.note_map_hash;
+            // Delta Resolution: Only hydrate metadata if the server provided a fresh object AND the board is unlocked.
+            // This prevents metadata leakage and delta-sync corruption (STATE.note_map_hash overwriting NULL).
+            if (!data.is_locked) {
+                if (data.note_map) STATE.note_map = data.note_map;
+                STATE.note_map_hash = data.note_map_hash;
+            }
 
             STATE.layer_map     = data.layer_map || {};
             STATE.share_list    = data.share_list || [];
@@ -679,12 +871,33 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                 });
             }
         } else {
-            showToast('Failed to load whiteboard state', 'error');
-            if (initial) STATE.notes = [];
+            // Failure Path: Clear volatile state before any exit to prevent 
+            // stale content rendering in the finally renderUI() call.
+            STATE.notes = [];
+            STATE.note_map = {};
+            STATE.note_map_hash = null;
+
+            if (initial) {
+                showToast('Failed to load whiteboard state', 'error');
+            } else {
+                throw new Error('STATE_LOAD_FAILED');
+            }
         }
     } catch (err) {
-        console.error('loadState Error:', err);
-        if (initial) STATE.notes = [];
+        // All failure paths now clear state before reaching catch.
+        // Only non-STATE_LOAD_FAILED errors (network/parse failures) need logging.
+        if (err.message !== 'STATE_LOAD_FAILED') {
+            console.error('loadState Error:', err);
+            STATE.notes = [];
+            STATE.note_map = {};
+            STATE.note_map_hash = null;
+        }
+        if (!initial) {
+            // Authoritative Propagation: Normalise all non-initial failure classes to 
+            // a single signal type. Preserves STATE_LOAD_FAILED identity; wraps all other 
+            // classes so callers receive a consistent rejection regardless of origin.
+            throw err.message === 'STATE_LOAD_FAILED' ? err : new Error('STATE_LOAD_FAILED');
+        }
     } finally {
         STATE.isSyncing = false;
         
@@ -698,12 +911,15 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         }
 
         // Global Safety Reset: Ensure interface is unlocked if not in a designated stabilization phase (centering callback owns it)
-        if (!nid) STATE.isInitializing = false;
+        if (!nid) {
+            STATE.isInitializing = false;
+        }
+
+        // Render UI after all state is consolidated
+        if (typeof renderUI === 'function') renderUI();
     }
-
-    // Render UI after all state is consolidated
-    if (typeof renderUI === 'function') renderUI();
-
+    // Non-throwing paths return true to preserve the established return contract.
+    // Throwing paths (initial=false failures) propagate the throw before reaching this line.
     return true;
 }
 
@@ -817,10 +1033,49 @@ window.setupHeartbeat = function setupHeartbeat() {
                 signal: STATE.heartbeatController.signal 
             });
             
-            if (res && res.success && res.last_mutation !== STATE.last_mutation) {
-                // Perform hydration only if context hasn't changed during the fetch
-                if (STATE.canvas_id === canvasId && STATE.activeLayerId === layerId) {
-                    await loadState(false, STATE.canvas_id, null, STATE.activeLayerId);
+            if (res && res.success) {
+                if (res.is_locked && !STATE.isLocked) {
+                    // External Lock State: Canvas accessibility restricted following security baseline mutation.
+                    if (STATE.canvas_id === canvasId && STATE.activeLayerId === layerId) {
+                        STATE.notes = [];
+                        STATE.note_map = {};
+                        STATE.note_map_hash = null;
+                        if (res.unlocked_canvases) {
+                            STATE.unlockedCanvases = new Set(res.unlocked_canvases.map(id => parseInt(id)));
+                        } else {
+                            STATE.unlockedCanvases.delete(parseInt(canvasId));
+                        }
+                        if (typeof showLockedOverlay === 'function') showLockedOverlay(false);
+                        if (typeof renderUI === 'function') renderUI();
+                        // Refresh canvas list UIs to show updated lock icon state immediately.
+                        if (typeof renderQuickSwitcher === 'function') renderQuickSwitcher();
+                        if (typeof renderCanvasList === 'function') renderCanvasList();
+                        // Advance the mutation baseline so the next heartbeat does not
+                        // redundantly trigger a loadState on the already-handled lock transition.
+                        STATE.last_mutation = res.last_mutation;
+                    }
+                } 
+                else if (!res.is_locked && STATE.isLocked) {
+                    // External Unlock Path: Content accessibility restoration after protection removal.
+                    // Full loadState required to fetch content now that protection is lifted.
+                    if (STATE.canvas_id === canvasId && STATE.activeLayerId === layerId) {
+                        try {
+                            await loadState(false, STATE.canvas_id, null, STATE.activeLayerId);
+                        } catch (loadErr) {
+                            // Resilience: Concurrent heartbeat will attempt authorization restoration.
+                            console.warn('Heartbeat unlock hydration failed:', loadErr.message);
+                        }
+                    }
+                }
+                else if (res.last_mutation !== STATE.last_mutation) {
+                    // Consistency: Execute hydration while ensuring canvas context remains stable.
+                    if (STATE.canvas_id === canvasId && STATE.activeLayerId === layerId) {
+                        try {
+                            await loadState(false, STATE.canvas_id, null, STATE.activeLayerId);
+                        } catch (loadErr) {
+                            console.warn('Heartbeat mutation hydration failed:', loadErr.message);
+                        }
+                    }
                 }
             }
         } catch (e) {
