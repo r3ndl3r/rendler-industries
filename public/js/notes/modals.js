@@ -633,13 +633,19 @@ async function openBoardSettings(id) {
     const board = res.canvases.find(c => c.id == id);
     if (!board) return;
     
-    const nameInput = document.getElementById('edit-canvas-name');
-    if (nameInput) nameInput.value = board.name;
+    // Pattern: Standardized Row Input with dynamic hydration
+    // Handles Emoji Picker isolation and standard Rendler horizontal styling.
+    const row = window.renderRowInput(document.getElementById('board-name-input-row'), {
+        id: 'edit-canvas-name',
+        value: board.name,
+        placeholder: 'Board name...',
+        buttonText: 'Save',
+        buttonIcon: '💾'
+    });
     
-    const saveBtn = document.getElementById('save-canvas-name-btn');
-    if (saveBtn) {
-        saveBtn.dataset.canvasId = board.id;
-        saveBtn.onclick = () => updateBoardName(id, nameInput.value);
+    if (row && row.button) {
+        row.button.dataset.canvasId = board.id;
+        row.button.onclick = () => updateBoardName(id, row.input.value);
     }
     
     const userSearchInput = document.getElementById('user-search-input');
@@ -941,16 +947,7 @@ function openJumpToLevelModal() {
     
     // Internal: Shared Modal Cleanup Engine
     const cleanupModal = () => {
-        const promptContainer = document.getElementById('globalConfirmPromptContainer');
-        const actionsContainer = document.getElementById('globalConfirmModalActions');
         const modalContent = document.getElementById('globalConfirmModalContent');
-
-        if (promptContainer) {
-            promptContainer.classList.remove('modal-prompt-row');
-            const goBtn = promptContainer.querySelector('.btn-go-row');
-            if (goBtn) goBtn.remove();
-        }
-        if (actionsContainer) actionsContainer.classList.remove('hidden');
         if (modalContent) {
             const injection = modalContent.querySelector('.level-navigator-injection');
             if (injection) injection.remove();
@@ -985,43 +982,27 @@ function openJumpToLevelModal() {
         hideCancel: true,
         noEmoji: true,
         autoFocus: true,
-        input: {
-            type: 'number',
-            placeholder: 'Or enter level #...',
-            min: 1,
-            max: 99,
-            value: ''
-        },
-        confirmText: 'Go',
-        confirmIcon: '📚',
-        onCancel: cleanupModal,
-        onConfirm: async (val) => {
-            const level = Math.floor(Math.abs(parseInt(val)));
-            if (isNaN(level) || level < 1 || level > 99) {
-                showToast('Please enter a valid level (1-99)', 'error');
-                throw new Error('Invalid level');
-            }
-            cleanupModal();
-            if (typeof window.switchLevel === 'function') await window.switchLevel(level);
-        }
+        onCancel: cleanupModal
     });
 
-    // Interaction UX: Align Go button with the numeric input
+    // Interaction UX: Align Go button with the numeric input using the global helper
     const promptContainer = document.getElementById('globalConfirmPromptContainer');
     const actionsContainer = document.getElementById('globalConfirmModalActions');
-    const promptInput     = document.getElementById('globalConfirmPromptInput');
 
-    if (promptContainer && actionsContainer && promptInput) {
+    if (promptContainer && actionsContainer) {
         actionsContainer.classList.add('hidden');
-        promptContainer.classList.add('modal-prompt-row');
-
-        if (!promptContainer.querySelector('.btn-go-row')) {
-            const goBtn = document.createElement('button');
-            goBtn.className = 'btn-primary btn-go-row';
-            goBtn.innerHTML = '➤ Go';
-            
+        
+        const row = window.renderRowInput(promptContainer, {
+            id: 'jump-level-input',
+            placeholder: 'Level #...',
+            buttonText: 'Go',
+            buttonIcon: '➤',
+            noEmoji: true // Navigation is numeric
+        });
+        
+        if (row && row.button) {
             const submitLevel = () => {
-                const val = promptInput.value;
+                const val = row.input.value;
                 const level = Math.floor(Math.abs(parseInt(val)));
                 if (!isNaN(level) && level >= 1 && level <= 99) {
                     cleanupModal();
@@ -1031,9 +1012,16 @@ function openJumpToLevelModal() {
                     showToast('Valid level # required', 'error');
                 }
             };
-            goBtn.onclick = submitLevel;
-            promptInput.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); submitLevel(); } };
-            promptContainer.appendChild(goBtn);
+            row.button.onclick = submitLevel;
+            row.input.type = 'number';
+            row.input.min = 1;
+            row.input.max = 99;
+            row.input.onkeydown = (e) => { 
+                if (e.key === 'Enter') { 
+                    e.preventDefault(); 
+                    submitLevel(); 
+                } 
+            };
         }
     }
 
