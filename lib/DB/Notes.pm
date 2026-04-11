@@ -5,6 +5,7 @@ package DB::Notes;
 use strict;
 use warnings;
 use DBI qw(:sql_types);
+use Crypt::Eksblowfish::Bcrypt qw(bcrypt en_base64);
 
 # Database library for the /notes module.
 #
@@ -20,18 +21,25 @@ use DBI qw(:sql_types);
 #   - Primary data source for the MyApp::Controller::Notes module.
 #   - Depends on 'notes', 'note_blobs', 'canvases', 'canvas_shares', and 'notes_viewport' tables.
 
-# Retrieves all notes for a specific user and canvas, respecting sharing permissions.
+# Retrieves all notes for a specific user and canvas, respecting sharing permissions and lock status.
 # Parameters:
-#   user_id   : Integer ID of the active user.
-#   canvas_id : Integer ID of the targeted whiteboard.
+#   user_id      : Integer ID of the active user.
+#   canvas_id    : Integer ID of the targeted whiteboard.
+#   unlocked_ids : ArrayRef of currently session-unlocked canvas IDs.
 # Returns:
 #   ArrayRef of HashRefs or empty list if access is denied.
 sub DB::get_user_notes {
-    my ($self, $user_id, $canvas_id) = @_;
+    my ($self, $user_id, $canvas_id, $unlocked_ids) = @_;
     $self->ensure_connection;
 
-    # Security Gate: Verify the user has at least READ access to this canvas
+    # Security Gate 1: ACL Check (Owner/Share)
     return [] unless $self->check_canvas_access($canvas_id, $user_id, 0);
+
+    # Security Gate 2: Privacy Lock
+    if ($self->is_canvas_protected($canvas_id)) {
+        my $is_unlocked = grep { $_ == $canvas_id } @{$unlocked_ids // []};
+        return [] unless $is_unlocked;
+    }
 
     # Consolidated Fetch Pattern: Single round-trip for notes and attachments.
     # The 'blob_' prefix is used as a namespace separator for application-level grouping;
@@ -81,22 +89,30 @@ sub DB::get_user_notes {
 
 # Performs an ACL-aware search across all whiteboards accessible to the user.
 # Parameters:
-#   user_id : Integer identifier for the active user.
-#   query   : Search term (string).
+#   user_id      : Integer identifier for the active user.
+#   query        : Search term (string).
+#   unlocked_ids : ArrayRef of currently session-unlocked canvas IDs.
 # Returns:
 #   ArrayRef of HashRefs containing notes and their parent board names.
 sub DB::get_global_search_notes {
-    my ($self, $user_id, $query) = @_;
+    my ($self, $user_id, $query, $unlocked_ids) = @_;
     $self->ensure_connection;
 
     my $term = "%$query%";
-    # Combine notes with parent canvases while enforcing ACL visibility
+
+    # Logic-Pure: Handle SQL IN clause for unlocked markers
+    my $in_clause = (@{$unlocked_ids // []})
+        ? 'OR c.id IN (' . join(',', map { '?' } @$unlocked_ids) . ')'
+        : '';
+
+    # Combine notes with parent canvases while enforcing ACL visibility and Privacy Locks
     my $sql = "
         SELECT n.*, c.name as canvas_name, cl.alias as layer_alias
         FROM notes n
         JOIN canvases c ON n.canvas_id = c.id
         LEFT JOIN canvas_layers cl ON n.canvas_id = cl.canvas_id AND n.layer_id = cl.layer_id
         WHERE (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
+        AND (c.password_hash IS NULL $in_clause)
         AND n.is_deleted = 0
         AND (n.title LIKE ? OR n.content LIKE ? OR n.filename LIKE ? OR cl.alias LIKE ?)
         ORDER BY n.updated_at DESC
@@ -104,7 +120,7 @@ sub DB::get_global_search_notes {
         ";
 
         my $sth = $self->{dbh}->prepare($sql);
-        $sth->execute($user_id, $user_id, $term, $term, $term, $term);
+        $sth->execute($user_id, $user_id, @{$unlocked_ids // []}, $term, $term, $term, $term);
         my $notes = $sth->fetchall_arrayref({});
         
         if (@$notes) {
@@ -252,12 +268,18 @@ sub DB::get_note_map_fingerprint {
 # Retrieves a lean metadata map for ALL accessible notes.
 # Optimized: Strips 'content' and uses a correlated subquery for exactly ONE attachment metadata.
 # Parameters:
-#   user_id : Integer ID for the active user.
+#   user_id      : Integer ID for the active user.
+#   unlocked_ids : ArrayRef of currently session-unlocked canvas IDs.
 # Returns:
 #   HashRef { id => { title, canvas_id, attachments => [...] } }
 sub DB::get_all_accessible_note_metadata {
-    my ($self, $user_id) = @_;
+    my ($self, $user_id, $unlocked_ids) = @_;
     $self->ensure_connection;
+
+    # Logic-Pure: Handle SQL IN clause for unlocked markers
+    my $in_clause = (@{$unlocked_ids // []})
+        ? 'OR c.id IN (' . join(',', map { '?' } @$unlocked_ids) . ')'
+        : '';
 
     # Performance: Only fetch identification, coordinates, and primary file metadata.
     # The 'blob_' prefix maintains grouping compatibility for rendering engine.
@@ -277,11 +299,12 @@ sub DB::get_all_accessible_note_metadata {
             LIMIT 1
         )
         WHERE (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
+        AND (c.password_hash IS NULL $in_clause)
         AND n.is_deleted = 0
     ";
     
     my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute($user_id, $user_id);
+    $sth->execute($user_id, $user_id, @{$unlocked_ids // []});
     
     my %map;
     while (my $row = $sth->fetchrow_hashref()) {
@@ -467,7 +490,7 @@ sub DB::promote_note_to_binary {
 # Returns:
 #   HashRef of binary metadata and content or undef.
 sub DB::get_note_blob {
-    my ($self, $note_id, $user_id) = @_;
+    my ($self, $note_id, $user_id, $unlocked_ids) = @_;
     $self->ensure_connection;
 
     # Anchor permission lookup to the parent note's canvas
@@ -477,23 +500,41 @@ sub DB::get_note_blob {
     
     return undef unless $cid && $self->check_canvas_access($cid, $user_id, 0);
 
-    my $sth = $self->{dbh}->prepare("SELECT * FROM note_blobs WHERE note_id = ? ORDER BY id ASC LIMIT 1");
+    # Privacy Gate: Verify session unlock state before exposing binary content
+    if ($self->is_canvas_protected($cid)) {
+        my $is_unlocked = grep { $_ == $cid } @{$unlocked_ids // []};
+        return undef unless $is_unlocked;
+    }
+
+    my $sth = $self->{dbh}->prepare("SELECT nb.*, n.canvas_id FROM note_blobs nb JOIN notes n ON nb.note_id = n.id WHERE nb.note_id = ? ORDER BY nb.id ASC LIMIT 1");
     $sth->execute($note_id);
     
     return $sth->fetchrow_hashref();
 }
 
-# New precisely targeted reel attachment fetcher
+# Precisely targeted reel attachment fetcher
 sub DB::get_blob_by_id {
-    my ($self, $blob_id, $user_id) = @_;
+    my ($self, $blob_id, $user_id, $unlocked_ids) = @_;
     $self->ensure_connection;
 
-    my $sql = "SELECT nb.*, n.canvas_id FROM note_blobs nb JOIN notes n ON nb.note_id = n.id WHERE nb.id = ?";
-    my $sth = $self->{dbh}->prepare($sql);
+    # Primary Key Lookup: ORDER BY and LIMIT are redundant on uniqueness
+    my $sth = $self->{dbh}->prepare(
+        "SELECT nb.*, n.canvas_id
+         FROM note_blobs nb
+         JOIN notes n ON nb.note_id = n.id
+         WHERE nb.id = ?"
+    );
     $sth->execute($blob_id);
     my $blob = $sth->fetchrow_hashref();
     
     return undef unless $blob && $self->check_canvas_access($blob->{canvas_id}, $user_id, 0);
+
+    # Privacy Gate: Ensure direct blob access is synchronized with session lock state
+    if ($self->is_canvas_protected($blob->{canvas_id})) {
+        my $is_unlocked = grep { $_ == $blob->{canvas_id} } @{$unlocked_ids // []};
+        return undef unless $is_unlocked;
+    }
+
     return $blob;
 }
 
@@ -577,19 +618,32 @@ sub DB::save_viewport {
 
 # --- Multi-Canvas & Sharing Expansion ---
 
-# Retrieves all canvases the user can access (Owned + Shared).
+# Retrieves all canvases the user can access (Owned + Shared) and their protection status.
 sub DB::get_available_canvases {
     my ($self, $user_id) = @_;
     $self->ensure_connection;
 
     # Fetch owned boards + shared boards in a unified set
+    # Includes is_protected status (Checks if password_hash is not null)
     my $sql = "
-        SELECT c.*, u.username as owner_name, 1 as is_owner, 1 as can_edit, c.sort_order as user_sort
+        SELECT 
+            c.*, 
+            u.username as owner_name, 
+            1 as is_owner, 
+            1 as can_edit, 
+            c.sort_order as user_sort,
+            (c.password_hash IS NOT NULL) as is_protected
         FROM canvases c
         JOIN users u ON c.user_id = u.id
         WHERE c.user_id = ?
         UNION
-        SELECT c.*, u.username as owner_name, 0 as is_owner, cs.can_edit, cs.sort_order as user_sort
+        SELECT 
+            c.*, 
+            u.username as owner_name, 
+            0 as is_owner, 
+            cs.can_edit, 
+            cs.sort_order as user_sort,
+            (c.password_hash IS NOT NULL) as is_protected
         FROM canvases c
         JOIN users u ON c.user_id = u.id
         JOIN canvas_shares cs ON c.id = cs.canvas_id
@@ -741,7 +795,7 @@ sub DB::copy_note {
 # Parameters:
 #   id      : Integer ID of the canvas.
 #   user_id : Active user identifier (Must be owner).
-#   name    : New descriptive name.
+#   name    : Desired name string.
 # Returns:
 #   Boolean : 1 on success, 0 otherwise.
 sub DB::rename_canvas {
@@ -937,6 +991,86 @@ sub DB::move_layer_content {
     return $rows;
 }
 
+# --- Security & Privacy Management ---
+
+# Checks if a canvas is password-protected.
+sub DB::is_canvas_protected {
+    my ($self, $canvas_id) = @_;
+    $self->ensure_connection;
+    my ($protected) = $self->{dbh}->selectrow_array("SELECT (password_hash IS NOT NULL) FROM canvases WHERE id = ?", undef, $canvas_id);
+    return $protected // 0;
+}
+
+# Updates or sets a password for a canvas.
+sub DB::set_canvas_password {
+    my ($self, $canvas_id, $password) = @_;
+    $self->ensure_connection;
+
+    my $hashed_password = undef;
+    if (defined $password && length $password) {
+        my $salt_raw = '';
+        if (open my $fh, '<:raw', '/dev/urandom') {
+            read($fh, $salt_raw, 16);
+            close $fh;
+        }
+        
+        # Hard-fail: No cryptographically secure entropy source available.
+        # A weak-entropy salt is worse than a visible error — it silently degrades security.
+        die "FATAL: Cannot generate cryptographically secure salt: /dev/urandom unavailable"
+            unless length($salt_raw) == 16;
+
+        my $salt = en_base64($salt_raw);
+        $hashed_password = bcrypt($password, '$2a$10$'.$salt);
+    }
+
+    # Lock Versioning: Session token invalidation on state changes.
+    my $sql = "UPDATE canvases SET password_hash = ?, lock_version = lock_version + 1 WHERE id = ?";
+    my $sth = $self->{dbh}->prepare($sql);
+    return $sth->execute($hashed_password, $canvas_id);
+}
+
+# Returns the current lock version for a canvas.
+sub DB::get_canvas_lock_version {
+    my ($self, $canvas_id) = @_;
+    $self->ensure_connection;
+    my ($version) = $self->{dbh}->selectrow_array("SELECT lock_version FROM canvases WHERE id = ?", undef, $canvas_id);
+    return $version // 0;
+}
+
+# Returns a hash of { id => lock_version } for the requested canvas IDs.
+# Batch retrieve lock versions for efficiency.
+sub DB::get_canvas_lock_versions {
+    my ($self, @ids) = @_;
+    return {} unless @ids;
+    
+    $self->ensure_connection;
+    my $in   = join(',', ('?') x scalar @ids);
+    my $sql  = "SELECT id, lock_version FROM canvases WHERE id IN ($in)";
+    my $rows = $self->{dbh}->selectall_arrayref($sql, undef, @ids);
+    
+    my %versions;
+    foreach my $row (@$rows) {
+        $versions{$row->[0]} = $row->[1] // 0;
+    }
+    return \%versions;
+}
+
+# Verifies a provided password against the canvas's stored hash.
+sub DB::verify_canvas_password {
+    my ($self, $canvas_id, $password) = @_;
+    $self->ensure_connection;
+
+    my ($stored_hash) = $self->{dbh}->selectrow_array("SELECT password_hash FROM canvases WHERE id = ?", undef, $canvas_id);
+    return 0 unless $stored_hash;
+
+    my $computed = bcrypt($password, $stored_hash);
+    # Constant-time comparison: XOR all bytes, accumulate into single result
+    my $diff = 0;
+    $diff |= ord(substr($computed, $_, 1)) ^ ord(substr($stored_hash, $_, 1))
+        for 0 .. length($stored_hash) - 1;
+    return $diff == 0 ? 1 : 0;
+}
+
 # --- Background Maintenance Operations ---
 
 # Attempts to clean up deleted notes that have no blobs or dependencies.
@@ -950,7 +1084,7 @@ sub DB::purge_deleted_notes {
 # Features:
 #   - Uses MariaDB window functions (10.2+) for rank calculation
 #   - Atomic update via single statement JOIN
-#   - Only updates changed rows to optimize performance
+#   - Atomically modifies mutated rows to optimize performance
 # Returns:
 #   Integer : Number of rows normalized
 sub DB::normalize_note_z_indices {
