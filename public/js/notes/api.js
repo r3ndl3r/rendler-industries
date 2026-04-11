@@ -178,6 +178,12 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
             // protection for subsequent interactions during the API cycle.
             POSITION_SYNC_TIMERS.delete(id);
 
+            // Abort if the note was deleted while the debounce timer was pending
+            if (!STATE.notes.find(n => n.id == id)) {
+                if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
+                return;
+            }
+
             // Re-capture fresh DOM coordinates at the moment the timer fires
             const latestParams = {
                 id: id,
