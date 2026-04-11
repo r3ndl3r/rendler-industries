@@ -1017,8 +1017,13 @@ function handleCanvasMouseUp() {
  * @param {WheelEvent} e - The wheel event.
  */
 function handleCanvasWheel(e) {
-    // 1. Initialization Shield: Selective blocking to prevent viewport jumps during hydration
-    if (STATE.isInitializing) {
+    // 1. Initialization & Modal Shields: Prevent background interaction during hydration or active UI states
+    if (STATE.isInitializing || document.body.classList.contains('modal-open')) {
+        // If the interaction is inside a modal or lock overlay, return EARLY without calling preventDefault()
+        // This allows the browser to perform native scrolling for the UI at high fidelity.
+        if (e.target.closest('.modal-overlay, .canvas-lock-overlay')) return;
+
+        // Otherwise, if we are over the background canvas while a modal is up, block panning.
         if (!e.target.closest('.sticky-note')) e.preventDefault();
         return;
     }
