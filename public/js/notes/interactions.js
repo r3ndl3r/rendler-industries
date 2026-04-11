@@ -439,6 +439,23 @@ function cancelStickyMove() {
     showToast('Move cancelled', 'info');
 }
 
+function releaseActiveEditLock() {
+    if (!STATE.isEditingNote) return;
+
+    const noteId = STATE.isEditingNote;
+    STATE.isEditingNote = null;
+
+    const params = new URLSearchParams();
+    params.append('id', noteId);
+    params.append('session_id', STATE.sessionId);
+
+    // Resilience: navigator.sendBeacon is the gold standard for reliable teardown transport
+    navigator.sendBeacon('/notes/api/unlock', params);
+}
+
+// Global Lifecycle Persistence: Use pagehide for teardown beacons
+window.addEventListener('pagehide', releaseActiveEditLock);
+
 /**
  * Global Click Orchestrator.
  * Handles drop logic for the 'Pick & Place' engine.
@@ -1214,17 +1231,24 @@ async function saveNoteInline(id, stayInEditMode = false) {
     try {
         const res = await NoteAPI.post('/notes/api/save', params);
         if (res && res.success) {
-            // UI Cleanup: Exit edit mode visually and restore button state BEFORE the merge lockout logic triggers
+            // State: Finalize UI before record merge
             if (!stayInEditMode && STATE.isEditingNote === id) {
+                // Collaborative Locking: Clear state FIRST to block teardown races
                 STATE.isEditingNote = null;
+                
                 el.classList.remove('is-editing');
                 if (textarea) textarea.readOnly = true;
-
+                
                 const btnIcon = el.querySelector('.btn-icon-edit');
                 if (btnIcon) {
                     btnIcon.innerHTML = '✏️';
                     btnIcon.title     = 'Edit Content';
                     btnIcon.classList.remove('pulse-glow');
+                }
+
+                const unlockRes = await NoteAPI.unlock(id);
+                if (!unlockRes || !unlockRes.success) {
+                    console.warn('[NoteAPI] Post-save unlock failed for note', id, unlockRes?.error);
                 }
             }
 
@@ -1356,42 +1380,56 @@ function editNote(id) {
  * and dynamic resizing.
  * @param {HTMLElement} btn - The trigger button.
  * @param {number|string} id - The note ID.
+ * @param {boolean} isAbort - Optional flag to revert changes without saving.
  */
-async function toggleInlineEdit(btn, id) {
+async function toggleInlineEdit(btn, id, isAbort = false) {
     const el   = document.getElementById(`note-${id}`);
     const note = STATE.notes.find(n => n.id == id);
     if (!el || !note) return;
 
     const textarea  = el.querySelector('textarea');
     
-    // Expand collapsed notes before editing to prevent dimension corruption
+    let lockAcquired = false;
+
+    // Collaborative Locking: Prevention & Acquisition
+    if (!el.classList.contains('is-editing')) {
+        const lockRes = await NoteAPI.lock(id);
+        if (!lockRes || !lockRes.success) return;
+        lockAcquired = true;
+    }
+
+    // Visual geometry restoration for accurate dimension calculation.
     if (!el.classList.contains('is-editing') && note.is_collapsed) {
-        await toggleCollapse(id);
+        try {
+            await toggleCollapse(id);
+        } catch (e) {
+            if (lockAcquired) await NoteAPI.unlock(id);
+            return;
+        }
     }
 
     const isEditing = el.classList.toggle('is-editing');
 
     if (isEditing) {
-        // Mode Transition: Enable Interaction & Focus
+        // UI Logic: Unified termination reset
         STATE.isEditingNote  = id;
         
         btn.innerHTML = '💾';
         btn.title     = 'Save Changes';
         btn.classList.add('pulse-glow');
 
-        // CSS drives upload button visibility via .is-editing on the parent note.
-        // No inline style override needed here.
+        // Note: CSS handles visibility of child controls via parent .is-editing state.
 
         const textSect = el.querySelector('.note-text-section');
-        if (textSect) textSect.classList.remove('hidden'); // force show empty editor
+        if (textSect) textSect.classList.remove('hidden'); // Ensure editor container is visible
 
-        // Enable inline rename on hero image filename display
+        // Interaction State: Enable inline field modifications
         const filenameDisplay = el.querySelector('.note-hero-container .file-name-display');
         if (filenameDisplay) {
             filenameDisplay.contentEditable = 'true';
             filenameDisplay.classList.add('is-editing-text');
         }
-        // Multi-attachment stacks: enable rename on each individual item filename
+        
         el.querySelectorAll('.attachment-item-stack .file-name-display').forEach(fd => {
             fd.contentEditable = 'true';
             fd.classList.add('is-editing-text');
@@ -1401,7 +1439,7 @@ async function toggleInlineEdit(btn, id) {
             textarea.readOnly = false;
             textarea.focus();
 
-            // Dynamic height adaptation for seamless text entry
+            // UI Logic: Dynamic height adaptation for text entry
             const adaptNoteHeight = () => {
                 if (textarea.scrollHeight > textarea.clientHeight) {
                     const diff = textarea.scrollHeight - textarea.clientHeight;
@@ -1413,35 +1451,52 @@ async function toggleInlineEdit(btn, id) {
             textarea._adaptNoteHeight = adaptNoteHeight;
             textarea.addEventListener('input', textarea._adaptNoteHeight);
             
-            // Trigger initially to expand immediately if overflowing
             setTimeout(adaptNoteHeight, 10);
         }
     } else {
         // Mode Termination: Atomic Persistence
-        if (typeof saveNoteInline === 'function') {
-            saveNoteInline(id);
+        if (isAbort) {
+            // UI State: Restore content from local state
+            const txtArea = el.querySelector('textarea');
+            if (txtArea && note) txtArea.value = note.content || '';
+            
+            STATE.isEditingNote = null;
+        } else if (typeof saveNoteInline === 'function') {
+            // Sequential Lifecycle: Await the save to ensure lock release doesn't race
+            await saveNoteInline(id);
         }
 
-        // CSS hides the upload button and filename displays when .is-editing is removed.
-        // No inline style override needed.
+        // UI Logic: Unified termination reset
+        const txtArea = el.querySelector('textarea');
+        if (txtArea) txtArea.readOnly = true;
         
-        const txt = textarea ? textarea.value : '';
+        btn.innerHTML = '✏️';
+        btn.title     = 'Edit Content';
+        btn.classList.remove('pulse-glow');
+        
+        const txt = txtArea ? txtArea.value : '';
         const textSect = el.querySelector('.note-text-section');
         if (textSect && (!txt || txt.trim() === '')) {
-            textSect.classList.add('hidden'); // hide if empty after save
+            textSect.classList.add('hidden'); // Visibility gating for empty containers
         }
 
         const filenameDisplay = el.querySelector('.note-hero-container .file-name-display');
         if (filenameDisplay) {
             filenameDisplay.contentEditable = 'false';
             filenameDisplay.classList.remove('is-editing-text');
-            // CSS (.sticky-note.is-editing .note-hero-container .file-name-display) handles visibility.
         }
-        // Reset contentEditable on all stack item filenames
         el.querySelectorAll('.attachment-item-stack .file-name-display').forEach(fd => {
             fd.contentEditable = 'false';
             fd.classList.remove('is-editing-text');
         });
+
+        // Collaborative Locking: Explicit release for the Abort path.
+        if (isAbort) {
+            const unlockRes = await NoteAPI.unlock(id);
+            if (!unlockRes || !unlockRes.success) {
+                console.warn('[NoteAPI] Abort-path unlock failed for note', id, unlockRes?.error);
+            }
+        }
     }
 }
 
@@ -1451,7 +1506,7 @@ async function toggleInlineEdit(btn, id) {
  * @param {KeyboardEvent} e - The keydown event.
  * @param {number|string} id - The note ID.
  */
-function handleNoteKeydown(e, id) {
+async function handleNoteKeydown(e, id) {
     // Ctrl + Enter: Instant Save & Close
     if (e.ctrlKey && e.key === 'Enter') {
         const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
@@ -1479,22 +1534,9 @@ function handleNoteKeydown(e, id) {
         }
     }
     else if (e.key === 'Escape') {
-        const el = document.getElementById(`note-${id}`);
-        if (el && el.classList.contains('is-editing')) {
-            const btn = el.querySelector('.btn-icon-edit');
-            const textarea = el.querySelector('textarea');
-            const note = STATE.notes.find(n => n.id == id);
-            
-            // Abort: Revert textarea to state
-            if (note) textarea.value = note.content || '';
-            
-            el.classList.remove('is-editing');
-            if (textarea) textarea.readOnly = true;
-            if (btn) {
-                btn.innerHTML = '✏️';
-                btn.classList.remove('pulse-glow');
-            }
-            STATE.isEditingNote = null;
+        const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
+        if (btn && document.getElementById(`note-${id}`).classList.contains('is-editing')) {
+            await toggleInlineEdit(btn, id, true);
         }
     }
 }
