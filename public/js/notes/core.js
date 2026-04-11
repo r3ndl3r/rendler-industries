@@ -71,7 +71,32 @@ const STATE = {
     canvasEl:       null,             // Cached DOM Handle: #notes-canvas
     unlockedCanvases: new Set(),      // Session Privacy: Tracks IDs of protected boards currently unlocked
     isLocked:       false,            // Privacy State: Single source of truth for visibility
-    hoveredNoteId:  null              // Interactivity Context: ID of the note currently under the cursor
+    hoveredNoteId:  null,             // Interactivity Context: ID of the note currently under the cursor
+    sessionId: (() => {
+        const genId = () => {
+            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                return crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+            }
+            const buf = new Uint8Array(8);
+            if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+                crypto.getRandomValues(buf);
+                return Array.from(buf, b => b.toString(16).padStart(2, '0')).join('');
+            }
+            return `${Date.now().toString(16)}${Math.random().toString(16).slice(2, 10)}`.slice(0, 16);
+        };
+
+        const k = 'notes_session_id';
+        try {
+            let id = sessionStorage.getItem(k);
+            if (!id) {
+                id = genId();
+                sessionStorage.setItem(k, id);
+            }
+            return id;
+        } catch (e) {
+            return genId();
+        }
+    })() // Tab-level Identity: Distinguishes sessions across refreshes
 };
 
 /**
