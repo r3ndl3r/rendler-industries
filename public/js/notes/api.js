@@ -243,8 +243,7 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
                 height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
                 z_index: el.style.zIndex,
                 layer_id: note.layer_id || 1,
-                is_collapsed: note.is_collapsed,
-                is_options_expanded: note.is_options_expanded || 0
+                is_collapsed: note.is_collapsed
             };
 
             try {
@@ -279,8 +278,7 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
         height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
         z_index: el.style.zIndex,
         layer_id: note.layer_id || 1,
-        is_collapsed: note.is_collapsed,
-        is_options_expanded: note.is_options_expanded || 0
+        is_collapsed: note.is_collapsed
     };
 
     try {
@@ -463,8 +461,7 @@ async function copyNoteToLevel(id, newLevelId) {
             height: note.height,
             color: note.color,
             z_index: note.z_index,
-            is_collapsed: note.is_collapsed,
-            layer_id: newLevelId
+            is_collapsed: note.is_collapsed
         });
 
         if (res && res.success) {
