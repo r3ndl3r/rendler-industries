@@ -933,15 +933,15 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
  * Surgical State Hydration
  * Merges incoming note data while preserving local state for notes currently being manipulated.
  * @param {Array} incomingNotes - Fresh note records from the backend.
+ * @param {number|string|null} forceUpdateId - Force merge for this specific ID (bypasses edit-mode lockout).
  */
-function mergeNoteState(incomingNotes) {
+function mergeNoteState(incomingNotes, forceUpdateId = null) {
     const activeIds = new Set();
     if (STATE.pickedNoteId !== null) activeIds.add(String(STATE.pickedNoteId));
     if (STATE.isResizing   !== null) activeIds.add(String(STATE.isResizing));
     if (STATE.isEditingNote !== null) activeIds.add(String(STATE.isEditingNote));
     
     // Anti-Regression Lockout: Preserve local state for notes in-flight to the API
-    // Any note currently in-flight to the API is locked out of hydration
     STATE.activeSyncs.forEach((count, id) => {
         if (count > 0) activeIds.add(String(id));
     });
@@ -949,11 +949,12 @@ function mergeNoteState(incomingNotes) {
     // 1. Integration: Update existing and inject new records
     incomingNotes.forEach(incoming => {
         const idStr = String(incoming.id);
-        if (activeIds.has(idStr)) return; // Lockout: Preserve local unsynced state for active notes
+        
+        // Lockout Check: Skip merge if the note is active, UNLESS it is the forceUpdateId target
+        if (activeIds.has(idStr) && idStr !== String(forceUpdateId)) return;
 
         const existing = STATE.notes.find(n => n.id == incoming.id);
         if (existing) {
-            // Efficiency: Sync all properties into the existing object reference
             Object.assign(existing, incoming);
         } else {
             STATE.notes.push(incoming);
