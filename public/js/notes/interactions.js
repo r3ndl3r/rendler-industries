@@ -649,8 +649,12 @@ function zoomIn() {
     if (!wrapper) return;
     const oldScale = STATE.scale;
 
-    // Removes any incremental scale drift during decile snapping
-    STATE.scale = Math.min(SCALE_MAX, Math.round((STATE.scale + SCALE_STEP) * 10) / 10);
+    const step = SCALE_STEP || 0.1;
+    const precision = (step.toString().split('.')[1] || '').length || 1;
+    const f = Math.pow(10, precision);
+
+    // Removes any incremental scale drift during precision-based snapping
+    STATE.scale = Math.min(SCALE_MAX, Math.round((STATE.scale + step) * f) / f);
 
     // Canvas coordinate at the current viewport centre
     const canvasCX = (wrapper.scrollLeft + wrapper.clientWidth  / 2) / oldScale;
@@ -675,8 +679,12 @@ function zoomOut() {
     if (!wrapper) return;
     const oldScale = STATE.scale;
 
-    // Removes any incremental scale drift during decile snapping
-    STATE.scale = Math.max(SCALE_MIN, Math.round((STATE.scale - SCALE_STEP) * 10) / 10);
+    const step = SCALE_STEP || 0.1;
+    const precision = (step.toString().split('.')[1] || '').length || 1;
+    const f = Math.pow(10, precision);
+
+    // Removes any incremental scale drift during precision-based snapping
+    STATE.scale = Math.max(SCALE_MIN, Math.round((STATE.scale - step) * f) / f);
 
     const canvasCX = (wrapper.scrollLeft + wrapper.clientWidth  / 2) / oldScale;
     const canvasCY = (wrapper.scrollTop  + wrapper.clientHeight / 2) / oldScale;
@@ -1022,12 +1030,14 @@ function handleCanvasWheel(e) {
         e.preventDefault(); // Always block browser zoom when within the whiteboard context
 
         const oldScale = STATE.scale;
-        const step     = 0.1;
+        const step = SCALE_STEP || 0.1;
+        const precision = (step.toString().split('.')[1] || '').length || 1;
+        const f = Math.pow(10, precision);
         
         if (e.deltaY < 0) {
-            STATE.scale = Math.min(2.0, Math.round((STATE.scale + step) * 10) / 10);
+            STATE.scale = Math.min(SCALE_MAX, Math.round((STATE.scale + step) * f) / f);
         } else {
-            STATE.scale = Math.max(0.1, Math.round((STATE.scale - step) * 10) / 10);
+            STATE.scale = Math.max(SCALE_MIN, Math.round((STATE.scale - step) * f) / f);
         }
 
         if (STATE.scale === oldScale) return;
@@ -1838,7 +1848,11 @@ function handleCanvasTouchMove(e) {
         );
         
         const zoomRatio = currentDist / STATE.pinchStartDist;
-        const newScale = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN, STATE.pinchStartScale * zoomRatio)) * 10) / 10;
+        const step = window.SCALE_STEP || 0.1;
+        const precision = (step.toString().split('.')[1] || '').length || 1;
+        const f = Math.pow(10, precision);
+        
+        const newScale = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN, STATE.pinchStartScale * zoomRatio)) * f) / f;
         
         if (newScale !== STATE.scale) {
             const oldScale = STATE.scale;
