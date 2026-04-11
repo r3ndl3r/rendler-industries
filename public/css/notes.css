@@ -880,7 +880,6 @@ pre code {
 }
 
 .sticky-note.note-picked .note-content,
-.sticky-note.dragging .note-content,
 .sticky-note.note-picked .note-bookmark-tile {
     pointer-events: none !important;
     transition: none !important;
@@ -4273,3 +4272,152 @@ input:checked + .switch-sm .slider:before {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     white-space: nowrap;
 }
+
+/* ============================================================================
+   DASHBOARD MODE (BOOKMARK TILES)
+   ============================================================================ */
+
+.note-text-section.is-dashboard {
+    padding: 6px 12px !important; /* Safety buffer for edge glow */
+}
+
+/* Dashboard-Specific Header Overrides */
+.is-dashboard-note .note-id-hash {
+    display: none !important;
+}
+
+.is-dashboard-note .note-drag-handle-container {
+    padding-left: 0.5rem; /* Reclaim space from hidden clipboard icon */
+}
+
+.is-dashboard .note-text-viewer {
+    display: flex;
+    flex-direction: column;
+    gap: 0; /* Gap is now handled by tile margins for glow safety */
+    padding: 0 !important;
+    max-height: none !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none;
+    overflow: visible !important; /* Allow the glow to bloom past the component line */
+}
+
+.is-dashboard .note-text-viewer::-webkit-scrollbar {
+    display: none;
+}
+
+.note-bookmark-tile {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.75rem 1rem; 
+    margin: 6px 4px; /* Essential safety margin to prevent glow truncation */
+    background: rgba(15, 23, 42, 0.3);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-left: 4px solid var(--note-accent);
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+    user-select: none;
+}
+
+.note-bookmark-tile:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: var(--note-accent);
+    box-shadow: 0 0 12px var(--note-accent); /* Focused Edge Glow */
+    z-index: 10;
+}
+
+.note-bookmark-tile:active {
+    transform: translateX(2px) scale(0.98);
+}
+
+.note-bookmark-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    overflow: hidden; /* Ensure high-res favicons stay within the tile circle */
+}
+
+.note-bookmark-favicon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.note-bookmark-favicon.loaded {
+    opacity: 1;
+}
+
+.note-bookmark-emoji-fallback {
+    /* Visibility controlled by NoteParser.js onerror logic */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.note-bookmark-label {
+    flex: 1;
+    font-size: 1.25rem; /* Substantial boost for app-like legibility */
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.01em;
+}
+
+.note-bookmark-arrow {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.15);
+    transition: all 0.2s ease;
+    opacity: 0.6;
+}
+
+.note-bookmark-tile:hover .note-bookmark-arrow {
+    color: var(--note-accent);
+    transform: translateX(3px);
+    opacity: 1;
+}
+
+.note-title-category {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem; /* Slightly wider gap for premium feel */
+    height: 100%;
+}
+
+.note-title-category .note-bookmark-icon {
+    width: 1.35rem; /* Slightly larger icon for title bars */
+    height: 1.35rem;
+    font-size: 1.1rem;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
+}
+
+.note-category-label {
+    font-size: 1rem; /* Matched to Proxmox's larger baseline */
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: normal; /* Remove the wide spacing from global titles */
+    text-transform: none !important; /* ABSOLUTE mixed-case enforcement */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: normal;
+}
+
+
