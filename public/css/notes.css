@@ -832,7 +832,7 @@ pre code {
 .sticky-note {
     position: absolute;
     width: 31.25em; /* Fixed width for scaling consistency */
-    min-width: 15em;
+    min-width: 18em;
     min-height: 7.5em; /* 120px */
     border-radius: 0.75em; /* Rounded corners for note cards */
     padding: 0.25em; /* 4px - Tight edge-to-edge density */
@@ -909,14 +909,6 @@ pre code {
     transform: translateY(-2px);
 }
 
-/* Uncouple Hover: Suppress note-level glow when specifically interacting with actions or drawer */
-.sticky-note:not(.is-editing):hover:has(.note-actions:hover),
-.sticky-note:not(.is-editing):hover:has(.note-actions-drawer:hover) {
-    transform: none !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 
-                inset 0 0 12px rgba(255, 255, 255, 0.05) !important;
-    border-color: rgba(255, 255, 255, 0.15) !important;
-}
 
 /* Inline Editing State */
 .sticky-note.is-editing {
@@ -1839,8 +1831,45 @@ pre code {
     display: flex;
     align-items: center;
     gap: 0.3125em; /* 5px */
-    margin-left: 0.75em; /* Create separation from title box */
-    position: relative; /* Anchor for absolute-positioned drawer */
+    position: relative;
+    background: transparent;
+
+    /* Sector Trigger: Establish a 100px sensor zone on the right edge */
+    min-width: 100px;
+    max-width: 100px;
+    opacity: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    pointer-events: auto; /* Active sensor even when invisible */
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) 500ms;
+}
+
+/* Visibility Trigger: Expand only when specifically hovering the sensor zone */
+.note-actions:hover {
+    max-width: 350px;
+    opacity: 1;
+}
+
+/* Administrative Pivot: Instant reveal during active editing */
+.sticky-note.is-editing .note-actions {
+    min-width: 100px;
+    max-width: 350px;
+    opacity: 1;
+    pointer-events: auto;
+    transition: none;
+}
+
+/* Operational Suppression: Hide tools while dragging or settling to prevent accidental activation */
+.sticky-note.note-picked .note-actions,
+.sticky-note.dragging .note-actions,
+.sticky-note.note-settling .note-actions {
+    display: none !important;
+}
+
+/* Administrative Pivot: When editing, hide all tools except the Save (Edit) button */
+.sticky-note.is-editing .note-actions button:not(.btn-icon-edit) {
+    display: none !important;
 }
 
 /* Global Action Override for Disabled State */
@@ -1849,41 +1878,6 @@ pre code {
     cursor: not-allowed !important;
 }
 
-/* Immersive Action Drawer Engine: Horizontal Protrusion */
-.note-actions-drawer {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 0.3125em; /* 5px - 1:1 spacing preserved */
-    position: absolute;
-    top: 50%; /* Center anchor relative to the action container */
-    left: calc(100% + 20px); /* External coordinate offset to clear note radius */
-    right: auto;
-    padding: 6px;
-    background: rgba(15, 23, 42, 0.95);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); /* Constant base shadow for depth */
-    opacity: 0;
-    pointer-events: none;
-    overflow: visible;
-    transform: translateY(-50%) translateX(-10px) scale(0.95); /* Precise vertical centering + slide */
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    z-index: 100;
-}
-
-.note-actions-drawer.expanded {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateY(-50%) translateX(0) scale(1);
-}
-/* Enhanced Interactive Glow: Accent shadow active only on drawer focus/hover */
-.note-actions-drawer:hover {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 
-                0 0 25px var(--note-accent, rgba(59, 130, 246, 0.4));
-    border-color: rgba(255, 255, 255, 0.3);
-}
 
 .layer-target-btn.active {
     background: #3b82f6;
@@ -1899,42 +1893,6 @@ pre code {
 .layer-numeric-input::-webkit-outer-spin-button { 
     -webkit-appearance: none; 
     margin: 0; 
-}
-
-/* Drawer Trigger Cluster (Glassmorphic Trigger) */
-.drawer-trigger {
-    display: flex;
-    align-items: center;
-    gap: 0.5em; /* 8px */
-    background: linear-gradient(45deg, rgba(30, 41, 59, 0.9) 0%, rgba(51, 65, 85, 0.6) 50%, rgba(30, 41, 59, 0.9) 100%);
-    background-size: 200% 200%;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 0.5em; /* Reduced from Pill to Modern Crisp Trigger */
-    padding: 0.25em 0.75em; /* ~4px 12px */
-    margin: 0.25em 0; /* 4px */
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-}
-
-.drawer-trigger:hover {
-    background: rgba(51, 65, 85, 0.9);
-    border-color: rgba(59, 130, 246, 0.4);
-    transform: translateY(-1px);
-}
-
-.drawer-note-title {
-    flex: 1;
-    text-align: left; /* Anchored as requested */
-    font-size: 0.7rem;
-    font-weight: 800;
-    color: rgba(255, 255, 255, 0.6);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    pointer-events: none;
 }
 
 /* Integrated Creation Preview */
@@ -1994,43 +1952,8 @@ pre code {
     margin-bottom: 0.5em;
 }
 
-/* Drawer Toggle section (Small Slate Square) */
-.btn-icon-drawer {
-    width: 1.75em;
-    height: 1.75em;
-    border-radius: 0.375em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #475569; /* Slate 600 */
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #fff;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-family: monospace;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    padding: 0;
-}
-
-.btn-icon-drawer.active {
-    transform: rotateY(180deg); /* Flips original 'left' chevron to point 'right' */
-    background: #334155;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
-}
-
-.btn-icon-drawer:hover {
-    background: #64748b;
-    filter: brightness(1.2);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-}
-
-.btn-icon-drawer.active:hover {
-    transform: rotateY(180deg); /* Maintain flip during hover */
-    filter: brightness(1.2);
-}
-
 /* Global Square Icon Buttons on Note Cards (High-Density Profile) */
-.btn-icon-view, .btn-icon-collapse, .btn-icon-edit, .btn-icon-delete, .btn-icon-sticky, .btn-icon-copy, .btn-icon-link, .btn-icon-move {
+.btn-icon-view, .btn-icon-collapse, .btn-icon-edit, .btn-icon-delete, .btn-icon-sticky, .btn-icon-copy, .btn-icon-link, .btn-icon-move, .btn-icon-level-copy, .btn-icon-upload {
     width: 1.75em; /* 28px calculation */
     height: 1.75em;
     border-radius: 0.375em; /* Rounded corners for standardized interactive elements */
@@ -2052,10 +1975,12 @@ pre code {
 .btn-icon-delete   { background: #ef4444; } /* Rose */
 .btn-icon-sticky   { background: #14b8a6; } /* Teal 500 */
 .btn-icon-copy     { background: #6366f1; } /* Indigo 500 */
-.btn-icon-link     { background: #d946ef; } /* Fuchsia 500 */
-.btn-icon-move     { background: #8b5cf6; } /* Violet 500 */
+.btn-icon-link     { background: #ec4899; } /* Fuchsia 500 */
+.btn-icon-move     { background: #3b82f6; } /* Blue (Canvas) */
+.btn-icon-level-copy { background: #10b981; } /* Emerald (Level) */
+.btn-icon-upload   { background: #8b5cf6; } /* Violet (Attachment) */
 
-.btn-icon-view:hover, .btn-icon-collapse:hover, .btn-icon-edit:hover, .btn-icon-delete:hover, .btn-icon-sticky:hover, .btn-icon-copy:hover, .btn-icon-link:hover, .btn-icon-move:hover {
+.btn-icon-view:hover, .btn-icon-collapse:hover, .btn-icon-edit:hover, .btn-icon-delete:hover, .btn-icon-sticky:hover, .btn-icon-copy:hover, .btn-icon-link:hover, .btn-icon-move:hover, .btn-icon-level-copy:hover, .btn-icon-upload:hover {
     transform: scale(1.1);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
     filter: brightness(1.2);
@@ -2068,8 +1993,10 @@ pre code {
 .btn-icon-delete:hover   { border-color: rgba(239, 68, 68, 0.5); }
 .btn-icon-sticky:hover   { border-color: rgba(20, 184, 166, 0.5); }
 .btn-icon-copy:hover     { border-color: rgba(99, 102, 241, 0.5); }
-.btn-icon-link:hover     { border-color: rgba(217, 70, 239, 0.5); }
-.btn-icon-move:hover     { border-color: rgba(139, 92, 246, 0.5); }
+.btn-icon-link:hover     { border-color: rgba(236, 72, 153, 0.5); }
+.btn-icon-move:hover     { border-color: rgba(59, 130, 246, 0.5); }
+.btn-icon-level-copy:hover { border-color: rgba(16, 185, 129, 0.5); }
+.btn-icon-upload:hover   { border-color: rgba(139, 92, 246, 0.5); }
 
 /* --- Paste Modal Centering --- */
 .create-modal-footer-right {
@@ -2945,53 +2872,6 @@ pre code {
     letter-spacing: 0.05em;
 }
 
-/* --- iOS Toggle Switch Standard (Whiteboard Adaptation) --- */
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 44px;
-    height: 22px;
-}
-
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-color: rgba(255, 255, 255, 0.1);
-    transition: .3s;
-    border-radius: 34px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 14px;
-    width: 14px;
-    left: 3px;
-    bottom: 3px;
-    background-color: #cbd5e1;
-    transition: .3s;
-    border-radius: 50%;
-}
-
-input:checked + .slider {
-    background-color: rgba(99, 102, 241, 0.2);
-    border-color: rgba(99, 102, 241, 0.4);
-}
-
-input:checked + .slider:before {
-    transform: translateX(22px);
-    background-color: #818cf8;
-    box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
-}
-
 .btn-danger-soft {
     background: rgba(239, 68, 68, 0.1) !important;
     color: #f87171 !important;
@@ -3106,48 +2986,7 @@ input:checked + .switch-sm .slider:before {
 .search-result-item:hover .search-result-path {
     color: rgba(255, 255, 255, 0.6);
 }
-/* Action Drawer Button Themes (Thematic Tints) */
-.btn-icon-copy { background: #6366f1; }
-.btn-icon-link { background: #ec4899; }
-.btn-icon-move { background: #3b82f6; }
-.btn-icon-level-copy { background: #10b981; } /* Emerald Green for Level Cloning */
-.btn-icon-view { background: #10b981; }
-.btn-icon-collapse { background: #3b82f6; }
-.btn-icon-edit { background: #f59e0b; }
-.btn-icon-upload { background: #8b5cf6; } /* Violet for Attachment Updates */
-.btn-icon-delete { background: #ef4444; }
 
-/* Global Override: Glassmorphic Button Base */
-.note-actions-drawer button {
-    width: 1.5rem;
-    height: 1.5rem;
-    border: none;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    color: #fff;
-    padding: 0;
-    font-size: 0.8rem;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    flex-shrink: 0;
-}
-
-.note-actions-drawer button:hover {
-    transform: scale(1.15); /* Themed Pop-Out */
-    filter: brightness(1.3) contrast(1.1);
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5), 0 5px 15px rgba(0,0,0,0.4);
-    z-index: 10; /* Ensure popped button stays on top of siblings */
-}
-
-.note-actions-drawer button svg,
-.note-actions-drawer button i,
-.note-actions-drawer button .global-icon {
-    width: 0.9rem;
-    height: 0.9rem;
-}
 
 /* --- Notes Bin High-Fidelity Items --- */
 .bin-item {
