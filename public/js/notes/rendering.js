@@ -65,15 +65,35 @@ function renderUI() {
                 const curW = parseInt(existing.style.width);
                 const curH = parseInt(existing.style.height);
                 const curZ = parseInt(existing.style.zIndex);
-                
+                const curD = existing.classList.contains('is-externally-locked');
+                const isLocked = !!(note.locked_by_session_id && note.locked_by_session_id !== STATE.sessionId);
+
                 if (curX != note.x) existing.style.left = `${note.x}px`;
                 if (curY != note.y) existing.style.top = `${note.y}px`;
                 if (note.width  && curW != note.width)  existing.style.width  = `${note.width}px`;
                 if (note.height && curH != note.height) existing.style.height = `${note.height}px`;
                 if (curZ != note.z_index) existing.style.zIndex = note.z_index || 1;
 
+                if (curD !== isLocked) {
+                    existing.classList.toggle('is-externally-locked', isLocked);
+                    let overlay = existing.querySelector('.note-lock-overlay');
+                    if (isLocked) {
+                        const isSameUser = (note.locked_by_user_id == STATE.user_id);
+                        const lockerText = isSameUser ? 'Edited in another session' : `${note.locking_user_name || 'Someone'} is editing`;
+
+                        if (!overlay) {
+                            overlay = document.createElement('div');
+                            overlay.className = 'note-lock-overlay';
+                            existing.appendChild(overlay);
+                        }
+                        overlay.innerHTML = `<div class="lock-icon">🔒</div><div class="lock-user">${window.escapeHtml(lockerText)}</div>`;
+                    } else if (overlay) {
+                        overlay.remove();
+                    }
+                }
+
                 // --- Content & Identity Reconciliation ---
-                // Targeted hydration: Update viewer ONLY if content or title changed
+                // Differential hydration for content consistency.
                 const titleSlot = existing.querySelector('.note-title-slot');
                 if (titleSlot && titleSlot.textContent !== (note.title || 'Untitled Note')) {
                     titleSlot.textContent = note.title || 'Untitled Note';
@@ -232,8 +252,9 @@ function updateLevelDisplay() {
  * @param {boolean} canEdit - Permission flag.
  */
 function createNoteElement(note, canEdit = true) {
+    const isExternallyLocked = note.locked_by_session_id && note.locked_by_session_id !== STATE.sessionId;
     const div = document.createElement('div');
-    div.className = `sticky-note ${note.is_collapsed ? 'collapsed' : ''} ${canEdit ? 'can-edit' : ''}`;
+    div.className = `sticky-note ${note.is_collapsed ? 'collapsed' : ''} ${canEdit ? 'can-edit' : ''} ${isExternallyLocked ? 'is-externally-locked' : ''}`;
     div.id = `note-${note.id}`;
     div.dataset.id = note.id;
     // Atomic Context: Capture content baseline for reconciliation
@@ -309,6 +330,16 @@ function createNoteElement(note, canEdit = true) {
         <div class="note-resize-handle sw" ${canEdit ? '' : 'style="display:none;"'}></div>
         <div class="note-resize-handle se" ${canEdit ? '' : 'style="display:none;"'}></div>
     `;
+
+    if (isExternallyLocked) {
+        const isSameUser = (note.locked_by_user_id == STATE.user_id);
+        const lockerText = isSameUser ? 'Edited in another session' : `${note.locking_user_name || 'Someone'} is editing`;
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'note-lock-overlay';
+        overlay.innerHTML = `<div class="lock-icon">🔒</div><div class="lock-user">${window.escapeHtml(lockerText)}</div>`;
+        div.appendChild(overlay);
+    }
 
     return div;
 }
