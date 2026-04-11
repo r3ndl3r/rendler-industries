@@ -47,13 +47,13 @@ function drawRadarPings() {
     STATE.radarWindow = { x: radarStartX, y: radarStartY, miniScale: minimapScale };
 
     // Scan-line iteration: Draw rects for all notes on the current level
+    ctx.globalAlpha = 0.9;
     STATE.notes.forEach(note => {
         if (note.layer_id != STATE.activeLayerId) return;
 
         // Chroma Pings: Mirror the actual note color for high-precision awareness (with fallback)
         const rawColor = typeof normalizeColorHex === 'function' ? normalizeColorHex(note.color) : note.color;
         ctx.fillStyle = (rawColor && rawColor.startsWith('#')) ? rawColor : (rawColor ? `#${rawColor}` : '#f59e0b');
-        ctx.globalAlpha = 0.9;
 
         // Translate logical coordinate -> Radar-relative coordinate
         const rx = (note.x - radarStartX) * minimapScale;
@@ -65,6 +65,9 @@ function drawRadarPings() {
 
         ctx.fillRect(rx, ry, rw, rh);
     });
+
+    // Reset alpha state to prevent leakage into subsequent canvas context operations
+    ctx.globalAlpha = 1.0;
 }
 
 /**
