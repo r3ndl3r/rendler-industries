@@ -276,12 +276,7 @@
         <div class="note-modal-body">
             <div class="settings-group">
                 <label class="settings-label">Board Name</label>
-                <div class="settings-vertical-stack">
-                    <input type="text" id="edit-canvas-name" class="create-modal-input" placeholder="Board name...">
-                    <div class="modal-actions modal-actions-center settings-save-actions">
-                        <button id="save-canvas-name-btn" class="btn-primary">💾 Save</button>
-                    </div>
-                </div>
+                <div id="board-name-input-row"></div>
             </div>
 
             <div class="sharing-section">
