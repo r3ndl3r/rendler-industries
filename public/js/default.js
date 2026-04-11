@@ -377,6 +377,54 @@ window.renderSelectorGrid = renderSelectorGrid;
 window.format_datetime = format_datetime;
 
 /**
+ * Global UI Helper: renderRowInput
+ * 
+ * Generates a standardized horizontal input + action button row.
+ * Handles Emoji Picker isolation and standard Rendler styling.
+ * 
+ * @param {HTMLElement} container - Target container to hydrate.
+ * @param {Object} options - { id, placeholder, value, buttonText, buttonIcon, noEmoji }
+ * @returns {Object} - { input, button } References for event binding.
+ */
+window.renderRowInput = function(container, options) {
+    if (!container) return;
+    
+    container.innerHTML = '';
+    // Use the platform-standard prompt row pattern
+    container.classList.add('modal-prompt-row');
+    
+    // 1. Input Wrapper (Crucial for Emoji Picker isolation)
+    // Anchors absolute position of trigger button within the input's bounding box.
+    const wrapper = document.createElement('div');
+    wrapper.className = 'create-input-wrapper';
+    wrapper.style.flex = '1';
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = options.id || '';
+    input.className = 'create-modal-input';
+    input.placeholder = options.placeholder || '';
+    input.value = options.value || '';
+    input.autocomplete = 'off';
+    
+    if (options.noEmoji) input.classList.add('no-emoji');
+    
+    wrapper.appendChild(input);
+    
+    // 2. Action Button
+    const button = document.createElement('button');
+    button.className = 'btn-primary btn-go-row';
+    button.innerHTML = (options.buttonIcon ? options.buttonIcon + ' ' : '') + (options.buttonText || 'Save');
+    
+    // 3. Assemble
+    container.appendChild(wrapper);
+    container.appendChild(button);
+    
+    return { input, button };
+};
+
+
+/**
  * Themed Confirmation Modal Controller.
  * Leverages the global layout fragment defined in default.html.ep.
  *
@@ -402,13 +450,24 @@ window.showConfirmModal = function(options) {
     const actions = document.getElementById('globalConfirmModalActions');
     const closeX = document.getElementById('globalConfirmCloseX');
     const promptContainer = document.getElementById('globalConfirmPromptContainer');
-    const promptInput = document.getElementById('globalConfirmPromptInput');
+    let promptInput = document.getElementById('globalConfirmPromptInput');
 
     if (!modal || !btnConfirm) return;
 
-    // Reset UI State
+    // Reset UI State & Self-Healing Restoration
     content.className = 'delete-modal-content';
     actions.className = 'delete-modal-actions';
+    
+    if (promptContainer) {
+        promptContainer.classList.remove('modal-prompt-row');
+        // Self-Healing: If a previous specialized modal (like Jump To Level)
+        // destroyed the standard input structure via renderRowInput, restore it.
+        if (!document.getElementById('globalConfirmPromptInput')) {
+            promptContainer.innerHTML = '<input type="text" id="globalConfirmPromptInput" class="modal-prompt-input" autocomplete="off">';
+            promptInput = document.getElementById('globalConfirmPromptInput');
+        }
+        promptContainer.classList.add('hidden');
+    }
     modal.classList.toggle('persistent', !!options.persistent);
     if (promptInput) promptInput.classList.remove('no-emoji');
     
@@ -503,7 +562,7 @@ window.showConfirmModal = function(options) {
         newBtn.innerHTML = `⌛ ${options.loadingText || 'Processing...'}`;
         
         try {
-            await options.onConfirm(options.input ? promptInput.value : null);
+            await options.onConfirm(options.input ? (promptInput ? promptInput.value : null) : null);
             closeConfirmModal();
         } catch (err) {
             console.error("Modal Action Failed:", err);
