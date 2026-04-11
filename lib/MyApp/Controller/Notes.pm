@@ -152,23 +152,23 @@ sub api_save {
         is_options_expanded => int($c->param('is_options_expanded') // 0)
     };
 
-    my $cid = $canvas_id;
-    if ($id) {
-        $cid = $c->db->get_canvas_for_note_id($id, $user_id);
+    my $sid = $c->param('session_id');
+    unless (defined $sid && length $sid) {
+        return $c->render(json => { success => 0, error => 'Missing or invalid session_id' }, status => 400);
     }
-
-    if ($cid && $c->is_canvas_locked($cid)) {
-        return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
-    }
+    $params->{session_id} = $sid;
 
     my $result_id = $c->db->save_note($params);
 
+    if (defined $result_id && $result_id == -1) {
+        return $c->render(json => { success => 0, error => 'Note is locked by another session' }, status => 403);
+    }
+    
     unless (defined $result_id) {
         return $c->render(json => { success => 0, error => 'Board Permission Denied (Read-Only?)' }, status => 403);
     }
 
-    # Sliding Window Refresh
-    $c->refresh_canvas_lock($cid) if defined $cid;
+    $c->refresh_canvas_lock($canvas_id) if defined $canvas_id;
     
     # Optional Purge: Process any attachments marked for deletion in this save cycle
     my $deleted_blobs_json = $c->param('deleted_blobs');
@@ -183,10 +183,10 @@ sub api_save {
     $c->render(json => {
         success       => 1,
         id            => int($result_id),
-        canvas_id     => int($cid),
-        notes         => $c->db->get_user_notes($user_id, $cid, $unlocked_ids),
+        canvas_id     => int($canvas_id),
+        notes         => $c->db->get_user_notes($user_id, $canvas_id, $unlocked_ids),
         note_map      => $c->db->get_all_accessible_note_metadata($user_id, $unlocked_ids),
-        last_mutation => $c->db->get_board_mutation_time($cid)
+        last_mutation => $c->db->get_board_mutation_time($canvas_id)
     });
 }
 
@@ -220,8 +220,17 @@ sub api_save_geometry {
         return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
     }
 
-    # 2. Board Context & Authority: Perform surgical coordinate sync
+    # 2. Board Context & Authority: Direct coordinate/dimension synchronization
+    my $sid = $c->param('session_id');
+    unless (defined $sid && length $sid) {
+        return $c->render(json => { success => 0, error => 'Missing or invalid session_id' }, status => 400);
+    }
+    $params->{session_id} = $sid;
     my ($result_id) = $c->db->save_note_geometry($params);
+
+    if (defined $result_id && $result_id == -1) {
+        return $c->render(json => { success => 0, error => 'Note is locked by another session' }, status => 403);
+    }
 
     unless (defined $result_id) {
         return $c->render(json => { success => 0, error => 'Board Permission Denied' }, status => 403);
@@ -266,6 +275,39 @@ sub api_delete {
         notes         => $c->db->get_user_notes($user_id, $cid, $unlocked_ids),
         last_mutation => $c->db->get_board_mutation_time($cid)
     });
+}
+
+# Acquires an exclusive collaborative lock.
+# Route: POST /notes/api/lock
+sub api_lock {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $id      = $c->param('id');
+    my $sid     = $c->param('session_id');
+    my $user_id = $c->current_user_id();
+
+    if ($c->db->lock_note($id, $user_id, $sid)) {
+        return $c->render(json => { success => 1 });
+    }
+    return $c->render(json => { success => 0, error => 'Note is already locked by another user' });
+}
+
+# Releases an exclusive collaborative lock.
+# Route: POST /notes/api/unlock
+sub api_unlock {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $id      = $c->param('id');
+    my $sid     = $c->param('session_id');
+    my $user_id = $c->current_user_id();
+
+    if ($c->db->unlock_note($id, $user_id, $sid)) {
+        return $c->render(json => { success => 1 });
+    }
+
+    return $c->render(json => { success => 0, error => 'Unlock denied or note not found' }, status => 403);
 }
 
 # Persists the user's viewport scale and scroll position.
@@ -319,10 +361,16 @@ sub api_upload {
     my $mime_type = $upload->headers->content_type || 'application/octet-stream';
     my $type = ($mime_type =~ m/^image\//) ? 'image' : 'file';
 
+    my $sid = $c->param('session_id');
+    unless (defined $sid && length $sid) {
+        return $c->render(json => { success => 0, error => 'Missing or invalid session_id' }, status => 400);
+    }
+
     if (!$note_id && $upload) {
         $note_id = $c->db->save_note({
             user_id      => $user_id,
             canvas_id    => $cid,
+            session_id   => $sid,
             layer_id     => $c->param('layer_id') // 1,
             type         => $type,
             title        => $c->param('title') // $upload->filename,
