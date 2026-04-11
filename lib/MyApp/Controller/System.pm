@@ -700,4 +700,10 @@ sub run_notes_znorm_maintenance {
     }
 }
 
+# Collaborative Locking Recovery: Prunes abandoned note locks.
+sub run_notes_lock_maintenance {
+    my ($self) = @_;
+    $self->db->clear_expired_note_locks(5); # 5 minute threshold
+}
+
 1;
