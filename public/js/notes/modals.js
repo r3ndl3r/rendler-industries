@@ -338,9 +338,16 @@ function renderCanvasList() {
         
         item.innerHTML = `
             <div class="canvas-drag-handle" title="Drag to reorder">⠿</div>
-            <div class="canvas-info" onclick="switchCanvas(${canvas.id})">
+            <div class="canvas-info" data-canvas-id="${canvas.id}">
                 <div class="canvas-name-row">
                     <span class="canvas-name">${escapeHtml(canvas.name)}</span>
+                    ${+canvas.is_protected ? `
+                        <span class="lock-status-icon clickable" 
+                              data-canvas-id="${canvas.id}"
+                              title="${STATE.unlockedCanvases.has(canvas.id) ? 'Unlock active (Click to Lock)' : 'Locked (Click to access)'}">
+                            ${STATE.unlockedCanvases.has(canvas.id) ? '🔓' : '🔒'}
+                        </span>
+                    ` : ''}
                 </div>
                 <div class="canvas-meta">
                     ${isOwner ? 'Owned by you' : 'Shared by ' + (canvas.owner_name || 'System')}
@@ -348,17 +355,53 @@ function renderCanvasList() {
             </div>
             <div class="canvas-actions">
                 ${isOwner ? `
-                    <button class="btn-icon-square btn-sm btn-primary" onclick="openBoardSettings(${canvas.id})" title="Board Settings">
+                    <button class="btn-icon-square btn-sm btn-primary" data-action="settings" data-canvas-id="${canvas.id}" title="Board Settings">
                         ⚙️
                     </button>
                     ${canvas.name !== 'My Notebook' ? `
-                        <button class="btn-icon-square btn-sm btn-danger" onclick="deleteCanvas(event, ${canvas.id})" title="Delete Board">
+                        <button class="btn-icon-square btn-sm btn-danger" data-action="delete" data-canvas-id="${canvas.id}" title="Delete Board">
                             🗑️
                         </button>
                     ` : ''}
                 ` : ''}
             </div>
         `;
+
+        // Event Delegation for the item
+        item.addEventListener('click', (e) => {
+            const info     = e.target.closest('.canvas-info');
+            const lock     = e.target.closest('.lock-status-icon');
+            const settings = e.target.closest('[data-action="settings"]');
+            const del      = e.target.closest('[data-action="delete"]');
+
+            if (lock) {
+                e.stopPropagation();
+                if (STATE.unlockedCanvases.has(canvas.id)) {
+                    if (typeof closeCanvasManager === 'function') closeCanvasManager();
+                    apiLockCanvas(canvas.id);
+                } else {
+                    if (typeof closeCanvasManager === 'function') closeCanvasManager();
+                    switchCanvas(canvas.id); // Initialize context transition for lock overlay visibility.
+                }
+                return;
+            }
+
+            if (settings) {
+                e.stopPropagation();
+                openBoardSettings(canvas.id);
+                return;
+            }
+
+            if (del) {
+                e.stopPropagation();
+                deleteCanvas(e, canvas.id);
+                return;
+            }
+
+            if (info) {
+                switchCanvas(canvas.id);
+            }
+        });
 
         // ID-Based D&D Handshake
         item.ondragstart = (e) => {
@@ -610,10 +653,154 @@ async function openBoardSettings(id) {
     }
 
     renderShareList(id, res.share_list);
+    renderBoardSecurity(board);
+    
+    // Idempotent Listener Management: Clear old listeners before re-attaching.
+    const container = document.getElementById('board-security-content');
+    if (container) {
+        container.removeEventListener('click', handleSecurityPanelClick);
+        container.addEventListener('click', handleSecurityPanelClick);
+    }
     
     modal.classList.add('show');
     modal.classList.add('active');
     document.body.classList.add('modal-open');
+}
+
+/**
+ * Privacy Management UI: Populates the Security tab with password controls.
+ */
+function renderBoardSecurity(board) {
+    const container = document.getElementById('board-security-content');
+    if (!container) return;
+
+    if (!board.is_protected) {
+        container.innerHTML = `
+            <div class="security-item">
+                <h5>Enable Password Protection</h5>
+                <p>Set a password to lock this board. Required for everyone, including you.</p>
+                <div class="settings-vertical-stack">
+                    <input type="password" id="new-security-pass" placeholder="New password..." class="create-modal-input">
+                    <input type="password" id="confirm-security-pass" placeholder="Confirm password..." class="create-modal-input">
+                    <button class="btn-primary" data-action="set" data-canvas-id="${board.id}">🔒 Set Password</button>
+                </div>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <div class="security-item">
+                <h5>Change Password</h5>
+                <div class="settings-vertical-stack">
+                    <input type="password" id="cur-security-pass" placeholder="Current password..." class="create-modal-input">
+                    <input type="password" id="new-security-pass" placeholder="New password..." class="create-modal-input">
+                    <input type="password" id="confirm-security-pass" placeholder="Confirm new password..." class="create-modal-input">
+                    <button class="btn-primary" data-action="update" data-canvas-id="${board.id}">🔄 Update Password</button>
+                </div>
+            </div>
+            <div class="security-item">
+                <h5>Remove Protection</h5>
+                <p>Clear the password to make this board publicly accessible to your collaborators.</p>
+                <div class="settings-vertical-stack">
+                    <input type="password" id="clear-security-pass" placeholder="Confirm with current password..." class="create-modal-input">
+                    <button class="btn-danger" data-action="clear" data-canvas-id="${board.id}">🔓 Remove Password</button>
+                </div>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Event Delegation for Security Panel: Replaces inline onclick handlers for CSP compliance.
+ */
+function handleSecurityPanelClick(e) {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    
+    const canvasId = btn.dataset.canvasId;
+    const action   = btn.dataset.action;
+    
+    if (action === 'set')         setBoardPassword(canvasId, false);
+    else if (action === 'update') setBoardPassword(canvasId, true);
+    else if (action === 'clear')  clearBoardPassword(canvasId);
+}
+
+async function setBoardPassword(canvasId, isUpdate = false) {
+    const newPass = document.getElementById('new-security-pass')?.value;
+    const confirm = document.getElementById('confirm-security-pass')?.value;
+    const oldPass = document.getElementById('cur-security-pass')?.value;
+
+    if (!newPass || newPass.length < 1) return showToast('Password cannot be empty', 'error');
+    if (newPass !== confirm) return showToast('Passwords do not match', 'error');
+    if (isUpdate && !oldPass) return showToast('Current password required to verify authority', 'error');
+
+    const params = { canvas_id: canvasId, password: newPass };
+    if (isUpdate) params.old_password = oldPass;
+
+    showLoadingOverlay('Securing board...');
+    try {
+        const res = await NoteAPI.post('/notes/api/canvas/password/set', params);
+        if (res && res.success) {
+            showToast('Privacy settings updated', 'success');
+            
+            // State Invalidation: Force full fetch on next heartbeat/load
+            STATE.note_map_hash = null;
+            // Local State Sync: Reflect self-unlock immediately
+            STATE.unlockedCanvases.add(parseInt(canvasId));
+
+            // Optimization: Contextual alignment of the settings modal
+            const board = STATE.canvases.find(c => c.id == canvasId);
+            if (board) {
+                board.is_protected = true;
+                renderBoardSecurity(board);
+            }
+            renderCanvasList(); 
+        } else {
+            showToast((res && res.error) || 'Failed to update password', 'error');
+        }
+    } finally {
+        hideLoadingOverlay();
+    }
+}
+
+async function clearBoardPassword(canvasId) {
+    const pass = document.getElementById('clear-security-pass')?.value;
+    if (!pass) return showToast('Password required to verify intent', 'error');
+
+    showLoadingOverlay('Removing protection...');
+    try {
+        const res = await NoteAPI.post('/notes/api/canvas/password/clear', { canvas_id: canvasId, password: pass });
+        if (res && res.success) {
+            showToast('Protection removed', 'success');
+            
+            // Optimization: Architectural alignment
+            const board = STATE.canvases.find(c => c.id == canvasId);
+            if (board) {
+                board.is_protected = false;
+                renderBoardSecurity(board);
+            }
+
+            // State Maintenance: Cleanup stale ID from the unlock set
+            STATE.unlockedCanvases.delete(parseInt(canvasId));
+            // Delta Synchronization: Invalidate fingerprint to force full fetch
+            STATE.note_map_hash = null;
+            // UI Synchronization: Maintain consistency between board state and the visual list.
+            if (parseInt(canvasId) === STATE.canvas_id && typeof window.loadState === 'function') {
+                try {
+                    // Preservation: Pass activeLayerId to prevent silent viewport resets
+                    await window.loadState(false, STATE.canvas_id, null, STATE.activeLayerId);
+                } catch (loadErr) {
+                    console.warn('clearBoardPassword: state refresh failed post-clear:', loadErr.message);
+                    renderCanvasList();
+                }
+            } else {
+                renderCanvasList();
+            }
+        } else {
+            showToast((res && res.error) || 'Failed to clear password', 'error');
+        }
+    } finally {
+        hideLoadingOverlay();
+    }
 }
 
 /**
@@ -1439,18 +1626,42 @@ function renderQuickSwitcher() {
         item.innerHTML = `
             <div class="cqs-item-icon">${icon}</div>
             <div class="cqs-item-body">
-                <div class="cqs-item-name">${escapeHtml(canvas.name)}</div>
+                <div class="cqs-item-name">
+                    ${escapeHtml(canvas.name)}
+                    ${+canvas.is_protected ? `
+                        <span class="cqs-lock-icon clickable" 
+                              data-canvas-id="${canvas.id}"
+                              title="${STATE.unlockedCanvases.has(canvas.id) ? 'Unlock active (Click to Lock)' : 'Locked (Click to access)'}">
+                            ${STATE.unlockedCanvases.has(canvas.id) ? '🔓' : '🔒'}
+                        </span>
+                    ` : ''}
+                </div>
                 <div class="cqs-item-meta">${meta}</div>
             </div>
             ${isActive ? '<span class="cqs-item-badge">Active</span>' : ''}
         `;
 
-        if (!isActive) {
-            item.addEventListener('click', () => {
+        item.addEventListener('click', (e) => {
+            const lock = e.target.closest('.cqs-lock-icon');
+            if (lock) {
+                e.stopPropagation();
+                if (STATE.unlockedCanvases.has(canvas.id)) {
+                    // UI Cleanliness: Close the switcher before locking to prevent 
+                    // overlay stacking and visual confusion.
+                    closeCanvasQuickSwitch();
+                    apiLockCanvas(canvas.id);
+                } else {
+                    closeCanvasQuickSwitch();
+                    switchCanvas(canvas.id); // Trigger switch to show overlay
+                }
+                return;
+            }
+
+            if (!isActive) {
                 closeCanvasQuickSwitch();
                 switchCanvas(canvas.id);
-            });
-        }
+            }
+        });
         list.appendChild(item);
     });
 }
