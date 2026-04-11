@@ -131,22 +131,45 @@ function renderUI() {
                 if (domSig !== newSig) {
                     const contentDiv = existing.querySelector('.note-content');
                     if (contentDiv) {
-                        contentDiv.innerHTML = generateNoteContentHtml(note, canEdit);
-                        // Refresh the content tracking baseline after a full content re-render
+                        const newIsDashboard = typeof NoteParser !== 'undefined' && NoteParser.isDashboard(note.content || '');
+                        contentDiv.innerHTML = generateNoteContentHtml(note, canEdit, newIsDashboard);
                         existing.dataset.lastContent = note.content;
+                        // Sync root element dashboard class to match current content state
+                        existing.classList.toggle('is-dashboard-note', newIsDashboard);
+
+                        // Sync Title Bar: Dashboard mode enables high-fidelity headers
+                        const titleSlot = existing.querySelector('.note-title-slot');
+                        if (titleSlot) {
+                            titleSlot.innerHTML = (newIsDashboard && typeof NoteParser !== 'undefined')
+                                ? (NoteParser.renderHeader(note.title) || window.escapeHtml(note.title || 'Untitled Note'))
+                                : window.escapeHtml(note.title || 'Untitled Note');
+                        }
                     }
                 } 
                 // --- Content & Identity Reconciliation (Priority 2) ---
                 // Targeted hydration: Only update viewer if attachments didn't change but text did.
                 else if (viewer && existing.dataset.lastContent !== note.content) {
+                    const newIsDashboard = typeof NoteParser !== 'undefined' && NoteParser.isDashboard(note.content || '');
                     viewer.innerHTML = formatNoteContent(note.content, note.id);
                     const textarea = existing.querySelector('textarea');
                     if (textarea) textarea.value = note.content || '';
                     existing.dataset.lastContent = note.content;
-
+                    
+                    // Synchronize state-driven classes across the root and child segments
+                    existing.classList.toggle('is-dashboard-note', newIsDashboard);
+                    
                     // Visibility Synchronization: Dynamically toggle the container box to prevent layout voids
                     const textSection = existing.querySelector('.note-text-section');
                     if (textSection) {
+                        textSection.classList.toggle('is-dashboard', newIsDashboard);
+
+                        // Sync Title Bar: dashboard mode transition requires header re-render
+                        const titleSlot2 = existing.querySelector('.note-title-slot');
+                        if (titleSlot2) {
+                            titleSlot2.innerHTML = (newIsDashboard && typeof NoteParser !== 'undefined')
+                                ? (NoteParser.renderHeader(note.title) || window.escapeHtml(note.title || 'Untitled Note'))
+                                : window.escapeHtml(note.title || 'Untitled Note');
+                        }
                         const isEmpty = (!note.content || note.content.trim() === '');
                         textSection.classList.toggle('hidden', isEmpty);
                         
@@ -253,8 +276,9 @@ function updateLevelDisplay() {
  */
 function createNoteElement(note, canEdit = true) {
     const isExternallyLocked = note.locked_by_session_id && note.locked_by_session_id !== STATE.sessionId;
+    const isDashboard = typeof NoteParser !== 'undefined' && NoteParser.isDashboard(note.content || '');
     const div = document.createElement('div');
-    div.className = `sticky-note ${note.is_collapsed ? 'collapsed' : ''} ${canEdit ? 'can-edit' : ''} ${isExternallyLocked ? 'is-externally-locked' : ''}`;
+    div.className = `sticky-note ${note.is_collapsed ? 'collapsed' : ''} ${canEdit ? 'can-edit' : ''} ${isExternallyLocked ? 'is-externally-locked' : ''} ${isDashboard ? 'is-dashboard-note' : ''}`;
     div.id = `note-${note.id}`;
     div.dataset.id = note.id;
     // Atomic Context: Capture content baseline for reconciliation
@@ -271,7 +295,10 @@ function createNoteElement(note, canEdit = true) {
     if (note.height) div.style.height = `${note.height}px`;
     div.style.zIndex = note.z_index || 1;
 
-    const contentHtml = generateNoteContentHtml(note, canEdit);
+    const contentHtml = generateNoteContentHtml(note, canEdit, isDashboard);
+    const titleHtml   = isDashboard && typeof NoteParser !== 'undefined' 
+        ? (NoteParser.renderHeader(note.title) || window.escapeHtml(note.title || 'Untitled Note'))
+        : window.escapeHtml(note.title || 'Untitled Note');
 
     div.innerHTML = `
         <div class="note-header">
@@ -281,7 +308,7 @@ function createNoteElement(note, canEdit = true) {
             
             <div class="note-drag-handle-container" title="Click anywhere in the title bar to Pick and Place (Sticky Move)">
                 <div class="note-title-slot">
-                    ${window.escapeHtml(note.title || 'Untitled Note')}
+                    ${titleHtml}
                 </div>
                 <input type="text" class="inline-title-input" value="${window.escapeHtml(note.title || '')}" 
                        onclick="event.stopPropagation()"
@@ -348,12 +375,17 @@ function createNoteElement(note, canEdit = true) {
  * Generates the inner HTML for the note-content section.
  * Extracted for use in both createNoteElement and surgical renderUI updates.
  */
-function generateNoteContentHtml(note, canEdit) {
+function generateNoteContentHtml(note, canEdit, isDashboard = null) {
     let textHtml = '';
     const viewerHtml = formatNoteContent(note.content || '', note.id);
     const isTextEmpty = (!note.content || note.content.trim() === '');
+    
+    // Resolve: If dashboard status isn't provided by parent, fallback to detection
+    if (isDashboard === null) {
+        isDashboard = typeof NoteParser !== 'undefined' && NoteParser.isDashboard(note.content || '');
+    }
     textHtml = `
-        <div class="note-text-section ${isTextEmpty ? 'hidden' : ''}">
+        <div class="note-text-section ${isTextEmpty ? 'hidden' : ''} ${isDashboard ? 'is-dashboard' : ''}">
             <div class="note-text-viewer" data-id="${note.id}">${viewerHtml}</div>
             <textarea readonly onkeydown="handleNoteKeydown(event, ${note.id})">${window.escapeHtml(note.content || '')}</textarea>
         </div>
