@@ -76,24 +76,21 @@ function confirmAttachmentRemoval(noteId, blobId) {
                 });
                 
                 if (res && res.success) {
+                    // Forced Sync: Ensure the 'is-editing' lockout is bypassed for this intentional action
                     if (typeof window.mergeNoteState === 'function') {
-                        window.mergeNoteState(res.notes);
+                        window.mergeNoteState(res.notes, activeNoteId);
                     } else {
                         STATE.notes = res.notes;
                     }
                     STATE.last_mutation = res.last_mutation;
                     
-                    const note = STATE.notes.find(n => n.id == activeNoteId);
-                    
-                    // Surgical DOM Refinement: Update the note's inline attachment view immediately
-                    const contentEl = document.querySelector(`#note-${activeNoteId} .note-content`);
-                    if (contentEl && typeof generateNoteContentHtml === 'function') {
-                        contentEl.innerHTML = generateNoteContentHtml(note, note.user_id == STATE.user_id);
-                    }
+                    // Surgical DOM Update with Editor Preservation
+                    refreshNoteContentPrecise(activeNoteId);
 
                     // Global Persistence: Trigger a standard UI reconcile (background)
                     if (typeof renderUI === 'function') renderUI();
                     
+                    const note = STATE.notes.find(n => n.id == activeNoteId);
                     renderCreateFooterReel(note ? note.attachments : []);
                     showToast('Attachment removed', 'success');
                 }
@@ -255,24 +252,18 @@ async function handleInlineFileSelection(e, id) {
             // 1. Memory Sync: Update local note collection from the response data
             if (uploadRes.notes) {
                 if (typeof window.mergeNoteState === 'function') {
-                    window.mergeNoteState(uploadRes.notes);
+                    window.mergeNoteState(uploadRes.notes, id);
                 } else {
                     STATE.notes = uploadRes.notes;
                 }
             }
 
-            // 2. Surgical DOM Update: Refresh only the affected note
+            // 2. Surgical DOM Update with Editor Preservation
+            refreshNoteContentPrecise(id);
+            
             const note = STATE.notes.find(n => n.id == id);
             const noteEl = document.getElementById(`note-${id}`);
-            const contentEl = noteEl?.querySelector('.note-content');
-            
-            if (note && contentEl && typeof generateNoteContentHtml === 'function') {
-                const currentCanvas = STATE.canvases.find(c => c.id == STATE.canvas_id);
-                const canEdit = currentCanvas ? currentCanvas.can_edit : 1;
-                
-                // Re-render the note body (resolves text/image/reel/file states)
-                contentEl.innerHTML = generateNoteContentHtml(note, canEdit);
-                
+            if (note && noteEl) {
                 // Refresh Action Drawer: Toggle class if this is the first attachment for a text note
                 const uploadBtn = noteEl.querySelector('.note-inline-upload-btn');
                 if (uploadBtn) {
@@ -294,6 +285,54 @@ async function handleInlineFileSelection(e, id) {
         if (el) el.classList.remove('pending');
     }
 }
+
+/**
+ * Surgical UI Refresh: Updates a note's content area while preserving editor state.
+ * Specifically handles preservation of 'is-editing' focus, unsaved text, and cursor position.
+ * @param {number|string} id - The note ID.
+ */
+function refreshNoteContentPrecise(id) {
+    const el = document.getElementById(`note-${id}`);
+    const note = STATE.notes.find(n => n.id == id);
+    if (!el || !note) return;
+
+    const contentEl = el.querySelector('.note-content');
+    if (!contentEl || typeof generateNoteContentHtml !== 'function') return;
+
+    const isEditing = el.classList.contains('is-editing');
+    const textarea = el.querySelector('textarea');
+    
+    // 1. State Capture: Save current volatile DOM state before innerHTML wipe
+    let savedText = null;
+    let selStart = 0, selEnd = 0;
+    if (isEditing && textarea) {
+        savedText = textarea.value;
+        selStart = textarea.selectionStart;
+        selEnd = textarea.selectionEnd;
+    }
+
+    // 2. Re-render: Fresh body from STATE data
+    const canEdit = (STATE.canvases.find(c => c.id == STATE.canvas_id)?.can_edit !== 0);
+    contentEl.innerHTML = generateNoteContentHtml(note, canEdit);
+
+    // 3. State Restoration: Re-apply editor context if the note was being edited
+    if (isEditing) {
+        const newTextarea = el.querySelector('textarea');
+        if (newTextarea) {
+            newTextarea.readOnly = false;
+            if (savedText !== null) newTextarea.value = savedText;
+            newTextarea.focus();
+            newTextarea.setSelectionRange(selStart, selEnd);
+        }
+        
+        // Restore contentEditable renaminable labels for attachments
+        el.querySelectorAll('.file-name-display').forEach(fd => {
+            fd.contentEditable = 'true';
+            fd.classList.add('is-editing-text');
+        });
+    }
+}
+
 
 function initDropZones() {
     const canvas = document.getElementById('notes-canvas');
