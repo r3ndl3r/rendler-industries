@@ -849,14 +849,17 @@ pre code {
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-left: 4px solid var(--note-accent, #f59e0b);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 
-                inset 0 0 12px rgba(255, 255, 255, 0.05); /* Soft inner glow */
+                inset 0 0 12px rgba(255, 255, 255, 0.05);
     z-index: 10;
-    transition: transform 0.3s cubic-bezier(0.2, 0, 0.2, 1), 
-                box-shadow 0.25s ease, 
+    transition: left 0.25s ease,
+                top 0.25s ease,
+                width 0.25s ease,
+                height 0.25s ease,
+                background-color 0.25s ease,
+                box-shadow 0.25s ease,
                 border-color 0.25s ease,
                 border-style 0.25s ease;
     
-    /* Spatial Transition: Level-Selection Entry Animation */
     animation: note-fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -867,13 +870,24 @@ pre code {
 
 .sticky-note.note-picked {
     z-index: 1800 !important;           
-    transform: translateY(-3px) scale(1.0) !important;
+    transform: none !important;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4), 0 0 10px var(--note-accent, rgba(59, 130, 246, 0.4)) !important;
     border-style: dashed;
     border-width: 2px;
     opacity: 0.95;
     cursor: move;
-    transition: transform 0.1s ease-out, box-shadow 0.1s ease-out !important;
+    transition: none !important;
+}
+
+.sticky-note.note-picked .note-content,
+.sticky-note.dragging .note-content,
+.sticky-note.note-picked .note-bookmark-tile {
+    pointer-events: none !important;
+    transition: none !important;
+}
+
+.sticky-note.in-flight {
+    will-change: left, top;
 }
 
 /* Focus highlight animation */
@@ -983,6 +997,7 @@ pre code {
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
     transform: scale(1.02);
     cursor: grabbing;
+    transition: none !important;
 }
 
 
