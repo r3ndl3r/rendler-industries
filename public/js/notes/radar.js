@@ -52,7 +52,7 @@ function drawRadarPings() {
 
         // Chroma Pings: Mirror the actual note color for high-precision awareness (with fallback)
         const rawColor = typeof normalizeColorHex === 'function' ? normalizeColorHex(note.color) : note.color;
-        ctx.fillStyle = (rawColor && rawColor.startsWith('#')) ? rawColor : `#${rawColor}`;
+        ctx.fillStyle = (rawColor && rawColor.startsWith('#')) ? rawColor : (rawColor ? `#${rawColor}` : '#f59e0b');
         ctx.globalAlpha = 0.9;
 
         // Translate logical coordinate -> Radar-relative coordinate
