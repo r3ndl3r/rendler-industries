@@ -162,15 +162,10 @@ function initResizable(el, note) {
 }
 
 /**
- * Hardware-accelerated dragging engine with 10px grid snapping.
- * @param {HTMLElement} el - The note element.
- * @returns {void}
- */
-/**
- * Pick & Place (Sticky Move) Orchestrator.
- * Transitions a note into 'flight mode' where it follows the cursor without a held click.
- * @param {MouseEvent} e - The click event.
- * @param {number|string} id - The note ID.
+ * Initiates or terminates the 'Pick & Place' interaction sequence.
+ * Toggles flight mode for a note, caching baseline dimensions and viewport metrics.
+ * @param {MouseEvent} e - The triggering mouse event.
+ * @param {string|number} id - The unique identifier of the note.
  * @returns {void}
  */
 function toggleStickyMove(e, id) {
@@ -189,9 +184,10 @@ function toggleStickyMove(e, id) {
     const note = STATE.notes.find(n => n.id == intId);
     if (!note || !el) return;
 
-    // Capture the dynamic delta between the cursor and the note's origin
+    // Capture moving baseline: Viewport and Canvas metrics
     const wrapper = STATE.wrapperEl;
     const rect    = wrapper?.getBoundingClientRect();
+    STATE.activeRectBaseline = rect;
     
     // Logic: (Current Cursor Position on Canvas) - (Note Origin)
     const cursorX = (e.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
@@ -211,9 +207,12 @@ function toggleStickyMove(e, id) {
         if (typeof syncNotePosition === 'function') syncNotePosition(intId, 'silent');
     }
 
-    // --- 2. Activation Logic (Flight Mode) ---
+    el.classList.add('in-flight');
+
     STATE.pickedNoteId = intId;
-    STATE.lastPickTime = Date.now(); // Interaction Guard: Prevents immediate drop re-triggering
+    STATE.pickedWidth  = el.offsetWidth;
+    STATE.pickedHeight = el.offsetHeight;
+    STATE.lastPickTime = Date.now();
     STATE.originalPos  = { x: note.x, y: note.y, z: el.style.zIndex };
     
     el.classList.add('note-picked');
@@ -223,14 +222,14 @@ function toggleStickyMove(e, id) {
 }
 
 /**
- * Real-time coordinate synchronization for notes in 'flight mode'.
- * @param {MouseEvent} e - The mouse move event.
+ * Synchronizes note coordinates with the cursor during flight mode.
+ * Accounts for canvas scale, scroll offset, and the established grid snap.
+ * @param {MouseEvent} e - The active movement event.
  * @returns {void}
  */
 function updateStickyMove(e) {
     if (!STATE.pickedNoteId) return;
     
-    // Context Capture: Required for asynchronous auto-scroll updates
     STATE.autoScroll.lastEvent = e;
     if (typeof checkAutoScrollProximity === 'function') checkAutoScrollProximity(e);
 
@@ -238,43 +237,46 @@ function updateStickyMove(e) {
     if (!el) return;
 
     const wrapper = STATE.wrapperEl;
-    const rect    = wrapper?.getBoundingClientRect();
+    const rect    = STATE.activeRectBaseline;
+    if (!rect) return;
     
-    // Calculate cursor position relative to the canvas origin, accounting for scroll and scale
     let newX = (e.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
     let newY = (e.clientY - rect.top  + wrapper.scrollTop)  / STATE.scale;
 
-    // Apply the dynamic delta captured during pick-up
     newX -= STATE.dragOffset.x;
     newY -= STATE.dragOffset.y;
 
-    // 10px Grid Snapping and Canvas-Boundary Entrapment (50,000px)
     newX = Math.round(newX / STATE.snapGrid) * STATE.snapGrid;
     newY = Math.round(newY / STATE.snapGrid) * STATE.snapGrid;
 
-    newX = Math.max(0, Math.min(newX, STATE.canvasSize - el.offsetWidth));
-    newY = Math.max(0, Math.min(newY, STATE.canvasSize - el.offsetHeight));
+    newX = Math.max(0, Math.min(newX, STATE.canvasSize - STATE.pickedWidth));
+    newY = Math.max(0, Math.min(newY, STATE.canvasSize - STATE.pickedHeight));
+
+    const note = STATE.notes.find(n => n.id == STATE.pickedNoteId);
+    if (!note) return;
+
+    note.x = newX;
+    note.y = newY;
 
     el.style.left = `${newX}px`;
     el.style.top  = `${newY}px`;
 }
 
 /**
- * Dynamic Edge Detection: Evaluates cursor proximity to viewport boundaries
- * @param {MouseEvent} e - The mouse event.
+ * Evaluates cursor proximity to viewport edges to trigger directional auto-panning.
+ * Prevents pan-chaining if manual board navigation is currently active.
+ * @param {MouseEvent} e - The active interaction event.
  * @returns {void}
  */
 function checkAutoScrollProximity(e) {
     const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
-    // Do not auto-pan while user is manually panning — would cause double-scroll
     if (STATE.isPanning) {
         stopAutoScroll();
         return;
     }
 
-    // Do not trigger if cursor is outside the wrapper bounds entirely
     const rect = wrapper.getBoundingClientRect();
     if (e.clientX < rect.left || e.clientX > rect.right ||
         e.clientY < rect.top  || e.clientY > rect.bottom) {
@@ -287,7 +289,6 @@ function checkAutoScrollProximity(e) {
     let velX = 0;
     let velY = 0;
 
-    // Threshold Analysis: Proportional speed based on edge proximity
     if (e.clientX < rect.left + margin) {
         velX = -normalizeSpeed(rect.left + margin - e.clientX);
     } else if (e.clientX > rect.right - margin) {
@@ -303,14 +304,12 @@ function checkAutoScrollProximity(e) {
     const isNearEdge = (velX !== 0 || velY !== 0);
     const shouldBypass = STATE.autoScroll.active || STATE.isResizing;
 
-    // Active Bypass: If already scrolling OR resizing, update velocity immediately
     if (shouldBypass) {
         if (isNearEdge) startAutoScroll(velX, velY);
         else stopAutoScroll();
         return;
     }
 
-    // Intentionality Delay: Apply 200ms threshold for initial trigger
     if (isNearEdge) {
         if (!STATE.autoScroll.startTime) {
             STATE.autoScroll.startTime = Date.now();
@@ -323,9 +322,9 @@ function checkAutoScrollProximity(e) {
 }
 
 /**
- * Velocity Normalizer: Converts pixel proximity into controlled scroll velocity
- * @param {number} dist - Distance into the margin.
- * @returns {number} - Calculated speed.
+ * Converts edge-proximity distance into a normalized scroll velocity.
+ * @param {number} dist - The depth of the cursor into the scroll margin.
+ * @returns {number} The calculated horizontal or vertical speed.
  */
 function normalizeSpeed(dist) {
     const ratio = Math.min(dist / STATE.autoScroll.margin, 1);
@@ -333,9 +332,10 @@ function normalizeSpeed(dist) {
 }
 
 /**
- * Initiates the Auto-Scroll animation loop.
- * @param {number} vx - Horizontal velocity.
- * @param {number} vy - Vertical velocity.
+ * Commences the auto-scroll animation sequence.
+ * Continuously pushes viewport coordinates based on calculated velocities.
+ * @param {number} vx - Horizontal velocity component.
+ * @param {number} vy - Vertical velocity component.
  * @returns {void}
  */
 function startAutoScroll(vx, vy) {
@@ -354,12 +354,8 @@ function startAutoScroll(vx, vy) {
 
         const lastE = STATE.autoScroll.lastEvent;
         if (lastE) {
-            // Re-trigger the active move logic with the latest event
             if (STATE.pickedNoteId) updateStickyMove(lastE);
 
-            // Re-trigger the active resize logic (Auto-Growth) 
-            // Idempotency Note: If mouse is also moving, doResize fires twice per frame 
-            // but results are consistent as they rely on the same persistent event state.
             if (STATE.activeResizeHandler) STATE.activeResizeHandler(lastE);
         }
 
@@ -370,11 +366,11 @@ function startAutoScroll(vx, vy) {
 }
 
 /**
- * Terminates the Auto-Scroll animation sequence.
+ * Terminates the auto-scroll animation loop and resets temporal triggers.
  * @returns {void}
  */
 function stopAutoScroll() {
-    STATE.autoScroll.startTime = null; // Reset delay tracking
+    STATE.autoScroll.startTime = null;
     if (!STATE.autoScroll.active) return;
     STATE.autoScroll.active = false;
     if (STATE.autoScroll.frame) {
@@ -383,58 +379,67 @@ function stopAutoScroll() {
 }
 
 /**
- * Finalizes the 'Pick & Place' action, anchoring the note and syncing to MariaDB.
+ * Finalizes the 'Pick & Place' sequence and persists coordinates to the database.
+ * De-promotes the note from its GPU layer and resets global interaction state.
  * @returns {void}
  */
 function dropStickyNote() {
     if (!STATE.pickedNoteId) return;
     
-    stopAutoScroll(); // Clear active animation loops
+    stopAutoScroll();
 
     const id = STATE.pickedNoteId;
     const el = document.getElementById(`note-${id}`);
     
-    STATE.pickedNoteId = null;
-    STATE.originalPos  = null;
+    STATE.pickedNoteId      = null; 
+    STATE.activeRectBaseline = null;
+    STATE.originalPos        = null;
     
-    if (el) el.classList.remove('note-picked');
+    if (el) {
+        el.classList.remove('note-picked');
+        el.classList.remove('in-flight');
+    }
     document.removeEventListener('mousemove', updateStickyMove);
     
-    // State Synchronization: Persist position to the database (300ms Debounce)
     if (typeof syncNotePosition === 'function') syncNotePosition(id, 'normal', 300);
     showToast('Note placed', 'success');
 }
 
 /**
- * Aborts the current 'Pick & Place' action, restoring the note to its original coordinates.
+ * Aborts the active interaction and restores the note to its original coordinates.
+ * Ensures state cleanup (classes and listeners) even if restoration baseline is absent.
  * @returns {void}
  */
 function cancelStickyMove() {
-    if (!STATE.pickedNoteId || !STATE.originalPos) return;
+    if (!STATE.pickedNoteId) return;
     
-    stopAutoScroll(); // Atomic termination of physics/auto-scroll engine
+    stopAutoScroll();
     
     const id = STATE.pickedNoteId;
     const el = document.getElementById(`note-${id}`);
     const note = STATE.notes.find(n => n.id == id);
     
     if (el && note) {
-        el.style.left   = `${STATE.originalPos.x}px`;
-        el.style.top    = `${STATE.originalPos.y}px`;
-        el.style.zIndex = STATE.originalPos.z;
-        el.classList.remove('note-picked');
-        
-        // Revert local state object
-        note.x = STATE.originalPos.x;
-        note.y = STATE.originalPos.y;
-        if (STATE.originalPos.z !== undefined) note.z_index = STATE.originalPos.z;
+        if (STATE.originalPos) {
+            el.style.left   = `${STATE.originalPos.x}px`;
+            el.style.top    = `${STATE.originalPos.y}px`;
+            el.style.zIndex = STATE.originalPos.z;
 
-        // Global Sync: Restore server-side z-index and coordinates
-        if (typeof syncNotePosition === 'function') syncNotePosition(id, 'silent');
+            note.x = STATE.originalPos.x;
+            note.y = STATE.originalPos.y;
+            if (STATE.originalPos.z !== undefined) note.z_index = STATE.originalPos.z;
+
+            if (typeof syncNotePosition === 'function') syncNotePosition(id, 'silent');
+        }
+
+        el.classList.remove('note-picked');
+        el.classList.remove('in-flight');
     }
     
-    STATE.pickedNoteId = null;
-    STATE.originalPos  = null;
+    STATE.pickedNoteId       = null; 
+    STATE.activeRectBaseline = null;
+    STATE.originalPos        = null;
+    
     document.removeEventListener('mousemove', updateStickyMove);
     showToast('Move cancelled', 'info');
 }
