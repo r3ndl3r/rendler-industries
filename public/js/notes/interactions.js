@@ -1991,6 +1991,7 @@ function showLevelRenameModal() {
             placeholder: 'e.g. Drafts, Planning, Archive...',
             value: currentName
         },
+        hideCancel: true,
         onConfirm: async (val) => {
             const res = await NoteAPI.post('/notes/api/layer/rename', {
                 canvas_id: STATE.canvas_id,
@@ -2014,7 +2015,7 @@ function showLevelMoveModal() {
     window.showConfirmModal({
         title: 'Move Level Content',
         icon: '🚀',
-        message: `Migrate all notes from Level ${STATE.activeLayerId} to a new destination. <br><small>Target layer content will be merged.</small>`,
+        message: `<div style="color: #ef4444;">Migrate all notes from Level ${STATE.activeLayerId} to a new destination.<br><div style="text-align: center; font-weight: bold; font-size: 0.85rem; margin-top: 10px;">Target layer content will be merged.</div></div>`,
         confirmText: 'Migrate Content',
         confirmIcon: '🚀',
         danger: true,
@@ -2024,6 +2025,7 @@ function showLevelMoveModal() {
             min: 1,
             max: 99
         },
+        hideCancel: true,
         onConfirm: async (val) => {
             const targetId = parseInt(val);
             if (isNaN(targetId) || targetId < 1 || targetId > 99) {
