@@ -194,7 +194,6 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 <p align="center">
   <img src="public/images/screenshots/receipt_ledger.png" height="130" />
-  <img src="public/images/screenshots/receipt_refine.png" height="130" />
   <img src="public/images/screenshots/receipt_detail.png" height="130" />
 </p>
 
