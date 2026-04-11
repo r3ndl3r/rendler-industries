@@ -623,6 +623,12 @@ sub startup {
     $auth->post('/notes/api/layer/rename')->to('notes#api_layer_rename');
     $auth->post('/notes/api/layers/move')->to('notes#api_move_layer');
 
+    # Privacy & Lock Management
+    $auth->post('/notes/api/unlock_canvas')->to('notes#api_unlock_canvas');
+    $auth->post('/notes/api/lock_canvas')->to('notes#api_lock_canvas');
+    $auth->post('/notes/api/canvas/password/set')->to('notes#api_canvas_password_set');
+    $auth->post('/notes/api/canvas/password/clear')->to('notes#api_canvas_password_clear');
+
     # Real-Time Synchronization 
     # Mutation Heartbeat for cross-session/cross-worker consistency
     $auth->get('/notes/api/heartbeat/:canvas_id')->to('notes#api_heartbeat');
