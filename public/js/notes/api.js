@@ -17,6 +17,15 @@ window.NoteAPI = {
             
             // Session Guard: Centralized 403 handling
             if (response.status === 403) {
+                // Disambiguate session expiry from canvas lock rejection
+                let body403 = null;
+                try { body403 = await response.json(); } catch (_) {}
+                
+                if (body403 && body403.error === 'Canvas is locked') {
+                    if (typeof showLockedOverlay === 'function') showLockedOverlay();
+                    return body403;
+                }
+                
                 window.location.href = '/login';
                 return null;
             }
@@ -69,6 +78,15 @@ window.NoteAPI = {
             
             // Session Guard: Hard redirect on expiry
             if (response.status === 403) {
+                // Disambiguate session expiry from canvas lock rejection
+                let body403 = null;
+                try { body403 = await response.json(); } catch (_) {}
+                
+                if (body403 && body403.error === 'Canvas is locked') {
+                    if (typeof showLockedOverlay === 'function') showLockedOverlay();
+                    return body403;
+                }
+
                 window.location.href = '/login';
                 return null;
             }
@@ -94,8 +112,14 @@ window.NoteAPI = {
         try {
             const response = await fetch(url, { signal: options.signal });
             
-            // Binary Session Guard: Redirect on 403 to prevent silent binary failure
+            // Binary Session Guard: Redirect on 403 to prevent silent binary failure.
+            // Canvas lock returns plain text 'Canvas Locked'; session expiry returns login HTML.
             if (response.status === 403) {
+                const text = await response.text();
+                if (text === 'Canvas Locked') {
+                    if (typeof showLockedOverlay === 'function') showLockedOverlay();
+                    return null;
+                }
                 window.location.href = '/login';
                 return null;
             }

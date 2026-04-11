@@ -445,7 +445,13 @@ sub serve_blob {
     my $unlocked_ids = $c->_get_unlocked_ids;
 
     my $blob = $c->db->get_note_blob($note_id, $user_id, $unlocked_ids);
-    return $c->render(text => 'Not found or Unauthorized', status => 403) unless $blob;
+    unless ($blob) {
+        my $cid = $c->db->get_canvas_for_note_id($note_id, $user_id);
+        if ($cid && $c->is_canvas_locked($cid)) {
+            return $c->render(text => 'Canvas Locked', status => 403);
+        }
+        return $c->render(text => 'Not found or Unauthorized', status => 403);
+    }
 
     my $filename    = $blob->{filename} || "note_attachment_$note_id";
     my $disposition = ($blob->{mime_type} =~ m/^image\//) ? 'inline' : 'attachment';
@@ -466,7 +472,18 @@ sub serve_attachment_blob {
     my $unlocked_ids = $c->_get_unlocked_ids;
 
     my $blob = $c->db->get_blob_by_id($blob_id, $user_id, $unlocked_ids);
-    return $c->render(text => 'Not found or Unauthorized', status => 403) unless $blob;
+    unless ($blob) {
+        if ($blob_id) {
+            # Note: Minimal DB call to resolve canvas for security check
+            my $sth = $c->db->{dbh}->prepare("SELECT n.canvas_id FROM note_blobs nb JOIN notes n ON nb.note_id = n.id WHERE nb.id = ?");
+            $sth->execute($blob_id);
+            my ($cid) = $sth->fetchrow_array();
+            if ($cid && $c->is_canvas_locked($cid)) {
+                return $c->render(text => 'Canvas Locked', status => 403);
+            }
+        }
+        return $c->render(text => 'Not found or Unauthorized', status => 403);
+    }
 
     my $filename    = $blob->{filename} || "attachment_$blob_id";
     my $disposition = ($blob->{mime_type} =~ m/^(image\/|application\/pdf)/) ? 'inline' : 'attachment';
