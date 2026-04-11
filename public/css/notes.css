@@ -18,12 +18,11 @@
 #canvas-wrapper {
     position: relative;
     user-select: none;
+    overflow: hidden; 
 }
 
 #notes-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
+    position: relative;
     width: 50000px !important;
     height: 50000px !important;
     transform-origin: 0 0;
@@ -58,7 +57,7 @@
     display: flex;
     align-items: center;
     gap: 0.625em;
-    z-index: 1001;
+    z-index: 3000;                      
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
                 inset 0 0 15px rgba(59, 130, 246, 0.1);
     pointer-events: auto;
@@ -106,7 +105,7 @@
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7),
                 0 0 0 1px rgba(255, 255, 255, 0.04),
                 inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    z-index: 1002;
+    z-index: 3000;                      
     overflow: hidden;
     animation: cqs-slide-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -526,7 +525,7 @@ pre code {
     backdrop-filter: none !important;
     border: none !important;
     box-shadow: none !important;
-    z-index: 10000;
+    z-index: 1500;                      
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -670,7 +669,7 @@ pre code {
     border: 1px solid rgba(59, 130, 246, 0.3);
     border-left: none;
     border-radius: 0 12px 12px 0;
-    z-index: 9500; 
+    z-index: 1500;                      
     overflow: visible; /* Required to show the handle when docked */
     cursor: crosshair;
     box-shadow: 5px 0 20px rgba(0, 0, 0, 0.4);
@@ -702,7 +701,7 @@ pre code {
     cursor: pointer;
     font-size: 1.1rem;
     transition: all 0.3s ease;
-    z-index: 9501;
+    z-index: 1501;                      
     box-shadow: 2px 0 10px rgba(0,0,0,0.3);
 }
 
@@ -853,7 +852,7 @@ pre code {
 }
 
 .sticky-note.note-picked {
-    z-index: 10000 !important;
+    z-index: 1800 !important;           
     transform: translateY(-3px) scale(1.0) !important;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4), 0 0 10px var(--note-accent, rgba(59, 130, 246, 0.4)) !important;
     border-style: dashed;
@@ -965,7 +964,7 @@ pre code {
 }
 
 .sticky-note.dragging {
-    z-index: 10000 !important;
+    z-index: 1800 !important;           
     opacity: 0.85;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
     transform: scale(1.02);
@@ -4052,3 +4051,147 @@ input:checked + .switch-sm .slider:before {
     border-radius: 4px !important;
 }
 
+/* --- Canvas Lock Overlay --- */
+.canvas-lock-overlay {
+    position: fixed;            
+    top: 45px;                   /* Navbar height offset */
+    left: 0;
+    width: 100vw;
+    height: calc(100vh - 45px);
+    background: rgba(5, 12, 29, 0.7);
+    backdrop-filter: blur(25px) saturate(200%);
+    -webkit-backdrop-filter: blur(25px) saturate(200%);
+    z-index: 2000;                      
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.lock-card {
+    background: rgba(30, 41, 59, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 24px;
+    padding: 3rem;
+    max-width: 480px; 
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    animation: modal-slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lock-icon {
+    font-size: 4.5rem;
+    margin-bottom: 2rem;
+    display: inline-block;
+}
+
+.lock-card h2 {
+    color: var(--text-color);
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.lock-card p {
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    font-size: 1.1rem;
+    line-height: 1.5;
+}
+
+.lock-form input {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+    padding: 1.1rem 1.5rem;
+    border-radius: 14px;
+    width: 100%;
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.lock-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(15, 23, 42, 0.8);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.lock-shake {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+/* Privacy Tab Stacking */
+.settings-group + .settings-group {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.security-actions-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.security-item {
+    background: rgba(15, 23, 42, 0.4);
+    padding: 1.25rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.security-item h5 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-color);
+    font-size: 1rem;
+}
+
+.security-item p {
+    margin: 0 0 1rem 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+
+/* Privacy & Security UI Enhancements */
+.cqs-lock-icon, 
+.lock-status-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    padding: 2px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.cqs-lock-icon.clickable:hover,
+.lock-status-icon.clickable:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.15);
+    cursor: pointer;
+}
+
+.cqs-lock-icon.clickable:active,
+.lock-status-icon.clickable:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.2);
+}
+/* Loading Overlay Z-Index: Ensure spinner remains above privacy lock layers. */
+.loading-overlay {
+    z-index: 2100;                      
+}
