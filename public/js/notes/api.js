@@ -17,12 +17,13 @@ window.NoteAPI = {
             
             // Session Guard: Centralized 403 handling
             if (response.status === 403) {
-                // Disambiguate session expiry from canvas lock rejection
                 let body403 = null;
                 try { body403 = await response.json(); } catch (_) {}
                 
-                if (body403 && body403.error === 'Canvas is locked') {
-                    if (typeof showLockedOverlay === 'function') showLockedOverlay();
+                if (body403 && (body403.error === 'Canvas is locked' || body403.error === 'Note is locked by another session')) {
+                    if (body403.error === 'Canvas is locked' && typeof showLockedOverlay === 'function') {
+                        showLockedOverlay();
+                    }
                     return body403;
                 }
                 
@@ -59,11 +60,18 @@ window.NoteAPI = {
 
         if (isFormData) {
             body = params;
+            if (typeof STATE !== 'undefined' && STATE.sessionId && !params.has('session_id')) {
+                params.append('session_id', STATE.sessionId);
+            }
         } else if (Array.isArray(params)) {
             headers['Content-Type'] = 'application/json';
             body = JSON.stringify(params);
         } else {
             headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            params = params || {};
+            if (typeof STATE !== 'undefined' && STATE.sessionId && !params.session_id) {
+                params.session_id = STATE.sessionId;
+            }
             body = new URLSearchParams(params);
         }
 
@@ -78,15 +86,16 @@ window.NoteAPI = {
             
             // Session Guard: Hard redirect on expiry
             if (response.status === 403) {
-                // Disambiguate session expiry from canvas lock rejection
                 let body403 = null;
                 try { body403 = await response.json(); } catch (_) {}
                 
-                if (body403 && body403.error === 'Canvas is locked') {
-                    if (typeof showLockedOverlay === 'function') showLockedOverlay();
+                if (body403 && (body403.error === 'Canvas is locked' || body403.error === 'Note is locked by another session')) {
+                    if (body403.error === 'Canvas is locked' && typeof showLockedOverlay === 'function') {
+                        showLockedOverlay();
+                    }
                     return body403;
                 }
-
+                
                 window.location.href = '/login';
                 return null;
             }
@@ -132,6 +141,22 @@ window.NoteAPI = {
             showToast('Media fetch failed', 'error');
             return null;
         }
+    },
+
+    /**
+     * Collaborative Locking: Attempts to acquire an exclusive edit lock.
+     * @param {number|string} id - The note ID.
+     */
+    async lock(id) {
+        return await this.post('/notes/api/lock', { id });
+    },
+
+    /**
+     * Collaborative Locking: Releases an active edit lock.
+     * @param {number|string} id - The note ID.
+     */
+    async unlock(id) {
+        return await this.post('/notes/api/unlock', { id });
     }
 };
 
