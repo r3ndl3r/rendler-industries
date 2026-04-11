@@ -1984,7 +1984,7 @@ function showLevelRenameModal() {
         title: 'Rename Level ' + STATE.activeLayerId,
         icon: '✏️',
         message: 'Provide a descriptive name for this layer:',
-        confirmText: 'Save Name',
+        confirmText: 'Save',
         confirmIcon: '💾',
         input: {
             type: 'text',
