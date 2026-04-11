@@ -73,24 +73,35 @@ sub api_state {
     # 3. Session Persistence: Resolve the viewport (Specific layer or most recent)
     my $viewport = $c->db->get_viewport($user_id, $cid, $lid);
     
-    my $notes      = $c->db->get_user_notes($user_id, $cid);
+    # 4. Privacy Lock: Determine if content is accessible
+    my $unlocked_ids = $c->_get_unlocked_ids;
+    my $is_locked    = $c->is_canvas_locked($cid);
+    
+    # Slide the window if validly accessed
+    $c->refresh_canvas_lock($cid) unless $is_locked;
+
+    my $notes      = $is_locked ? [] : $c->db->get_user_notes($user_id, $cid, $unlocked_ids);
     my $share_list = $c->db->get_canvas_shares($cid);
 
     # 🚀 Performance Optimization: Delta Handshake
-    # Logic: If the client provides a hash that matches our DB fingerprint, we skip the O(N) metadata fetch.
     my $client_hash = $c->param('note_map_hash') || '';
     my $fingerprint = $c->db->get_note_map_fingerprint($user_id);
     
     my $note_map;
-    if (!defined $fingerprint) {
-        # Recovery: If fingerprint lookup fails, force a full fetch to maintain data integrity
-        $note_map    = $c->db->get_all_accessible_note_metadata($user_id);
+    if ($is_locked) {
+        $note_map = {}; # Content hidden
+    } elsif (!defined $fingerprint) {
+        $note_map    = $c->db->get_all_accessible_note_metadata($user_id, $unlocked_ids);
         $fingerprint = ''; 
     } else {
         $note_map = ($client_hash ne $fingerprint) 
-                  ? $c->db->get_all_accessible_note_metadata($user_id) 
+                  ? $c->db->get_all_accessible_note_metadata($user_id, $unlocked_ids) 
                   : undef;
     }
+
+    # Mask the fingerprint if the board is locked. 
+    # This prevents the client from caching a valid hash from a restricted state.
+    $fingerprint = undef if $is_locked;
 
     $c->render(json => {
         success       => 1,
@@ -103,7 +114,9 @@ sub api_state {
         note_map      => $note_map,
         note_map_hash => $fingerprint,
         layer_map     => $c->db->get_canvas_layers($cid),
-        last_mutation => $c->db->get_board_mutation_time($cid)
+        last_mutation => $c->db->get_board_mutation_time($cid),
+        is_locked     => $is_locked,
+        unlocked_canvases => $unlocked_ids
     });
 }
 
@@ -139,11 +152,23 @@ sub api_save {
         is_options_expanded => int($c->param('is_options_expanded') // 0)
     };
 
+    my $cid = $canvas_id;
+    if ($id) {
+        $cid = $c->db->get_canvas_for_note_id($id, $user_id);
+    }
+
+    if ($cid && $c->is_canvas_locked($cid)) {
+        return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
+    }
+
     my $result_id = $c->db->save_note($params);
 
     unless (defined $result_id) {
         return $c->render(json => { success => 0, error => 'Board Permission Denied (Read-Only?)' }, status => 403);
     }
+
+    # Sliding Window Refresh
+    $c->refresh_canvas_lock($cid) if defined $cid;
     
     # Optional Purge: Process any attachments marked for deletion in this save cycle
     my $deleted_blobs_json = $c->param('deleted_blobs');
@@ -154,13 +179,14 @@ sub api_save {
         }
     }
 
+    my $unlocked_ids = $c->_get_unlocked_ids;
     $c->render(json => {
         success       => 1,
         id            => int($result_id),
-        canvas_id     => int($canvas_id),
-        notes         => $c->db->get_user_notes($user_id, $canvas_id),
-        note_map      => $c->db->get_all_accessible_note_metadata($user_id),
-        last_mutation => $c->db->get_board_mutation_time($canvas_id)
+        canvas_id     => int($cid),
+        notes         => $c->db->get_user_notes($user_id, $cid, $unlocked_ids),
+        note_map      => $c->db->get_all_accessible_note_metadata($user_id, $unlocked_ids),
+        last_mutation => $c->db->get_board_mutation_time($cid)
     });
 }
 
@@ -188,12 +214,20 @@ sub api_save_geometry {
         layer_id            => int($c->param('layer_id') // 1)
     };
 
+    # Resolve canvas context for lock check BEFORE write
+    my $canvas_id = $c->db->get_canvas_for_note_id($id, $user_id);
+    if ($canvas_id && $c->is_canvas_locked($canvas_id)) {
+        return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
+    }
+
     # 2. Board Context & Authority: Perform surgical coordinate sync
-    my ($result_id, $canvas_id) = $c->db->save_note_geometry($params);
+    my ($result_id) = $c->db->save_note_geometry($params);
 
     unless (defined $result_id) {
         return $c->render(json => { success => 0, error => 'Board Permission Denied' }, status => 403);
     }
+
+    $c->refresh_canvas_lock($canvas_id) if defined $canvas_id;
     
     $c->render(json => {
         success       => 1,
@@ -211,8 +245,12 @@ sub api_delete {
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
 
     my $id        = $c->param('id');
-    my $canvas_id = $c->param('canvas_id');
     my $user_id   = $c->current_user_id();
+
+    my $cid = $c->db->get_canvas_for_note_id($id, $user_id);
+    if ($cid && $c->is_canvas_locked($cid)) {
+        return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
+    }
 
     my $ok = $c->db->delete_note($id, $user_id);
 
@@ -220,10 +258,13 @@ sub api_delete {
         return $c->render(json => { success => 0, error => 'Permission Denied or Note Not Found' }, status => 403);
     }
 
+    $c->refresh_canvas_lock($cid) if defined $cid;
+
+    my $unlocked_ids = $c->_get_unlocked_ids;
     $c->render(json => {
         success       => 1,
-        notes         => $c->db->get_user_notes($user_id, $canvas_id),
-        last_mutation => $c->db->get_board_mutation_time($canvas_id)
+        notes         => $c->db->get_user_notes($user_id, $cid, $unlocked_ids),
+        last_mutation => $c->db->get_board_mutation_time($cid)
     });
 }
 
@@ -261,10 +302,18 @@ sub api_upload {
     my $note_id   = $c->param('note_id');
     my $upload    = $c->param('file') // $c->param('image');
     my $canvas_id = $c->param('canvas_id');
-    
+    my $cid = $canvas_id;
+    if ($note_id) {
+        $cid = $c->db->get_canvas_for_note_id($note_id, $user_id);
+    }
+
     # Permission Pre-Flight: Verify access to the destination canvas
-    unless ($c->db->check_canvas_access($canvas_id, $user_id, 1)) {
+    unless ($cid && $c->db->check_canvas_access($cid, $user_id, 1)) {
         return $c->render(json => { success => 0, error => "Permission Denied" }, status => 403);
+    }
+
+    if ($c->is_canvas_locked($cid)) {
+        return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
     }
 
     my $mime_type = $upload->headers->content_type || 'application/octet-stream';
@@ -273,7 +322,7 @@ sub api_upload {
     if (!$note_id && $upload) {
         $note_id = $c->db->save_note({
             user_id      => $user_id,
-            canvas_id    => $canvas_id,
+            canvas_id    => $cid,
             layer_id     => $c->param('layer_id') // 1,
             type         => $type,
             title        => $c->param('title') // $upload->filename,
@@ -289,7 +338,7 @@ sub api_upload {
             is_options_expanded => int($c->param('is_options_expanded') // 0)
         });
     } elsif ($note_id && $upload) {
-        # Edge Case Fix: Update existing note metadata to reflect binary conversion
+        # Note state transition from placeholder to binary note.
         $c->db->promote_note_to_binary($note_id, $type, $upload->filename);
     }
 
@@ -304,11 +353,14 @@ sub api_upload {
 
     $c->db->store_note_blob($note_id, $file_data, $mime_type, $file_size, $upload->filename);
 
+    $c->refresh_canvas_lock($cid) if defined $cid;
+
+    my $unlocked_ids = $c->_get_unlocked_ids;
     $c->render(json => {
         success       => 1,
         note_id       => int($note_id),
-        notes         => $c->db->get_user_notes($user_id, $canvas_id),
-        last_mutation => $c->db->get_board_mutation_time($canvas_id)
+        notes         => $c->db->get_user_notes($user_id, $cid, $unlocked_ids),
+        last_mutation => $c->db->get_board_mutation_time($cid)
     });
 }
 
@@ -322,20 +374,27 @@ sub api_attachment_delete {
     my $user_id   = $c->current_user_id();
     my $note_id   = $c->param('note_id');
     my $blob_id   = $c->param('blob_id');
-    my $canvas_id = $c->param('canvas_id');
 
-    # Security Gate: Verify EDIT access to the board containing the note
-    unless ($c->db->check_note_edit_permission($note_id, $user_id)) {
+    # Security Gate: Resolve the actual canvas context
+    my $cid = $c->db->get_canvas_for_note_id($note_id, $user_id);
+    unless ($cid && $c->db->check_note_edit_permission($note_id, $user_id)) {
         return $c->render(json => { success => 0, error => "Permission Denied" }, status => 403);
+    }
+
+    if ($c->is_canvas_locked($cid)) {
+        return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
     }
 
     # Atomic Deletion
     $c->db->delete_blobs($note_id, [$blob_id]);
 
+    $c->refresh_canvas_lock($cid) if defined $cid;
+
+    my $unlocked_ids = $c->_get_unlocked_ids;
     $c->render(json => {
         success       => 1,
-        notes         => $c->db->get_user_notes($user_id, $canvas_id),
-        last_mutation => $c->db->get_board_mutation_time($canvas_id)
+        notes         => $c->db->get_user_notes($user_id, $cid, $unlocked_ids),
+        last_mutation => $c->db->get_board_mutation_time($cid)
     });
 }
 
@@ -349,22 +408,29 @@ sub api_attachment_rename {
     my $user_id   = $c->current_user_id();
     my $note_id   = $c->param('note_id');
     my $blob_id   = $c->param('blob_id');
-    my $canvas_id = $c->param('canvas_id');
     my $filename  = Mojo::Util::trim($c->param('filename') // '');
 
     return $c->render(json => { success => 0, error => 'Filename required' }) unless length($filename) >= 1;
 
-    # Security Gate: Verify EDIT access to the board containing the note
-    unless ($c->db->check_note_edit_permission($note_id, $user_id)) {
+    # Security Gate: Resolve the actual canvas context
+    my $cid = $c->db->get_canvas_for_note_id($note_id, $user_id);
+    unless ($cid && $c->db->check_note_edit_permission($note_id, $user_id)) {
         return $c->render(json => { success => 0, error => 'Permission Denied' }, status => 403);
+    }
+
+    if ($c->is_canvas_locked($cid)) {
+        return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
     }
 
     my $ok = $c->db->update_blob_filename($blob_id, $note_id, $filename);
 
+    $c->refresh_canvas_lock($cid) if defined $cid;
+
+    my $unlocked_ids = $c->_get_unlocked_ids;
     $c->render(json => {
         success       => $ok ? 1 : 0,
-        notes         => $c->db->get_user_notes($user_id, $canvas_id),
-        last_mutation => $c->db->get_board_mutation_time($canvas_id)
+        notes         => $c->db->get_user_notes($user_id, $cid, $unlocked_ids),
+        last_mutation => $c->db->get_board_mutation_time($cid)
     });
 }
 
@@ -376,8 +442,9 @@ sub serve_blob {
 
     my $note_id = $c->stash('note_id');
     my $user_id = $c->current_user_id();
+    my $unlocked_ids = $c->_get_unlocked_ids;
 
-    my $blob = $c->db->get_note_blob($note_id, $user_id);
+    my $blob = $c->db->get_note_blob($note_id, $user_id, $unlocked_ids);
     return $c->render(text => 'Not found or Unauthorized', status => 403) unless $blob;
 
     my $filename    = $blob->{filename} || "note_attachment_$note_id";
@@ -396,8 +463,9 @@ sub serve_attachment_blob {
 
     my $blob_id = $c->stash('blob_id');
     my $user_id = $c->current_user_id();
+    my $unlocked_ids = $c->_get_unlocked_ids;
 
-    my $blob = $c->db->get_blob_by_id($blob_id, $user_id);
+    my $blob = $c->db->get_blob_by_id($blob_id, $user_id, $unlocked_ids);
     return $c->render(text => 'Not found or Unauthorized', status => 403) unless $blob;
 
     my $filename    = $blob->{filename} || "attachment_$blob_id";
@@ -528,7 +596,7 @@ sub api_search {
     # Logic-Pure: Immediate exit for empty queries
     return $c->render(json => []) if length $query < 1;
 
-    my $notes = $c->db->get_global_search_notes($user_id, $query);
+    my $notes = $c->db->get_global_search_notes($user_id, $query, $c->_get_unlocked_ids);
     
     $c->render(json => $notes);
 }
@@ -542,7 +610,18 @@ sub api_copy_note {
     my $note_id   = $c->param('id');
     my $new_cid   = $c->param('canvas_id');
 
+    # Security: Resolve source and verify locks on both sides
+    my $source_cid = $c->db->get_canvas_for_note_id($note_id, $user_id);
+    if ($source_cid && $c->is_canvas_locked($source_cid)) {
+        return $c->render(json => { success => 0, error => 'Source Canvas is locked' }, status => 403);
+    }
+    if ($new_cid && $c->db->check_canvas_access($new_cid, $user_id, 0) && $c->is_canvas_locked($new_cid)) {
+        return $c->render(json => { success => 0, error => 'Destination Canvas is locked' }, status => 403);
+    }
+
     if ($c->db->copy_note($note_id, $new_cid, $user_id)) {
+        $c->refresh_canvas_lock($source_cid) if $source_cid;
+        $c->refresh_canvas_lock($new_cid)    if $new_cid;
         $c->render(json => { success => 1 });
     } else {
         $c->render(json => { success => 0, error => 'Logic Error or Permission Denied' });
@@ -590,7 +669,8 @@ sub api_heartbeat {
 
     $c->render(json => {
         success       => 1,
-        last_mutation => $last_mutation // '1970-01-01 00:00:00'
+        last_mutation => $last_mutation // '1970-01-01 00:00:00',
+        is_locked     => $c->is_canvas_locked($canvas_id)
     });
 }
 
@@ -624,7 +704,12 @@ sub api_restore {
     my $y         = $c->param('y');
     my $user_id   = $c->current_user_id();
 
+    if ($c->is_canvas_locked($canvas_id)) {
+        return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
+    }
+
     if ($c->db->restore_note($id, $user_id, $canvas_id, $layer_id, $x, $y)) {
+        $c->refresh_canvas_lock($canvas_id) if defined $canvas_id;
         $c->render(json => { success => 1 });
     } else {
         $c->render(json => { success => 0, error => 'Restoration Failed or Permission Denied' });
@@ -640,7 +725,14 @@ sub api_purge {
     my $id      = $c->param('id');
     my $user_id = $c->current_user_id();
 
+    # Authority Check: Resolve canvas ID to prevent unauthorized leaks of private note geometry
+    my $cid = $c->db->get_canvas_for_note_id($id, $user_id);
+    if ($cid && $c->is_canvas_locked($cid)) {
+        return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
+    }
+
     if ($c->db->purge_note($id, $user_id)) {
+        $c->refresh_canvas_lock($cid) if $cid;
         $c->render(json => { success => 1 });
     } else {
         $c->render(json => { success => 0, error => 'Purge Failed or Permission Denied' });
@@ -705,6 +797,300 @@ sub api_move_layer {
         count   => $count,
         message => "Migrated $count notes to Level $to"
     });
+}
+
+# --- Security & Privacy Handlers ---
+
+# Verifies and unlocks a protected canvas for the current session.
+sub api_unlock_canvas {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $canvas_id = $c->param('canvas_id') || '';
+    my $password  = $c->param('password')  || '';
+
+    # Strict integer validation for canvas_id
+    return $c->render(json => { success => 0, error => 'Invalid canvas_id' }, status => 400) 
+        unless $canvas_id =~ /^\d+$/;
+
+    # ACL Check: Prevent guessing passwords for boards the user doesn't even have access to
+    return $c->render(json => { success => 0, error => 'Permission Denied' }, status => 403)
+        unless $c->db->check_canvas_access($canvas_id, $c->current_user_id, 0);
+
+    # Unified Rate Limiting check
+    my $limit_error = $c->_check_rate_limit($canvas_id);
+    return $c->render(json => { success => 0, error => $limit_error }, status => 429) if $limit_error;
+
+    if ($c->db->verify_canvas_password($canvas_id, $password)) {
+        # Successful Unlock: Reset attempt counter
+        $c->session->{'unlock_fails_' . $canvas_id} = 0;
+        
+        my $unlocked = $c->session->{unlocked_canvases} || {};
+        if (ref $unlocked eq 'HASH') {
+            my $lock_version = $c->db->get_canvas_lock_version($canvas_id);
+            $unlocked->{$canvas_id} = {
+                expiry  => time + 1800,
+                version => $lock_version
+            };
+            $c->session(unlocked_canvases => $unlocked);
+        }
+        
+        return $c->render(json => { 
+            success => 1,
+            unlocked_canvases => $c->_get_unlocked_ids
+        });
+    }
+
+    # Increment failure counter
+    my $rate_data = $c->session->{'unlock_fails_' . $canvas_id} || { count => 0, since => time };
+    $rate_data->{since} = time unless $rate_data->{count};
+    $rate_data->{count}++;
+    $c->session->{'unlock_fails_' . $canvas_id} = $rate_data;
+
+    return $c->render(json => { success => 0, error => 'Incorrect password' });
+}
+
+# Removes a canvas from the session-unlock list.
+sub api_lock_canvas {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $canvas_id = $c->param('canvas_id') || '';
+    
+    # Strict integer validation
+    return $c->render(json => { success => 0, error => 'Invalid canvas_id' }, status => 400) 
+        unless $canvas_id =~ /^\d+$/;
+    
+    my $unlocked = $c->session->{unlocked_canvases} || {};
+    if (ref $unlocked eq 'HASH') {
+        delete $unlocked->{$canvas_id};
+        $c->session(unlocked_canvases => $unlocked);
+    }
+
+    return $c->render(json => { 
+        success => 1,
+        unlocked_canvases => $c->_get_unlocked_ids
+    });
+}
+
+# Sets or updates a canvas password (Owner Only).
+sub api_canvas_password_set {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id;
+    my $canvas_id = $c->param('canvas_id') || '';
+    my $new_pass  = $c->param('password');
+    my $old_pass  = $c->param('old_password');
+
+    # Strict integer validation
+    return $c->render(json => { success => 0, error => 'Invalid canvas_id' }, status => 400) 
+        unless $canvas_id =~ /^\d+$/;
+
+    # Server-side non-empty check for new passwords
+    return $c->render(json => { success => 0, error => 'Password cannot be empty' }, status => 400)
+        unless defined $new_pass && length $new_pass;
+
+    # Authority: resolve board context
+    my $canvases = $c->db->get_available_canvases($user_id);
+    my ($canvas) = grep { $_->{id} == $canvas_id && $_->{is_owner} } @$canvases;
+    return $c->render(json => { success => 0, error => 'Permission Denied' }, status => 403) unless $canvas;
+
+    # Rate limit current password verification if changing
+    if ($canvas->{is_protected}) {
+        my $limit_error = $c->_check_rate_limit($canvas_id);
+        return $c->render(json => { success => 0, error => $limit_error }, status => 429) if $limit_error;
+
+        unless (defined $old_pass && $c->db->verify_canvas_password($canvas_id, $old_pass)) {
+            # Increment failure counter
+            my $rate_data = $c->session->{'unlock_fails_' . $canvas_id} || { count => 0, since => time };
+            $rate_data->{since} = time unless $rate_data->{count};
+            $rate_data->{count}++;
+            $c->session->{'unlock_fails_' . $canvas_id} = $rate_data;
+
+            return $c->render(json => { success => 0, error => 'Incorrect current password' });
+        }
+    }
+
+    $c->db->set_canvas_password($canvas_id, $new_pass);
+    
+    # Invalidate current unlocks for all users to force zero-trust fresh start
+    my $unlocked = $c->session->{unlocked_canvases} || {};
+    if (ref $unlocked eq 'HASH') {
+        delete $unlocked->{$canvas_id};
+        
+        # Self-Unlock: owner remains unlocked with the NEW version
+        if ($new_pass) {
+            my $lock_version = $c->db->get_canvas_lock_version($canvas_id);
+            $unlocked->{$canvas_id} = {
+                expiry  => time + 1800,
+                version => $lock_version
+            };
+        }
+        $c->session(unlocked_canvases => $unlocked);
+    }
+
+    # Reset failure counter on successful change
+    $c->session->{'unlock_fails_' . $canvas_id} = 0;
+
+    return $c->render(json => { success => 1 });
+}
+
+# Removes password protection from a canvas (Owner Only).
+sub api_canvas_password_clear {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id;
+    my $canvas_id = $c->param('canvas_id') || '';
+    my $password  = $c->param('password')  || '';
+
+    # Strict integer validation
+    return $c->render(json => { success => 0, error => 'Invalid canvas_id' }, status => 400) 
+        unless $canvas_id =~ /^\d+$/;
+
+    # Authority Check MUST precede Rate Limiting
+    # non-owners from exhausting the owner's attempt window.
+    my $canvases = $c->db->get_available_canvases($user_id);
+    my ($canvas) = grep { $_->{id} == $canvas_id && $_->{is_owner} } @$canvases;
+    return $c->render(json => { success => 0, error => 'Permission Denied' }, status => 403) unless $canvas;
+
+    # Rate limiting
+    my $limit_error = $c->_check_rate_limit($canvas_id);
+    return $c->render(json => { success => 0, error => $limit_error }, status => 429) if $limit_error;
+
+    # Intent Verification
+    unless ($c->db->verify_canvas_password($canvas_id, $password)) {
+        # Increment failure counter
+        my $rate_data = $c->session->{'unlock_fails_' . $canvas_id} || { count => 0, since => time };
+        $rate_data->{since} = time unless $rate_data->{count};
+        $rate_data->{count}++;
+        $c->session->{'unlock_fails_' . $canvas_id} = $rate_data;
+
+        return $c->render(json => { success => 0, error => 'Incorrect password' });
+    }
+
+    $c->db->set_canvas_password($canvas_id, undef);
+    
+    # Reset failure counter on successful clear
+    $c->session->{'unlock_fails_' . $canvas_id} = 0;
+
+    my $unlocked = $c->session->{unlocked_canvases} || {};
+    if (ref $unlocked eq 'HASH') {
+        delete $unlocked->{$canvas_id};
+        $c->session(unlocked_canvases => $unlocked);
+    }
+
+    return $c->render(json => { success => 1 });
+}
+
+# --- Controller Helpers ---
+
+# Validates and extracts active session-unlocked canvas IDs.
+sub _get_unlocked_ids {
+    my $c = shift;
+    
+    # Request-level caching for UNION query performance
+    return $c->stash->{_unlocked_ids_cache} if exists $c->stash->{_unlocked_ids_cache};
+
+    my $user_id = $c->current_user_id;
+    my $unlocked = $c->session->{unlocked_canvases} || {};
+    my $now = time;
+    my $canvases   = $c->db->get_available_canvases($user_id);
+    my %accessible;
+    foreach my $item (@$canvases) {
+        $accessible{$item->{id}} = $item->{lock_version} // 0;
+    }
+
+    my @candidates;
+    for my $cid (keys %$unlocked) {
+        my $token = $unlocked->{$cid};
+        next unless exists $accessible{$cid};
+
+        if (ref $token eq 'HASH') {
+            # Version match: Use the version already prefetched in %accessible
+            next if $token->{version} != $accessible{$cid};
+            push @candidates, $cid if $token->{expiry} > $now;
+        } else {
+            # Legacy token support
+            push @candidates, $cid if ($token // 0) > $now;
+        }
+    }
+
+    my @unlocked_ids = @candidates;
+    return $c->stash->{_unlocked_ids_cache} = \@unlocked_ids;
+}
+
+# Read-only check: Is the specific canvas currently restricted?
+sub is_canvas_locked {
+    my ($c, $canvas_id) = @_;
+    return 0 unless $canvas_id;
+
+    # Optimization: Cache protection metadata in request stash.
+    my $cache = $c->stash->{_canvas_protected_cache} //= {};
+    my $is_protected = $cache->{$canvas_id} //= $c->db->is_canvas_protected($canvas_id);
+
+    return 1 if $is_protected && !grep { $_ == $canvas_id } @{ $c->_get_unlocked_ids };
+    return 0;
+}
+
+# --- Internal Security Helpers ---
+
+# Time-decayed rate limiting for password attempts.
+# Returns error message if limited, undef otherwise.
+sub _check_rate_limit {
+    my ($c, $canvas_id) = @_;
+    
+    my $rate_data = $c->session->{'unlock_fails_' . $canvas_id};
+    return undef unless $rate_data; # No failures yet
+
+    # Support legacy flat counters
+    if (ref $rate_data ne 'HASH') {
+        # Ensure local state synchronization post-session write.
+        # Prevents "Not a HASH reference" crash in the cooldown logic below.
+        $rate_data = { count => $rate_data, since => time };
+        $c->session->{'unlock_fails_' . $canvas_id} = $rate_data;
+        return undef if $rate_data->{count} < 10;
+    }
+
+    # Cooldown window (15 minutes)
+    if (time - $rate_data->{since} > 900) {
+        $c->session->{'unlock_fails_' . $canvas_id} = 0;
+        return undef;
+    }
+
+    if ($rate_data->{count} >= 10) {
+        my $wait = 900 - (time - $rate_data->{since});
+        $c->res->headers->header('Retry-After' => $wait);
+        return "Too many failed attempts. Try again in " . int($wait / 60) . " minutes.";
+    }
+
+    return undef;
+}
+
+# Slide the 30-minute window for an unlocked canvas.
+sub refresh_canvas_lock {
+    my ($c, $canvas_id) = @_;
+    return unless defined $canvas_id && $canvas_id;
+
+    my $unlocked = $c->session->{unlocked_canvases} || {};
+    my $token    = $unlocked->{$canvas_id};
+    return unless $token;
+
+    # Standardize session token format for consistent validation.
+    # The session sliding window must respect the new {expiry, version} token format.
+    if (ref $token eq 'HASH') {
+        # Only slide if not already expired; do not silently resurrect a dead token
+        return unless $token->{expiry} > time;
+        $token->{expiry} = time + 1800;
+        $unlocked->{$canvas_id} = $token;
+    } else {
+        # Legacy migration path for older integer timestamps
+        return unless $token > time;
+        $unlocked->{$canvas_id} = time + 1800;
+    }
+
+    $c->session(unlocked_canvases => $unlocked);
 }
 
 1;
