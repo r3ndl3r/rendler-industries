@@ -43,15 +43,21 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 ### 🧭 Dynamic Menu Management (`/menu`)
 *   **Hierarchical Structure:** Database-driven menu supporting parent/child nesting and separators.
-*   **Live Reordering:** AJAX-based drag-and-drop interface for managing link priority (`sort_order`).
+*   **Live Reordering:** Drag-and-drop interface for managing link priority (`sort_order`).
 *   **Visibility Logic:** Links are dynamically filtered based on the current user's permission level.
+
+### 📢 Family Broadcast System (`/broadcast`)
+*   **High-Priority Dispatch:** Family members can send critical announcements to all administrators.
+*   **Multi-Channel Integration:** Automated distribution via **Discord, Email, Pushover, and Gotify**.
+*   **Audit Logging:** Comprehensive tracking of all dispatch attempts for accountability.
 
 ### ⚙️ Global Settings (`/settings`)
 *   **System Variables:** Centralized management of application constants, such as **Timer Reset Hours** and **Quiet Hour** configurations.
 
-<p align="center">
-  <img src="public/images/screenshots/global_settings.png" height="130" />
-</p>
+### 🗿 Emoji AI Dictionary (`/emojis`)
+*   **Admin Sandbox:** Interactive interface for managing the AI-learned emoji dictionary (`ai_emoji_dictionary`).
+*   **Queue Monitoring:** Tracks the depth of emoji processing across whitelisted modules.
+*   **AI Training:** Sandbox for testing and seeding new emoji mappings to ensure semantic accuracy.
 
 ### 🧠 Family Pulse AI (`/ai`)
 *   **Gemini 2.0 Integration:** Powered by Google's Gemini 2.0 Flash model for lightning-fast analysis and household reasoning.
@@ -60,12 +66,18 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Persistent Memory:** Maintains long-term conversational history to ensure continuity in complex planning tasks.
 
 <p align="center">
-  *Screenshots coming soon...*
+  <img src="public/images/screenshots/global_settings.png" height="130" />
 </p>
 
 ---
 
 ## 📅 Productivity Suite
+
+### 🧹 Room Cleaning Tracker (`/room`)
+*   **Evidence-Based Completion:** Children/Teens upload daily photos to verify room cleanliness.
+*   **Admin Review Pipeline:** Dashboard for parents to approve, provide feedback, and manage blackouts.
+*   **Discord Alerts:** Real-time feedback and status notifications dispatched to linked Discord accounts.
+*   **Configurable Constraints:** Manage blackout dates and per-user monitoring settings.
 
 ### 🗓 Advanced Family Calendar (`/calendar`)
 *   **Interactive Views:** Switch seamlessly between **Month, Week, Day, and List** modes via FullCalendar.
@@ -108,7 +120,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 ### 💊 Medication Tracker (`/medication`)
 *   **Integrated Reminders:** Automated follow-up alert scheduling (1-12h) directly from the dose reset modal.
-*   **Full AJAX Suite:** 100% SPA interface with real-time interval calculation (e.g., "Taken 4h 20m ago").
+*   **Real-time Interface:** Built-in interval calculation (e.g., "Taken 4h 20m ago").
 *   **Modern Selection UI:** Interactive pill-button selectors for delay and recipients to eliminate dropdown friction.
 *   **Smart Registry:** Shared medication database with default dosages for lightning-fast entry.
 
@@ -117,7 +129,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 </p>
 
 ### 🔔 Smart Reminders (`/reminders`)
-*   **Real-time Synchronization:** 100% SPA implementation with 60s background polling and live countdowns.
+*   **Real-time Synchronization:** Background polling with 60s live countdowns.
 *   **Recurring Engine:** Rule-based scheduling with **Midnight Rollover Protection** to ensure notifications never skip date boundaries.
 *   **Multi-User Mapping:** Link multiple recipients to a single alert via Discord and Gotify.
 *   **Self-Cleaning:** Automated deletion of "One-off" reminders after successful delivery.
@@ -128,7 +140,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 </p>
 
 ### 🛒 Collaborative Shopping & Todo (`/shopping`, `/todo`)
-*   **Live Sync:** AJAX-driven status toggles for real-time synchronization across the household.
+*   **Live Sync:** Status toggles for real-time synchronization across the household.
 *   **User Scoping:** Todo lists are private and segregated, while Shopping lists are shared family-wide.
 
 <p align="center">
@@ -137,7 +149,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 </p>
 
 ### 📓 Collaborative Whiteboard & Sticky Notes (`/notes`)
-*   **Infinite Interactive Canvas:** High-fidelity SPA orchestration with 60 FPS panning (Mouse) and 10% step zooming (CTRL + Mouse).
+*   **Infinite Interactive Canvas:** High-fidelity orchestration with 60 FPS panning (Mouse) and 10% step zooming (CTRL + Mouse).
 *   **Collaborative Session Locking:** 
     *   **Atomic Exclusivity:** Prevents edit collisions by acquiring session-based locks during inline editing.
     *   **Visual Attribution:** Real-time grayscale filtering and user-attribution overlays for externally locked notes.
@@ -187,7 +199,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 </p>
 
 ### 🤬 The Swear Jar Ledger (`/swear`)
-*   **Polymorphic Ledger:** Unified tracking of fines, payments, and expenditures with 100% AJAX synchronization.
+*   **Polymorphic Ledger:** Unified tracking of fines, payments, and expenditures with real-time synchronization.
 *   **Shame Leaderboard:** Real-time net-debt calculation (Fines vs. Payments) to ensure family accountability.
 *   **Smart Reconciliation:** Automated debt settlement logic (FIFO) upon jar deposits.
 *   **AI Context Integration:** Financial data is fed into the Gemini AI snapshot for behavioral analysis.
@@ -211,7 +223,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 ### 🃏 UNO Multiplayer (`/uno/lobby`)
 *   **Full State Machine:** Digital implementation of standard UNO rules (Skips, Reverses, Wild Draw 4).
-*   **Real-time Interaction:** AJAX polling for turn tracking, hand synchronization, and "UNO!" shouting.
+*   **Real-time Interaction:** Automated turn tracking, hand synchronization, and "UNO!" shouting.
 *   **Deck Logic:** Automatic reshuffling of the discard pile when the draw pile is exhausted.
 
 ### ♟️ Digital Chess (`/chess/lobby`)
@@ -226,12 +238,10 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Imposter:** Party game with customizable word-lists and player reveal mechanics.
 *   **Citizenship Quiz:** Dual-mode study suite (Practice vs. 20-question Exam) with randomized question banks.
 
----
-
-## 🏖 Specialized & Utility
+### 🏝 Specialized & Utility
 
 ### 🌦 Weather Dashboard (`/weather`)
-*   **Multi-Location Tracking:** Real-time meteorological data for multiple global locations (e.g., Mitcham, Chelsea, Bangkok).
+*   **Multi-Location Tracking:** Real-time meteorological data for multiple global locations.
 *   **Advanced Detail Engine:** 
     *   **Interpolated Forecasting:** Scrapes source data and interpolates it into granular 2-hour blocks with temperature trend graphing.
     *   **Deep Metrics:** High-fidelity tracking of UV Index, Humidity, Moon Phases, Wind Chill, and Visibility.
