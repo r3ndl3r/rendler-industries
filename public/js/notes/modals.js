@@ -67,14 +67,12 @@ async function executeCreateNote() {
         width: note.width,
         height: note.height,
         z_index: note.z_index,
-        is_collapsed: note.is_collapsed,
-        is_options_expanded: note.is_options_expanded
+        is_collapsed: note.is_collapsed
     } : {
         x: DRAFT_NOTE.x !== null ? DRAFT_NOTE.x : (Math.round(canvasCX / 10) * 10 - 140),
         y: DRAFT_NOTE.y !== null ? DRAFT_NOTE.y : (Math.round(canvasCY / 10) * 10 - 100),
         z_index: ++STATE.maxZ,
-        is_collapsed: 0,
-        is_options_expanded: 0
+        is_collapsed: 0
     };
 
     const confirmBtn = document.getElementById('create-note-btn');
