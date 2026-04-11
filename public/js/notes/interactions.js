@@ -396,12 +396,14 @@ function dropStickyNote() {
     STATE.originalPos        = null;
     
     if (el) {
+        el.classList.add('note-settling');
         el.classList.remove('note-picked');
         el.classList.remove('in-flight');
+        setTimeout(() => el.classList.remove('note-settling'), 600);
     }
     document.removeEventListener('mousemove', updateStickyMove);
     
-    if (typeof syncNotePosition === 'function') syncNotePosition(id, 'normal', 300);
+    if (typeof syncNotePosition === 'function') syncNotePosition(id, 'normal', 500);
     showToast('Note placed', 'success');
 }
 
@@ -432,8 +434,10 @@ function cancelStickyMove() {
             if (typeof syncNotePosition === 'function') syncNotePosition(id, 'silent');
         }
 
+        el.classList.add('note-settling');
         el.classList.remove('note-picked');
         el.classList.remove('in-flight');
+        setTimeout(() => el.classList.remove('note-settling'), 600);
     }
     
     STATE.pickedNoteId       = null; 
@@ -1229,8 +1233,7 @@ async function saveNoteInline(id, stayInEditMode = false) {
         width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
         height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
         z_index: el.style.zIndex,
-        is_collapsed: note.is_collapsed,
-        is_options_expanded: note.is_options_expanded
+        is_collapsed: note.is_collapsed
     };
 
     try {
@@ -1342,7 +1345,6 @@ async function toggleCollapse(id) {
             id: id,
             canvas_id: STATE.canvas_id,
             is_collapsed: note.is_collapsed,
-            is_options_expanded: note.is_options_expanded,
             x: note.x,
             y: note.y,
             width: note.width,
