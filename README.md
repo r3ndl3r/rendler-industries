@@ -136,14 +136,23 @@ The system features a redundant, priority-weighted alert engine for real-time an
   <img src="public/images/screenshots/todo_list.png" height="130" />
 </p>
 
-### 📓 Sticky Notes & Virtual Whiteboard (`/notes`)
-*   **Infinite Canvas:** High-fidelity sticky note orchestration with real-time panning and zooming (60 FPS).
-    *   **Intuitive Controls:** Natural panning (Mouse Wheel) and precise zooming (CTRL + Mouse Wheel) for professional-grade navigation.
-*   **Integrated Markdown:** 
-    *   **Interactive Task Lists:** Native `- [ ]` and `- [x]` toggles for lifecycle management.
-    *   **Styling Engine:** Supports `**bold**`, `*italic*`, and `[color:#hex]` accentuation.
-    *   **Cross-Linking:** Deep-link between notes using `[note:ID]` syntax.
-*   **Media Embedding:** Direct image pasting and `[image:ID:scale]` embedding for high-fidelity visual documentation.
+### 📓 Collaborative Whiteboard & Sticky Notes (`/notes`)
+*   **Infinite Interactive Canvas:** High-fidelity SPA orchestration with 60 FPS panning (Mouse) and 10% step zooming (CTRL + Mouse).
+*   **Collaborative Session Locking:** 
+    *   **Atomic Exclusivity:** Prevents edit collisions by acquiring session-based locks during inline editing.
+    *   **Visual Attribution:** Real-time grayscale filtering and user-attribution overlays for externally locked notes.
+    *   **Stale-Lock Recovery:** Automated 5-minute background pruning and administrative overrides for stranded locks.
+*   **Multi-Layer Perspective:** 
+    *   **Isolation Layers:** Each board contains 99 independent "Levels" for logical content segregation.
+    *   **Deep Cloning:** Replicate notes across layers or move entire content blocks between levels.
+*   **Navigation & Radar:** 
+    *   **Radar Minimap:** Scaling overview for rapid spatial orientation across the 5,000px canvas.
+    *   **Jump Logic:** Global search across all accessible canvases with automatic board and layer switching.
+*   **Integrated Markdown & Media:** 
+    *   **Task Lists:** Interactive `- [ ]` and `- [x]` toggles with immediate state persistence.
+    *   **Rich Media:** Direct image pasting and multi-attachment stacks (Images and Files).
+    *   **Internal Linking:** Web-of-thought architecture using `[note:ID]` tags for cross-referencing.
+*   **Board Security:** Fine-grained ACL (Shared/Private) and optional **Session Passwords** for sensitive boards.
 
 <p align="center">
   <img src="public/images/screenshots/sticky_notes_canvas.png" height="130" />
