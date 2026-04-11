@@ -564,18 +564,6 @@ async function initNotes() {
                 const noteId = noteEl.dataset.id;
                 const note   = STATE.notes.find(n => n.id == noteId);
 
-                // --- 2. Action Drawer Toggle ---
-                const toggleBtn = e.target.closest('.btn-icon-drawer');
-                if (toggleBtn) {
-                    const drawer = document.getElementById(`drawer-${noteId}`);
-                    if (drawer && note) {
-                        drawer.classList.toggle('expanded');
-                        note.is_options_expanded = drawer.classList.contains('expanded') ? 1 : 0;
-                        toggleBtn.classList.toggle('active', !!note.is_options_expanded);
-                        if (typeof syncNotePosition === 'function') syncNotePosition(noteId, 'silent');
-                    }
-                    return; // Terminate signal for drawer action
-                }
 
                 // --- 3. Note Link Jump Navigation ---
                 const linkTrigger = e.target.closest('.note-link-trigger');
