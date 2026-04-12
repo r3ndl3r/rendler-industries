@@ -392,6 +392,7 @@ window.renderRowInput = function(container, options) {
     container.innerHTML = '';
     // Use the platform-standard prompt row pattern
     container.classList.add('modal-prompt-row');
+    container.classList.remove('hidden');
     
     // 1. Input Wrapper (Crucial for Emoji Picker isolation)
     // Anchors absolute position of trigger button within the input's bounding box.
@@ -400,25 +401,31 @@ window.renderRowInput = function(container, options) {
     wrapper.style.flex = '1';
     
     const input = document.createElement('input');
-    input.type = 'text';
+    input.type = options.type || 'text';
     input.id = options.id || '';
+    if (options.name) input.name = options.name;
     input.className = 'create-modal-input';
     input.placeholder = options.placeholder || '';
-    input.value = options.value || '';
+    input.value = (options.value !== undefined) ? options.value : '';
     input.autocomplete = 'off';
     
     if (options.noEmoji) input.classList.add('no-emoji');
     
     wrapper.appendChild(input);
     
-    // 2. Action Button
-    const button = document.createElement('button');
-    button.className = 'btn-primary btn-go-row';
-    button.innerHTML = (options.buttonIcon ? options.buttonIcon + ' ' : '') + (options.buttonText || 'Save');
-    
-    // 3. Assemble
+    // 2. Assemble Wrapper First
     container.appendChild(wrapper);
-    container.appendChild(button);
+
+    // 3. Action Button (Appended second to appear on the right)
+    let button = null;
+    if (!options.noButton) {
+        button = document.createElement('button');
+        button.type = options.buttonType || 'button';
+        button.className = 'btn-primary btn-go-row';
+        if (options.buttonClass) button.classList.add(options.buttonClass);
+        button.innerHTML = (options.buttonIcon ? options.buttonIcon + ' ' : '') + (options.buttonText || 'Save');
+        container.appendChild(button);
+    }
     
     return { input, button };
 };
