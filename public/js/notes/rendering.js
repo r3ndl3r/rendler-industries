@@ -3,20 +3,6 @@
 // Persistence Layer for Error Reporting: Prevents console spam during heartbeat cycles
 window._renderErrors = new Set();
 
-/**
- * Dynamic Module Injection: NoteParser
- * Ensures the secure tokenizer is loaded before use without requiring HTML modification.
- */
-(function() {
-    if (typeof NoteParser === 'undefined') {
-        const script = document.createElement('script');
-        script.src = '/js/notes/note-parser.js';
-        script.async = true; // Allow parallel fetch
-        // Synchronization: Trigger a fresh render once the module is available
-        script.onload = () => { if (typeof renderUI === 'function') renderUI(); };
-        document.head.appendChild(script);
-    }
-})();
 
 /**
  * Renders all sticky notes and updates the UI state.
@@ -95,10 +81,11 @@ function renderUI() {
                 // --- Content & Identity Reconciliation ---
                 // Differential hydration for content consistency.
                 const titleSlot = existing.querySelector('.note-title-slot');
-                if (titleSlot && titleSlot.textContent !== (note.title || 'Untitled Note')) {
-                    titleSlot.textContent = note.title || 'Untitled Note';
+                if (titleSlot) {
                     const titleInput = existing.querySelector('.inline-title-input');
-                    if (titleInput) titleInput.value = note.title || '';
+                    if (titleInput && titleInput.value !== (note.title || '')) {
+                        titleInput.value = note.title || '';
+                    }
                 }
 
                 // --- Collapse State Sync (Persisted DB State) ---
@@ -112,8 +99,9 @@ function renderUI() {
                     if (btn) btn.innerHTML = '🔺';
                 }
 
-                // Hoist viewer reference for Priority reconciliation
+                // State Indicators: viewer reference and dashboard metrics for priority reconciliation
                 const viewer = existing.querySelector('.note-text-viewer');
+                const isDashboard = typeof NoteParser !== 'undefined' && NoteParser.isDashboard(note.content || '');
 
                 // --- Attachment Identity Reconciliation (Priority 1) ---
                 // We compare sorted signatures (blob_id:filename) to detect renames and swaps.
@@ -131,61 +119,47 @@ function renderUI() {
                 if (domSig !== newSig) {
                     const contentDiv = existing.querySelector('.note-content');
                     if (contentDiv) {
-                        const newIsDashboard = typeof NoteParser !== 'undefined' && NoteParser.isDashboard(note.content || '');
-                        contentDiv.innerHTML = generateNoteContentHtml(note, canEdit, newIsDashboard);
+                        contentDiv.innerHTML = generateNoteContentHtml(note, canEdit, isDashboard);
                         existing.dataset.lastContent = note.content;
-                        // Sync root element dashboard class to match current content state
-                        existing.classList.toggle('is-dashboard-note', newIsDashboard);
-
-                        // Sync Title Bar: Dashboard mode enables high-fidelity headers
-                        const titleSlot = existing.querySelector('.note-title-slot');
-                        if (titleSlot) {
-                            titleSlot.innerHTML = (newIsDashboard && typeof NoteParser !== 'undefined')
-                                ? (NoteParser.renderHeader(note.title) || window.escapeHtml(note.title || 'Untitled Note'))
-                                : window.escapeHtml(note.title || 'Untitled Note');
-                        }
+                        // State Synchronization: root element dashboard classes based on current content
+                        existing.classList.toggle('is-dashboard-note', isDashboard);
                     }
                 } 
                 // --- Content & Identity Reconciliation (Priority 2) ---
                 // Targeted hydration: Only update viewer if attachments didn't change but text did.
                 else if (viewer && existing.dataset.lastContent !== note.content) {
-                    const newIsDashboard = typeof NoteParser !== 'undefined' && NoteParser.isDashboard(note.content || '');
                     viewer.innerHTML = formatNoteContent(note.content, note.id);
                     const textarea = existing.querySelector('textarea');
                     if (textarea) textarea.value = note.content || '';
                     existing.dataset.lastContent = note.content;
                     
                     // Synchronize state-driven classes across the root and child segments
-                    existing.classList.toggle('is-dashboard-note', newIsDashboard);
+                    existing.classList.toggle('is-dashboard-note', isDashboard);
                     
-                    // Visibility Synchronization: Dynamically toggle the container box to prevent layout voids
-                    const textSection = existing.querySelector('.note-text-section');
-                    if (textSection) {
-                        textSection.classList.toggle('is-dashboard', newIsDashboard);
-
-                        // Sync Title Bar: dashboard mode transition requires header re-render
-                        const titleSlot2 = existing.querySelector('.note-title-slot');
-                        if (titleSlot2) {
-                            titleSlot2.innerHTML = (newIsDashboard && typeof NoteParser !== 'undefined')
-                                ? (NoteParser.renderHeader(note.title) || window.escapeHtml(note.title || 'Untitled Note'))
-                                : window.escapeHtml(note.title || 'Untitled Note');
-                        }
-                        const isEmpty = (!note.content || note.content.trim() === '');
-                        textSection.classList.toggle('hidden', isEmpty);
+                // --- Global Identity Reconciliation (Title, Scaling, Icons) ---
+                const textSection = existing.querySelector('.note-text-section');
+                if (textSection) {
+                    textSection.classList.toggle('is-dashboard', isDashboard);
+                    if (titleSlot) {
+                        // High-Fidelity Header State: icons and favicons for dashboard mode notes
+                        const expectedTitleHtml = (isDashboard && typeof NoteParser !== 'undefined')
+                            ? (NoteParser.renderHeader(note.title) || window.escapeHtml(note.title || 'Untitled Note'))
+                            : window.escapeHtml(note.title || 'Untitled Note');
                         
-                        // Separator Reconciliation: If attachments exist, we must re-render the content area 
-                        // to ensure the <hr> correctly appears/disappears based on the new text state.
-                        if ((note.attachments || []).length > 0) {
-                            const contentDiv = existing.querySelector('.note-content');
-                            if (contentDiv) contentDiv.innerHTML = generateNoteContentHtml(note, canEdit);
+                        if (titleSlot.innerHTML !== expectedTitleHtml) {
+                            titleSlot.innerHTML = expectedTitleHtml;
                         }
                     }
+
+                    const isEmpty = (!note.content || note.content.trim() === '');
+                    textSection.classList.toggle('hidden', isEmpty);
+                }
                 }
             } else {
                 // Creation: New note entered the active isolation layer
                 const noteEl = createNoteElement(note, canEdit);
                 canvas.appendChild(noteEl);
-                
+
                 if (STATE.editMode && canEdit) {
                     initResizable(noteEl, note);
                 }
@@ -300,6 +274,7 @@ function createNoteElement(note, canEdit = true) {
         ? (NoteParser.renderHeader(note.title) || window.escapeHtml(note.title || 'Untitled Note'))
         : window.escapeHtml(note.title || 'Untitled Note');
 
+    
     div.innerHTML = `
         <div class="note-header">
             <span class="note-id-hash" data-id="${note.id}" title="Copy Content to Clipboard">📋</span>
@@ -365,6 +340,7 @@ function createNoteElement(note, canEdit = true) {
 
     return div;
 }
+
 
 /**
  * Generates the inner HTML for the note-content section.
