@@ -54,17 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
         closeConfirmModal
     ]);
-
-    // UI: Global listener for sensitive field visibility toggling
-    document.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-toggle-visibility]');
-        if (!btn) return;
-        const input = btn.closest('.input-wrapper')?.querySelector('input');
-        if (!input) return;
-        const revealing = input.type === 'password';
-        input.type = revealing ? 'text' : 'password';
-        btn.textContent = revealing ? 'Hide' : 'Show';
-    });
 });
 
 /**
@@ -118,6 +107,42 @@ function renderSettings() {
         ${renderApplicationPanel()}
     `;
 
+    // Hydration: Convert placeholders into standardized renderRowInput instances
+    container.querySelectorAll('.render-row-input').forEach(el => {
+        const options = {
+            id: el.dataset.id,
+            name: el.dataset.name,
+            type: el.dataset.type || 'text',
+            value: el.dataset.value || '',
+            placeholder: el.dataset.placeholder || '',
+            buttonText: el.dataset.buttonText || '💾 Save',
+            buttonType: el.dataset.buttonType || 'submit',
+            buttonClass: el.dataset.buttonClass || '',
+            noButton: el.dataset.noButton === 'true'
+        };
+        const row = renderRowInput(el, options);
+        
+        // Custom Logic: Add Visibility Toggle for passwords
+        if (options.type === 'password') {
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'btn-toggle';
+            toggle.dataset.toggleVisibility = 'true';
+            toggle.textContent = 'Show';
+            toggle.onclick = () => {
+                const revealing = row.input.type === 'password';
+                row.input.type = revealing ? 'text' : 'password';
+                toggle.textContent = revealing ? 'Hide' : 'Show';
+            };
+            row.input.parentNode.appendChild(toggle);
+        }
+
+        // Custom Logic: Add Model Button handler (if button exists)
+        if (options.id === 'newModelInput' && row.button) {
+            row.button.onclick = handleAddGeminiModel;
+        }
+    });
+
     // Interaction: Re-bind form submission handlers to the new dynamic DOM
     container.querySelectorAll('form').forEach(form => {
         if (form.id === 'addModelForm') {
@@ -143,32 +168,23 @@ function renderNotificationsPanel() {
                 <div class="settings-fields">
                     <div class="form-group">
                         <label>API Token</label>
-                        <div class="input-wrapper">
-                            <input type="password" name="pushover_token" class="game-input" value="${escapeHtml(s.pushover?.token)}" autocomplete="off">
-                            <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
-                        </div>
+                        <div class="render-row-input" data-id="pushover_token" data-name="pushover_token" data-type="password" data-value="${escapeHtml(s.pushover?.token)}" data-placeholder="API Token" data-no-button="true"></div>
                     </div>
                     <div class="form-group">
                         <label>User Key</label>
-                        <div class="input-wrapper">
-                            <input type="password" name="pushover_user" class="game-input" value="${escapeHtml(s.pushover?.user)}" autocomplete="off">
-                            <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
-                        </div>
+                        <div class="render-row-input" data-id="pushover_user" data-name="pushover_user" data-type="password" data-value="${escapeHtml(s.pushover?.user)}" data-placeholder="User Key"></div>
                     </div>
                 </div>
-            `)}
+            `, true)}
 
             ${renderCard('gotify', 'Gotify', 'Self-hosted push notifications via your Gotify server.', !!s.gotify?.token, `
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>Application Token</label>
-                        <div class="input-wrapper">
-                            <input type="password" name="gotify_token" class="game-input" value="${escapeHtml(s.gotify?.token)}" autocomplete="off">
-                            <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
-                        </div>
+                        <div class="render-row-input" data-id="gotify_token" data-name="gotify_token" data-type="password" data-value="${escapeHtml(s.gotify?.token)}" data-placeholder="Application Token"></div>
                     </div>
                 </div>
-            `)}
+            `, true)}
         </div>
     `;
 }
@@ -190,25 +206,18 @@ function renderEmailPanel() {
                 <div class="settings-fields">
                     <div class="form-group">
                         <label>Gmail Address</label>
-                        <div class="input-wrapper">
-                            <input type="email" name="gmail_email" class="game-input" value="${escapeHtml(e.gmail_email)}" placeholder="you@gmail.com">
-                        </div>
+                        <div class="render-row-input" data-id="gmail_email" data-name="gmail_email" data-type="email" data-value="${escapeHtml(e.gmail_email)}" data-placeholder="you@gmail.com" data-no-button="true"></div>
                     </div>
                     <div class="form-group">
                         <label>App Password</label>
-                        <div class="input-wrapper">
-                            <input type="password" name="gmail_app_password" class="game-input" value="${escapeHtml(e.gmail_app_password)}" autocomplete="off">
-                            <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
-                        </div>
+                        <div class="render-row-input" data-id="gmail_app_password" data-name="gmail_app_password" data-type="password" data-value="${escapeHtml(e.gmail_app_password)}" data-placeholder="App Password" data-no-button="true"></div>
                     </div>
                     <div class="form-group full-width">
                         <label>From Name <span class="label-optional">(optional)</span></label>
-                        <div class="input-wrapper">
-                            <input type="text" name="gmail_from_name" class="game-input" value="${escapeHtml(e.from_name)}" placeholder="e.g. Home Dashboard">
-                        </div>
+                        <div class="render-row-input" data-id="gmail_from_name" data-name="gmail_from_name" data-value="${escapeHtml(e.from_name)}" data-placeholder="e.g. Home Dashboard"></div>
                     </div>
                 </div>
-            `)}
+            `, true)}
         </div>
     `;
 }
@@ -240,34 +249,28 @@ function renderIntegrationsPanel() {
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>Access Key</label>
-                        <div class="input-wrapper">
-                            <input type="password" name="unsplash_key" class="game-input" value="${escapeHtml(s.unsplash_key)}" autocomplete="off">
-                            <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
-                        </div>
+                        <div class="render-row-input" data-id="unsplash_key" data-name="unsplash_key" data-type="password" data-value="${escapeHtml(s.unsplash_key)}" data-placeholder="Access Key"></div>
                     </div>
                 </div>
-            `)}
+            `, true)}
 
             ${renderCard('gemini', 'Google Gemini', 'Gemini API key and model configuration.', !!g.key, `
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>API Key</label>
-                        <div class="input-wrapper">
-                            <input type="password" name="gemini_key" class="game-input" value="${escapeHtml(g.key)}" autocomplete="off">
-                            <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
-                        </div>
+                        <div class="render-row-input" data-id="gemini_key" data-name="gemini_key" data-type="password" data-value="${escapeHtml(g.key)}" data-placeholder="API Key"></div>
                     </div>
                     <div class="form-group full-width">
                         <label>Active Model</label>
-                        <div class="input-wrapper">
-                            <select name="gemini_active_model" class="game-input gemini-select">
-                                ${modelOptions}
-                            </select>
+                        <div class="modal-prompt-row">
+                            <div class="create-input-wrapper" style="flex: 1;">
+                                <select name="gemini_active_model" class="game-input gemini-select">
+                                    ${modelOptions}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn-primary btn-go-row">💾 Save</button>
                         </div>
                     </div>
-                </div>
-                <div class="form-actions mt-15">
-                    <button type="submit" class="btn-primary btn-small">Save Gemini Settings</button>
                 </div>
                 <hr class="settings-separator">
                 <div class="settings-fields">
@@ -279,10 +282,7 @@ function renderIntegrationsPanel() {
                     </div>
                     <div class="form-group mt-15">
                         <label>Add New Model Name</label>
-                        <div class="d-flex gap-10">
-                            <input type="text" id="newModelInput" class="game-input" placeholder="e.g. gemini-3.1-pro-preview">
-                            <button type="button" class="btn-primary btn-small nowrap" onclick="handleAddGeminiModel()">Add Model</button>
-                        </div>
+                        <div class="render-row-input" data-id="newModelInput" data-placeholder="e.g. gemini-3.1-pro-preview" data-button-type="button"></div>
                     </div>
                 </div>
             `, true)}
@@ -291,25 +291,19 @@ function renderIntegrationsPanel() {
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>API Key</label>
-                        <div class="input-wrapper">
-                            <input type="password" name="google_cloud_key" class="game-input" value="${escapeHtml(cloud.key)}" autocomplete="off">
-                            <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
-                        </div>
+                        <div class="render-row-input" data-id="google_cloud_key" data-name="google_cloud_key" data-type="password" data-value="${escapeHtml(cloud.key)}" data-placeholder="API Key"></div>
                     </div>
                 </div>
-            `)}
+            `, true)}
             
             ${renderCard('openweathermap', 'OpenWeatherMap', 'API key for weather observations and forecasts.', !!STATE.owm_api_key, `
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>One Call 3.0 API Key</label>
-                        <div class="input-wrapper">
-                            <input type="password" name="owm_api_key" class="game-input" value="${escapeHtml(STATE.owm_api_key)}" autocomplete="off">
-                            <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
-                        </div>
+                        <div class="render-row-input" data-id="owm_api_key" data-name="owm_api_key" data-type="password" data-value="${escapeHtml(STATE.owm_api_key)}" data-placeholder="One Call 3.0 API Key"></div>
                     </div>
                 </div>
-            `)}
+            `, true)}
         </div>
     `;
 }
@@ -327,12 +321,10 @@ function renderApplicationPanel() {
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>Reset Hour <span class="label-optional">(0 = midnight, 15 = 3 PM)</span></label>
-                        <div class="input-wrapper">
-                            <input type="number" name="timer_reset_hour" class="game-input no-pad-right" value="${STATE.timer_reset_hour}" min="0" max="23">
-                        </div>
+                        <div class="render-row-input" data-id="timer_reset_hour" data-name="timer_reset_hour" data-type="number" data-value="${STATE.timer_reset_hour}" data-placeholder="0-23"></div>
                     </div>
                 </div>
-            `, false, `Daily @ ${STATE.timer_reset_hour}:00`)}
+            `, true, `Daily @ ${STATE.timer_reset_hour}:00`)}
 
             ${renderCard('app_secret', 'App Secret', 'Mojolicious session signing key.', true, `
                 <div class="form-warning">
@@ -341,13 +333,10 @@ function renderApplicationPanel() {
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>Secret Key <span class="label-optional">(min. 32 characters)</span></label>
-                        <div class="input-wrapper">
-                            <input type="password" name="app_secret" class="game-input" value="${escapeHtml(s.app_secret)}" autocomplete="off">
-                            <button type="button" class="btn-toggle" data-toggle-visibility>Show</button>
-                        </div>
+                        <div class="render-row-input" data-id="app_secret" data-name="app_secret" data-type="password" data-value="${escapeHtml(s.app_secret)}" data-placeholder="Secret Key" data-button-class="btn-danger"></div>
                     </div>
                 </div>
-            `, false, '', 'Update Secret')}
+            `, true)}
         </div>
     `;
 }
@@ -368,7 +357,7 @@ function renderApplicationPanel() {
 function renderCard(key, title, desc, isConfigured, content, hideStandardFooter = false, customBadgeText = '', customBtnText = '') {
     const badgeText = customBadgeText || (isConfigured ? 'Configured' : 'Not Set');
     const badgeClass = isConfigured ? 'badge-active' : 'badge-inactive';
-    const btnText = customBtnText || `Save ${title}`;
+    const btnText = customBtnText || `💾 Save`;
     const btnClass = key === 'app_secret' ? 'btn-danger' : 'btn-primary';
 
     return `
@@ -502,7 +491,8 @@ function saveOpenCards(list) {
 async function handleSettingsUpdate(e) {
     e.preventDefault();
     const form = e.target;
-    const btn = form.querySelector('button[type="submit"]');
+    // Use e.submitter to identify the specific button that triggered the submit
+    const btn = e.submitter || form.querySelector('button[type="submit"]');
     const formData = new FormData(form);
     const section = formData.get('section');
 
