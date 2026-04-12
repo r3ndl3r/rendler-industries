@@ -198,43 +198,47 @@ function handleRadarWheel(e) {
 
     const oldScale = STATE.scale;
     const step     = 0.1;
-    
-    // Calculate new magnification level using centralized constants
+
+    let candidate;
     if (e.deltaY < 0) {
-        STATE.scale = Math.min(SCALE_MAX, Math.round((STATE.scale + step) * 10) / 10);
+        candidate = Math.min(SCALE_MAX, Math.round((STATE.scale + step) * 10) / 10);
     } else {
-        STATE.scale = Math.max(SCALE_MIN, Math.round((STATE.scale - step) * 10) / 10);
+        candidate = Math.max(SCALE_MIN, Math.round((STATE.scale - step) * 10) / 10);
     }
 
-    if (STATE.scale === oldScale) return;
+    if (candidate === oldScale) return;
 
     // Abort scale mutation if the visual apply function is unavailable.
-    // Leaving STATE.scale changed without updating the CSS transform corrupts all
-    // downstream coordinate math until the next applyScale call from another path.
-    if (typeof applyScale !== 'function') {
-        STATE.scale = oldScale;
-        return;
+    if (typeof applyScale !== 'function') return;
+
+    // Atomic Commitment: Ensure STATE.scale is only mutated if applyScale succeeds.
+    // This prevents corruption of downstream coordinate math if the DOM isn't ready.
+    const backup = STATE.scale;
+    try {
+        STATE.scale = candidate;
+
+        // Translation Logic: Map radar-hover position to logical canvas coordinates
+        const rect = container.getBoundingClientRect();
+        const rx   = e.clientX - rect.left;
+        const ry   = e.clientY - rect.top;
+
+        const { x, y, miniScale } = STATE.radarWindow;
+        const canvasCX = x + (rx / miniScale);
+        const canvasCY = y + (ry / miniScale);
+
+        // Apply scaling and re-center the main camera on the target logical spot
+        applyScale();
+
+        wrapper.scrollLeft = canvasCX * STATE.scale - wrapper.clientWidth  / 2;
+        wrapper.scrollTop  = canvasCY * STATE.scale - wrapper.clientHeight / 2;
+
+        updateRadar();
+        if (typeof scheduleViewportSave === 'function') scheduleViewportSave();
+    } catch (err) {
+        console.warn('[handleRadarWheel] applyScale failed, rolling back scale:', err);
+        STATE.scale = backup;
     }
-
-    // Translation Logic: Map radar-hover position to logical canvas coordinates
-    const rect = container.getBoundingClientRect();
-    const rx   = e.clientX - rect.left;
-    const ry   = e.clientY - rect.top;
-
-    const { x, y, miniScale } = STATE.radarWindow;
-    const canvasCX = x + (rx / miniScale);
-    const canvasCY = y + (ry / miniScale);
-
-    // Apply scaling and re-center the main camera on the target logical spot
-    applyScale();
-
-    wrapper.scrollLeft = canvasCX * STATE.scale - wrapper.clientWidth  / 2;
-    wrapper.scrollTop  = canvasCY * STATE.scale - wrapper.clientHeight / 2;
-
-    updateRadar();
-    if (typeof scheduleViewportSave === 'function') scheduleViewportSave();
-}
-
+    }
 /**
  * Radar Visibility Orchestrator: Toggles the minimap drawer with persistent memory.
  * @returns {void}
