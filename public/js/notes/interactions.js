@@ -1889,8 +1889,15 @@ async function copyNoteId(id) {
  * @param {number|string} id - The note ID.
  */
 async function copyNoteLink(id) {
-    if (await copyToClipboard(`[note:${id}]`)) {
-        showToast('Link Tag Copied', 'success');
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set('canvas_id', STATE.canvas_id);
+    url.searchParams.set('note_id',   id);
+    if (STATE.activeLayerId > 1) {
+        url.searchParams.set('layer_id', STATE.activeLayerId);
+    }
+    
+    if (await copyToClipboard(url.toString())) {
+        showToast('Direct View Link Copied', 'success');
     } else {
         showToast('Copy failed', 'error');
     }
