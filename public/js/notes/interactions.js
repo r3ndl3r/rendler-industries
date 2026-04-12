@@ -1379,7 +1379,14 @@ async function saveNoteInline(id, stayInEditMode = false) {
             const viewer = el.querySelector('.note-text-viewer');
             const slot   = el.querySelector('.note-title-slot');
             if (viewer) viewer.innerHTML = formatNoteContent(content, id);
-            if (slot)   slot.textContent = title || 'Untitled Note';
+            if (slot) {
+                const isDashboardNote = el.classList.contains('is-dashboard-note');
+                if (isDashboardNote && typeof NoteParser !== 'undefined') {
+                    slot.innerHTML = NoteParser.renderHeader(title) || window.escapeHtml(title || 'Untitled Note');
+                } else {
+                    slot.textContent = title || 'Untitled Note';
+                }
+            }
 
             // Per-Blob Rename: Fire individual rename calls for any changed attachment names
             const updatedNote = STATE.notes.find(n => n.id == id);
