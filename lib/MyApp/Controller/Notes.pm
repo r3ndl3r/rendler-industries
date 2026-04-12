@@ -173,7 +173,10 @@ sub api_save {
     # Optional Purge: Process any attachments marked for deletion in this save cycle
     my $deleted_blobs_json = $c->param('deleted_blobs');
     if ($deleted_blobs_json) {
-        my $deleted_blobs = Mojo::JSON::decode_json($deleted_blobs_json);
+        my $deleted_blobs = eval { Mojo::JSON::decode_json($deleted_blobs_json) };
+        if ($@) {
+            $c->app->log->warn("Failed to decode deleted_blobs: $@");
+        }
         if (ref $deleted_blobs eq 'ARRAY' && @$deleted_blobs) {
             $c->db->delete_blobs($result_id, $deleted_blobs);
         }
