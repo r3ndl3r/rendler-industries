@@ -1216,10 +1216,6 @@ function handleCanvasWheel(e) {
         if (typeof updateRadar === 'function') updateRadar();
         if (typeof scheduleViewportSave === 'function') scheduleViewportSave();
     } else {
-        // 4. Gesture Shielding: Prevent board pan/zoom while scrolling note internals.
-        // Axis-aware: allows horizontal panning and boundary handoff.
-        if (shouldShieldWheelFromBoard(e)) return;
-
         // 5. Plane Panning: Scrolling with no keys pressed
         
         // Continuity Guard: If we are already panning the board (via drag or recent wheel scroll),
@@ -1235,15 +1231,16 @@ function handleCanvasWheel(e) {
         let capturedY = false;
 
         if (scrollable && !panLocked) {
+            // Delegate the full shield decision (including boundary detection) to the
+            // authoritative shouldShieldWheelFromBoard function to avoid duplicate logic.
+            if (shouldShieldWheelFromBoard(e)) {
+                // Yield to native scroll engine; do not call e.preventDefault()
+                return;
+            }
+            // Element exists but cannot or should not capture (boundary or horizontal): 
+            // mark capturedY only for purely vertical intent so the board pans instead
             const isScrollable = scrollable.scrollHeight > scrollable.clientHeight;
-            if (isScrollable) {
-                // If the user is scrolling horizontally (or Shift+Wheel), we do NOT capture the gesture
-                // for the note, as notes only have vertical scrollbars.
-                if (e.deltaX === 0 && !e.shiftKey) {
-                    capturedY = true;
-                    // Yield to native engine for purely vertical scroll
-                    return; 
-                }
+            if (isScrollable && e.deltaX === 0 && !e.shiftKey) {
                 capturedY = true;
             }
         }
