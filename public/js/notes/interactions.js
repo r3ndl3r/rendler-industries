@@ -1569,9 +1569,16 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
 
     // Visual geometry restoration for accurate dimension calculation.
     if (!el.classList.contains('is-editing') && note.is_collapsed) {
+        const collapsedBefore = note.is_collapsed;
         try {
             await toggleCollapse(id);
         } catch (e) {
+            // Roll back the optimistic collapse-state mutation that toggleCollapse applied
+            // before its API call failed, so memory and DOM are consistent with the server.
+            note.is_collapsed = collapsedBefore;
+            el.classList.toggle('collapsed', !!collapsedBefore);
+            const btn = el.querySelector('.btn-icon-collapse');
+            if (btn) btn.innerHTML = collapsedBefore ? '🔻' : '🔺';
             if (lockAcquired) await NoteAPI.unlock(id);
             return;
         }
