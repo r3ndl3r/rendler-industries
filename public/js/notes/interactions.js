@@ -1381,9 +1381,6 @@ async function saveNoteInline(id, stayInEditMode = false) {
                 }
             }
 
-            // Sync Lockout Release: Clear the 'in-flight' status before merging to allow the authoritative update
-            if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
-
             if (res.notes && typeof window.mergeNoteState === 'function') {
                 window.mergeNoteState(res.notes);
             } else if (res.notes) {
