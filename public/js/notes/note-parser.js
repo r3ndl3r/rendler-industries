@@ -156,26 +156,50 @@ const NoteParser = (() => {
             const safeTitle   = meta   ? window.escapeHtml(meta.title || id) : `File #${id}`;
             return `<a href="${src}" class="note-ref" download data-action="stop-propagation"><span class="global-icon">📁</span> ${safeTitle}</a>`;
         },
-        'color': (data, noteId, rawContent) => {
-            const color = data.value.toLowerCase();
+        'color': (pos, noteId, rawContent, depth = 0) => {
+            const color = pos.value.toLowerCase();
             const isHex = CONFIG.hexRegex.test(color);
             const isNamed = CONFIG.colors.includes(color);
-            
+
             if (!isHex && !isNamed) return null;
-            
-            // Resolve semantic names (accent, info, etc.) to valid hex codes
+
             const hexColor = (typeof window.normalizeColorHex === 'function') 
                 ? window.normalizeColorHex(color) 
                 : color;
 
-            // Find closing [/color]
+            const openPrefix = '[color:';
             const closeTag = '[/color]';
-            const endIdx = rawContent.indexOf(closeTag);
-            if (endIdx === -1) return null; // Unclosed color tag
-            
+            let nesting = 1;
+            let scan = 0;
+            let endIdx = -1;
+
+            while (scan < rawContent.length) {
+                const nextOpen = rawContent.indexOf(openPrefix, scan);
+                const nextClose = rawContent.indexOf(closeTag, scan);
+
+                if (nextClose === -1) break;
+
+                if (nextOpen !== -1 && nextOpen < nextClose) {
+                    nesting++;
+                    scan = nextOpen + openPrefix.length;
+                    continue;
+                }
+
+                nesting--;
+                if (nesting === 0) {
+                    endIdx = nextClose;
+                    break;
+                }
+                scan = nextClose + closeTag.length;
+            }
+
+            if (endIdx === -1) return null;
+
             const innerText = rawContent.substring(0, endIdx);
+            const innerHtml = parseNote(innerText, noteId, depth + 1);
+
             return {
-                html: `<span style="color: ${hexColor}">${renderInline(innerText).replace(/\n/g, '<br>')}</span>`,
+                html: `<span style="color: ${hexColor}">${innerHtml}</span>`,
                 consumed: endIdx + closeTag.length
             };
         }
@@ -378,182 +402,197 @@ const NoteParser = (() => {
             if (typeof window.escapeHtml !== 'function') {
                 throw new Error('NoteParser: window.escapeHtml is required but not defined.');
             }
+            return parseNote(text, noteId, 0);
+        }
+    };
 
-            if (!text) return '';
-            
-            // 0. Dashboard Mode (Fast-Path Optimization)
-            // If the note content is identified as a pure bookmark list, bypass the 
-            // character-by-character scanner and use the specialized tile renderer.
-            if (isDashboardFormat(text)) {
-                // Support [emoji]:1 global flag only. Shorthand ':1 ' is too ambiguous
-                // (matches label text like "Step 1: ...") and is excluded as a trigger.
-                const forceEmoji = text.includes('[emoji]:1'); 
-                
-                return text.split('\n')
-                    .map(line => line.trim())
-                    .filter(line => line.length > 0 && !line.includes('[emoji]:1'))
-                    .map(line => renderBookmarkTile(line, forceEmoji))
-                    .join('');
+    /**
+     * Recursive Tokenizer Engine:
+     * Converts raw text into sanitized HTML components with support for nested tags.
+     * @param {string} text - The content to parse.
+     * @param {number} noteId - Parent note ID for context-sensitive renderers.
+     * @param {number} depth - Current recursion depth (Guard against infinite loops).
+     * @returns {string} - Rendered HTML.
+     */
+    function parseNote(text, noteId, depth = 0) {
+        if (!text) return '';
+
+        // 0. Safety Guards: Length and Depth Limits
+        // Prevents main-thread blocking on oversized notes or malicious recursion
+        if (text.length > 50000) {
+            if (typeof showToast === 'function') {
+                showToast('Note too large to format', 'warning');
             }
+            return window.escapeHtml(text).replace(/\n/g, '<br>');
+        }
+
+        if (depth > 3) {
+            return renderInline(text).replace(/\n/g, '<br>');
+        }
+        
+        // 1. Dashboard Mode (Fast-Path Optimization)
+        // If the note content is identified as a pure bookmark list, bypass the 
+        // character-by-character scanner and use the specialized tile renderer.
+        if (depth === 0 && isDashboardFormat(text)) {
+            const forceEmoji = text.includes('[emoji]:1'); 
             
-            const bracketIndex = buildBracketIndex(text);
-            let output = '';
-            let cursor = 0;
-            let isLineStart = true;
-            let inCheckboxRow = false;
-            let textBuffer = '';
+            return text.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0 && !line.includes('[emoji]:1'))
+                .map(line => renderBookmarkTile(line, forceEmoji))
+                .join('');
+        }
+        
+        const bracketIndex = buildBracketIndex(text);
+        let output = '';
+        let cursor = 0;
+        let isLineStart = true;
+        let inCheckboxRow = false;
+        let textBuffer = '';
 
-            const flushBuffer = () => {
-                if (textBuffer) {
-                    output += renderInline(textBuffer);
-                    textBuffer = '';
-                }
-            };
+        const flushBuffer = () => {
+            if (textBuffer) {
+                output += renderInline(textBuffer);
+                textBuffer = '';
+            }
+        };
 
-            while (cursor < text.length) {
-                const char = text[cursor];
+        while (cursor < text.length) {
+            const char = text[cursor];
 
-                // 1. Structural Elements (Line Start Only)
-                if (isLineStart) {
-                    const lineRemainder = text.substring(cursor);
-                    
-                    // a) Horizontal Rule: ---
-                    const hrMatch = lineRemainder.match(/^(\s*)---(\s*)(\n|$)/);
-                    if (hrMatch) {
-                        flushBuffer();
-                        output += '<hr class="note-hr">';
-                        cursor += hrMatch[0].length;
-                        isLineStart = true;
-                        continue;
-                    }
-
-                    // b) Bullet Points: * item or - item
-                    const bulletMatch = lineRemainder.match(/^(\s*)([*•-])\s+/);
-                    if (bulletMatch) {
-                        flushBuffer();
-                        output += `${window.escapeHtml(bulletMatch[1])}<span class="note-bullet"></span> `;
-                        cursor += bulletMatch[0].length;
-                        isLineStart = false;
-                        continue;
-                    }
-
-                    // c) Checkbox Detection
-                    // Relaxed Regex: Now supports legacy [] brackets without explicit space
-                    const cbMatch = lineRemainder.match(/^(\s*)\[([ xX]?)\]/);
-                    if (cbMatch) {
-                        flushBuffer();
-                        const prefix  = cbMatch[1];
-                        const state   = cbMatch[2].toLowerCase();
-                        const checked = state === 'x';
-                        const checkedClass = checked ? 'checked' : '';
-                        
-                        // Line Index Calculation (for interactive toggle resolution)
-                        let lineIndex = 0;
-                        for (let i = 0; i < cursor; i++) if (text[i] === '\n') lineIndex++;
-
-                        // Start the interactive row wrapper
-                        output += `${window.escapeHtml(prefix)}<span class="checkbox-row-inline note-check-trigger ${checkedClass}" data-note-id="${noteId}" data-index="${lineIndex}"><span class="cb ${checkedClass}"></span>`;
-                        
-                        inCheckboxRow = true;
-                        isLineStart = false;
-                        cursor += cbMatch[0].length;
-                        continue;
-                    }
-                }
-
-                // 2. Component Scanning: O(1) Balanced Bracket Lookup
-                if (char === '[') {
-                    const endIdx = bracketIndex.get(cursor) ?? -1;
-
-                    // Unbalanced bracket: emit literal [ and continue
-                    if (endIdx === -1) {
-                        flushBuffer();
-                        output += window.escapeHtml('[');
-                        cursor++;
-                        isLineStart = false;
-                        continue;
-                    }
-
-                    const rawTag = text.substring(cursor + 1, endIdx);
-                    const pos = parsePositional(rawTag);
-                    const renderer = RENDERERS[pos.type];
-                    
-                    if (renderer) {
-                        const result = renderer(pos, noteId, text.substring(endIdx + 1));
-                        if (result !== null) {
-                            flushBuffer();
-                            if (typeof result === 'string') {
-                                output += result;
-                                cursor = endIdx + 1;
-                            } else {
-                                // Complex renderer (e.g. color) that handles own internal content
-                                output += result.html;
-                                cursor = endIdx + 1 + result.consumed;
-                            }
-                            isLineStart = false;
-                            continue;
-                        }
-                    }
-
-                    // Markdown Link Fallback: [label](url)
-                    const remainder = text.substring(endIdx + 1);
-                    const linkMatch = remainder.match(/^\((https?:\/\/[^\s\)]+)\)/);
-                    if (linkMatch) {
-                        const url = getSafeUrl(linkMatch[1]);
-                        if (url) {
-                            flushBuffer();
-                            output += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" data-action="stop-propagation">${renderInline(rawTag)}</a>`;
-                            cursor = endIdx + 1 + linkMatch[0].length;
-                            isLineStart = false;
-                            continue;
-                        }
-                    }
-
-                    // Security: If balanced but rejected/malformed, emit ENTIRE span as literal
-                    // and advance cursor past it to prevent re-scan of internal tags.
+            // 1. Structural Elements (Line Start Only)
+            if (isLineStart) {
+                const lineRemainder = text.substring(cursor);
+                
+                // a) Horizontal Rule: ---
+                const hrMatch = lineRemainder.match(/^(\s*)---(\s*)(\n|$)/);
+                if (hrMatch) {
                     flushBuffer();
-                    output += window.escapeHtml(text.substring(cursor, endIdx + 1));
-                    cursor = endIdx + 1;
-                    isLineStart = false;
-                    continue;
-                }
-
-                // 3. Raw URL Linkification
-                const remainder = text.substring(cursor);
-                const urlMatch = remainder.match(/^(https?:\/\/[^\s<]+)/);
-                if (urlMatch) {
-                    const url = getSafeUrl(urlMatch[1]);
-                    if (url) {
-                        flushBuffer();
-                        output += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" data-action="stop-propagation">${window.escapeHtml(urlMatch[1])}</a>`;
-                        cursor += urlMatch[1].length;
-                        isLineStart = false;
-                        continue;
-                    }
-                }
-
-                // 4. Formatting & Newlines
-                if (char === '\n') {
-                    flushBuffer();
-                    if (inCheckboxRow) {
-                        output += '</span>';
-                        inCheckboxRow = false;
-                    }
-                    output += '<br>';
-                    cursor++;
+                    output += '<hr class="note-hr">';
+                    cursor += hrMatch[0].length;
                     isLineStart = true;
                     continue;
                 }
 
-                // 5. Text Accumulation
-                textBuffer += char;
-                cursor++;
-                isLineStart = false;
+                // b) Bullet Points: * item or - item
+                const bulletMatch = lineRemainder.match(/^(\s*)([*•-])\s+/);
+                if (bulletMatch) {
+                    flushBuffer();
+                    output += `${window.escapeHtml(bulletMatch[1])}<span class="note-bullet"></span> `;
+                    cursor += bulletMatch[0].length;
+                    isLineStart = false;
+                    continue;
+                }
+
+                // c) Checkbox Detection
+                const cbMatch = lineRemainder.match(/^(\s*)\[([ xX]?)\]/);
+                if (cbMatch) {
+                    flushBuffer();
+                    const prefix  = cbMatch[1];
+                    const state   = cbMatch[2].toLowerCase();
+                    const checked = state === 'x';
+                    const checkedClass = checked ? 'checked' : '';
+                    
+                    let lineIndex = 0;
+                    for (let i = 0; i < cursor; i++) if (text[i] === '\n') lineIndex++;
+
+                    output += `${window.escapeHtml(prefix)}<span class="checkbox-row-inline note-check-trigger ${checkedClass}" data-note-id="${noteId}" data-index="${lineIndex}"><span class="cb ${checkedClass}"></span>`;
+                    
+                    inCheckboxRow = true;
+                    isLineStart = false;
+                    cursor += cbMatch[0].length;
+                    continue;
+                }
             }
 
-            flushBuffer();
-            if (inCheckboxRow) output += '</span>';
-            return output;
+            // 2. Component Scanning: O(1) Balanced Bracket Lookup
+            if (char === '[') {
+                const endIdx = bracketIndex.get(cursor) ?? -1;
+
+                if (endIdx === -1) {
+                    flushBuffer();
+                    output += window.escapeHtml('[');
+                    cursor++;
+                    isLineStart = false;
+                    continue;
+                }
+
+                const rawTag = text.substring(cursor + 1, endIdx);
+                const pos = parsePositional(rawTag);
+                const renderer = RENDERERS[pos.type];
+                
+                if (renderer) {
+                    // Pass current depth to the renderer for potential recursion
+                    const result = renderer(pos, noteId, text.substring(endIdx + 1), depth);
+                    if (result !== null) {
+                        flushBuffer();
+                        if (typeof result === 'string') {
+                            output += result;
+                            cursor = endIdx + 1;
+                        } else {
+                            // Complex renderer (e.g. color) that handles own internal content
+                            output += result.html;
+                            cursor = endIdx + 1 + result.consumed;
+                        }
+                        isLineStart = false;
+                        continue;
+                    }
+                }
+
+                const remainder = text.substring(endIdx + 1);
+                const linkMatch = remainder.match(/^\((https?:\/\/[^\s\)]+)\)/);
+                if (linkMatch) {
+                    const url = getSafeUrl(linkMatch[1]);
+                    if (url) {
+                        flushBuffer();
+                        output += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" data-action="stop-propagation">${renderInline(rawTag)}</a>`;
+                        cursor = endIdx + 1 + linkMatch[0].length;
+                        isLineStart = false;
+                        continue;
+                    }
+                }
+
+                flushBuffer();
+                output += window.escapeHtml(text.substring(cursor, endIdx + 1));
+                cursor = endIdx + 1;
+                isLineStart = false;
+                continue;
+            }
+
+            // 3. Raw URL Linkification
+            const remainder = text.substring(cursor);
+            const urlMatch = remainder.match(/^(https?:\/\/[^\s<]+)/);
+            if (urlMatch) {
+                const url = getSafeUrl(urlMatch[1]);
+                if (url) {
+                    flushBuffer();
+                    output += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" data-action="stop-propagation">${window.escapeHtml(urlMatch[1])}</a>`;
+                    cursor += urlMatch[1].length;
+                    isLineStart = false;
+                    continue;
+                }
+            }
+
+            // 4. Formatting & Newlines
+            if (char === '\n') {
+                flushBuffer();
+                if (inCheckboxRow) {
+                    output += '</span>';
+                    inCheckboxRow = false;
+                }
+                output += '<br>';
+                cursor++;
+                isLineStart = true;
+                continue;
+            }
+
+            textBuffer += char;
+            cursor++;
+            isLineStart = false;
         }
-    };
+
+        flushBuffer();
+        if (inCheckboxRow) output += '</span>';
+        return output;
+    }
 })();
