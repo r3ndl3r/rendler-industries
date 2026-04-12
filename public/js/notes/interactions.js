@@ -1583,6 +1583,15 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
             await saveNoteInline(id);
         }
 
+        // Failure Recovery: If saveNoteInline failed, STATE.isEditingNote was not cleared
+        // inside its success block. Clear it here unconditionally to prevent heartbeat suppression
+        // and mergeNoteState lockout from persisting after UI has exited edit mode.
+        if (STATE.isEditingNote == id) {
+            STATE.isEditingNote = null;
+            // Release the collaborative lock that saveNoteInline was unable to release on failure.
+            NoteAPI.unlock(id).catch(e => console.warn('[unlock] Post-save-failure unlock failed:', e));
+        }
+
         // UI Logic: Unified termination reset
         const txtArea = el.querySelector('textarea');
         if (txtArea) txtArea.readOnly = true;
