@@ -60,6 +60,28 @@ function renderUI() {
                 if (note.height && curH != note.height) existing.style.height = `${note.height}px`;
                 if (curZ != note.z_index) existing.style.zIndex = note.z_index || 1;
 
+                // --- Collaborative Identity Reconciliation (Color/Accent) ---
+                const colorInput = existing.querySelector('.inline-color-input');
+                const rawColor = typeof note.color === 'string' ? note.color : '';
+                const safeColor = /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : '#d4b896';
+
+                if (colorInput) {
+                    const normalize = window.normalizeColorHex || (c => c);
+                    const normalized = normalize(safeColor);
+
+                    // Reconcile CSS variables unconditionally to reflect remote changes
+                    existing.style.setProperty('--note-accent', normalized);
+
+                    // Skip input value reconciliation if the user is currently interacting with the picker
+                    const isEditingThisPicker = 
+                        document.activeElement === colorInput || 
+                        colorInput.matches(':focus');
+
+                    if (!isEditingThisPicker && colorInput.value !== safeColor) {
+                        colorInput.value = safeColor;
+                    }
+                }
+
                 if (curD !== isLocked) {
                     existing.classList.toggle('is-externally-locked', isLocked);
                     let overlay = existing.querySelector('.note-lock-overlay');

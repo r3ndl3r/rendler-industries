@@ -211,7 +211,8 @@ sub api_save_geometry {
         z_index             => int($c->param('z_index') // 1),
         is_collapsed        => int($c->param('is_collapsed') // 0),
         is_options_expanded => int($c->param('is_options_expanded') // 0),
-        layer_id            => int($c->param('layer_id') // 1)
+        layer_id            => int($c->param('layer_id') // 1),
+        color               => $c->param('color')
     };
 
     # Resolve canvas context for lock check BEFORE write

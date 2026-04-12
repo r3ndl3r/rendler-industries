@@ -338,7 +338,7 @@ sub DB::save_note_geometry {
     return -1 unless defined $p->{session_id} && length $p->{session_id};
 
     my $sql = "UPDATE notes SET x = ?, y = ?, width = ?, height = ?, z_index = ?, 
-               is_collapsed = ?, is_options_expanded = ?, layer_id = ? 
+               is_collapsed = ?, is_options_expanded = ?, layer_id = ?, color = ? 
                WHERE id = ?
                AND (
                    locked_by_session_id IS NULL 
@@ -350,7 +350,7 @@ sub DB::save_note_geometry {
     $sth->execute(
         $p->{x}, $p->{y}, $p->{width}, $p->{height}, $p->{z_index},
         $p->{is_collapsed} // 0, $p->{is_options_expanded} // 0,
-        $p->{layer_id} // 1, $id, $p->{session_id}
+        $p->{layer_id} // 1, $p->{color}, $id, $p->{session_id}
     );
 
     # Logic: If zero rows were updated, we verify eligibility to differentiate

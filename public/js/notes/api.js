@@ -174,7 +174,8 @@ window.NoteAPI = {
  * Positional Sync Orchestration: Prevents server saturation during rapid coordinate 
  * adjustments by collapsing multiple micro-moves into a single "Final State" save.
  */
-const POSITION_SYNC_TIMERS = new Map();
+const POSITION_SYNC_TIMERS   = new Map();
+const POSITION_SYNC_PROMISES = new Map(); // Global registry for debounced settlement contexts
 
 /**
  * Note Deletion Bridge (Soft-Delete)
@@ -191,11 +192,13 @@ function deleteNote(id) {
         confirmIcon: '🗑️',
         hideCancel: true,
         onConfirm: async () => {
+            const sid = String(id);
             // Atomic Cleanup: Flush any pending positional syncs before deletion
-            if (POSITION_SYNC_TIMERS.has(id)) {
-                clearTimeout(POSITION_SYNC_TIMERS.get(id));
-                POSITION_SYNC_TIMERS.delete(id);
-                if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
+            if (POSITION_SYNC_TIMERS.has(sid)) {
+                clearTimeout(POSITION_SYNC_TIMERS.get(sid));
+                POSITION_SYNC_TIMERS.delete(sid);
+                POSITION_SYNC_PROMISES.delete(sid);
+                if (typeof window.removeActiveSync === 'function') window.removeActiveSync(sid);
             }
 
             const res = await NoteAPI.post('/notes/api/delete', { id: id, canvas_id: STATE.canvas_id });
@@ -214,71 +217,109 @@ function deleteNote(id) {
 }
 
 /**
- * Synchronizes position data to the backend.
+ * Atomic Synchronization: Persists note state to the backend.
+ * Handles both immediate and debounced (moving/resizing) updates.
+ * @param {number|string} id - The note ID.
+ * @param {string} type - 'normal' (standard) or 'silent' (background sync).
+ * @param {number} debounceMs - Delay in milliseconds before firing the API call.
+ * @returns {Promise<Object>} - The backend response.
  */
 async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
     const el = document.getElementById(`note-${id}`);
     const note = STATE.notes.find(n => n.id == id);
-    if (!el || !note) return;
+    if (!el || !note) return Promise.resolve({ success: 0, error: 'Note not found' });
+
+    const sid = String(id); // Standardize ID to string for Map key consistency
 
     // --- Debounce Strategy ---
     if (debounceMs > 0) {
-        // Atomic Lock Acquisition: Ensure the note is protected while the user is still 'jittering'
-        if (!POSITION_SYNC_TIMERS.has(id)) {
-            if (typeof window.addActiveSync === 'function') window.addActiveSync(id);
+        // Lifecycle Tracking: If no promise is pending for this ID, initialize a new settlement context.
+        // This allows multiple 'jitter' calls to wait for the same eventual result.
+        if (!POSITION_SYNC_PROMISES.has(sid)) {
+            let resolve, reject;
+            const promise = new Promise((res, rej) => {
+                resolve = res;
+                reject = rej;
+            });
+            POSITION_SYNC_PROMISES.set(sid, { promise, resolve, reject });
         }
 
-        if (POSITION_SYNC_TIMERS.has(id)) {
-            clearTimeout(POSITION_SYNC_TIMERS.get(id));
+        // Atomic Lock Acquisition: Ensure the note is protected while the user is still 'jittering'
+        if (!POSITION_SYNC_TIMERS.has(sid)) {
+            if (typeof window.addActiveSync === 'function') window.addActiveSync(sid);
+        }
+
+        if (POSITION_SYNC_TIMERS.has(sid)) {
+            clearTimeout(POSITION_SYNC_TIMERS.get(sid));
         }
 
         const timer = setTimeout(async () => {
-            // Atomic Registry Release: Clear state immediately before flight to allow independent 
-            // protection for subsequent interactions during the API cycle.
-            POSITION_SYNC_TIMERS.delete(id);
+            const context = POSITION_SYNC_PROMISES.get(sid);
+            if (context) {
+                POSITION_SYNC_PROMISES.delete(sid);
+                POSITION_SYNC_TIMERS.delete(sid);
 
-            // Abort if the note was deleted while the debounce timer was pending
-            if (!STATE.notes.find(n => n.id == id)) {
-                if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
-                return;
-            }
-
-            // Re-capture fresh DOM coordinates at the moment the timer fires
-            const latestParams = {
-                id: id,
-                canvas_id: STATE.canvas_id,
-                x: parseInt(el.style.left),
-                y: parseInt(el.style.top),
-                width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
-                height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
-                z_index: el.style.zIndex,
-                layer_id: note.layer_id || 1,
-                is_collapsed: note.is_collapsed
-            };
-
-            try {
-                const res = await NoteAPI.post('/notes/api/geometry', latestParams);
-                if (res && res.success) {
-                    if (res.notes && typeof window.mergeNoteState === 'function') {
-                        window.mergeNoteState(res.notes);
-                    } else if (res.notes) {
-                        STATE.notes = res.notes;
-                    }
-                    STATE.last_mutation = res.last_mutation;
+                // Abort if the note was deleted while the debounce timer was pending
+                if (!STATE.notes.find(n => n.id == id)) {
+                    if (typeof window.removeActiveSync === 'function') window.removeActiveSync(sid);
+                    context.resolve({ success: 0, error: 'Note deleted' });
+                    return;
                 }
-            } finally {
-                if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
+
+                // Re-capture fresh DOM coordinates at the moment the timer fires
+                const latestColorInput = el.querySelector('.inline-color-input');
+                const latestParams = {
+                    id: id,
+                    canvas_id: STATE.canvas_id,
+                    x: parseInt(el.style.left),
+                    y: parseInt(el.style.top),
+                    width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
+                    height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
+                    z_index: el.style.zIndex,
+                    layer_id: note.layer_id || 1,
+                    is_collapsed: note.is_collapsed,
+                    color: latestColorInput ? latestColorInput.value : note.color
+                };
+
+                try {
+                    const res = await NoteAPI.post('/notes/api/geometry', latestParams);
+                    if (res && res.success) {
+                        if (res.notes && typeof window.mergeNoteState === 'function') {
+                            window.mergeNoteState(res.notes);
+                        } else if (res.notes) {
+                            STATE.notes = res.notes;
+                        }
+                        STATE.last_mutation = res.last_mutation;
+                        context.resolve(res);
+                    } else {
+                        context.reject(new Error(res?.error || 'Save failed'));
+                    }
+                } catch (e) {
+                    console.error(`[syncNotePosition] Debounced save failed for note ${id}:`, e);
+                    context.reject(e);
+                } finally {
+                    if (typeof window.removeActiveSync === 'function') window.removeActiveSync(sid);
+                }
             }
         }, debounceMs);
 
-        POSITION_SYNC_TIMERS.set(id, timer);
-        return;
+        POSITION_SYNC_TIMERS.set(sid, timer);
+        return POSITION_SYNC_PROMISES.get(sid).promise;
     }
 
     // --- Immediate Fire Path (Legacy & Administrative Syncs) ---
-    if (type !== 'silent') el.classList.add('pending');
-    if (typeof window.addActiveSync === 'function') window.addActiveSync(id);
+    // Cleanup: If there is a pending debounced timer/promise, clear it now to prevent race conditions.
+    if (POSITION_SYNC_TIMERS.has(sid)) {
+        clearTimeout(POSITION_SYNC_TIMERS.get(sid));
+        POSITION_SYNC_TIMERS.delete(sid);
+    }
+    const pendingContext = POSITION_SYNC_PROMISES.get(sid);
+    POSITION_SYNC_PROMISES.delete(sid);
 
+    if (type !== 'silent') el.classList.add('pending');
+    if (typeof window.addActiveSync === 'function') window.addActiveSync(sid);
+
+    const colorInput = el.querySelector('.inline-color-input');
     const params = {
         id: id,
         canvas_id: STATE.canvas_id,
@@ -288,7 +329,8 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
         height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
         z_index: el.style.zIndex,
         layer_id: note.layer_id || 1,
-        is_collapsed: note.is_collapsed
+        is_collapsed: note.is_collapsed,
+        color: colorInput ? colorInput.value : note.color
     };
 
     try {
@@ -300,10 +342,20 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
                 STATE.notes = res.notes;
             }
             STATE.last_mutation = res.last_mutation;
+            if (pendingContext) pendingContext.resolve(res);
+            return res;
+        } else {
+            const error = new Error(res?.error || 'Save failed');
+            if (pendingContext) pendingContext.reject(error);
+            throw error;
         }
+    } catch (e) {
+        console.error(`[syncNotePosition] Immediate save failed for note ${id}:`, e);
+        if (pendingContext) pendingContext.reject(e);
+        throw e;
     } finally {
         if (type !== 'silent') el.classList.remove('pending');
-        if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
+        if (typeof window.removeActiveSync === 'function') window.removeActiveSync(sid);
     }
 }
 
