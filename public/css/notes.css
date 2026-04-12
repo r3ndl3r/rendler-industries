@@ -3826,36 +3826,6 @@ input:checked + .switch-sm .slider:before {
     font-size: 0.9em;
 }
 
-/* Explicit Inline Upload Button (CLIP) Styling */
-/* Inline Upload Button: hidden by default, revealed only in edit mode */
-.note-inline-upload-btn {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: rgba(139, 92, 246, 0.15);
-    border: 1px dashed rgba(139, 92, 246, 0.4);
-    border-radius: 10px; /* Match header button radius */
-    color: #a78bfa;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s ease;
-    padding: 0;
-}
-
-.sticky-note.is-editing .note-inline-upload-btn {
-    display: flex;
-}
-
-/* When note already has attachments (not text-only), the inline btn is still shown 
-   in the header as a shortcut to add MORE items. */
-
-.note-inline-upload-btn:hover {
-    background: rgba(139, 92, 246, 0.3);
-    border-color: #a78bfa;
-    transform: scale(1.1);
-}
 
 /* Modal Implementation for Image Viewer */
 .image-viewer-content {
