@@ -834,11 +834,14 @@ sub DB::update_canvas_order {
     my $sth_share = $self->{dbh}->prepare($sql_share);
 
     foreach my $item (@$order_map) {
+        next unless ref $item eq 'HASH';
+        next unless exists $item->{id} && exists $item->{order};
+
         # Try updating as owner
         my $rows = $sth_owner->execute($item->{order}, $item->{id}, $user_id);
         
         # If no rows affected, they aren't owner; try share record
-        if ($rows eq '0E0') {
+        if ($rows && $rows eq '0E0') {
             $sth_share->execute($item->{order}, $item->{id}, $user_id);
         }
     }
