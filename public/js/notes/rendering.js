@@ -161,7 +161,7 @@ function renderUI() {
                 canvas.appendChild(noteEl);
 
                 if (STATE.editMode && canEdit) {
-                    initResizable(noteEl, note);
+                    // Resizing is now handled via centralized delegation in interactions.js
                 }
             }
         } catch (e) {
