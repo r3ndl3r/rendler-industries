@@ -2181,3 +2181,53 @@ window.setupLevelManagement = setupLevelManagement;
 window.showLevelRenameModal = showLevelRenameModal;
 window.showLevelMoveModal   = showLevelMoveModal;
 window.setupSecurityInteractions = setupSecurityInteractions;
+
+/**
+ * Hover Intent: Armed Action Rail
+ * Prevents accidental action triggers on tiny notes by requiring a 500ms
+ * dwell time before action buttons become interactive. This ensures that
+ * quick mouse-overs for drag-pickup remain safe and clear.
+ */
+const ARMED_TIMERS = new Map();
+
+window.setupArmedActions = function setupArmedActions() {
+    const wrapper = STATE.wrapperEl;
+    if (!wrapper || wrapper.dataset.armedActionsActive) return;
+
+    // Use delegation on the wrapper to catch all current and future note interactions
+    wrapper.addEventListener('mouseover', (e) => {
+        const header = e.target.closest('.note-header');
+        if (!header) return;
+
+        // Atomic Check: Skip if already armed OR if a timer is already counting for this specific header
+        if (header.classList.contains('actions-armed') || ARMED_TIMERS.has(header)) return;
+
+        const timer = setTimeout(() => {
+            if (header.matches(':hover')) {
+                header.classList.add('actions-armed');
+            }
+            ARMED_TIMERS.delete(header);
+        }, 500);
+
+        ARMED_TIMERS.set(header, timer);
+    });
+
+    wrapper.addEventListener('mouseout', (e) => {
+        const header = e.target.closest('.note-header');
+        if (!header) return;
+
+        // Hierarchy Guard: Only teardown if we are actually exiting the header boundary, 
+        // not just moving between children (buttons/input).
+        const related = e.relatedTarget;
+        if (related && header.contains(related)) return;
+
+        // Immediate Teardown: Clear pending timers and remove armed state
+        if (ARMED_TIMERS.has(header)) {
+            clearTimeout(ARMED_TIMERS.get(header));
+            ARMED_TIMERS.delete(header);
+        }
+        header.classList.remove('actions-armed');
+    });
+
+    wrapper.dataset.armedActionsActive = 'true';
+};
