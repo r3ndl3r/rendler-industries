@@ -1309,7 +1309,7 @@ function handleCanvasDoubleClick(e) {
     const y = (e.clientY - rect.top  + wrapper.scrollTop)  / STATE.scale;
 
     if (typeof showCreateNoteModal === 'function') {
-        showCreateNoteModal('text', { x, y });
+        showCreateNoteModal('text', null, null, null, null, { x, y });
     }
 }
 
@@ -1367,7 +1367,7 @@ async function saveNoteInline(id, stayInEditMode = false) {
         const res = await NoteAPI.post('/notes/api/save', params);
         if (res && res.success) {
             // State: Finalize UI before record merge
-            if (!stayInEditMode && STATE.isEditingNote === id) {
+            if (!stayInEditMode && String(STATE.isEditingNote) === String(id)) {
                 // Collaborative Locking: Clear state FIRST to block teardown races
                 STATE.isEditingNote = null;
                 
