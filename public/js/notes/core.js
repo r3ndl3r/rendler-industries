@@ -800,9 +800,10 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                 pill.textContent = canvasObj.name;
             }
 
-            // URL Parameter Lifecycle: Standardize on a clean, board-agnostic URL.
+            // Standardize the URL to reflect current context. Defer navigation cleanup if nid is present.
             const url = new URL(window.location.href);
-            if (url.searchParams.has('canvas_id') || url.searchParams.has('note_id') || url.searchParams.has('layer_id')) {
+            // Defer cleanup if nid is present; handled after centering in completion block below.
+            if (!nid && (url.searchParams.has('canvas_id') || url.searchParams.has('note_id') || url.searchParams.has('layer_id'))) {
                 url.searchParams.delete('canvas_id');
                 url.searchParams.delete('note_id');
                 url.searchParams.delete('layer_id');
@@ -829,39 +830,40 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             
             let useLocal = localVp && (localVp.ts > serverTs);
 
-            // This prevents the 2s heartbeat from "jumping" the camera back to a stale position while the user is panning.
-            // MODIFICATION: Check viewportDirty flag to ensure local mutations aren't overwritten by stale server state.
-            const shouldRestoreViewport = (initial || nid || isContextChange) && !STATE.viewportDirty;
+            // Prevent heartbeats from jumping the viewport to stale coordinates while local mutations are pending.
+            const shouldRestoreViewport = (initial || isContextChange) && !STATE.viewportDirty;
 
             if (shouldRestoreViewport && (useLocal || data.viewport)) {
                 const vp = useLocal ? localVp : data.viewport;
                 
+                // 1. Perspective Sync: Always restore scale and layer identity
                 STATE.scale = parseFloat(vp.scale) || 1.0;
-                
                 if (typeof applyScale === 'function') applyScale();
 
                 if (vp.layer_id) {
                     STATE.activeLayerId = parseInt(vp.layer_id);
-                    if (typeof updateLevelDisplay === 'function') updateLevelDisplay();
-                } else {
-                    if (typeof updateLevelDisplay === 'function') updateLevelDisplay();
                 }
+                if (typeof updateLevelDisplay === 'function') updateLevelDisplay();
 
-                // Force a layout reflow for accurate scrollWidth/Height
-                const wrapper = STATE.wrapperEl;
-                if (wrapper) {
-                    const centerX = parseFloat(vp.scroll_x) || (STATE.canvasSize / 2);
-                    const centerY = parseFloat(vp.scroll_y) || (STATE.canvasSize / 2);
+                // 2. Navigation Sync: Skip coordinate restoration if focusing a specific note_id.
+                // Centering (triggered below) takes priority over the general session viewport.
+                if (!nid) {
+                    const wrapper = STATE.wrapperEl;
+                    if (wrapper) {
+                        const centerX = parseFloat(vp.scroll_x) || (STATE.canvasSize / 2);
+                        const centerY = parseFloat(vp.scroll_y) || (STATE.canvasSize / 2);
 
-                    wrapper.scrollTo({
-                        left: (centerX * STATE.scale) - (wrapper.clientWidth  / 2),
-                        top: (centerY * STATE.scale) - (wrapper.clientHeight / 2),
-                        behavior: 'auto'
-                    });
+                        wrapper.scrollTo({
+                            left: (centerX * STATE.scale) - (wrapper.clientWidth  / 2),
+                            top: (centerY * STATE.scale) - (wrapper.clientHeight / 2),
+                            behavior: 'auto'
+                        });
+                    }
+
+                    setTimeout(() => { STATE.isInitializing = false; }, 200);
+                } else if (typeof centerOnNote !== 'function') {
+                    setTimeout(() => { STATE.isInitializing = false; }, 200);
                 }
-                
-                // Release the guard after stabilization
-                setTimeout(() => { STATE.isInitializing = false; }, 200);
             } else {
                 if (initial && !nid) {
                     if (typeof centerView === 'function') centerView();
@@ -887,15 +889,25 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                         if (typeof centerOnNote === 'function') {
                             centerOnNote(nid).finally(() => {
                                 STATE.isInitializing = false;
-                                //Intent Clearance: Prevent subsequent heartbeats from repetitive snapping
+                                // Return to a clean, board-agnostic URL after centering navigation completes.
                                 const url = new URL(window.location.href);
-                                if (url.searchParams.has('note_id')) {
+                                if (url.searchParams.has('canvas_id') || url.searchParams.has('note_id') || url.searchParams.has('layer_id')) {
+                                    url.searchParams.delete('canvas_id');
                                     url.searchParams.delete('note_id');
+                                    url.searchParams.delete('layer_id');
                                     window.history.replaceState({ canvas_id: STATE.canvas_id }, '', url);
                                 }
                             });
                         } else {
                             STATE.isInitializing = false;
+                            // Clean temporal intent from URL after completion or fallback.
+                            const url = new URL(window.location.href);
+                            if (url.searchParams.has('canvas_id') || url.searchParams.has('note_id') || url.searchParams.has('layer_id')) {
+                                url.searchParams.delete('canvas_id');
+                                url.searchParams.delete('note_id');
+                                url.searchParams.delete('layer_id');
+                                window.history.replaceState({ canvas_id: STATE.canvas_id }, '', url);
+                            }
                         }
                     }, 300);
                 });
