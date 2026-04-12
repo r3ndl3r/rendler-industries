@@ -909,23 +909,25 @@ async function processSyncQueue() {
     
     const failedItems = [];
     
-    for (const item of items) {
-        // Migration: NoteAPI handles CSRF and error management internally
-        const res = await NoteAPI.post('/notes/api/viewport', item.params, { keepalive: true });
-        if (!res) failedItems.push(item);
-    }
-    
-    if (failedItems.length > 0) {
-        STATE.syncQueue = [...failedItems, ...STATE.syncQueue];
-    }
-    
-    STATE.isSyncing = false;
+    try {
+        for (const item of items) {
+            // Migration: NoteAPI handles CSRF and error management internally
+            const res = await NoteAPI.post('/notes/api/viewport', item.params, { keepalive: true });
+            if (!res) failedItems.push(item);
+        }
+        
+        if (failedItems.length > 0) {
+            STATE.syncQueue = [...failedItems, ...STATE.syncQueue];
+        }
+    } finally {
+        STATE.isSyncing = false;
 
-    // Drain any context switch that was blocked by our isSyncing lock
-    if (STATE.pendingContext) {
-        const ctx = STATE.pendingContext;
-        STATE.pendingContext = null;
-        loadState(ctx.initial, ctx.canvas_id, ctx.targetNoteId, ctx.layer_id);
+        // Drain any context switch that was blocked by our isSyncing lock
+        if (STATE.pendingContext) {
+            const ctx = STATE.pendingContext;
+            STATE.pendingContext = null;
+            loadState(ctx.initial, ctx.canvas_id, ctx.targetNoteId, ctx.layer_id);
+        }
     }
 }
 
