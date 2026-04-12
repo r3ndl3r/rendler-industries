@@ -1369,6 +1369,7 @@ async function saveNoteInline(id, stayInEditMode = false) {
             // State: Finalize UI before record merge
             if (!stayInEditMode && String(STATE.isEditingNote) === String(id)) {
                 // Collaborative Locking: Clear state FIRST to block teardown races
+                delete el.dataset.lockHeld;
                 STATE.isEditingNote = null;
                 
                 el.classList.remove('is-editing');
@@ -1566,8 +1567,8 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
     // Re-check class synchronously after the await to prevent double-entry
     // from concurrent calls that both passed the initial guard.
     if (!el.classList.contains('is-editing')) {
-        // Guard: Prevent a second concurrent invocation from proceeding while awaiting the lock
-        if (el.dataset.lockPending === 'true') return;
+        // Guard: Prevent any concurrent invocation from proceeding while lock is in-flight or held
+        if (el.dataset.lockPending === 'true' || el.dataset.lockHeld === 'true') return;
         el.dataset.lockPending = 'true';
         
         let lockRes;
@@ -1585,7 +1586,11 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
             return;
         }
 
+        el.dataset.lockHeld = 'true';
         lockAcquired = true;
+    } else {
+        // Only allow toggle-off if a lock is actually held by this session
+        if (!el.dataset.lockHeld) return;
     }
 
     // Visual geometry restoration for accurate dimension calculation.
@@ -1657,6 +1662,7 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
         }
     } else {
         // Mode Termination: Atomic Persistence
+        delete el.dataset.lockHeld;
         if (isAbort) {
             // UI State: Restore content from local state
             const txtArea = el.querySelector('textarea');
