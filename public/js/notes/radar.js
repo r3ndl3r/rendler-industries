@@ -166,8 +166,10 @@ function processRadarNavigation(e, mode = 'smooth') {
         const logicalDeltaX = (deltaMX * sensitivity) / miniScale;
         const logicalDeltaY = (deltaMY * sensitivity) / miniScale;
 
-        wrapper.scrollLeft += logicalDeltaX * STATE.scale;
-        wrapper.scrollTop  += logicalDeltaY * STATE.scale;
+        const maxScrollX = STATE.canvasSize * STATE.scale - wrapper.clientWidth;
+        const maxScrollY = STATE.canvasSize * STATE.scale - wrapper.clientHeight;
+        wrapper.scrollLeft = Math.max(0, Math.min(wrapper.scrollLeft + logicalDeltaX * STATE.scale, maxScrollX));
+        wrapper.scrollTop  = Math.max(0, Math.min(wrapper.scrollTop  + logicalDeltaY * STATE.scale, maxScrollY));
 
         STATE.radarScrubLast = { x: e.clientX, y: e.clientY };
     } else {
