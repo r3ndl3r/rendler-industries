@@ -1561,9 +1561,28 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
     let lockAcquired = false;
 
     // Collaborative Locking: Prevention & Acquisition
+    // Re-check class synchronously after the await to prevent double-entry
+    // from concurrent calls that both passed the initial guard.
     if (!el.classList.contains('is-editing')) {
-        const lockRes = await NoteAPI.lock(id);
+        // Guard: Prevent a second concurrent invocation from proceeding while awaiting the lock
+        if (el.dataset.lockPending === 'true') return;
+        el.dataset.lockPending = 'true';
+        
+        let lockRes;
+        try {
+            lockRes = await NoteAPI.lock(id);
+        } finally {
+            delete el.dataset.lockPending;
+        }
+
         if (!lockRes || !lockRes.success) return;
+
+        // Re-check: another concurrent call may have entered edit mode while we awaited
+        if (el.classList.contains('is-editing')) {
+            await NoteAPI.unlock(id);
+            return;
+        }
+
         lockAcquired = true;
     }
 
