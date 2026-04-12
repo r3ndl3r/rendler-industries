@@ -992,7 +992,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                 requestAnimationFrame(() => {
                     setTimeout(() => {
                         if (typeof centerOnNote === 'function') {
-                            centerOnNote(nid).finally(() => {
+                            Promise.resolve(centerOnNote(nid)).finally(() => {
                                 STATE.isInitializing = false;
                                 // Return to a clean, board-agnostic URL after centering navigation completes.
                                 const url = new URL(window.location.href);
@@ -1060,8 +1060,8 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         // Global Safety Reset: Ensure interface is unlocked if not in a designated stabilization phase (centering callback owns it)
         // Only defer the isInitializing reset if the centering callback will own it.
         // On any failure path the centering callback never runs; reset unconditionally.
-        const successPathWithCentering = nid && data && data.success;
-        if (!successPathWithCentering) {
+        const centeringWillRun = nid && data && data.success && typeof centerOnNote === 'function';
+        if (!centeringWillRun) {
             STATE.isInitializing = false;
         }
 
