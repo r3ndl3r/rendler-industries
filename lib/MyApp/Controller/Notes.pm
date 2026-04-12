@@ -1116,7 +1116,7 @@ sub _check_rate_limit {
         # Prevents "Not a HASH reference" crash in the cooldown logic below.
         $rate_data = { count => $rate_data, since => time };
         $c->session->{'unlock_fails_' . $canvas_id} = $rate_data;
-        return undef if $rate_data->{count} < 10;
+        return undef if $rate_data->{count} < 3;
     }
 
     # Cooldown window (15 minutes)
@@ -1125,7 +1125,7 @@ sub _check_rate_limit {
         return undef;
     }
 
-    if ($rate_data->{count} >= 10) {
+    if ($rate_data->{count} >= 3) {
         my $wait = 900 - (time - $rate_data->{since});
         $c->res->headers->header('Retry-After' => $wait);
         return "Too many failed attempts. Try again in " . int($wait / 60) . " minutes.";
