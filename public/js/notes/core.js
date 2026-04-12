@@ -1149,14 +1149,11 @@ window.setupHeartbeat = function setupHeartbeat() {
  * across full-board re-renders or dynamic context switches.
  * @returns {void}
  */
-function clearDOMCache() {
-    STATE.wrapperEl = null;
-    STATE.canvasEl  = null;
-}
+
 
 // Global Exposure Block
 window.loadState = loadState;
 window.initNotes = initNotes;
 window.mergeNoteState = mergeNoteState;
-window.clearDOMCache = clearDOMCache;
+
 window.STATE = STATE;
