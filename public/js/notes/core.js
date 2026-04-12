@@ -855,12 +855,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         if (STATE.note_map_hash) query += (query ? '&' : '?') + `note_map_hash=${encodeURIComponent(STATE.note_map_hash)}`;
 
         const data = await NoteAPI.get(`/notes/api/state${query}`);
-        if (!data) {
-            // Ensure isInitializing is cleared even on aborted/null responses
-            // to prevent the board from locking up when a deep-link load fails.
-            STATE.isInitializing = false;
-            return;
-        }
+        if (!data) return; // Aborted or session expired
         
         // Logic Gate PRE-FLIGHT: Update UI only if not aborted (tid/layer already resolved above)
 
@@ -1063,7 +1058,10 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         }
 
         // Global Safety Reset: Ensure interface is unlocked if not in a designated stabilization phase (centering callback owns it)
-        if (!nid) {
+        // Only defer the isInitializing reset if the centering callback will own it.
+        // On any failure path the centering callback never runs; reset unconditionally.
+        const successPathWithCentering = nid && data && data.success;
+        if (!successPathWithCentering) {
             STATE.isInitializing = false;
         }
 
