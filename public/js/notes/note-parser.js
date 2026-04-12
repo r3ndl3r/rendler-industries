@@ -9,9 +9,12 @@
  */
 const NoteParser = (() => {
     // 1. Dependency Assertion: Fail fast if the global sanitizer is missing.
+    // This is critical for preventing XSS in rendering paths.
     if (typeof window.escapeHtml !== 'function') {
         throw new Error('NoteParser: window.escapeHtml is required but not defined.');
     }
+
+    const EMOJI_PREFIX_RE = /^([\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u26FF]|[\u2700-\u27BF]|\u231A|\u231B|\u23E9-\u23EC|\u23F0|\u23F3|\u25FD|\u25FE|\u2614|\u2615|\u2648-\u2653|\u267F|\u2693|\u26A1|\u26AA|\u26AB|\u26BD|\u26BE|\u26C4|\u26C5|\u26D4|\u26E9|\u26EA|\u2702|\u2705|\u2708-\u270C|\u270F|\u2712|\u2714|\u2716|\u2728|\u2733|\u2734|\u2744|\u2747|\u274C|\u274E|\u2753-\u2755|\u2757|\u2763|\u2764|\u2795-\u2797|\u27A1|\u27B0|\u27BF|\u2934|\u2935|\u2B05-\u2B07|\u2B1B|\u2B1C|\u2B50|\u2B55|\u3030|\u303D|\u3297|\u3299])\s*(.*)/;
 
     const CONFIG = {
         protocols: ['http:', 'https:', 'mailto:', 'tel:'],
@@ -199,7 +202,7 @@ const NoteParser = (() => {
         if (!url) return window.escapeHtml(line);
 
         // 1. Emoji Extraction Architecture: Isolate the leading symbol from the label
-        const emojiMatch = labelPart.match(/^([\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u26FF]|[\u2700-\u27BF]|\u231A|\u231B|\u23E9-\u23EC|\u23F0|\u23F3|\u25FD|\u25FE|\u2614|\u2615|\u2648-\u2653|\u267F|\u2693|\u26A1|\u26AA|\u26AB|\u26BD|\u26BE|\u26C4|\u26C5|\u26D4|\u26E9|\u26EA|\u2702|\u2705|\u2708-\u270C|\u270F|\u2712|\u2714|\u2716|\u2728|\u2733|\u2734|\u2744|\u2747|\u274C|\u274E|\u2753-\u2755|\u2757|\u2763|\u2764|\u2795-\u2797|\u27A1|\u27B0|\u27BF|\u2934|\u2935|\u2B05-\u2B07|\u2B1B|\u2B1C|\u2B50|\u2B55|\u3030|\u303D|\u3297|\u3299])\s*(.*)/);
+        const emojiMatch = labelPart.match(EMOJI_PREFIX_RE);
 
         const fallbackEmoji = emojiMatch ? emojiMatch[1] : '🔗';
         let labelText       = emojiMatch ? emojiMatch[2] : labelPart;
@@ -297,6 +300,18 @@ const NoteParser = (() => {
     };
 
     /**
+     * Extracts the visible display label from a raw note title.
+     * Removes internal category prefixes, pipe delimiters, and leading emojis.
+     */
+    const getDisplayTitle = (title) => {
+        if (!title) return '';
+        const pipeIdx = title.indexOf('|');
+        const labelPart = pipeIdx !== -1 ? title.substring(0, pipeIdx).trim() : title.trim();
+        const emojiMatch = labelPart.match(EMOJI_PREFIX_RE);
+        return emojiMatch ? emojiMatch[2] : labelPart;
+    };
+
+    /**
      * High-Fidelity Category Header:
      * Transforms a note title (e.g., "Label | IconURL") into a glassmorphism header segment.
      */
@@ -309,7 +324,7 @@ const NoteParser = (() => {
         const iconPart  = pipeIdx !== -1 ? title.substring(pipeIdx + 1).trim() : null;
 
         // Standard Emoji Extraction (Emoji is the first symbol or defaults to folder)
-        const emojiMatch = labelPart.match(/^([\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u26FF]|[\u2700-\u27BF]|\u231A|\u231B|\u23E9-\u23EC|\u23F0|\u23F3|\u25FD|\u25FE|\u2614|\u2615|\u2648-\u2653|\u267F|\u2693|\u26A1|\u26AA|\u26AB|\u26BD|\u26BE|\u26C4|\u26C5|\u26D4|\u26E9|\u26EA|\u2702|\u2705|\u2708-\u270C|\u270F|\u2712|\u2714|\u2716|\u2728|\u2733|\u2734|\u2744|\u2747|\u274C|\u274E|\u2753-\u2755|\u2757|\u2763|\u2764|\u2795-\u2797|\u27A1|\u27B0|\u27BF|\u2934|\u2935|\u2B05-\u2B07|\u2B1B|\u2B1C|\u2B50|\u2B55|\u3030|\u303D|\u3297|\u3299])\s*(.*)/);
+        const emojiMatch = labelPart.match(EMOJI_PREFIX_RE);
         const fallbackEmoji = emojiMatch ? emojiMatch[1] : '📁';
         const labelText     = emojiMatch ? emojiMatch[2] : labelPart;
 
@@ -374,6 +389,7 @@ const NoteParser = (() => {
     return {
         isDashboard: isDashboardFormat,
         renderHeader: renderCategoryHeader,
+        getDisplayTitle: getDisplayTitle,
         parse: (text, noteId) => {
             if (!text) return '';
             
