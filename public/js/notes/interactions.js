@@ -1446,6 +1446,39 @@ async function saveNoteInline(id, stayInEditMode = false) {
 }
 
 /**
+ * Real-time Accent Color Synchronization.
+ * Updates the note's visual identity instantly and persists the change to the backend.
+ * Includes an optimistic UI rollback path in case of synchronization failure.
+ * @param {HTMLInputElement} input - The color input element.
+ * @param {number|string} id - The note ID.
+ */
+function updateNoteAccent(input, id) {
+    const el   = document.getElementById(`note-${id}`);
+    const note = STATE.notes.find(n => n.id == id);
+    if (!el || !note) return;
+
+    const color = input.value;
+    const prevColor = note.color;
+    const normalize = window.normalizeColorHex || (c => c);
+    const accentColor = normalize(color);
+
+    el.style.setProperty('--note-accent', accentColor);
+    note.color = color;
+    if (STATE.note_map[id]) STATE.note_map[id].color = color;
+
+    if (typeof window.syncNotePosition === 'function') {
+        Promise.resolve(window.syncNotePosition(id, 'silent', 1000)).catch(() => {
+            const rollbackColor = typeof prevColor === 'string' ? prevColor : '#d4b896';
+            el.style.setProperty('--note-accent', normalize(rollbackColor));
+            note.color = rollbackColor;
+            if (STATE.note_map[id]) STATE.note_map[id].color = rollbackColor;
+            if (input && input.value !== rollbackColor) input.value = rollbackColor;
+        });
+    }
+}
+window.updateNoteAccent = updateNoteAccent;
+
+/**
  * Toggles the collapsed state of a note.
  * Optimistically updates the UI before syncing state to the backend.
  * @param {number|string} id - The note ID.
