@@ -148,8 +148,15 @@ function renderUI() {
                             ? (NoteParser.renderHeader(note.title) || window.escapeHtml(note.title || 'Untitled Note'))
                             : window.escapeHtml(note.title || 'Untitled Note');
 
-                        if (titleSlot.innerHTML !== newTitleHtml) {
+                        // Use a composite render-signature key to ensure stability during heartbeats 
+                        // while correctly detecting transitions between Plain and Dashboard modes.
+                        const titleValue = note.title || '';
+                        const renderMode = (isDashboard && typeof NoteParser !== 'undefined') ? 'dashboard' : 'plain';
+                        const titleKey   = `${renderMode}::${titleValue}`;
+
+                        if (titleSlot.dataset.renderedTitle !== titleKey) {
                             titleSlot.innerHTML = newTitleHtml;
+                            titleSlot.dataset.renderedTitle = titleKey;
                         }
                     }
 
@@ -283,7 +290,7 @@ function createNoteElement(note, canEdit = true) {
                    oninput="updateNoteAccent(this, ${note.id})" title="Change Note Color" ${canEdit ? '' : 'disabled'}>
             
             <div class="note-drag-handle-container" title="Click anywhere in the title bar to Pick and Place (Sticky Move)">
-                <div class="note-title-slot">
+                <div class="note-title-slot" data-rendered-title="${(isDashboard && typeof NoteParser !== 'undefined') ? 'dashboard' : 'plain'}::${window.escapeHtml(note.title || '')}">
                     ${titleHtml}
                 </div>
                 <input type="text" class="inline-title-input" value="${window.escapeHtml(note.title || '')}" 
