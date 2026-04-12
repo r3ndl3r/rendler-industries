@@ -486,7 +486,8 @@ async function handleGlobalClipPaste(e) {
                     reader.onload = (ev) => resolve({ 
                         index, 
                         type: 'image', 
-                        data: ev.target.result 
+                        data: ev.target.result,
+                        file: file
                     });
                     reader.readAsDataURL(file);
                 });
