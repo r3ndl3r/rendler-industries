@@ -1246,12 +1246,6 @@ window.setupHeartbeat = function setupHeartbeat() {
     STATE.heartbeatTimer = setTimeout(poll, 2000);
 }
 
-/**
- * Cache Invalidation: Nullifies DOM handles to prevent stale references 
- * across full-board re-renders or dynamic context switches.
- * @returns {void}
- */
-
 
 /**
  * Favicon Cascade Intelligence: Manages icon fallbacks for dashboard notes.
