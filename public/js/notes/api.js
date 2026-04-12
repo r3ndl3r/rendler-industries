@@ -253,11 +253,19 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
             clearTimeout(POSITION_SYNC_TIMERS.get(sid));
         }
 
+        const timerToken = {};
+        POSITION_SYNC_TIMERS._tokens = POSITION_SYNC_TIMERS._tokens || new Map();
+        POSITION_SYNC_TIMERS._tokens.set(sid, timerToken);
+
         const timer = setTimeout(async () => {
+            // Ownership check: bail if a newer timer has replaced us or an immediate sync ran.
+            if (POSITION_SYNC_TIMERS._tokens.get(sid) !== timerToken) return;
+
             const context = POSITION_SYNC_PROMISES.get(sid);
             if (context) {
                 POSITION_SYNC_PROMISES.delete(sid);
                 POSITION_SYNC_TIMERS.delete(sid);
+                POSITION_SYNC_TIMERS._tokens.delete(sid);
 
                 // Abort if the note was deleted while the debounce timer was pending
                 if (!STATE.notes.find(n => n.id == id)) {
