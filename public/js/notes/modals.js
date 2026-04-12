@@ -1084,16 +1084,35 @@ function renderShareList(id, shares = null) {
                 <div class="permission-toggle-group">
                     <span class="permission-label">Edit Access</span>
                     <label class="switch">
-                        <input type="checkbox" ${share.can_edit ? 'checked' : ''} 
-                        onchange="updateSharePermission(${id}, '${share.username}', this.checked ? 1 : 0)">
+                        <input type="checkbox" ${share.can_edit ? 'checked' : ''}
+                               data-canvas-id="${id}" data-username="${window.escapeHtml(share.username)}">
                         <span class="slider"></span>
                     </label>
                 </div>
-                <button class="btn-icon-delete" onclick="confirmRevoke(${id}, '${share.username}')" title="Revoke Access">
+                <button class="btn-icon-delete" data-canvas-id="${id}" data-username="${window.escapeHtml(share.username)}" title="Revoke Access">
                     🗑️
                 </button>
             </div>
         `;
+
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            checkbox.addEventListener('change', function() {
+                if (typeof updateSharePermission === 'function') {
+                    updateSharePermission(this.dataset.canvasId, this.dataset.username, this.checked ? 1 : 0);
+                }
+            });
+        }
+
+        const revokeBtn = item.querySelector('.btn-icon-delete');
+        if (revokeBtn) {
+            revokeBtn.addEventListener('click', function() {
+                if (typeof confirmRevoke === 'function') {
+                    confirmRevoke(this.dataset.canvasId, this.dataset.username);
+                }
+            });
+        }
+
         shareList.appendChild(item);
     });
 }
