@@ -694,6 +694,9 @@ async function initNotes() {
 
     // 5. Security Context: Attach privacy lock listeners
     if (typeof setupSecurityInteractions === 'function') setupSecurityInteractions();
+
+    // 6. Interaction Intent: Setup Hover-Intent Armed Action Rail
+    if (typeof setupArmedActions === 'function') setupArmedActions();
 }
 
 
