@@ -166,7 +166,8 @@
 .sticky-note textarea {
     scrollbar-width: thin;
     scrollbar-color: var(--note-accent) transparent;
-    overscroll-behavior: contain; /* Prevents scroll chaining to the board */
+    overscroll-behavior-y: contain; /* Prevents vertical scroll chaining to the board */
+    overscroll-behavior-x: auto;    /* Allows horizontal scroll chaining for board panning */
 }
 
 .cqs-item {
