@@ -855,7 +855,12 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         if (STATE.note_map_hash) query += (query ? '&' : '?') + `note_map_hash=${encodeURIComponent(STATE.note_map_hash)}`;
 
         const data = await NoteAPI.get(`/notes/api/state${query}`);
-        if (!data) return; // Aborted or session expired
+        if (!data) {
+            // Ensure isInitializing is cleared even on aborted/null responses
+            // to prevent the board from locking up when a deep-link load fails.
+            STATE.isInitializing = false;
+            return;
+        }
         
         // Logic Gate PRE-FLIGHT: Update UI only if not aborted (tid/layer already resolved above)
 
