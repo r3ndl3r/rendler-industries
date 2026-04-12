@@ -30,9 +30,13 @@ function drawRadarPings() {
     const vh_raw = wrapper.clientHeight || window.innerHeight;
     
     const logicalVW = Math.max(1000, vw_raw / STATE.scale);
-    
+    const logicalVH = Math.max(1000, vh_raw / STATE.scale);
+    // Use the larger of width/height so the radar window covers the full visible area
+    // on both landscape and portrait viewports.
+    const logicalViewMax = Math.max(logicalVW, logicalVH);
+
     // Calculate the logical window shown by the radar (capped at whole-world size)
-    const logicalWindow = Math.min(STATE.canvasSize, logicalVW * contextMultiplier); 
+    const logicalWindow = Math.min(STATE.canvasSize, logicalViewMax * contextMultiplier); 
     const minimapScale  = canvas.width / logicalWindow;
 
     // Logical Center of the main camera
