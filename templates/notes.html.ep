@@ -8,6 +8,7 @@
 
     <script src="/js/notes/api.js"></script>
     <script src="/js/notes/rendering.js"></script>
+    <script src="/js/notes/note-parser.js"></script>
     <script src="/js/notes/interactions.js"></script>
     <script src="/js/notes/attachments.js"></script>
     <script src="/js/notes/modals.js"></script>
