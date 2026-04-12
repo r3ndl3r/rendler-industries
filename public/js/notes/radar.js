@@ -240,7 +240,7 @@ function handleRadarWheel(e) {
         console.warn('[handleRadarWheel] applyScale failed, rolling back scale:', err);
         STATE.scale = backup;
     }
-    }
+}
 /**
  * Radar Visibility Orchestrator: Toggles the minimap drawer with persistent memory.
  * @returns {void}
