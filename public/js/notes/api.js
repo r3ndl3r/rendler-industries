@@ -208,7 +208,9 @@ function deleteNote(id) {
                 } else if (res.notes) {
                     STATE.notes = res.notes;
                 }
+                if (!STATE.last_mutation || res.last_mutation > STATE.last_mutation) {
                 STATE.last_mutation = res.last_mutation;
+            }
                 if (typeof renderUI === 'function') renderUI();
                 showToast('Note moved to Recycle Bin', 'success');
             }
@@ -297,7 +299,9 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
                         } else if (res.notes) {
                             STATE.notes = res.notes;
                         }
-                        STATE.last_mutation = res.last_mutation;
+                        if (!STATE.last_mutation || res.last_mutation > STATE.last_mutation) {
+                STATE.last_mutation = res.last_mutation;
+            }
                         context.resolve(res);
                     } else {
                         context.reject(new Error(res?.error || 'Save failed'));
@@ -353,7 +357,9 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
             } else if (res.notes) {
                 STATE.notes = res.notes;
             }
-            STATE.last_mutation = res.last_mutation;
+            if (!STATE.last_mutation || res.last_mutation > STATE.last_mutation) {
+                STATE.last_mutation = res.last_mutation;
+            }
             if (pendingContext) {
                 try { pendingContext.resolve(res); } catch (_) {}
             }
@@ -555,7 +561,9 @@ async function copyNoteToLevel(id, newLevelId) {
             } else if (res.notes) {
                 STATE.notes = res.notes;
             }
-            STATE.last_mutation = res.last_mutation;
+            if (!STATE.last_mutation || res.last_mutation > STATE.last_mutation) {
+                STATE.last_mutation = res.last_mutation;
+            }
             if (newLevelId == STATE.activeLayerId && typeof renderUI === 'function') {
                 renderUI();
             }
