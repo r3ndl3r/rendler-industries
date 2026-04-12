@@ -204,6 +204,14 @@ function handleRadarWheel(e) {
 
     if (STATE.scale === oldScale) return;
 
+    // Abort scale mutation if the visual apply function is unavailable.
+    // Leaving STATE.scale changed without updating the CSS transform corrupts all
+    // downstream coordinate math until the next applyScale call from another path.
+    if (typeof applyScale !== 'function') {
+        STATE.scale = oldScale;
+        return;
+    }
+
     // Translation Logic: Map radar-hover position to logical canvas coordinates
     const rect = container.getBoundingClientRect();
     const rx   = e.clientX - rect.left;
@@ -214,8 +222,8 @@ function handleRadarWheel(e) {
     const canvasCY = y + (ry / miniScale);
 
     // Apply scaling and re-center the main camera on the target logical spot
-    if (typeof applyScale === 'function') applyScale();
-    
+    applyScale();
+
     wrapper.scrollLeft = canvasCX * STATE.scale - wrapper.clientWidth  / 2;
     wrapper.scrollTop  = canvasCY * STATE.scale - wrapper.clientHeight / 2;
 
