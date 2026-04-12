@@ -119,7 +119,7 @@ const NoteParser = (() => {
                 ? renderInline(data.params[0]) 
                 : window.escapeHtml(data.value);
                 
-            return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" onclick="event.stopPropagation()">${labelContent}</a>`;
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" data-action="stop-propagation">${labelContent}</a>`;
         },
         'img': (data) => RENDERERS.image(data),
         'image': (data) => {
@@ -134,14 +134,16 @@ const NoteParser = (() => {
             const blobId      = (meta && meta.blob_id) ? meta.blob_id : (attachments[0] ? attachments[0].blob_id : null);
             const src         = blobId ? `/notes/attachment/serve/${blobId}` : `/notes/serve/${id}`;
             const safeTitle   = meta   ? window.escapeHtml(meta.title || id) : `Image #${id}`;
-            const viewAction  = blobId ? `if(typeof viewNoteImage === 'function') viewNoteImage(${id}, ${blobId});` : `if(typeof handleNoteLinkClick === 'function') handleNoteLinkClick(${id});`;
-            
+
             const att      = attachments[0] || {};
             const ext      = att.mime_type ? att.mime_type.split('/')[1].toUpperCase() : 'IMG';
             const sizeStr  = att.file_size ? ` • ${window.formatBytes(att.file_size)}` : '';
             const metaInfo = `${ext}${sizeStr} • #${id}`;
 
-            return `<div class="note-embedded-wrap" onclick="${viewAction} event.stopPropagation();" title="View: ${safeTitle}" style="width: ${width}%;"><img src="${src}" class="note-embedded-img" alt="${safeTitle}" loading="lazy"><div class="note-embedded-caption">🖼️ ${safeTitle} (${metaInfo})</div></div>`;
+            const dataAction = blobId ? 'view-attachment' : 'view-note';
+            const dataAttrs = blobId ? `data-action="${dataAction}" data-blob-id="${blobId}" data-note-id="${id}"` : `data-action="${dataAction}" data-note-id="${id}"`;
+
+            return `<div class="note-embedded-wrap" ${dataAttrs} title="View: ${safeTitle}" style="width: ${width}%;"><img src="${src}" class="note-embedded-img" alt="${safeTitle}" loading="lazy"><div class="note-embedded-caption">🖼️ ${safeTitle} (${metaInfo})</div></div>`;
         },
         'note': (data) => {
             const id = parseInt(data.value, 10);
@@ -158,7 +160,7 @@ const NoteParser = (() => {
             const blobId      = (meta && meta.blob_id) ? meta.blob_id : (attachments[0] ? attachments[0].blob_id : null);
             const src         = blobId ? `/notes/attachment/serve/${blobId}` : `/notes/serve/${id}`;
             const safeTitle   = meta   ? window.escapeHtml(meta.title || id) : `File #${id}`;
-            return `<a href="${src}" class="note-ref" download onclick="event.stopPropagation()"><span class="global-icon">📁</span> ${safeTitle}</a>`;
+            return `<a href="${src}" class="note-ref" download data-action="stop-propagation"><span class="global-icon">📁</span> ${safeTitle}</a>`;
         },
         'color': (data, noteId, rawContent) => {
             const color = data.value.toLowerCase();
@@ -244,7 +246,7 @@ const NoteParser = (() => {
         // Force Emoji Override: mesh hosts (without icon override) or [emoji]:1 flag
         if (forceEmoji || (isMesh && !customIconUrl)) {
             return `
-                <a href="${url}" target="_blank" rel="noopener noreferrer" class="note-bookmark-tile" onclick="event.stopPropagation()">
+                <a href="${url}" target="_blank" rel="noopener noreferrer" class="note-bookmark-tile" data-action="stop-propagation">
                     <div class="note-bookmark-icon">
                         <div class="note-bookmark-emoji-fallback">${fallbackEmoji}</div>
                     </div>
@@ -271,26 +273,14 @@ const NoteParser = (() => {
         const customAttr = customIconUrl ? `data-custom-url="1" data-favicon-url="${faviconUrl}"` : '';
 
         return `
-            <a href="${url}" target="_blank" rel="noopener noreferrer" class="note-bookmark-tile" onclick="event.stopPropagation()">
+            <a href="${url}" target="_blank" rel="noopener noreferrer" class="note-bookmark-tile" data-action="stop-propagation">
                 <div class="note-bookmark-icon">
                     <img src="${initialSrc}" 
                          class="note-bookmark-favicon" 
                          alt="" 
                          ${customAttr}
                          data-proxy-url="${proxyUrl}"
-                         onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none';"
-                         onerror="
-                             if (this.dataset.customUrl && !this.dataset.triedFavicon) {
-                                 this.dataset.triedFavicon = true;
-                                 this.src = this.dataset.faviconUrl;
-                             } else if (!this.dataset.triedProxy) {
-                                 this.dataset.triedProxy = true;
-                                 this.src = this.dataset.proxyUrl;
-                             } else {
-                                 this.style.display = 'none';
-                                 this.nextElementSibling.style.display = 'flex';
-                             }
-                         ">
+                         data-action="favicon-cascade">
                     <div class="note-bookmark-emoji-fallback">${fallbackEmoji}</div>
                 </div>
                 <div class="note-bookmark-label">${window.escapeHtml(labelText || 'Link')}</div>
@@ -340,8 +330,7 @@ const NoteParser = (() => {
                     <img src="${iconUrl}" 
                          class="note-bookmark-favicon" 
                          alt="" 
-                         onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none';"
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                         data-action="favicon-cascade">
                     <div class="note-bookmark-emoji-fallback" style="display:none;">${fallbackEmoji}</div>
                 </div>
             `;
@@ -514,7 +503,7 @@ const NoteParser = (() => {
                         const url = getSafeUrl(linkMatch[1]);
                         if (url) {
                             flushBuffer();
-                            output += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" onclick="event.stopPropagation()">${renderInline(rawTag)}</a>`;
+                            output += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" data-action="stop-propagation">${renderInline(rawTag)}</a>`;
                             cursor = endIdx + 1 + linkMatch[0].length;
                             isLineStart = false;
                             continue;
@@ -537,7 +526,7 @@ const NoteParser = (() => {
                     const url = getSafeUrl(urlMatch[1]);
                     if (url) {
                         flushBuffer();
-                        output += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" onclick="event.stopPropagation()">${window.escapeHtml(urlMatch[1])}</a>`;
+                        output += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" data-action="stop-propagation">${window.escapeHtml(urlMatch[1])}</a>`;
                         cursor += urlMatch[1].length;
                         isLineStart = false;
                         continue;

@@ -559,36 +559,138 @@ async function initNotes() {
 
         // 2. Interactive Action Listener (Delegated)
         canvas.addEventListener('click', (e) => {
+            // A. Identity Acquisition: Attempt to find the hosting note element
             const noteEl = e.target.closest('.sticky-note');
-            if (noteEl) {
-                const noteId = noteEl.dataset.id;
-                const note   = STATE.notes.find(n => n.id == noteId);
+            const noteId = noteEl ? noteEl.dataset.id : null;
+            const note   = noteId ? STATE.notes.find(n => n.id == noteId) : null;
 
+            // B. Action Dispatch: Retrieve the semantic action from the interaction target
+            const actionTrigger = e.target.closest('[data-action]');
+            const action = actionTrigger ? actionTrigger.dataset.action : null;
 
-                // --- 3. Note Link Jump Navigation ---
-                const linkTrigger = e.target.closest('.note-link-trigger');
-                if (linkTrigger) {
-                    e.stopPropagation();
-                    const targetId = linkTrigger.dataset.targetId;
-                    if (typeof handleNoteLinkClick === 'function') {
-                        handleNoteLinkClick(targetId);
-                    }
-                    return; // Terminate signal for link jump
+            if (action === 'stop-propagation') {
+                e.stopPropagation();
+                return;
+            }
+
+            // --- 3. Note Link Jump Navigation ---
+            const linkTrigger = e.target.closest('.note-link-trigger');
+            if (linkTrigger) {
+                e.stopPropagation();
+                const targetId = linkTrigger.dataset.targetId;
+                if (typeof handleNoteLinkClick === 'function') {
+                    handleNoteLinkClick(targetId);
                 }
+                return; 
+            }
 
-                // --- 4. Interactive Todo Checkbox ---
-                const checkTrigger = e.target.closest('.note-check-trigger');
-                if (checkTrigger) {
-                    e.stopPropagation();
-                    const noteId    = checkTrigger.dataset.noteId;
-                    const lineIndex = parseInt(checkTrigger.dataset.index);
-                    if (typeof toggleNoteCheckbox === 'function') {
-                        toggleNoteCheckbox(e, noteId, lineIndex);
-                    }
-                    return; // Terminate signal for checkbox action
+            // --- 4. Interactive Todo Checkbox ---
+            const checkTrigger = e.target.closest('.note-check-trigger');
+            if (checkTrigger) {
+                e.stopPropagation();
+                const tid    = checkTrigger.dataset.noteId;
+                const lineIndex = parseInt(checkTrigger.dataset.index);
+                if (typeof toggleNoteCheckbox === 'function') {
+                    toggleNoteCheckbox(e, tid, lineIndex);
+                }
+                return;
+            }
+
+            // --- 5. New Standardized Data-Actions ---
+            if (!action || !noteId) return;
+
+            if (action === 'view-attachment') {
+                e.stopPropagation();
+                const blobId = actionTrigger.dataset.blobId;
+                if (noteEl && noteEl.classList.contains('is-editing')) return; // Gating: No view in edit mode
+                if (typeof viewNoteImage === 'function') viewNoteImage(noteId, blobId);
+            }
+            else if (action === 'view-note') {
+                e.stopPropagation();
+                if (typeof handleNoteLinkClick === 'function') handleNoteLinkClick(noteId);
+            }
+            else if (action === 'copy-attachment') {
+                e.stopPropagation();
+                const blobId = actionTrigger.dataset.blobId;
+                if (typeof copyNoteToClipboard === 'function') copyNoteToClipboard(noteId, blobId);
+            }
+            else if (action === 'remove-attachment') {
+                e.stopPropagation();
+                const blobId = actionTrigger.dataset.blobId;
+                if (typeof confirmAttachmentRemoval === 'function') confirmAttachmentRemoval(noteId, blobId);
+            }
+            else if (action === 'open-attachment') {
+                if (noteEl && noteEl.classList.contains('is-editing')) return;
+                e.stopPropagation();
+                const blobId   = actionTrigger.dataset.blobId;
+                const filename = actionTrigger.dataset.filename;
+                const isPdf    = actionTrigger.dataset.isPdf === 'true';
+
+                if (isPdf && typeof openPDFViewer === 'function') {
+                    openPDFViewer(blobId, filename);
+                } else {
+                    const a = document.createElement('a');
+                    a.href = `/notes/attachment/serve/${blobId}`;
+                    a.download = filename;
+                    a.click();
                 }
             }
+            else if (action === 'inline-upload') {
+                 // Trigger the hidden file input
+                 const fileInput = noteEl?.querySelector('input[type="file"]');
+                 if (fileInput) fileInput.click();
+            }
         });
+
+        // 3. Centralized Mutation & Input Observers (Delegated)
+        canvas.addEventListener('input', (e) => {
+            const trigger = e.target.closest('[data-action]');
+            if (!trigger) return;
+
+            const noteId = e.target.closest('.sticky-note')?.dataset.id;
+            if (!noteId) return;
+
+            if (trigger.dataset.action === 'update-accent') {
+                if (typeof updateNoteAccent === 'function') updateNoteAccent(e.target, noteId);
+            }
+        });
+
+        canvas.addEventListener('change', (e) => {
+            const trigger = e.target.closest('[data-action]');
+            if (!trigger) return;
+
+            const noteId = e.target.closest('.sticky-note')?.dataset.id;
+            if (!noteId) return;
+
+            if (trigger.dataset.action === 'inline-upload') {
+                if (typeof handleInlineFileSelection === 'function') handleInlineFileSelection(e, noteId);
+            }
+        });
+
+        canvas.addEventListener('keydown', (e) => {
+            const trigger = e.target.closest('[data-action]');
+            if (!trigger) return;
+
+            const noteId = e.target.closest('.sticky-note')?.dataset.id;
+            if (!noteId) return;
+
+            if (trigger.dataset.action === 'note-keydown') {
+                if (typeof handleNoteKeydown === 'function') handleNoteKeydown(e, noteId);
+            }
+        });
+
+        // 4. System Integrity Observers: Capturing non-bubbling asset signals
+        canvas.addEventListener('error', (e) => {
+            if (e.target.dataset?.action === 'favicon-cascade') {
+                if (typeof handleFaviconError === 'function') handleFaviconError(e.target);
+            }
+        }, true); // Capture phase required for non-bubbling 'error'
+
+        canvas.addEventListener('load', (e) => {
+            if (e.target.dataset?.action === 'favicon-cascade') {
+                if (typeof handleFaviconLoad === 'function') handleFaviconLoad(e.target);
+            }
+        }, true); // Capture phase required for non-bubbling 'load'
     }
 
     if (typeof setupGlobalModalClosing === 'function') {
@@ -1150,6 +1252,33 @@ window.setupHeartbeat = function setupHeartbeat() {
  * @returns {void}
  */
 
+
+/**
+ * Favicon Cascade Intelligence: Manages icon fallbacks for dashboard notes.
+ * Transitions from Custom Icon -> Origin favicon.ico -> Google Proxy -> Emoji.
+ * @param {HTMLImageElement} img - The failing icon element.
+ */
+window.handleFaviconError = (img) => {
+    if (img.dataset.customUrl && !img.dataset.triedFavicon) {
+        img.dataset.customUrl = ''; // Mark custom attempt as exhausted
+        img.dataset.triedFavicon = 'true';
+        img.src = img.dataset.faviconUrl;
+    } else if (!img.dataset.triedProxy) {
+        img.dataset.triedProxy = 'true';
+        img.src = img.dataset.proxyUrl;
+    } else {
+        img.style.display = 'none';
+        if (img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
+    }
+};
+
+/**
+ * Favicon Load Finalizer: Ensures fallback emoji is hidden when an icon resolves.
+ */
+window.handleFaviconLoad = (img) => {
+    img.classList.add('loaded');
+    if (img.nextElementSibling) img.nextElementSibling.style.display = 'none';
+};
 
 // Global Exposure Block
 window.loadState = loadState;

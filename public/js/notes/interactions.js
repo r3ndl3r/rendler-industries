@@ -1094,7 +1094,9 @@ function handleCanvasMouseDown(e) {
 
     // 2. Pick & Place Detection: If the user clicks a note's title bar/drag handle
     const handle = e.target.closest('.note-drag-handle-container');
-    if (handle && e.button === 0) {
+    const isAction = e.target.closest('[data-action], .note-check-trigger, .note-link-trigger, .reel-action-btn, .btn-icon-drawer');
+    
+    if (handle && !isAction && e.button === 0) {
         const noteId = handle.closest('.sticky-note')?.dataset.id;
         if (noteId) {
             toggleStickyMove(e, noteId);
