@@ -18,7 +18,7 @@ sub DB::get_active_chores {
     my ($self, $user_id, $is_admin) = @_;
     $self->ensure_connection();
 
-    my $query = "SELECT c.id, c.title, c.points, c.assigned_to, u.username as assigned_username, c.created_at
+    my $query = "SELECT c.id, c.title, c.points, c.assigned_to, u.username as assigned_username, u.emoji as assigned_emoji, c.created_at
                  FROM chores c
                  LEFT JOIN users u ON c.assigned_to = u.id
                  WHERE c.status = 'active'";
@@ -96,7 +96,7 @@ sub DB::get_recent_chore_templates {
 
     # Groups by title returning their general point values and assignment context
     my $sth = $self->{dbh}->prepare(
-        "SELECT c.title, c.points, c.assigned_to, u.username as assigned_username
+        "SELECT c.title, c.points, c.assigned_to, u.username as assigned_username, u.emoji as assigned_emoji
          FROM chores c
          LEFT JOIN users u ON c.assigned_to = u.id
          WHERE c.id IN (SELECT MAX(id) FROM chores GROUP BY title)
@@ -119,7 +119,7 @@ sub DB::get_completed_chores_history {
     $self->ensure_connection();
 
     my $sth = $self->{dbh}->prepare(
-        "SELECT c.id, c.title, c.points, c.completed_at, c.completed_by, u.username as completed_by_name
+        "SELECT c.id, c.title, c.points, c.completed_at, c.completed_by, u.username as completed_by_name, u.emoji as completed_by_emoji
          FROM chores c
          LEFT JOIN users u ON c.completed_by = u.id
          WHERE c.status = 'completed'
@@ -135,11 +135,20 @@ sub DB::get_completed_chores_history {
     return \@history;
 }
 
-# Finds a specific chore by ID.
+# Finds a specific chore by ID, including assigned/completer metadata for notifications.
 sub DB::get_chore_by_id {
     my ($self, $chore_id) = @_;
     $self->ensure_connection();
-    my $sth = $self->{dbh}->prepare("SELECT * FROM chores WHERE id = ?");
+    
+    my $query = "SELECT c.*, 
+                 u1.username as assigned_username, u1.emoji as assigned_emoji,
+                 u2.username as completed_username, u2.emoji as completed_by_emoji
+                 FROM chores c
+                 LEFT JOIN users u1 ON c.assigned_to = u1.id
+                 LEFT JOIN users u2 ON c.completed_by = u2.id
+                 WHERE c.id = ?";
+                 
+    my $sth = $self->{dbh}->prepare($query);
     $sth->execute($chore_id);
     return $sth->fetchrow_hashref();
 }
@@ -174,7 +183,7 @@ sub DB::get_stale_chores_and_mark {
     $self->ensure_connection();
 
     my $sth = $self->{dbh}->prepare(
-        "SELECT c.id, c.title, c.points, c.assigned_to, u.username as target_user
+        "SELECT c.id, c.title, c.points, c.assigned_to, u.username as target_user, u.emoji as target_emoji
          FROM chores c
          LEFT JOIN users u ON c.assigned_to = u.id
          WHERE c.status = 'active'
