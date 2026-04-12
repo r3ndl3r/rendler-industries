@@ -1704,7 +1704,7 @@ pre code {
     align-items: center;
     gap: 0.625em; /* 10px */
     flex: 1;
-    min-width: 0; /* Allow title to truncate */
+    min-width: 0;
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative; /* Anchor for emoji picker trigger */
@@ -1744,17 +1744,17 @@ pre code {
 }
 
 .note-title-slot {
-    font-size: 0.78rem;
     font-weight: 700;
     color: rgba(255, 255, 255, 0.85);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
     font-family: 'Inter', sans-serif;
-    transition: all 0.2s ease;
+    font-size: 0.78rem; 
+    text-overflow: ellipsis;
 }
+
 
 .inline-title-input {
     display: none;
@@ -1834,26 +1834,41 @@ pre code {
     position: relative;
     background: transparent;
 
-    /* Sector Trigger: Establish a 100px sensor zone on the right edge */
-    min-width: 100px;
-    max-width: 100px;
+    /* Ghost Trigger: Zero layout footprint, 100px floating sensor area */
+    max-width: 0;
     opacity: 0;
-    overflow: hidden;
+    overflow: visible;
     white-space: nowrap;
-    pointer-events: auto; /* Active sensor even when invisible */
+    pointer-events: auto; 
     cursor: pointer;
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) 500ms;
 }
 
-/* Visibility Trigger: Expand only when specifically hovering the sensor zone */
+/* The Ghost Sensor: Absolute hotspot that doesn't push layout */
+.note-actions::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 100px; /* Generous 100px trigger zone */
+    height: calc(100% + 10px);
+    z-index: 10;
+}
+
+/* Visibility Trigger: Expand only when the sensor is specifically targeted */
 .note-actions:hover {
     max-width: 350px;
     opacity: 1;
 }
 
+/* Interaction Layer: Ensure buttons stay above the ghost sensor hotspot */
+.note-actions button {
+    position: relative;
+    z-index: 20;
+}
+
 /* Administrative Pivot: Instant reveal during active editing */
 .sticky-note.is-editing .note-actions {
-    min-width: 100px;
     max-width: 350px;
     opacity: 1;
     pointer-events: auto;
@@ -4248,15 +4263,18 @@ input:checked + .switch-sm .slider:before {
 }
 
 .note-category-label {
-    font-size: 1rem; /* Matched to Proxmox's larger baseline */
     font-weight: 800;
     color: #ffffff;
-    letter-spacing: normal; /* Remove the wide spacing from global titles */
-    text-transform: none !important; /* ABSOLUTE mixed-case enforcement */
+    letter-spacing: normal;
+    text-transform: none !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     line-height: normal;
+    
+    /* Strategic sizing for dashboard category headers */
+    font-size: 1rem;
 }
+
 
 
