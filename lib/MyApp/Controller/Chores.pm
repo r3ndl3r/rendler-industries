@@ -75,7 +75,8 @@ sub api_complete {
         my $pts_val    = $chore->{points};
         my $base_url   = "https://rendler.org/chores";
 
-        my $admin_msg = "✨ **Chore Completed** ✨\n\n$child_name finished: $title (+$pts_val pts)\n\n$base_url";
+        my $child_icon = $c->getUserIcon($child_name);
+        my $admin_msg  = "✨ **Chore Completed** ✨\n\n$child_icon **$child_name** finished: $title (+$pts_val pts)\n\n$base_url";
         
         my $admins = $c->db->get_admins();
         foreach my $adm (@$admins) {
@@ -114,7 +115,9 @@ sub api_add {
         my $base_url = "https://rendler.org/chores"; # Deep link for quick access
         
         if ($assigned_to) {
-            my $msg = "✨ **New Chore** ✨\n\n👤 **YOUR CHORE** 👤\n\n$title (+$points pts)\n\n$base_url";
+            my $user = $c->db->get_user_by_id($assigned_to);
+            my $icon = $user ? ($user->{emoji} // '👤') : '👤';
+            my $msg  = "✨ **New Chore** ✨\n\n$icon **YOUR CHORE** $icon\n\n$title (+$points pts)\n\n$base_url";
             $c->notify_user($assigned_to, $msg, "New Chore Assigned");
         } else {
             my $msg = "✨ **New Chore** ✨\n\n🌍 **GLOBAL CHORE** 🌍\n\n$title (+$points pts)\n\n*First to finish and mark as done gets the points!*\n\n$base_url";
@@ -152,10 +155,11 @@ sub api_revoke {
 
         # Notify the user whose work was revoked
         if ($chore->{completed_by}) {
+            my $icon     = $chore->{completed_by_emoji} // '👤';
             my $title    = $chore->{title};
             my $points   = $chore->{points};
             my $base_url = "https://rendler.org/chores";
-            my $msg = "✨ **Work Revoked** ✨\n\n⚠️ **POINT DEDUCTION** ⚠️\n\nYour completion of **$title** has been revoked.\n\n**Adjustment: (-$points pts)**\n\n$base_url";
+            my $msg = "✨ **Work Revoked** ✨\n\n$icon **POINT DEDUCTION** $icon\n\nYour completion of **$title** has been revoked.\n\n**Adjustment: (-$points pts)**\n\n$base_url";
             
             $c->notify_user($chore->{completed_by}, $msg, "Work Revoked");
         }
@@ -178,9 +182,10 @@ sub api_delete {
 
     # Notify the assigned user if a specific chore was removed
     if ($chore->{assigned_to}) {
+        my $icon     = $chore->{assigned_emoji} // '👤';
         my $title    = $chore->{title};
         my $base_url = "https://rendler.org/chores";
-        my $msg = "✨ **Chore Removed** ✨\n\n🗑️ **CHORE DELETED** 🔍\n\n**$title** is no longer on the board.\n\n$base_url";
+        my $msg = "✨ **Chore Removed** ✨\n\n$icon **CHORE DELETED** $icon\n\n**$title** is no longer on the board.\n\n$base_url";
         
         $c->notify_user($chore->{assigned_to}, $msg, "Chore Removed");
     }
