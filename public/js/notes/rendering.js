@@ -287,14 +287,14 @@ function createNoteElement(note, canEdit = true) {
         <div class="note-header">
             <span class="note-id-hash" data-id="${note.id}" title="Copy Content to Clipboard">📋</span>
             <input type="color" class="inline-color-input" value="${accentColor}" 
-                   oninput="updateNoteAccent(this, ${note.id})" title="Change Note Color" ${canEdit ? '' : 'disabled'}>
+                   data-action="update-accent" title="Change Note Color" ${canEdit ? '' : 'disabled'}>
             
             <div class="note-drag-handle-container" title="Click anywhere in the title bar to Pick and Place (Sticky Move)">
                 <div class="note-title-slot" data-rendered-title="${(isDashboard && typeof NoteParser !== 'undefined') ? 'dashboard' : 'plain'}::${window.escapeHtml(note.title || '')}">
                     ${titleHtml}
                 </div>
                 <input type="text" class="inline-title-input" value="${window.escapeHtml(note.title || '')}" 
-                       onclick="event.stopPropagation()"
+                       data-action="stop-propagation"
                        placeholder="Note Title..." autocomplete="off">
             </div>
             <div class="note-actions">
@@ -324,7 +324,7 @@ function createNoteElement(note, canEdit = true) {
                 <button class="btn-icon-collapse" title="${note.is_collapsed ? 'Expand' : 'Collapse'} Note">
                     ${note.is_collapsed ? '🔻' : '🔺'}
                 </button>
-                <input type="file" id="inline-file-${note.id}" class="hidden-input" onchange="handleInlineFileSelection(event, ${note.id})">
+                <input type="file" id="inline-file-${note.id}" class="hidden-input" data-action="inline-upload">
             </div>
         </div>
         <div class="note-content">
@@ -366,7 +366,7 @@ function generateNoteContentHtml(note, canEdit, isDashboard = null) {
     textHtml = `
         <div class="note-text-section ${isTextEmpty ? 'hidden' : ''} ${isDashboard ? 'is-dashboard' : ''}">
             <div class="note-text-viewer" data-id="${note.id}">${viewerHtml}</div>
-            <textarea readonly onkeydown="handleNoteKeydown(event, ${note.id})">${window.escapeHtml(note.content || '')}</textarea>
+            <textarea readonly data-action="note-keydown">${window.escapeHtml(note.content || '')}</textarea>
         </div>
     `;
 
@@ -385,30 +385,27 @@ function generateNoteContentHtml(note, canEdit, isDashboard = null) {
         if (isHeroCandidate) {
             if (firstIsImg) {
                 attachmentHtml = `
-                    <div class="note-hero-container" onclick="if(!document.getElementById('note-${note.id}').classList.contains('is-editing')) viewNoteImage(${note.id}, ${firstAtt.blob_id})">
+                    <div class="note-hero-container" data-action="view-attachment" data-blob-id="${firstAtt.blob_id}">
                         <img src="/notes/attachment/serve/${firstAtt.blob_id}" class="note-hero-img" alt="${window.escapeHtml(firstAtt.filename)}">
-                        <div class="file-name-display" data-blob-id="${firstAtt.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(firstAtt.filename)}</div>
+                        <div class="file-name-display" data-blob-id="${firstAtt.blob_id}" data-action="stop-propagation">${window.escapeHtml(firstAtt.filename)}</div>
                         <div class="attachment-float-controls">
-                            ${isMultiItem ? `<button class="btn-icon-copy hero-action-btn" onclick="event.stopPropagation(); copyNoteToClipboard(${note.id}, ${firstAtt.blob_id})" title="Copy Image">📋</button>` : ''}
-                            <button class="btn-icon-delete hero-action-btn edit-mode-only" onclick="event.stopPropagation(); confirmAttachmentRemoval(${note.id}, ${firstAtt.blob_id})" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
+                            ${isMultiItem ? `<button class="btn-icon-copy hero-action-btn" data-action="copy-attachment" data-blob-id="${firstAtt.blob_id}" title="Copy Image">📋</button>` : ''}
+                            <button class="btn-icon-delete hero-action-btn edit-mode-only" data-action="remove-attachment" data-blob-id="${firstAtt.blob_id}" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                         </div>
                     </div>
                 `;
             } else {
                 const isPdf = firstAtt.mime_type === 'application/pdf' || (firstAtt.filename && firstAtt.filename.toLowerCase().endsWith('.pdf'));
-                const clickAction = isPdf 
-                    ? `openPDFViewer(${firstAtt.blob_id}, '${window.escapeHtml(firstAtt.filename).replace(/'/g, "\\'")}')`
-                    : `const a=document.createElement('a');a.href='/notes/attachment/serve/${firstAtt.blob_id}';a.download='${window.escapeHtml(firstAtt.filename).replace(/'/g, "\\'")}';a.click();`;
-
+                
                 attachmentHtml = `
                     <div class="note-attachment-stack">
                         <div class="attachment-item-stack" 
-                             onclick="if(!document.getElementById('note-${note.id}').classList.contains('is-editing')){ ${clickAction} } event.stopPropagation();">
+                             data-action="open-attachment" data-blob-id="${firstAtt.blob_id}" data-filename="${window.escapeHtml(firstAtt.filename).replace(/'/g, "\\'")}" data-is-pdf="${isPdf}">
                             <div class="attachment-icon-stack">${isPdf ? '📄' : '📁'}</div>
-                            <div class="file-name-display" data-blob-id="${firstAtt.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(firstAtt.filename)}</div>
+                            <div class="file-name-display" data-blob-id="${firstAtt.blob_id}" data-action="stop-propagation">${window.escapeHtml(firstAtt.filename)}</div>
                         </div>
                         <div class="attachment-float-controls">
-                            <button class="btn-icon-delete hero-action-btn edit-mode-only" onclick="event.stopPropagation(); confirmAttachmentRemoval(${note.id}, ${firstAtt.blob_id})" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
+                            <button class="btn-icon-delete hero-action-btn edit-mode-only" data-action="remove-attachment" data-blob-id="${firstAtt.blob_id}" title="Remove Attachment" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                         </div>
                     </div>
                 `;
@@ -427,22 +424,22 @@ function generateNoteContentHtml(note, canEdit, isDashboard = null) {
                 if (isImg) {
                     attachmentHtml += `
                         <div class="attachment-item-stack attachment-item-stack--image"
-                             onclick="if(document.getElementById('note-${note.id}').classList.contains('is-editing')) { event.stopPropagation(); } else { ${openAction}; event.stopPropagation(); }">
+                             data-action="view-attachment" data-blob-id="${att.blob_id}">
                             <img src="/notes/attachment/serve/${att.blob_id}" class="attachment-full-img" alt="${window.escapeHtml(att.filename)}">
-                            <div class="file-name-display" data-blob-id="${att.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(att.filename)}</div>
+                            <div class="file-name-display" data-blob-id="${att.blob_id}" data-action="stop-propagation">${window.escapeHtml(att.filename)}</div>
                             <div class="attachment-float-controls">
-                                <button class="btn-icon-copy reel-action-btn" onclick="event.stopPropagation(); copyNoteToClipboard(${note.id}, ${att.blob_id})" title="Copy Image">📋</button>
-                                <button class="btn-icon-delete reel-action-btn edit-mode-only" onclick="event.stopPropagation(); confirmAttachmentRemoval(${note.id}, ${att.blob_id})" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
+                                <button class="btn-icon-copy reel-action-btn" data-action="copy-attachment" data-blob-id="${att.blob_id}" title="Copy Image">📋</button>
+                                <button class="btn-icon-delete reel-action-btn edit-mode-only" data-action="remove-attachment" data-blob-id="${att.blob_id}" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                             </div>
                         </div>`;
                 } else {
                     attachmentHtml += `
                         <div class="attachment-item-stack" title="${window.escapeHtml(att.filename)}"
-                             onclick="if(document.getElementById('note-${note.id}').classList.contains('is-editing')) { event.stopPropagation(); } else { ${openAction}; event.stopPropagation(); }">
+                             data-action="open-attachment" data-blob-id="${att.blob_id}" data-filename="${window.escapeHtml(att.filename).replace(/'/g, "\\'")}" data-is-pdf="${isPdf}">
                             <div class="attachment-icon-stack">${isPdf ? '📄' : '📁'}</div>
-                            <div class="file-name-display" data-blob-id="${att.blob_id}" onclick="event.stopPropagation()">${window.escapeHtml(att.filename)}</div>
+                            <div class="file-name-display" data-blob-id="${att.blob_id}" data-action="stop-propagation">${window.escapeHtml(att.filename)}</div>
                             <div class="attachment-float-controls">
-                                <button class="btn-icon-delete reel-action-btn edit-mode-only" onclick="event.stopPropagation(); confirmAttachmentRemoval(${note.id}, ${att.blob_id})" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
+                                <button class="btn-icon-delete reel-action-btn edit-mode-only" data-action="remove-attachment" data-blob-id="${att.blob_id}" title="Remove" ${canEdit ? '' : 'style="display:none;"'}>🗑️</button>
                             </div>
                         </div>`;
                 }
