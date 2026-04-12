@@ -51,6 +51,12 @@ async function executeCreateNote() {
     const color   = document.getElementById('create-note-color')?.value || '#f59e0b';
     const note    = id ? STATE.notes.find(n => n.id == id) : null;
 
+    if (id && !note) {
+        showToast('Note no longer exists — it may have been deleted', 'error');
+        closeCreateModal();
+        return;
+    }
+
     // Type Normalization: Type is derived from the ATTACHMENT if present, otherwise 'text'
     // This allows notes to have both text AND an attachment.
     const attachmentType = DRAFT_NOTE.type === 'text' ? (note?.type || 'text') : DRAFT_NOTE.type;
