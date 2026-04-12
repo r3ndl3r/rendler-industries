@@ -2184,7 +2184,6 @@ function handleCanvasTouchMove(e) {
         
         if (newScale !== STATE.scale) {
             const oldScale = STATE.scale;
-            STATE.scale = newScale;
             
             // Focal Point: Calculate the center between the two fingers
             const rect = wrapper.getBoundingClientRect();
@@ -2195,14 +2194,14 @@ function handleCanvasTouchMove(e) {
             const canvasX = (wrapper.scrollLeft + centerX) / oldScale;
             const canvasY = (wrapper.scrollTop  + centerY) / oldScale;
             
-            if (typeof applyScale === 'function') applyScale();
-            
-            // Adjust scroll to keep pinch-center fixed
-            wrapper.scrollLeft = canvasX * STATE.scale - centerX;
-            wrapper.scrollTop  = canvasY * STATE.scale - centerY;
-            
-            if (typeof updateRadar === 'function') updateRadar();
-            if (typeof scheduleViewportSave === 'function') scheduleViewportSave();
+            if (atomicApplyScale(newScale)) {
+                // Adjust scroll to keep pinch-center fixed
+                wrapper.scrollLeft = canvasX * STATE.scale - centerX;
+                wrapper.scrollTop  = canvasY * STATE.scale - centerY;
+                
+                if (typeof updateRadar === 'function') updateRadar();
+                if (typeof scheduleViewportSave === 'function') scheduleViewportSave();
+            }
         }
         e.preventDefault();
     }
