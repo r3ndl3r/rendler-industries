@@ -135,25 +135,26 @@ function renderUI() {
                     
                     // Synchronize state-driven classes across the root and child segments
                     existing.classList.toggle('is-dashboard-note', isDashboard);
-                    
+                }
+
                 // --- Global Identity Reconciliation (Title, Scaling, Icons) ---
+                // Runs after BOTH Priority 1 and Priority 2 paths to ensure class and title
+                // state are always current regardless of which reconciliation branch fired.
                 const textSection = existing.querySelector('.note-text-section');
                 if (textSection) {
                     textSection.classList.toggle('is-dashboard', isDashboard);
                     if (titleSlot) {
-                        // High-Fidelity Header State: icons and favicons for dashboard mode notes
-                        const expectedTitleHtml = (isDashboard && typeof NoteParser !== 'undefined')
+                        const newTitleHtml = (isDashboard && typeof NoteParser !== 'undefined')
                             ? (NoteParser.renderHeader(note.title) || window.escapeHtml(note.title || 'Untitled Note'))
                             : window.escapeHtml(note.title || 'Untitled Note');
-                        
-                        if (titleSlot.innerHTML !== expectedTitleHtml) {
-                            titleSlot.innerHTML = expectedTitleHtml;
+
+                        if (titleSlot.innerHTML !== newTitleHtml) {
+                            titleSlot.innerHTML = newTitleHtml;
                         }
                     }
 
                     const isEmpty = (!note.content || note.content.trim() === '');
                     textSection.classList.toggle('hidden', isEmpty);
-                }
                 }
             } else {
                 // Creation: New note entered the active isolation layer
