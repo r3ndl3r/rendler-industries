@@ -24,7 +24,7 @@
  * --- Module Configuration & State ---
  */
 const CONFIG = {
-    SYNC_INTERVAL_MS: 300000         // Background synchronization frequency
+    SYNC_INTERVAL_MS: 2000           // Background synchronization frequency
 };
 
 let STATE = {
