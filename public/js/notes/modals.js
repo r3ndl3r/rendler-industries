@@ -473,18 +473,18 @@ async function switchCanvas(id, targetNoteId = null) {
             await saveViewportImmediate();
         }
         
-        STATE.canvas_id = id;
         showLoadingOverlay('Cleaning canvas...');
+        // Do not mutate STATE.canvas_id here; loadState resolves and assigns it
+        // from the server response (data.canvas_id at line 888 of core.js).
         await loadState(true, id, targetNoteId);
         window.setupHeartbeat();
         // Persist the new context as the most recent immediately
         if (typeof saveViewportImmediate === 'function') await saveViewportImmediate();
+        showToast('Switched board', 'success');
     } finally {
         hideLoadingOverlay();
         closeCanvasManager();
     }
-    
-    showToast('Switched board', 'success');
 }
 
 /**
