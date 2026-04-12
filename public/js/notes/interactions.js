@@ -6,159 +6,175 @@
  * @param {Object} note - The note data object.
  * @returns {void}
  */
+/**
+ * Resize engine initialization (Legacy - No-Op)
+ * Replaced by delegated mousedown handler in handleCanvasMouseDown.
+ */
 function initResizable(el, note) {
-    const handles = el.querySelectorAll('.note-resize-handle');
-    if (!handles.length) return;
+    // Delegation-based architecture handles resizing dynamically.
+}
 
-    let startX, startY, startWidth, startHeight, startLeft, startTop;
-    let startScrollLeft, startScrollTop; // Captured at mousedown for canvas-space delta
-    let startRectLeft, startRectTop;     // Static baseline for viewport-relative math
-    let isResizing = false;
-    let direction = 'se'; // Default
-    const doResize = (e) => {
-        if (!isResizing) return;
+let resizeFrame = null;
 
-        // Capture latest event for auto-scroll re-triggering
-        STATE.autoScroll.lastEvent = e;
+/**
+ * Resolves the handle orientation string ('nw', 'ne', 'sw', 'se') from class list.
+ */
+function resolveDirection(handle) {
+    const classes = ['nw', 'ne', 'sw', 'se'];
+    for (const c of classes) if (handle.classList.contains(c)) return c;
+    return 'se';
+}
 
-        const wrapper = STATE.wrapperEl;
-        const currentRect = wrapper.getBoundingClientRect();
+/**
+ * Initiates the resizing state machine via delegated interaction.
+ */
+function handleResizeStart(e, handle) {
+    if (STATE.isInitializing || !STATE.editMode) return;
+    const noteEl = handle.closest('.sticky-note');
+    const id     = noteEl?.dataset.id;
+    const note   = STATE.notes.find(n => n.id == id);
+    if (!note || !noteEl) return;
 
-        // Calculate delta in Canvas Space (compensates for scroll and viewport shifts)
-        // currentMouse: mouse relative to canvas origin NOW
-        const currentMouseX = (e.clientX - currentRect.left + wrapper.scrollLeft) / STATE.scale;
-        const currentMouseY = (e.clientY - currentRect.top  + wrapper.scrollTop)  / STATE.scale;
+    e.preventDefault();
+    e.stopPropagation();
 
-        // baseMouse: mouse relative to canvas origin at START
-        // static baselines prevent 'cancellation' bugs during auto-scroll/layout shifts
-        const baseMouseX = (startX - startRectLeft + startScrollLeft) / STATE.scale;
-        const baseMouseY = (startY - startRectTop  + startScrollTop)  / STATE.scale;
+    const rect = STATE.wrapperEl.getBoundingClientRect();
+    STATE.resizingContext = {
+        id, el: noteEl, note,
+        direction: resolveDirection(handle),
+        startX: e.clientX,
+        startY: e.clientY,
+        startWidth: noteEl.offsetWidth,
+        startHeight: noteEl.offsetHeight,
+        startLeft: note.x,
+        startTop: note.y,
+        startScrollLeft: STATE.wrapperEl.scrollLeft,
+        startScrollTop: STATE.wrapperEl.scrollTop,
+        startRectLeft: rect.left,
+        startRectTop: rect.top
+    };
 
-        const deltaX = currentMouseX - baseMouseX;
-        const deltaY = currentMouseY - baseMouseY;
-        const snap = STATE.snapGrid || 10;
+    STATE.isResizing = id;
+    noteEl.classList.add('resizing');
+    
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+}
 
-        // Fixed Anchors (The corner opposite to the moving handle)
-        const fixedRight  = startLeft + startWidth;
-        const fixedBottom = startTop  + startHeight;
+/**
+ * Paint-aligned entry point for resizing movement.
+ * Throttles high-frequency pointer events into the 60fps frame cycle.
+ */
+function handleResizeMove(e) {
+    STATE.lastResizeEvent = e;
+    if (resizeFrame) return;
 
-        let newW = startWidth;
-        let newH = startHeight;
-        let newX = startLeft;
-        let newY = startTop;
-
-        switch (direction) {
-            case 'se': {
-                const snappedRight  = Math.round((startLeft + startWidth + deltaX) / snap) * snap;
-                const snappedBottom = Math.round((startTop + startHeight + deltaY) / snap) * snap;
-                newW = snappedRight - startLeft;
-                newH = snappedBottom - startTop;
-                break;
-            }
-
-            case 'sw': {
-                const snappedLeft = Math.round((startLeft + deltaX) / snap) * snap;
-                newW = fixedRight - snappedLeft;
-                newH = Math.round((startHeight + deltaY) / snap) * snap;
-                newX = newW < 240 ? fixedRight - 240 : snappedLeft;
-                break;
-            }
-
-            case 'ne': {
-                const snappedRight = Math.round((startLeft + startWidth + deltaX) / snap) * snap;
-                const snappedTop   = Math.round((startTop + deltaY) / snap) * snap;
-                newW = snappedRight - startLeft;
-                newH = fixedBottom - snappedTop;
-                newY = newH < 54 ? fixedBottom - 54 : snappedTop;
-                break;
-            }
-
-            case 'nw': {
-                const snpL = Math.round((startLeft + deltaX) / snap) * snap;
-                const snpT = Math.round((startTop + deltaY) / snap) * snap;
-                newW = fixedRight - snpL;
-                newH = fixedBottom - snpT;
-                newX = newW < 240 ? fixedRight - 240 : snpL;
-                newY = newH < 54 ? fixedBottom - 54 : snpT;
-                break;
-            }
+    resizeFrame = requestAnimationFrame(() => {
+        if (STATE.resizingContext && STATE.lastResizeEvent) {
+            executeResizeMath(STATE.lastResizeEvent);
         }
-
-        // Apply Clamps & Canvas Boundaries
-        const minW = 240;
-        const minH = 54;
-        const maxXY = STATE.canvasSize - 100; // Small buffer for edge
-
-        newW = Math.max(minW, Math.min(newW, direction.includes('e') ? STATE.canvasSize - startLeft : fixedRight));
-        newH = Math.max(minH, Math.min(newH, direction.includes('s') ? STATE.canvasSize - startTop : fixedBottom));
-        newX = Math.max(0, Math.min(newX, maxXY));
-        newY = Math.max(0, Math.min(newY, maxXY));
-
-        // Atomic DOM Application
-        el.style.width  = `${newW}px`;
-        el.style.height = `${newH}px`;
-        el.style.left   = `${newX}px`;
-        el.style.top    = `${newY}px`;
-
-        // Immediate State Update (Prevents "Double-Write" lag)
-        note.width  = newW;
-        note.height = newH;
-        note.x = newX;
-        note.y = newY;
-    };
-
-    const stopResize = () => {
-        if (!isResizing) return;
-        isResizing = false;
-        STATE.isResizing = null;
-        STATE.activeResizeHandler = null;
-        
-        document.removeEventListener('mousemove', doResize);
-        document.removeEventListener('mouseup', stopResize);
-        el.classList.remove('resizing');
-        
-        // Final Sync to Server/Backend (300ms Debounce)
-        if (typeof syncNotePosition === 'function') syncNotePosition(note.id, 'normal', 300);
-    };
-
-    handles.forEach(h => {
-        h.addEventListener('mousedown', (e) => {
-            if (STATE.isInitializing || !STATE.editMode) return;
-            e.stopPropagation();
-            e.preventDefault();
-            
-            isResizing = true;
-            STATE.isResizing = note.id;
-            
-            // Determine interaction mode from handle class
-            if (h.classList.contains('nw')) direction = 'nw';
-            else if (h.classList.contains('ne')) direction = 'ne';
-            else if (h.classList.contains('sw')) direction = 'sw';
-            else direction = 'se';
-
-            startX = e.clientX;
-            startY = e.clientY;
-            
-            const style = window.getComputedStyle(el);
-            startWidth  = parseInt(style.width, 10);
-            startHeight = parseInt(style.height, 10);
-            startLeft   = parseInt(style.left, 10);
-            startTop    = parseInt(style.top, 10);
-
-            const rect = STATE.wrapperEl.getBoundingClientRect();
-            startRectLeft   = rect.left;
-            startRectTop    = rect.top;
-            startScrollLeft = STATE.wrapperEl.scrollLeft;
-            startScrollTop  = STATE.wrapperEl.scrollTop;
-            
-            // Expose handler to the global animation loop for auto-growth
-            STATE.activeResizeHandler = doResize;
-            
-            document.addEventListener('mousemove', doResize);
-            document.addEventListener('mouseup', stopResize);
-            el.classList.add('resizing');
-        });
+        resizeFrame = null;
     });
+}
+
+/**
+ * Computes coordinate deltas and applies snapped transformations to the DOM.
+ */
+function executeResizeMath(e) {
+    const ctx = STATE.resizingContext;
+    if (!ctx) return;
+
+    const wrapper = STATE.wrapperEl;
+    const currentRect = wrapper.getBoundingClientRect();
+    const snap = STATE.snapGrid || 10;
+    const minW = 240; 
+    const minH = 54;
+
+    const currentMouseX = (e.clientX - currentRect.left + wrapper.scrollLeft) / STATE.scale;
+    const currentMouseY = (e.clientY - currentRect.top  + wrapper.scrollTop)  / STATE.scale;
+    
+    const baseMouseX = (ctx.startX - ctx.startRectLeft + ctx.startScrollLeft) / STATE.scale;
+    const baseMouseY = (ctx.startY - ctx.startRectTop  + ctx.startScrollTop)  / STATE.scale;
+
+    const deltaX = currentMouseX - baseMouseX;
+    const deltaY = currentMouseY - baseMouseY;
+
+    let { startWidth: newW, startHeight: newH, startLeft: newX, startTop: newY } = ctx;
+
+    const fixedRight  = ctx.startLeft + ctx.startWidth;
+    const fixedBottom = ctx.startTop  + ctx.startHeight;
+
+    switch (ctx.direction) {
+        case 'se': 
+            newW = Math.round((ctx.startWidth + deltaX) / snap) * snap;
+            newH = Math.round((ctx.startHeight + deltaY) / snap) * snap;
+            break;
+        case 'sw': {
+            const snpL = Math.round((ctx.startLeft + deltaX) / snap) * snap;
+            newW = fixedRight - snpL;
+            newH = Math.round((ctx.startHeight + deltaY) / snap) * snap;
+            newX = newW < minW ? fixedRight - minW : snpL;
+            break;
+        }
+        case 'ne': {
+            const snpT = Math.round((ctx.startTop + deltaY) / snap) * snap;
+            newW = Math.round((ctx.startWidth + deltaX) / snap) * snap;
+            newH = fixedBottom - snpT;
+            newY = newH < minH ? fixedBottom - minH : snpT;
+            break;
+        }
+        case 'nw': {
+            const snpL = Math.round((ctx.startLeft + deltaX) / snap) * snap;
+            const snpT = Math.round((ctx.startTop  + deltaY) / snap) * snap;
+            newW = fixedRight - snpL;
+            newH = fixedBottom - snpT;
+            newX = newW < minW ? fixedRight - minW : snpL;
+            newY = newH < minH ? fixedBottom - minH : snpT;
+            break;
+        }
+    }
+
+    // Clamping & Canvas Boundaries
+    newW = Math.max(minW, newW);
+    newH = Math.max(minH, newH);
+    const maxXY = STATE.canvasSize - 100;
+    newX = Math.max(0, Math.min(newX, maxXY));
+    newY = Math.max(0, Math.min(newY, maxXY));
+
+    // Application
+    ctx.el.style.width  = `${newW}px`;
+    ctx.el.style.height = `${newH}px`;
+    ctx.el.style.left   = `${newX}px`;
+    ctx.el.style.top    = `${newY}px`;
+
+    // State Persistence
+    ctx.note.width  = newW;
+    ctx.note.height = newH;
+    ctx.note.x = newX;
+    ctx.note.y = newY;
+}
+
+/**
+ * Terminates the resizing transaction and triggers persistence.
+ * Safe State Teardown: DOM cleanup occurs before context nullification.
+ */
+function handleResizeEnd() {
+    if (!STATE.resizingContext) return;
+    
+    const ctx = STATE.resizingContext;
+    const id  = ctx.id;
+    
+    ctx.el.classList.remove('resizing');
+    document.removeEventListener('mousemove', handleResizeMove);
+    document.removeEventListener('mouseup', handleResizeEnd);
+    
+    if (resizeFrame) cancelAnimationFrame(resizeFrame);
+    resizeFrame = null;
+
+    STATE.isResizing = null;
+    STATE.resizingContext = null;
+    
+    if (typeof syncNotePosition === 'function') syncNotePosition(id, 'normal', 300);
 }
 
 /**
@@ -683,6 +699,87 @@ function applyScale() {
 }
 
 /**
+ * Atomic sync for scale mutations. Prevents coordinate drift by rolling back
+ * STATE.scale if the visual applyScale synchronization fails.
+ * @param {number} candidate - The prospective scale level.
+ * @returns {boolean} Success status.
+ */
+function atomicApplyScale(candidate) {
+    const backup = STATE.scale;
+    try {
+        if (typeof applyScale !== 'function') throw new Error('applyScale_missing');
+        STATE.scale = candidate;
+        applyScale();
+        return true;
+    } catch (e) {
+        STATE.scale = backup;
+        console.error('[AtomicScale] Sync Failure - State Reverted:', e);
+        return false;
+    }
+}
+
+/**
+ * Normalizes wheel deltas based on the event's deltaMode.
+ * Prevents intent misclassification on devices reporting in lines or pages.
+ */
+function normalizeWheelDeltas(e) {
+    const LINE_PX = 16;
+    const PAGE_PX = window.innerHeight;
+
+    switch (e.deltaMode) {
+        case WheelEvent.DOM_DELTA_LINE:
+            return { dx: e.deltaX * LINE_PX, dy: e.deltaY * LINE_PX };
+        case WheelEvent.DOM_DELTA_PAGE:
+            return { dx: e.deltaX * PAGE_PX, dy: e.deltaY * PAGE_PX };
+        case WheelEvent.DOM_DELTA_PIXEL:
+        default:
+            return { dx: e.deltaX, dy: e.deltaY };
+    }
+}
+
+/**
+ * Evaluates whether a wheel event should be shielded from the whiteboard
+ * to allow a nested scrollable element (like a note's text area) to consume it.
+ * 
+ * Policy:
+ * - Horizontal intent always belongs to the board (notes have no x-scroll).
+ * - Vertical intent belongs to the note ONLY if it has vertical room to move.
+ * - At top/bottom boundaries, intent is handed back to the board.
+ * 
+ * @param {WheelEvent} e - The wheel event.
+ * @returns {boolean} True if the event should be shielded (consumed by note).
+ */
+function shouldShieldWheelFromBoard(e) {
+    const s = e.target.closest('.note-text-viewer, .note-attachment-stack, textarea');
+    if (!s) return false;
+
+    // Normalize deltas to pixels for cross-device magnitude comparison
+    const { dx, dy } = normalizeWheelDeltas(e);
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    // 1. Horizontal Intent: Primarily horizontal movements always belong to the board.
+    // This ensures trackpad swipes/sideways gestures work smoothly over notes.
+    if (absX > absY) return false;
+
+    // 2. Vertical Capacity: If the note cannot scroll vertically, it cannot own the event.
+    const canScrollVert = s.scrollHeight > s.clientHeight;
+    if (!canScrollVert) return false;
+
+    const goingDown = dy > 0;
+    const goingUp   = dy < 0;
+
+    // 3. Boundary Detection: Hand interaction back to board at boundaries.
+    const atTop = s.scrollTop <= 0;
+    const atBottom = Math.ceil(s.scrollTop + s.clientHeight) >= s.scrollHeight;
+
+    if (goingDown && !atBottom) return true;
+    if (goingUp && !atTop) return true;
+
+    return false;
+}
+
+/**
  * Zooms the canvas in by one step (10%), snapping to the nearest decile.
  * @returns {void}
  */
@@ -695,18 +792,17 @@ function zoomIn() {
     const precision = (step.toString().split('.')[1] || '').length || 1;
     const f = Math.pow(10, precision);
 
-    // Removes any incremental scale drift during precision-based snapping
-    STATE.scale = Math.min(SCALE_MAX, Math.round((STATE.scale + step) * f) / f);
+    const candidate = Math.min(SCALE_MAX, Math.round((STATE.scale + step) * f) / f);
 
     // Canvas coordinate at the current viewport centre
     const canvasCX = (wrapper.scrollLeft + wrapper.clientWidth  / 2) / oldScale;
     const canvasCY = (wrapper.scrollTop  + wrapper.clientHeight / 2) / oldScale;
 
-    applyScale();
-
-    // Restore scroll so the same canvas point stays centred
-    wrapper.scrollLeft = canvasCX * STATE.scale - wrapper.clientWidth  / 2;
-    wrapper.scrollTop  = canvasCY * STATE.scale - wrapper.clientHeight / 2;
+    if (atomicApplyScale(candidate)) {
+        // Restore scroll so the same canvas point stays centred
+        wrapper.scrollLeft = canvasCX * STATE.scale - wrapper.clientWidth  / 2;
+        wrapper.scrollTop  = canvasCY * STATE.scale - wrapper.clientHeight / 2;
+    }
 
     if (typeof updateRadar === 'function') updateRadar();
     scheduleViewportSave();
@@ -725,16 +821,15 @@ function zoomOut() {
     const precision = (step.toString().split('.')[1] || '').length || 1;
     const f = Math.pow(10, precision);
 
-    // Removes any incremental scale drift during precision-based snapping
-    STATE.scale = Math.max(SCALE_MIN, Math.round((STATE.scale - step) * f) / f);
+    const candidate = Math.max(SCALE_MIN, Math.round((STATE.scale - step) * f) / f);
 
     const canvasCX = (wrapper.scrollLeft + wrapper.clientWidth  / 2) / oldScale;
     const canvasCY = (wrapper.scrollTop  + wrapper.clientHeight / 2) / oldScale;
 
-    applyScale();
-
-    wrapper.scrollLeft = canvasCX * STATE.scale - wrapper.clientWidth  / 2;
-    wrapper.scrollTop  = canvasCY * STATE.scale - wrapper.clientHeight / 2;
+    if (atomicApplyScale(candidate)) {
+        wrapper.scrollLeft = canvasCX * STATE.scale - wrapper.clientWidth  / 2;
+        wrapper.scrollTop  = canvasCY * STATE.scale - wrapper.clientHeight / 2;
+    }
 
     if (typeof updateRadar === 'function') updateRadar();
     scheduleViewportSave();
@@ -945,6 +1040,13 @@ function handleCanvasMouseDown(e) {
     const viewBtn     = e.target.closest('.btn-icon-view');
     const deleteBtn   = e.target.closest('.btn-icon-delete:not(.reel-action-btn):not(.hero-action-btn)');
 
+    // 2. Delegated Resize: If the user clicks a resizing handle
+    const resizeHandle = e.target.closest('.note-resize-handle');
+    if (resizeHandle && e.button === 0) {
+        handleResizeStart(e, resizeHandle);
+        return;
+    }
+
     if (e.button === 0) {
         const noteEl = e.target.closest('.sticky-note');
         if (noteEl) {
@@ -1081,13 +1183,14 @@ function handleCanvasWheel(e) {
         const precision = (step.toString().split('.')[1] || '').length || 1;
         const f = Math.pow(10, precision);
         
+        let candidate;
         if (e.deltaY < 0) {
-            STATE.scale = Math.min(SCALE_MAX, Math.round((STATE.scale + step) * f) / f);
+            candidate = Math.min(SCALE_MAX, Math.round((STATE.scale + step) * f) / f);
         } else {
-            STATE.scale = Math.max(SCALE_MIN, Math.round((STATE.scale - step) * f) / f);
+            candidate = Math.max(SCALE_MIN, Math.round((STATE.scale - step) * f) / f);
         }
 
-        if (STATE.scale === oldScale) return;
+        if (candidate === oldScale) return;
 
         const rect = wrapper.getBoundingClientRect();
         const mouseVX = e.clientX - rect.left;
@@ -1096,17 +1199,19 @@ function handleCanvasWheel(e) {
         const canvasMX = (wrapper.scrollLeft + mouseVX) / oldScale;
         const canvasMY = (wrapper.scrollTop  + mouseVY) / oldScale;
 
-        if (typeof applyScale === 'function') {
-            applyScale();
+        if (atomicApplyScale(candidate)) {
+            wrapper.scrollLeft = canvasMX * STATE.scale - mouseVX;
+            wrapper.scrollTop  = canvasMY * STATE.scale - mouseVY;
         }
-
-        wrapper.scrollLeft = canvasMX * STATE.scale - mouseVX;
-        wrapper.scrollTop  = canvasMY * STATE.scale - mouseVY;
 
         if (typeof updateRadar === 'function') updateRadar();
         if (typeof scheduleViewportSave === 'function') scheduleViewportSave();
     } else {
-        // 4. Plane Panning: Scrolling with no keys pressed
+        // 4. Gesture Shielding: Prevent board pan/zoom while scrolling note internals.
+        // Axis-aware: allows horizontal panning and boundary handoff.
+        if (shouldShieldWheelFromBoard(e)) return;
+
+        // 5. Plane Panning: Scrolling with no keys pressed
         
         // Continuity Guard: If we are already panning the board (via drag or recent wheel scroll),
         // we do not allow notes to hijack the interaction.
