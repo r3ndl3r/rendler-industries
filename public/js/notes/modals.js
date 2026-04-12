@@ -900,50 +900,121 @@ function copyViewContent() {
 }
 
 /**
- * Displays a formatted information modal explaining whiteboard features.
+ * Displays a tabbed information modal explaining whiteboard features.
+ * Tabs: Formatting | Links & Embeds | Bookmarks | Controls
+ * Tab switching is handled via delegated click on #globalConfirmModalContent
+ * using data-action="guide-tab" — no inline handlers.
+ * @returns {void}
  */
 function showBoardInfo() {
     const helpContent = `
-        <div class="board-guide-section nav">
-            <h4>🔗 Navigation & Rendering</h4>
+        <nav class="guide-tab-nav">
+            <button class="guide-tab-btn active" data-action="guide-tab" data-tab="controls">⌨️ Controls</button>
+            <button class="guide-tab-btn" data-action="guide-tab" data-tab="formatting">✏️ Formatting</button>
+            <button class="guide-tab-btn" data-action="guide-tab" data-tab="embeds">🔗 Links &amp; Embeds</button>
+            <button class="guide-tab-btn" data-action="guide-tab" data-tab="bookmarks">🔖 Bookmarks</button>
+        </nav>
+
+        <div class="guide-tab-panel active" data-panel="controls">
+            <p class="board-guide-subheading">Canvas</p>
             <ul class="board-guide-list">
-                <li><strong>[note:#]</strong> - Link to another note by its ID</li>
-                <li><strong>[image:#:scale]</strong> - Embed an image note (scale: 0.1 - 1.0)</li>
-                <li><strong>[file:#]</strong> - Embed a file download link</li>
-                <li><strong>[Label](url)</strong> - Create an external link</li>
+                <li><strong>Double-click canvas</strong> — Create a new note at cursor</li>
+                <li><strong>Double-click note</strong> — Pick up and move it (edit mode only)</li>
+                <li><strong>Click &amp; drag</strong> — Pan the board</li>
+                <li><strong>Mouse Wheel</strong> — Pan vertically</li>
+                <li><strong>Shift + Wheel</strong> — Pan horizontally</li>
+                <li><strong>Ctrl + Wheel</strong> — Zoom in / out (anchored to cursor)</li>
+                <li><strong>Ctrl+V</strong> — Paste image or file as a new note</li>
+                <li><strong>Pinch (touch)</strong> — Zoom in / out</li>
+            </ul>
+            <p class="board-guide-subheading">Keyboard</p>
+            <ul class="board-guide-list">
+                <li><strong>Ctrl+F</strong> — Open board search</li>
+                <li><strong>Ctrl+E</strong> — Toggle edit mode on hovered note / exit if already editing</li>
+                <li><strong>Ctrl+S</strong> — Save active note (incremental while editing)</li>
+                <li><strong>Ctrl+Enter</strong> — Save and exit edit mode</li>
+                <li><strong>Escape</strong> — Discard changes &amp; exit / cancel move / close modals</li>
             </ul>
         </div>
-        <div class="board-guide-divider"></div>
-        <div class="board-guide-section edit">
-            <h4>✏️ Rich Text Formatting</h4>
+
+        <div class="guide-tab-panel" data-panel="formatting">
+            <div class="guide-cheatsheet">
+                <code class="guide-cs-code">**Bold**</code>       <span class="guide-cs-preview"><strong>Bold</strong></span>
+                <code class="guide-cs-code">*Italic*</code>       <span class="guide-cs-preview"><em>Italic</em></span>
+                <code class="guide-cs-code">\`code\`</code>        <span class="guide-cs-preview"><code class="guide-cs-inline">code</code></span>
+                <code class="guide-cs-code">- item</code>         <span class="guide-cs-preview">• item</span>
+                <code class="guide-cs-code">- [ ] / - [x]</code> <span class="guide-cs-preview">☐ / ☑ Interactive checklist</span>
+                <code class="guide-cs-code">---</code>            <span class="guide-cs-preview"><span class="guide-cs-hr"></span></span>
+            </div>
+            <p class="board-guide-subheading board-guide-subheading--spaced">[color:name]text[/color]</p>
+            <div class="guide-color-swatches">
+                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--yellow"></span>yellow</span>
+                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--orange"></span>orange</span>
+                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--red"></span>red</span>
+                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--pink"></span>pink</span>
+                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--green"></span>green</span>
+                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--blue"></span>blue</span>
+                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--indigo"></span>indigo</span>
+                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--violet"></span>violet</span>
+                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--slate"></span>slate</span>
+                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--hex"></span>#HEX</span>
+            </div>
+        </div>
+
+        <div class="guide-tab-panel" data-panel="embeds">
+            <p class="board-guide-subheading">Link to other notes</p>
             <ul class="board-guide-list">
-                <li><strong>**Bold**</strong> and <strong>*Italic*</strong> for emphasis</li>
-                <li><strong>\`code\`</strong> - Monospace code block</li>
-                <li><strong>[color:selector]text[/color]</strong> - Highlight text (Semantic or HEX)</li>
-                <li><strong>- [ ]</strong> or <strong>- [x]</strong> - Interactive checklists</li>
+                <li><strong>[note:ID]</strong> — Jump link to another note</li>
+                <li><strong>[image:ID]</strong> — Embed an image note inline</li>
+                <li><strong>[file:ID]</strong> — Embed a file download</li>
+            </ul>
+            <p class="board-guide-subheading">External links</p>
+            <ul class="board-guide-list">
+                <li>Paste any <strong>https://…</strong> URL — it becomes a clickable link automatically</li>
+                <li><strong>[Label](url)</strong> — Link with custom display text</li>
+                <li><strong>[iframe:url]</strong> — Embed an external webpage inside the note</li>
             </ul>
         </div>
-        <div class="board-guide-divider"></div>
-        <div class="board-guide-section move">
-            <h4>📦 Whiteboard Controls</h4>
+
+        <div class="guide-tab-panel" data-panel="bookmarks">
+            <p class="board-guide-subheading">What is a bookmark note?</p>
             <ul class="board-guide-list">
-                <li><strong>Double Click</strong> - Create a new note at cursor</li>
-                <li><strong>Ctrl+V</strong> - Paste image to create an Image Note</li>
-                <li><strong>Mouse Wheel</strong> - Pan in any direction</li>
-                <li><strong>Ctrl + Mouse Wheel</strong> - Zoom in/out to scale the perspective</li>
-                <li><strong>Ctrl + F</strong> - Open internal board search</li>
+                <li>Write every line as <strong>Label | URL</strong> and the note becomes a visual bookmark tile list</li>
+                <li>Add a leading emoji to use it as the icon — e.g. <strong>🏠 Home | https://…</strong></li>
+            </ul>
+            <p class="board-guide-subheading">Optional extras</p>
+            <ul class="board-guide-list">
+                <li><strong>Label | URL | iconURL</strong> — Use a custom icon image</li>
+                <li>Add <strong>[emoji]:1</strong> anywhere in the note to force emoji icons on every tile</li>
             </ul>
         </div>
     `;
 
     window.showConfirmModal({
-        title: 'Whiteboard Guide',
+        title: 'Guide',
         icon: 'ℹ️',
         message: helpContent,
-        confirmText: 'Got it',
-        confirmIcon: 'ℹ️',
+        confirmText: '🎉 Got it',
         hideCancel: true,
-        width: 'medium'
+        width: 'large'
+    });
+
+    // Delegated tab switching: wired after showConfirmModal renders the DOM synchronously.
+    const modalContent = document.getElementById('globalConfirmModalContent');
+    if (!modalContent) return;
+
+    modalContent.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="guide-tab"]');
+        if (!btn) return;
+
+        const tab = btn.dataset.tab;
+
+        modalContent.querySelectorAll('.guide-tab-btn').forEach(b => b.classList.remove('active'));
+        modalContent.querySelectorAll('.guide-tab-panel').forEach(p => p.classList.remove('active'));
+
+        btn.classList.add('active');
+        const panel = modalContent.querySelector(`.guide-tab-panel[data-panel="${tab}"]`);
+        if (panel) panel.classList.add('active');
     });
 }
 
