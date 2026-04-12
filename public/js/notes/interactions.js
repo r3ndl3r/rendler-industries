@@ -1276,7 +1276,21 @@ function handleCanvasDoubleClick(e) {
     if (STATE.isInitializing) return;
     if (!STATE.editMode || STATE.pickedNoteId) return;
 
-    // Creation Logic: Only allow new note creation on the actual background layers.
+    // 1. Note Detection: If double-clicking a note, initiate 'Pick & Place'
+    const noteEl = e.target.closest('.sticky-note');
+    if (noteEl) {
+        // Isolation: Prevent pickup if clicking an interactive action (buttons, links, triggers)
+        const isAction = e.target.closest('[data-action], .note-check-trigger, .note-link-trigger, .reel-action-btn, .btn-icon-drawer');
+        if (!isAction) {
+            const id = noteEl.dataset.id;
+            if (id) {
+                toggleStickyMove(e, id);
+                return;
+            }
+        }
+    }
+
+    // 2. Creation Logic: Only allow new note creation on the actual background layers.
     if (e.target.id !== 'notes-canvas' && e.target.id !== 'canvas-wrapper') return;
 
     const wrapper = STATE.wrapperEl;
