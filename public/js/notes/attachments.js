@@ -96,6 +96,11 @@ function confirmAttachmentRemoval(noteId, blobId) {
                 }
             } else {
                 // Case B: In-Memory Draft (Local removal only)
+                // Remove the matching pending file from the draft queue by blobId or by index lookup
+                if (DRAFT_NOTE && DRAFT_NOTE.pendingFiles) {
+                    const idx = DRAFT_NOTE.pendingFiles.findIndex(p => p.blobId === blobId || p.filename === blobId);
+                    if (idx !== -1) DRAFT_NOTE.pendingFiles.splice(idx, 1);
+                }
                 if (typeof renderDraftReel === 'function') renderDraftReel();
                 showToast('Attachment removed from draft', 'info');
             }
