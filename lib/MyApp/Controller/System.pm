@@ -62,9 +62,11 @@ sub run_chore_reminders {
     my $kids = $c->db->get_child_users() || [];
 
     for my $chore (@$stale_chores) {
-        my $target_name = $chore->{target_user} // 'Everyone';
+        my $target_name  = $chore->{target_user} // 'Everyone';
+        my $target_emoji = $chore->{target_emoji} // '🌍';
         my $msg = sprintf(
-            "⏳ **Chore Reminder:** '%s' has been waiting for an hour! Grab the %d pts. (Assigned to: %s)",
+            "%s **Chore Reminder:** '%s' has been waiting for an hour!\n\nGrab the %d pts.\n\n(Assigned to: %s)",
+            $target_emoji,
             $chore->{title},
             $chore->{points} || 0,
             $target_name
