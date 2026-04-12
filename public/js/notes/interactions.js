@@ -920,6 +920,13 @@ async function processSyncQueue() {
     }
     
     STATE.isSyncing = false;
+
+    // Drain any context switch that was blocked by our isSyncing lock
+    if (STATE.pendingContext) {
+        const ctx = STATE.pendingContext;
+        STATE.pendingContext = null;
+        loadState(ctx.initial, ctx.canvas_id, ctx.targetNoteId, ctx.layer_id);
+    }
 }
 
 /**
