@@ -845,6 +845,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
     // Reset rendering error baseline on every state hydration to allow re-reporting of persistent issues
     if (window._renderErrors) window._renderErrors.clear();
 
+    let data = null;
     try {
         let query = tid ? `?canvas_id=${tid}` : '';
         if (nid) query += (query ? '&' : '?') + `note_id=${nid}`;
@@ -854,7 +855,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
         // Supplying the local hash allows the server to skip the heavy metadata payload.
         if (STATE.note_map_hash) query += (query ? '&' : '?') + `note_map_hash=${encodeURIComponent(STATE.note_map_hash)}`;
 
-        const data = await NoteAPI.get(`/notes/api/state${query}`);
+        data = await NoteAPI.get(`/notes/api/state${query}`);
         if (!data) return; // Aborted or session expired
         
         // Logic Gate PRE-FLIGHT: Update UI only if not aborted (tid/layer already resolved above)
