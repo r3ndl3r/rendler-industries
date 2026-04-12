@@ -1,6 +1,5 @@
 /* /public/css/notes.css */
 
-.hidden { display: none !important; }
 
 /* Core Canvas Layout */
 .canvas-container {
@@ -2292,37 +2291,17 @@ pre code {
     letter-spacing: 0.02em;
 }
 
-.create-input-wrapper {
-    background: transparent;
-    border: none;
-    position: relative;
-}
-
+/* Input Wrapper (Crucial for Emoji Picker isolation) */
 .create-input-wrapper:focus-within {
     border-color: transparent;
     box-shadow: none;
 }
 
-.create-modal-input {
-    width: 100%;
-    background: #0f172a;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 12px;
-    color: #fff;
-    padding: 12px 16px;
-    font-size: 1.05rem;
-    font-family: 'Inter', sans-serif;
-    outline: none;
-    user-select: text;
-    pointer-events: auto;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
 .create-modal-input:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    border-color: rgba(99, 102, 241, 0.5) !important;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
+    background: rgba(15, 23, 42, 0.6) !important;
 }
-
 
 .create-modal-input::placeholder {
     color: rgba(255, 255, 255, 0.2);
@@ -3101,18 +3080,6 @@ input:checked + .switch-sm .slider:before {
 
 
 /* Quick Access Modal Components */
-.modal-prompt-row {
-    display: flex !important;
-    gap: 10px;
-    align-items: center;
-    margin-bottom: 24px !important;
-}
-
-.modal-prompt-row .modal-prompt-input {
-    flex: 1;
-    margin-bottom: 0 !important;
-}
-
 .modal-divider-short {
     width: 60%;
     height: 1px;
@@ -3172,9 +3139,6 @@ input:checked + .switch-sm .slider:before {
 }
 
 /* Cleanup Classes: Migrated from JavaScript Inline Styles */
-.btn-go-row {
-    padding: 0.75rem 1.25rem !important;
-}
 
 .empty-board-hint {
     text-align: center;
