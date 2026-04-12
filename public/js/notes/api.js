@@ -325,7 +325,7 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
         clearTimeout(POSITION_SYNC_TIMERS.get(sid));
         POSITION_SYNC_TIMERS.delete(sid);
     }
-    const pendingContext = POSITION_SYNC_PROMISES.get(sid);
+    const pendingContext = POSITION_SYNC_PROMISES.get(sid) || null;
     POSITION_SYNC_PROMISES.delete(sid);
 
     if (type !== 'silent') el.classList.add('pending');
@@ -354,20 +354,31 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
                 STATE.notes = res.notes;
             }
             STATE.last_mutation = res.last_mutation;
-            if (pendingContext) pendingContext.resolve(res);
+            if (pendingContext) {
+                try { pendingContext.resolve(res); } catch (_) {}
+            }
             return res;
         } else {
             const error = new Error(res?.error || 'Save failed');
-            if (pendingContext) pendingContext.reject(error);
+            if (pendingContext) {
+                try { pendingContext.reject(error); } catch (_) {}
+            }
             throw error;
         }
     } catch (e) {
         console.error(`[syncNotePosition] Immediate save failed for note ${id}:`, e);
-        if (pendingContext) pendingContext.reject(e);
+        if (pendingContext) {
+            try { pendingContext.reject(e); } catch (_) {}
+        }
         throw e;
     } finally {
         if (type !== 'silent') el.classList.remove('pending');
         if (typeof window.removeActiveSync === 'function') window.removeActiveSync(sid);
+        
+        // Settle orphaned debounce promise if the immediate path arrived after the debounce deleted it
+        if (pendingContext) {
+            try { pendingContext.resolve({ success: 0, error: 'superseded_by_immediate' }); } catch (_) {}
+        }
     }
 }
 
