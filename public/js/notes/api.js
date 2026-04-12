@@ -298,7 +298,11 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
                     console.error(`[syncNotePosition] Debounced save failed for note ${id}:`, e);
                     context.reject(e);
                 } finally {
-                    if (typeof window.removeActiveSync === 'function') window.removeActiveSync(sid);
+                    // Only release the sync guard if no new timer was registered for this sid
+                    // while the API call was in flight (i.e. we are still the active owner).
+                    if (!POSITION_SYNC_TIMERS.has(sid)) {
+                        if (typeof window.removeActiveSync === 'function') window.removeActiveSync(sid);
+                    }
                 }
             }
         }, debounceMs);
