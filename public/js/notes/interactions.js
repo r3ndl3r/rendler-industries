@@ -1385,6 +1385,10 @@ async function saveNoteInline(id, stayInEditMode = false) {
                 const unlockRes = await NoteAPI.unlock(id);
                 if (!unlockRes || !unlockRes.success) {
                     console.warn('[NoteAPI] Post-save unlock failed for note', id, unlockRes?.error);
+                    // Schedule a retry to prevent the collaborative lock from being permanently stuck
+                    setTimeout(async () => {
+                        try { await NoteAPI.unlock(id); } catch (_) {}
+                    }, 3000);
                 }
             }
 
