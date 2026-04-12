@@ -31,6 +31,11 @@ window.NoteAPI = {
                 return null;
             }
 
+            if (!response.ok) {
+                console.error(`NoteAPI Get: HTTP ${response.status} for ${url}`);
+                return null;
+            }
+
             const data = await response.json();
             if (data.error && !data.success) {
                 showToast(data.error, 'error');
@@ -97,6 +102,11 @@ window.NoteAPI = {
                 }
                 
                 window.location.href = '/login';
+                return null;
+            }
+
+            if (!response.ok) {
+                console.error(`NoteAPI Post: HTTP ${response.status} for ${url}`);
                 return null;
             }
 
