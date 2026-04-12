@@ -109,11 +109,17 @@ async function executeCreateNote() {
                     if (pending.file) {
                         formData.append('file', pending.file);
                     } else if (pending.data && pending.data.startsWith('data:')) {
-                        // Migration: Centralized transport handles binary extraction
-                        const blob = await NoteAPI.blob(pending.data);
-                        if (!blob) continue; // Aborted or session expired
-                        const timestamp = new Date().getTime();
-                        formData.append('file', blob, pending.filename || `paste_${timestamp}.png`);
+                        // Convert data URL to Blob locally — do not pass a data: URI to NoteAPI.blob
+                        // which expects an HTTP endpoint and cannot handle data: URIs.
+                        try {
+                            const res = await fetch(pending.data);
+                            const blob = await res.blob();
+                            const timestamp = new Date().getTime();
+                            formData.append('file', blob, pending.filename || `paste_${timestamp}.png`);
+                        } catch (dataUrlErr) {
+                            console.warn('[executeCreateNote] data-URL to Blob conversion failed:', dataUrlErr);
+                            continue;
+                        }
                     }
                     
                     const uploadRes = await NoteAPI.post('/notes/api/upload', formData);
