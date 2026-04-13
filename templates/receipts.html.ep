@@ -172,9 +172,15 @@
             </div>
             <p class="help-text-muted">Drag to select the receipt area. This will be the final image uploaded.</p>
         </div>
-        <div class="modal-actions modal-actions-center">
-            <button type="button" class="btn-primary" onclick="applyPreUploadCrop()">✅ Apply Crop</button>
-            <button type="button" class="btn-secondary" onclick="closePreUploadCropModal()">Skip Cropping</button>
+        <div class="modal-actions modal-actions-center pre-upload-actions">
+            <div class="rotate-controls">
+                <button type="button" class="btn-secondary" onclick="rotatePreUpload(-90)" title="Rotate left">↺</button>
+                <button type="button" class="btn-secondary" onclick="rotatePreUpload(90)" title="Rotate right">↻</button>
+            </div>
+            <div class="crop-controls">
+                <button type="button" class="btn-primary" onclick="applyPreUploadCrop()">✅ Save</button>
+                <button type="button" class="btn-secondary" onclick="discardPreUploadRefinement()">❌ Discard</button>
+            </div>
         </div>
     </div>
 </div>
