@@ -268,7 +268,7 @@ function renderReceipts(append = false, batch = null) {
                     ${(r.uploaded_by === STATE.currentUser || STATE.isAdmin) ? `
                         <button type="button" class="btn-icon-crop" onclick="openCropModal('${r.id}')" title="Refine">✂️</button>
                         <button type="button" class="btn-icon-bonus" onclick="triggerOCR('${r.id}')" title="OCR Scan" id="ocr-btn-${r.id}">🔍</button>
-                        <button type="button" class="btn-icon-edit" onclick="openEditModal(this.dataset.receipt)" data-receipt='${escapeHtml(JSON.stringify(r))}' title="Edit">✏️</button>
+                        <button type="button" class="btn-icon-edit" onclick="openEditModal(${r.id})" title="Edit">✏️</button>
                         <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('${r.id}', '${escapeHtml(r.store_name || r.original_filename)}')" title="Delete">🗑️</button>
                     ` : ''}
                 </div>
@@ -316,8 +316,8 @@ async function handleUpload(e) {
             const display = document.getElementById('fileName');
             if (display) display.classList.add('hidden');
             closeUploadModal();
-            loadState(true);
-            showToast('Receipt uploaded successfully', 'success');
+            await loadState(true);
+            openEditModal(result.receipt.id);
         }
     } finally {
         hideLoadingOverlay();
@@ -745,29 +745,33 @@ function closeReceiptModal() {
 }
 
 /**
- * Pre-fills the metadata editor.
- * 
- * @param {string} rawJson - Stringified record data.
+ * Pre-fills the metadata editor from the in-memory state record.
+ * Wires the AI scan button and conditionally shows the apply button.
+ *
+ * @param {number} id - Receipt identifier.
  * @returns {void}
  */
-function openEditModal(rawJson) {
-    const r = JSON.parse(rawJson);
-    const modal = document.getElementById('editModal');
-    const form  = document.getElementById('editForm');
-    const btnAI = document.getElementById('btnApplyAI');
+function openEditModal(id) {
+    const r = STATE.receipts.find(x => x.id === id);
+    if (!r) return;
+    const modal   = document.getElementById('editModal');
+    const form    = document.getElementById('editForm');
+    const btnAI   = document.getElementById('btnApplyAI');
+    const btnScan = document.getElementById('btnScanAI');
 
     if (!modal || !form) return;
     form.dataset.receiptId = r.id;
     document.getElementById('editStoreName').value   = r.store_name   || '';
     document.getElementById('editDate').value        = r.receipt_date || '';
     document.getElementById('editAmount').value      = r.total_amount || '';
-    document.getElementById('editDescription').value = r.description || '';
-    
-    if (btnAI) {
-        btnAI.classList.toggle('hidden', !r.ai_json);
+    document.getElementById('editDescription').value = r.description  || '';
+
+    // Wires the "Use AI Data" button with a parsed AI data object
+    const wireAIApply = (data) => {
+        if (!btnAI) return;
+        btnAI.classList.remove('hidden');
         btnAI.onclick = () => {
             try {
-                const data = JSON.parse(r.ai_json);
                 if (data.store_name) document.getElementById('editStoreName').value = data.store_name;
                 if (data.total_amount) document.getElementById('editAmount').value = data.total_amount;
                 if (data.date) {
@@ -786,10 +790,49 @@ function openEditModal(rawJson) {
                     }
                     document.getElementById('editDate').value = d;
                 }
-                showToast("AI data synchronized", "success");
-            } catch (err) { console.error("AI apply error:", err); }
+                showToast('AI data applied', 'success');
+            } catch (err) { console.error('AI apply error:', err); }
+        };
+    };
+
+    // Show AI apply button immediately if ai_json already exists
+    if (btnAI) {
+        if (r.ai_json) {
+            try { wireAIApply(JSON.parse(r.ai_json)); } catch (e) { btnAI.classList.add('hidden'); }
+        } else {
+            btnAI.classList.add('hidden');
+        }
+    }
+
+    // Scan button calls ai_analyze; hidden when ai_json already exists
+    if (btnScan) {
+        btnScan.classList.toggle('hidden', !!r.ai_json);
+        btnScan.disabled = false;
+        btnScan.innerHTML = `🔍 Scan with AI`;
+        btnScan.onclick = async () => {
+            btnScan.disabled = true;
+            btnScan.innerHTML = `⌛ Scanning...`;
+            try {
+                const res = await apiPost('/receipts/api/ai_analyze/' + r.id);
+                if (res && res.success && res.data) {
+                    const rec = STATE.receipts.find(x => x.id === r.id);
+                    if (rec) rec.ai_json = JSON.stringify(res.data);
+                    wireAIApply(res.data);
+                    btnScan.classList.add('hidden');
+                    showToast('Scan complete', 'success');
+                } else {
+                    showToast(res?.error || 'Scan failed', 'error');
+                    btnScan.disabled = false;
+                    btnScan.innerHTML = `🔍 Scan with AI`;
+                }
+            } catch (err) {
+                showToast('Scan failed', 'error');
+                btnScan.disabled = false;
+                btnScan.innerHTML = `🔍 Scan with AI`;
+            }
         };
     }
+
     modal.classList.add('show');
 }
 
