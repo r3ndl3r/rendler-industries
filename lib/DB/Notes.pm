@@ -337,15 +337,18 @@ sub DB::save_note_geometry {
     # Surgical coordinate and dimension synchronization: Atomic Lock Enforcement
     return -1 unless defined $p->{session_id} && length $p->{session_id};
 
-    my $sql = "UPDATE notes SET x = ?, y = ?, width = ?, height = ?, z_index = ?, 
-               is_collapsed = ?, is_options_expanded = ?, layer_id = ?, color = ? 
+    # COALESCE preserves the existing color when the caller omits the field
+    # (geometry-only ops: collapse, drag, resize); a defined value overwrites as normal.
+    my $sql = "UPDATE notes SET x = ?, y = ?, width = ?, height = ?, z_index = ?,
+               is_collapsed = ?, is_options_expanded = ?, layer_id = ?,
+               color = COALESCE(?, color)
                WHERE id = ?
                AND (
-                   locked_by_session_id IS NULL 
-                   OR locked_by_session_id = ? 
+                   locked_by_session_id IS NULL
+                   OR locked_by_session_id = ?
                    OR locked_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 MINUTE)
                )";
-    
+
     my $sth = $self->{dbh}->prepare($sql);
     $sth->execute(
         $p->{x}, $p->{y}, $p->{width}, $p->{height}, $p->{z_index},
@@ -437,6 +440,7 @@ sub DB::get_all_accessible_note_metadata {
     my $sql = "
         SELECT 
             n.id, n.canvas_id, n.title, n.type, n.x, n.y, n.width, n.height, n.layer_id,
+            n.color,
             n.locked_by_user_id, n.locked_by_session_id, lu.username as locking_user_name,
             b.id        AS blob_id,
             b.filename  AS blob_filename,
