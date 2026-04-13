@@ -172,6 +172,14 @@ sub update {
         $c->db->update_owm_api_key($api_key);
         return $c->render(json => { success => 1, message => 'OpenWeatherMap API key updated successfully' });
     }
+    elsif ($section eq 'discord') {
+        my $token = trim($c->param('discord_token') // '');
+        unless ($token) {
+            return $c->render(json => { success => 0, error => 'Bot token is required' });
+        }
+        $c->db->update_discord($token);
+        return $c->render(json => { success => 1, message => 'Discord bot token updated successfully' });
+    }
 
     return $c->render(json => { success => 0, error => 'Unknown settings section' });
 }
