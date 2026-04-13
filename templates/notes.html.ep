@@ -45,7 +45,7 @@
 </div>
 
 <div class="radar-minimap-container" id="radar-container">
-    <div class="radar-handle" onclick="toggleRadar()" title="Toggle Navigator Radar">🗺️</div>
+    <div class="radar-handle" id="radar-handle-toggle" title="Toggle Navigator Radar">🗺️</div>
     <canvas id="radar-pings" width="160" height="160"></canvas>
     <div id="radar-viewport"></div>
 </div>
@@ -198,7 +198,7 @@
                 <div class="search-scope-container">
                     <span class="search-scope-label">All Boards</span>
                     <label class="switch switch-sm">
-                        <input type="checkbox" id="search-global-toggle" onchange="filterSearch(document.getElementById('note-search-input').value)">
+                        <input type="checkbox" id="search-global-toggle">
                         <span class="slider"></span>
                     </label>
                 </div>

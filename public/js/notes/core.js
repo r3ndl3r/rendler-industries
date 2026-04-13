@@ -458,6 +458,8 @@ async function initNotes() {
         if (typeof handleRadarMouseDown === 'function') radar.addEventListener('mousedown', handleRadarMouseDown);
         if (typeof handleRadarWheel === 'function') radar.addEventListener('wheel',     handleRadarWheel, { passive: false });
     }
+    const radarHandle = document.getElementById('radar-handle-toggle');
+    if (radarHandle && typeof toggleRadar === 'function') radarHandle.addEventListener('click', toggleRadar);
 
     // Radar Initial State Sync
     if (typeof renderRadarState === 'function') renderRadarState();
@@ -467,6 +469,8 @@ async function initNotes() {
     if (searchInput) {
         searchInput.addEventListener('input', (e) => filterSearch(e.target.value));
     }
+    const globalToggle = document.getElementById('search-global-toggle');
+    if (globalToggle) globalToggle.addEventListener('change', () => filterSearch(document.getElementById('note-search-input').value));
     // Interaction: Global Clipboard Sync (Ctrl+V)
     document.addEventListener('paste', handleGlobalClipPaste);
 
