@@ -215,8 +215,11 @@ sub api_save_geometry {
         is_collapsed        => int($c->param('is_collapsed') // 0),
         is_options_expanded => int($c->param('is_options_expanded') // 0),
         layer_id            => int($c->param('layer_id') // 1),
-        color               => $c->param('color')
     };
+    # Only include color when the caller explicitly sends it; omitting the key
+    # signals save_note_geometry to preserve the existing DB value rather than
+    # overwriting it with NULL on geometry-only calls (collapse, drag, resize).
+    $params->{color} = $c->param('color') if defined $c->param('color');
 
     # Resolve canvas context for lock check BEFORE write
     my $canvas_id = $c->db->get_canvas_for_note_id($id, $user_id);
