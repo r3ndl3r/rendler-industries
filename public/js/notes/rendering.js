@@ -328,11 +328,14 @@ function createNoteElement(note, canEdit = true) {
             </div>
             <div class="note-actions">
                 <div class="note-actions-rail ${note.is_options_expanded ? 'expanded' : ''}">
+                    <button class="btn-icon-edit" title="Edit Content" ${canEdit ? '' : 'disabled'}>
+                        ✏️
+                    </button>
                     <button class="btn-icon-link" title="Copy Direct Link">
                         🔗
                     </button>
-                    <button class="btn-icon-upload note-inline-upload-btn ${(note.attachments || []).length > 0 ? '' : 'text-only-upload'}" 
-                            title="Add Attachment" 
+                    <button class="btn-icon-upload note-inline-upload-btn ${(note.attachments || []).length > 0 ? '' : 'text-only-upload'}"
+                            title="Add Attachment"
                             ${canEdit ? '' : 'style="display:none;" disabled'}>
                         📎
                     </button>
@@ -347,9 +350,6 @@ function createNoteElement(note, canEdit = true) {
                     </button>
                     <button class="btn-icon-delete" title="Delete Note" ${canEdit ? '' : 'disabled'}>
                         🗑️
-                    </button>
-                    <button class="btn-icon-edit" title="Edit Content" ${canEdit ? '' : 'disabled'}>
-                        ✏️
                     </button>
                 </div>
                 <input type="file" id="inline-file-${note.id}" class="hidden-input" data-action="inline-upload">
