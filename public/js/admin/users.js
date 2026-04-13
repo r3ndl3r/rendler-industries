@@ -1,4 +1,4 @@
-// /public/js/users.js
+// /public/js/admin/users.js
 
 /**
  * User Management Controller
@@ -99,7 +99,7 @@ async function handleAddSubmit(event) {
         formData.set('is_family', form.querySelector('[name="is_family"]').checked ? 1 : 0);
         formData.set('is_child',  form.querySelector('[name="is_child"]').checked  ? 1 : 0);
 
-        const result = await apiPost('/users/api/add', formData);
+        const result = await apiPost('/admin/users/api/add', formData);
         if (result && result.success) {
             closeAddUserModal();
             await loadState(true);
@@ -132,7 +132,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.users.length > 0) return;
 
     try {
-        const response = await fetch('/users/api/state');
+        const response = await fetch('/admin/users/api/state');
         const data = await response.json();
 
         if (data && data.success) {
@@ -295,7 +295,7 @@ async function handleEditSubmit(event) {
     btn.innerHTML = `⌛ Saving...`;
 
     try {
-        const result = await apiPost(`/users/update/${userId}`, new FormData(form));
+        const result = await apiPost(`/admin/users/update/${userId}`, new FormData(form));
         if (result && result.success) {
             closeEditModal();
             await loadState(true);
@@ -319,7 +319,7 @@ async function approveUser(userId, checkbox) {
     if (!checkbox.checked) return;
     checkbox.disabled = true;
 
-    const result = await apiPost(`/users/approve/${userId}`);
+    const result = await apiPost(`/admin/users/approve/${userId}`);
     if (result && result.success) {
         const u = STATE.users.find(item => item.id == userId);
         if (u) u.status = 'approved';
@@ -348,7 +348,7 @@ async function toggleRole(userId, role, value) {
         return;
     }
 
-    const result = await apiPost('/users/toggle_role', { id: userId, role, value: value ? 1 : 0 });
+    const result = await apiPost('/admin/users/toggle_role', { id: userId, role, value: value ? 1 : 0 });
     if (result && result.success) {
         const u = STATE.users.find(item => item.id == userId);
         if (u) {
@@ -380,7 +380,7 @@ function confirmDeleteUser(id, username) {
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost(`/users/delete/${id}`);
+            const result = await apiPost(`/admin/users/delete/${id}`);
             if (result && result.success) {
                 const row = document.getElementById(`user-row-${id}`);
                 if (row) {

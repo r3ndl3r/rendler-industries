@@ -58,11 +58,11 @@ sub resolve {
     }
     
     # Fallback: Return to management view with error context
-    $c->redirect_to('/go?error=1');
+    $c->redirect_to('/admin/go?error=1');
 }
 
 # Registers a new short-link redirection mapping.
-# Route: POST /go/api/add
+# Route: POST /admin/go/api/add
 # Returns: JSON object { success, message, error }
 sub api_add {
     my $c = shift;
@@ -92,7 +92,7 @@ sub api_add {
 }
 
 # Updates the metadata for an existing short-link record.
-# Route: POST /go/api/edit
+# Route: POST /admin/go/api/edit
 # Returns: JSON object { success, message, error }
 sub api_edit {
     my $c = shift;
@@ -122,7 +122,7 @@ sub api_edit {
 }
 
 # Permanently removes a short-link record from the system.
-# Route: POST /go/api/delete
+# Route: POST /admin/go/api/delete
 # Returns: JSON object { success, message, error }
 sub api_delete {
     my $c = shift;

@@ -1,6 +1,6 @@
-# /lib/MyApp/Controller/Menu.pm
+# /lib/MyApp/Controller/Admin/Users.pm
 
-package MyApp::Controller::Menu;
+package MyApp::Controller::Admin::Menu;
 use Mojo::Base 'Mojolicious::Controller';
 
 # Controller for managing the hierarchical navigation menu.
@@ -16,17 +16,17 @@ use Mojo::Base 'Mojolicious::Controller';
 #   - Provides the data source for the global navigation sidebar.
 
 # Renders the menu management interface skeleton.
-# Route: GET /menu
-# Returns: Template (menu.html.ep)
+# Route: GET /admin/menu
+# Returns: Template (admin/menu.html.ep)
 sub manage {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_admin;
-    $c->render('menu');
+    $c->render('admin/menu');
 }
 
 # API Endpoint: Returns the full synchronized state for the menu module.
-# Route: GET /menu/api/state
+# Route: GET /admin/menu/api/state
 # Returns: JSON object { success, links, parents, is_admin }
 sub api_state {
     my $c = shift;
@@ -46,7 +46,7 @@ sub api_state {
 }
 
 # API Endpoint: Creates a new menu link.
-# Route: POST /menu/api/add
+# Route: POST /admin/menu/api/add
 # Returns: JSON object { success, message, error }
 sub api_add {
     my $c = shift;
@@ -78,7 +78,7 @@ sub api_add {
 }
 
 # API Endpoint: Updates an existing menu link.
-# Route: POST /menu/api/update
+# Route: POST /admin/menu/api/update
 # Returns: JSON object { success, message, error }
 sub api_update {
     my $c = shift;
@@ -115,7 +115,7 @@ sub api_update {
 }
 
 # API Endpoint: Permanently removes a menu link.
-# Route: POST /menu/api/delete
+# Route: POST /admin/menu/api/delete
 # Returns: JSON object { success, message, error }
 sub api_delete {
     my $c = shift;
@@ -139,7 +139,7 @@ sub api_delete {
 }
 
 # API Endpoint: Bulk updates sort order.
-# Route: POST /menu/api/reorder
+# Route: POST /admin/menu/api/reorder
 # Returns: JSON object { success, message, error }
 sub api_reorder {
     my $c = shift;
@@ -166,7 +166,7 @@ sub api_reorder {
 }
 
 # API Endpoint: Retrieves the hierarchical menu tree for the current user.
-# Route: GET /menu/api/menubar
+# Route: GET /admin/menu/api/menubar
 # Returns: JSON object containing 'menu' tree, 'is_logged_in', and 'is_admin' flags.
 sub get_state {
     my $c = shift;

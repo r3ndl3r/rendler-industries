@@ -1,4 +1,4 @@
-// /public/js/notifications.js
+// /public/js/admin/notifications.js
 
 /**
  * Notification History Controller
@@ -93,7 +93,7 @@ async function loadState() {
     const params = new URLSearchParams(filters);
 
     try {
-        const response = await fetch(`/notifications/api/state?${params.toString()}`);
+        const response = await fetch(`/admin/notifications/api/state?${params.toString()}`);
         const data = await response.json();
 
         if (data.success) {
@@ -208,7 +208,7 @@ async function handlePruneSubmit() {
         confirmText: 'Prune',
         hideCancel: true,
         onConfirm: async () => {
-            const result = await apiPost('/notifications/api/prune', { days });
+            const result = await apiPost('/admin/notifications/api/prune', { days });
             if (result.success) {
                 closePruneModal();
                 loadState();
@@ -232,7 +232,7 @@ function confirmDelete(id) {
         confirmText: 'Delete Entry',
         hideCancel: true,
         onConfirm: async () => {
-            const result = await apiPost(`/notifications/api/delete/${id}`);
+            const result = await apiPost(`/admin/notifications/api/delete/${id}`);
             if (result.success) {
                 loadState();
                 showToast('Entry removed', 'success');

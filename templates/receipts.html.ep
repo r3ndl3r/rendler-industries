@@ -4,7 +4,7 @@
 % title 'Shopping Receipts Ledger';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/files.css">
+    <link rel="stylesheet" href="/css/admin/files.css">
     <link rel="stylesheet" href="/css/receipts.css">
     <link  href="/css/vendor/cropper.min.css" rel="stylesheet">
     <script src="/js/receipts.js"></script>

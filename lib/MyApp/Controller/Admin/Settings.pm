@@ -1,6 +1,6 @@
-# /lib/MyApp/Controller/Settings.pm
+# /lib/MyApp/Controller/Admin/Settings.pm
 
-package MyApp::Controller::Settings;
+package MyApp::Controller::Admin::Settings;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
@@ -15,18 +15,18 @@ use Mojo::Util qw(trim);
 #   - Depends on DB::Settings for persistence and system maintenance triggers
 
 # Renders the settings management dashboard skeleton.
-# Route: GET /settings
+# Route: GET /admin/settings
 # Parameters: None
 # Returns: Rendered HTML template 'settings'.
 sub index {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_admin;
-    $c->render('settings');
+    $c->render('admin/settings');
 }
 
 # Returns the consolidated state for the module.
-# Route: GET /settings/api/state
+# Route: GET /admin/settings/api/state
 # Parameters: None
 # Returns: JSON object { settings, email_settings, timer_reset_hour, gemini, google_cloud, success }
 sub api_state {
@@ -53,7 +53,7 @@ sub api_state {
 }
 
 # Processes updates for a specific configuration section.
-# Route: POST /settings/update
+# Route: POST /admin/settings/update
 # Parameters:
 #   section : The configuration block to update
 # Returns: JSON object { success, message, error }
