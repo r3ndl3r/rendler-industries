@@ -328,6 +328,32 @@ pre code {
     opacity: 0.5;
 }
 
+.note-divider-wrap {
+    position: relative;
+    margin: 1.5rem 0;
+    text-align: center;
+}
+
+.note-divider-wrap .note-hr {
+    margin: 0;
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    z-index: 1;
+}
+
+.note-divider-label {
+    position: relative;
+    z-index: 2;
+    background: #1e293b; /* Matches card background */
+    padding: 0 1rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 600;
+}
+
 .note-bullet {
     display: inline-block;
     width: 5px;
@@ -338,6 +364,130 @@ pre code {
     vertical-align: middle;
     box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
     margin-bottom: 2px;
+}
+
+.note-number {
+    color: #60a5fa;
+    font-weight: 700;
+    margin-right: 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Typography & Headers */
+.note-h1, .note-h2, .note-h3 {
+    margin: 1.25rem 0 0.75rem 0;
+    color: #fff;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.note-h1 { font-size: 1.4rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 0.3rem; }
+.note-h2 { font-size: 1.2rem; }
+.note-h3 { font-size: 1.05rem; color: rgba(255, 255, 255, 0.9); }
+
+/* Text Sizing */
+.note-text-xs  { font-size: 0.7rem; }
+.note-text-sm  { font-size: 0.85rem; }
+.note-text-md  { font-size: 1rem; }
+.note-text-lg  { font-size: 1.25rem; }
+.note-text-xl  { font-size: 1.5rem; }
+.note-text-2xl { font-size: 2rem; }
+
+/* Highlights & Badges */
+.note-bg-highlight {
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    color: #000;
+    font-weight: 500;
+}
+
+.note-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin: 0 0.2rem;
+    vertical-align: middle;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.badge-info    { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border-color: rgba(59, 130, 246, 0.3); }
+.badge-success { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3); }
+.badge-danger  { background: rgba(239, 68, 68, 0.2);  color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+.badge-warning { background: rgba(245, 158, 11, 0.2); color: #fcd34d; border-color: rgba(245, 158, 11, 0.3); }
+.badge-accent  { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border-color: rgba(139, 92, 246, 0.3); }
+
+/* Progress Components */
+.note-progress-container {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    margin: 0.75rem 0;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.note-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+
+.note-progress-text {
+    position: absolute;
+    right: 8px;
+    top: -12px;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Date Tags */
+.note-date-tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    background: rgba(15, 23, 42, 0.3);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Spoiler / Accordion */
+.note-spoiler {
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    margin: 0.5rem 0;
+    overflow: hidden;
+}
+
+.note-spoiler summary {
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #94a3b8;
+    user-select: none;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.note-spoiler summary:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: #fff;
+}
+
+.note-spoiler-content {
+    padding: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    font-size: 0.95rem;
 }
 
 .note-iframe-wrap {
