@@ -511,9 +511,14 @@ sub DB::delete_note {
     
     return 0 unless $cid && $self->check_canvas_access($cid, $user_id, 1);
 
-    my $sql = "UPDATE notes SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+    my $sql = "UPDATE notes SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP
+               WHERE id = ?
+               AND (locked_by_session_id IS NULL
+                    OR locked_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 MINUTE))";
     my $sth_del = $self->{dbh}->prepare($sql);
     $sth_del->execute($note_id);
+
+    return -1 unless $sth_del->rows;
 
     $self->touch_canvas($cid);
     return 1;

@@ -270,6 +270,9 @@ sub api_delete {
 
     my $ok = $c->db->delete_note($id, $user_id);
 
+    if ($ok == -1) {
+        return $c->render(json => { success => 0, error => 'Note is locked by another session' }, status => 409);
+    }
     unless ($ok) {
         return $c->render(json => { success => 0, error => 'Permission Denied or Note Not Found' }, status => 403);
     }
