@@ -3,7 +3,6 @@
 package MyApp::Plugin::Notifications;
 
 use Mojo::Base 'Mojolicious::Plugin';
-use Mojo::UserAgent;
 use Mojo::Util qw(b64_encode trim);
 use Encode qw(encode);
 use strict;
@@ -23,56 +22,6 @@ use warnings;
 
 sub register {
     my ($self, $app, $config) = @_;
-
-    # --- DISCORD DMs ---
-    # Parameters: discord_id, text, user_id (opt)
-    $app->helper(send_discord_dm => sub {
-        my ($c, $discord_id, $text, $user_id) = @_;
-        return 0 unless $discord_id;
-        
-        my $url = "http://127.0.0.1:3000/message/dm/$discord_id";
-        
-        # Non-blocking fire-and-forget using persistent app agent
-        $c->app->ua->request_timeout(15)->post_p($url => json => { text => $text })->then(sub {
-            my $tx = shift;
-            if (my $res = $tx->result) {
-                if ($res->is_success) {
-                    $c->app->log->info("Discord DM sent to $discord_id: $text");
-                    $c->db->log_notification(
-                        user_id   => $user_id,
-                        type      => 'discord',
-                        recipient => $discord_id,
-                        message   => $text,
-                        status    => 'success'
-                    );
-                } else {
-                    my $err_msg = "Discord API error ($discord_id): Status " . $res->code;
-                    $c->app->log->error($err_msg);
-                    $c->db->log_notification(
-                        user_id       => $user_id,
-                        type          => 'discord',
-                        recipient     => $discord_id,
-                        message       => $text,
-                        status        => 'failed',
-                        error_details => $err_msg
-                    );
-                }
-            }
-        })->catch(sub {
-            my $err = shift;
-            $c->app->log->error("Discord API Exception ($discord_id): $err");
-            $c->db->log_notification(
-                user_id       => $user_id,
-                type          => 'discord',
-                recipient     => $discord_id,
-                message       => $text,
-                status        => 'failed',
-                error_details => "Exception: $err"
-            );
-        });
-        
-        return 1;
-    });
 
     # --- EMAIL (GMAIL SMTP) ---
     # Parameters: to (string or arrayref), subject, body, user_id (opt)
