@@ -1040,7 +1040,6 @@ function handleCanvasMouseDown(e) {
     if (STATE.isInitializing) return;
     // 1. Note Header Actions: Centralized delegation for all note-level buttons
     const hashBtn    = e.target.closest('.note-id-hash');
-    const collapseBtn = e.target.closest('.btn-icon-collapse');
     const editBtn     = e.target.closest('.btn-icon-edit');
     const linkBtn     = e.target.closest('.btn-icon-link');
     const uploadBtn   = e.target.closest('.btn-icon-upload');
@@ -1063,10 +1062,6 @@ function handleCanvasMouseDown(e) {
             if (id) {
                 if (hashBtn && typeof copyNoteToClipboard === 'function') {
                     copyNoteToClipboard(id);
-                    return;
-                }
-                if (collapseBtn && typeof toggleCollapse === 'function') {
-                    toggleCollapse(id);
                     return;
                 }
                 if (editBtn && typeof toggleInlineEdit === 'function') {
@@ -1105,7 +1100,11 @@ function handleCanvasMouseDown(e) {
     const handle = e.target.closest('.note-drag-handle-container');
     const isAction = e.target.closest('[data-action], .note-check-trigger, .note-link-trigger, .reel-action-btn, .btn-icon-drawer');
     
-    if (handle && !isAction && e.button === 0) {
+    // Isolation: Ignore pickup if clicking the actual title text (slot) or input field.
+    // This allows double-click toggling and selection without accidental Pick & Place.
+    const isTitle = e.target.closest('.note-title-slot, .inline-title-input');
+
+    if (handle && !isAction && !isTitle && e.button === 0) {
         const noteId = handle.closest('.sticky-note')?.dataset.id;
         if (noteId) {
             toggleStickyMove(e, noteId);
@@ -1583,12 +1582,6 @@ async function toggleCollapse(id) {
     }
 
     el.classList.toggle('collapsed', !!note.is_collapsed);
-    
-    // Reflect new collapse state in the toggle button
-    const collapseBtn = el.querySelector('.btn-icon-collapse');
-    if (collapseBtn) {
-        collapseBtn.innerHTML = note.is_collapsed ? '🔻' : '🔺';
-    }
 
     el.classList.add('pending');
     
