@@ -288,6 +288,7 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
                     z_index: el.style.zIndex,
                     layer_id: note.layer_id || 1,
                     is_collapsed: note.is_collapsed,
+                    is_options_expanded: note.is_options_expanded ?? 0,
                     color: latestColorInput ? latestColorInput.value : note.color
                 };
 
@@ -346,6 +347,7 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
         z_index: el.style.zIndex,
         layer_id: note.layer_id || 1,
         is_collapsed: note.is_collapsed,
+        is_options_expanded: note.is_options_expanded ?? 0,
         color: colorInput ? colorInput.value : note.color
     };
 
