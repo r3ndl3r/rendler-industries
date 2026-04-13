@@ -513,8 +513,9 @@ sub serve_blob {
     }
 
     my $filename    = $blob->{filename} || "note_attachment_$note_id";
+    (my $safe_filename = $filename) =~ s/["\r\n\\]/_/g;
     my $disposition = ($blob->{mime_type} =~ m/^image\//) ? 'inline' : 'attachment';
-    $c->res->headers->content_disposition("$disposition; filename=\"$filename\"");
+    $c->res->headers->content_disposition("$disposition; filename=\"$safe_filename\"");
     $c->res->headers->content_type($blob->{mime_type});
     $c->res->headers->header('Access-Control-Allow-Origin' => '*');
     $c->render(data => $blob->{file_data});
@@ -545,8 +546,9 @@ sub serve_attachment_blob {
     }
 
     my $filename    = $blob->{filename} || "attachment_$blob_id";
+    (my $safe_filename = $filename) =~ s/["\r\n\\]/_/g;
     my $disposition = ($blob->{mime_type} =~ m/^(image\/|application\/pdf)/) ? 'inline' : 'attachment';
-    $c->res->headers->content_disposition("$disposition; filename=\"$filename\"");
+    $c->res->headers->content_disposition("$disposition; filename=\"$safe_filename\"");
     $c->res->headers->content_type($blob->{mime_type});
     $c->res->headers->header('Access-Control-Allow-Origin' => '*');
     $c->render(data => $blob->{file_data});
