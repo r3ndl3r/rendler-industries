@@ -1456,8 +1456,13 @@ async function saveNoteInline(id, stayInEditMode = false) {
 /**
  * Real-time Accent Color Synchronization.
  * Updates the note's visual identity instantly and persists the change to the backend.
- * Includes an optimistic UI rollback path in case of synchronization failure.
- * @param {HTMLInputElement} input - The color input element.
+ *
+ * Persistence Route: /notes/api/geometry (Surgical update).
+ * Timer Isolation: el._colorSaveTimer is scoped to the DOM node, completely
+ * independent of POSITION_SYNC_TIMERS. A concurrent drag/drop that resets the
+ * position debounce cannot cancel a pending color save.
+ *
+ * @param {HTMLInputElement} input - The color picker element.
  * @param {number|string} id - The note ID.
  */
 function updateNoteAccent(input, id) {
@@ -1465,24 +1470,86 @@ function updateNoteAccent(input, id) {
     const note = STATE.notes.find(n => n.id == id);
     if (!el || !note) return;
 
-    const color = input.value;
-    const prevColor = note.color;
+    const color     = input.value;
+    // Only snapshot the rollback baseline on the first event of a rapid sequence.
+    // Subsequent calls must not overwrite it with an already-mutated optimistic value.
+    // Snapshot rollback base when no timer is pending AND no request is in-flight.
+    // When in-flight, note.color is already the optimistic value; the correct
+    // rollback base is the last value we successfully committed (stored separately)
+    // or the current note.color if no commit has occurred yet in this session.
+    if (!el._colorSaveTimer && !el._colorSaveInflight) {
+        el._colorRollbackBase = note.color;
+    } else if (el._colorSaveInflight && el._colorRollbackBase === null) {
+        // In-flight completed and nulled the base before this new interaction;
+        // re-anchor to current state value which reflects last confirmed save.
+        el._colorRollbackBase = note.color;
+    }
+    const prevColor = el._colorRollbackBase;
     const normalize = window.normalizeColorHex || (c => c);
-    const accentColor = normalize(color);
 
-    el.style.setProperty('--note-accent', accentColor);
+    // Optimistic UI: immediate visual feedback regardless of network state
+    el.style.setProperty('--note-accent', normalize(color));
     note.color = color;
     if (STATE.note_map[id]) STATE.note_map[id].color = color;
 
-    if (typeof window.syncNotePosition === 'function') {
-        Promise.resolve(window.syncNotePosition(id, 'silent', 1000)).catch(() => {
-            const rollbackColor = typeof prevColor === 'string' ? prevColor : '#d4b896';
-            el.style.setProperty('--note-accent', normalize(rollbackColor));
-            note.color = rollbackColor;
-            if (STATE.note_map[id]) STATE.note_map[id].color = rollbackColor;
-            if (input && input.value !== rollbackColor) input.value = rollbackColor;
-        });
+    // Debounce: color picker fires 'input' on every pointer pixel during drag.
+    // 800ms window collapses rapid-fire events into a single API call.
+    // el._colorSaveTimer is node-scoped — safe from syncNotePosition timer resets.
+    
+    // Atomic Lock Acquisition: Ensure the note is protected from heartbeats while the user is still 'jittering'
+    if (!el._colorSaveTimer && !el._colorSaveInflight && typeof window.addActiveSync === 'function') {
+        window.addActiveSync(String(id));
     }
+
+    clearTimeout(el._colorSaveTimer);
+    el._colorSaveTimer = setTimeout(async () => {
+        el._colorSaveTimer = null;
+        el._colorSaveInflight = true;
+        const sid = String(id);
+        try {
+            // Re-capture fresh DOM coordinates at the moment the timer fires to prevent 
+            // coordinate revert if the user moved the note while the color timer was pending.
+            const res = await NoteAPI.post('/notes/api/geometry', {
+                id:           id,
+                canvas_id:    STATE.canvas_id,
+                x:            el.style.left ? parseInt(el.style.left) : note.x,
+                y:            el.style.top  ? parseInt(el.style.top)  : note.y,
+                width:        note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
+                height:       note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
+                z_index:      el.style.zIndex,
+                layer_id:     note.layer_id || STATE.activeLayerId,
+                is_collapsed: note.is_collapsed,
+                color:        note.color
+            });
+
+            if (res && res.success) {
+                // /notes/api/geometry does not return res.notes; optimistic STATE is authoritative.
+                if (res.last_mutation && (!STATE.last_mutation || res.last_mutation > STATE.last_mutation)) {
+                    STATE.last_mutation = res.last_mutation;
+                }
+            } else {
+                throw new Error(res?.error || 'Color save failed');
+            }
+        } catch (err) {
+            // Hard rollback: revert DOM and STATE to last confirmed server color
+            const rollback = typeof prevColor === 'string' ? prevColor : '#d4b896';
+            el.style.setProperty('--note-accent', normalize(rollback));
+            note.color = rollback;
+            if (STATE.note_map[id]) STATE.note_map[id].color = rollback;
+            if (input && input.value !== rollback) input.value = rollback;
+            showToast('Color could not be saved', 'error');
+        } finally {
+            el._colorSaveInflight = false;
+            el._colorRollbackBase = null;
+            // Mirror syncNotePosition pattern (api.js:315-317):
+            // Only release the guard if no new timer was queued while this request
+            // was in-flight. el._colorSaveTimer is null here only when no subsequent
+            // updateNoteAccent call re-armed it during the await.
+            if (!el._colorSaveTimer && typeof window.removeActiveSync === 'function') {
+                window.removeActiveSync(sid);
+            }
+        }
+    }, 800);
 }
 window.updateNoteAccent = updateNoteAccent;
 
@@ -1509,17 +1576,19 @@ async function toggleCollapse(id) {
 
     el.classList.add('pending');
     
+    const colorInput = el.querySelector('.inline-color-input');
     try {
         const res = await NoteAPI.post('/notes/api/geometry', {
-            id: id,
-            canvas_id: STATE.canvas_id,
+            id:           id,
+            canvas_id:    STATE.canvas_id,
             is_collapsed: note.is_collapsed,
-            x: note.x,
-            y: note.y,
-            width: note.width,
-            height: note.height,
-            z_index: note.z_index,
-            layer_id: note.layer_id || 1
+            x:            note.x,
+            y:            note.y,
+            width:        note.width,
+            height:       note.height,
+            z_index:      note.z_index,
+            layer_id:     note.layer_id || 1,
+            color:        colorInput ? colorInput.value : note.color
         });
         
         if (res && res.success) {
