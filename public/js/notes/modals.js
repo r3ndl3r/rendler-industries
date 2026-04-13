@@ -939,13 +939,29 @@ function showBoardInfo() {
 
         <div class="guide-tab-panel" data-panel="formatting">
             <div class="guide-cheatsheet">
+                <code class="guide-cs-code"># Header</code>     <span class="guide-cs-preview"><strong style="font-size: 1.1rem;">Header</strong></span>
+                <code class="guide-cs-code">## Sub</code>       <span class="guide-cs-preview"><strong style="font-size: 0.9rem;">Sub</strong></span>
                 <code class="guide-cs-code">**Bold**</code>       <span class="guide-cs-preview"><strong>Bold</strong></span>
                 <code class="guide-cs-code">*Italic*</code>       <span class="guide-cs-preview"><em>Italic</em></span>
+                <code class="guide-cs-code">~~Strike~~</code>     <span class="guide-cs-preview"><del>Strike</del></span>
                 <code class="guide-cs-code">\`code\`</code>        <span class="guide-cs-preview"><code class="guide-cs-inline">code</code></span>
-                <code class="guide-cs-code">- item</code>         <span class="guide-cs-preview">• item</span>
-                <code class="guide-cs-code">- [ ] / - [x]</code> <span class="guide-cs-preview">☐ / ☑ Interactive checklist</span>
+                <code class="guide-cs-code">- item</code>         <span class="guide-cs-preview">• Bullet</span>
+                <code class="guide-cs-code">1. item</code>        <span class="guide-cs-preview">1. Number</span>
+                <code class="guide-cs-code">- [ ] / [x]</code>   <span class="guide-cs-preview">☐ / ☑ Checklist</span>
                 <code class="guide-cs-code">---</code>            <span class="guide-cs-preview"><span class="guide-cs-hr"></span></span>
             </div>
+
+            <p class="board-guide-subheading board-guide-subheading--spaced">Advanced Components</p>
+            <div class="guide-cheatsheet">
+                <code class="guide-cs-code">[size:lg]...[/size]</code> <span class="guide-cs-preview" style="font-size: 1.1rem;">Large</span>
+                <code class="guide-cs-code">[bg:hex]...[/bg]</code>     <span class="guide-cs-preview"><span style="background: #f59e0b; color: #000; padding: 0 4px; border-radius: 3px;">Highlight</span></span>
+                <code class="guide-cs-code">[progress:75|Label]</code>  <span class="guide-cs-preview">Progress Bar</span>
+                <code class="guide-cs-code">[date:YYYY-MM-DD]</code>    <span class="guide-cs-preview">📅 Date Tag</span>
+                <code class="guide-cs-code">[tag:Label|color]</code>    <span class="guide-cs-preview"><span class="note-badge badge-info" style="margin:0;">Tag</span></span>
+                <code class="guide-cs-code">[divider:Title]</code>      <span class="guide-cs-preview">Labelled HR</span>
+                <code class="guide-cs-code">[spoiler:Title]...[/spoiler]</code> <span class="guide-cs-preview">Accordion</span>
+            </div>
+
             <p class="board-guide-subheading board-guide-subheading--spaced">[color:name]text[/color]</p>
             <div class="guide-color-swatches">
                 <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--yellow"></span>yellow</span>
@@ -971,8 +987,9 @@ function showBoardInfo() {
             <p class="board-guide-subheading">External links</p>
             <ul class="board-guide-list">
                 <li>Paste any <strong>https://…</strong> URL — it becomes a clickable link automatically</li>
-                <li><strong>[Label](url)</strong> — Link with custom display text</li>
-                <li><strong>[iframe:url]</strong> — Embed an external webpage inside the note</li>
+                <li><strong>[link:url|Label]</strong> — Link with custom display text</li>
+                <li><strong>[Label](url)</strong> — Alternative compact link format</li>
+                <li><strong>[iframe:url|height]</strong> — Embed an external webpage inline</li>
             </ul>
         </div>
 
