@@ -168,11 +168,11 @@ function renderNotificationsPanel() {
                 <div class="settings-fields">
                     <div class="form-group">
                         <label>API Token</label>
-                        <div class="render-row-input" data-id="pushover_token" data-name="pushover_token" data-type="password" data-value="${escapeHtml(s.pushover?.token)}" data-placeholder="API Token" data-no-button="true"></div>
+                        <div class="render-row-input" data-id="pushover_token" data-name="pushover_token" data-type="password" data-value="" data-placeholder="${s.pushover?.token ? '(configured — paste new value to replace)' : 'API Token'}" data-no-button="true"></div>
                     </div>
                     <div class="form-group">
                         <label>User Key</label>
-                        <div class="render-row-input" data-id="pushover_user" data-name="pushover_user" data-type="password" data-value="${escapeHtml(s.pushover?.user)}" data-placeholder="User Key"></div>
+                        <div class="render-row-input" data-id="pushover_user" data-name="pushover_user" data-type="password" data-value="" data-placeholder="${s.pushover?.user ? '(configured — paste new value to replace)' : 'User Key'}"></div>
                     </div>
                 </div>
             `, true)}
@@ -181,7 +181,7 @@ function renderNotificationsPanel() {
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>Application Token</label>
-                        <div class="render-row-input" data-id="gotify_token" data-name="gotify_token" data-type="password" data-value="${escapeHtml(s.gotify?.token)}" data-placeholder="Application Token"></div>
+                        <div class="render-row-input" data-id="gotify_token" data-name="gotify_token" data-type="password" data-value="" data-placeholder="${s.gotify?.token ? '(configured — paste new value to replace)' : 'Application Token'}"></div>
                     </div>
                 </div>
             `, true)}
@@ -190,7 +190,7 @@ function renderNotificationsPanel() {
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>Bot Token</label>
-                        <div class="render-row-input" data-id="discord_token" data-name="discord_token" data-type="password" data-value="${escapeHtml(s.discord_token)}" data-placeholder="Bot Token"></div>
+                        <div class="render-row-input" data-id="discord_token" data-name="discord_token" data-type="password" data-value="" data-placeholder="${s.discord_token ? '(configured — paste new value to replace)' : 'Bot Token'}"></div>
                     </div>
                 </div>
             `, true)}
@@ -219,7 +219,7 @@ function renderEmailPanel() {
                     </div>
                     <div class="form-group">
                         <label>App Password</label>
-                        <div class="render-row-input" data-id="gmail_app_password" data-name="gmail_app_password" data-type="password" data-value="${escapeHtml(e.gmail_app_password)}" data-placeholder="App Password" data-no-button="true"></div>
+                        <div class="render-row-input" data-id="gmail_app_password" data-name="gmail_app_password" data-type="password" data-value="" data-placeholder="${e.gmail_app_password ? '(configured — paste new value to replace)' : 'App Password'}" data-no-button="true"></div>
                     </div>
                     <div class="form-group full-width">
                         <label>From Name <span class="label-optional">(optional)</span></label>
@@ -258,7 +258,7 @@ function renderIntegrationsPanel() {
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>Access Key</label>
-                        <div class="render-row-input" data-id="unsplash_key" data-name="unsplash_key" data-type="password" data-value="${escapeHtml(s.unsplash_key)}" data-placeholder="Access Key"></div>
+                        <div class="render-row-input" data-id="unsplash_key" data-name="unsplash_key" data-type="password" data-value="" data-placeholder="${s.unsplash_key ? '(configured — paste new value to replace)' : 'Access Key'}"></div>
                     </div>
                 </div>
             `, true)}
@@ -267,7 +267,7 @@ function renderIntegrationsPanel() {
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>API Key</label>
-                        <div class="render-row-input" data-id="gemini_key" data-name="gemini_key" data-type="password" data-value="${escapeHtml(g.key)}" data-placeholder="API Key"></div>
+                        <div class="render-row-input" data-id="gemini_key" data-name="gemini_key" data-type="password" data-value="" data-placeholder="${g.key ? '(configured — paste new value to replace)' : 'API Key'}"></div>
                     </div>
                     <div class="form-group full-width">
                         <label>Active Model</label>
@@ -300,7 +300,7 @@ function renderIntegrationsPanel() {
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>API Key</label>
-                        <div class="render-row-input" data-id="google_cloud_key" data-name="google_cloud_key" data-type="password" data-value="${escapeHtml(cloud.key)}" data-placeholder="API Key"></div>
+                        <div class="render-row-input" data-id="google_cloud_key" data-name="google_cloud_key" data-type="password" data-value="" data-placeholder="${cloud.key ? '(configured — paste new value to replace)' : 'API Key'}"></div>
                     </div>
                 </div>
             `, true)}
@@ -309,7 +309,7 @@ function renderIntegrationsPanel() {
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>One Call 3.0 API Key</label>
-                        <div class="render-row-input" data-id="owm_api_key" data-name="owm_api_key" data-type="password" data-value="${escapeHtml(STATE.owm_api_key)}" data-placeholder="One Call 3.0 API Key"></div>
+                        <div class="render-row-input" data-id="owm_api_key" data-name="owm_api_key" data-type="password" data-value="" data-placeholder="${STATE.owm_api_key ? '(configured — paste new value to replace)' : 'One Call 3.0 API Key'}"></div>
                     </div>
                 </div>
             `, true)}
@@ -342,7 +342,7 @@ function renderApplicationPanel() {
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>Secret Key <span class="label-optional">(min. 32 characters)</span></label>
-                        <div class="render-row-input" data-id="app_secret" data-name="app_secret" data-type="password" data-value="${escapeHtml(s.app_secret)}" data-placeholder="Secret Key" data-button-class="btn-danger"></div>
+                        <div class="render-row-input" data-id="app_secret" data-name="app_secret" data-type="password" data-value="" data-placeholder="${s.app_secret ? '(configured — paste new value to replace)' : 'Secret Key'}" data-button-class="btn-danger"></div>
                     </div>
                 </div>
             `, true)}
