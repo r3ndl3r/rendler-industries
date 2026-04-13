@@ -186,10 +186,12 @@
 
 .crop-preview-wrapper {
     max-height: 60vh;
+    width: 100%;
     overflow: hidden;
     background: #000;
     border-radius: 8px;
     text-align: center;
+    position: relative;
 }
 
 .crop-preview-img {
@@ -444,9 +446,27 @@
     gap: 15px;
 }
 
+.pre-upload-actions {
+    flex-direction: column;
+    gap: 12px;
+}
+
+.rotate-controls,
+.crop-controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.rotate-controls .btn-secondary {
+    font-size: 1.3rem;
+    padding: 6px 16px;
+    line-height: 1;
+}
+
 .btn-ai-apply {
     background: #4338ca;
-    color: white !important;
+    color: white;
     border: none;
     border-radius: 8px;
     height: 38px;
