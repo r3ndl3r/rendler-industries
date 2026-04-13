@@ -438,9 +438,9 @@ sub DB::get_all_accessible_note_metadata {
     # Performance: Only fetch identification, coordinates, and primary file metadata.
     # The 'blob_' prefix maintains grouping compatibility for rendering engine.
     my $sql = "
-        SELECT 
+        SELECT
             n.id, n.canvas_id, n.title, n.type, n.x, n.y, n.width, n.height, n.layer_id,
-            n.color,
+            n.color, n.is_collapsed, n.is_options_expanded,
             n.locked_by_user_id, n.locked_by_session_id, lu.username as locking_user_name,
             b.id        AS blob_id,
             b.filename  AS blob_filename,
