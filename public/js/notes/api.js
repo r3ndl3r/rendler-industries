@@ -295,13 +295,13 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
                     const res = await NoteAPI.post('/notes/api/geometry', latestParams);
                     if (res && res.success) {
                         if (res.notes && typeof window.mergeNoteState === 'function') {
-                            window.mergeNoteState(res.notes);
+                            window.mergeNoteState(res.notes, id);
                         } else if (res.notes) {
                             STATE.notes = res.notes;
                         }
                         if (!STATE.last_mutation || res.last_mutation > STATE.last_mutation) {
-                STATE.last_mutation = res.last_mutation;
-            }
+                            STATE.last_mutation = res.last_mutation;
+                        }
                         context.resolve(res);
                     } else {
                         context.reject(new Error(res?.error || 'Save failed'));
