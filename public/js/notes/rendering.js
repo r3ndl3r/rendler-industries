@@ -444,12 +444,6 @@ function generateNoteContentHtml(note, canEdit, isDashboard = null) {
             attachments.forEach(att => {
                 const isImg = att.mime_type && att.mime_type.startsWith('image/');
                 const isPdf = att.mime_type === 'application/pdf' || (att.filename && att.filename.toLowerCase().endsWith('.pdf'));
-                const openAction = isPdf
-                    ? `openPDFViewer(${att.blob_id}, '${window.escapeHtml(att.filename).replace(/'/g, "\\'")}')`
-                    : isImg
-                        ? `viewNoteImage(${note.id}, ${att.blob_id})`
-                        : `const a=document.createElement('a');a.href='/notes/attachment/serve/${att.blob_id}';a.download='${window.escapeHtml(att.filename).replace(/'/g, "\\'")}';a.click()`;
-
                 if (isImg) {
                     attachmentHtml += `
                         <div class="attachment-item-stack attachment-item-stack--image"
