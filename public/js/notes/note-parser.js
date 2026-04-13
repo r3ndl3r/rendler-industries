@@ -485,7 +485,7 @@ const NoteParser = (() => {
                 }
 
                 // c) Checkbox Detection
-                const cbMatch = lineRemainder.match(/^(\s*)\[([ xX]?)\]/);
+                const cbMatch = lineRemainder.match(/^([ \t]*)\[([ xX]?)\]/);
                 if (cbMatch) {
                     flushBuffer();
                     const prefix  = cbMatch[1];
