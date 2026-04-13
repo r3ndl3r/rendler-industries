@@ -100,7 +100,8 @@ sub DB::get_global_search_notes {
     my ($self, $user_id, $query, $unlocked_ids) = @_;
     $self->ensure_connection;
 
-    my $term = "%$query%";
+    (my $escaped = $query) =~ s/([%_\\])/\\$1/g;
+    my $term = "%$escaped%";
 
     # Logic-Pure: Handle SQL IN clause for unlocked markers
     my $in_clause = (@{$unlocked_ids // []})
