@@ -1,6 +1,6 @@
-# /lib/MyApp/Controller/Notifications.pm
+# /lib/MyApp/Controller/Admin/Notifications.pm
 
-package MyApp::Controller::Notifications;
+package MyApp::Controller::Admin::Notifications;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
@@ -11,16 +11,16 @@ use Mojo::Util qw(trim);
 #   - Administrative maintenance tools for log pruning.
 
 # Renders the main notification history skeleton.
-# Route: GET /notifications
+# Route: GET /admin/notifications
 sub index {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_admin;
-    $c->render('notifications');
+    $c->render('admin/notifications');
 }
 
 # Returns the consolidated state for the notification ledger.
-# Route: GET /notifications/api/state
+# Route: GET /admin/notifications/api/state
 sub api_state {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
@@ -45,7 +45,7 @@ sub api_state {
 }
 
 # Removes a specific notification log entry.
-# Route: POST /notifications/api/delete/:id
+# Route: POST /admin/notifications/api/delete/:id
 sub api_delete {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
@@ -59,7 +59,7 @@ sub api_delete {
 }
 
 # Prunes logs older than a specific threshold.
-# Route: POST /notifications/api/prune
+# Route: POST /admin/notifications/api/prune
 sub api_prune {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;

@@ -1,4 +1,4 @@
-// /public/js/menu.js
+// /public/js/admin/menu.js
 
 /**
  * Menu Management Controller
@@ -64,7 +64,7 @@ const MenuMgmt = {
         if (!force && (anyModalOpen || inputFocused) && STATE.links.length > 0) return;
 
         try {
-            const response = await fetch('/menu/api/state');
+            const response = await fetch('/admin/menu/api/state');
             const data = await response.json();
             
             if (data && data.success) {
@@ -255,7 +255,7 @@ const MenuMgmt = {
         const btn = document.getElementById('saveLinkBtn');
         const originalHtml = btn.innerHTML;
         const id = document.getElementById('linkId').value;
-        const url = id ? '/menu/api/update' : '/menu/api/add';
+        const url = id ? '/admin/menu/api/update' : '/admin/menu/api/add';
 
         btn.disabled = true;
         btn.innerHTML = `⌛ Saving...`;
@@ -298,7 +298,7 @@ const MenuMgmt = {
             hideCancel: true,
             alignment: 'center',
             onConfirm: async () => {
-                const result = await window.apiPost('/menu/api/delete', { id });
+                const result = await window.apiPost('/admin/menu/api/delete', { id });
                 if (result && result.success) {
                     // Update local registry to reflect removal immediately
                     STATE.links = STATE.links.filter(l => l.id != id && l.parent_id != id);
@@ -338,7 +338,7 @@ const MenuMgmt = {
             });
 
             // Transmit sequence data as a structured payload
-            const response = await fetch('/menu/api/reorder', {
+            const response = await fetch('/admin/menu/api/reorder', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',

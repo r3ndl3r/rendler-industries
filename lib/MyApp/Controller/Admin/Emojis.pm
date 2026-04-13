@@ -1,6 +1,6 @@
-# /lib/MyApp/Controller/Emoji.pm
+# /lib/MyApp/Controller/Admin/Emojis.pm
 
-package MyApp::Controller::Emoji;
+package MyApp::Controller::Admin::Emojis;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
@@ -16,7 +16,7 @@ use Mojo::Util qw(trim);
 #   - Explicit permission verification on every state and modification endpoint.
 
 # Renders the main management interface.
-# Route: GET /emojis
+# Route: GET /admin/emojis
 sub index {
     my $c = shift;
     
@@ -24,11 +24,11 @@ sub index {
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_admin;
     
-    $c->render('emojis');
+    $c->render('admin/emojis');
 }
 
 # Returns the consolidated state (stats + initial dictionary batch).
-# Route: GET /emojis/api/state
+# Route: GET /admin/emojis/api/state
 # Parameters: search (Optional)
 sub api_state {
     my $c = shift;
@@ -48,7 +48,7 @@ sub api_state {
 }
 
 # Returns a paginated list of dictionary entries.
-# Route: GET /emojis/api/list
+# Route: GET /admin/emojis/api/list
 # Parameters: search, offset, limit
 sub api_list {
     my $c = shift;
@@ -69,7 +69,7 @@ sub api_list {
 }
 
 # Updates or creates a manual dictionary mapping.
-# Route: POST /emojis/api/update
+# Route: POST /admin/emojis/api/update
 # Parameters: keyword, emoji
 sub api_update {
     my $c = shift;
@@ -91,7 +91,7 @@ sub api_update {
 }
 
 # Removes a specific mapping from the dictionary.
-# Route: POST /emojis/api/delete
+# Route: POST /admin/emojis/api/delete
 # Parameters: keyword
 sub api_delete {
     my $c = shift;
@@ -108,7 +108,7 @@ sub api_delete {
 }
 
 # Interactive AI Sandbox: Predicts an emoji for a given phrase.
-# Route: POST /emojis/api/test
+# Route: POST /admin/emojis/api/test
 # Parameters: text
 sub api_test {
     my $c = shift;

@@ -4,8 +4,8 @@
 % title 'Notifications';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/notifications.css">
-    <script src="/js/notifications.js"></script>
+    <link rel="stylesheet" href="/css/admin/notifications.css">
+    <script src="/js/admin/notifications.js"></script>
 % end
 
 <div class="app-container">

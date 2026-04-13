@@ -4,8 +4,8 @@
 <% title 'Files'; %>
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/files.css">
-    <script src="/js/files.js"></script>
+    <link rel="stylesheet" href="/css/admin/files.css">
+    <script src="/js/admin/files.js"></script>
 % end
 
 <div class="admin-container app-container">

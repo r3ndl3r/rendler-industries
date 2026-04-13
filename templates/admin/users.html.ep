@@ -1,11 +1,11 @@
-<%# /templates/users.html.ep %>
+<%# /templates/admin/users.html.ep %>
 
 % layout 'default', hide_navbar_title => 1, favicon => '👥';
 <% title 'Users'; %>
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/users.css">
-    <script src="/js/users.js"></script>
+    <link rel="stylesheet" href="/css/admin/users.css">
+    <script src="/js/admin/users.js"></script>
 % end
 
 <div class="admin-container app-container">

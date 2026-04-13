@@ -4,8 +4,8 @@
 % title 'Menu';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/menu.css">
-    <script src="/js/menu.js"></script>
+    <link rel="stylesheet" href="/css/admin/menu.css">
+    <script src="/js/admin/menu.js"></script>
     <script src="/js/vendor/sortable.min.js"></script>
 % end
 

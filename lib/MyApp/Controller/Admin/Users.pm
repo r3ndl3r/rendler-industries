@@ -1,6 +1,6 @@
-# /lib/MyApp/Controller/Admin.pm
+# /lib/MyApp/Controller/Admin/Users.pm
 
-package MyApp::Controller::Admin;
+package MyApp::Controller::Admin::Users;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
@@ -17,19 +17,19 @@ use Mojo::Util qw(trim);
 #   - Depends on DB::Users for all data persistence and aggregated roster data
 
 # Renders the main user administration dashboard skeleton.
-# Route: GET /users
+# Route: GET /admin/users
 # Parameters: None
-# Returns: Rendered HTML template 'users'.
+# Returns: Rendered HTML template 'admin/users'.
 sub user_list {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_admin;
 
-    $c->render('users');
+    $c->render('admin/users');
 }
 
 # Returns the consolidated state for the module.
-# Route: GET /users/api/state
+# Route: GET /admin/users/api/state
 # Parameters: None
 # Returns: JSON object { users, is_admin, success }
 sub api_state {
@@ -47,7 +47,7 @@ sub api_state {
 }
 
 # Manually creates a new user account (Admin only).
-# Route: POST /users/api/add
+# Route: POST /admin/users/api/add
 # Parameters:
 #   username   : Unique String (3+ chars, alphanumeric, underscore, hyphen, or dot)
 #   email      : String (Email format, must be unique)
@@ -115,7 +115,7 @@ sub api_user_add {
 }
 
 # Permanently removes a user account.
-# Route: POST /users/delete/:id
+# Route: POST /admin/users/delete/:id
 # Parameters:
 #   id : Unique User ID
 # Returns: JSON object { success, message, error }
@@ -140,7 +140,7 @@ sub delete_user {
 }
 
 # Activates a pending user account.
-# Route: POST /users/approve/:id
+# Route: POST /admin/users/approve/:id
 # Parameters:
 #   id : Unique User ID
 # Returns: JSON object { success, message, error }
@@ -179,7 +179,7 @@ sub approve_user {
 }
 
 # Processes updates to an existing user profile.
-# Route: POST /users/update/:id
+# Route: POST /admin/users/update/:id
 # Parameters:
 #   id         : Unique User ID
 #   username   : Updated username
@@ -241,7 +241,7 @@ sub edit_user {
 }
 
 # Granularly toggles a specific user role.
-# Route: POST /users/toggle_role
+# Route: POST /admin/users/toggle_role
 # Parameters:
 #   id    : Unique User ID
 #   role  : Targeted role ('admin'|'family')

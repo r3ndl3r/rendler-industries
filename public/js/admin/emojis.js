@@ -1,4 +1,4 @@
-// /public/js/emojis.js
+// /public/js/admin/emojis.js
 
 /**
  * Emoji Management Controller
@@ -96,7 +96,7 @@ async function loadState(force = false) {
     STATE.isLoading = true;
 
     try {
-        const response = await fetch(`/emojis/api/state?search=${encodeURIComponent(STATE.search)}`);
+        const response = await fetch(`/admin/emojis/api/state?search=${encodeURIComponent(STATE.search)}`);
         const data = await response.json();
 
         if (data.success) {
@@ -148,7 +148,7 @@ async function loadMore() {
             limit: CONFIG.LIMIT,
             search: STATE.search
         });
-        const response = await fetch(`/emojis/api/list?${params.toString()}`);
+        const response = await fetch(`/admin/emojis/api/list?${params.toString()}`);
         const data = await response.json();
 
         if (data.success) {
@@ -186,7 +186,7 @@ async function handleEntrySubmit(e) {
     btn.innerHTML = `⌛ Saving...`;
 
     try {
-        const result = await apiPost('/emojis/api/update', formData);
+        const result = await apiPost('/admin/emojis/api/update', formData);
         if (result && result.success) {
             closeEntryModal();
             loadState(true);
@@ -210,7 +210,7 @@ function confirmDeleteEntry(keyword) {
         danger: true,
         confirmText: 'Remove',
         onConfirm: async () => {
-            const result = await apiPost('/emojis/api/delete', new URLSearchParams({ keyword }));
+            const result = await apiPost('/admin/emojis/api/delete', new URLSearchParams({ keyword }));
             if (result && result.success) {
                 loadState(true);
             }
@@ -245,7 +245,7 @@ async function testAI() {
     saveBtn.classList.add('hidden');
 
     try {
-        const result = await apiPost('/emojis/api/test', new URLSearchParams({ text }));
+        const result = await apiPost('/admin/emojis/api/test', new URLSearchParams({ text }));
         if (result && result.success) {
             resultArea.innerHTML = `<span class="emoji-result">${escapeHtml(result.emoji)}</span>`;
             saveBtn.classList.remove('hidden');
@@ -273,7 +273,7 @@ async function saveSandboxResult() {
     const text = btn.dataset.text;
     const emoji = btn.dataset.emoji;
 
-    const result = await apiPost('/emojis/api/update', new URLSearchParams({ keyword: text, emoji: emoji }));
+    const result = await apiPost('/admin/emojis/api/update', new URLSearchParams({ keyword: text, emoji: emoji }));
     if (result && result.success) {
         loadState(true);
         // Clear sandbox

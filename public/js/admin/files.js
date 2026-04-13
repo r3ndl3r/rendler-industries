@@ -1,4 +1,4 @@
-// /public/js/files.js
+// /public/js/admin/files.js
 
 /**
  * File Management Controller Module
@@ -8,7 +8,7 @@
  * automated ledger rendering, and granular ACL synchronization.
  * 
  * Features:
- * - Single Source of Truth state-driven rendering from /files/api/state
+ * - Single Source of Truth state-driven rendering from /admin/files/api/state
  * - Drag-and-drop orchestration with 1GB binary threshold validation
  * - Dynamic ACL management (Admin Only vs. Whitelisted Recipients)
  * - High-density JSDoc documentation for behavioral transparency
@@ -64,7 +64,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
-        const response = await fetch('/files/api/state', {
+        const response = await fetch('/admin/files/api/state', {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
         const data = await response.json();
@@ -253,7 +253,7 @@ async function submitFileUpload(event) {
             formData.set('admin_only', 0);
         }
 
-        const result = await apiPost('/files/api/upload', formData);
+        const result = await apiPost('/admin/files/api/upload', formData);
 
         if (result && result.success) {
         closeUploadModal();
@@ -291,7 +291,7 @@ async function submitPermissions(event) {
             formData.set('admin_only', 0);
         }
 
-        const result = await apiPost(`/files/api/permissions/${id}`, formData);
+        const result = await apiPost(`/admin/files/api/permissions/${id}`, formData);
 
         if (result && result.success) {
             closePermissionModal();
@@ -320,7 +320,7 @@ function confirmDeleteFile(id, filename) {
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost(`/files/api/delete/${id}`);
+            const result = await apiPost(`/admin/files/api/delete/${id}`);
             if (result && result.success) {
                 const row = document.getElementById(`file-row-${id}`);
                 if (row) {

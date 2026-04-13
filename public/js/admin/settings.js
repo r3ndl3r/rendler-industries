@@ -1,4 +1,4 @@
-// /public/js/settings.js
+// /public/js/admin/settings.js
 
 /**
  * Application Settings Controller
@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadState() {
     try {
-        const response = await fetch('/settings/api/state');
+        const response = await fetch('/admin/settings/api/state');
         const data = await response.json();
         
         if (data && data.success) {
@@ -527,7 +527,7 @@ async function handleSettingsUpdate(e) {
     btn.innerHTML = `⌛ Saving...`;
 
     try {
-        const result = await apiPost('/settings/update', Object.fromEntries(formData));
+        const result = await apiPost('/admin/settings/update', Object.fromEntries(formData));
         if (result && result.success) {
             // UI: Synchronize configuration badge
             const card = form.closest('.settings-card');
@@ -559,7 +559,7 @@ async function handleAddGeminiModel() {
     const name = input?.value.trim();
     if (!name) return;
 
-    const result = await apiPost('/settings/update', {
+    const result = await apiPost('/admin/settings/update', {
         section: 'gemini_models',
         action: 'add',
         new_model: name
@@ -586,7 +586,7 @@ function confirmDeleteModel(modelName) {
         hideCancel: true,
         alignment: 'center',
         onConfirm: async () => {
-            const result = await apiPost('/settings/update', {
+            const result = await apiPost('/admin/settings/update', {
                 section: 'gemini_models',
                 action: 'delete',
                 model_name: modelName

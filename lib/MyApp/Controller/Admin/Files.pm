@@ -1,6 +1,6 @@
-# /lib/MyApp/Controller/Files.pm
+# /lib/MyApp/Controller/Admin/Files.pm
 
-package MyApp::Controller::Files;
+package MyApp::Controller::Admin::Files;
 use Mojo::Base 'Mojolicious::Controller';
 
 use Mojo::Util qw(trim);
@@ -18,18 +18,18 @@ use Digest::SHA qw(sha256_hex);
 #   - Coordinates with centralized notification systems for audit logs
 
 # Renders the main file management dashboard (Skeleton).
-# Route: GET /files
+# Route: GET /admin/files
 # Parameters: None
 # Returns: Rendered HTML template 'files'.
 sub index {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_admin;
-    $c->render('files', is_admin => 1);
+    $c->render('admin/files', is_admin => 1);
 }
 
 # Returns the consolidated state for the file vault.
-# Route: GET /files/api/state
+# Route: GET /admin/files/api/state
 # Returns: JSON object { success, files, users, is_admin }
 sub api_state {
     my $c = shift;
@@ -50,7 +50,7 @@ sub api_state {
 }
 
 # Processes a new binary upload via AJAX.
-# Route: POST /files/api/upload
+# Route: POST /admin/files/api/upload
 # Parameters:
 #   file          : The multipart binary object (max 1GB)
 #   description   : Optional context string (String)
@@ -114,7 +114,7 @@ sub api_upload {
 }
 
 # Serves binary content with appropriate streaming headers.
-# Route: GET /files/serve/:id
+# Route: GET /admin/files/serve/:id
 # Parameters:
 #   id : Unique File ID (Integer)
 # Returns: Binary stream or 403/404 error
@@ -163,7 +163,7 @@ sub serve {
 }
 
 # Permanently removes a file resource via AJAX.
-# Route: POST /files/api/delete/:id
+# Route: POST /admin/files/api/delete/:id
 # Parameters:
 #   id : Unique File ID (Integer)
 # Returns: JSON object { success, message }
@@ -193,7 +193,7 @@ sub api_delete {
 }
 
 # Updates ACL permissions for a specific resource via AJAX.
-# Route: POST /files/api/permissions/:id
+# Route: POST /admin/files/api/permissions/:id
 # Parameters:
 #   id            : Unique File ID (Integer)
 #   admin_only    : Restriction flag (Boolean)

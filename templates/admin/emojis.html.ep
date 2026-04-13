@@ -4,8 +4,8 @@
 % title 'Emojis Management';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/emojis.css">
-    <script src="/js/emojis.js"></script>
+    <link rel="stylesheet" href="/css/admin/emojis.css">
+    <script src="/js/admin/emojis.js"></script>
 % end
 
 <div class="app-container">
