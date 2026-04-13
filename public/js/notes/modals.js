@@ -919,7 +919,8 @@ function showBoardInfo() {
             <p class="board-guide-subheading">Canvas</p>
             <ul class="board-guide-list">
                 <li><strong>Double-click canvas</strong> — Create a new note at cursor</li>
-                <li><strong>Double-click note</strong> — Pick up and move it (edit mode only)</li>
+                <li><strong>Double-click note</strong> — Pick up and move it (view mode only)</li>
+                <li><strong>Double-click note title</strong> — Toggle collapse / expand</li>
                 <li><strong>Click &amp; drag</strong> — Pan the board</li>
                 <li><strong>Mouse Wheel</strong> — Pan vertically</li>
                 <li><strong>Shift + Wheel</strong> — Pan horizontally</li>
