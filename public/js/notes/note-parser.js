@@ -80,7 +80,7 @@ const NoteParser = (() => {
 
     /**
      * Nested Inline Formatter (1-Level):
-     * Processes basic Markdown (Bold/Italic) within component labels.
+     * Processes basic Markdown (Bold/Italic/Strikethrough/Code) within component labels.
      * Does not recurse to prevent depth-based vulnerabilities.
      */
     const renderInline = (text) => {
@@ -88,8 +88,41 @@ const NoteParser = (() => {
         return escaped
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/~~(.*?)~~/g, '<del>$1</del>')
             .replace(/`(.*?)`/g, '<code>$1</code>');
     };
+
+    /**
+     * Stack-balanced closing-tag scanner for wrapping renderers.
+     * Finds the matching [/tag] position in rawContent, respecting nested
+     * open/close pairs so inner tags do not prematurely end an outer block.
+     * @param {string} openPrefix - Opening tag prefix, e.g. '[size:'
+     * @param {string} closeTag   - Closing tag string, e.g. '[/size]'
+     * @param {string} content    - Text AFTER the opening bracket (rawContent slice)
+     * @returns {number} Index of the start of closeTag, or -1 if unmatched.
+     */
+    const findClosingTag = (openPrefix, closeTag, content) => {
+        let nesting = 1;
+        let scan    = 0;
+        while (scan < content.length) {
+            const nextOpen  = content.indexOf(openPrefix, scan);
+            const nextClose = content.indexOf(closeTag,   scan);
+            if (nextClose === -1) return -1;
+            if (nextOpen !== -1 && nextOpen < nextClose) {
+                nesting++;
+                scan = nextOpen + openPrefix.length;
+            } else {
+                nesting--;
+                if (nesting === 0) return nextClose;
+                scan = nextClose + closeTag.length;
+            }
+        }
+        return -1;
+    };
+
+    // Forward declaration: wrapping renderers (color, size, bg, spoiler) call parseNote
+    // recursively. Declared here so RENDERERS can reference it; assigned below.
+    let parseNote;
 
     const RENDERERS = {
         'iframe': (data) => {
@@ -169,29 +202,7 @@ const NoteParser = (() => {
 
             const openPrefix = '[color:';
             const closeTag = '[/color]';
-            let nesting = 1;
-            let scan = 0;
-            let endIdx = -1;
-
-            while (scan < rawContent.length) {
-                const nextOpen = rawContent.indexOf(openPrefix, scan);
-                const nextClose = rawContent.indexOf(closeTag, scan);
-
-                if (nextClose === -1) break;
-
-                if (nextOpen !== -1 && nextOpen < nextClose) {
-                    nesting++;
-                    scan = nextOpen + openPrefix.length;
-                    continue;
-                }
-
-                nesting--;
-                if (nesting === 0) {
-                    endIdx = nextClose;
-                    break;
-                }
-                scan = nextClose + closeTag.length;
-            }
+            const endIdx = findClosingTag(openPrefix, closeTag, rawContent);
 
             if (endIdx === -1) return null;
 
@@ -200,6 +211,128 @@ const NoteParser = (() => {
 
             return {
                 html: `<span style="color: ${hexColor}">${innerHtml}</span>`,
+                consumed: endIdx + closeTag.length
+            };
+        },
+        'size': (pos, noteId, rawContent, depth = 0) => {
+            const size = pos.value.toLowerCase();
+            const valid = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
+            if (!valid.includes(size)) return null;
+
+            const openPrefix = '[size:';
+            const closeTag = '[/size]';
+            const endIdx = findClosingTag(openPrefix, closeTag, rawContent);
+            if (endIdx === -1) return null;
+
+            const innerText = rawContent.substring(0, endIdx);
+            const innerHtml = parseNote(innerText, noteId, depth + 1);
+
+            return {
+                html: `<span class="note-text-${size}">${innerHtml}</span>`,
+                consumed: endIdx + closeTag.length
+            };
+        },
+        'bg': (pos, noteId, rawContent, depth = 0) => {
+            const color = pos.value.toLowerCase();
+            const isHex = CONFIG.hexRegex.test(color);
+            const isNamed = CONFIG.colors.includes(color);
+            if (!isHex && !isNamed) return null;
+
+            const hexColor = (typeof window.normalizeColorHex === 'function') 
+                ? window.normalizeColorHex(color) 
+                : color;
+
+            const openPrefix = '[bg:';
+            const closeTag = '[/bg]';
+            const endIdx = findClosingTag(openPrefix, closeTag, rawContent);
+            if (endIdx === -1) return null;
+
+            const innerText = rawContent.substring(0, endIdx);
+            const innerHtml = parseNote(innerText, noteId, depth + 1);
+
+            return {
+                html: `<span class="note-bg-highlight" style="background-color: ${hexColor}">${innerHtml}</span>`,
+                consumed: endIdx + closeTag.length
+            };
+        },
+        'progress': (data) => {
+            const val = Math.min(100, Math.max(0, parseInt(data.value, 10) || 0));
+            const label = data.params[0] ? ` ${renderInline(data.params[0])}` : '';
+            return `<div class="note-progress-container" title="${val}%${label}">
+                        <div class="note-progress-bar" style="width: ${val}%;"></div>
+                        ${label ? `<span class="note-progress-text">${label}</span>` : ''}
+                    </div>`;
+        },
+        'date': (data) => {
+            const dateStr = data.value;
+            // Parse as local midnight by splitting manually; avoids UTC-shift from ISO date-only strings.
+            const parts = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!parts) return null;
+            const target = new Date(parseInt(parts[1], 10), parseInt(parts[2], 10) - 1, parseInt(parts[3], 10));
+            if (isNaN(target.getTime())) return null;
+
+            let display = target.toLocaleDateString();
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+
+            const diffDays = Math.round((target - now) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) display = "Today";
+            else if (diffDays === 1) display = "Tomorrow";
+            else if (diffDays === -1) display = "Yesterday";
+            else if (diffDays > 0 && diffDays < 7) display = `In ${diffDays} days`;
+            else if (diffDays < 0 && diffDays > -7) display = `${Math.abs(diffDays)} days ago`;
+
+            return `<span class="note-date-tag" title="${dateStr}">📅 ${display}</span>`;
+        },
+        'tag': (data) => {
+            const label = renderInline(data.value);
+            const VALID_TAG_COLORS = ['info', 'success', 'warning', 'danger',
+                'yellow', 'blue', 'pink', 'orange', 'violet', 'indigo',
+                'slate', 'green', 'red', 'accent'];
+            const colorClass = VALID_TAG_COLORS.includes(data.params[0]) ? data.params[0] : 'info';
+            return `<span class="note-badge badge-${colorClass}">${label}</span>`;
+        },
+        'divider': (data) => {
+            const label = data.value ? renderInline(data.value) : '';
+            return `<div class="note-divider-wrap"><hr class="note-hr">${label ? `<span class="note-divider-label">${label}</span>` : ''}</div>`;
+        },
+        'spoiler': (pos, noteId, rawContent, depth = 0) => {
+            const label = pos.value ? renderInline(pos.value) : 'Click to reveal';
+            const closeTag = '[/spoiler]';
+
+            // Custom balanced scan: only treat '[spoiler:' and '[spoiler]' (exact forms)
+            // as nesting incrementors. '[spoiler' alone over-matches tags like [spoilertest:].
+            const endIdx = (() => {
+                let nesting = 1;
+                let scan    = 0;
+                while (scan < rawContent.length) {
+                    const nextColon = rawContent.indexOf('[spoiler:', scan);
+                    const nextBare  = rawContent.indexOf('[spoiler]', scan);
+                    const nextClose = rawContent.indexOf(closeTag, scan);
+                    if (nextClose === -1) return -1;
+                    const nextOpen = (nextColon === -1) ? nextBare
+                                   : (nextBare  === -1) ? nextColon
+                                   : Math.min(nextColon, nextBare);
+                    if (nextOpen !== -1 && nextOpen < nextClose) {
+                        nesting++;
+                        scan = nextOpen + 9; // advance past '[spoiler'
+                    } else {
+                        nesting--;
+                        if (nesting === 0) return nextClose;
+                        scan = nextClose + closeTag.length;
+                    }
+                }
+                return -1;
+            })();
+
+            if (endIdx === -1) return null;
+
+            const innerText = rawContent.substring(0, endIdx);
+            const innerHtml = parseNote(innerText, noteId, depth + 1);
+
+            return {
+                html: `<details class="note-spoiler"><summary>${label}</summary><div class="note-spoiler-content">${innerHtml}</div></details>`,
                 consumed: endIdx + closeTag.length
             };
         }
@@ -393,19 +526,6 @@ const NoteParser = (() => {
         });
     };
 
-    return {
-        isDashboard: isDashboardFormat,
-        renderHeader: renderCategoryHeader,
-        getDisplayTitle: getDisplayTitle,
-        parse: (text, noteId) => {
-            // Runtime Dependency Check: Ensure global sanitizer is available before tokenizing.
-            if (typeof window.escapeHtml !== 'function') {
-                throw new Error('NoteParser: window.escapeHtml is required but not defined.');
-            }
-            return parseNote(text, noteId, 0);
-        }
-    };
-
     /**
      * Recursive Tokenizer Engine:
      * Converts raw text into sanitized HTML components with support for nested tags.
@@ -414,7 +534,7 @@ const NoteParser = (() => {
      * @param {number} depth - Current recursion depth (Guard against infinite loops).
      * @returns {string} - Rendered HTML.
      */
-    function parseNote(text, noteId, depth = 0) {
+    parseNote = (text, noteId, depth = 0) => {
         if (!text) return '';
 
         // 0. Safety Guards: Length and Depth Limits
@@ -426,9 +546,8 @@ const NoteParser = (() => {
             return window.escapeHtml(text).replace(/\n/g, '<br>');
         }
 
-        if (depth > 3) {
-            return renderInline(text).replace(/\n/g, '<br>');
-        }
+        // Depth guard: prevents stack overflow from pathological recursive nesting
+        if (depth > 12) return window.escapeHtml(text);
         
         // 1. Dashboard Mode (Fast-Path Optimization)
         // If the note content is identified as a pure bookmark list, bypass the 
@@ -464,7 +583,19 @@ const NoteParser = (() => {
             if (isLineStart) {
                 const lineRemainder = text.substring(cursor);
                 
-                // a) Horizontal Rule: ---
+                // a) Headings: # Title, ## Section
+                const hMatch = lineRemainder.match(/^(\s*)(#{1,3})\s+(.*?)(\n|$)/);
+                if (hMatch) {
+                    flushBuffer();
+                    const level = hMatch[2].length;
+                    const content = hMatch[3];
+                    output += `${window.escapeHtml(hMatch[1])}<h${level + 2} class="note-h${level}">${renderInline(content)}</h${level + 2}>`;
+                    cursor += hMatch[0].length;
+                    isLineStart = true;
+                    continue;
+                }
+
+                // b) Horizontal Rule: ---
                 const hrMatch = lineRemainder.match(/^(\s*)---(\s*)(\n|$)/);
                 if (hrMatch) {
                     flushBuffer();
@@ -474,7 +605,17 @@ const NoteParser = (() => {
                     continue;
                 }
 
-                // b) Bullet Points: * item or - item
+                // c) Numbered Lists: 1. item
+                const numMatch = lineRemainder.match(/^(\s*)(\d+)\.\s+/);
+                if (numMatch) {
+                    flushBuffer();
+                    output += `${window.escapeHtml(numMatch[1])}<span class="note-number">${numMatch[2]}.</span> `;
+                    cursor += numMatch[0].length;
+                    isLineStart = false;
+                    continue;
+                }
+
+                // d) Bullet Points: * item or - item
                 const bulletMatch = lineRemainder.match(/^(\s*)([*•-])\s+/);
                 if (bulletMatch) {
                     flushBuffer();
@@ -484,7 +625,7 @@ const NoteParser = (() => {
                     continue;
                 }
 
-                // c) Checkbox Detection
+                // e) Checkbox Detection
                 const cbMatch = lineRemainder.match(/^([ \t]*)\[([ xX]?)\]/);
                 if (cbMatch) {
                     flushBuffer();
@@ -594,5 +735,18 @@ const NoteParser = (() => {
         flushBuffer();
         if (inCheckboxRow) output += '</span>';
         return output;
-    }
+    };
+
+    return {
+        isDashboard: isDashboardFormat,
+        renderHeader: renderCategoryHeader,
+        getDisplayTitle: getDisplayTitle,
+        parse: (text, noteId) => {
+            // Runtime Dependency Check: Ensure global sanitizer is available before tokenizing.
+            if (typeof window.escapeHtml !== 'function') {
+                throw new Error('NoteParser: window.escapeHtml is required but not defined.');
+            }
+            return parseNote(text, noteId, 0);
+        }
+    };
 })();
