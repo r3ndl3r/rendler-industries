@@ -365,6 +365,10 @@ sub api_upload {
         return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
     }
 
+    unless ($upload) {
+        return $c->render(json => { success => 0, error => 'Missing file' }, status => 400);
+    }
+
     my $mime_type = $upload->headers->content_type || 'application/octet-stream';
     my $type = ($mime_type =~ m/^image\//) ? 'image' : 'file';
 
