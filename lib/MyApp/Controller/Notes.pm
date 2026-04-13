@@ -400,7 +400,14 @@ sub api_upload {
             is_options_expanded => int($c->param('is_options_expanded') // 0)
         });
     } elsif ($note_id && $upload) {
-        # Note state transition from placeholder to binary note.
+        my $lock = $c->db->{dbh}->selectrow_hashref(
+            "SELECT locked_by_session_id, locked_at FROM notes WHERE id = ?", undef, $note_id
+        );
+        if ($lock && $lock->{locked_by_session_id}
+            && $lock->{locked_by_session_id} ne $sid
+            && $lock->{locked_at} gt DateTime->now->subtract(minutes => 5)->iso8601) {
+            return $c->render(json => { success => 0, error => 'Note is locked by another session' }, status => 409);
+        }
         $c->db->promote_note_to_binary($note_id, $type, $upload->filename);
     }
 
