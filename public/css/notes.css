@@ -1830,13 +1830,25 @@ pre code {
     justify-content: space-between;
     align-items: center;
     height: 2.5em; /* 40px */
-    padding: 0 0.5em 0 0.8em; 
+    padding: 0 0 0 0.8em; 
     margin: 0.25em 0.25em 0 0.25em;
     background: linear-gradient(45deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.4) 50%, rgba(15, 23, 42, 0.7) 100%);
     background-size: 200% 200%;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 0.75em; /* Reduced from Pill to Modern Crisp Floating Box */
     cursor: grab;
+}
+
+.note-header-tab {
+    width: 4px;
+    height: 100%;
+    margin-left: 0.3125em; /* 5px spacing from action icons */
+    background: var(--note-accent, #f59e0b);
+    border-top-right-radius: 0.75em;
+    border-bottom-right-radius: 0.75em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
 }
 
 .note-drag-handle-container {
@@ -1973,51 +1985,44 @@ pre code {
     gap: 0.3125em; /* 5px */
     position: relative;
     background: transparent;
-    max-width: 0;
-    opacity: 0;
     overflow: visible;
     white-space: nowrap;
-    pointer-events: none; /* Guard: Invisible buttons cannot be clicked */
-    cursor: pointer;
-    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-                max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: auto;
 }
 
-.note-actions::before {
-    content: "";
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    width: 100px; /* Hotspot Sensor */
-    height: calc(100% + 10px);
-    z-index: 10;
-    pointer-events: auto; /* Hotspot receives hover events to trigger timer */
+.note-actions-rail {
+    display: flex;
+    align-items: center;
+    gap: 0.3125em;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
 }
 
-/* Interaction Gating: Buttons are inert by default */
+.note-actions-rail.expanded,
+.sticky-note.is-editing .note-actions-rail {
+    max-width: 450px;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Interaction Gating: Buttons are only interactive when their rail is expanded */
 .note-actions button {
     position: relative;
     z-index: 20;
     pointer-events: none;
 }
 
-/* Armed State Reveal: Driven by JS-injected class after 500ms dwell */
-.note-header.actions-armed .note-actions,
-.sticky-note.is-editing .note-actions {
-    max-width: 350px;
-    opacity: 1;
-    pointer-events: auto; /* Enable rail container interaction once armed */
-}
-
-/* Button Activation: Buttons only become clickable in the armed or editing state */
-.note-header.actions-armed .note-actions button,
-.sticky-note.is-editing .note-actions button {
+.note-actions-rail.expanded button,
+.sticky-note.is-editing .note-actions-rail button {
     pointer-events: auto;
 }
 
 /* Edit mode always shows actions instantly without dwell delay */
-.sticky-note.is-editing .note-actions {
-    max-width: 350px;
+.sticky-note.is-editing .note-actions-rail {
+    max-width: 450px;
     opacity: 1;
     pointer-events: auto;
     transition: none;
