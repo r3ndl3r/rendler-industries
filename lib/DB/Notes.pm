@@ -1230,10 +1230,12 @@ sub DB::verify_canvas_password {
     return 0 unless $stored_hash;
 
     my $computed = bcrypt($password, $stored_hash);
+    my $len = length($stored_hash);
+    return 0 unless length($computed) == $len;
     # Constant-time comparison: XOR all bytes, accumulate into single result
     my $diff = 0;
     $diff |= ord(substr($computed, $_, 1)) ^ ord(substr($stored_hash, $_, 1))
-        for 0 .. length($stored_hash) - 1;
+        for 0 .. $len - 1;
     return $diff == 0 ? 1 : 0;
 }
 
