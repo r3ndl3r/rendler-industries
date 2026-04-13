@@ -185,6 +185,15 @@ function renderNotificationsPanel() {
                     </div>
                 </div>
             `, true)}
+
+            ${renderCard('discord', 'Discord', 'Bot token for direct message notifications via the Discord API.', !!s.discord_token, `
+                <div class="settings-fields">
+                    <div class="form-group full-width">
+                        <label>Bot Token</label>
+                        <div class="render-row-input" data-id="discord_token" data-name="discord_token" data-type="password" data-value="${escapeHtml(s.discord_token)}" data-placeholder="Bot Token"></div>
+                    </div>
+                </div>
+            `, true)}
         </div>
     `;
 }
