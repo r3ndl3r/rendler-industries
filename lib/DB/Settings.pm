@@ -96,6 +96,14 @@ sub DB::get_all_settings {
         $settings->{owm_api_key} = $key || '';
     };
 
+    # Safely fetch Discord bot token
+    eval {
+        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'discord_bot_token'");
+        $sth->execute();
+        my ($key) = $sth->fetchrow_array();
+        $settings->{discord_token} = $key || '';
+    };
+
     return $settings;
 }
 
@@ -467,4 +475,41 @@ sub DB::update_owm_api_key {
         $sth->execute($api_key);
     }
 }
+
+# Retrieves the Discord bot token from app_secrets.
+# Returns: Token string, or undef if not configured.
+sub DB::get_discord_token {
+    my ($self) = @_;
+    $self->ensure_connection;
+    my ($token) = $self->{dbh}->selectrow_array(
+        "SELECT secret_value FROM app_secrets WHERE key_name = 'discord_bot_token'"
+    );
+    return $token || undef;
+}
+
+# Stores or updates the Discord bot token in app_secrets.
+# Parameters:
+#   token : Bot token string
+# Returns: Void
+sub DB::update_discord {
+    my ($self, $token) = @_;
+    $self->ensure_connection;
+
+    my ($count) = $self->{dbh}->selectrow_array(
+        "SELECT COUNT(*) FROM app_secrets WHERE key_name = 'discord_bot_token'"
+    );
+
+    if ($count > 0) {
+        my $sth = $self->{dbh}->prepare(
+            "UPDATE app_secrets SET secret_value = ? WHERE key_name = 'discord_bot_token'"
+        );
+        $sth->execute($token);
+    } else {
+        my $sth = $self->{dbh}->prepare(
+            "INSERT INTO app_secrets (key_name, secret_value) VALUES ('discord_bot_token', ?)"
+        );
+        $sth->execute($token);
+    }
+}
+
 1;
