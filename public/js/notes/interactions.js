@@ -1285,10 +1285,18 @@ function handleCanvasDoubleClick(e) {
     // 1. Note Detection: If double-clicking a note, initiate 'Pick & Place'
     const noteEl = e.target.closest('.sticky-note');
     if (noteEl) {
+        const id = noteEl.dataset.id;
+
+        // Specialized Target: Double-clicking the title text toggles collapse
+        const titleSlot = e.target.closest('.note-title-slot');
+        if (titleSlot && id) {
+            toggleCollapse(id);
+            return;
+        }
+
         // Isolation: Prevent pickup if clicking an interactive action (buttons, links, triggers)
         const isAction = e.target.closest('[data-action], .note-check-trigger, .note-link-trigger, .reel-action-btn, .btn-icon-drawer');
         if (!isAction) {
-            const id = noteEl.dataset.id;
             if (id) {
                 toggleStickyMove(e, id);
                 return;
