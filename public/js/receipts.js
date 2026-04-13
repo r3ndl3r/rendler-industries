@@ -258,7 +258,6 @@ function renderReceipts(append = false, batch = null) {
             <td data-label="Uploaded By"><small>${escapeHtml(r.uploaded_by)}</small></td>
             <td class="col-actions">
                 <div class="action-buttons">
-                    <a href="/receipts/serve/${r.id}" target="_blank" class="btn-icon-view" title="Original">👁️</a>
                     <button type="button" 
                             class="btn-icon-ai" 
                             data-receipt-id="${r.id}"
@@ -542,23 +541,116 @@ async function initPreUploadCrop(file) {
     if (STATE.cropper) STATE.cropper.destroy();
 
     const url = URL.createObjectURL(source);
+    const currentUrl = url;
+    
+    img.onerror = () => {
+        showToast('Failed to load image for refinement.', 'error');
+        URL.revokeObjectURL(currentUrl);
+        openUploadModal();
+    };
+    
     img.onload = async () => {
+        if (img.src !== currentUrl) return;
         if (img.decode) await img.decode();
+        if (img.src !== currentUrl) return;
+        
         modal.classList.add('show');
+        if (STATE.cropper) {
+            STATE.cropper.destroy();
+            STATE.cropper = null;
+        }
+        
         STATE.cropper = new Cropper(img, { 
             viewMode: 1, 
             autoCropArea: 1, 
             responsive: true,
-            checkOrientation: true
+            checkOrientation: false
         });
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        setTimeout(() => URL.revokeObjectURL(currentUrl), 5000);
     };
     img.src = url;
 }
 
 /**
+ * Discards all pre-upload modifications and reverts to the original file.
+ *
+ * @returns {void}
+ */
+function discardPreUploadRefinement() {
+    STATE.refinedBlob = null;
+    if (STATE.cropper) {
+        const img = document.getElementById('preUploadCropImg');
+        const blobUrl = img?.src.startsWith('blob:') ? img.src : null;
+        STATE.cropper.destroy();
+        STATE.cropper = null;
+        if (blobUrl) URL.revokeObjectURL(blobUrl);
+    }
+    const input = document.getElementById('file');
+    if (input && input.files.length > 0) {
+        updateFileName(input.files[0].name);
+    }
+    closePreUploadCropModal();
+}
+
+/**
+ * Rotates the pre-upload cropper canvas by the given degree increment.
+ *
+ * @param {number} degrees - Rotation amount in degrees (positive = clockwise).
+ * @returns {void}
+ */
+function rotatePreUpload(degrees) {
+    if (!STATE.cropper || STATE.cropRotating) return;
+    STATE.cropRotating = true;
+
+    const btns = document.querySelectorAll('.pre-upload-actions button');
+    btns.forEach(b => { b.disabled = true; });
+
+    try {
+        // Reset crop box before applying rotation to ensure proper container fitting.
+        STATE.cropper.clear();
+        STATE.cropper.rotate(degrees);
+
+        const containerData = STATE.cropper.getContainerData();
+        const canvasData    = STATE.cropper.getCanvasData();
+        
+        // Calculate scale factor to fit the rotated canvas within the current container bounds.
+        const scale = Math.min(
+            containerData.width  / canvasData.width,
+            containerData.height / canvasData.height
+        );
+
+        const newW = Math.floor(canvasData.width  * scale);
+        const newH = Math.floor(canvasData.height * scale);
+        const left = Math.floor((containerData.width  - newW) / 2);
+        const top  = Math.floor((containerData.height - newH) / 2);
+
+        // Apply centered coordinates and dimensions using integer values.
+        STATE.cropper.setCanvasData({
+            width:  newW,
+            height: newH,
+            left:   left,
+            top:    top,
+        });
+
+        // Synchronize crop box dimensions with the updated canvas state.
+        STATE.cropper.crop();
+        STATE.cropper.setCropBoxData({
+            left:   left,
+            top:    top,
+            width:  newW,
+            height: newH,
+        });
+    } finally {
+        setTimeout(() => {
+            STATE.cropRotating = false;
+            btns.forEach(b => { b.disabled = false; });
+        }, 300);
+    }
+}
+
+/**
  * Captures the refined image area for the upload queue.
- * 
+ *
  * @returns {void}
  */
 function applyPreUploadCrop() {
@@ -569,17 +661,45 @@ function applyPreUploadCrop() {
     btn.disabled = true;
     btn.innerHTML = `⌛ Refining...`;
 
-    STATE.cropper.getCroppedCanvas({ fillColor: '#fff' }).toBlob(blob => {
-        if (blob) {
-            STATE.refinedBlob = blob;
-            const input = document.getElementById('file');
-            STATE.refinedName = input.files[0].name.replace(/\.[^/.]+$/, "") + ".png";
-            updateFileName("(Refined) " + STATE.refinedName);
-            showToast('Image optimized', 'success');
+    const img = document.getElementById('preUploadCropImg');
+    const lastUrl = img?.src.startsWith('blob:') ? img.src : null;
+
+    // Attempt full-resolution canvas allocation
+    const canvas = STATE.cropper.getCroppedCanvas({ 
+        fillColor: '#fff',
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high'
+    });
+
+    if (!canvas) {
+        const data = STATE.cropper.getData();
+        showToast(`Processing error — image area (${Math.round(data.width)}x${Math.round(data.height)}) is too large for the browser memory.`, 'error');
+        btn.disabled = false;
+        btn.innerHTML = original;
+        return;
+    }
+
+    canvas.toBlob(blob => {
+        if (!blob) {
+            showToast('Failed to encode image — please try again.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = original;
+            return;
+        }
+        if (lastUrl) URL.revokeObjectURL(lastUrl);
+        STATE.refinedBlob = blob;
+        const input = document.getElementById('file');
+        STATE.refinedName = (input && input.files[0])
+            ? input.files[0].name.replace(/\.[^/.]+$/, "") + ".png"
+            : 'receipt.png';
+
+        updateFileName("(Refined) " + STATE.refinedName);
+        showToast('Image optimized', 'success');
+        if (STATE.cropper) {
             STATE.cropper.destroy();
             STATE.cropper = null;
-            closePreUploadCropModal();
         }
+        closePreUploadCropModal();
         btn.disabled = false;
         btn.innerHTML = original;
     }, 'image/png');
@@ -608,7 +728,20 @@ function updateFileName(name) {
 function openReceiptModal(id) {
     const img = document.getElementById('modalImg');
     const modal = document.getElementById('receiptModal');
-    if (img && modal) { img.src = '/receipts/serve/' + id; modal.classList.add('show'); }
+    if (img && modal) { 
+        img.src = '/receipts/serve/' + id; 
+        modal.classList.add('show'); 
+    }
+}
+
+/**
+ * Hides the full-size receipt Lightbox.
+ * 
+ * @returns {void}
+ */
+function closeReceiptModal() { 
+    const m = document.getElementById('receiptModal'); 
+    if (m) m.classList.remove('show'); 
 }
 
 /**
@@ -698,7 +831,28 @@ async function openCropModal(id) {
             btn.disabled = true;
             btn.innerHTML = `⌛ Saving...`;
 
-            STATE.cropper.getCroppedCanvas({ fillColor: '#fff' }).toBlob(async b => {
+            // Attempt full-resolution canvas allocation
+            const canvas = STATE.cropper.getCroppedCanvas({ 
+                fillColor: '#fff',
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high'
+            });
+
+            if (!canvas) {
+                const data = STATE.cropper.getData();
+                showToast(`Processing error — image area (${Math.round(data.width)}x${Math.round(data.height)}) is too large for the browser memory.`, 'error');
+                btn.disabled = false;
+                btn.innerHTML = original;
+                return;
+            }
+
+            canvas.toBlob(async b => {
+                if (!b) {
+                    showToast('Failed to encode image — please try again.', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                    return;
+                }
                 const fd = new FormData();
                 fd.append('cropped_image', b, 'receipt_cropped.png');
                 const res = await apiPost('/receipts/api/crop/' + id, fd);
@@ -845,7 +999,7 @@ function renderEReceipt(data, iconUrl = null) {
         <div class="ereceipt-item">
             <div class="ereceipt-item-content">
                 <div class="ereceipt-item-desc">${escapeHtml(i.desc || 'Item')}</div>
-                ${i.qty ? `<small class="ereceipt-item-qty">Qty: ${i.qty}</small>` : ''}
+                ${i.qty ? `<small class="ereceipt-item-qty">Qty: ${escapeHtml(String(i.qty))}</small>` : ''}
             </div>
             <div class="ereceipt-item-price">$${parseFloat(i.line_total || i.price || 0).toFixed(2)}</div>
         </div>
@@ -854,9 +1008,9 @@ function renderEReceipt(data, iconUrl = null) {
     content.innerHTML = `
         <div class="ereceipt-body">
             <div class="ereceipt-summary">
-                ${iconUrl ? `<img src="${iconUrl}" class="ereceipt-store-logo" onerror="this.classList.add('hidden')">` : ''}
+                ${iconUrl ? `<img src="${escapeHtml(iconUrl)}" class="ereceipt-store-logo" onerror="this.classList.add('hidden')">` : ''}
                 <h2 class="ereceipt-store-name">${escapeHtml(data.store_name || 'Merchant')}</h2>
-                <p class="ereceipt-datetime">${d} ${displayTime}</p>
+                <p class="ereceipt-datetime">${escapeHtml(d)} ${escapeHtml(displayTime)}</p>
             </div>
             <div class="ereceipt-items-list">${items || '<div class="ereceipt-empty-items">No items extracted</div>'}</div>
             <div class="ereceipt-total-container">
@@ -965,6 +1119,7 @@ function closePreUploadCropModal() {
 /**
  * --- Global Exposure ---
  */
+window.openReceiptModal = openReceiptModal;
 window.closeReceiptModal = closeReceiptModal;
 window.closeEditModal = closeEditModal;
 window.closeCropModal = closeCropModal;
@@ -974,6 +1129,8 @@ window.openUploadModal = openUploadModal;
 window.closeUploadModal = closeUploadModal;
 window.initPreUploadCrop = initPreUploadCrop;
 window.applyPreUploadCrop = applyPreUploadCrop;
+window.discardPreUploadRefinement = discardPreUploadRefinement;
+window.rotatePreUpload    = rotatePreUpload;
 window.updateFileName = updateFileName;
 window.handleUpload = handleUpload;
 window.loadState = loadState;
