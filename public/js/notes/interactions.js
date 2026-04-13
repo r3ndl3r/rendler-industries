@@ -1321,7 +1321,7 @@ function handleCanvasDoubleClick(e) {
  */
 async function saveNoteInline(id, stayInEditMode = false) {
     const el   = document.getElementById(`note-${id}`);
-    const note = STATE.note_map[id]; // Use global map for SSO truth
+    const note = STATE.notes.find(n => n.id == id);
     if (!el || !note) return;
 
     const titleInput = el.querySelector('.inline-title-input');
@@ -1360,7 +1360,8 @@ async function saveNoteInline(id, stayInEditMode = false) {
         width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
         height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
         z_index: el.style.zIndex,
-        is_collapsed: note.is_collapsed
+        is_collapsed: note.is_collapsed,
+        is_options_expanded: note.is_options_expanded ?? 0
     };
 
     try {
@@ -1519,6 +1520,7 @@ function updateNoteAccent(input, id) {
                 z_index:      el.style.zIndex,
                 layer_id:     note.layer_id || STATE.activeLayerId,
                 is_collapsed: note.is_collapsed,
+                is_options_expanded: note.is_options_expanded ?? 0,
                 color:        note.color
             });
 
@@ -1566,6 +1568,12 @@ async function toggleCollapse(id) {
 
     // Optimistic UI: Immediate visual transition
     note.is_collapsed = note.is_collapsed ? 0 : 1;
+    
+    // Single Source of Truth: Sync the global map to prevent save-regression
+    if (STATE.note_map && STATE.note_map[id]) {
+        STATE.note_map[id].is_collapsed = note.is_collapsed;
+    }
+
     el.classList.toggle('collapsed', !!note.is_collapsed);
     
     // Reflect new collapse state in the toggle button
@@ -1588,6 +1596,7 @@ async function toggleCollapse(id) {
             height:       note.height,
             z_index:      note.z_index,
             layer_id:     note.layer_id || 1,
+            is_options_expanded: note.is_options_expanded ?? 0,
             color:        colorInput ? colorInput.value : note.color
         });
         
@@ -2459,52 +2468,3 @@ window.showLevelRenameModal = showLevelRenameModal;
 window.showLevelMoveModal   = showLevelMoveModal;
 window.setupSecurityInteractions = setupSecurityInteractions;
 
-/**
- * Hover Intent: Armed Action Rail
- * Prevents accidental action triggers on tiny notes by requiring a 500ms
- * dwell time before action buttons become interactive. This ensures that
- * quick mouse-overs for drag-pickup remain safe and clear.
- */
-const ARMED_TIMERS = new Map();
-
-window.setupArmedActions = function setupArmedActions() {
-    const wrapper = STATE.wrapperEl;
-    if (!wrapper || wrapper.dataset.armedActionsActive) return;
-
-    // Use delegation on the wrapper to catch all current and future note interactions
-    wrapper.addEventListener('mouseover', (e) => {
-        const header = e.target.closest('.note-header');
-        if (!header) return;
-
-        // Atomic Check: Skip if already armed OR if a timer is already counting for this specific header
-        if (header.classList.contains('actions-armed') || ARMED_TIMERS.has(header)) return;
-
-        const timer = setTimeout(() => {
-            if (header.matches(':hover')) {
-                header.classList.add('actions-armed');
-            }
-            ARMED_TIMERS.delete(header);
-        }, 500);
-
-        ARMED_TIMERS.set(header, timer);
-    });
-
-    wrapper.addEventListener('mouseout', (e) => {
-        const header = e.target.closest('.note-header');
-        if (!header) return;
-
-        // Hierarchy Guard: Only teardown if we are actually exiting the header boundary, 
-        // not just moving between children (buttons/input).
-        const related = e.relatedTarget;
-        if (related && header.contains(related)) return;
-
-        // Immediate Teardown: Clear pending timers and remove armed state
-        if (ARMED_TIMERS.has(header)) {
-            clearTimeout(ARMED_TIMERS.get(header));
-            ARMED_TIMERS.delete(header);
-        }
-        header.classList.remove('actions-armed');
-    });
-
-    wrapper.dataset.armedActionsActive = 'true';
-};
