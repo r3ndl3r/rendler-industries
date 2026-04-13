@@ -256,12 +256,9 @@ const NoteParser = (() => {
             };
         },
         'progress': (data) => {
-            const val = Math.min(100, Math.max(0, parseInt(data.value, 10) || 0));
-            const label = data.params[0] ? ` ${renderInline(data.params[0])}` : '';
-            return `<div class="note-progress-container" title="${val}%${label}">
-                        <div class="note-progress-bar" style="width: ${val}%;"></div>
-                        ${label ? `<span class="note-progress-text">${label}</span>` : ''}
-                    </div>`;
+            const val   = Math.min(100, Math.max(0, parseInt(data.value, 10) || 0));
+            const label = data.params[0] ? renderInline(data.params[0]) : '';
+            return `<div class="note-progress-container"><div class="note-progress-track"><div class="note-progress-bar" style="width: ${val}%;"></div></div>${label ? `<span class="note-progress-text">${label}</span>` : ''}</div>`;
         },
         'date': (data) => {
             const dateStr = data.value;
