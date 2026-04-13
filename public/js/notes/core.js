@@ -599,6 +599,34 @@ async function initNotes() {
             // --- 5. New Standardized Data-Actions ---
             if (!action || !noteId) return;
 
+            if (action === 'toggle-drawer') {
+                e.stopPropagation();
+                if (note) {
+                    const newExpanded = note.is_options_expanded ? 0 : 1;
+
+                    note.is_options_expanded = newExpanded;
+                    
+                    // Single Source of Truth: Sync the global map to prevent save-regression
+                    if (STATE.note_map && STATE.note_map[noteId]) {
+                        STATE.note_map[noteId].is_options_expanded = newExpanded;
+                    }
+                    
+                    // Interaction: Toggle UI classes
+                    const actionsRail = noteEl.querySelector('.note-actions-rail');
+                    const headerTab   = noteEl.querySelector('.note-header-tab');
+
+                    if (actionsRail) actionsRail.classList.toggle('expanded', !!newExpanded);
+                    if (headerTab)   headerTab.classList.toggle('active', !!newExpanded);
+
+                    // Persist state to the database.
+                    // syncNotePosition owns the addActiveSync/removeActiveSync lifecycle internally.
+                    if (typeof syncNotePosition === 'function') {
+                        syncNotePosition(noteId, 'silent');
+                    }
+                }
+                return;
+            }
+
             if (action === 'view-attachment') {
                 e.stopPropagation();
                 const blobId = actionTrigger.dataset.blobId;
@@ -796,9 +824,6 @@ async function initNotes() {
 
     // 5. Security Context: Attach privacy lock listeners
     if (typeof setupSecurityInteractions === 'function') setupSecurityInteractions();
-
-    // 6. Interaction Intent: Setup Hover-Intent Armed Action Rail
-    if (typeof setupArmedActions === 'function') setupArmedActions();
 }
 
 
@@ -1098,6 +1123,10 @@ function mergeNoteState(incomingNotes, forceUpdateId = null) {
         
         // Lockout Check: Skip merge if the note is active, UNLESS it is the forceUpdateId target
         if (activeIds.has(idStr) && idStr !== String(forceUpdateId)) return;
+
+        // Data Normalization: Ensure boolean flags are treated as integers
+        if (incoming.hasOwnProperty('is_collapsed')) incoming.is_collapsed = parseInt(incoming.is_collapsed ?? 0);
+        if (incoming.hasOwnProperty('is_options_expanded')) incoming.is_options_expanded = parseInt(incoming.is_options_expanded ?? 0);
 
         const existing = STATE.notes.find(n => n.id == incoming.id);
         if (existing) {
