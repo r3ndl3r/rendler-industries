@@ -131,6 +131,7 @@
                 <input type="text" name="description" id="editDescription" class="game-input">
             </div>
             <div class="modal-actions edit-modal-actions">
+                <button type="button" id="btnScanAI" class="btn-secondary" title="Run Gemini AI scan on this receipt">🔍 Scan with AI</button>
                 <button type="button" id="btnApplyAI" class="btn-ai-apply hidden" title="Apply AI-digitized data to these fields">
                     🧠 Use AI Data
                 </button>
