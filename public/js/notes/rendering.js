@@ -121,6 +121,17 @@ function renderUI() {
                     if (btn) btn.innerHTML = '🔺';
                 }
 
+                // --- Action Drawer & Tab Sync (Persisted DB State) ---
+                const headerTab = existing.querySelector('.note-header-tab');
+                const actionsRail = existing.querySelector('.note-actions-rail');
+                const isExpanded = !!note.is_options_expanded;
+                if (headerTab) {
+                    headerTab.classList.toggle('active', isExpanded);
+                }
+                if (actionsRail) {
+                    actionsRail.classList.toggle('expanded', isExpanded);
+                }
+
                 // State Indicators: viewer reference and dashboard metrics for priority reconciliation
                 const viewer = existing.querySelector('.note-text-viewer');
                 const isDashboard = typeof NoteParser !== 'undefined' && NoteParser.isDashboard(note.content || '');
@@ -320,34 +331,37 @@ function createNoteElement(note, canEdit = true) {
                        placeholder="Note Title..." autocomplete="off">
             </div>
             <div class="note-actions">
-                <button class="btn-icon-link" title="Copy Direct Link">
-                    🔗
-                </button>
-                <button class="btn-icon-upload note-inline-upload-btn ${(note.attachments || []).length > 0 ? '' : 'text-only-upload'}" 
-                        title="Add Attachment" 
-                        ${canEdit ? '' : 'style="display:none;" disabled'}>
-                    📎
-                </button>
-                <button class="btn-icon-move" title="Copy to Canvas" ${canEdit ? '' : 'disabled'}>
-                    📦
-                </button>
-                <button class="btn-icon-level-copy" title="Copy to Level" ${canEdit ? '' : 'disabled'}>
-                    📚
-                </button>
-                <button class="btn-icon-view" title="Quick View">
-                    👁️
-                </button>
-                <button class="btn-icon-delete" title="Delete Note" ${canEdit ? '' : 'disabled'}>
-                    🗑️
-                </button>
-                <button class="btn-icon-edit" title="Edit Content" ${canEdit ? '' : 'disabled'}>
-                    ✏️
-                </button>
-                <button class="btn-icon-collapse" title="${note.is_collapsed ? 'Expand' : 'Collapse'} Note">
-                    ${note.is_collapsed ? '🔻' : '🔺'}
-                </button>
+                <div class="note-actions-rail ${note.is_options_expanded ? 'expanded' : ''}">
+                    <button class="btn-icon-link" title="Copy Direct Link">
+                        🔗
+                    </button>
+                    <button class="btn-icon-upload note-inline-upload-btn ${(note.attachments || []).length > 0 ? '' : 'text-only-upload'}" 
+                            title="Add Attachment" 
+                            ${canEdit ? '' : 'style="display:none;" disabled'}>
+                        📎
+                    </button>
+                    <button class="btn-icon-move" title="Copy to Canvas" ${canEdit ? '' : 'disabled'}>
+                        📦
+                    </button>
+                    <button class="btn-icon-level-copy" title="Copy to Level" ${canEdit ? '' : 'disabled'}>
+                        📚
+                    </button>
+                    <button class="btn-icon-view" title="Quick View">
+                        👁️
+                    </button>
+                    <button class="btn-icon-delete" title="Delete Note" ${canEdit ? '' : 'disabled'}>
+                        🗑️
+                    </button>
+                    <button class="btn-icon-edit" title="Edit Content" ${canEdit ? '' : 'disabled'}>
+                        ✏️
+                    </button>
+                    <button class="btn-icon-collapse" title="${note.is_collapsed ? 'Expand' : 'Collapse'} Note">
+                        ${note.is_collapsed ? '🔻' : '🔺'}
+                    </button>
+                </div>
                 <input type="file" id="inline-file-${note.id}" class="hidden-input" data-action="inline-upload">
             </div>
+            <div class="note-header-tab ${note.is_options_expanded ? 'active' : ''}" data-action="toggle-drawer"></div>
         </div>
         <div class="note-content">
             ${contentHtml}
