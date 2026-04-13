@@ -332,21 +332,31 @@ pre code {
     position: relative;
     margin: 1.5rem 0;
     text-align: center;
+    min-height: 1px; /* Ensures the hr is visible when no label is present */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.note-divider-wrap::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .note-divider-wrap .note-hr {
-    margin: 0;
-    position: absolute;
-    top: 50%;
-    width: 100%;
-    z-index: 1;
+    display: none; /* Line drawn by ::before pseudo-element */
 }
 
 .note-divider-label {
     position: relative;
-    z-index: 2;
-    background: #1e293b; /* Matches card background */
-    padding: 0 1rem;
+    z-index: 1;
+    background: #1e293b; /* Masks the ::before line behind the label */
+    padding: 0 0.75rem;
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -413,18 +423,31 @@ pre code {
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.badge-info    { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border-color: rgba(59, 130, 246, 0.3); }
-.badge-success { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3); }
-.badge-danger  { background: rgba(239, 68, 68, 0.2);  color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
-.badge-warning { background: rgba(245, 158, 11, 0.2); color: #fcd34d; border-color: rgba(245, 158, 11, 0.3); }
-.badge-accent  { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border-color: rgba(139, 92, 246, 0.3); }
+.badge-info    { background: rgba(59, 130, 246, 0.2);  color: #93c5fd; border-color: rgba(59, 130, 246, 0.3); }
+.badge-success { background: rgba(16, 185, 129, 0.2);  color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3); }
+.badge-danger  { background: rgba(239, 68, 68, 0.2);   color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+.badge-warning { background: rgba(245, 158, 11, 0.2);  color: #fcd34d; border-color: rgba(245, 158, 11, 0.3); }
+.badge-accent  { background: rgba(139, 92, 246, 0.2);  color: #c4b5fd; border-color: rgba(139, 92, 246, 0.3); }
+.badge-yellow  { background: rgba(234, 179, 8, 0.2);   color: #fde047; border-color: rgba(234, 179, 8, 0.3); }
+.badge-blue    { background: rgba(59, 130, 246, 0.2);  color: #93c5fd; border-color: rgba(59, 130, 246, 0.3); }
+.badge-pink    { background: rgba(236, 72, 153, 0.2);  color: #f9a8d4; border-color: rgba(236, 72, 153, 0.3); }
+.badge-orange  { background: rgba(249, 115, 22, 0.2);  color: #fdba74; border-color: rgba(249, 115, 22, 0.3); }
+.badge-violet  { background: rgba(139, 92, 246, 0.2);  color: #c4b5fd; border-color: rgba(139, 92, 246, 0.3); }
+.badge-indigo  { background: rgba(99, 102, 241, 0.2);  color: #a5b4fc; border-color: rgba(99, 102, 241, 0.3); }
+.badge-slate   { background: rgba(100, 116, 139, 0.2); color: #94a3b8; border-color: rgba(100, 116, 139, 0.3); }
+.badge-green   { background: rgba(16, 185, 129, 0.2);  color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3); }
+.badge-red     { background: rgba(239, 68, 68, 0.2);   color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
 
 /* Progress Components */
 .note-progress-container {
+    display: block;
+    margin: 0.75rem 0;
+}
+
+.note-progress-track {
     height: 8px;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 10px;
-    margin: 0.75rem 0;
     position: relative;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.03);
@@ -439,12 +462,12 @@ pre code {
 }
 
 .note-progress-text {
-    position: absolute;
-    right: 8px;
-    top: -12px;
+    display: block;
+    margin-top: 0.25rem;
     font-size: 0.65rem;
     color: rgba(255, 255, 255, 0.4);
     font-family: 'JetBrains Mono', monospace;
+    text-align: right;
 }
 
 /* Date Tags */
