@@ -664,6 +664,7 @@ const NoteParser = (() => {
                     const result = renderer(pos, noteId, text.substring(endIdx + 1), depth);
                     if (result !== null) {
                         flushBuffer();
+                        const html = typeof result === 'string' ? result : result.html;
                         if (typeof result === 'string') {
                             output += result;
                             cursor = endIdx + 1;
@@ -672,7 +673,11 @@ const NoteParser = (() => {
                             output += result.html;
                             cursor = endIdx + 1 + result.consumed;
                         }
-                        isLineStart = false;
+                        // Block-level components consume their trailing \n to prevent a
+                        // spurious <br> from appearing after every div/details/hr element.
+                        const isBlock = /^<(div|details)/.test(html);
+                        if (isBlock && text[cursor] === '\n') cursor++;
+                        isLineStart = isBlock;
                         continue;
                     }
                 }
