@@ -113,12 +113,8 @@ function renderUI() {
                 // --- Collapse State Sync (Persisted DB State) ---
                 if (note.is_collapsed && !existing.classList.contains('collapsed')) {
                     existing.classList.add('collapsed');
-                    const btn = existing.querySelector('.btn-icon-collapse');
-                    if (btn) btn.innerHTML = '🔻';
                 } else if (!note.is_collapsed && existing.classList.contains('collapsed')) {
                     existing.classList.remove('collapsed');
-                    const btn = existing.querySelector('.btn-icon-collapse');
-                    if (btn) btn.innerHTML = '🔺';
                 }
 
                 // --- Action Drawer & Tab Sync (Persisted DB State) ---
@@ -354,9 +350,6 @@ function createNoteElement(note, canEdit = true) {
                     </button>
                     <button class="btn-icon-edit" title="Edit Content" ${canEdit ? '' : 'disabled'}>
                         ✏️
-                    </button>
-                    <button class="btn-icon-collapse" title="${note.is_collapsed ? 'Expand' : 'Collapse'} Note">
-                        ${note.is_collapsed ? '🔻' : '🔺'}
                     </button>
                 </div>
                 <input type="file" id="inline-file-${note.id}" class="hidden-input" data-action="inline-upload">
