@@ -10,7 +10,6 @@ use Mojo::File 'path';
 use Cwd 'abs_path';
 use Path::Iterator::Rule;
 use Mojo::JSON qw(decode_json encode_json);
-use Mojo::UserAgent;
 use URI;
 use DateTime;
 
