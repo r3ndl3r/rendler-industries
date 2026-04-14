@@ -2009,7 +2009,7 @@ pre code {
 }
 
 .note-header-tab {
-    width: 4px;
+    width: 10px;
     height: 100%;
     margin-left: 0.3125em; /* 5px spacing from action icons */
     background: var(--note-accent, #f59e0b);
