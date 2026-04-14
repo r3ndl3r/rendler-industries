@@ -1864,63 +1864,48 @@ async function handleNoteLinkClick(id) {
         return;
     }
 
-    // A. Board Context: If the note lives on a different canvas, trigger an atomic context switch.
+    // Cross-canvas: switch the active board first, passing the target note ID so
+    // loadState → centerOnNote handles the scroll and highlight after the canvas loads.
     if (note.canvas_id != STATE.canvas_id) {
         if (typeof switchCanvas === 'function') {
-            // switchCanvas will call loadState internally with the targetNoteId
             await switchCanvas(note.canvas_id, id);
-            return; // Handed off to switchCanvas -> loadState -> centerOnNote lifecycle
         }
+        return;
     }
 
-    // B. Perspective Transition: Switch layers if note is in isolation on the CURRENT board
-    if (note.layer_id != STATE.activeLayerId) {
-        if (typeof switchLevel === 'function') {
-            await switchLevel(note.layer_id);
-        }
+    // Same canvas: delegate entirely to centerOnNote, which handles layer switching,
+    // DOM-settle timing, scroll precision, and highlight via a single proven path.
+    if (typeof centerOnNote === 'function') {
+        await centerOnNote(id);
+    }
+}
+
+/**
+ * Copies a referenced note's content to the system clipboard.
+ * Uses the live note content from STATE.notes when the target is on the current canvas,
+ * falling back to the title from STATE.note_map for cross-canvas references.
+ * @param {number|string} id - The target note ID.
+ * @returns {Promise<void>}
+ */
+async function handleNoteCopyClick(id) {
+    const liveNote = STATE.notes.find(n => n.id == id);
+    const mapNote  = STATE.note_map[id];
+
+    if (!liveNote && !mapNote) {
+        showToast('Note not found', 'error');
+        return;
     }
 
-    // C. Precise Centering: Smooth scroll to align the note in the viewport center
-    const wrapper = STATE.wrapperEl;
-    if (wrapper) {
-        const rect   = wrapper.getBoundingClientRect();
-        const center = { 
-            x: rect.width  / 2, 
-            y: rect.height / 2 
-        };
+    const text  = (liveNote && liveNote.content) ? liveNote.content
+                : (mapNote  && mapNote.title)     ? mapNote.title
+                : `Note #${id}`;
+    const label = (liveNote && liveNote.title) || (mapNote && mapNote.title) || `Note #${id}`;
 
-        // D. Coordinate Resolution: Force casting to Number (Coordinates are resolved from note_map)
-        const nx = Number(note.x || 2500);
-        const ny = Number(note.y || 2500);
-        const nw = Number(note.width  || 300);
-        const nh = Number(note.height || 200);
-
-        const targetX = (nx * STATE.scale) - center.x + (nw * STATE.scale / 2);
-        const targetY = (ny * STATE.scale) - center.y + (nh * STATE.scale / 2);
-        
-        wrapper.scrollTo({
-            left: Math.max(0, targetX),
-            top:  Math.max(0, targetY),
-            behavior: 'smooth'
-        });
-    }
-
-    // D. Temporary Peak & Highlight: Signal the user that the note has been located
-    const el = document.getElementById(`note-${id}`);
-    if (el) {
-        el.classList.add('pulse-glow');
-        const oldZ = el.style.zIndex;
-        
-        // Promotion: Temporary foreground priority during highlighting.
-        // We use maxZ + 1 but don't persist it globally since it's transient.
-        el.style.zIndex = STATE.maxZ + 1;
-        
-        setTimeout(() => {
-            if (el) {
-                el.classList.remove('pulse-glow');
-                el.style.zIndex = oldZ;
-            }
-        }, 3000);
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast(`Copied: ${window.escapeHtml(label)}`, 'success');
+    } catch (err) {
+        showToast('Clipboard access denied', 'error');
     }
 }
 
