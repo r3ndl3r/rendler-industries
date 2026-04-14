@@ -585,7 +585,18 @@ async function initNotes() {
                 if (typeof handleNoteLinkClick === 'function') {
                     handleNoteLinkClick(targetId);
                 }
-                return; 
+                return;
+            }
+
+            // --- 3b. Note Copy to Clipboard ---
+            const copyTrigger = e.target.closest('.note-copy-trigger');
+            if (copyTrigger) {
+                e.stopPropagation();
+                const targetId = copyTrigger.dataset.targetId;
+                if (typeof handleNoteCopyClick === 'function') {
+                    handleNoteCopyClick(targetId);
+                }
+                return;
             }
 
             // --- 4. Interactive Todo Checkbox ---
