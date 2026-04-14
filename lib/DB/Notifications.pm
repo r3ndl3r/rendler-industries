@@ -93,4 +93,81 @@ sub DB::prune_notification_logs {
     return $self->{dbh}->do("DELETE FROM notifications_log WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)", undef, $days);
 }
 
+# --- Notification Queue ---
+
+# Inserts a new item into the delivery queue.
+# Parameters (named):
+#   user_id   : Internal user ID (optional)
+#   type      : 'discord' or 'email'
+#   recipient : Discord snowflake ID or email address
+#   subject   : Subject line (email only, optional)
+#   message   : Message body
+# Returns: New row ID or 0 on failure
+sub DB::enqueue_notification {
+    my ($self, %args) = @_;
+    $self->ensure_connection();
+    eval {
+        $self->{dbh}->do(
+            "INSERT INTO notifications_queue (user_id, type, recipient, subject, message)
+             VALUES (?, ?, ?, ?, ?)",
+            undef,
+            $args{user_id}, $args{type}, $args{recipient}, $args{subject}, $args{message}
+        );
+    };
+    return $@ ? 0 : $self->{dbh}->last_insert_id(undef, undef, undef, undef);
+}
+
+# Retrieves all pending queue items ordered oldest-first.
+# Returns: ArrayRef of row hashrefs
+sub DB::get_pending_queue_items {
+    my ($self) = @_;
+    $self->ensure_connection();
+    # Atomically claim pending items by transitioning to 'processing' before
+    # returning them. Prevents concurrent timer ticks from picking up the same rows.
+    $self->{dbh}->do(
+        "UPDATE notifications_queue SET status = 'processing'
+         WHERE status = 'pending'
+         ORDER BY created_at ASC
+         LIMIT 50"
+    );
+    return $self->{dbh}->selectall_arrayref(
+        "SELECT * FROM notifications_queue WHERE status = 'processing' ORDER BY created_at ASC",
+        { Slice => {} }
+    );
+}
+
+# Increments retry_count and records the latest error on a queue item.
+# Parameters: id, error string
+sub DB::increment_queue_retry {
+    my ($self, $id, $error) = @_;
+    $self->ensure_connection();
+    # Revert to 'pending' so the next timer tick can reclaim this item.
+    $self->{dbh}->do(
+        "UPDATE notifications_queue SET retry_count = retry_count + 1, last_error = ?, status = 'pending' WHERE id = ?",
+        undef, $error, $id
+    );
+}
+
+# Marks a queue item as successfully delivered.
+# Parameters: id
+sub DB::mark_queue_item_sent {
+    my ($self, $id) = @_;
+    $self->ensure_connection();
+    $self->{dbh}->do(
+        "UPDATE notifications_queue SET status = 'sent' WHERE id = ?",
+        undef, $id
+    );
+}
+
+# Marks a queue item as permanently failed and records the final error.
+# Parameters: id, error string
+sub DB::mark_queue_item_failed {
+    my ($self, $id, $error) = @_;
+    $self->ensure_connection();
+    $self->{dbh}->do(
+        "UPDATE notifications_queue SET status = 'failed', last_error = ? WHERE id = ?",
+        undef, $error, $id
+    );
+}
+
 1;

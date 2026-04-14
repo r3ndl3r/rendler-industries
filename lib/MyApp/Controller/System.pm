@@ -708,4 +708,223 @@ sub run_notes_lock_maintenance {
     $self->db->clear_expired_note_locks(5); # 5 minute threshold
 }
 
+# Processes all pending items in the notifications_queue.
+# Each item is retried up to 3 times. On discord exhaustion, an email fallback
+# is enqueued if the user has an email address. If all channels are exhausted,
+# a best-effort direct email alert is sent to all admin users.
+sub run_notification_queue {
+    my ($c) = @_;
+
+    # Recover orphaned rows left in 'processing' by a previous interrupted cycle
+    $c->db->{dbh}->do(
+        "UPDATE notifications_queue SET status = 'pending'
+         WHERE status = 'processing'
+         AND updated_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE)"
+    );
+
+    $c->db->{dbh}->do(
+        "DELETE FROM notifications_queue
+         WHERE (status = 'sent'   AND updated_at < DATE_SUB(NOW(), INTERVAL 7 DAY))
+            OR (status = 'failed' AND updated_at < DATE_SUB(NOW(), INTERVAL 30 DAY))"
+    );
+
+    my $pending = $c->db->get_pending_queue_items();
+    return unless $pending && @$pending;
+
+    for my $item (@$pending) {
+        if ($item->{type} eq 'discord') {
+            $c->_queue_attempt_discord($item);
+        } elsif ($item->{type} eq 'email') {
+            $c->_queue_attempt_email($item);
+        }
+    }
+}
+
+# Attempts a Discord DM delivery for a single queue item.
+sub _queue_attempt_discord {
+    my ($c, $item) = @_;
+
+    my $token = $c->db->get_discord_token();
+    unless ($token) {
+        $c->_handle_queue_failure($item, 'Bot token not configured');
+        return;
+    }
+
+    my $api_base = 'https://discord.com/api/v10';
+    my $headers  = { Authorization => "Bot $token", 'Content-Type' => 'application/json' };
+
+    $c->app->ua->post_p(
+        "$api_base/users/\@me/channels" => $headers => json => { recipient_id => "$item->{recipient}" }
+    )->then(sub {
+        my $tx = shift;
+        my $res = $tx->result;
+        die "open_dm HTTP " . $res->code . ": " . $res->body unless $res->is_success;
+        my $channel_id = $res->json->{id} or die "no channel id in response";
+        return $c->app->ua->post_p(
+            "$api_base/channels/$channel_id/messages" => $headers => json => { content => $item->{message} }
+        );
+    })->then(sub {
+        my $tx = shift;
+        die "send_message HTTP " . $tx->result->code . ": " . $tx->result->body unless $tx->result->is_success;
+        $c->db->mark_queue_item_sent($item->{id});
+        $c->db->log_notification(
+            user_id   => $item->{user_id},
+            type      => 'discord',
+            recipient => $item->{recipient},
+            message   => $item->{message},
+            status    => 'success'
+        );
+    })->catch(sub {
+        $c->_handle_queue_failure($item, shift);
+    });
+}
+
+# Attempts an email delivery for a single queue item.
+sub _queue_attempt_email {
+    my ($c, $item) = @_;
+
+    my $settings = $c->db->get_email_settings();
+    unless ($settings->{gmail_email} && $settings->{gmail_app_password}) {
+        $c->_handle_queue_failure($item, 'Email credentials not configured');
+        return;
+    }
+
+    Mojo::IOLoop->subprocess(
+        sub {
+            require Net::SMTP;
+            my $smtp = Net::SMTP->new('smtp.gmail.com', Port => 587, Timeout => 30) or die $!;
+            $smtp->starttls();
+            $smtp->auth($settings->{gmail_email}, $settings->{gmail_app_password}) or die $smtp->message;
+            (my $safe_from    = $settings->{gmail_email}) =~ s/[\r\n]//g;
+            (my $safe_to      = $item->{recipient})        =~ s/[\r\n]//g;
+            (my $safe_subject = $item->{subject} || 'Notification') =~ s/[\r\n]//g;
+            $smtp->mail($safe_from);
+            $smtp->to($safe_to);
+            $smtp->data();
+            $smtp->datasend("From: $safe_from\n");
+            $smtp->datasend("To: $safe_to\n");
+            $smtp->datasend("Subject: $safe_subject\n");
+            $smtp->datasend("Content-Type: text/plain; charset=UTF-8\n\n");
+            $smtp->datasend("$item->{message}\n");
+            $smtp->dataend();
+            $smtp->quit();
+            return 1;
+        },
+        sub {
+            my ($subprocess, @results) = @_;
+            my $err = $subprocess->err;
+            if ($err) {
+                $c->_handle_queue_failure($item, $err);
+            } else {
+                $c->db->mark_queue_item_sent($item->{id});
+                $c->db->log_notification(
+                    user_id   => $item->{user_id},
+                    type      => 'email',
+                    recipient => $item->{recipient},
+                    subject   => $item->{subject},
+                    message   => $item->{message},
+                    status    => 'success'
+                );
+            }
+        }
+    );
+}
+
+# Handles a failed delivery attempt for a queue item.
+# Increments retry_count; on exhaustion escalates to email fallback or admin alert.
+sub _handle_queue_failure {
+    my ($c, $item, $err) = @_;
+    $err //= 'unknown error';
+
+    # Re-read from DB to get the authoritative count, avoiding stale in-memory snapshots.
+    my ($current_count) = $c->db->{dbh}->selectrow_array(
+        "SELECT retry_count FROM notifications_queue WHERE id = ?", undef, $item->{id}
+    );
+    $current_count //= $item->{retry_count};
+    my $new_count = $current_count + 1;
+
+    if ($new_count < 3) {
+        $c->db->increment_queue_retry($item->{id}, "$err");
+        $c->app->log->warn("Queue item $item->{id} ($item->{type}) retry $new_count/3: $err");
+        return;
+    }
+
+    # Exhausted — mark failed
+    $c->db->mark_queue_item_failed($item->{id}, "$err");
+    $c->db->log_notification(
+        user_id       => $item->{user_id},
+        type          => $item->{type},
+        recipient     => $item->{recipient},
+        subject       => $item->{subject},
+        message       => $item->{message},
+        status        => 'failed',
+        error_details => "gave up after 3 retries: $err"
+    );
+    $c->app->log->error("Queue item $item->{id} ($item->{type}) permanently failed: $err");
+
+    # Discord exhausted — try email fallback
+    if ($item->{type} eq 'discord' && $item->{user_id}) {
+        my $user = $c->db->get_user_by_id($item->{user_id});
+        if ($user && $user->{email}) {
+            $c->db->enqueue_notification(
+                user_id   => $item->{user_id},
+                type      => 'email',
+                recipient => $user->{email},
+                subject   => 'Missed notification',
+                message   => $item->{message},
+            );
+            return;
+        }
+    }
+
+    # No fallback available — alert admins via direct email
+    $c->_alert_admins_delivery_failed($item);
+}
+
+# Sends a best-effort direct email to all admin users when all delivery channels fail.
+# Does not queue — avoids recursion.
+sub _alert_admins_delivery_failed {
+    my ($c, $item) = @_;
+
+    my $settings = $c->db->get_email_settings();
+    return unless $settings->{gmail_email} && $settings->{gmail_app_password};
+
+    my $target = $item->{user_id}
+        ? do { my $u = $c->db->get_user_by_id($item->{user_id}); $u ? $u->{username} : "user #$item->{user_id}" }
+        : 'unknown user';
+
+    my $alert = "Notification delivery failed for $target after all retries.\n\nMessage: $item->{message}";
+
+    my $admins = $c->db->{dbh}->selectall_arrayref(
+        "SELECT email FROM users WHERE is_admin = 1 AND email IS NOT NULL AND email != ''",
+        { Slice => {} }
+    );
+    return unless $admins && @$admins;
+
+    for my $admin (@$admins) {
+        Mojo::IOLoop->subprocess(sub {
+            require Net::SMTP;
+            my $smtp = Net::SMTP->new('smtp.gmail.com', Port => 587, Timeout => 30) or die;
+            $smtp->starttls();
+            $smtp->auth($settings->{gmail_email}, $settings->{gmail_app_password}) or die $smtp->message;
+            (my $safe_from  = $settings->{gmail_email}) =~ s/[\r\n]//g;
+            (my $safe_to    = $admin->{email})           =~ s/[\r\n]//g;
+            $smtp->mail($safe_from);
+            $smtp->to($safe_to);
+            $smtp->data();
+            $smtp->datasend("From: $safe_from\n");
+            $smtp->datasend("To: $safe_to\n");
+            $smtp->datasend("Subject: Notification Delivery Failure\n");
+            $smtp->datasend("Content-Type: text/plain; charset=UTF-8\n\n");
+            $smtp->datasend("$alert\n");
+            $smtp->dataend();
+            $smtp->quit();
+        }, sub {
+            my ($subprocess, @results) = @_;
+            my $err = $subprocess->err;
+            $c->app->log->error("Admin alert email failed: $err") if $err;
+        });
+    }
+}
+
 1;

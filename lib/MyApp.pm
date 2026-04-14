@@ -306,6 +306,7 @@ sub startup {
                 $sys->run_chore_reminders($now);
                 $sys->run_notes_lock_maintenance();
                 $sys->run_weather_maintenance($now);
+                $sys->run_notification_queue();
 
                 # Nightly Normalization Gate (3:00 AM)
                 if ($now->hour == 3 && $now->minute == 0) {
