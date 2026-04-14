@@ -124,7 +124,7 @@ sub DB::update_pushover {
     
     # Perform upsert (Update existing or Insert new)
     if ($count > 0) {
-        $sth = $self->{dbh}->prepare("UPDATE pushover SET token = ?, user = ? WHERE id = 1");
+        $sth = $self->{dbh}->prepare("UPDATE pushover SET token = ?, user = ? LIMIT 1");
         $sth->execute($token, $user);
     } else {
         $sth = $self->{dbh}->prepare("INSERT INTO pushover (token, user) VALUES (?, ?)");
@@ -148,7 +148,7 @@ sub DB::update_gotify {
     
     # Perform upsert
     if ($count > 0) {
-        $sth = $self->{dbh}->prepare("UPDATE gotify SET token = ? WHERE id = 1");
+        $sth = $self->{dbh}->prepare("UPDATE gotify SET token = ? LIMIT 1");
         $sth->execute($token);
     } else {
         $sth = $self->{dbh}->prepare("INSERT INTO gotify (token) VALUES (?)");
@@ -380,7 +380,8 @@ sub DB::get_gemini_models {
         return ['gemini-3.1-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
     }
     
-    eval { return decode_json($val); } || return [];
+    my $decoded = eval { decode_json($val) };
+    return (ref $decoded eq 'ARRAY') ? $decoded : [];
 }
 
 # Updates the list of available Gemini models.
