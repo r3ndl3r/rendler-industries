@@ -916,17 +916,21 @@ function showBoardInfo() {
         </nav>
 
         <div class="guide-tab-panel active" data-panel="controls">
-            <p class="board-guide-subheading">Canvas</p>
+            <p class="board-guide-subheading">Notes</p>
             <ul class="board-guide-list">
-                <li><strong>Double-click canvas</strong> — Create a new note at cursor</li>
-                <li><strong>Double-click note</strong> — Pick up and move it (view mode only)</li>
-                <li><strong>Double-click note title</strong> — Toggle collapse / expand</li>
-                <li><strong>Click &amp; drag</strong> — Pan the board</li>
-                <li><strong>Mouse Wheel</strong> — Pan vertically</li>
-                <li><strong>Shift + Wheel</strong> — Pan horizontally</li>
-                <li><strong>Ctrl + Wheel</strong> — Zoom in / out (anchored to cursor)</li>
+                <li><strong>🖱️ > note title bar</strong> — Pick up and place note (click again to drop)</li>
+                <li><strong>🖱️x2 > note title text</strong> — Collapse / expand note</li>
+                <li><strong>🖱️x2 > note body</strong> — Pick up and place note</li>
+                <li><strong>🖱️x2 > empty canvas</strong> — Create a new note at cursor</li>
+            </ul>
+            <p class="board-guide-subheading">Board</p>
+            <ul class="board-guide-list">
+                <li><strong>🖱️ &amp; drag</strong> — Pan the board</li>
+                <li><strong>🖱️ Wheel</strong> — Pan vertically</li>
+                <li><strong>🖱️ Shift + Wheel</strong> — Pan horizontally</li>
+                <li><strong>🖱️ Ctrl + Wheel</strong> — Zoom in / out (anchored to cursor)</li>
+                <li><strong>🤌 Pinch (touch)</strong> — Zoom in / out</li>
                 <li><strong>Ctrl+V</strong> — Paste image or file as a new note</li>
-                <li><strong>Pinch (touch)</strong> — Zoom in / out</li>
             </ul>
             <p class="board-guide-subheading">Keyboard</p>
             <ul class="board-guide-list">
