@@ -179,6 +179,13 @@ const NoteParser = (() => {
             const safeTitle = target ? window.escapeHtml(target.title || target) : `Note #${id}`;
             return `<span class="note-ref note-link-trigger" data-target-id="${id}" title="Jump to Note: ${safeTitle}">${safeTitle}</span>`;
         },
+        'copy': (data) => {
+            const id = parseInt(data.value, 10);
+            if (isNaN(id)) return null;
+            const target = STATE.note_map[id];
+            const safeTitle = target ? window.escapeHtml(target.title || target) : `Note #${id}`;
+            return `<span class="note-ref note-copy-trigger" data-target-id="${id}" title="Copy to clipboard: ${safeTitle}">📋 ${safeTitle}</span>`;
+        },
         'file': (data) => {
             const id = parseInt(data.value, 10);
             if (isNaN(id)) return null;
