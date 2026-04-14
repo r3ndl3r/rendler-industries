@@ -95,12 +95,12 @@ sub DB::join_chess_lobby {
     my $game = $self->{dbh}->selectrow_hashref("SELECT player1_id, player2_id, status FROM chess_sessions WHERE id = ?", undef, $game_id);
     return 0 unless $game;
 
-    # Scenario: User is already a participant
+    # If the user is already a participant, confirm success immediately.
     if (($game->{player1_id} && $game->{player1_id} == $user_id) || ($game->{player2_id} && $game->{player2_id} == $user_id)) {
         return 1;
     }
 
-    # Validation: Prevent host from filling both slots
+    # The host cannot occupy both player slots.
     return 0 if ($game->{player1_id} && $game->{player1_id} == $user_id);
 
     if ($game->{status} eq 'waiting') {
@@ -178,7 +178,7 @@ sub DB::update_chess_game_state {
     my ($self, $game_id, $next_turn_id, $new_fen, $status, $winner_id, $last_move) = @_;
     $self->ensure_connection;
     
-    # Lifecycle: Clear draw offers on any valid board movement
+    # All pending draw offers are invalidated upon any valid board movement.
     my $sth = $self->{dbh}->prepare(
         "UPDATE chess_sessions SET fen_state = ?, current_turn = ?, status = ?, winner_id = ?, draw_offered_by = NULL, last_move = ? WHERE id = ?"
     );
