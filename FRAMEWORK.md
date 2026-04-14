@@ -87,7 +87,42 @@ If your app needs a background poller (e.g., checking for expiring timers every 
 
 ---
 
-## 💡 7. Pro-Tips & Common Pitfalls
+## 🤖 7. Discord Bot Commands
+
+The platform maintains a persistent WebSocket to the Discord Gateway via `MyApp::Plugin::DiscordGateway`. Exactly one Hypnotoad worker owns the connection at a time; all others stand by to reclaim it if the owner dies.
+
+Inbound DMs are routed through the `discord_dm` hook to `MyApp::Plugin::DiscordCommands`, which dispatches `!`-prefixed commands via a simple lookup table.
+
+### Adding a New Command
+
+1.  **Write the handler sub** at the bottom of `lib/MyApp/Plugin/DiscordCommands.pm`:
+    ```perl
+    sub _cmd_mycommand {
+        my ($app, $dm, $user) = @_;
+        # $user is the DB row for the sender, or undef if not linked
+        return "Your reply string here.";
+    }
+    ```
+2.  **Register it** in the `%COMMANDS` dispatch table near the top of the same file:
+    ```perl
+    my %COMMANDS = (
+        account   => \&_cmd_account,
+        mycommand => \&_cmd_mycommand,
+    );
+    ```
+
+The framework handles command parsing, DB user lookup, and reply delivery automatically. The reply is sent back to the same DM channel using `$app->ua` against the Discord REST API.
+
+**Handler signature:**
+| Argument | Type | Description |
+| :--- | :--- | :--- |
+| `$app` | Mojolicious app | Access to `$app->db`, `$app->ua`, `$app->log` |
+| `$dm` | HashRef | `author_id`, `username`, `content`, `channel_id`, `message_id` |
+| `$user` | HashRef \| undef | DB row from `users` where `discord_id` matches; `undef` if not linked |
+
+---
+
+## 💡 8. Pro-Tips & Common Pitfalls
 
 *   **Visibility Toggling**: Never use `el.style.display = 'block'`. The global `.hidden` class uses `!important`, meaning inline styles will fail to override it. Always use `.classList.remove('hidden')`.
 *   **Header Spacing**: The space between the header and your content is managed by `default.css`. Do not add `margin-top` to your first content element; it will be stripped to maintain a uniform gap.
@@ -96,7 +131,7 @@ If your app needs a background poller (e.g., checking for expiring timers every 
 
 ---
 
-## 📂 8. File Map & Naming Schemes
+## 📂 9. File Map & Naming Schemes
 
 | Component | Path | Convention |
 | :--- | :--- | :--- |
@@ -107,7 +142,7 @@ If your app needs a background poller (e.g., checking for expiring timers every 
 
 ---
 
-## ⚙️ 9. Environment
+## ⚙️ 10. Environment
 *   **Restart Server**: Run `./restart` in the root.
 *   **View Logs**: `tail -f ignore/mojo.log`.
 *   **DB Access**: `mariadb -h localhost -u "$DB_USER" -p"$DB_PASS" www`
