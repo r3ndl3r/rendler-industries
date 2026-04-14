@@ -81,6 +81,12 @@ sub register {
                 status        => 'failed',
                 error_details => "$err"
             );
+            $c->db->enqueue_notification(
+                user_id   => $user_id,
+                type      => 'discord',
+                recipient => $discord_id,
+                message   => $text,
+            );
         });
 
         return 1;
