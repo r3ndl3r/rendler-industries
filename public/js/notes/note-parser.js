@@ -175,16 +175,22 @@ const NoteParser = (() => {
         'note': (data) => {
             const id = parseInt(data.value, 10);
             if (isNaN(id)) return null;
-            const target = STATE.note_map[id];
+            const target    = STATE.note_map[id];
             const safeTitle = target ? window.escapeHtml(target.title || target) : `Note #${id}`;
-            return `<span class="note-ref note-link-trigger" data-target-id="${id}" title="Jump to Note: ${safeTitle}">${safeTitle}</span>`;
+            const color     = (target && typeof window.normalizeColorHex === 'function')
+                ? window.normalizeColorHex(target.color) : '';
+            const style     = color ? ` style="color: ${color}"` : '';
+            return `<span class="note-ref note-link-trigger" data-target-id="${id}" title="Jump to Note: ${safeTitle}"${style}>${safeTitle}</span>`;
         },
         'copy': (data) => {
             const id = parseInt(data.value, 10);
             if (isNaN(id)) return null;
-            const target = STATE.note_map[id];
+            const target    = STATE.note_map[id];
             const safeTitle = target ? window.escapeHtml(target.title || target) : `Note #${id}`;
-            return `<span class="note-ref note-copy-trigger" data-target-id="${id}" title="Copy to clipboard: ${safeTitle}">📋 ${safeTitle}</span>`;
+            const color     = (target && typeof window.normalizeColorHex === 'function')
+                ? window.normalizeColorHex(target.color) : '';
+            const style     = color ? ` style="color: ${color}"` : '';
+            return `<span class="note-ref note-copy-trigger" data-target-id="${id}" title="Copy to clipboard: ${safeTitle}"${style}>📋 ${safeTitle}</span>`;
         },
         'file': (data) => {
             const id = parseInt(data.value, 10);
