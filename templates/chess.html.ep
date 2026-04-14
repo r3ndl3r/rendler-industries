@@ -11,7 +11,6 @@
 
 <div id="chess-app" class="chess-container app-container" data-user-id="<%= current_user_id() %>">
     
-    <%# --- View: Lobby --- %>
     <div id="view-lobby" class="spa-view active">
         <div class="lobby-header">
             <h1 class="lobby-title">♟️ Chess Lobby</h1>
@@ -26,7 +25,6 @@
         <div id="user-games-section" class="hidden">
             <h3 style="margin-left: 0.5rem; margin-bottom: 1rem;">Your Active Games</h3>
             <div id="user-game-list" class="game-list" style="margin-bottom: 2rem;">
-                <%# Hydrated via JS %>
             </div>
         </div>
 
@@ -40,7 +38,6 @@
         </div>
     </div>
 
-    <%# --- View: Active Game --- %>
     <div id="view-game" class="spa-view hidden">
         <div class="header-bar">
             <h1>♟️ <span id="game-title">Grandmaster Chess</span></h1>
@@ -52,10 +49,10 @@
         <div class="game-viewport">
             <div class="board-relative-frame">
                 <div id="chess-board" class="chess-board-grid">
-                    <%# Hydrated via JS %>
                 </div>
                 
-                <%# Interaction Overlays %>
+                <svg id="move-line-overlay" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;"></svg>
+
                 <div id="draw-offer-overlay" class="game-overlay">
                     <div class="glass-panel overlay-content">
                         <p>Opponent has offered a draw.</p>
@@ -90,7 +87,6 @@
                 </div>
             </div>
 
-            <%# Status & Operations Panel %>
             <div class="glass-panel status-panel">
                 <h3 id="game-status-text" class="status-indicator">
                     ⌛ Initializing...
