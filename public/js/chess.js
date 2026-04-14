@@ -77,15 +77,34 @@ const AudioEngine = (() => {
     }
 
     return {
+        /**
+         * Plays the sound effect for a standard move.
+         * @returns {void}
+         */
         move: () => playTone(600, 'sine', 0.1),
+
+        /**
+         * Plays the sound effect for a piece capture.
+         * @returns {void}
+         */
         capture: () => {
             playTone(400, 'square', 0.05, 0.05);
             setTimeout(() => playTone(300, 'square', 0.1, 0.05), 50);
         },
+
+        /**
+         * Plays the sound effect for a king in check.
+         * @returns {void}
+         */
         check: () => {
             playTone(800, 'sawtooth', 0.1, 0.05);
             setTimeout(() => playTone(800, 'sawtooth', 0.1, 0.05), 150);
         },
+
+        /**
+         * Plays the sound sequence for a completed game.
+         * @returns {void}
+         */
         gameOver: () => {
             playTone(400, 'sine', 0.5);
             setTimeout(() => playTone(300, 'sine', 0.5), 200);
@@ -98,6 +117,11 @@ const AudioEngine = (() => {
  * --- Primary Controller ---
  */
 const ChessApp = {
+    /**
+     * Initializes the Chess application.
+     * Sets up state, event listeners, and resolves the initial route.
+     * @returns {void}
+     */
     init: function() {
         const appContainer = document.getElementById('chess-app');
         if (!appContainer) return;
@@ -117,7 +141,9 @@ const ChessApp = {
     },
 
     /**
-     * Resolves the active view based on path.
+     * Resolves the active view based on the URL path.
+     * @param {string} path - The current window location path.
+     * @returns {void}
      */
     resolveRoute: function(path) {
         if (STATE.pollInterval) clearInterval(STATE.pollInterval);
@@ -131,7 +157,9 @@ const ChessApp = {
     },
 
     /**
-     * Toggles visibility of the primary DOM containers.
+     * Toggles visibility between the lobby and game DOM containers.
+     * @param {string} viewName - The name of the view to activate ('lobby' or 'game').
+     * @returns {void}
      */
     toggleView: function(viewName) {
         STATE.view = viewName;
@@ -153,7 +181,8 @@ const ChessApp = {
     },
 
     /**
-     * --- Lobby Workflow ---
+     * Activates the lobby view and starts the polling interval.
+     * @returns {void}
      */
     showLobby: function() {
         if (STATE.view !== 'lobby') {
@@ -164,6 +193,11 @@ const ChessApp = {
         STATE.pollInterval = setInterval(() => this.pollLobby(), CONFIG.SYNC_LOBBY_MS);
     },
 
+    /**
+     * Fetches the current lobby state from the API.
+     * Inhibits polling during active user interaction.
+     * @returns {Promise<void>}
+     */
     pollLobby: async function() {
         if (STATE.isInteracting || STATE.view !== 'lobby') return;
         try {
@@ -177,6 +211,12 @@ const ChessApp = {
         }
     },
 
+    /**
+     * Renders the lobby UI with open and user-specific games.
+     * @param {Array} openGames - List of available game sessions.
+     * @param {Array} userGames - List of games involving the current user.
+     * @returns {void}
+     */
     renderLobby: function(openGames, userGames) {
         const userList = document.getElementById('user-game-list');
         const userSection = document.getElementById('user-games-section');
@@ -212,6 +252,10 @@ const ChessApp = {
         }
     },
 
+    /**
+     * Requests the creation of a new chess game session.
+     * @returns {Promise<void>}
+     */
     createGame: async function() {
         const result = await window.apiPost('/chess/api/create');
         if (result && result.success && result.game_id) {
@@ -219,17 +263,23 @@ const ChessApp = {
         }
     },
 
+    /**
+     * Requests to join an existing game session.
+     * @param {number|string} id - The unique identifier of the game.
+     * @returns {Promise<void>}
+     */
     joinGame: async function(id) {
         const result = await window.apiPost('/chess/api/join', { id });
         if (result && result.success) {
-            // Predict perspective immediately to prevent flip jitter
             STATE.p2Id = STATE.userId;
             this.showGame(id);
         }
     },
 
     /**
-     * --- Game Workflow ---
+     * Activates the active game view and starts the game state polling interval.
+     * @param {number|string} id - The unique identifier of the game.
+     * @returns {Promise<void>}
      */
     showGame: async function(id) {
         if (window.location.pathname !== `/chess/play/${id}`) {
@@ -250,8 +300,15 @@ const ChessApp = {
         }
     },
 
+    /**
+     * Fetches the current game state from the API.
+     * Synchronizes the internal logic engine and triggers board re-renders.
+     * @param {boolean} force - Whether to bypass interaction inhibition.
+     * @returns {Promise<boolean>} - Success status of the poll.
+     */
     pollGame: async function(force = false) {
-        // Inhibition: Only stop the network request if interacting OR game view is inactive
+        // Network requests are suppressed if the user is currently interacting
+        // or if the game view is not the active interface.
         if (!force && (STATE.isInteracting || STATE.view !== 'game')) return true;
 
         try {
@@ -267,7 +324,7 @@ const ChessApp = {
             STATE.p2Id = parseInt(gameData.player2_id, 10) || 0;
             STATE.currentTurnId = parseInt(gameData.current_turn, 10);
 
-            // Logic Engine Sync
+            // Reconcile the local engine with the server board state.
             if (!STATE.engine || force) {
                 if (typeof Chess === 'undefined') return false;
                 STATE.engine = new Chess(gameData.fen_state);
@@ -283,9 +340,11 @@ const ChessApp = {
                 const wasCapture = getPieceCount(gameData.fen_state) < getPieceCount(oldFen);
 
                 STATE.engine.load(gameData.fen_state);
-                
-                // Only re-render if user isn't currently selecting a piece
+
+                // Preserve an in-progress piece selection; the engine is already
+                // loaded to the latest server state so local consistency is maintained.
                 if (!STATE.selectedSquare) {
+                    STATE.validMoves = [];
                     this.renderBoard();
                 }
                 
@@ -304,6 +363,11 @@ const ChessApp = {
         }
     },
 
+    /**
+     * Renders the physical chess board based on the current engine state.
+     * Handles perspective flipping for the second player.
+     * @returns {void}
+     */
     renderBoard: function() {
         if (STATE.isInteracting || !STATE.engine) return;
         
@@ -342,11 +406,17 @@ const ChessApp = {
         this.updateHighlights();
     },
 
+    /**
+     * Updates visual highlights for selection, valid moves, and the last move executed.
+     * @returns {void}
+     */
     updateHighlights: function() {
         const squares = document.querySelectorAll('.square');
         let lastMoveFrom = null, lastMoveTo = null;
 
-        if (STATE.serverLastMove?.includes('-')) {
+        // Only show last-move highlights if it is currently my turn (showing opponent's move)
+        const isMyTurn = STATE.currentTurnId === STATE.userId;
+        if (isMyTurn && STATE.serverLastMove?.includes('-')) {
             [lastMoveFrom, lastMoveTo] = STATE.serverLastMove.split('-');
         }
 
@@ -372,10 +442,64 @@ const ChessApp = {
                 }
             }
         }
+
+        this.updateMoveLine(lastMoveFrom, lastMoveTo);
     },
 
+    /**
+     * Draws an SVG line representing the last move on the board.
+     * Only displays the line if it is the current player's turn (showing opponent's move).
+     * @param {string|null} from - Starting square coordinate.
+     * @param {string|null} to - Ending square coordinate.
+     * @returns {void}
+     */
+    updateMoveLine: function(from, to) {
+        const svg = document.getElementById('move-line-overlay');
+        if (!svg) return;
+        
+        svg.innerHTML = '';
+        
+        // Only show the line if it's my turn (meaning the opponent just moved)
+        const isMyTurn = STATE.currentTurnId === STATE.userId;
+        if (!from || !to || !isMyTurn) return;
+
+        const isBlackPerspective = (STATE.userId === STATE.p2Id);
+        
+        const getCoords = (square) => {
+            const file = square.charCodeAt(0) - 97;
+            const rank = 8 - parseInt(square[1], 10);
+            
+            const physicalCol = isBlackPerspective ? (7 - file) : file;
+            const physicalRow = isBlackPerspective ? (7 - rank) : rank;
+            
+            return {
+                x: (physicalCol * 12.5) + 6.25,
+                y: (physicalRow * 12.5) + 6.25
+            };
+        };
+
+        const start = getCoords(from);
+        const end = getCoords(to);
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', `${start.x}%`);
+        line.setAttribute('y1', `${start.y}%`);
+        line.setAttribute('x2', `${end.x}%`);
+        line.setAttribute('y2', `${end.y}%`);
+        line.setAttribute('stroke', 'rgba(255, 255, 0, 0.4)');
+        line.setAttribute('stroke-width', '4');
+        line.setAttribute('stroke-linecap', 'round');
+        
+        svg.appendChild(line);
+    },
+
+    /**
+     * Handles user interaction with board squares.
+     * Manages piece selection, move execution, and promotion workflows.
+     * @param {string} squareName - Algebraic coordinate of the clicked square.
+     * @returns {Promise<void>}
+     */
     handleSquareClick: async function(squareName) {
-        // Prime audio engine on first interaction to bypass browser autoplay restrictions
         AudioEngine.move(); 
         
         if (STATE.currentTurnId !== STATE.userId || STATE.gameStatus !== 'active') return;
