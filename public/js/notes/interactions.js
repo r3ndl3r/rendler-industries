@@ -1573,6 +1573,8 @@ async function toggleCollapse(id) {
     const el = document.getElementById(`note-${id}`);
     if (!note || !el) return;
 
+    const prevCollapsed = note.is_collapsed;
+
     // Optimistic UI: Immediate visual transition
     note.is_collapsed = note.is_collapsed ? 0 : 1;
     
@@ -1608,6 +1610,15 @@ async function toggleCollapse(id) {
                 STATE.notes = res.notes;
             }
             STATE.last_mutation = res.last_mutation;
+        } else if (res) {
+            // Rollback optimistic mutation on confirmed server failure
+            note.is_collapsed = prevCollapsed;
+            if (STATE.note_map && STATE.note_map[id]) {
+                STATE.note_map[id].is_collapsed = prevCollapsed;
+            }
+            el.classList.toggle('collapsed', !!prevCollapsed);
+            const collapseBtn = el.querySelector('.btn-icon-collapse');
+            if (collapseBtn) collapseBtn.innerHTML = prevCollapsed ? '🔻' : '🔺';
         }
     } finally {
         el.classList.remove('pending');
