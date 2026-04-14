@@ -98,7 +98,7 @@ sub api_game {
         return $c->render(json => { success => 0, error => 'Game not found' }, status => 404);
     }
     
-    # Security: Verify participation (spectators currently disabled)
+    # Access is restricted to registered participants.
     unless ($game->{player1_id} == $user_id || ($game->{player2_id} && $game->{player2_id} == $user_id)) {
         return $c->render(json => { success => 0, error => 'Not a participant' }, status => 403);
     }
@@ -119,7 +119,17 @@ sub api_move {
         return $c->render(json => { success => 0, error => 'Invalid payload' });
     }
 
-    my $game_id      = $data->{game_id};
+    my $game_id = $data->{game_id};
+    my $user_id = $c->current_user_id;
+    my $game    = $c->db->get_chess_game_state($game_id);
+
+    unless ($game && ($game->{player1_id} == $user_id || $game->{player2_id} == $user_id)) {
+        return $c->render(json => { success => 0, error => 'Not a participant' }, status => 403);
+    }
+    unless ($game->{status} eq 'active' && $game->{current_turn} == $user_id) {
+        return $c->render(json => { success => 0, error => 'Not your turn' });
+    }
+
     my $new_fen      = $data->{fen};
     my $next_turn_id = $data->{next_turn_id} // 0;
     my $status       = $data->{status} // 'active';
@@ -150,6 +160,11 @@ sub api_offer_draw {
         
     my $game_id = $c->param('id');
     my $user_id = $c->current_user_id;
+    my $game    = $c->db->get_chess_game_state($game_id);
+
+    unless ($game && ($game->{player1_id} == $user_id || $game->{player2_id} == $user_id)) {
+        return $c->render(json => { success => 0, error => 'Not a participant' }, status => 403);
+    }
     
     my $success = $c->db->offer_chess_draw($game_id, $user_id);
     $c->render(json => { success => $success });
@@ -163,10 +178,19 @@ sub api_respond_draw {
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) 
         unless $c->is_logged_in;
         
-    my $data = $c->req->json || $c->req->params->to_hash;
+    my $data    = $c->req->json || $c->req->params->to_hash;
     my $game_id = $c->param('id');
+    my $user_id = $c->current_user_id;
+    my $game    = $c->db->get_chess_game_state($game_id);
+
+    unless ($game && ($game->{player1_id} == $user_id || $game->{player2_id} == $user_id)) {
+        return $c->render(json => { success => 0, error => 'Not a participant' }, status => 403);
+    }
+    unless ($game->{draw_offered_by} && $game->{draw_offered_by} != $user_id) {
+        return $c->render(json => { success => 0, error => 'No pending offer for you' });
+    }
+
     my $accept = $data->{accept} // $c->param('accept');
-    
     my $success = $c->db->respond_chess_draw($game_id, $accept);
     $c->render(json => { success => $success });
 }
