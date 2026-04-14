@@ -29,8 +29,8 @@ sub index {
 sub api_state {
     my $c = shift;
 
-    # Security Check: Explicit admin verification
-    unless ($c->is_admin) {
+    # Security Check: Explicit family verification
+    unless ($c->is_family) {
         return $c->render(json => { error => 'Unauthorized' }, status => 403);
     }
 
@@ -39,7 +39,8 @@ sub api_state {
 
     $c->render(json => {
         balances => $balances,
-        history => $history
+        history  => $history,
+        is_admin => $c->is_admin ? 1 : 0
     });
 }
 
@@ -52,7 +53,7 @@ sub api_state {
 sub api_add {
     my $c = shift;
 
-    # Security Check: Explicit admin verification
+    # Security Check: Explicit admin verification for mutations
     unless ($c->is_admin) {
         return $c->render(json => { error => 'Unauthorized' }, status => 403);
     }

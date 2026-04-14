@@ -484,9 +484,9 @@ sub startup {
     $admin_ns->post('/settings/update')->to('admin-settings#update');
 
     # --- Points Management Routes ---
-    $admin_ns->get('/points')->to('points#index');
-    $admin_ns->get('/points/api/state')->to('points#api_state');
-    $admin_ns->post('/points/api/add')->to('points#api_add');
+    $family->get('/points')->to('points#index');
+    $family->get('/points/api/state')->to('points#api_state');
+    $family->post('/points/api/add')->to('points#api_add');
 
     # --- Emoji Management Routes ---
     $admin_ns->get('/emojis')->to('admin-emojis#index');

@@ -16,7 +16,8 @@
 
 let STATE = {
     balances: [],
-    history: []
+    history: [],
+    is_admin: false
 };
 
 /**
@@ -112,14 +113,16 @@ function renderWallets() {
         div.innerHTML = `
             <div class="wallet-username">${displayName}</div>
             <div class="wallet-balance ${balanceClass}">💰 ${parseInt(child.current_points).toLocaleString()}</div>
-            <div class="wallet-actions">
-                <button type="button" class="btn-success" onclick="openTransactionModal(${child.id}, '${escapedName}', 'reward')">
-                    ➕ ADD
-                </button>
-                <button type="button" class="btn-danger" onclick="openTransactionModal(${child.id}, '${escapedName}', 'deduct')">
-                    ➖ DEDUCT
-                </button>
-            </div>
+            ${STATE.is_admin ? `
+                <div class="wallet-actions">
+                    <button type="button" class="btn-success" onclick="openTransactionModal(${child.id}, '${escapedName}', 'reward')">
+                        ➕ ADD
+                    </button>
+                    <button type="button" class="btn-danger" onclick="openTransactionModal(${child.id}, '${escapedName}', 'deduct')">
+                        ➖ DEDUCT
+                    </button>
+                </div>
+            ` : ''}
         `;
         container.appendChild(div);
     });
