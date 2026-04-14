@@ -476,6 +476,66 @@ sub DB::update_owm_api_key {
     }
 }
 
+# Attempts to INSERT a gateway_owner row for $pid.
+# The table allows only one row (id TINYINT DEFAULT 1, PRIMARY KEY).
+# Returns 1 if this worker claimed ownership, 0 if another worker already holds it.
+sub DB::try_claim_gateway {
+    my ($self, $pid) = @_;
+    $self->ensure_connection;
+    my $ok = eval {
+        $self->{dbh}->do(
+            "INSERT INTO gateway_owner (pid, started_at, last_heartbeat) VALUES (?, NOW(), NOW())",
+            undef, $pid
+        );
+        1;
+    };
+    if ($@) {
+        # Ensures system-level visibility if the claim fails for reasons other than
+        # a duplicate key. Callers treat 0 as "did not claim" which is correct — but
+        # operators need visibility if the INSERT fails for a non-duplicate-key reason.
+        warn "try_claim_gateway INSERT failed: $@";
+    }
+    return $ok ? 1 : 0;
+}
+
+# Updates last_heartbeat for $pid so standby workers know this worker is alive.
+sub DB::heartbeat_gateway {
+    my ($self, $pid) = @_;
+    $self->ensure_connection;
+    eval {
+        $self->{dbh}->do(
+            "UPDATE gateway_owner SET last_heartbeat = NOW() WHERE pid = ?",
+            undef, $pid
+        );
+    };
+}
+
+# Deletes the gateway_owner row if last_heartbeat is older than $stale_secs.
+# Returns 1 if a stale row was removed and ownership is available to claim.
+sub DB::reclaim_stale_gateway {
+    my ($self, $stale_secs) = @_;
+    $self->ensure_connection;
+    my $rows = eval {
+        $self->{dbh}->do(
+            "DELETE FROM gateway_owner WHERE last_heartbeat < DATE_SUB(NOW(), INTERVAL ? SECOND)",
+            undef, $stale_secs
+        );
+    };
+    return ($rows && $rows > 0) ? 1 : 0;
+}
+
+# Removes this worker's gateway_owner row on clean shutdown or token failure.
+sub DB::release_gateway {
+    my ($self, $pid) = @_;
+    $self->ensure_connection;
+    eval {
+        $self->{dbh}->do(
+            "DELETE FROM gateway_owner WHERE pid = ?",
+            undef, $pid
+        );
+    };
+}
+
 # Retrieves the Discord bot token from app_secrets.
 # Returns: Token string, or undef if not configured.
 sub DB::get_discord_token {
