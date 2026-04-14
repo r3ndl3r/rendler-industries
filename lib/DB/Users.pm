@@ -209,6 +209,22 @@ sub DB::get_admins {
 }
 
 # Retrieves specific user details by ID.
+# Fetches a single user row matched by their Discord snowflake ID.
+# Parameters:
+#   discord_id : Discord user snowflake string.
+# Returns:
+#   HashRef with user details (excluding password), or undef if not found.
+sub DB::get_user_by_discord_id {
+    my ($self, $discord_id) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        "SELECT id, username, email, discord_id, emoji, is_admin, is_family, is_child, status FROM users WHERE discord_id = ?"
+    );
+    $sth->execute($discord_id);
+    return $sth->fetchrow_hashref();
+}
+
 # Parameters:
 #   id : Unique User ID.
 # Returns:
