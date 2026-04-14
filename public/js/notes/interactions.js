@@ -1099,9 +1099,11 @@ function handleCanvasMouseDown(e) {
     // 2. Pick & Place Detection: If the user clicks a note's title bar/drag handle
     const handle = e.target.closest('.note-drag-handle-container');
     const isAction = e.target.closest('[data-action], .note-check-trigger, .note-link-trigger, .reel-action-btn, .btn-icon-drawer');
-    
-    // Isolation: Ignore pickup if clicking the actual title text (slot) or input field.
-    // This allows double-click toggling and selection without accidental Pick & Place.
+
+    // Isolation: suppress mousedown-driven pickup on the title slot so that
+    // a double-click on the title does not produce a pick+drop before the
+    // dblclick event fires. Single-click pickup on the title is intentionally
+    // disabled here; the dblclick handler owns that surface for collapse.
     const isTitle = e.target.closest('.note-title-slot, .inline-title-input');
 
     if (handle && !isAction && !isTitle && e.button === 0) {
@@ -1279,22 +1281,32 @@ function handleCanvasWheel(e) {
  */
 function handleCanvasDoubleClick(e) {
     if (STATE.isInitializing) return;
-    if (!STATE.editMode || STATE.pickedNoteId) return;
 
     // 1. Note Detection: If double-clicking a note, initiate 'Pick & Place'
     const noteEl = e.target.closest('.sticky-note');
     if (noteEl) {
         const id = noteEl.dataset.id;
 
-        // Specialized Target: Double-clicking the title text toggles collapse
+        // Collapse toggle: checked before editMode/pick guards because collapsing is a view
+        // preference, not a structural mutation. The drag handle container is included as the
+        // target because the browser fires dblclick on the lowest common ancestor of the two
+        // clicks, which may be the container rather than the title slot child.
+        // Check the direct target first, then walk up only as far as the title slot.
+        // If the browser fires dblclick on the container (LCA of two clicks on the
+        // title slot), the title slot will still be found via closest(). Never match
+        // the container itself — that is the pickup surface for toggleStickyMove.
         const titleSlot = e.target.closest('.note-title-slot');
         if (titleSlot && id) {
+            if (STATE.pickedNoteId && typeof cancelStickyMove === 'function') cancelStickyMove();
             toggleCollapse(id);
             return;
         }
 
+        // All remaining actions require edit mode and no active pick
+        if (!STATE.editMode || STATE.pickedNoteId) return;
+
         // Isolation: Prevent pickup if clicking an interactive action (buttons, links, triggers)
-        const isAction = e.target.closest('[data-action], .note-check-trigger, .note-link-trigger, .reel-action-btn, .btn-icon-drawer');
+        const isAction = e.target.closest('[data-action], .note-check-trigger, .note-link-trigger, .note-copy-trigger, .reel-action-btn, .btn-icon-drawer');
         if (!isAction) {
             if (id) {
                 toggleStickyMove(e, id);
@@ -1302,6 +1314,8 @@ function handleCanvasDoubleClick(e) {
             }
         }
     }
+
+    if (!STATE.editMode || STATE.pickedNoteId) return;
 
     // 2. Creation Logic: Only allow new note creation on the actual background layers.
     if (e.target.id !== 'notes-canvas' && e.target.id !== 'canvas-wrapper') return;
