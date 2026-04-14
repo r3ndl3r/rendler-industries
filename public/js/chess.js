@@ -21,7 +21,7 @@
  * --- Module State & Config ---
  */
 const CONFIG = {
-    SYNC_LOBBY_MS: 5000,
+    SYNC_LOBBY_MS: 2000,
     SYNC_GAME_MS: 2000
 };
 
@@ -54,12 +54,25 @@ let STATE = {
  */
 const AudioEngine = (() => {
     let audioCtx = null;
+
+    /**
+     * Lazily initializes and returns the Web Audio Context.
+     * @returns {AudioContext} - The active audio context.
+     */
     function getCtx() {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
         return audioCtx;
     }
     
+    /**
+     * Dispatches a specific synthesized tone to the hardware output.
+     * @param {number} freq - Frequency in Hz.
+     * @param {string} type - Oscillator type (sine, square, sawtooth, triangle).
+     * @param {number} duration - Duration in seconds.
+     * @param {number} volume - Initial gain level.
+     * @returns {void}
+     */
     function playTone(freq, type, duration, volume = 0.1) {
         try {
             const ctx = getCtx();
@@ -517,22 +530,23 @@ const ChessApp = {
                 promotionPiece = await this.getPromotionPiece();
             }
 
+            const moveStr = `${STATE.selectedSquare}-${squareName}`;
             const moveResult = STATE.engine.move({
                 from: STATE.selectedSquare,
                 to: squareName,
-                promotion: promotionPiece 
+                promotion: promotionPiece
             });
 
-            STATE.serverLastMove = `${STATE.selectedSquare}-${squareName}`;
             STATE.selectedSquare = null;
             STATE.validMoves = [];
             this.renderBoard();
-            
+            this.updateMoveLine(null, null);
+
             if (STATE.engine.in_check()) AudioEngine.check();
-            else if (moveResult.captured) AudioEngine.capture();
+            else if (moveResult && moveResult.captured) AudioEngine.capture();
             else AudioEngine.move();
             
-            await this.submitMove();
+            await this.submitMove(moveStr);
         } else {
             const piece = STATE.engine.get(squareName);
             const playerColor = STATE.userId === STATE.p1Id ? 'w' : 'b';
@@ -548,6 +562,10 @@ const ChessApp = {
         }
     },
 
+    /**
+     * Displays the promotion modal and waits for user selection.
+     * @returns {Promise<string>} - The type of piece chosen for promotion (e.g., 'q').
+     */
     getPromotionPiece: function() {
         const promoModal = document.getElementById('promotion-modal');
         if (!promoModal) return Promise.resolve('q');
@@ -567,7 +585,12 @@ const ChessApp = {
         });
     },
 
-    submitMove: async function() {
+    /**
+     * Synchronizes the locally executed move with the server.
+     * @param {string} moveStr - The coordinate pair string (e.g., "e2-e4").
+     * @returns {Promise<void>}
+     */
+    submitMove: async function(moveStr) {
         const newFen = STATE.engine.fen();
         const nextTurnId = (STATE.userId === STATE.p1Id) ? STATE.p2Id : STATE.p1Id;
         let newStatus = 'active', winnerId = null;
@@ -588,7 +611,7 @@ const ChessApp = {
                 next_turn_id: nextTurnId,
                 status: newStatus, 
                 winner_id: winnerId, 
-                last_move: STATE.serverLastMove
+                last_move: moveStr
             });
             await this.pollGame(true);
         } finally {
@@ -596,6 +619,12 @@ const ChessApp = {
         }
     },
 
+    /**
+     * Updates the control panel UI elements based on game progress and server responses.
+     * Handles game-over modals and draw offer overlays.
+     * @param {Object} data - The game state metadata from the server.
+     * @returns {void}
+     */
     updateControlUI: function(data) {
         const oldStatus = STATE.gameStatus;
         STATE.gameStatus = data.status;
@@ -611,7 +640,6 @@ const ChessApp = {
             if (oldStatus === 'active') {
                 AudioEngine.gameOver();
                 
-                // Show Game Over Modal
                 const winnerId = parseInt(data.winner_id, 10);
                 const modalPanel = gameOverModal.querySelector('.game-over-panel');
                 const iconEl = document.getElementById('game-over-icon');
@@ -673,7 +701,7 @@ const ChessApp = {
                 if (boardEl) boardEl.classList.remove('my-turn-pulse');
             } else {
                 const isMyTurn = STATE.currentTurnId === STATE.userId;
-                statusText.innerHTML = isMyTurn ? `✅ Your Turn` : `❌ Opponent's Turn`;
+                statusText.innerHTML = isMyTurn ? `<span class="turn-pill">✅ Your Turn</span>` : `❌ Opponent's Turn`;
                 
                 if (boardEl) {
                     if (isMyTurn) boardEl.classList.add('my-turn-pulse');
@@ -701,6 +729,10 @@ const ChessApp = {
         document.getElementById('fen-display').textContent = `FEN: ${data.fen_state}`;
     },
 
+    /**
+     * Binds DOM events to controller logic for buttons and interactive components.
+     * @returns {void}
+     */
     setupEventListeners: function() {
         const resignBtn = document.getElementById('resignBtn');
         if (resignBtn) {
@@ -720,7 +752,7 @@ const ChessApp = {
                             next_turn_id: 0, 
                             status: 'finished', 
                             winner_id: opponentId,
-                            last_move: null // Signal resignation
+                            last_move: null 
                         });
                         STATE.isInteracting = false;
                         this.pollGame(true);
@@ -773,6 +805,12 @@ const ChessApp = {
      * Helpers
      */
     escapeHtml: window.escapeHtml,
+
+    /**
+     * Capitalizes the first character of a string.
+     * @param {string} s - The input string.
+     * @returns {string} - The capitalized string.
+     */
     capitalize: function(s) {
         if (!s) return '';
         return s.charAt(0).toUpperCase() + s.slice(1);
