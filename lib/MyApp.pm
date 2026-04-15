@@ -433,11 +433,15 @@ sub startup {
     $admin_ns->post('/users/approve/:id')->to('admin-users#approve_user');
     $admin_ns->post('/users/update/:id')->to('admin-users#edit_user');
 
-    # --- Notification History Routes ---
+    # --- Notification History & Template Routes ---
     $admin_ns->get('/notifications/logs'               )->to('admin-notifications-logs#index'    );
     $admin_ns->get('/notifications/logs/api/state'     )->to('admin-notifications-logs#api_state');
     $admin_ns->post('/notifications/logs/api/delete/:id')->to('admin-notifications-logs#api_delete');
     $admin_ns->post('/notifications/logs/api/prune'    )->to('admin-notifications-logs#api_prune');
+
+    $admin_ns->get('/notifications/templates'             )->to('admin-notifications-templates#index'    );
+    $admin_ns->get('/notifications/templates/api/state'  )->to('admin-notifications-templates#api_state');
+    $admin_ns->post('/notifications/templates/api/update')->to('admin-notifications-templates#api_update');
 
     # --- Reminders Administration Routes ---
     $family->get('/reminders')->to('reminders#index');
