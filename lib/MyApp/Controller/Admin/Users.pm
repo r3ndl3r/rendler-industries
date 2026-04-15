@@ -166,13 +166,15 @@ sub approve_user {
         return $c->render(json => { success => 0, error => 'Database error while approving user' });
     }
 
-    # Dispatch welcome email asynchronously
-    if ($user->{email}) {
+    # Dispatch welcome notification via templated system (only if user has a contact channel)
+    if ($user->{email} || $user->{discord_id}) {
         eval {
-            my $subject = "Account Approval: $user->{username}";
-            my $body = qq{Hello $user->{username},\n\nYour account has been approved!\n\nLog in: https://rendler.org/login\n\n- Rendler Industries®};
-            $c->send_email_via_gmail($user->{email}, $subject, $body, $id);
+            my $ok = $c->notify_templated($id, 'user_welcome', { user => $user->{username} }, $c->current_user_id);
+            $c->app->log->warn("approve_user: welcome notification failed for user $id") unless $ok;
         };
+        if ($@) {
+            $c->app->log->error("approve_user: notify_templated exception for user $id: $@");
+        }
     }
 
     return $c->render(json => { success => 1, message => "User approved." });
