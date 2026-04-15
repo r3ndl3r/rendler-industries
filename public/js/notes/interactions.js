@@ -2099,7 +2099,7 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
         STATE.isEditingNote  = id;
         
         btn.innerHTML = '💾';
-        btn.title     = 'Save Changes';
+        btn.title     = 'Save';
         btn.classList.add('pulse-glow');
 
         // Note: CSS handles visibility of child controls via parent .is-editing state.
