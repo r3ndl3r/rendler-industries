@@ -86,7 +86,7 @@
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="submit" id="editSaveBtn" class="btn-primary">💾 Save Changes</button>
+                <button type="submit" id="editSaveBtn" class="btn-primary">💾 Save</button>
             </div>
         </form>
     </div>
