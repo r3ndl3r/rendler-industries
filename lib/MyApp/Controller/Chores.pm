@@ -73,14 +73,17 @@ sub api_complete {
         my $child_name = $c->session('user') // 'Unknown';
         my $title      = $chore->{title};
         my $pts_val    = $chore->{points};
-        my $base_url   = "https://rendler.org/chores";
 
         my $child_icon = $c->getUserIcon($child_name);
-        my $admin_msg  = "✨ **Chore Completed** ✨\n\n$child_icon **$child_name** finished: $title (+$pts_val pts)\n\n$base_url";
         
         my $admins = $c->db->get_admins();
         foreach my $adm (@$admins) {
-            $c->notify_user($adm->{id}, $admin_msg, "Chore Completed by $child_name");
+            $c->notify_templated($adm->{id}, 'chore_complete', { 
+                user   => $child_name, 
+                icon   => $child_icon,
+                task   => $title, 
+                points => $pts_val 
+            }, $c->current_user_id);
         }
 
         $c->render(json => { success => 1, message => 'Job well done!' });
@@ -112,19 +115,26 @@ sub api_add {
 
     # Notify targets about the new bounty
     if ($new_id) {
-        my $base_url = "https://rendler.org/chores"; # Deep link for quick access
         
         if ($assigned_to) {
             my $user = $c->db->get_user_by_id($assigned_to);
             my $icon = $user ? ($user->{emoji} // '👤') : '👤';
-            my $msg  = "✨ **New Chore** ✨\n\n$icon **YOUR CHORE** $icon\n\n$title (+$points pts)\n\n$base_url";
-            $c->notify_user($assigned_to, $msg, "New Chore Assigned");
-        } else {
-            my $msg = "✨ **New Chore** ✨\n\n🌍 **GLOBAL CHORE** 🌍\n\n$title (+$points pts)\n\n*First to finish and mark as done gets the points!*\n\n$base_url";
+            my $name = $user ? ($user->{username} // 'Unknown') : 'Unknown';
+            $c->notify_templated($assigned_to, 'chore_assigned', { 
+                user   => $name,
+                icon   => $icon,
+                task   => $title, 
+                points => $points 
+            }, $c->current_user_id);
+        }
+ else {
             # Broadcast to all children for global pool chores
             my $kids = $c->db->get_child_users();
             foreach my $k (@$kids) {
-                $c->notify_user($k->{id}, $msg, "New Global Chore Available");
+                $c->notify_templated($k->{id}, 'chore_global_available', { 
+                    task   => $title, 
+                    points => $points 
+                }, $c->current_user_id);
             }
         }
     }
@@ -158,10 +168,12 @@ sub api_revoke {
             my $icon     = $chore->{completed_by_emoji} // '👤';
             my $title    = $chore->{title};
             my $points   = $chore->{points};
-            my $base_url = "https://rendler.org/chores";
-            my $msg = "✨ **Work Revoked** ✨\n\n$icon **POINT DEDUCTION** $icon\n\nYour completion of **$title** has been revoked.\n\n**Adjustment: (-$points pts)**\n\n$base_url";
             
-            $c->notify_user($chore->{completed_by}, $msg, "Work Revoked");
+            $c->notify_templated($chore->{completed_by}, 'chore_revoked', { 
+                icon   => $icon,
+                task   => $title, 
+                points => $points 
+            }, $c->current_user_id);
         }
     }
     
@@ -184,10 +196,11 @@ sub api_delete {
     if ($chore->{assigned_to}) {
         my $icon     = $chore->{assigned_emoji} // '👤';
         my $title    = $chore->{title};
-        my $base_url = "https://rendler.org/chores";
-        my $msg = "✨ **Chore Removed** ✨\n\n$icon **CHORE DELETED** $icon\n\n**$title** is no longer on the board.\n\n$base_url";
         
-        $c->notify_user($chore->{assigned_to}, $msg, "Chore Removed");
+        $c->notify_templated($chore->{assigned_to}, 'chore_removed', { 
+            icon => $icon,
+            task => $title 
+        }, $c->current_user_id);
     }
 
     $c->app->log->info(sprintf("Chores: Admin %s deleted chore %d ('%s').", $c->session('user') // 'Unknown', $chore_id, $chore->{title}));
