@@ -20,13 +20,13 @@ sub DB::log_notification {
     
     my $sql = q{
         INSERT INTO notifications_log 
-        (user_id, type, recipient, subject, message, status, error_details)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (user_id, caller_id, type, recipient, subject, message, status, error_details)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     };
     
     eval {
         $self->{dbh}->do($sql, undef, 
-            $args{user_id}, $args{type}, $args{recipient}, 
+            $args{user_id}, $args{caller_id}, $args{type}, $args{recipient}, 
             $args{subject}, $args{message}, $args{status} // 'success', 
             $args{error_details}
         );
