@@ -189,6 +189,10 @@ sub _dispatch_consolidated_feedback {
     $msg .= "\n\nView: https://rendler.org/room";
 
     $c->notify_user($target_user_id, $msg, "Room Feedback: $display_date");
+
+    # Reset the reminder cooldown so the recurring reminder does not fire
+    # immediately after feedback — the user has just been notified.
+    $c->db->update_room_reminder_sent($target_user_id);
 }
 
 # Admin: Saves room config (start time, active status).
