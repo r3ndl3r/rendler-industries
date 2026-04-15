@@ -27,7 +27,7 @@ sub register {
     #   user_id    : Internal user ID for notification log (optional)
     # Returns: 1 (fire-and-forget; actual result lands in the promise chain)
     $app->helper(send_discord_dm => sub {
-        my ($c, $discord_id, $text, $user_id) = @_;
+        my ($c, $discord_id, $text, $user_id, $caller_id) = @_;
         return 0 unless $discord_id;
 
         my $token = $c->db->get_discord_token();
@@ -65,6 +65,7 @@ sub register {
             $c->app->log->info("Discord DM sent to $discord_id");
             $c->db->log_notification(
                 user_id   => $user_id,
+                caller_id => $caller_id,
                 type      => 'discord',
                 recipient => $discord_id,
                 message   => $text,
@@ -75,6 +76,7 @@ sub register {
             $c->app->log->error("Discord DM error ($discord_id): $err");
             $c->db->log_notification(
                 user_id       => $user_id,
+                caller_id     => $caller_id,
                 type          => 'discord',
                 recipient     => $discord_id,
                 message       => $text,
