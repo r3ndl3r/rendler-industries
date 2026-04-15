@@ -434,10 +434,10 @@ sub startup {
     $admin_ns->post('/users/update/:id')->to('admin-users#edit_user');
 
     # --- Notification History Routes ---
-    $admin_ns->get('/notifications')->to('admin-notifications#index');
-    $admin_ns->get('/notifications/api/state')->to('admin-notifications#api_state');
-    $admin_ns->post('/notifications/api/delete/:id')->to('admin-notifications#api_delete');
-    $admin_ns->post('/notifications/api/prune')->to('admin-notifications#api_prune');
+    $admin_ns->get('/notifications/logs'               )->to('admin-notifications-logs#index'    );
+    $admin_ns->get('/notifications/logs/api/state'     )->to('admin-notifications-logs#api_state');
+    $admin_ns->post('/notifications/logs/api/delete/:id')->to('admin-notifications-logs#api_delete');
+    $admin_ns->post('/notifications/logs/api/prune'    )->to('admin-notifications-logs#api_prune');
 
     # --- Reminders Administration Routes ---
     $family->get('/reminders')->to('reminders#index');
