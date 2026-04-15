@@ -239,6 +239,82 @@ sub DB::save_note {
     return $id;
 }
 
+# Updates coordinates and metadata for a collection of notes in a single transaction.
+# All notes are validated for ownership before execution; any failure rolls back the entire batch.
+# Parameters:
+#   - updates    : ArrayRef of HashRefs [ {id, x, y, z_index, layer_id}, ... ]
+#   - user_id    : Identifier of the executing user (Int)
+#   - session_id : Active UI session identifier for lock verification (String)
+# Returns: HashRef { success => Boolean, updated_ids => ArrayRef, errors => ArrayRef }
+sub DB::update_batch_geometry {
+    my ($self, $updates, $user_id, $session_id) = @_;
+    $self->ensure_connection;
+
+    return { success => 0, error => "No updates provided" } unless $updates && @$updates;
+
+    my $dbh = $self->{dbh};
+    my @updated_ids;
+    my @touched_cids;
+    my %canvas_cache;
+
+    $dbh->begin_work;
+    eval {
+        my $sql = "UPDATE notes SET x = ?, y = ?, z_index = ?, layer_id = ?
+                   WHERE id = ?
+                   AND (
+                       locked_by_session_id IS NULL
+                       OR locked_by_session_id = ?
+                       OR locked_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 MINUTE)
+                   )";
+        my $sth = $dbh->prepare($sql);
+
+        foreach my $upd (@$updates) {
+            my $layer_id_val = $upd->{layer_id} // 1;
+            unless (
+                defined $upd->{id}      && $upd->{id}      =~ /\A\d+\z/   &&
+                defined $upd->{x}       && $upd->{x}       =~ /\A-?\d+\z/ &&
+                defined $upd->{y}       && $upd->{y}       =~ /\A-?\d+\z/ &&
+                defined $upd->{z_index} && $upd->{z_index} =~ /\A\d+\z/   &&
+                $layer_id_val           =~ /\A\d+\z/
+            ) {
+                die "Invalid geometry for note #" . ($upd->{id} // 'unknown');
+            }
+
+            my $cid = $canvas_cache{ $upd->{id} } //= $self->get_canvas_for_note_id($upd->{id}, $user_id);
+            unless ($cid && $self->check_canvas_access($cid, $user_id, 1)) {
+                die "Access denied for note #" . $upd->{id};
+            }
+
+            $sth->execute(
+                int($upd->{x}), int($upd->{y}), int($upd->{z_index}), int($layer_id_val),
+                int($upd->{id}), $session_id
+            );
+
+            if ($sth->rows > 0) {
+                push @updated_ids, $upd->{id};
+                push @touched_cids, $cid;
+            } else {
+                die "Note #" . $upd->{id} . " is locked or missing";
+            }
+        }
+        $dbh->commit;
+    };
+
+    if ($@) {
+        my $err = $@;
+        eval { $dbh->rollback };
+        return { success => 0, error => "Transaction failed: $err" };
+    }
+
+    my %seen_cids = map { $_ => 1 } @touched_cids;
+    $self->touch_canvas($_) for keys %seen_cids;
+
+    return {
+        success     => 1,
+        updated_ids => \@updated_ids,
+    };
+}
+
 # Collaborative Locking: Acquires exclusive edit rights for a specific user session.
 # Returns: 1 on success, 0 if already locked by another session.
 sub DB::lock_note {
@@ -523,6 +599,74 @@ sub DB::delete_note {
     $self->touch_canvas($cid);
     return 1;
 }
+
+# Deletes a batch of sticky notes from the specified canvas.
+# Parameters:
+#   note_ids   : ArrayRef of integer item IDs.
+#   user_id    : ID of the active user.
+#   session_id : Calling session token; allows deletion of notes locked by the same session.
+# Returns: HashRef { success => Boolean, deleted_ids => ArrayRef, error => String }
+sub DB::delete_batch_notes {
+    my ($self, $note_ids, $user_id, $session_id) = @_;
+    $self->ensure_connection;
+
+    return { success => 0, error => "No notes provided" } unless $note_ids && @$note_ids;
+
+    my $dbh = $self->{dbh};
+    my @deleted_ids;
+    my %canvas_cache;
+
+    $dbh->begin_work;
+    eval {
+        my $sql = "UPDATE notes SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP
+                   WHERE id = ?
+                   AND (
+                       locked_by_session_id IS NULL
+                       OR locked_by_session_id = ?
+                       OR locked_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 MINUTE)
+                   )";
+        my $sth = $dbh->prepare($sql);
+
+        foreach my $note_id (@$note_ids) {
+            # 1. Validation
+            die "Invalid field 'id' in batch update"
+                unless defined $note_id && $note_id =~ /\A\d+\z/;
+
+            # 2. Permission Check
+            my $cid = $canvas_cache{$note_id} //= $self->get_canvas_for_note_id($note_id, $user_id);
+            unless ($cid && $self->check_canvas_access($cid, $user_id, 1)) {
+                die "Access denied for note #" . $note_id;
+            }
+
+            # 3. Execution
+            $sth->execute($note_id, $session_id // '');
+
+            if ($sth->rows > 0) {
+                push @deleted_ids, $note_id;
+            } else {
+                die "Note #" . $note_id . " is locked or missing";
+            }
+        }
+        $dbh->commit;
+    };
+
+    if ($@) {
+        my $err = $@;
+        eval { $dbh->rollback };
+        return { success => 0, error => "Transaction failed: $err" };
+    }
+
+    # Side Effects: Signal mutation after confirmed commit and outside eval to
+    # prevent touch_canvas exceptions from triggering a spurious rollback attempt
+    my %seen_canvases = map { $_ => 1 } values %canvas_cache;
+    $self->touch_canvas($_) for keys %seen_canvases;
+
+    return {
+        success     => 1,
+        deleted_ids => \@deleted_ids,
+    };
+}
+
 
 # Resolve the parent canvas ID for a specific note, enforcing ACL visibility.
 # Parameters:
