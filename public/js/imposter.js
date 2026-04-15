@@ -354,7 +354,7 @@ function editPlayer(oldName) {
         title: 'Edit Player',
         icon: 'edit',
         message: `Enter a new name for <strong>${escapeHtml(oldName)}</strong>:`,
-        confirmText: 'Save Changes',
+        confirmText: 'Save',
         confirmIcon: 'save',
         autoFocus: true,
         input: {
