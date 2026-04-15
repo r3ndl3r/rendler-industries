@@ -264,11 +264,14 @@ sub api_redeem {
         my $timer = $c->db->_get_timer_by_id($timer_id);
         my $timer_name = $timer ? $timer->{name} : "Unknown Timer";
         
-        my $alert_msg = "🪙 **Points Redeemed** 🪙\n\n**$username** just spent **$points points** for **$mins minutes** of time on **$timer_name**.\n\nManage: https://rendler.org/timers/manage";
-        
         my $admins = $c->db->get_admins();
         foreach my $admin (@$admins) {
-            $c->notify_user($admin->{id}, $alert_msg, "Points Redeemed: $username");
+            $c->notify_templated($admin->{id}, 'timers_points_redeemed', { 
+                user       => $username, 
+                points     => $points, 
+                minutes    => $mins, 
+                timer_name => $timer_name 
+            }, $c->current_user_id);
         }
 
         $c->render(json => { success => 1, message => $message });
