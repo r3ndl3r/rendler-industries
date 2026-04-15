@@ -39,10 +39,11 @@ function renderUI() {
             if (existing) {
                 // Skip update if the user is currently interacting with this specific note OR it is in-flight to the API
                 if (
-                    existing.classList.contains('is-editing') ||
-                    (STATE.pickedNoteId == note.id)           ||
-                    (STATE.isResizing   == note.id)           ||
-                    STATE.activeSyncs.has(String(note.id))
+                    existing.classList.contains('is-editing')          ||
+                    (STATE.pickedNoteId == note.id)                    ||
+                    (STATE.isResizing   == note.id)                    ||
+                    STATE.activeSyncs.has(String(note.id))             ||
+                    STATE.groupBaseline?.has(String(note.id))
                 ) return;
 
                 // Atomic Synchronicity: Check if we need to update position/z-index
@@ -59,6 +60,14 @@ function renderUI() {
                 if (note.width  && curW != note.width)  existing.style.width  = `${note.width}px`;
                 if (note.height && curH != note.height) existing.style.height = `${note.height}px`;
                 if (curZ != note.z_index) existing.style.zIndex = note.z_index || 1;
+
+                // --- Bulk Selection Persistence ---
+                // Re-apply visual selection markers lost during surgical reconciliation.
+                if (STATE.selectedNoteIds.has(String(note.id))) {
+                    existing.classList.add('is-selected');
+                } else {
+                    existing.classList.remove('is-selected');
+                }
 
                 // --- Collaborative Identity Reconciliation (Color/Accent) ---
                 const colorInput = existing.querySelector('.inline-color-input');
@@ -214,6 +223,9 @@ function renderUI() {
     existingNotes.forEach(el => {
         const elId = el.dataset.id;
         if (!activeIds.has(elId)) {
+            // Memory Cleanup: Prune orphan IDs from the selection state (always string-keyed)
+            STATE.selectedNoteIds?.delete(elId);
+
             el.classList.add('row-fade-out');
             setTimeout(() => {
                 if (el.parentNode && !activeIds.has(elId)) {
