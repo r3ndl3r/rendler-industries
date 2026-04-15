@@ -231,10 +231,37 @@ function toggleStickyMove(e, id) {
     STATE.lastPickTime = Date.now();
     STATE.originalPos  = { x: note.x, y: note.y, z: el.style.zIndex };
     
+    // --- 2. Bulk Operation Baseline ---
+    // If the picked note is part of a selection, we capture the relative baseline
+    // for all siblings to enable synchronized "swarm" movement.
+    if (STATE.selectedNoteIds.has(String(intId))) {
+        STATE.groupBaseline = new Map();
+        
+        // Z-Index Parity: When moving a swarm, promote ALL members to the foreground
+        // to prevent them from slipping behind unselected notes during the move.
+        STATE.selectedNoteIds.forEach(sid => {
+            const snote = STATE.notes.find(n => n.id == sid);
+            if (snote) {
+                STATE.groupBaseline.set(sid, { x: snote.x, y: snote.y, z: snote.z_index });
+                const selEl = document.getElementById(`note-${sid}`);
+                if (selEl) {
+                    selEl.classList.add('in-flight', 'note-picked');
+                    // Per-member Z-Promotion: each note gets its own unique foreground Z
+                    const memberZ = ++STATE.maxZ;
+                    snote.z_index = memberZ;
+                    selEl.style.zIndex = memberZ;
+                }
+            }
+        });
+
+        // Batch Sync Z-Index (Z-only sync is handled via 'silent' calls if needed, 
+        // but batch move will eventually sync full coords)
+    }
+
     el.classList.add('note-picked');
     
     document.addEventListener('mousemove', updateStickyMove);
-    showToast('Note picked up', 'info');
+    showToast(STATE.groupBaseline ? `Moving ${STATE.selectedNoteIds.size} notes` : 'Note picked up', 'info');
 }
 
 /**
@@ -268,14 +295,38 @@ function updateStickyMove(e) {
     newX = Math.max(0, Math.min(newX, STATE.canvasSize - STATE.pickedWidth));
     newY = Math.max(0, Math.min(newY, STATE.canvasSize - STATE.pickedHeight));
 
-    const note = STATE.notes.find(n => n.id == STATE.pickedNoteId);
-    if (!note) return;
+    // --- Bulk Transformation Logic ---
+    if (STATE.groupBaseline) {
+        const dx = newX - STATE.originalPos.x;
+        const dy = newY - STATE.originalPos.y;
 
-    note.x = newX;
-    note.y = newY;
+        STATE.groupBaseline.forEach((pos, sid) => {
+            const snote = STATE.notes.find(n => n.id == sid);
+            const selEl = document.getElementById(`note-${sid}`);
+            if (snote && selEl) {
+                const nw = snote.width || 280;
+                const nh = snote.height || 200;
+                const targetX = Math.max(0, Math.min(pos.x + dx, STATE.canvasSize - nw));
+                const targetY = Math.max(0, Math.min(pos.y + dy, STATE.canvasSize - nh));
 
-    el.style.left = `${newX}px`;
-    el.style.top  = `${newY}px`;
+                snote.x = targetX;
+                snote.y = targetY;
+                selEl.style.left = `${targetX}px`;
+                selEl.style.top  = `${targetY}px`;
+            }
+        });
+    } else {
+        // Standard Single-Note Move
+        const note = STATE.notes.find(n => n.id == STATE.pickedNoteId);
+        if (note) {
+            note.x = newX;
+            note.y = newY;
+            el.style.left = `${newX}px`;
+            el.style.top  = `${newY}px`;
+        }
+    }
+
+    if (typeof updateRadar === 'function') updateRadar();
 }
 
 /**
@@ -401,26 +452,46 @@ function stopAutoScroll() {
  */
 function dropStickyNote() {
     if (!STATE.pickedNoteId) return;
-    
+
     stopAutoScroll();
 
     const id = STATE.pickedNoteId;
     const el = document.getElementById(`note-${id}`);
     
-    STATE.pickedNoteId      = null; 
+    // Capture context for persistence before clearing state
+    const isGroupMove = !!STATE.groupBaseline;
+    const selection   = isGroupMove ? Array.from(STATE.selectedNoteIds) : null;
+
+    STATE.pickedNoteId      = null;
     STATE.activeRectBaseline = null;
     STATE.originalPos        = null;
-    
+
     if (el) {
         el.classList.add('note-settling');
         el.classList.remove('note-picked');
         el.classList.remove('in-flight');
         setTimeout(() => el.classList.remove('note-settling'), 600);
     }
+
+    if (isGroupMove && selection) {
+        selection.forEach(sid => {
+            const selEl = document.getElementById(`note-${sid}`);
+            if (selEl) {
+                selEl.classList.add('note-settling');
+                selEl.classList.remove('note-picked', 'in-flight');
+                setTimeout(() => selEl.classList.remove('note-settling'), 600);
+            }
+        });
+        STATE.groupBaseline = null;
+        if (typeof syncBatchNotePositions === 'function') {
+            syncBatchNotePositions(selection);
+        }
+    } else {
+        if (typeof syncNotePosition === 'function') syncNotePosition(id, 'normal', 500);
+    }
+
     document.removeEventListener('mousemove', updateStickyMove);
-    
-    if (typeof syncNotePosition === 'function') syncNotePosition(id, 'normal', 500);
-    showToast('Note placed', 'success');
+    showToast(isGroupMove ? 'Group placed' : 'Note placed', 'success');
 }
 
 /**
@@ -430,15 +501,44 @@ function dropStickyNote() {
  */
 function cancelStickyMove() {
     if (!STATE.pickedNoteId) return;
-    
+
     stopAutoScroll();
-    
+
     const id = STATE.pickedNoteId;
     const el = document.getElementById(`note-${id}`);
-    const note = STATE.notes.find(n => n.id == id);
-    
-    if (el && note) {
-        if (STATE.originalPos) {
+
+    // --- Bulk Rollback Logic ---
+    if (STATE.groupBaseline) {
+        STATE.groupBaseline.forEach((pos, sid) => {
+            const snote = STATE.notes.find(n => n.id == sid);
+            const selEl = document.getElementById(`note-${sid}`);
+            if (snote && selEl) {
+                snote.x = pos.x;
+                snote.y = pos.y;
+                selEl.style.left = `${pos.x}px`;
+                selEl.style.top  = `${pos.y}px`;
+
+                if (pos.z !== undefined) {
+                    snote.z_index = pos.z;
+                    selEl.style.zIndex = pos.z;
+                }
+
+                selEl.classList.add('note-settling');
+                selEl.classList.remove('note-picked', 'in-flight');
+                setTimeout(() => selEl.classList.remove('note-settling'), 600);
+            }
+        });
+
+        if (el) {
+            el.classList.add('note-settling');
+            el.classList.remove('note-picked', 'in-flight');
+            setTimeout(() => el.classList.remove('note-settling'), 600);
+        }
+        STATE.groupBaseline = null;
+    } else {
+        // Standard Single-Note Rollback
+        const note = STATE.notes.find(n => n.id == id);
+        if (el && note && STATE.originalPos) {
             el.style.left   = `${STATE.originalPos.x}px`;
             el.style.top    = `${STATE.originalPos.y}px`;
             el.style.zIndex = STATE.originalPos.z;
@@ -448,18 +548,17 @@ function cancelStickyMove() {
             if (STATE.originalPos.z !== undefined) note.z_index = STATE.originalPos.z;
 
             if (typeof syncNotePosition === 'function') syncNotePosition(id, 'silent');
-        }
 
-        el.classList.add('note-settling');
-        el.classList.remove('note-picked');
-        el.classList.remove('in-flight');
-        setTimeout(() => el.classList.remove('note-settling'), 600);
+            el.classList.add('note-settling');
+            el.classList.remove('note-picked', 'in-flight');
+            setTimeout(() => el.classList.remove('note-settling'), 600);
+        }
     }
-    
-    STATE.pickedNoteId       = null; 
+
+    STATE.pickedNoteId       = null;
     STATE.activeRectBaseline = null;
     STATE.originalPos        = null;
-    
+
     document.removeEventListener('mousemove', updateStickyMove);
     showToast('Move cancelled', 'info');
 }
@@ -514,17 +613,67 @@ function handleGlobalClick(e) {
 function handleGlobalKeydown(e) {
     if (STATE.isInitializing) return;
     if (e.key === 'Escape') {
+        const hasSelection = STATE.selectedNoteIds && STATE.selectedNoteIds.size > 0;
+        
         if (STATE.pickedNoteId) {
             e.preventDefault();
             e.stopPropagation();
             cancelStickyMove();
             return; // Terminate signal to prevent modal closing if picking was active
         }
-        
+
+        if (STATE.isLassoing) {
+            e.preventDefault();
+            e.stopPropagation();
+            resetLasso(true); // User-requested: Clear everything on Escape
+            return;
+        }
+
+        if (hasSelection) {
+            // Hardening: Prevent event bubbling if we are clearing a selection.
+            // This ensures that hitting Esc over an input clears the selection FIRST
+            // before standard input "Blur/Abort" behavior if desired.
+            e.preventDefault();
+            e.stopPropagation();
+            resetLasso(true);
+            showToast('Selection cleared', 'info');
+            return;
+        }
+
         // Also close any active modals
         if (typeof closeViewModal === 'function') closeViewModal();
         if (typeof closeCreateModal === 'function') closeCreateModal();
         if (typeof closeSearchModal === 'function') closeSearchModal();
+    }
+    
+    // Ctrl + A: Select All Notes on current isolation level
+    if (e.ctrlKey && e.key === 'a') {
+        // Guard: Prevent hijacking default "Select All Text" behavior if we are inside 
+        // an input, textarea, or contenteditable.
+        const isEntry = e.target.closest('input, textarea, [contenteditable="true"]');
+        if (!isEntry) {
+            e.preventDefault();
+            
+            // UI Reset
+            STATE.selectedNoteIds.clear();
+            
+            const currentLayerId = STATE.activeLayerId;
+            let count = 0;
+            
+            STATE.notes.forEach(n => {
+                if (currentLayerId == null || n.layer_id == currentLayerId) {
+                    const idStr = String(n.id);
+                    STATE.selectedNoteIds.add(idStr);
+                    const el = document.getElementById(`note-${idStr}`);
+                    el?.classList.add('is-selected');
+                    count++;
+                }
+            });
+            
+            if (count > 0) {
+                showToast(`Selected all ${count} notes on Level ${currentLayerId}`, 'info');
+            }
+        }
     }
     
     // Ctrl + S: Board-wide Save Interception
@@ -559,6 +708,22 @@ function handleGlobalKeydown(e) {
     if (e.ctrlKey && e.key === 'f') {
         e.preventDefault();
         if (typeof openSearchModal === 'function') openSearchModal();
+        return;
+    }
+
+    // Delete / Backspace: Bulk Deletion for the current selection
+    // Guard: Only triggers if notes are selected AND the user is not focused on an input field.
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+        const hasSelection = STATE.selectedNoteIds && STATE.selectedNoteIds.size > 0;
+        const isEntry = e.target.closest('input, textarea, [contenteditable="true"]');
+        
+        if (hasSelection && !isEntry) {
+            e.preventDefault();
+            if (typeof deleteNote === 'function') {
+                // Calling deleteNote with no parameters triggers the bulk path defined in api.js
+                deleteNote();
+            }
+        }
     }
 }
 
@@ -1033,12 +1198,34 @@ async function saveViewportImmediate() {
 }
 
 /**
- * Canvas Mouse Down: Initiates panning orchestration.
- * @param {MouseEvent} e - The mouse event.
+ * Universal Entry Point: Dispatches focus, lasso selection, and panning based on target context.
+ * Identifies if the user is clicking the background (pan/lasso) vs a note handle.
+ * @param {MouseEvent} e - The raw trigger event.
+/**
+ * Universal Entry Point: Dispatches focus, lasso selection, and panning based on target context.
+ * Identifies if the user is clicking the background (pan/lasso) vs a note handle.
+ * @param {MouseEvent} e - The raw trigger event.
  */
 function handleCanvasMouseDown(e) {
     if (STATE.isInitializing) return;
-    // 1. Note Header Actions: Centralized delegation for all note-level buttons
+
+    // 1. Double Click Dispatcher (Pick up Note)
+    // Guard against re-entry: if a pick is already active, skip to avoid double-registering
+    // updateStickyMove and corrupting STATE.originalPos with a mid-drag position.
+    if (e.detail === 2 && !STATE.pickedNoteId) {
+        const noteHandle = e.target.closest('.note-drag-handle-container');
+        if (noteHandle) {
+            // Guard: title slot double-click belongs to the collapse handler, not pick-up.
+            const isTitle = e.target.closest('.note-title-slot, .inline-title-input');
+            if (!isTitle) {
+                const id = noteHandle.closest('.sticky-note')?.dataset.id;
+                if (id) toggleStickyMove(e, id);
+            }
+            return;
+        }
+    }
+
+    // 2. Note Header Actions: Centralized delegation for all note-level buttons
     const hashBtn    = e.target.closest('.note-id-hash');
     const editBtn     = e.target.closest('.btn-icon-edit');
     const linkBtn     = e.target.closest('.btn-icon-link');
@@ -1048,7 +1235,7 @@ function handleCanvasMouseDown(e) {
     const viewBtn     = e.target.closest('.btn-icon-view');
     const deleteBtn   = e.target.closest('.btn-icon-delete:not(.reel-action-btn):not(.hero-action-btn)');
 
-    // 2. Delegated Resize: If the user clicks a resizing handle
+    // 3. Delegated Resize: If the user clicks a resizing handle
     const resizeHandle = e.target.closest('.note-resize-handle');
     if (resizeHandle && e.button === 0) {
         handleResizeStart(e, resizeHandle);
@@ -1059,109 +1246,296 @@ function handleCanvasMouseDown(e) {
         const noteEl = e.target.closest('.sticky-note');
         if (noteEl) {
             const id = noteEl.dataset.id;
+            const idStr = String(id);
             if (id) {
+                // --- 2A. Selection Management (Shift-Click / Note click) ---
+                if (e.shiftKey) {
+                    // Toggle Pattern: Shift-Click toggles inclusion in the selection
+                    if (STATE.selectedNoteIds.has(idStr)) {
+                        STATE.selectedNoteIds.delete(idStr);
+                        noteEl.classList.remove('is-selected');
+                    } else {
+                        STATE.selectedNoteIds.add(idStr);
+                        noteEl.classList.add('is-selected');
+                    }
+                    e.preventDefault();
+                    return; // Stop processing to avoid immediate drag initialization if clicking handle
+                } else if (!STATE.selectedNoteIds.has(idStr)) {
+                    // Focus Pattern: Clicking an unselected note without Shift clears others.
+                    // This prevents the "swarming" bug where you accidentally move a forgotten lassoed group.
+                    if (STATE.selectedNoteIds.size > 0) {
+                        STATE.selectedNoteIds.clear();
+                        document.querySelectorAll('.sticky-note.is-selected').forEach(el => el.classList.remove('is-selected'));
+                    }
+                }
+
                 if (hashBtn && typeof copyNoteToClipboard === 'function') {
-                    copyNoteToClipboard(id);
-                    return;
+                    copyNoteToClipboard(id); return;
                 }
                 if (editBtn && typeof toggleInlineEdit === 'function') {
-                    toggleInlineEdit(editBtn, id);
-                    return;
+                    toggleInlineEdit(editBtn, id); return;
                 }
                 if (linkBtn && typeof copyNoteLink === 'function') {
-                    copyNoteLink(id);
-                    return;
+                    copyNoteLink(id); return;
                 }
                 if (uploadBtn && typeof triggerInlineUpload === 'function') {
-                    triggerInlineUpload(id);
-                    return;
+                    triggerInlineUpload(id); return;
                 }
                 if (moveBtn && typeof openMoveModal === 'function') {
-                    openMoveModal(e, id);
-                    return;
+                    openMoveModal(e, id); return;
                 }
                 if (levelBtn && typeof openLayerActionModal === 'function') {
-                    openLayerActionModal(id);
-                    return;
+                    openLayerActionModal(id); return;
                 }
                 if (viewBtn && typeof viewNote === 'function') {
-                    viewNote(id);
-                    return;
+                    viewNote(id); return;
                 }
                 if (deleteBtn && typeof deleteNote === 'function') {
-                    deleteNote(id);
-                    return;
+                    deleteNote(id); return;
                 }
             }
         }
     }
 
-    // 2. Pick & Place Detection: If the user clicks a note's title bar/drag handle
+    // 4. Pick & Place Detection: If the user clicks a note's title bar/drag handle
     const handle = e.target.closest('.note-drag-handle-container');
     const isAction = e.target.closest('[data-action], .note-check-trigger, .note-link-trigger, .reel-action-btn, .btn-icon-drawer');
-
-    // Isolation: suppress mousedown-driven pickup on the title slot so that
-    // a double-click on the title does not produce a pick+drop before the
-    // dblclick event fires. Single-click pickup on the title is intentionally
-    // disabled here; the dblclick handler owns that surface for collapse.
     const isTitle = e.target.closest('.note-title-slot, .inline-title-input');
 
     if (handle && !isAction && !isTitle && e.button === 0) {
         const noteId = handle.closest('.sticky-note')?.dataset.id;
         if (noteId) {
             toggleStickyMove(e, noteId);
-            return; // Exit: Do not initiate panning if picking a note
+            return;
         }
     }
 
-    // 2. Standard Panning: Initiated by Left-Click on the workspace background or container wrapper.
-    if (e.target.id !== 'notes-canvas' && e.target.id !== 'canvas-wrapper') return;
-    if (e.button !== 0) return; // Parity: Left-click only for focal background panning
-
+    // 5. Standard Panning or Marquee Selection:
+    // Right-click drag anywhere on the canvas initiates lasso; left-click on the
+    // background initiates panning.
     const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
-    STATE.isPanning = true;
-    STATE.wrapperEl?.classList.add('is-panning-board');
-    STATE.panStart = {
-        x: e.clientX,
-        y: e.clientY,
-        scrollX: wrapper.scrollLeft,
-        scrollY: wrapper.scrollTop
-    };
+    if (e.button === 2) {
+        // --- 5A. Marquee Selection (Lasso) — Right-Click Drag ---
+        e.preventDefault();
+        STATE.isLassoing = true;
+        const rect = wrapper.getBoundingClientRect();
 
-    document.body.style.cursor = 'grabbing';
-    e.preventDefault();
+        // Origin: Absolute board coordinates (translated for scale/scroll)
+        STATE.lassoStart = {
+            x: (e.clientX - rect.left + wrapper.scrollLeft) / STATE.scale,
+            y: (e.clientY - rect.top  + wrapper.scrollTop)  / STATE.scale
+        };
+
+        // UI Reset: Clear existing selection
+        STATE.selectedNoteIds.clear();
+        document.querySelectorAll('.sticky-note.is-selected').forEach(el => el.classList.remove('is-selected'));
+
+        // Performance Optimization: Cache current note states for O(1) hit-testing
+        const currentLayerId = STATE.activeLayerId;
+        STATE.lassoNoteCache = STATE.notes
+            .filter(n => currentLayerId == null || n.layer_id == currentLayerId)
+            .map(n => ({
+                id:   String(n.id),
+                x:    n.x,
+                y:    n.y,
+                w:    n.width  || 280,
+                h:    n.height || 200,
+                el:   document.getElementById(`note-${n.id}`)
+            }));
+
+        const marquee = document.getElementById('lasso-marquee');
+        if (marquee) {
+            marquee.style.left   = `${STATE.lassoStart.x}px`;
+            marquee.style.top    = `${STATE.lassoStart.y}px`;
+            marquee.style.width  = '0px';
+            marquee.style.height = '0px';
+            marquee.classList.add('show');
+        }
+
+        // Off-canvas escape hatch: capture mouseup at document level so a
+        // release outside the viewport always terminates the lasso.
+        document.addEventListener('mouseup', handleCanvasMouseUp, { once: true });
+    } else if (e.button === 0 && (e.target === STATE.canvasEl || e.target === STATE.wrapperEl)) {
+        // --- 5B. Standard Panning — Left-Click on Background ---
+        // UX Consistency: Clicking the background clears any active lasso selection.
+        if (STATE.selectedNoteIds && STATE.selectedNoteIds.size > 0) {
+            resetLasso(true);
+        }
+
+        STATE.isPanning = true;
+        STATE.wrapperEl?.classList.add('is-panning-board');
+        STATE.panStart = {
+            x: e.clientX,
+            y: e.clientY,
+            scrollX: wrapper.scrollLeft,
+            scrollY: wrapper.scrollTop
+        };
+        document.body.style.cursor = 'grabbing';
+        e.preventDefault();
+    }
 }
 
 /**
- * Canvas Mouse Move: Updates the perspective coordinates during panning.
+ * Canvas Mouse Move: Updates the perspective coordinates during panning or hit-testing during lasso.
  * @param {MouseEvent} e - The mouse event.
  */
 function handleCanvasMouseMove(e) {
-    if (!STATE.isPanning) return;
+    if (STATE.isLassoing) {
+        const wrapper = STATE.wrapperEl;
+        const marquee = document.getElementById('lasso-marquee');
+        if (!wrapper || !marquee || !STATE.lassoNoteCache) return;
 
+        const rect = wrapper.getBoundingClientRect();
+        const currentX = (e.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
+        const currentY = (e.clientY - rect.top  + wrapper.scrollTop)  / STATE.scale;
+
+        const left   = Math.min(STATE.lassoStart.x, currentX);
+        const top    = Math.min(STATE.lassoStart.y, currentY);
+        const width  = Math.abs(currentX - STATE.lassoStart.x);
+        const height = Math.abs(currentY - STATE.lassoStart.y);
+
+        marquee.style.left   = `${left}px`;
+        marquee.style.top    = `${top}px`;
+        marquee.style.width  = `${width}px`;
+        marquee.style.height = `${height}px`;
+
+        // --- Real-time Hit Testing (Optimized via Cache) ---
+        const right  = left + width;
+        const bottom = top + height;
+
+        STATE.lassoNoteCache.forEach(note => {
+            const nx = note.x;
+            const ny = note.y;
+            const nw = note.w;
+            const nh = note.h;
+
+            const intersects = (nx < right && nx + nw > left && ny < bottom && ny + nh > top);
+            
+            if (intersects) {
+                if (!STATE.selectedNoteIds.has(note.id)) {
+                    STATE.selectedNoteIds.add(note.id);
+                    note.el?.classList.add('is-selected');
+                }
+            } else {
+                if (STATE.selectedNoteIds.has(note.id)) {
+                    STATE.selectedNoteIds.delete(note.id);
+                    note.el?.classList.remove('is-selected');
+                }
+            }
+        });
+        return;
+    }
+
+    if (!STATE.isPanning) return;
     const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     const dx = e.clientX - STATE.panStart.x;
     const dy = e.clientY - STATE.panStart.y;
 
-    // Direct Sync: Scroll opposite to drag direction to simulate 'moving the paper'
     wrapper.scrollLeft = STATE.panStart.scrollX - dx;
     wrapper.scrollTop  = STATE.panStart.scrollY - dy;
 }
 
 /**
- * Canvas Mouse Up: Terminates active panning operations.
+ * Canvas Mouse Up: Terminates active panning operations or lasso selection.
  * @returns {void}
  */
 function handleCanvasMouseUp() {
+    if (STATE.isLassoing) {
+        const count = STATE.selectedNoteIds.size;
+        resetLasso(false); // Finish selection without purging state
+        if (count > 0) {
+            showToast(`Selected ${count} notes`, 'info');
+        }
+        return;
+    }
+
     STATE.isPanning = false;
     STATE.wrapperEl?.classList.remove('is-panning-board');
     document.body.style.cursor = '';
+}
+
+/**
+ * High-Speed Bridge: TouchStart -> MouseDown mapping
+ * Single-finger maps to left-click (panning / pick-up).
+ * Two-finger touch simulates right-click to activate lasso.
+ */
+function handleCanvasTouchStart(e) {
+    if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const simulated = {
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+            target: e.target,
+            button: 0,
+            shiftKey: false,
+            detail: 1,
+            preventDefault: () => e.preventDefault(),
+            stopPropagation: () => e.stopPropagation()
+        };
+        handleCanvasMouseDown(simulated);
+    } else if (e.touches.length === 2) {
+        const touch = e.touches[0];
+        const simulated = {
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+            target: e.target,
+            button: 2,
+            shiftKey: false,
+            detail: 1,
+            preventDefault: () => e.preventDefault(),
+            stopPropagation: () => e.stopPropagation()
+        };
+        handleCanvasMouseDown(simulated);
+    }
+}
+
+/**
+ * High-Speed Bridge: TouchMove -> MouseMove mapping
+ */
+function handleCanvasTouchMove(e) {
+    if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const simulated = {
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+            target: e.target,
+            button: 0,
+            shiftKey: e.shiftKey || false,
+            preventDefault: () => e.preventDefault(),
+            stopPropagation: () => e.stopPropagation()
+        };
+        handleCanvasMouseMove(simulated);
+    }
+}
+
+/**
+ * High-Speed Bridge: TouchEnd -> MouseUp mapping
+ */
+function handleCanvasTouchEnd(e) {
+    // touchend carries no active touches[0]; coordinates are read from changedTouches instead
+    handleCanvasMouseUp();
+}
+
+/**
+ * Atomic Reset for Bulk Selection State.
+ * Orchestrates UI cleanup and state flushing to guarantee system parity.
+ * @param {boolean} clearData - If true, the internal selection set is purged in addition to UI cleanup.
+ */
+function resetLasso(clearData = false) {
+    STATE.isLassoing = false;
+    STATE.lassoNoteCache = null;
     
-    // Viewport persistence is automatically handled by the wrapper's scroll listener
+    if (clearData) {
+        STATE.selectedNoteIds.clear();
+        document.querySelectorAll('.sticky-note.is-selected').forEach(el => el.classList.remove('is-selected'));
+    }
+
+    const marquee = document.getElementById('lasso-marquee');
+    if (marquee) marquee.classList.remove('show');
 }
 
 /**
@@ -2478,4 +2852,14 @@ window.setupLevelManagement = setupLevelManagement;
 window.showLevelRenameModal = showLevelRenameModal;
 window.showLevelMoveModal   = showLevelMoveModal;
 window.setupSecurityInteractions = setupSecurityInteractions;
+
+// Interaction Bridges: Required for core.js registration
+window.handleCanvasMouseDown   = handleCanvasMouseDown;
+window.handleCanvasMouseMove   = handleCanvasMouseMove;
+window.handleCanvasMouseUp     = handleCanvasMouseUp;
+window.handleCanvasWheel       = handleCanvasWheel;
+window.handleCanvasTouchStart  = handleCanvasTouchStart;
+window.handleCanvasTouchMove   = handleCanvasTouchMove;
+window.handleCanvasTouchEnd    = handleCanvasTouchEnd;
+window.handleGlobalKeydown     = handleGlobalKeydown;
 
