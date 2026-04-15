@@ -1,6 +1,6 @@
-# /lib/DB/Notifications.pm
+# /lib/DB/Notifications/Logs.pm
 
-package DB::Notifications;
+package DB::Notifications::Logs;
 
 use strict;
 use warnings;

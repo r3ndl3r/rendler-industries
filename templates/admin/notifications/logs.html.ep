@@ -1,11 +1,11 @@
-<%# /templates/notifications.html.ep %>
+<%# /templates/admin/notifications/logs.html.ep %>
 
 % layout 'default', hide_navbar_title => 1, favicon => '🔔';
-% title 'Notifications';
+% title 'Notification Logs';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/admin/notifications.css">
-    <script src="/js/admin/notifications.js"></script>
+    <link rel="stylesheet" href="/css/admin/notifications/logs.css">
+    <script src="/js/admin/notifications/logs.js"></script>
 % end
 
 <div class="app-container">

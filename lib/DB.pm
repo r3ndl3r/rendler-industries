@@ -6,6 +6,7 @@ use strict;
 use warnings;
 use DBI;
 use File::Basename;
+use File::Find;
 
 # Central Database Handler and Module Loader.
 # Features:
@@ -109,18 +110,28 @@ sub ensure_connection {
 
 # Dynamic Module Loader (Plugin System).
 # Behavior:
-#   - Locates all .pm files in the 'DB/' subdirectory relative to this file
+#   - Recursively locates all .pm files under the 'DB/' subdirectory tree
+#   - Converts each relative file path to a fully-qualified package name
+#     (e.g. DB/Notifications/Logs.pm -> DB::Notifications::Logs)
 #   - Dynamically imports them to inject helper methods into the DB namespace
 BEGIN {
-    # Calculate path to sub-module directory based on current file location
+    # Root of the sub-module tree mirrors this file's basename without extension
     my $db_dir = __FILE__;
-    $db_dir =~ s/\.pm$//; 
-    
-    # Iterate through all PM files in the directory
-    foreach my $module_file (glob("$db_dir/*.pm")) {
-        my $module_name = basename($module_file, '.pm');
+    $db_dir =~ s/\.pm$//;
+
+    my @module_files;
+    File::Find::find(
+        sub { push @module_files, $File::Find::name if /\.pm$/ },
+        $db_dir
+    );
+
+    foreach my $module_file (sort @module_files) {
+        # Derive the package name from the path relative to the DB root
+        (my $pkg = $module_file) =~ s{^\Q$db_dir/\E}{};
+        $pkg =~ s/\.pm$//;
+        $pkg =~ s{/}{::}g;
         # Import module, warning on failure but allowing execution to continue
-        eval "use DB::$module_name; 1" or warn "Failed to load DB::$module_name: $@";
+        eval "use DB::$pkg; 1" or warn "Failed to load DB::$pkg: $@";
     }
 }
 
