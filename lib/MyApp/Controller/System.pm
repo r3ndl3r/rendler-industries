@@ -64,19 +64,22 @@ sub run_chore_reminders {
     for my $chore (@$stale_chores) {
         my $target_name  = $chore->{target_user} // 'Everyone';
         my $target_emoji = $chore->{target_emoji} // '🌍';
-        my $msg = sprintf(
-            "%s **Chore Reminder:** '%s' has been waiting for an hour!\n\nGrab the %d pts.\n\n(Assigned to: %s)",
-            $target_emoji,
-            $chore->{title},
-            $chore->{points} || 0,
-            $target_name
-        );
 
         if ($chore->{assigned_to}) {
-            $c->notify_user($chore->{assigned_to}, $msg, "Pending Chore: $chore->{title}");
+            $c->notify_templated($chore->{assigned_to}, 'chore_stale_reminder', { 
+                icon   => $target_emoji, 
+                task   => $chore->{title}, 
+                points => $chore->{points} || 0, 
+                target => $target_name 
+            }, 0);
         } else {
             for my $k (@$kids) {
-                $c->notify_user($k->{id}, $msg, "Pending Chore: $chore->{title}");
+                $c->notify_templated($k->{id}, 'chore_stale_reminder', { 
+                    icon   => $target_emoji, 
+                    task   => $chore->{title}, 
+                    points => $chore->{points} || 0, 
+                    target => $target_name 
+                }, 0);
             }
         }
         $c->app->log->info("Chores: Automated nag dispatched for chore $chore->{id}.");
@@ -111,15 +114,15 @@ sub run_meals_maintenance {
             my %has_suggested = map { $_ => 1 } @{$participation->{suggested_ids}};
             my %has_voted     = map { $_ => 1 } @{$participation->{voted_ids}};
             
-            # Find all family members with Discord IDs
+            # Find all family members
             my $users = $c->db->get_family_users();
             foreach my $u (@$users) {
-                # Target family/admins with Discord who have NOT suggested AND have NOT voted
-                if ($u->{discord_id}) {
-                    if (!$has_suggested{$u->{id}} && !$has_voted{$u->{id}}) {
-                        my $msg = "🍳 MEAL PLANNER REMINDER 🍳\n\nYou haven't added a suggestion or voted for today's meal yet! Lock-in is at 2PM.\n\nhttps://rendler.org/meals";
-                        $c->send_discord_dm($u->{discord_id}, $msg, $u->{id});
-                    }
+                # Target family/admins who have NOT suggested AND have NOT voted
+                if (!$has_suggested{$u->{id}} && !$has_voted{$u->{id}}) {
+                    $c->notify_templated($u->{id}, 'meals_reminder', { 
+                        user     => $u->{username}, 
+                        deadline => '2:00 PM' 
+                    }, 0);
                 }
             }
             push @{$stats->{actions}}, "Sent $hour:00 targeted reminders";
@@ -142,18 +145,13 @@ sub run_meals_maintenance {
                 
                 # Check for ties
                 if (scalar @$suggestions > 1 && $suggestions->[0]{vote_count} == $suggestions->[1]{vote_count}) {
-                    # Notify admin to decide (mark as locked status 'tie' or similar if we wanted, 
-                    # but for now we rely on the fact that if status is still 'open' we keep notifying.
-                    # To prevent tie-spamming within the same minute, we should check if we already notified.
-                    # Let's just lock it to 'open' and rely on the minute check.
-                    my $admin_msg = "⚖️ MEAL PLANNER TIE: Today's meal plan is TIED. Please go to /meals and pick a winner!\n\nhttps://rendler.org/meals";
                     my $admins = $c->db->get_admins();
                     
-                    # De-duplicate recipients by Discord ID
-                    my %seen_discord;
+                    # De-duplicate recipients
+                    my %seen_users;
                     foreach my $a (@$admins) {
-                        next if !$a->{discord_id} || $seen_discord{$a->{discord_id}}++;
-                        $c->send_discord_dm($a->{discord_id}, $admin_msg, $a->{id});
+                        next if $seen_users{$a->{id}}++;
+                        $c->notify_templated($a->{id}, 'meals_tie', {}, 0);
                     }
                     push @{$stats->{actions}}, "Notified admins of tie";
                 } else {
@@ -161,27 +159,29 @@ sub run_meals_maintenance {
                     $c->db->lock_suggestion($today_plan->{id}, $winner->{id});
                     
                     # Notify everyone of the final choice
-                    my $announcement = "🍽️ TODAY'S MENU LOCKED: $winner->{meal_name} wins with $winner->{vote_count} votes! (Suggested by $winner->{suggested_by_name})\n\nhttps://rendler.org/meals";
                     my $users = $c->db->get_family_users();
                     
-                    # De-duplicate recipients by Discord ID
-                    my %seen_discord;
+                    # De-duplicate recipients
+                    my %seen_users;
                     foreach my $u (@$users) {
-                        next if !$u->{discord_id} || $seen_discord{$u->{discord_id}}++;
-                        $c->send_discord_dm($u->{discord_id}, $announcement, $u->{id});
+                        next if $seen_users{$u->{id}}++;
+                        $c->notify_templated($u->{id}, 'meals_locked_in', { 
+                            meal_name    => $winner->{meal_name}, 
+                            vote_count   => $winner->{vote_count}, 
+                            suggested_by => $winner->{suggested_by_name} 
+                        }, 0);
                     }
                     push @{$stats->{actions}}, "Locked in: $winner->{meal_name}";
                 }
             } else {
                 # No suggestions at 2PM? Notify Family (Widened from Admin-only)
-                my $remind_msg = "⚠️ MEAL PLANNER EMPTY: No suggestions made by 2PM. Please set a blackout or manual meal.\n\nhttps://rendler.org/meals";
                 my $users = $c->db->get_family_users();
                 
-                # De-duplicate recipients by Discord ID
-                my %seen_discord;
+                # De-duplicate recipients
+                my %seen_users;
                 foreach my $u (@$users) {
-                    next if !$u->{discord_id} || $seen_discord{$u->{discord_id}}++;
-                    $c->send_discord_dm($u->{discord_id}, $remind_msg, $u->{id});
+                    next if $seen_users{$u->{id}}++;
+                    $c->notify_templated($u->{id}, 'meals_empty', {}, 0);
                 }
                 push @{$stats->{actions}}, "Notified family of empty plan";
             }
@@ -270,21 +270,20 @@ sub run_room_reminders {
     foreach my $r (@$needing_reminders) {
         my $comments = $c->db->get_room_failed_comments($r->{user_id}, $today);
         
-        my $msg = "🧹 **ROOM CLEANING REMINDER** 🧹\n\nIt's time to clean your room and upload photos for review!";
-        
+        my $comments_str = "";
         if (@$comments) {
-            $msg .= "\n\n⚠️ **Items to fix from your previous upload:**\n";
+            $comments_str = "\n\n⚠️ **Items to fix from your previous upload:**\n";
             foreach my $comment (@$comments) {
-                $msg .= " - $comment\n";
+                $comments_str .= " - $comment\n";
             }
         }
-        
-        $msg .= "\n\nUpload: https://rendler.org/room";
         
         # Mark as sent FIRST to prevent double-firing across workers
         $c->db->update_room_reminder_sent($r->{user_id});
         
-        if ($c->notify_user($r->{user_id}, $msg, "Room Cleaning Reminder")) {
+        if ($c->notify_templated($r->{user_id}, 'room_reminder', { 
+            comments => $comments_str 
+        }, 0)) {
             $stats->{reminders_sent}++;
             $c->app->log->info("Room reminder sent to $r->{username}");
         }
@@ -333,8 +332,10 @@ sub run_reminder_maintenance {
         }
 
         # Dispatch notification to EVERY recipient in the join list
-        my $msg = "🔔 REMINDER 🔔\n\n$r->{title}\n\n$r->{description}\n\nhttps://rendler.org/reminders";
-        if ($c->notify_user($r->{user_id}, $msg, "Reminder: $r->{title}")) {
+        if ($c->notify_templated($r->{user_id}, 'reminder_alert', { 
+            title       => $r->{title}, 
+            description => $r->{description} 
+        }, 0)) {
             $stats->{notified}++;
             
             # Automated chore generation for child recipients
@@ -346,9 +347,14 @@ sub run_reminder_maintenance {
 
                 if ($chore_ok) {
                     $c->app->log->info("Chores: Created automatic chore from reminder $r->{id} for user $r->{user_id}.");
-                    my $chore_msg = "📋 **New Chore Linked:** '$r->{title}' is now on your board for $r->{chore_points} pts!";
-                    $c->notify_user($r->{user_id}, $chore_msg, "New Chore: $r->{title}");
-                } else {
+                    $c->notify_templated($r->{user_id}, 'chore_new_linked', { 
+                        user   => $r->{username},
+                        icon   => $c->getUserIcon($r->{username}),
+                        task   => $r->{title}, 
+                        points => $r->{chore_points} 
+                    }, 0);
+                }
+ else {
                     $c->app->log->error("Chores: Failed to create auto-chore from reminder $r->{id}: $@");
                 }
             }
@@ -386,14 +392,11 @@ sub run_timer_maintenance {
         my $minutes_remaining = int($timer->{remaining_seconds} / 60);
         next if $minutes_remaining <= 0;
         
-        my $subject = "Timer Warning: $timer->{name} ($timer->{category})";
-        my $message = "⏱️ **TIMER WARNING: $timer->{name}** ⏱️\n\n"
-                    . "Your session for **$timer->{name}** ($timer->{category}) is running low on time.\n\n"
-                    . "**Time Remaining:** $minutes_remaining minutes\n\n"
-                    . "Please wrap up your current activity soon.\n"
-                    . "https://rendler.org/timers";
-        
-        if ($c->notify_user($timer->{user_id}, $message, $subject)) {
+        if ($c->notify_templated($timer->{user_id}, 'timers_warning', { 
+            name     => $timer->{name}, 
+            category => $timer->{category}, 
+            minutes  => $minutes_remaining 
+        }, 0)) {
             $c->db->mark_warning_sent($timer->{timer_id});
             $stats->{warnings_sent}++;
         }
@@ -402,27 +405,24 @@ sub run_timer_maintenance {
     # D. Send expiry notifications
     my $expired_timers = $c->db->get_expired_timers();
     foreach my $timer (@$expired_timers) {
-        my $subject = "Timer Expired: $timer->{name} ($timer->{category})";
-        my $user_msg = "🚨 **TIMER EXPIRED: $timer->{name}** 🚨\n\n"
-                     . "Your session for **$timer->{name}** ($timer->{category}) has expired.\n\n"
-                     . "**Daily Limit:** $timer->{limit_minutes} minutes\n"
-                     . "**Usage Today:** " . int($timer->{elapsed_seconds} / 60) . " minutes\n\n"
-                     . "Please stop using this device immediately.\n"
-                     . "https://rendler.org/timers";
-        
         # Notify User
-        $c->notify_user($timer->{user_id}, $user_msg, $subject);
+        $c->notify_templated($timer->{user_id}, 'timers_expired_user', { 
+            name     => $timer->{name}, 
+            category => $timer->{category}, 
+            limit    => $timer->{limit_minutes}, 
+            usage    => int($timer->{elapsed_seconds} / 60) 
+        }, 0);
         
         # Notify Admins
-        my $admin_msg = "🚨 **TIMER EXPIRED: $timer->{name}** 🚨\n\n"
-                      . "The timer **$timer->{name}** ($timer->{category}) for **$timer->{username}** has reached its daily limit and expired.\n\n"
-                      . "**Limit:** $timer->{limit_minutes} minutes\n"
-                      . "**Usage:** " . int($timer->{elapsed_seconds} / 60) . " minutes\n\n"
-                      . "Manage: https://rendler.org/timers/manage";
-        
         my $admins = $c->db->get_admins();
         foreach my $admin (@$admins) {
-            $c->notify_user($admin->{id}, $admin_msg, "Admin Alert: $timer->{username} Timer Expired");
+            $c->notify_templated($admin->{id}, 'timers_expired_admin', { 
+                name     => $timer->{name}, 
+                category => $timer->{category}, 
+                user     => $timer->{username}, 
+                limit    => $timer->{limit_minutes}, 
+                usage    => int($timer->{elapsed_seconds} / 60) 
+            }, 0);
         }
         
         $c->db->mark_expired_sent($timer->{timer_id});
@@ -484,77 +484,28 @@ sub run_calendar_notifications {
         my $formatted_end   = $c->format_datetime($event->{end_date}, $event->{all_day});
         my $time_label      = $event->{notification_minutes} == 60 ? "1 hour" : "$event->{notification_minutes} minutes";
         
-        # --- Channel Specific Formatting ---
-        
-        # A. EMAIL FORMAT (Full Fidelity)
-        my $email_subject = "🔔 Upcoming Event Reminder: $event->{title} 🔔\n";
-        my $email_body = qq{🔔 Upcoming Event Reminder 🔔
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-The following event is starting in $time_label:
-
-Title: $event->{title}};
-        $email_body .= "\nDescription: $event->{description}" if $event->{description};
-        $email_body .= qq{
-
-Start: $formatted_start
-End: $formatted_end};
-        $email_body .= "\nCategory: $event->{category}" if $event->{category};
-        $email_body .= "\n\nAttendees: $attendees_str" if $attendees_str;
-        $email_body .= qq{
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-View Calendar: https://rendler.org/calendar};
-
-        # B. DISCORD FORMAT (Markdown Enhanced)
-        my $discord_msg = qq{🔔 **Upcoming Event Reminder** 🔔
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-**$event->{title}** is starting in **$time_label**!};
-        $discord_msg .= "\n\n> $event->{description}" if $event->{description};
-        $discord_msg .= "\n\n📅 **Start:** $formatted_start";
-        $discord_msg .= "\n📍 **Category:** $event->{category}" if $event->{category};
-        $discord_msg .= "\n\n👥 **Attendees:** $attendees_str" if $attendees_str;
-        $discord_msg .= "\n\n🔗 https://rendler.org/calendar";
-
-        # C. PUSH FORMAT (Mobile Optimized - Gotify/Pushover)
-        my $push_msg = qq{🔔 **Upcoming Event Reminder** 🔔
-━━━━━━━━━━━━━━━━━━━━━━━
-
-$event->{title} starts in $time_label!
-
-Start: $formatted_start
-
-};
-        $push_msg .= "\nCategory: $event->{category}" if $event->{category};
-        $push_msg .= "\nAttendees: $attendees_str" if $attendees_str;
-
-        # 3. DISPATCH
+        # 3. DISPATCH via Templated System
         foreach my $uid (map { trim($_) } @uids) {
-            my $user = $c->db->get_user_by_id($uid);
-            next unless $user;
-            
-            # Email
-            if ($channels =~ /email/) {
-                $c->send_email_via_gmail([$user->{email}], $email_subject, $email_body, $user->{id}) if $user->{email};
-            }
-            
-            # Discord
-            if ($channels =~ /discord/) {
-                if ($user->{discord_id}) {
-                    $c->send_discord_dm($user->{discord_id}, $discord_msg, $user->{id});
-                } elsif ($user->{email} && $channels !~ /email/) {
-                    # Fallback to email if discord_id is missing
-                    $c->send_email_via_gmail([$user->{email}], "[Discord Fallback] $email_subject", $email_body, $user->{id});
-                }
-            }
+            $c->notify_templated($uid, 'calendar_reminder', {
+                title      => $event->{title},
+                time_label => $time_label,
+                start      => $formatted_start,
+                end        => $formatted_end,
+                attendees  => $attendees_str
+            }, 0); # caller_id 0 for system
         }
-        
-        # 4. ADMIN CHANNELS
-        $c->push_pushover($push_msg) if $channels =~ /pushover/;
-        $c->push_gotify($push_msg, $email_subject) if $channels =~ /gotify/;
+
+        # 4. ADMIN CHANNELS (Legacy Push Fallback)
+        if ($channels =~ /pushover/ || $channels =~ /gotify/) {
+            my $push_title = "🔔 Reminder: $event->{title}";
+            my $push_body  = "$event->{title} starts in $time_label!\n\nAttendees: $attendees_str";
+            $c->push_pushover($push_body, undef, 0) if $channels =~ /pushover/;
+            $c->push_gotify($push_body, $push_title, undef, undef, 0) if $channels =~ /gotify/;
+        }
         
         $stats->{notifications_sent}++;
     }
+
 
     return $stats;
 }
