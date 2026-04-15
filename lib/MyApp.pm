@@ -368,7 +368,8 @@ sub startup {
         return undef;
     });
 
-    # Admin Namespace: Unified /admin prefix for system-level modules
+    # Admin Namespace: URL prefix for system-level modules with /admin/ paths.
+    # Carries the same is_admin middleware as $admin — no additional auth layer.
     my $admin_ns = $admin->under('/admin');
 
     # Family bridge nested under the auth bridge
@@ -474,9 +475,9 @@ sub startup {
     # --- Birthday Calendar Routes ---
     $family->get('/birthdays')->to('birthdays#index');
     $family->get('/birthdays/api/state')->to('birthdays#api_state');
-    $admin_ns->post('/birthdays/api/add')->to('birthdays#api_add');
-    $admin_ns->post('/birthdays/api/edit/:id')->to('birthdays#api_edit');
-    $admin_ns->post('/birthdays/api/delete/:id')->to('birthdays#api_delete');
+    $admin->post('/birthdays/api/add')->to('birthdays#api_add');
+    $admin->post('/birthdays/api/edit/:id')->to('birthdays#api_edit');
+    $admin->post('/birthdays/api/delete/:id')->to('birthdays#api_delete');
 
     # --- Admin Settings Routes ---
     $admin_ns->get('/settings')->to('admin-settings#index');
@@ -566,12 +567,12 @@ sub startup {
     $family->post('/timers/api/redeem')->to('timers#api_redeem');
     $family->post('/timers/api/transfer')->to('timers#api_transfer');
     
-    $admin_ns->get('/timers/manage')->to('timers#manage');
-    $admin_ns->get('/timers/api/manage/state')->to('timers#api_manage_state');
-    $admin_ns->post('/timers/api/create')->to('timers#create');
-    $admin_ns->post('/timers/api/update/:id')->to('timers#update');
-    $admin_ns->post('/timers/api/delete/:id')->to('timers#delete');
-    $admin_ns->post('/timers/api/bonus')->to('timers#grant_bonus');
+    $admin->get('/timers/manage')->to('timers#manage');
+    $admin->get('/timers/api/manage/state')->to('timers#api_manage_state');
+    $admin->post('/timers/api/create')->to('timers#create');
+    $admin->post('/timers/api/update/:id')->to('timers#update');
+    $admin->post('/timers/api/delete/:id')->to('timers#delete');
+    $admin->post('/timers/api/bonus')->to('timers#grant_bonus');
 
     # --- Citizenship Quiz Routes ---
     $r->get('/quiz')->to('quiz#index');
@@ -606,6 +607,8 @@ sub startup {
     $auth->post('/notes/api/save')->to('notes#api_save');
     $auth->post('/notes/api/geometry')->to('notes#api_save_geometry');
     $auth->post('/notes/api/delete')->to('notes#api_delete');
+    $auth->post('/notes/api/batch_geometry')->to('notes#api_batch_geometry');
+    $auth->post('/notes/api/batch_delete')->to('notes#api_batch_delete');
     $auth->post('/notes/api/upload')->to('notes#api_upload');
     $auth->post('/notes/api/viewport')->to('notes#api_save_viewport');
     $auth->get('/notes/serve/:note_id')->to('notes#serve_blob');
@@ -644,12 +647,12 @@ sub startup {
     $family->get('/room/api/state')->to('room#api_state');
     $family->post('/room/api/upload')->to('room#api_upload');
     $family->get('/room/serve/:id')->to('room#serve');
-    $admin_ns->post('/room/api/update_status')->to('room#api_update_status');
+    $admin->post('/room/api/update_status')->to('room#api_update_status');
     $family->post('/room/api/delete/:id')->to('room#api_delete');
-    $admin_ns->post('/room/api/save_config')->to('room#api_save_config');
-    $admin_ns->post('/room/api/trim')->to('room#api_trim');
-    $admin_ns->post('/room/api/add_blackout')->to('room#api_add_blackout');
-    $admin_ns->post('/room/api/delete_blackout')->to('room#api_delete_blackout');
+    $admin->post('/room/api/save_config')->to('room#api_save_config');
+    $admin->post('/room/api/trim')->to('room#api_trim');
+    $admin->post('/room/api/add_blackout')->to('room#api_add_blackout');
+    $admin->post('/room/api/delete_blackout')->to('room#api_delete_blackout');
 
     # --- Medication Tracker Routes ---
     $family->get('/medication')->to('medication#index');
@@ -658,8 +661,8 @@ sub startup {
     $family->post('/medication/api/edit/:id')->to('medication#edit');
     $family->post('/medication/api/reset/:id')->to('medication#reset');
     $family->post('/medication/api/delete/:id')->to('medication#delete');
-    $admin_ns->post('/medication/api/manage/update/:id')->to('medication#update_registry');
-    $admin_ns->post('/medication/api/manage/delete/:id')->to('medication#delete_registry');
+    $admin->post('/medication/api/manage/update/:id')->to('medication#update_registry');
+    $admin->post('/medication/api/manage/delete/:id')->to('medication#delete_registry');
 
     # --- Meal Planner Routes ---
     $family->get('/meals')->to('meals#index');
@@ -668,11 +671,11 @@ sub startup {
     $family->post('/meals/api/vote')->to('meals#api_vote');
     $family->post('/meals/api/edit_suggestion')->to('meals#api_edit_suggestion');
     $family->post('/meals/api/delete_suggestion')->to('meals#api_delete_suggestion');
-    $admin_ns->post('/meals/api/admin/lock')->to('meals#api_admin_lock');
-    $admin_ns->get('/meals/api/vault')->to('meals#api_get_vault_data');
-    $admin_ns->post('/meals/api/vault/add')->to('meals#api_add_meal_to_vault');
-    $admin_ns->post('/meals/api/vault/update')->to('meals#api_update_meal_in_vault');
-    $admin_ns->post('/meals/api/vault/delete')->to('meals#api_delete_meal_from_vault');
+    $admin->post('/meals/api/admin/lock')->to('meals#api_admin_lock');
+    $admin->get('/meals/api/vault')->to('meals#api_get_vault_data');
+    $admin->post('/meals/api/vault/add')->to('meals#api_add_meal_to_vault');
+    $admin->post('/meals/api/vault/update')->to('meals#api_update_meal_in_vault');
+    $admin->post('/meals/api/vault/delete')->to('meals#api_delete_meal_from_vault');
 
     # --- Broadcast Routes ---
     $family->get('/broadcast')->to('broadcast#index');
@@ -699,18 +702,18 @@ sub startup {
     $family->get('/chores')->to('chores#index');
     $family->get('/chores/api/state')->to('chores#api_state');
     $family->post('/chores/api/complete')->to('chores#api_complete');
-    $admin_ns->post('/chores/api/add')->to('chores#api_add');
-    $admin_ns->post('/chores/api/revoke')->to('chores#api_revoke');
-    $admin_ns->post('/chores/api/delete')->to('chores#api_delete');
+    $admin->post('/chores/api/add')->to('chores#api_add');
+    $admin->post('/chores/api/revoke')->to('chores#api_revoke');
+    $admin->post('/chores/api/delete')->to('chores#api_delete');
 
     # --- Weather Board Routes ---
     $auth->get('/weather')->to('weather#index');
     $auth->post('/weather/api/state')->to('weather#api_state');
-    $admin_ns->post('/weather/api/geocode')->to('weather#api_geocode');
-    $admin_ns->post('/weather/api/add')->to('weather#api_add');
-    $admin_ns->post('/weather/api/update/:id')->to('weather#api_update');
-    $admin_ns->post('/weather/api/delete/:id')->to('weather#api_delete');
-    $admin_ns->post('/weather/api/reorder')->to('weather#api_reorder');
+    $admin->post('/weather/api/geocode')->to('weather#api_geocode');
+    $admin->post('/weather/api/add')->to('weather#api_add');
+    $admin->post('/weather/api/update/:id')->to('weather#api_update');
+    $admin->post('/weather/api/delete/:id')->to('weather#api_delete');
+    $admin->post('/weather/api/reorder')->to('weather#api_reorder');
 }
 
 1;
