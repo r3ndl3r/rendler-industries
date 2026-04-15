@@ -28,8 +28,7 @@ const CONFIG = {
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
     setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
-    setupDropZone();
-    
+
     // Global modal closure integration
     setupGlobalModalClosing(['modal-overlay'], [closeUploadModal, closePhotoModal, closeSettingsModal]);
 });
@@ -520,17 +519,26 @@ function renderUploadPreviews() {
         uploadBtn.classList.remove('hidden');
         previewContainer.classList.add('file-previews');
         UPLOAD_QUEUE.forEach((file, index) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const div = document.createElement('div');
-                div.className = 'upload-preview-item';
-                div.innerHTML = `
-                    <img src="${e.target.result}" class="preview-thumb">
-                    <button type="button" class="preview-remove" onclick="removeFromQueue(${index})">&times;</button>
-                `;
-                previewContainer.appendChild(div);
-            };
-            reader.readAsDataURL(file);
+            const objectUrl = URL.createObjectURL(file);
+            const div = document.createElement('div');
+            div.className = 'upload-preview-item';
+
+            const img = document.createElement('img');
+            img.className = 'preview-thumb';
+            img.src = objectUrl;
+            // Release memory once the image has loaded or failed
+            img.onload  = () => URL.revokeObjectURL(objectUrl);
+            img.onerror = () => { URL.revokeObjectURL(objectUrl); img.alt = file.name; };
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'preview-remove';
+            btn.textContent = '×';
+            btn.onclick = () => removeFromQueue(index);
+
+            div.appendChild(img);
+            div.appendChild(btn);
+            previewContainer.appendChild(div);
         });
     } else {
         uploadBtn.classList.add('hidden');
@@ -755,18 +763,28 @@ function confirmDeleteSubmission(id) {
 }
 
 /**
- * Initializes file selection logic and previews.
+ * Opens a fresh camera-capture input. A new element is created each time to
+ * prevent iOS from caching capture state. Appended to body, triggered, then
+ * self-removes after selection.
  */
-function setupDropZone() {
-    const input = document.getElementById('roomFiles');
-    if (!input) return;
+function openRoomFileInput() {
+    const input = document.createElement('input');
+    input.type   = 'file';
+    input.name   = 'files[]';
+    input.accept = 'image/*';
+    input.setAttribute('capture', 'environment');
+    input.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0;';
 
     input.onchange = () => {
         const files = Array.from(input.files);
         if (files.length > 0) {
             UPLOAD_QUEUE = [...UPLOAD_QUEUE, ...files];
             renderUploadPreviews();
-            input.value = ''; 
         }
+        input.remove();
     };
+
+    document.body.appendChild(input);
+    input.click();
 }
+
