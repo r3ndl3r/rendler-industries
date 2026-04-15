@@ -545,7 +545,7 @@ function confirmResetMedication(id) {
                 const recipients = Array.from(document.querySelectorAll('input[name="reminder_recipients[]"]:checked')).map(cb => cb.value);
                 payload.reminder_recipients = recipients.join(',');
                 payload.reminder_title = `💊 Meds: ${targetLog.medication_name} for ${targetLog.family_member}`;
-                payload.reminder_desc = `Follow-up dose reminder. http://rendler.org/medication`;
+                payload.reminder_desc = `Follow-up dose reminder.`;
             }
 
             const result = await apiPost(`/medication/api/reset/${id}`, payload);
