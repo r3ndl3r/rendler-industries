@@ -1,0 +1,140 @@
+<%# /templates/admin/notifications/templates.html.ep %>
+
+% layout 'default', hide_navbar_title => 1, favicon => '✉️';
+% title 'Notification Templates';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/admin/notifications.css">
+    <script src="/js/admin/notifications.js" defer></script>
+% end
+
+<div class="app-container">
+    <div class="header-bar">
+        <h1>✉️ <span>Notification Templates</span></h1>
+        <div class="manage-actions">
+            <a href="/admin/notifications/logs" class="action-btn">
+                📜 View Logs
+            </a>
+        </div>
+    </div>
+
+    <p class="page-subtitle">Customize automated message wording and tags.</p>
+
+    <%# Active Templates %>
+    <div class="ledger-section mb-4">
+        <div class="ledger-section-header">
+            <h3>✅ Active Contracts</h3>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Description</th>
+                        <th>Available Tags</th>
+                        <th>Last Updated</th>
+                        <th class="col-actions">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="active-templates-body">
+                    <tr>
+                        <td colspan="5">
+                            <div class="component-loading">
+                                <div class="loading-scan-line"></div>
+                                <span class="loading-icon-pulse">✉️</span>
+                                <p class="loading-label">Loading Templates...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <%# Deprecated Templates (collapsible) %>
+    <div class="ledger-section">
+        <div class="ledger-section-header collapsible-header" onclick="toggleDeprecated()">
+            <h3>📦 Deprecated Templates</h3>
+            <span id="deprecated-toggle-icon" class="toggle-icon">▶</span>
+        </div>
+        <div id="deprecated-section" class="collapsed-section">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Key</th>
+                            <th>Description</th>
+                            <th>Last Updated</th>
+                            <th class="col-actions">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deprecated-templates-body">
+                        <tr>
+                            <td colspan="4" class="empty-row">No deprecated templates.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%# Editor Modal %>
+<div id="editorModal" class="modal-overlay">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3>✏️ Edit Template</h3>
+            <span class="close-btn" onclick="closeEditorModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="edit-id">
+
+            <div class="modal-group">
+                <label>Template Key</label>
+                <div id="edit-key-display" class="template-key-display"></div>
+                <p id="edit-desc-display" class="template-desc-display"></p>
+            </div>
+
+            <div class="modal-group">
+                <label>Available Tags</label>
+                <div id="tag-chips-container" class="tag-chips-container"></div>
+                <p class="help-text">Click a tag to insert it at the cursor position.</p>
+            </div>
+
+            <div class="modal-group">
+                <label for="edit-subject">Subject Template (Email/Gotify Only)</label>
+                <input type="text" class="game-input" id="edit-subject" placeholder="Enter subject...">
+            </div>
+
+            <div class="modal-group">
+                <label for="edit-body">Body Template</label>
+                <textarea class="game-input" id="edit-body" rows="5" placeholder="Enter body content..."></textarea>
+            </div>
+
+            <div class="modal-group mt-4">
+                <label>Live Preview (Discord Style)</label>
+                <div class="discord-preview-container">
+                    <div class="discord-message-row">
+                        <div class="discord-avatar">
+                            <img src="/files/serve/53" alt="Bot">
+                        </div>
+                        <div class="discord-content">
+                            <div class="discord-header">
+                                <span class="discord-name">Family Bot</span>
+                                <span class="discord-bot-tag">BOT</span>
+                                <span class="discord-time">Today at <span id="preview-time"></span></span>
+                            </div>
+                            <div id="preview-body" class="discord-message"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions modal-actions-center">
+            <button type="button" class="btn-secondary" onclick="closeEditorModal()">Cancel</button>
+            <button type="button" class="btn-primary" id="saveTemplateBtn">
+                💾 Save
+            </button>
+        </div>
+    </div>
+</div>
