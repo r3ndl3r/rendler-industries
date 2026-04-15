@@ -78,12 +78,13 @@ sub api_add {
         # Notify the child using the approved semantic format
         my $formatted_amount = ($amount > 0 ? "+" : "") . $amount;
         my $header = $amount > 0 ? "✨ **Points Reward** ✨" : "⚠️ **Points Deduction** ⚠️";
-        my $subject = $amount > 0 ? "Points Reward" : "Points Deduction";
-        
-        my $notification_text = "$header\n\n🪙 **$formatted_amount pts** 🪙\n\n**Reason:** $reason";
         
         # Audit Integrity: Include current_user_id for event attribution
-        $c->notify_user($user_id, $notification_text, $subject, $c->current_user_id);
+        $c->notify_templated($user_id, 'points_adjustment', { 
+            header => $header, 
+            amount => $formatted_amount, 
+            reason => $reason 
+        }, $c->current_user_id);
 
         # Refresh administrative state for UI synchronization
         my $balances = $c->db->get_child_balances();
