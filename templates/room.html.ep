@@ -138,13 +138,12 @@
         <form id="uploadForm" onsubmit="handleUpload(event)">
             <div class="modal-body">
                 <div class="file-drop-area" id="dropZone">
-                    <input type="file" id="roomFiles" name="files[]" multiple accept="image/*" class="hidden">
                     <div id="filePreviews" class="file-previews"></div>
                 </div>
             </div>
             <div class="modal-actions modal-actions-center">
-                <button type="button" class="btn-primary btn-small" onclick="document.getElementById('roomFiles').click()">
-                    ➕ Add Photo
+                <button type="button" class="btn-primary btn-small" onclick="openRoomFileInput()">
+                    📷 Take Photo
                 </button>
                 <button type="submit" id="uploadBtn" class="btn-primary hidden">
                     ✅ Submit All
