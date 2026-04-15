@@ -253,6 +253,50 @@ sub api_save_geometry {
     });
 }
 
+# Persists coordinate and metadata changes for a group of notes in a single atomic transaction.
+# Route: POST /notes/api/batch_geometry
+sub api_batch_geometry {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id = $c->current_user_id();
+    my $sid     = $c->req->headers->header('X-Notes-Session-ID') // $c->param('session_id') // '';
+    my $data    = $c->req->json // {};
+
+    my $canvas_id = $data->{canvas_id} // $c->param('canvas_id');
+    my $updates   = $data->{updates}   // $c->param('updates');
+
+    unless (defined $canvas_id && $canvas_id =~ /\A\d+\z/) {
+        return $c->render(json => { success => 0, error => 'Invalid canvas_id' }, status => 400);
+    }
+
+    # Accept pre-decoded array (JSON body) or a JSON string (form-encoded fallback)
+    if (defined $updates && !ref($updates)) {
+        eval { $updates = Mojo::JSON::decode_json($updates) };
+    }
+    unless ($updates && ref($updates) eq 'ARRAY') {
+        return $c->render(json => { success => 0, error => 'Invalid payload format' }, status => 400);
+    }
+
+    if (scalar @$updates > 100) {
+        return $c->render(json => { success => 0, error => 'Batch size exceeds limit (100)' }, status => 400);
+    }
+
+    my $result = $c->db->update_batch_geometry($updates, $user_id, $sid);
+
+    if ($result->{success}) {
+        $c->render(json => {
+            success       => 1,
+            last_mutation => $c->db->get_board_mutation_time($canvas_id)
+        });
+    } else {
+        $c->render(json => {
+            success => 0,
+            error   => $result->{error} // 'Partial or total update failure',
+        });
+    }
+}
+
 # Permanently removes a note record.
 # Route: POST /notes/api/delete
 # Parameters: id, canvas_id
@@ -285,6 +329,65 @@ sub api_delete {
         notes         => $c->db->get_user_notes($user_id, $cid, $unlocked_ids),
         last_mutation => $c->db->get_board_mutation_time($cid)
     });
+}
+
+# Processes a bulk deletion request for a group of lassoed notes.
+# Route: POST /notes/api/batch_delete
+# Parameters: ids (JSON Array), canvas_id (Optional)
+sub api_batch_delete {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id = $c->current_user_id();
+    my $sid     = $c->req->headers->header('X-Notes-Session-ID') // $c->param('session_id') // '';
+    my $data    = $c->req->json // {};
+    my $ids     = $data->{ids} // $c->param('ids');
+    my $canvas_id = $data->{canvas_id} // $c->param('canvas_id');
+
+    # Accept pre-decoded array (JSON body) or a JSON string (form-encoded fallback)
+    if (defined $ids && !ref($ids)) {
+        eval { $ids = Mojo::JSON::decode_json($ids) };
+    }
+    unless ($ids && ref($ids) eq 'ARRAY' && @$ids) {
+        return $c->render(json => { success => 0, error => 'Invalid or empty IDs list' }, status => 400);
+    }
+
+    # Resolution: Collect all distinct canvas IDs for the requested notes and
+    # verify each one is accessible and not locked before proceeding.
+    my %seen_canvas;
+    for my $note_id (@$ids) {
+        my $cid = $c->db->get_canvas_for_note_id($note_id, $user_id);
+        unless ($cid) {
+            return $c->render(json => { success => 0, error => "Note #$note_id not found or access denied" }, status => 403);
+        }
+        $seen_canvas{$cid} = 1;
+    }
+    for my $cid (keys %seen_canvas) {
+        if ($c->is_canvas_locked($cid)) {
+            return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
+        }
+    }
+    # Use the first resolved canvas for post-delete side effects if not explicitly provided
+    $canvas_id //= (keys %seen_canvas)[0];
+
+    my $result = $c->db->delete_batch_notes($ids, $user_id, $sid);
+
+    if ($result->{success}) {
+        $c->refresh_canvas_lock($canvas_id) if $canvas_id;
+        
+        my $unlocked_ids = $c->_get_unlocked_ids;
+        $c->render(json => {
+            success       => 1,
+            deleted_count => scalar(@{$result->{deleted_ids} // []}),
+            notes         => $c->db->get_user_notes($user_id, $canvas_id, $unlocked_ids),
+            last_mutation => $c->db->get_board_mutation_time($canvas_id)
+        });
+    } else {
+        $c->render(json => {
+            success => 0,
+            error   => $result->{error} // 'Partial or total deletion failure',
+        });
+    }
 }
 
 # Acquires an exclusive collaborative lock.
