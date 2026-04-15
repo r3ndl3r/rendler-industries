@@ -179,40 +179,84 @@ const POSITION_SYNC_PROMISES = new Map(); // Global registry for debounced settl
 
 /**
  * Note Deletion Bridge (Soft-Delete)
- * Moves a note to the Recycle Bin rather than immediate destruction.
- * @param {number} id - Target note ID.
+ * Moves a note or a group of selected notes to the Recycle Bin.
+ * @param {number|null} id - Target note ID (or null if deleting current selection).
  */
 function deleteNote(id) {
+    const isBulk = !id && STATE.selectedNoteIds.size > 0;
+    const targetIds = isBulk ? Array.from(STATE.selectedNoteIds) : [id];
+    const count = targetIds.length;
+
+    if (count === 0) return;
+
     showConfirmModal({
-        title: 'Delete Note',
+        title: count > 1 ? `Delete ${count} Notes` : 'Delete Note',
         icon: '🗑️',
-        message: 'Are you sure you want to remove this sticky note? It will be moved to the Recycle Bin.',
+        message: count > 1 
+            ? `Are you sure you want to move these ${count} sticky notes to the Recycle Bin?`
+            : 'Are you sure you want to remove this sticky note? It will be moved to the Recycle Bin.',
         danger: true,
         confirmText: 'DELETE',
         confirmIcon: '🗑️',
         hideCancel: true,
         onConfirm: async () => {
-            const sid = String(id);
-            // Atomic Cleanup: Flush any pending positional syncs before deletion
-            if (POSITION_SYNC_TIMERS.has(sid)) {
-                clearTimeout(POSITION_SYNC_TIMERS.get(sid));
-                POSITION_SYNC_TIMERS.delete(sid);
-                POSITION_SYNC_PROMISES.delete(sid);
-                if (typeof window.removeActiveSync === 'function') window.removeActiveSync(sid);
-            }
-
-            const res = await NoteAPI.post('/notes/api/delete', { id: id, canvas_id: STATE.canvas_id });
-            if (res && res.success) {
-                if (res.notes && typeof window.mergeNoteState === 'function') {
-                    window.mergeNoteState(res.notes);
-                } else if (res.notes) {
-                    STATE.notes = res.notes;
+            showLoadingOverlay(count > 1 ? `Moving ${count} notes...` : 'Deleting...');
+            
+            try {
+                // Flush all pending position syncs before any delete to prevent stale-position saves racing the deletes
+                for (const tid of targetIds) {
+                    const sid = String(tid);
+                    if (POSITION_SYNC_TIMERS.has(sid)) {
+                        clearTimeout(POSITION_SYNC_TIMERS.get(sid));
+                        POSITION_SYNC_TIMERS.delete(sid);
+                        POSITION_SYNC_PROMISES.delete(sid);
+                        if (typeof window.removeActiveSync === 'function') window.removeActiveSync(sid);
+                    }
                 }
-                if (!STATE.last_mutation || res.last_mutation > STATE.last_mutation) {
-                STATE.last_mutation = res.last_mutation;
-            }
-                if (typeof renderUI === 'function') renderUI();
-                showToast('Note moved to Recycle Bin', 'success');
+
+                let res;
+                try {
+                    if (isBulk) {
+                        // Atomic Batch Path: Execute a single transaction for all selected notes.
+                        res = await NoteAPI.post('/notes/api/batch_delete', { 
+                            ids: JSON.stringify(targetIds), 
+                            canvas_id: STATE.canvas_id 
+                        });
+                    } else {
+                        // Standard Path: Individual note deletion
+                        res = await NoteAPI.post('/notes/api/delete', { 
+                            id: targetIds[0], 
+                            canvas_id: STATE.canvas_id 
+                        });
+                    }
+                } catch (err) {
+                    console.error(`[deleteNote] network failure:`, err);
+                    showToast("Network error during deletion", "error");
+                    return;
+                }
+
+                if (res && res.success) {
+                    if (res.notes && typeof window.mergeNoteState === 'function') {
+                        window.mergeNoteState(res.notes);
+                    } else if (res.notes) {
+                        STATE.notes = res.notes;
+                    }
+                    if (!STATE.last_mutation || res.last_mutation > STATE.last_mutation) {
+                        STATE.last_mutation = res.last_mutation;
+                    }
+
+                    if (isBulk) {
+                        STATE.selectedNoteIds.clear();
+                        showToast(`${count} notes moved to Recycle Bin`, 'success');
+                    } else {
+                        showToast('Note moved to Recycle Bin', 'success');
+                    }
+                    if (typeof renderUI === 'function') renderUI();
+                } else if (res && res.error) {
+                    showToast(`Deletion failed: ${res.error}`, 'error');
+                }
+            } finally {
+                hideLoadingOverlay();
             }
         }
     });
@@ -390,7 +434,73 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
     }
 }
 
+/**
+ * Atomic Synchronization (Batch): Persists coordinate changes for multiple notes.
+ * Used at the conclusion of a Lasso/Marquee bulk move.
+ * @param {Array|Set} ids - Collection of note IDs involved in the move.
+ * @returns {Promise<Object>} - The backend response.
+ */
+async function syncBatchNotePositions(ids) {
+    if (!ids) return { success: 1 };
+    const idsArray = Array.isArray(ids) ? ids : Array.from(ids);
+    if (idsArray.length === 0) return { success: 1 };
+    ids = idsArray;
 
+    const updates = [];
+    const notesMap = new Map(STATE.notes.map(n => [String(n.id), n]));
+    ids.forEach(id => {
+        const sid  = String(id);
+        const el   = document.getElementById(`note-${sid}`);
+        const note = notesMap.get(sid);
+        if (!el || !note) return;
+
+        const parsedX = parseInt(el.style.left, 10);
+        const parsedY = parseInt(el.style.top, 10);
+        const parsedZ = parseInt(el.style.zIndex, 10);
+        updates.push({
+            id: id,
+            x:        !isNaN(parsedX) ? parsedX : (note.x       ?? 0),
+            y:        !isNaN(parsedY) ? parsedY : (note.y       ?? 0),
+            z_index:  !isNaN(parsedZ) ? parsedZ : (note.z_index ?? 1),
+            layer_id: note.layer_id ?? 1
+        });
+    });
+
+    if (updates.length === 0) return { success: 1 };
+
+    updates.forEach(u => {
+        const el = document.getElementById(`note-${u.id}`);
+        if (el) el.classList.add('pending');
+        if (typeof window.addActiveSync === 'function') window.addActiveSync(String(u.id));
+    });
+
+    try {
+        const res = await NoteAPI.post('/notes/api/batch_geometry', {
+            updates:    JSON.stringify(updates),
+            canvas_id:  STATE.canvas_id,
+            session_id: STATE.sessionId
+        });
+
+        if (res && res.success) {
+            if (!STATE.last_mutation || res.last_mutation > STATE.last_mutation) {
+                STATE.last_mutation = res.last_mutation;
+            }
+            return res;
+        } else {
+            throw new Error(res?.error || 'Batch sync failed');
+        }
+    } catch (e) {
+        console.error(`[syncBatchNotePositions] failure:`, e);
+        showToast("Group move failed to save", "error");
+        return { success: 0, error: e.message };
+    } finally {
+        ids.forEach(id => {
+            const el = document.getElementById(`note-${id}`);
+            if (el) el.classList.remove('pending');
+            if (typeof window.removeActiveSync === 'function') window.removeActiveSync(String(id));
+        });
+    }
+}
 
 /**
  * Recycle Bin Fetch
