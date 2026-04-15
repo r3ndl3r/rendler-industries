@@ -104,14 +104,16 @@ sub api_suggest {
             $day_text = "tomorrow";
         }
 
-        my $msg = "🍳 NEW MEAL SUGGESTION: $username suggested '$meal_name' for $day_text!\n\nhttps://rendler.org/meals";
-        
-        # Dispatch notifications using non-blocking app-wide UA helper
+        # Broadcast new suggestion to the family via templated notifications
         my $family_users = $c->db->get_family_users();
+
         foreach my $u (@$family_users) {
-            if ($u->{discord_id} && $u->{id} != $uid) {
-                $c->send_discord_dm($u->{discord_id}, $msg, $u->{id});
-            }
+            next if $u->{id} == $uid; # Don't notify the suggester
+            $c->notify_templated($u->{id}, 'meals_new_suggestion', {
+                user => $username,
+                meal => $meal_name,
+                day  => $day_text
+            }, $uid);
         }
     }
 
