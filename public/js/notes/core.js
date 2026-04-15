@@ -31,12 +31,17 @@ const STATE = {
     isInitializing: false, // Prevents save-during-load race conditions
     maxZ:           1,     // Global Depth Tracking: Accelerates "Bring to Front" actions to O(1)
     viewportDirty:  false, // Mutation Guard: Prevents heartbeat from overwriting unsaved local scrolls
+    selectedNoteIds: new Set(), // Bulk Operations: Tracks notes captured by the Marquee/Lasso
+    lassoNoteCache:  null,      // Performance: Cached note rects for marquee hit-testing
     pickedNoteId:   null,  // Active 'Pick & Place' record
     lastPickTime:   null,  // Interaction Guard: Prevent immediate drop re-triggering
     originalPos:    null,  // Restore-point for 'Escape-to-Cancel'
+    groupBaseline:  null,  // Snapshot of positions for bulk dragging
     dragOffset:     { x: 0, y: 0 }, // Dynamic delta for 'Pick & Place'
     isPanning:      false,          // Drag-to-Scroll State
     panStart:       { x:0, y:0, scrollX:0, scrollY:0 },
+    isLassoing:     false,          // Bulk Selection State
+    lassoStart:     { x:0, y:0 },  // Marquee Anchor (Absolute Board Coords)
     last_mutation:  null,           // Synchronization Baseline
     heartbeatTimer: null,           // Active Polling Reference
     heartbeatController: null,      // AbortController: Standardizes request cancellation
@@ -350,12 +355,25 @@ async function initNotes() {
     
     // 3. Synchronization: Establish the reactive heartbeat after initial hydration
     setupHeartbeat();
+
+    // Marquee Element: Injected once at startup; visibility toggled via the 'show' class during lasso.
+    if (STATE.canvasEl && !document.getElementById('lasso-marquee')) {
+        const marquee = document.createElement('div');
+        marquee.id = 'lasso-marquee';
+        marquee.className = 'selection-marquee';
+        STATE.canvasEl.appendChild(marquee);
+    }
+
     // Event Delegation for Canvas Interactions
     const canvas  = STATE.canvasEl;
     const wrapper = STATE.wrapperEl;
     if (canvas && wrapper) {
         if (typeof handleCanvasDoubleClick === 'function') canvas.addEventListener('dblclick', handleCanvasDoubleClick);
         if (typeof handleCanvasMouseDown === 'function') canvas.addEventListener('mousedown', handleCanvasMouseDown);
+        // Suppress browser context menu so right-click drag can drive the lasso without interruption.
+        canvas.addEventListener('contextmenu', e => {
+            if (e.target === STATE.canvasEl || e.target === STATE.wrapperEl) e.preventDefault();
+        });
         if (typeof handleCanvasWheel === 'function') wrapper.addEventListener('wheel', handleCanvasWheel, { passive: false });
 
         // Mobile Support: Unified Touch Delegation (Registered once during init)
