@@ -88,10 +88,11 @@ sub api_upload {
         }
         
         # Alert parents of new submission
-        my $admin_msg = "🧹 **New Room Submission** 🧹\n\n**$username** has uploaded photos for today's room check.\n\nReview: https://rendler.org/room";
         my $admins = $c->db->get_admins();
         foreach my $admin (@$admins) {
-            $c->notify_user($admin->{id}, $admin_msg, "Room Review Needed");
+            $c->notify_templated($admin->{id}, 'room_review_needed', { 
+                user => $username 
+            }, $c->current_user_id);
         }
     };
     if ($@) {
@@ -167,7 +168,7 @@ sub _dispatch_consolidated_feedback {
     my $submissions = $c->db->get_room_status_for_date($target_user_id, $date);
     return unless @$submissions;
 
-    my $msg = "🧹 **Room Feedback for $display_date** 🧹\n\n";
+    my $msg = "";
     my $has_failures = 0;
     
     foreach my $sub (@$submissions) {
@@ -186,9 +187,10 @@ sub _dispatch_consolidated_feedback {
         $msg .= "🎉 Everything looks great! Clean streak continued!";
     }
 
-    $msg .= "\n\nView: https://rendler.org/room";
-
-    $c->notify_user($target_user_id, $msg, "Room Feedback: $display_date");
+    $c->notify_templated($target_user_id, 'room_feedback', { 
+        date     => $display_date, 
+        feedback => $msg 
+    }, $c->current_user_id);
 
     # Reset the reminder cooldown so the recurring reminder does not fire
     # immediately after feedback — the user has just been notified.
