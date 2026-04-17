@@ -1,4 +1,4 @@
-// /public/js/admin/notifications.js
+// /public/js/admin/notifications/templates.js
 
 /**
  * Notification Templates Management (SPA)
@@ -159,7 +159,7 @@ function renderTemplates() {
  * @returns {string} HTML content.
  */
 function generateTableRowsHtml(templates, isActive) {
-    const colCount = isActive ? 5 : 4;
+    const colCount = isActive ? 4 : 3;
     if (templates.length === 0) {
         return `<tr><td colspan="${colCount}" class="empty-row">No templates found.</td></tr>`;
     }
@@ -186,22 +186,24 @@ function generateTableRowsHtml(templates, isActive) {
         if (isActive) {
             html += `
                 <tr>
-                    <td><code class="template-key-code">${escHtml(t.template_key)}</code></td>
-                    <td class="text-muted-sm">${escHtml(t.description)}</td>
-                    <td>${renderTagBadges(t.available_tags)}</td>
-                    <td class="text-muted-sm">${formatTimestamp(t.updated_at)}</td>
+                    <td data-label="Key"><code class="template-key-code">${escHtml(t.template_key)}</code></td>
+                    <td data-label="Description" class="text-muted-sm">${escHtml(t.description)}</td>
+                    <td data-label="Tags">${renderTagBadges(t.available_tags)}</td>
                     <td class="col-actions">
-                        <button class="action-btn btn-sm" onclick="openEditor(${t.id})">📝 Edit</button>
+                        <button class="btn-icon-edit" title="Edit Template" onclick="openEditor(${t.id})">
+                            📝
+                        </button>
                     </td>
                 </tr>`;
         } else {
             html += `
                 <tr class="row-deprecated">
-                    <td><code>${escHtml(t.template_key)}</code></td>
-                    <td class="text-muted-sm">${escHtml(t.description)}</td>
-                    <td class="text-muted-sm">${formatTimestamp(t.updated_at)}</td>
+                    <td data-label="Key"><code>${escHtml(t.template_key)}</code></td>
+                    <td data-label="Description" class="text-muted-sm">${escHtml(t.description)}</td>
                     <td class="col-actions">
-                        <button class="action-btn btn-sm" onclick="openEditor(${t.id})">📝 Edit</button>
+                        <button class="btn-icon-edit" title="Edit Template" onclick="openEditor(${t.id})">
+                            📝
+                        </button>
                     </td>
                 </tr>`;
         }
@@ -220,16 +222,6 @@ function renderTagBadges(tags) {
     return tags.split(/,\s*/).map(tag =>
         `<span class="tag-badge">${escHtml(tag)}</span>`
     ).join('');
-}
-
-/**
- * Formats a SQL timestamp into a cleaner string for display.
- * @param {string} ts - The raw timestamp string.
- * @returns {string} The formatted timestamp.
- */
-function formatTimestamp(ts) {
-    if (!ts) return '-';
-    return ts.replace(/:\d+$/, '').replace('T', ' ');
 }
 
 /**

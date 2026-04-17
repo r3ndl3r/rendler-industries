@@ -4,8 +4,8 @@
 % title 'Notification Templates';
 
 % content_for 'head' => begin
-    <link rel="stylesheet" href="/css/admin/notifications.css">
-    <script src="/js/admin/notifications.js" defer></script>
+    <link rel="stylesheet" href="/css/admin/notifications/templates.css">
+    <script src="/js/admin/notifications/templates.js" defer></script>
 % end
 
 <div class="app-container">
@@ -32,13 +32,12 @@
                         <th>Key</th>
                         <th>Description</th>
                         <th>Available Tags</th>
-                        <th>Last Updated</th>
                         <th class="col-actions">Action</th>
                     </tr>
                 </thead>
                 <tbody id="active-templates-body">
                     <tr>
-                        <td colspan="5">
+                        <td colspan="4">
                             <div class="component-loading">
                                 <div class="loading-scan-line"></div>
                                 <span class="loading-icon-pulse">✉️</span>
@@ -64,13 +63,12 @@
                         <tr>
                             <th>Key</th>
                             <th>Description</th>
-                            <th>Last Updated</th>
                             <th class="col-actions">Action</th>
                         </tr>
                     </thead>
                     <tbody id="deprecated-templates-body">
                         <tr>
-                            <td colspan="4" class="empty-row">No deprecated templates.</td>
+                            <td colspan="3" class="empty-row">No deprecated templates.</td>
                         </tr>
                     </tbody>
                 </table>
