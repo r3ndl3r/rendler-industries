@@ -1299,7 +1299,7 @@ function handleCanvasMouseDown(e) {
 
     // 4. Pick & Place Detection: If the user clicks a note's title bar/drag handle
     const handle = e.target.closest('.note-drag-handle-container');
-    const isAction = e.target.closest('[data-action], .note-check-trigger, .note-link-trigger, .reel-action-btn, .btn-icon-drawer');
+    const isAction = e.target.closest('.note-check-trigger, .note-link-trigger, .reel-action-btn, .hero-action-btn, .btn-icon-drawer, [data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn');
     const isTitle = e.target.closest('.note-title-slot, .inline-title-input');
 
     if (handle && !isAction && !isTitle && e.button === 0) {
@@ -1357,10 +1357,13 @@ function handleCanvasMouseDown(e) {
         // Off-canvas escape hatch: capture mouseup at document level so a
         // release outside the viewport always terminates the lasso.
         document.addEventListener('mouseup', handleCanvasMouseUp, { once: true });
-    } else if (e.button === 0 && (e.target === STATE.canvasEl || e.target === STATE.wrapperEl)) {
+    } else if (e.button === 0 && !handle && !isAction && !isTitle && 
+               !e.target.closest('input, textarea, [contenteditable], select, a[href], a[data-action], button:not([data-pan-passthrough]), .note-check-trigger, .note-link-trigger, [data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn')) {
         // --- 5B. Standard Panning — Left-Click on Background ---
-        // UX Consistency: Clicking the background clears any active lasso selection.
-        if (STATE.selectedNoteIds && STATE.selectedNoteIds.size > 0) {
+        // UX Consistency: Only clear lasso selection when clicking true background,
+        // not when panning originates from a note body (preserves multi-selection).
+        const onBackground = e.target === STATE.canvasEl || e.target === STATE.wrapperEl;
+        if (onBackground && STATE.selectedNoteIds && STATE.selectedNoteIds.size > 0) {
             resetLasso(true);
         }
 
@@ -1458,67 +1461,7 @@ function handleCanvasMouseUp() {
     document.body.style.cursor = '';
 }
 
-/**
- * High-Speed Bridge: TouchStart -> MouseDown mapping
- * Single-finger maps to left-click (panning / pick-up).
- * Two-finger touch simulates right-click to activate lasso.
- */
-function handleCanvasTouchStart(e) {
-    if (e.touches.length === 1) {
-        const touch = e.touches[0];
-        const simulated = {
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            target: e.target,
-            button: 0,
-            shiftKey: false,
-            detail: 1,
-            preventDefault: () => e.preventDefault(),
-            stopPropagation: () => e.stopPropagation()
-        };
-        handleCanvasMouseDown(simulated);
-    } else if (e.touches.length === 2) {
-        const touch = e.touches[0];
-        const simulated = {
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            target: e.target,
-            button: 2,
-            shiftKey: false,
-            detail: 1,
-            preventDefault: () => e.preventDefault(),
-            stopPropagation: () => e.stopPropagation()
-        };
-        handleCanvasMouseDown(simulated);
-    }
-}
 
-/**
- * High-Speed Bridge: TouchMove -> MouseMove mapping
- */
-function handleCanvasTouchMove(e) {
-    if (e.touches.length === 1) {
-        const touch = e.touches[0];
-        const simulated = {
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            target: e.target,
-            button: 0,
-            shiftKey: e.shiftKey || false,
-            preventDefault: () => e.preventDefault(),
-            stopPropagation: () => e.stopPropagation()
-        };
-        handleCanvasMouseMove(simulated);
-    }
-}
-
-/**
- * High-Speed Bridge: TouchEnd -> MouseUp mapping
- */
-function handleCanvasTouchEnd(e) {
-    // touchend carries no active touches[0]; coordinates are read from changedTouches instead
-    handleCanvasMouseUp();
-}
 
 /**
  * Atomic Reset for Bulk Selection State.
@@ -2587,8 +2530,17 @@ function handleCanvasTouchStart(e) {
         // Single Finger: Panning (Matches handleCanvasMouseDown)
         const touch = e.touches[0];
         
-        // Audit: Ensure we aren't touching a note's interactive content
-        if (e.target.closest('.sticky-note')) return;
+        // Audit: Ensure we aren't touching a note's interactive controls (buttons, handles, inputs)
+        const isInteractive = e.target.closest(
+            '.note-drag-handle-container, .note-resize-handle, ' +
+            '.btn-icon, .btn-icon-edit, .btn-icon-link, .btn-icon-upload, .btn-icon-move, ' +
+            '.btn-icon-level-copy, .btn-icon-view, .btn-icon-delete, .note-id-hash, ' +
+            '.note-check-trigger, .note-link-trigger, .reel-action-btn, .hero-action-btn, ' +
+            'input, textarea, select, [contenteditable], ' +
+            'button:not([data-pan-passthrough]), a[href], a[data-action], ' +
+            '[data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn'
+        );
+        if (isInteractive) return;
 
         STATE.isPanning = true;
         STATE.panStart = {
