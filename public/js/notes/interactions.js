@@ -30,20 +30,33 @@ function resolveDirection(handle) {
  */
 function handleResizeStart(e, handle) {
     if (STATE.isInitializing || !STATE.editMode) return;
+    
+    // Safety: Prevent multiple dispatch if touch and synthesized mouse events fire in sequence
+    if (STATE.isResizing) return;
+    
     const noteEl = handle.closest('.sticky-note');
-    const id     = noteEl?.dataset.id;
-    const note   = STATE.notes.find(n => n.id == id);
-    if (!note || !noteEl) return;
+    if (!noteEl) return;
 
-    e.preventDefault();
+    const id = noteEl.dataset.id;
+    const note = STATE.notes.find(n => n.id == id);
+    if (!note) return;
+
+    // Normalization: Capture precise start point regardless of input type
+    const pointer = e.touches ? e.touches[0] : e;
+    const resizeTouchId = pointer.identifier !== undefined ? pointer.identifier : null;
+    
+    // Critical: Stop bubble and prevent default browser behaviors (scrolling/selection)
+    // before they can be hijacked by background canvas listeners.
+    if (e.cancelable) e.preventDefault();
     e.stopPropagation();
 
     const rect = STATE.wrapperEl.getBoundingClientRect();
     STATE.resizingContext = {
         id, el: noteEl, note,
+        touchId: resizeTouchId,
         direction: resolveDirection(handle),
-        startX: e.clientX,
-        startY: e.clientY,
+        startX: pointer.clientX,
+        startY: pointer.clientY,
         startWidth: noteEl.offsetWidth,
         startHeight: noteEl.offsetHeight,
         startLeft: note.x,
@@ -59,6 +72,8 @@ function handleResizeStart(e, handle) {
     
     document.addEventListener('mousemove', handleResizeMove);
     document.addEventListener('mouseup', handleResizeEnd);
+    document.addEventListener('touchmove', handleResizeMove, { passive: false });
+    document.addEventListener('touchend', handleResizeEnd);
 }
 
 /**
@@ -66,10 +81,22 @@ function handleResizeStart(e, handle) {
  * Throttles high-frequency pointer events into the 60fps frame cycle.
  */
 function handleResizeMove(e) {
-    STATE.lastResizeEvent = e;
+    // Normalization: Extract primary pointer data
+    const pointer = e.touches ? e.touches[0] : e;
+
+    // Safety: Prevent board scrolling on mobile during active resize
+    if (e.touches && e.cancelable) e.preventDefault();
+
+    STATE.lastResizeEvent = {
+        clientX: pointer.clientX,
+        clientY: pointer.clientY,
+        shiftKey: e.shiftKey
+    };
+
     if (resizeFrame) return;
 
     resizeFrame = requestAnimationFrame(() => {
+        if (!STATE.resizingContext) { resizeFrame = null; return; }
         if (STATE.resizingContext && STATE.lastResizeEvent) {
             executeResizeMath(STATE.lastResizeEvent);
         }
@@ -158,15 +185,28 @@ function executeResizeMath(e) {
  * Terminates the resizing transaction and triggers persistence.
  * Safe State Teardown: DOM cleanup occurs before context nullification.
  */
-function handleResizeEnd() {
+function handleResizeEnd(e) {
     if (!STATE.resizingContext) return;
+
+    // Multi-Touch Guard: If this is a TouchEvent, only terminate if the 
+    // finger that started the resize is the one that was lifted.
+    if (e && e.changedTouches && STATE.resizingContext.touchId !== null) {
+        const lifted = Array.from(e.changedTouches).find(t => t.identifier === STATE.resizingContext.touchId);
+        if (!lifted) return;
+    }
     
     const ctx = STATE.resizingContext;
     const id  = ctx.id;
     
-    ctx.el.classList.remove('resizing');
+    // Listener Management: Remove document-level listeners to prevent accumulation.
     document.removeEventListener('mousemove', handleResizeMove);
     document.removeEventListener('mouseup', handleResizeEnd);
+    document.removeEventListener('touchmove', handleResizeMove);
+    document.removeEventListener('touchend', handleResizeEnd);
+
+    ctx.el.classList.remove('resizing');
+    STATE.isResizing = null; 
+    STATE.resizingContext = null;
     
     if (resizeFrame) cancelAnimationFrame(resizeFrame);
     resizeFrame = null;
@@ -1201,10 +1241,6 @@ async function saveViewportImmediate() {
  * Universal Entry Point: Dispatches focus, lasso selection, and panning based on target context.
  * Identifies if the user is clicking the background (pan/lasso) vs a note handle.
  * @param {MouseEvent} e - The raw trigger event.
-/**
- * Universal Entry Point: Dispatches focus, lasso selection, and panning based on target context.
- * Identifies if the user is clicking the background (pan/lasso) vs a note handle.
- * @param {MouseEvent} e - The raw trigger event.
  */
 function handleCanvasMouseDown(e) {
     if (STATE.isInitializing) return;
@@ -1299,7 +1335,7 @@ function handleCanvasMouseDown(e) {
 
     // 4. Pick & Place Detection: If the user clicks a note's title bar/drag handle
     const handle = e.target.closest('.note-drag-handle-container');
-    const isAction = e.target.closest('.note-check-trigger, .note-link-trigger, .reel-action-btn, .hero-action-btn, .btn-icon-drawer, [data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn');
+    const isAction = e.target.closest('.note-header-tab, .note-check-trigger, .note-link-trigger, .reel-action-btn, .hero-action-btn, .btn-icon-drawer, [data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn');
     const isTitle = e.target.closest('.note-title-slot, .inline-title-input');
 
     if (handle && !isAction && !isTitle && e.button === 0) {
@@ -1368,15 +1404,13 @@ function handleCanvasMouseDown(e) {
         }
 
         STATE.isPanning = true;
-        STATE.wrapperEl?.classList.add('is-panning-board');
+        STATE.panMoved  = false;
         STATE.panStart = {
             x: e.clientX,
             y: e.clientY,
             scrollX: wrapper.scrollLeft,
             scrollY: wrapper.scrollTop
         };
-        document.body.style.cursor = 'grabbing';
-        e.preventDefault();
     }
 }
 
@@ -1431,12 +1465,29 @@ function handleCanvasMouseMove(e) {
         return;
     }
 
-    if (!STATE.isPanning) return;
+    if (!STATE.isPanning || !STATE.panStart) return;
     const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
     const dx = e.clientX - STATE.panStart.x;
     const dy = e.clientY - STATE.panStart.y;
+
+    // --- Interaction Guard: Movement Threshold ---
+    // UX Logic: Defer indicators until movement is confirmed. This allows
+    // stationary dblclick events to reach the note body without interference
+    // and eliminates cursor flashing on single clicks.
+    if (!STATE.panMoved) {
+        const threshold = 4;
+        if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
+        
+        STATE.panMoved = true;
+        STATE.wrapperEl?.classList.add('is-panning-board');
+        document.body.style.cursor = 'grabbing';
+    }
+
+    // Prevent text selection during active pan gesture
+    // This does NOT suppress the dblclick event chain (established at mousedown)
+    e.preventDefault();
 
     wrapper.scrollLeft = STATE.panStart.scrollX - dx;
     wrapper.scrollTop  = STATE.panStart.scrollY - dy;
@@ -1457,6 +1508,7 @@ function handleCanvasMouseUp() {
     }
 
     STATE.isPanning = false;
+    STATE.panMoved  = false;
     STATE.wrapperEl?.classList.remove('is-panning-board');
     document.body.style.cursor = '';
 }
@@ -1599,56 +1651,32 @@ function handleCanvasWheel(e) {
 function handleCanvasDoubleClick(e) {
     if (STATE.isInitializing) return;
 
-    // 1. Note Detection: If double-clicking a note, initiate 'Pick & Place'
-    const noteEl = e.target.closest('.sticky-note');
-    if (noteEl) {
-        const id = noteEl.dataset.id;
+    // 1. Note Detection: Resolve identity via standard 'id' or user-specified 'noteId'
+    const noteEl = e.target.closest('.sticky-note, [data-note-id], [data-id]');
+    if (!noteEl) return;
 
-        // Collapse toggle: checked before editMode/pick guards because collapsing is a view
-        // preference, not a structural mutation. The drag handle container is included as the
-        // target because the browser fires dblclick on the lowest common ancestor of the two
-        // clicks, which may be the container rather than the title slot child.
-        // Check the direct target first, then walk up only as far as the title slot.
-        // If the browser fires dblclick on the container (LCA of two clicks on the
-        // title slot), the title slot will still be found via closest(). Never match
-        // the container itself — that is the pickup surface for toggleStickyMove.
-        const titleSlot = e.target.closest('.note-title-slot');
-        if (titleSlot && id) {
-            if (STATE.pickedNoteId && typeof cancelStickyMove === 'function') cancelStickyMove();
-            toggleCollapse(id);
-            return;
-        }
+    // SSO Resolution: Extract the raw ID for state lookups
+    const id = noteEl.dataset.id || noteEl.dataset.noteId || noteEl.closest('.sticky-note')?.dataset.id;
+    if (!id) return;
 
-        // All remaining actions require edit mode and no active pick
-        if (!STATE.editMode || STATE.pickedNoteId) return;
-
-        // Isolation: Prevent pickup if clicking an interactive action (buttons, links, triggers)
-        const isAction = e.target.closest('[data-action], .note-check-trigger, .note-link-trigger, .note-copy-trigger, .reel-action-btn, .btn-icon-drawer');
-        if (!isAction) {
-            if (id) {
-                toggleStickyMove(e, id);
-                return;
-            }
-        }
+    // --- Path A: Collapse Toggle (Targeting the Header Slot) ---
+    const titleSlot = e.target.closest('.note-title-slot');
+    if (titleSlot) {
+        if (STATE.pickedNoteId && typeof cancelStickyMove === 'function') cancelStickyMove();
+        toggleCollapse(id);
+        return;
     }
 
+    // --- Path B: Pick & Place (Targeting the Note Body) ---
+    // All following actions require edit privilege and no existing pick conflict
     if (!STATE.editMode || STATE.pickedNoteId) return;
 
-    // 2. Creation Logic: Only allow new note creation on the actual background layers.
-    if (e.target.id !== 'notes-canvas' && e.target.id !== 'canvas-wrapper') return;
+    // Defensive Guard: Block pickup if clicking specialized control buttons
+    const isAction = e.target.closest('.note-header-tab, .note-check-trigger, .note-link-trigger, .note-copy-trigger, .reel-action-btn, .hero-action-btn, .btn-icon-drawer, [data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn');
+    if (isAction) return;
 
-    const wrapper = STATE.wrapperEl;
-    if (!wrapper) return;
-    
-    const rect = wrapper.getBoundingClientRect();
-    
-    // Geometry Calculation: Offset cursor by scroll/scale to find absolute whiteboard space
-    const x = (e.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
-    const y = (e.clientY - rect.top  + wrapper.scrollTop)  / STATE.scale;
-
-    if (typeof showCreateNoteModal === 'function') {
-        showCreateNoteModal('text', null, null, null, null, { x, y });
-    }
+    // Execution: If no action was matched, we treat this as a body double-click for Pickup
+    toggleStickyMove(e, id);
 }
 
 /**
@@ -2530,9 +2558,9 @@ function handleCanvasTouchStart(e) {
         // Single Finger: Panning (Matches handleCanvasMouseDown)
         const touch = e.touches[0];
         
-        // Audit: Ensure we aren't touching a note's interactive controls (buttons, handles, inputs)
+        // Interactive Controls Guard: Ensure touch targets exclude buttons, handles, or inputs
         const isInteractive = e.target.closest(
-            '.note-drag-handle-container, .note-resize-handle, ' +
+            '.note-drag-handle-container, .note-resize-handle, .note-header-tab, ' +
             '.btn-icon, .btn-icon-edit, .btn-icon-link, .btn-icon-upload, .btn-icon-move, ' +
             '.btn-icon-level-copy, .btn-icon-view, .btn-icon-delete, .note-id-hash, ' +
             '.note-check-trigger, .note-link-trigger, .reel-action-btn, .hero-action-btn, ' +
@@ -2540,16 +2568,27 @@ function handleCanvasTouchStart(e) {
             'button:not([data-pan-passthrough]), a[href], a[data-action], ' +
             '[data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn'
         );
-        if (isInteractive) return;
 
+        // Targeted Dispatch: Handle Resize on Touch
+        const resizeHandle = e.target.closest('.note-resize-handle');
+        if (resizeHandle) {
+            handleResizeStart(e, resizeHandle);
+            return;
+        }
+
+        if (isInteractive) return;
+        if (STATE.resizingContext) return; // Invariant check: resizing and panning are mutually exclusive
+
+        // 3. Movement Initiation: Record start for threshold-based panning
         STATE.isPanning = true;
+        STATE.panMoved  = false; // Deferred visual/scroll state
         STATE.panStart = {
             x: touch.clientX,
             y: touch.clientY,
             scrollX: wrapper.scrollLeft,
             scrollY: wrapper.scrollTop
         };
-        e.preventDefault();
+        // Permit event propagation for touch-based click and double-click triggers
     } else if (e.touches.length === 2) {
         // Dual Finger: Pinch-to-Zoom Baseline
         STATE.isPanning = false; // Disable panning during zoom
@@ -2573,17 +2612,40 @@ function handleCanvasTouchMove(e) {
     const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
-    if (e.touches.length === 1 && STATE.isPanning) {
-        // Panning: Update scroll offsets
+    if (e.touches.length === 1 && STATE.isPanning && STATE.panStart) {
+        // Panning: Movement Threshold Check (4px)
         const touch = e.touches[0];
-        const dx = touch.clientX - STATE.panStart.x;
-        const dy = touch.clientY - STATE.panStart.y;
         
-        wrapper.scrollLeft = STATE.panStart.scrollX - dx;
-        wrapper.scrollTop  = STATE.panStart.scrollY - dy;
-        
-        if (typeof updateRadar === 'function') updateRadar();
-        e.preventDefault();
+        if (!STATE.panMoved) {
+            const dx = Math.abs(touch.clientX - STATE.panStart.x);
+            const dy = Math.abs(touch.clientY - STATE.panStart.y);
+            
+            if (dx > 4 || dy > 4) {
+                STATE.panMoved = true;
+                STATE.wrapperEl?.classList.add('is-panning-board');
+                document.body.style.cursor = 'grabbing';
+            }
+        }
+
+        if (STATE.panMoved) {
+            const dx = touch.clientX - STATE.panStart.x;
+            const dy = touch.clientY - STATE.panStart.y;
+            
+            wrapper.scrollLeft = STATE.panStart.scrollX - dx;
+            wrapper.scrollTop  = STATE.panStart.scrollY - dy;
+            
+            if (typeof updateRadar === 'function') updateRadar();
+            if (e.cancelable) e.preventDefault();
+        }
+
+        // --- Edge Case: Teardown Protection ---
+        // Ensure cleanup runs even if e.g. touchend already cleared isPanning 
+        // while a move event was still in the event queue.
+        if (!STATE.isPanning && STATE.panMoved) {
+            STATE.panMoved = false;
+            STATE.wrapperEl?.classList.remove('is-panning-board');
+            document.body.style.cursor = '';
+        }
     } else if (e.touches.length === 2 && STATE.pinchStartDist) {
         // Pinch-to-Zoom: Calculating scale delta
         const touch1 = e.touches[0];
@@ -2632,8 +2694,13 @@ function handleCanvasTouchMove(e) {
  */
 function handleCanvasTouchEnd(e) {
     STATE.isPanning = false;
+    STATE.panMoved  = false;
     STATE.pinchStartDist = null;
     STATE.pinchStartScale = null;
+    
+    // Reset visual state indicators
+    STATE.wrapperEl?.classList.remove('is-panning-board');
+    document.body.style.cursor = '';
 }
 
 /**
