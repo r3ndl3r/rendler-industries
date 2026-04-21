@@ -27,6 +27,7 @@
                     <th>Username</th>
                     <th>Email</th>
                     <th>Discord ID</th>
+                    <th>FCM</th>
                     <th>Created</th>
                     <th>Approved</th>
                     <th>Admin</th>
@@ -38,7 +39,7 @@
             </thead>
             <tbody id="users-table-body">
                 <tr class="component-loading-row">
-                    <td colspan="11">
+                    <td colspan="12">
                         <div class="component-loading">
                             <div class="loading-scan-line"></div>
                             <span class="loading-icon-pulse">👤</span>
