@@ -195,7 +195,7 @@ function renderUserRow(u) {
     return `
         <tr id="user-row-${u.id}" class="${u.status === 'pending' ? 'row-pending' : ''}">
             <td data-label="ID">${u.id}</td>
-            <td data-label="Username"><span class="user-username">${getUserIcon(u.username)} ${escapeHtml(u.username)}</span></td>
+            <td data-label="Username"><span class="user-username">${u.emoji || '👤'} ${escapeHtml(u.username)}</span></td>
             <td data-label="Email"><span class="user-email text-small">${escapeHtml(u.email)}</span></td>
             <td data-label="Discord ID">
                 ${u.discord_id
@@ -266,6 +266,7 @@ function openEditUserModal(id) {
     document.getElementById('editUsername').value = u.username;
     document.getElementById('editEmail').value = u.email;
     document.getElementById('editDiscordId').value = u.discord_id || '';
+    document.getElementById('editEmoji').value = u.emoji || '';
     document.getElementById('editStatus').value = u.status;
     document.getElementById('editPassword').value = '';
 
@@ -293,12 +294,33 @@ function closeEditModal() {
  * @param {Event} event - Form submission event.
  * @returns {Promise<void>}
  */
+/**
+ * Returns true if value is empty (allowed) or exactly one emoji grapheme cluster.
+ * Uses Intl.Segmenter for grapheme-aware counting, with an emoji Unicode property
+ * check to reject plain text characters.
+ *
+ * @param {string} value
+ * @returns {boolean}
+ */
+function isValidSingleEmoji(value) {
+    if (!value) return true;
+    const segments = [...new Intl.Segmenter().segment(value)];
+    if (segments.length !== 1) return false;
+    return /\p{Emoji}/u.test(value) && !/^[0-9#*]$/.test(value);
+}
+
 async function handleEditSubmit(event) {
     if (event) event.preventDefault();
     const form = event.target;
     const userId = document.getElementById('editUserId').value;
     const btn = document.getElementById('editSaveBtn');
     const originalHtml = btn.innerHTML;
+
+    const emojiVal = document.getElementById('editEmoji').value.trim();
+    if (!isValidSingleEmoji(emojiVal)) {
+        showToast('Profile emoji must be a single emoji character.', 'error');
+        return;
+    }
 
     btn.disabled = true;
     btn.innerHTML = `⌛ Saving...`;
