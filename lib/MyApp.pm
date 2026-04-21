@@ -429,6 +429,11 @@ sub startup {
     $r->get('/quick')->to('root#quick');
     $auth->post('/api/fcm/register')->to('system#api_fcm_register');
 
+    $auth->get('/user/settings'                 )->to('user-settings#index'           );
+    $auth->get('/user/settings/api/state'       )->to('user-settings#api_state'       );
+    $auth->post('/user/settings/api/profile'    )->to('user-settings#api_update_profile');
+    $auth->post('/user/settings/api/pref'       )->to('user-settings#api_update_pref' );
+
     $auth->get('/chelsea')->to('chelsea#index');
     $admin_ns->get('/restart')->to('system#restart');
 
