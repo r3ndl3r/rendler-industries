@@ -4,9 +4,93 @@ package MyApp::Plugin::Notifications;
 
 use Mojo::Base 'Mojolicious::Plugin';
 use Mojo::Util qw(b64_encode trim);
+use Mojo::JSON qw(from_json encode_json);
 use Encode qw(encode);
+use Crypt::JWT qw(encode_jwt);
 use strict;
 use warnings;
+
+# Package-level cache for the FCM OAuth2 access token — refreshed at most once per hour.
+my $_fcm_token;
+my $_fcm_token_expiry = 0;
+
+# Strips Discord markdown and collapses whitespace for use in FCM notification bodies.
+sub _strip_markdown {
+    my $text = shift // '';
+    $text =~ s/\*\*(.+?)\*\*/$1/gs;
+    $text =~ s/\*(.+?)\*/$1/gs;
+    $text =~ s/__(.+?)__/$1/gs;
+    $text =~ s/\[([^\]]+)\]\([^\)]+\)/$1/g;
+    $text =~ s/\[[^\]]+\]//g;
+    $text =~ s/https?:\/\/\S+//g;
+    $text =~ s/\n{3,}/\n\n/g;
+    $text =~ s/[^\S\n]+/ /g;
+    $text = substr($text, 0, 200) if length($text) > 200;
+    return trim($text);
+}
+
+# Obtains a valid FCM OAuth2 access token, refreshing from Google if expired.
+# Synchronous — blocks for ~200ms at most once per hour.
+# Returns: access token string, or undef on failure.
+sub _fcm_access_token {
+    my $app = shift;
+    return $_fcm_token if $_fcm_token && time() < $_fcm_token_expiry;
+
+    my $sa_path = $app->config->{fcm_sa_path};
+    unless ($sa_path) {
+        $app->log->error("FCM: fcm_sa_path not set in config");
+        return undef;
+    }
+
+    my $sa_json = do {
+        open my $fh, '<', $sa_path or do {
+            $app->log->error("FCM: cannot open service account file: $!");
+            return undef;
+        };
+        local $/; <$fh>;
+    };
+    my $sa = eval { from_json($sa_json) };
+    if ($@ || !$sa->{private_key}) {
+        $app->log->error("FCM: invalid service account JSON: $@");
+        return undef;
+    }
+
+    my $now = time();
+    my $jwt = eval {
+        encode_jwt(
+            payload => {
+                iss   => $sa->{client_email},
+                scope => 'https://www.googleapis.com/auth/firebase.messaging',
+                aud   => $sa->{token_uri},
+                iat   => $now,
+                exp   => $now + 3600,
+            },
+            alg => 'RS256',
+            key => \$sa->{private_key},
+        );
+    };
+    if ($@ || !$jwt) {
+        $app->log->error("FCM: JWT encoding failed: $@");
+        return undef;
+    }
+
+    $_fcm_token_expiry = $now + 3600;
+    my $tx = $app->ua->post($sa->{token_uri} => form => {
+        grant_type => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion  => $jwt,
+    });
+
+    unless ($tx->result->is_success) {
+        $_fcm_token_expiry = 0;
+        $app->log->error("FCM: token exchange failed: " . $tx->result->body);
+        return undef;
+    }
+
+    my $data = $tx->result->json;
+    $_fcm_token        = $data->{access_token};
+    $_fcm_token_expiry = $now + ($data->{expires_in} // 3600) - 300;
+    return $_fcm_token;
+}
 
 # Unified Notification System Plugin.
 # Consolidates all outbound communication channels:
@@ -27,6 +111,7 @@ use constant MANIFEST => {
     'chore_complete' => {
         desc    => "Sent to admins when a child finishes a chore.",
         tags    => "user, icon, task, points",
+        url     => '/chores',
         sample  => { user => "Alex", icon => "👤", task => "Vacuuming", points => 50 },
         default_subject => "Chore Completed by [user]",
         default_body    => "✨ **Chore Completed** ✨\n\n[icon] **[user]** finished: [task] (+[points] pts)\n\n[sys_url]"
@@ -34,6 +119,7 @@ use constant MANIFEST => {
     'chore_assigned' => {
         desc    => "Sent to a user when a specific chore is assigned to them.",
         tags    => "user, icon, task, points",
+        url     => '/chores',
         sample  => { user => "Alex", icon => "👤", task => "Laundry", points => 30 },
         default_subject => "New Chore Assigned",
         default_body    => "✨ **New Chore** ✨\n\n[icon] **[user]**, a new chore is on your board!\n\n**[task]** (+[points] pts)\n\n[sys_url]"
@@ -41,6 +127,7 @@ use constant MANIFEST => {
     'chore_global_available' => {
         desc    => "Sent to all children when a global bounty is posted.",
         tags    => "task, points",
+        url     => '/chores',
         sample  => { task => "Mow Lawn", points => 100 },
         default_subject => "New Global Chore Available",
         default_body    => "✨ **New Chore** ✨\n\n🌍 **GLOBAL CHORE** 🌍\n\n[task] (+[points] pts)\n\n*First to finish and mark as done gets the points!*\n\n[sys_url]"
@@ -48,6 +135,7 @@ use constant MANIFEST => {
     'chore_revoked' => {
         desc    => "Sent to a user when their work is revoked and points docked.",
         tags    => "icon, task, points",
+        url     => '/chores',
         sample  => { icon => "👤", task => "Dishes", points => 20 },
         default_subject => "Work Revoked",
         default_body    => "✨ **Work Revoked** ✨\n\n[icon] **POINT DEDUCTION** [icon]\n\nYour completion of **[task]** has been revoked.\n\n**Adjustment: (-[points] pts)**\n\n[sys_url]"
@@ -55,6 +143,7 @@ use constant MANIFEST => {
     'chore_removed' => {
         desc    => "Sent when an assigned chore is deleted by an admin.",
         tags    => "icon, task",
+        url     => '/chores',
         sample  => { icon => "👤", task => "Clean Windows" },
         default_subject => "Chore Removed",
         default_body    => "✨ **Chore Removed** ✨\n\n[icon] **CHORE DELETED** [icon]\n\n**[task]** is no longer on the board.\n\n[sys_url]"
@@ -62,6 +151,7 @@ use constant MANIFEST => {
     'chore_new_linked' => {
         desc    => "Sent when a reminder triggers an automatic chore creation.",
         tags    => "user, icon, task, points",
+        url     => '/chores',
         sample  => { user => "Alex", icon => "👤", task => "Take Out Trash", points => 10 },
         default_subject => "New Chore: [task]",
         default_body    => "📋 **New Chore Linked:** [icon] **[user]**, '[task]' is now on your board for [points] pts!"
@@ -69,6 +159,7 @@ use constant MANIFEST => {
     'chore_stale_reminder' => {
         desc    => "Sent when a chore has been pending for an hour without completion.",
         tags    => "icon, task, points, target",
+        url     => '/chores',
         sample  => { icon => "🌍", task => "Mow Lawn", points => 100, target => "Everyone" },
         default_subject => "Pending Chore: [task]",
         default_body    => "[icon] **Chore Reminder:** '[task]' has been waiting for an hour!\n\nGrab the [points] pts.\n\n(Assigned to: [target])"
@@ -78,6 +169,7 @@ use constant MANIFEST => {
     'meals_reminder' => {
         desc    => "8AM/12PM daily reminder to vote for tonight's meal.",
         tags    => "user, deadline",
+        url     => '/meals',
         sample  => { user => "Dad", deadline => "2:00 PM" },
         default_subject => "Meal Planner Reminder",
         default_body    => "🍳 MEAL PLANNER REMINDER 🍳\n\n[user], you haven't added a suggestion or voted for today's meal yet! Lock-in is at [deadline].\n\n[sys_url]"
@@ -85,6 +177,7 @@ use constant MANIFEST => {
     'meals_new_suggestion' => {
         desc    => "Sent to family members when a new meal is suggested.",
         tags    => "user, meal, day",
+        url     => '/meals',
         sample  => { user => "Mom", meal => "Pizza", day => "Friday" },
         default_subject => "New Meal Suggestion",
         default_body    => "🍳 **MEAL SUGGESTION** 🍳\n\n**[user]** suggested: **[meal]** for [day]!\n\n[sys_url /meals]"
@@ -92,6 +185,7 @@ use constant MANIFEST => {
     'meals_tie' => {
         desc    => "Sent to admins when meal voting results in a tie at 2PM.",
         tags    => "",
+        url     => '/meals',
         sample  => {},
         default_subject => "Meal Planner Tie",
         default_body    => "⚖️ MEAL PLANNER TIE: Today's meal plan is TIED. Please go to [sys_url /meals] and pick a winner!"
@@ -99,6 +193,7 @@ use constant MANIFEST => {
     'meals_locked_in' => {
         desc    => "Announcement to all family members of the winning meal at 2PM.",
         tags    => "meal_name, vote_count, suggested_by",
+        url     => '/meals',
         sample  => { meal_name => "Tacos", vote_count => 3, suggested_by => "Mom" },
         default_subject => "Today's Menu Locked",
         default_body    => "🍽️ TODAY'S MENU LOCKED: [meal_name] wins with [vote_count] votes! (Suggested by [suggested_by])\n\n[sys_url /meals]"
@@ -106,6 +201,7 @@ use constant MANIFEST => {
     'meals_empty' => {
         desc    => "Sent to family if no suggestions are made by 2PM lock-in.",
         tags    => "",
+        url     => '/meals',
         sample  => {},
         default_subject => "Meal Planner Empty",
         default_body    => "⚠️ MEAL PLANNER EMPTY: No suggestions made by 2PM. Please set a blackout or manual meal.\n\n[sys_url /meals]"
@@ -115,6 +211,7 @@ use constant MANIFEST => {
     'user_welcome' => {
         desc    => "Sent to newly approved users.",
         tags    => "user",
+        url     => '/login',
         sample  => { user => "Alex" },
         default_subject => "Welcome to Rendler Industries",
         default_body    => "Hello [user],\n\nYour account has been approved!\n\nLog in: [sys_url /login]\n\n- Rendler Industries®"
@@ -124,6 +221,7 @@ use constant MANIFEST => {
     'calendar_reminder' => {
         desc    => "Upcoming event reminder.",
         tags    => "title, time_label, start, end, attendees",
+        url     => '/calendar',
         sample  => { title => "Family Dinner", time_label => "1 hour", start => "18:00", end => "20:00", attendees => "Everyone" },
         default_subject => "Upcoming Event: [title]",
         default_body    => "🔔 **UPCOMING EVENT** 🔔\n\n**[title]** is starting in [time_label]!\n\n📅 **Start:** [start]\n🏁 **End:** [end]\n👥 **Attendees:** [attendees]\n\n[sys_url /calendar]"
@@ -133,6 +231,7 @@ use constant MANIFEST => {
     'timers_warning' => {
         desc    => "Sent when a timer is running low on time.",
         tags    => "name, category, minutes",
+        url     => '/timers',
         sample  => { name => "iPad", category => "Gaming", minutes => 5 },
         default_subject => "Timer Warning: [name] ([category])",
         default_body    => "⏱️ **TIMER WARNING: [name]** ⏱️\n\nYour session for **[name]** ([category]) is running low on time.\n\n**Time Remaining:** [minutes] minutes\n\nPlease wrap up your current activity soon.\n[sys_url]"
@@ -140,6 +239,7 @@ use constant MANIFEST => {
     'timers_expired_user' => {
         desc    => "Sent to a user when their timer reaches the daily limit.",
         tags    => "name, category, limit, usage",
+        url     => '/timers',
         sample  => { name => "PC", category => "Entertainment", limit => 120, usage => 120 },
         default_subject => "Timer Expired: [name] ([category])",
         default_body    => "🚨 **TIMER EXPIRED: [name]** 🚨\n\nYour session for **[name]** ([category]) has expired.\n\n**Daily Limit:** [limit] minutes\n\n**Usage Today:** [usage] minutes\n\nPlease stop using this device immediately.\n[sys_url]"
@@ -147,6 +247,7 @@ use constant MANIFEST => {
     'timers_expired_admin' => {
         desc    => "Sent to admins when a user's timer expires.",
         tags    => "name, category, user, limit, usage",
+        url     => '/timers/manage',
         sample  => { name => "PC", category => "Entertainment", user => "Alex", limit => 120, usage => 120 },
         default_subject => "Admin Alert: [user] Timer Expired",
         default_body    => "🚨 **TIMER EXPIRED: [name]** 🚨\n\nThe timer **[name]** ([category]) for **[user]** has reached its daily limit and expired.\n\n**Limit:** [limit] minutes\n\n**Usage:** [usage] minutes\n\nManage: [sys_url /timers/manage]"
@@ -154,6 +255,7 @@ use constant MANIFEST => {
     'timers_points_redeemed' => {
         desc    => "Sent to admins when a child redeems points for more time.",
         tags    => "user, points, minutes, timer_name",
+        url     => '/timers/manage',
         sample  => { user => "Alex", points => 500, minutes => 30, timer_name => "PC" },
         default_subject => "Points Redeemed: [user]",
         default_body    => "🪙 **Points Redeemed** 🪙\n\n**[user]** just spent **[points] points** for **[minutes] minutes** of time on **[timer_name]**.\n\nManage: [sys_url /timers/manage]"
@@ -163,6 +265,7 @@ use constant MANIFEST => {
     'room_reminder' => {
         desc    => "Recurring reminder for children to clean their room and upload photos.",
         tags    => "comments",
+        url     => '/room',
         sample  => { comments => "\n\n⚠️ **Items to fix from your previous upload:**\n - Pick up clothes" },
         default_subject => "Room Cleaning Reminder",
         default_body    => "🧹 **ROOM CLEANING REMINDER** 🧹\n\nIt's time to clean your room and upload photos for review![comments]\n\nUpload: [sys_url /room]"
@@ -170,6 +273,7 @@ use constant MANIFEST => {
     'room_review_needed' => {
         desc    => "Sent to admins when a child uploads new room photos.",
         tags    => "user",
+        url     => '/room',
         sample  => { user => "Alex" },
         default_subject => "Room Review Needed",
         default_body    => "🧹 **New Room Submission** 🧹\n\n**[user]** has uploaded photos for today's room check.\n\nReview: [sys_url /room]"
@@ -177,6 +281,7 @@ use constant MANIFEST => {
     'room_feedback' => {
         desc    => "Consolidated feedback report sent to child after admin review.",
         tags    => "date, feedback",
+        url     => '/room',
         sample  => { date => "15-04-2026", feedback => "✅ **Bed**: Passed\n❌ **Desk**: Failed\n> Feedback: Clear off the papers." },
         default_subject => "Room Feedback: [date]",
         default_body    => "🧹 **Room Feedback for [date]** 🧹\n\n[feedback]\n\nView: [sys_url /room]"
@@ -186,6 +291,7 @@ use constant MANIFEST => {
     'reminder_alert' => {
         desc    => "Standard alert for user-created reminders.",
         tags    => "title, description",
+        url     => '/reminders',
         sample  => { title => "Take Medicine", description => "Blue pill after dinner" },
         default_subject => "Reminder: [title]",
         default_body    => "🔔 REMINDER 🔔\n\n[title]\n\n[description]\n\n[sys_url /reminders]"
@@ -393,14 +499,98 @@ sub register {
         return 1;
     });
 
+    # --- FCM PUSH ---
+    # Sends a native Android push notification to all registered devices for a user.
+    # Fire-and-forget — non-blocking via Mojo promises.
+    # Stale tokens (FCM 404) are automatically pruned from the DB.
+    # Parameters: user_id, title, body, tap_url (opt path to navigate on tap), caller_id (opt)
+    $app->helper(push_fcm => sub {
+        my ($c, $user_id, $title, $body, $tap_url, $caller_id) = @_;
+
+        my $tokens = $c->db->get_fcm_tokens_for_user($user_id);
+        return 0 unless $tokens && @$tokens;
+
+        my $access_token = _fcm_access_token($c->app);
+        unless ($access_token) {
+            $c->app->log->error("push_fcm: could not obtain access token for user $user_id");
+            return 0;
+        }
+
+        my $clean_body  = _strip_markdown($body);
+        my $project_id  = $c->app->config->{fcm_project_id};
+        my $fcm_url     = "https://fcm.googleapis.com/v1/projects/$project_id/messages:send";
+
+        my $payload = { notification => { title => $title, body => $clean_body } };
+        $payload->{data} = { url => $tap_url } if $tap_url;
+
+        for my $token (@$tokens) {
+            $c->app->ua->post_p(
+                $fcm_url,
+                { Authorization => "Bearer $access_token", 'Content-Type' => 'application/json' },
+                json => { message => { token => $token, %$payload } }
+            )->then(sub {
+                my $tx = shift;
+                if ($tx->result->is_success) {
+                    $c->app->log->info("push_fcm: delivered to user $user_id");
+                    $c->db->log_notification(
+                        user_id   => $user_id,
+                        caller_id => $caller_id,
+                        type      => 'fcm',
+                        recipient => substr($token, 0, 20) . '...',
+                        subject   => $title,
+                        message   => $clean_body,
+                        status    => 'success'
+                    );
+                } else {
+                    my $err_status = $tx->result->json->{error}{status} // '';
+                    if ($tx->result->code == 404 || $err_status eq 'NOT_FOUND' || $err_status eq 'UNREGISTERED') {
+                        $c->db->delete_fcm_token($token);
+                        $c->app->log->info("push_fcm: removed stale token for user $user_id");
+                    } else {
+                        my $err = $tx->result->body // '';
+                        $c->app->log->error("push_fcm: error " . $tx->result->code . " for user $user_id: $err");
+                        $c->db->log_notification(
+                            user_id       => $user_id,
+                            caller_id     => $caller_id,
+                            type          => 'fcm',
+                            recipient     => substr($token, 0, 20) . '...',
+                            subject       => $title,
+                            message       => $clean_body,
+                            status        => 'failed',
+                            error_details => "HTTP " . $tx->result->code . ": $err"
+                        );
+                    }
+                }
+            })->catch(sub {
+                my $err = shift;
+                $c->app->log->error("push_fcm: exception for user $user_id: $err");
+                $c->db->log_notification(
+                    user_id       => $user_id,
+                    caller_id     => $caller_id,
+                    type          => 'fcm',
+                    recipient     => substr($token, 0, 20) . '...',
+                    subject       => $title,
+                    message       => $clean_body,
+                    status        => 'failed',
+                    error_details => "Exception: $err"
+                );
+            });
+        }
+
+        return 1;
+    });
+
     # --- UNIFIED DISPATCHER ---
-    # Parameters: user_id, message, subject
+    # Parameters: user_id, message, subject, tap_url (opt), caller_id (opt)
     $app->helper(notify_user => sub {
-        my ($c, $user_id, $message, $subject, $caller_id) = @_;
+        my ($c, $user_id, $message, $subject, $tap_url, $caller_id) = @_;
         $subject //= "System Notification";
-        
+
         my $user = $c->db->get_user_by_id($user_id);
         return 0 unless $user;
+
+        # FCM: Fire and forget — sent regardless of other channel outcomes
+        $c->push_fcm($user_id, $subject, $message, $tap_url, $caller_id);
 
         # Try Discord first
         if ($user->{discord_id}) {
@@ -441,11 +631,14 @@ sub register {
             return 0;
         }
 
-        # notify_user signature: ($user_id, $message, $subject, $caller_id)
+        my $tap_url = MANIFEST->{$key}{url};
+
+        # notify_user signature: ($user_id, $message, $subject, $tap_url, $caller_id)
         return $c->notify_user(
             $user_id,
             $rendered->{body},
             $rendered->{subject},
+            $tap_url,
             $caller_id
         );
     });
