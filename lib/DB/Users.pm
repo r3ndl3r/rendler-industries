@@ -132,7 +132,7 @@ sub DB::get_all_users {
 
     $self->ensure_connection;
 
-    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, emoji, created_at, is_admin, is_family, is_parent, is_child, status FROM users");
+    my $sth = $self->{dbh}->prepare("SELECT u.id, u.username, u.email, u.discord_id, u.emoji, u.created_at, u.is_admin, u.is_family, u.is_parent, u.is_child, u.status, COUNT(ft.id) > 0 AS has_fcm FROM users u LEFT JOIN fcm_tokens ft ON ft.user_id = u.id GROUP BY u.id");
     $sth->execute();
     
     return $sth->fetchall_arrayref({});
