@@ -427,6 +427,8 @@ sub startup {
     $r->get('/api/user_icons')->to('root#api_user_icons');
     $r->get('/system/api/file_map')->to('root#file_map_json');
     $r->get('/quick')->to('root#quick');
+    $auth->post('/api/fcm/register')->to('system#api_fcm_register');
+
     $auth->get('/chelsea')->to('chelsea#index');
     $admin_ns->get('/restart')->to('system#restart');
 
