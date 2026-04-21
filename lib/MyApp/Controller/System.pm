@@ -18,6 +18,28 @@ use Mojo::Util qw(trim);
 
 use DateTime;
 
+# Stores a device FCM token for the currently logged-in user.
+# Route: POST /api/fcm/register
+# Parameters:
+#   token : FCM registration token string from the Capacitor plugin.
+# Returns: JSON object { success }
+sub api_fcm_register {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $token = trim($c->param('token') // '');
+    return $c->render(json => { success => 0, error => 'Token required' }) unless $token;
+
+    my $user_id = $c->current_user_id;
+    eval { $c->db->save_fcm_token($user_id, $token) };
+    if ($@) {
+        $c->app->log->error("FCM token save failed for user $user_id: $@");
+        return $c->render(json => { success => 0, error => 'Failed to save token' });
+    }
+
+    return $c->render(json => { success => 1 });
+}
+
 # Initiates a hot restart of the application server.
 # Route: GET /restart
 # Parameters: None
