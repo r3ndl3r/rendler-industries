@@ -294,21 +294,6 @@ function closeEditModal() {
  * @param {Event} event - Form submission event.
  * @returns {Promise<void>}
  */
-/**
- * Returns true if value is empty (allowed) or exactly one emoji grapheme cluster.
- * Uses Intl.Segmenter for grapheme-aware counting, with an emoji Unicode property
- * check to reject plain text characters.
- *
- * @param {string} value
- * @returns {boolean}
- */
-function isValidSingleEmoji(value) {
-    if (!value) return true;
-    const segments = [...new Intl.Segmenter().segment(value)];
-    if (segments.length !== 1) return false;
-    return /\p{Emoji}/u.test(value) && !/^[0-9#*]$/.test(value);
-}
-
 async function handleEditSubmit(event) {
     if (event) event.preventDefault();
     const form = event.target;
