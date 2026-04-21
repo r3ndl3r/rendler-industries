@@ -53,6 +53,7 @@ sub api_state {
 #   email      : String (Email format, must be unique)
 #   password   : String (min 8 chars)
 #   is_admin   : Boolean bit (1/0)
+#   is_parent  : Boolean bit (1/0)
 #   is_family  : Boolean bit (1/0)
 #   is_child   : Boolean bit (1/0)
 # Returns: JSON object { success, message, error }
@@ -63,11 +64,16 @@ sub api_user_add {
     my $username = trim($c->param('username') // '');
     my $email    = trim($c->param('email') // '');
     my $password = trim($c->param('password') // '');
-    
+
     # Permission bits from the Add modal
-    my $is_admin  = $c->param('is_admin') || 0;
+    my $is_admin  = $c->param('is_admin')  || 0;
+    my $is_parent = $c->param('is_parent') || 0;
     my $is_family = $c->param('is_family') || 0;
-    my $is_child  = $c->param('is_child') || 0;
+    my $is_child  = $c->param('is_child')  || 0;
+
+    # Cascade: parent wins over child if both are set; either implies family
+    $is_child  = 0 if $is_parent;
+    $is_family = 1 if $is_parent || $is_child;
 
     # Basic Validation
     unless (length($username) >= 3 && $username =~ /^[a-zA-Z0-9_.\-]+$/) {
@@ -98,7 +104,7 @@ sub api_user_add {
         # 2. Atomically assign roles and approve the account in the same transaction.
         # If this UPDATE fails, begin_work ensures the INSERT is rolled back,
         # preventing an orphaned account with no roles or incorrect status.
-        my $rows = $c->db->update_user($new_id, $username, $email, '', $is_admin, $is_family, $is_child, 'approved');
+        my $rows = $c->db->update_user($new_id, $username, $email, '', $is_admin, $is_family, $is_parent, $is_child, 'approved');
         die "Role assignment failed for new user (ID: $new_id)" unless $rows;
 
         $dbh->commit;
@@ -188,6 +194,7 @@ sub approve_user {
 #   email      : Updated email address
 #   discord_id : Discord identifier
 #   is_admin   : Administrative permission bit
+#   is_parent  : Parent permission bit
 #   is_family  : Family member permission bit
 #   status     : Account lifecycle state
 #   password   : New credential (Optional)
@@ -200,7 +207,7 @@ sub edit_user {
     my $username = trim($c->param('username') // '');
     my $email = trim($c->param('email') // '');
     my $discord_id = trim($c->param('discord_id') // '');
-    
+
     unless (defined $id && $id =~ /^\d+$/) {
         return $c->render(json => { success => 0, error => 'Invalid user ID' });
     }
@@ -210,9 +217,10 @@ sub edit_user {
         return $c->render(json => { success => 0, error => 'User not found' });
     }
 
-    my $is_admin = defined $c->param('is_admin') ? ($c->param('is_admin') ? 1 : 0) : $current_user->{is_admin};
+    my $is_admin  = defined $c->param('is_admin')  ? ($c->param('is_admin')  ? 1 : 0) : $current_user->{is_admin};
+    my $is_parent = defined $c->param('is_parent') ? ($c->param('is_parent') ? 1 : 0) : $current_user->{is_parent};
     my $is_family = defined $c->param('is_family') ? ($c->param('is_family') ? 1 : 0) : $current_user->{is_family};
-    my $is_child = defined $c->param('is_child') ? ($c->param('is_child') ? 1 : 0) : $current_user->{is_child};
+    my $is_child  = defined $c->param('is_child')  ? ($c->param('is_child')  ? 1 : 0) : $current_user->{is_child};
     my $status = $c->param('status') // $current_user->{status} // 'pending';
     my $password = trim($c->param('password') // '');
     
@@ -230,7 +238,7 @@ sub edit_user {
             }
             $c->db->update_user_password($id, $password);
         }
-        $c->db->update_user($id, $username, $email, $discord_id, $is_admin, $is_family, $is_child, $status);
+        $c->db->update_user($id, $username, $email, $discord_id, $is_admin, $is_family, $is_parent, $is_child, $status);
     };
     
     if ($@) {
@@ -246,7 +254,7 @@ sub edit_user {
 # Route: POST /admin/users/toggle_role
 # Parameters:
 #   id    : Unique User ID
-#   role  : Targeted role ('admin'|'family')
+#   role  : Targeted role ('admin'|'parent'|'family'|'child')
 #   value : New boolean state
 # Returns: JSON object { success, message, error }
 sub toggle_role {
@@ -257,7 +265,7 @@ sub toggle_role {
     my $role = $c->param('role');
     my $value = $c->param('value');
 
-    unless ($id && $id =~ /^\d+$/ && $role =~ /^(admin|family|child)$/ && defined $value) {
+    unless ($id && $id =~ /^\d+$/ && $role =~ /^(admin|parent|family|child)$/ && defined $value) {
         return $c->render(json => { success => 0, error => 'Invalid parameters' });
     }
 
@@ -266,12 +274,44 @@ sub toggle_role {
         return $c->render(json => { success => 0, error => 'You cannot remove your own administrative privileges.' });
     }
 
+    my $dbh = $c->db->{dbh};
     eval {
+        $dbh->begin_work;
+
         $c->db->toggle_user_role($id, $role, $value);
-        $c->render(json => { success => 1, message => "Role updated" });
+
+        my %cascade = (family => 0, clear_child => 0, clear_parent => 0);
+
+        # Enabling parent or child implicitly grants family membership
+        if (($role eq 'parent' || $role eq 'child') && $value) {
+            $c->db->toggle_user_role($id, 'family', 1);
+            $cascade{family} = 1;
+        }
+
+        # parent and child are mutually exclusive — enabling one clears the other
+        if ($role eq 'parent' && $value) {
+            $c->db->toggle_user_role($id, 'child', 0);
+            $cascade{clear_child} = 1;
+        }
+        if ($role eq 'child' && $value) {
+            $c->db->toggle_user_role($id, 'parent', 0);
+            $cascade{clear_parent} = 1;
+        }
+
+        # Removing family membership also clears parent and child roles
+        if ($role eq 'family' && !$value) {
+            $c->db->toggle_user_role($id, 'parent', 0);
+            $c->db->toggle_user_role($id, 'child', 0);
+            $cascade{clear_parent} = 1;
+            $cascade{clear_child}  = 1;
+        }
+
+        $dbh->commit;
+        $c->render(json => { success => 1, message => "Role updated", cascaded => \%cascade });
     };
 
     if ($@) {
+        eval { $dbh->rollback };
         $c->app->log->error("Failed to toggle role ($role) for user $id: $@");
         $c->render(json => { success => 0, error => 'Database error while updating role' });
     }
