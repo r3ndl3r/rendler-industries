@@ -29,6 +29,7 @@
                 <option value="email">Email</option>
                 <option value="pushover">Pushover</option>
                 <option value="gotify">Gotify</option>
+                <option value="fcm">FCM (Mobile)</option>
             </select>
         </div>
         <div class="filter-group">
