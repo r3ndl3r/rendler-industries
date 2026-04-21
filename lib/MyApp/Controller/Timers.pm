@@ -25,8 +25,8 @@ sub dashboard {
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_family;
     
-    # Redirection: admins utilize the unified management interface
-    return $c->redirect_to('/timers/manage') if $c->is_admin;
+    # Redirection: admins and parents utilize the unified management interface
+    return $c->redirect_to('/timers/manage') if $c->is_parent;
 
     $c->render('timers/dashboard');
 }
@@ -36,7 +36,7 @@ sub dashboard {
 sub manage {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
-    return $c->render('noperm') unless $c->is_admin;
+    return $c->render('noperm') unless $c->is_parent;
     $c->render('timers/manage');
 }
 
@@ -71,8 +71,8 @@ sub api_state {
 # Returns: JSON object { timers, users, success }
 sub api_manage_state {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
-    
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_parent;
+
     my $filter_user_id = $c->param('user_id');
     my $timers = $c->db->get_all_timers($filter_user_id);
     my $users  = $c->db->get_family_users();
@@ -148,7 +148,7 @@ sub toggle_pause {
 # Route: POST /timers/api/create
 sub create {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_parent;
     
     my $user_id         = $c->param('user_id');
     my $name            = trim($c->param('name') // '');
@@ -176,7 +176,7 @@ sub create {
 # Route: POST /timers/api/update/:id
 sub update {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_parent;
     
     my $id              = $c->param('id');
     my $name            = trim($c->param('name') // '');
@@ -202,8 +202,8 @@ sub update {
 # Route: POST /timers/api/delete/:id
 sub delete {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
-    
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_parent;
+
     my $id = $c->param('id');
     
     eval {
@@ -224,7 +224,7 @@ sub delete {
 # Route: POST /timers/api/bonus
 sub grant_bonus {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_parent;
     
     my $timer_id      = $c->param('timer_id');
     my $bonus_minutes = $c->param('bonus_minutes');
@@ -284,7 +284,7 @@ sub api_redeem {
 # Route: POST /timers/api/transfer
 sub api_transfer {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_parent;
     
     my $from_id = $c->param('from_timer_id');
     my $to_id   = $c->param('to_timer_id');
