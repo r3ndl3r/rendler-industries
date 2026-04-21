@@ -12,7 +12,7 @@ use Crypt::Eksblowfish::Bcrypt qw(bcrypt en_base64);
 # Features:
 #   - Secure user authentication using Bcrypt-based hashing.
 #   - Full user lifecycle management (Registration, Approval, Update, Deletion).
-#   - Role-Based Access Control (RBAC): Admin, Family, User, and Guest levels.
+#   - Role-Based Access Control (RBAC): Admin, Parent, Family, Child, User, and Guest levels.
 #   - Account approval workflow with state-driven transitions (Pending/Approved).
 #   - Detailed user auditing and platform-wide profile management.
 #
@@ -21,7 +21,7 @@ use Crypt::Eksblowfish::Bcrypt qw(bcrypt en_base64);
 #   - Acts as the primary security layer for the Auth controller (Login/Register).
 #   - Serves as the data source for the Admin controller for platform auditing.
 #   - Coordinates with Email and Discord plugins for automated approval notifications.
-#   - Provides $c->is_admin, $c->is_family, and $c->is_logged_in via session lookups.
+#   - Provides $c->is_admin, $c->is_parent, $c->is_family, and $c->is_logged_in via session lookups.
 
 # Authenticates a user against stored credentials.
 # Parameters:
@@ -129,10 +129,10 @@ sub DB::email_exists {
 #   ArrayRef of HashRefs containing user details (excluding passwords).
 sub DB::get_all_users {
     my ($self) = @_;
-    
+
     $self->ensure_connection;
-    
-    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, emoji, created_at, is_admin, is_family, is_child, status FROM users");
+
+    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, emoji, created_at, is_admin, is_family, is_parent, is_child, status FROM users");
     $sth->execute();
     
     return $sth->fetchall_arrayref({});
@@ -219,7 +219,7 @@ sub DB::get_user_by_discord_id {
     $self->ensure_connection;
 
     my $sth = $self->{dbh}->prepare(
-        "SELECT id, username, email, discord_id, emoji, is_admin, is_family, is_child, status FROM users WHERE discord_id = ?"
+        "SELECT id, username, email, discord_id, emoji, is_admin, is_family, is_parent, is_child, status FROM users WHERE discord_id = ?"
     );
     $sth->execute($discord_id);
     return $sth->fetchrow_hashref();
@@ -233,7 +233,7 @@ sub DB::get_user_by_id {
     my ($self, $id) = @_;
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, emoji, is_admin, is_family, is_child, status FROM users WHERE id = ?");
+    my $sth = $self->{dbh}->prepare("SELECT id, username, email, discord_id, emoji, is_admin, is_family, is_parent, is_child, status FROM users WHERE id = ?");
     $sth->execute($id);
 
     my $user = $sth->fetchrow_hashref();
@@ -242,14 +242,14 @@ sub DB::get_user_by_id {
 
 # Updates user profile information.
 # Parameters:
-#   id, username, email, discord_id, is_admin, is_family, is_child, status : Attributes.
+#   id, username, email, discord_id, is_admin, is_family, is_parent, is_child, status : Attributes.
 # Returns: Void.
 sub DB::update_user {
-    my ($self, $id, $username, $email, $discord_id, $is_admin, $is_family, $is_child, $status, $emoji) = @_;
+    my ($self, $id, $username, $email, $discord_id, $is_admin, $is_family, $is_parent, $is_child, $status, $emoji) = @_;
     $self->ensure_connection;
-    
-    my $sth = $self->{dbh}->prepare("UPDATE users SET username = ?, email = ?, discord_id = ?, is_admin = ?, is_family = ?, is_child = ?, status = ?, emoji = ? WHERE id = ?");
-    return $sth->execute($username, $email, $discord_id, $is_admin, $is_family, $is_child, $status, $emoji, $id);
+
+    my $sth = $self->{dbh}->prepare("UPDATE users SET username = ?, email = ?, discord_id = ?, is_admin = ?, is_family = ?, is_parent = ?, is_child = ?, status = ?, emoji = ? WHERE id = ?");
+    return $sth->execute($username, $email, $discord_id, $is_admin, $is_family, $is_parent, $is_child, $status, $emoji, $id);
 }
 
 # Resets a user's password.
@@ -322,6 +322,23 @@ sub DB::is_admin {
     return $is_admin ? 1 : 0;
 }
 
+# Checks if a user has parent status.
+# Parameters:
+#   username : String identifier.
+# Returns:
+#   Integer : 1 if Parent, 0 otherwise.
+sub DB::is_parent {
+    my ($self, $username) = @_;
+
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("SELECT is_parent FROM users WHERE username = ?");
+    $sth->execute($username);
+    my ($is_parent) = $sth->fetchrow_array();
+
+    return $is_parent ? 1 : 0;
+}
+
 # Checks if a user has family member status.
 # Parameters:
 #   username : String identifier.
@@ -356,19 +373,20 @@ sub DB::is_child {
     return $is_child ? 1 : 0;
 }
 
-# Granularly toggles a specific user role (is_admin, is_family, or is_child).
+# Granularly toggles a specific user role (is_admin, is_family, is_parent, or is_child).
 # Parameters:
 #   id    : User ID.
-#   role  : Column name ('admin' -> is_admin, 'family' -> is_family, 'child' -> is_child).
+#   role  : Column name ('admin' -> is_admin, 'family' -> is_family, 'parent' -> is_parent, 'child' -> is_child).
 #   value : Boolean (1/0).
 # Returns: Void.
 sub DB::toggle_user_role {
     my ($self, $id, $role, $value) = @_;
     $self->ensure_connection;
-    
+
     my $column = 'is_family';
-    $column = 'is_admin' if $role eq 'admin';
-    $column = 'is_child' if $role eq 'child';
+    $column = 'is_admin'  if $role eq 'admin';
+    $column = 'is_parent' if $role eq 'parent';
+    $column = 'is_child'  if $role eq 'child';
     
     my $sth = $self->{dbh}->prepare("UPDATE users SET $column = ? WHERE id = ?");
     $sth->execute($value, $id);
