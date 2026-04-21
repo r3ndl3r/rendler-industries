@@ -903,3 +903,18 @@ window.escapeHtml = function(text) {
         if (url) window.location.href = url;
     });
 }());
+
+/**
+ * Returns true if value is empty (allowed) or exactly one emoji grapheme cluster.
+ * Uses Intl.Segmenter for grapheme-aware counting and a Unicode emoji property
+ * check to reject plain text characters. Shared across all modules.
+ *
+ * @param {string} value
+ * @returns {boolean}
+ */
+window.isValidSingleEmoji = function(value) {
+    if (!value) return true;
+    const segments = [...new Intl.Segmenter().segment(value)];
+    if (segments.length !== 1) return false;
+    return /\p{Emoji}/u.test(value) && !/^[0-9#*]$/.test(value);
+};
