@@ -195,7 +195,7 @@ function renderUserRow(u) {
     return `
         <tr id="user-row-${u.id}" class="${u.status === 'pending' ? 'row-pending' : ''}">
             <td data-label="ID">${u.id}</td>
-            <td data-label="Username"><span class="user-username">${escapeHtml(u.username)}</span></td>
+            <td data-label="Username"><span class="user-username">${getUserIcon(u.username)} ${escapeHtml(u.username)}</span></td>
             <td data-label="Email"><span class="user-email text-small">${escapeHtml(u.email)}</span></td>
             <td data-label="Discord ID">
                 ${u.discord_id
@@ -203,7 +203,8 @@ function renderUserRow(u) {
                     : `<span class="user-discord-empty">-</span>`
                 }
             </td>
-            <td data-label="Created"><span class="text-small">${u.created_at || '-'}</span></td>
+            <td data-label="FCM" style="text-align:center" title="${u.has_fcm ? 'FCM token registered' : 'No FCM token'}">${u.has_fcm ? '🟢' : '🔴'}</td>
+            <td data-label="Created"><span class="text-small">${u.created_at ? u.created_at.slice(8,10) + '-' + u.created_at.slice(5,7) + '-' + u.created_at.slice(0,4) : '-'}</span></td>
             <td data-label="Approved">
                 <label class="switch">
                     <input type="checkbox" onchange="approveUser(${u.id}, this)" ${isApproved ? 'checked disabled' : ''}>
