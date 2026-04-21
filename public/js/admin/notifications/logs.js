@@ -123,7 +123,7 @@ function renderLedger() {
 
     tbody.innerHTML = STATE.logs.map(log => {
         const statusIcon = log.status === 'success' ? '✅' : '❌';
-        const typeMap = { discord: '💬', email: '📧', gotify: '🔔', pushover: '📢' };
+        const typeMap = { discord: '💬', email: '📧', gotify: '🔔', pushover: '📢', fcm: '📱' };
         const channelIcon = typeMap[log.type] || '🔔';
         const statusClass = log.status === 'success' ? 'text-green' : 'text-danger';
         const userEmoji = window.getUserIcon(log.username?.toLowerCase());
