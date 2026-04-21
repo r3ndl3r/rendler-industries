@@ -33,7 +33,8 @@ function handleResizeStart(e, handle) {
     
     // Safety: Prevent multiple dispatch if touch and synthesized mouse events fire in sequence
     if (STATE.isResizing) return;
-    
+    STATE.isResizing = true;
+
     const noteEl = handle.closest('.sticky-note');
     if (!noteEl) return;
 
@@ -1653,7 +1654,19 @@ function handleCanvasDoubleClick(e) {
 
     // 1. Note Detection: Resolve identity via standard 'id' or user-specified 'noteId'
     const noteEl = e.target.closest('.sticky-note, [data-note-id], [data-id]');
-    if (!noteEl) return;
+    if (!noteEl) {
+        if (!STATE.editMode || STATE.pickedNoteId) return;
+        if (e.target.id !== 'notes-canvas' && e.target.id !== 'canvas-wrapper') return;
+        const wrapper = STATE.wrapperEl;
+        if (!wrapper) return;
+        const rect = wrapper.getBoundingClientRect();
+        const x = (e.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
+        const y = (e.clientY - rect.top  + wrapper.scrollTop)  / STATE.scale;
+        if (typeof showCreateNoteModal === 'function') {
+            showCreateNoteModal('text', null, null, null, null, { x, y });
+        }
+        return;
+    }
 
     // SSO Resolution: Extract the raw ID for state lookups
     const id = noteEl.dataset.id || noteEl.dataset.noteId || noteEl.closest('.sticky-note')?.dataset.id;
@@ -2638,14 +2651,6 @@ function handleCanvasTouchMove(e) {
             if (e.cancelable) e.preventDefault();
         }
 
-        // --- Edge Case: Teardown Protection ---
-        // Ensure cleanup runs even if e.g. touchend already cleared isPanning 
-        // while a move event was still in the event queue.
-        if (!STATE.isPanning && STATE.panMoved) {
-            STATE.panMoved = false;
-            STATE.wrapperEl?.classList.remove('is-panning-board');
-            document.body.style.cursor = '';
-        }
     } else if (e.touches.length === 2 && STATE.pinchStartDist) {
         // Pinch-to-Zoom: Calculating scale delta
         const touch1 = e.touches[0];
