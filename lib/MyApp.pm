@@ -129,20 +129,34 @@ sub startup {
         }
     );
 
-    # Helper: Check if current user is a Family Member (or Admin)
+    # Helper: Check if current user is a Family Member (or Admin/Parent/Child)
     # Parameters: None (Uses session)
-    # Returns: Boolean (1 if family/admin, 0 otherwise)
+    # Returns: Boolean (1 if family/admin/parent/child, 0 otherwise)
     $self->helper(
         is_family => sub {
             my $c = shift;
             return 0 unless $c->session('user');
             my $username = $c->session('user');
             return 1 if $c->db->is_admin($username);
+            return 1 if $c->db->is_parent($username);
             return 1 if $c->db->is_child($username);
             return $c->db->is_family($username);
         }
     );
-    
+
+    # Helper: Check if current user has Parent privileges (Admin or Parent)
+    # Parameters: None (Uses session)
+    # Returns: Boolean (1 if admin/parent, 0 otherwise)
+    $self->helper(
+        is_parent => sub {
+            my $c = shift;
+            return 0 unless $c->session('user');
+            my $username = $c->session('user');
+            return 1 if $c->db->is_admin($username);
+            return $c->db->is_parent($username);
+        }
+    );
+
     # Helper: Get Current User ID from session
     # Parameters: None (Uses session)
     # Returns: Boolean (1 if child, 0 otherwise)
@@ -379,7 +393,16 @@ sub startup {
         $c->render('noperm');
         return undef;
     });
-    
+
+    # Parent bridge: grants access to admin and parent roles
+    my $parent = $auth->under(sub {
+        my $c = shift;
+        return 1 if $c->is_parent;
+        $c->render('noperm');
+        return undef;
+    });
+
+
 
     $r->get('/login')->to('auth#login_form');
     $r->post('/login')->to('auth#login');
@@ -569,14 +592,14 @@ sub startup {
     $family->post('/timers/api/stop')->to('timers#stop_timer');
     $family->post('/timers/api/pause')->to('timers#toggle_pause');
     $family->post('/timers/api/redeem')->to('timers#api_redeem');
-    $family->post('/timers/api/transfer')->to('timers#api_transfer');
+    $parent->post('/timers/api/transfer')->to('timers#api_transfer');
     
-    $admin->get('/timers/manage')->to('timers#manage');
-    $admin->get('/timers/api/manage/state')->to('timers#api_manage_state');
-    $admin->post('/timers/api/create')->to('timers#create');
-    $admin->post('/timers/api/update/:id')->to('timers#update');
-    $admin->post('/timers/api/delete/:id')->to('timers#delete');
-    $admin->post('/timers/api/bonus')->to('timers#grant_bonus');
+    $parent->get('/timers/manage')->to('timers#manage');
+    $parent->get('/timers/api/manage/state')->to('timers#api_manage_state');
+    $parent->post('/timers/api/create')->to('timers#create');
+    $parent->post('/timers/api/update/:id')->to('timers#update');
+    $parent->post('/timers/api/delete/:id')->to('timers#delete');
+    $parent->post('/timers/api/bonus')->to('timers#grant_bonus');
 
     # --- Citizenship Quiz Routes ---
     $r->get('/quiz')->to('quiz#index');
