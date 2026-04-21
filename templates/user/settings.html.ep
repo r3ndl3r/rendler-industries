@@ -1,0 +1,129 @@
+<%# /templates/user/settings.html.ep %>
+
+% layout 'default', hide_navbar_title => 1, favicon => '⚙️';
+<% title 'Settings'; %>
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/user/settings.css">
+    <script src="/js/user/settings.js"></script>
+% end
+
+<div class="settings-container app-container">
+    <div class="header-bar">
+        <h1>⚙️ <span>Account Settings</span></h1>
+    </div>
+
+    <div class="settings-grid">
+
+        <%# Profile Card %>
+        <div class="settings-card">
+            <div class="settings-card-header">
+                <h2>👤 Profile</h2>
+            </div>
+            <div class="settings-card-body component-loading" id="profile-loading">
+                <div class="loading-scan-line"></div>
+                <span class="loading-icon-pulse">⚙️</span>
+                <p class="loading-label">Loading profile...</p>
+            </div>
+            <form id="profileForm" onsubmit="handleProfileSubmit(event)" style="display:none">
+                <div class="settings-card-body">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="profileUsername" class="game-input" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="profileEmail">Email</label>
+                        <input type="email" id="profileEmail" name="email" class="game-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="profileDiscord">Discord User ID</label>
+                        <input type="text" id="profileDiscord" name="discord_id" class="game-input" placeholder="e.g. 497218154586701834">
+                    </div>
+                    <div class="form-group">
+                        <label for="profileEmoji">Profile Emoji</label>
+                        <input type="text" id="profileEmoji" name="emoji" class="game-input" placeholder="e.g. 🦊" maxlength="8">
+                    </div>
+
+                    <div class="settings-section-divider">
+                        <span>Change Password</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profileCurrentPass">Current Password</label>
+                        <input type="password" id="profileCurrentPass" name="current_password" class="game-input" placeholder="Required to set a new password">
+                    </div>
+                    <div class="form-group">
+                        <label for="profileNewPass">New Password</label>
+                        <input type="password" id="profileNewPass" name="new_password" class="game-input" placeholder="Minimum 8 characters">
+                    </div>
+                    <div class="form-group">
+                        <label for="profileConfirmPass">Confirm New Password</label>
+                        <input type="password" id="profileConfirmPass" class="game-input" placeholder="Repeat new password">
+                    </div>
+                </div>
+                <div class="settings-card-footer">
+                    <button type="submit" id="profileSaveBtn" class="btn-primary">💾 Save Profile</button>
+                </div>
+            </form>
+        </div>
+
+        <%# Notification Preferences Card %>
+        <div class="settings-card">
+            <div class="settings-card-header">
+                <h2>🔔 Notification Channels</h2>
+                <p class="settings-card-subtitle">Choose how you receive alerts. At least one channel must remain active.</p>
+            </div>
+            <div class="settings-card-body component-loading" id="prefs-loading">
+                <div class="loading-scan-line"></div>
+                <span class="loading-icon-pulse">🔔</span>
+                <p class="loading-label">Loading preferences...</p>
+            </div>
+            <div id="prefsBody" style="display:none">
+                <div class="settings-card-body">
+                    <div class="pref-row" id="pref-row-discord">
+                        <div class="pref-info">
+                            <span class="pref-icon">💬</span>
+                            <div>
+                                <div class="pref-name">Discord</div>
+                                <div class="pref-desc">Direct messages via your linked Discord account</div>
+                            </div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="pref-discord" onchange="togglePref('discord', this)">
+                            <span class="slider slider-discord"></span>
+                        </label>
+                    </div>
+
+                    <div class="pref-row" id="pref-row-email">
+                        <div class="pref-info">
+                            <span class="pref-icon">📧</span>
+                            <div>
+                                <div class="pref-name">Email</div>
+                                <div class="pref-desc">Notifications sent to your registered email address</div>
+                            </div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="pref-email" onchange="togglePref('email', this)">
+                            <span class="slider slider-email"></span>
+                        </label>
+                    </div>
+
+                    <div class="pref-row" id="pref-row-fcm">
+                        <div class="pref-info">
+                            <span class="pref-icon">📱</span>
+                            <div>
+                                <div class="pref-name">Mobile Push</div>
+                                <div class="pref-desc" id="fcm-desc">Push notifications to the Rendler Industries app</div>
+                            </div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="pref-fcm" onchange="togglePref('fcm', this)">
+                            <span class="slider slider-fcm"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
