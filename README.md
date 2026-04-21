@@ -23,9 +23,10 @@ A hyper-integrated, full-stack home laboratory and family management ecosystem. 
 ### **📡 The Multi-Channel Notification Hub**
 The system features a redundant, priority-weighted alert engine for real-time and scheduled notifications:
 1.  **Discord (Primary):** Persistent Gateway WebSocket (owned by one Hypnotoad worker with automatic failover) for inbound DM command processing, plus outbound REST DMs for notifications and alerts.
-2.  **Gotify:** Self-hosted push notifications for system-level alerts and infrastructure monitoring.
-3.  **Gmail/SMTP:** Redundant email delivery for complex data (like Calendar invitations, impending event reminders, or receipt exports).
-4.  **Pushover:** Mobile-first emergency alerts for critical infrastructure events.
+2.  **FCM (Firebase Cloud Messaging):** Native Android push notifications delivered to the Rendler Industries companion app. Tap actions navigate directly to the originating module. Tokens are registered per-device and pruned automatically on stale 404 responses.
+3.  **Gotify:** Self-hosted push notifications for system-level alerts and infrastructure monitoring.
+4.  **Gmail/SMTP:** Redundant email delivery for complex data (like Calendar invitations, impending event reminders, or receipt exports).
+5.  **Pushover:** Mobile-first emergency alerts for critical infrastructure events.
 
 ### **🧠 AI & OCR Infrastructure**
 *   **Gemini 2.0 Engine:** Integrated LLM for context-aware household automation and conversational support.
