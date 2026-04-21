@@ -38,9 +38,9 @@ sub api_state {
     my $history = $c->db->get_global_point_history();
 
     $c->render(json => {
-        balances => $balances,
-        history  => $history,
-        is_admin => $c->is_admin ? 1 : 0
+        balances  => $balances,
+        history   => $history,
+        is_parent => $c->is_parent ? 1 : 0
     });
 }
 
@@ -53,8 +53,8 @@ sub api_state {
 sub api_add {
     my $c = shift;
 
-    # Security Check: Explicit admin verification for mutations
-    unless ($c->is_admin) {
+    # Security Check: Explicit parent verification for mutations
+    unless ($c->is_parent) {
         return $c->render(json => { error => 'Unauthorized' }, status => 403);
     }
 
