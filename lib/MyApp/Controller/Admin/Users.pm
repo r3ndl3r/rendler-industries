@@ -193,6 +193,7 @@ sub approve_user {
 #   username   : Updated username
 #   email      : Updated email address
 #   discord_id : Discord identifier
+#   emoji      : Profile emoji (Optional, single character)
 #   is_admin   : Administrative permission bit
 #   is_parent  : Parent permission bit
 #   is_family  : Family member permission bit
@@ -207,6 +208,11 @@ sub edit_user {
     my $username = trim($c->param('username') // '');
     my $email = trim($c->param('email') // '');
     my $discord_id = trim($c->param('discord_id') // '');
+    my $emoji      = trim($c->param('emoji')      // '');
+
+    if (length $emoji && $emoji =~ /^[\x00-\x7E]+$/) {
+        return $c->render(json => { success => 0, error => 'Profile emoji must be a single emoji character' });
+    }
 
     unless (defined $id && $id =~ /^\d+$/) {
         return $c->render(json => { success => 0, error => 'Invalid user ID' });
@@ -238,7 +244,7 @@ sub edit_user {
             }
             $c->db->update_user_password($id, $password);
         }
-        $c->db->update_user($id, $username, $email, $discord_id, $is_admin, $is_family, $is_parent, $is_child, $status);
+        $c->db->update_user($id, $username, $email, $discord_id, $is_admin, $is_family, $is_parent, $is_child, $status, $emoji || undef);
     };
     
     if ($@) {
