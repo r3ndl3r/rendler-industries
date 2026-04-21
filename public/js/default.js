@@ -851,3 +851,55 @@ window.escapeHtml = function(text) {
     div.textContent = text;
     return div.innerHTML.replace(/"/g, '&quot;');
 };
+
+/**
+ * FCM Push Notification Bootstrap
+ *
+ * Runs only inside the Capacitor native shell. Requests notification
+ * permission, registers with FCM, and ships the device token to the
+ * backend so the server can deliver push messages to this device.
+ *
+ * Foreground notifications surface as toast messages. Tap actions
+ * navigate to data.url when present.
+ *
+ * @param {void} - No parameters. Self-invoking; guards on Capacitor presence.
+ * @returns {void}
+ */
+(function initFcmPush() {
+    if (!window.Capacitor || !window.Capacitor.isNativePlatform()) return;
+
+    const { PushNotifications } = window.Capacitor.Plugins;
+    if (!PushNotifications) return;
+
+    PushNotifications.requestPermissions().then(function(result) {
+        if (result.receive === 'granted') {
+            PushNotifications.register();
+        }
+    });
+
+    PushNotifications.addListener('registration', function(token) {
+        fetch('/api/fcm/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            },
+            body: 'token=' + encodeURIComponent(token.value)
+        }).catch(function(err) {
+            console.error('FCM token registration failed:', err);
+        });
+    });
+
+    PushNotifications.addListener('registrationError', function(err) {
+        console.error('FCM registration error:', err);
+    });
+
+    PushNotifications.addListener('pushNotificationReceived', function(notification) {
+        showToast(notification.title + ': ' + notification.body, 'info');
+    });
+
+    PushNotifications.addListener('pushNotificationActionPerformed', function(action) {
+        const url = action.notification.data && action.notification.data.url;
+        if (url) window.location.href = url;
+    });
+}());
