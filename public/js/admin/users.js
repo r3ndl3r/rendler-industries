@@ -96,6 +96,7 @@ async function handleAddSubmit(event) {
         // Explicitly set checkbox values: unchecked boxes are omitted from FormData,
         // which would produce an absent key rather than a deterministic 0 on the backend.
         formData.set('is_admin',  form.querySelector('[name="is_admin"]').checked  ? 1 : 0);
+        formData.set('is_parent', form.querySelector('[name="is_parent"]').checked ? 1 : 0);
         formData.set('is_family', form.querySelector('[name="is_family"]').checked ? 1 : 0);
         formData.set('is_child',  form.querySelector('[name="is_child"]').checked  ? 1 : 0);
 
@@ -161,7 +162,7 @@ function renderTable() {
     if (!tbody) return;
 
     if (STATE.users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center">No users registered in the system.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center">No users registered in the system.</td></tr>';
         return;
     }
 
@@ -183,6 +184,7 @@ function renderTable() {
  * @param {string} u.created_at - Account creation timestamp.
  * @param {string} u.status - Account lifecycle state ('approved'|'pending').
  * @param {number} u.is_admin - Administrative privilege bit.
+ * @param {number} u.is_parent - Parent privilege bit.
  * @param {number} u.is_family - Family member privilege bit.
  * @param {number} u.is_child - Child account privilege bit.
  * @returns {string} - Rendered HTML table row.
@@ -216,6 +218,12 @@ function renderUserRow(u) {
                     <span class="slider"></span>
                 </label>
             </td>
+            <td data-label="Parent">
+                <label class="switch">
+                    <input type="checkbox" onchange="toggleRole(${u.id}, 'parent', this.checked)" ${u.is_parent == 1 ? 'checked' : ''}>
+                    <span class="slider slider-parent"></span>
+                </label>
+            </td>
             <td data-label="Family">
                 <label class="switch">
                     <input type="checkbox" onchange="toggleRole(${u.id}, 'family', this.checked)" ${u.is_family == 1 ? 'checked' : ''}>
@@ -230,8 +238,8 @@ function renderUserRow(u) {
             </td>
             <td data-label="Actions">
                 <div class="action-btns">
-                    <button class="btn-icon-edit" onclick="openEditModal(${u.id})" title="Edit Detail">✏️</button>
-                    <button class="btn-icon-delete" onclick="confirmDelete(${u.id}, '${escapeHtml(u.username)}')" title="Revoke Access">🗑️</button>
+                    <button class="btn-icon-edit" onclick="openEditUserModal(${u.id})" title="Edit Detail">✏️</button>
+                    <button class="btn-icon-delete" onclick="confirmDeleteUser(${u.id}, '${escapeHtml(u.username)}')" title="Revoke Access">🗑️</button>
                 </div>
             </td>
         </tr>
@@ -352,9 +360,14 @@ async function toggleRole(userId, role, value) {
     if (result && result.success) {
         const u = STATE.users.find(item => item.id == userId);
         if (u) {
-            if (role === 'admin') u.is_admin = value ? 1 : 0;
+            if (role === 'admin')  u.is_admin  = value ? 1 : 0;
+            if (role === 'parent') u.is_parent = value ? 1 : 0;
             if (role === 'family') u.is_family = value ? 1 : 0;
-            if (role === 'child') u.is_child = value ? 1 : 0;
+            if (role === 'child')  u.is_child  = value ? 1 : 0;
+            const cascade = result.cascaded || {};
+            if (cascade.family)       u.is_family  = 1;
+            if (cascade.clear_child)  u.is_child   = 0;
+            if (cascade.clear_parent) u.is_parent  = 0;
             renderTable();
         }
     } else {
