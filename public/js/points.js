@@ -17,7 +17,7 @@
 let STATE = {
     balances: [],
     history: [],
-    is_admin: false
+    is_parent: false
 };
 
 /**
@@ -113,7 +113,7 @@ function renderWallets() {
         div.innerHTML = `
             <div class="wallet-username">${displayName}</div>
             <div class="wallet-balance ${balanceClass}">💰 ${parseInt(child.current_points).toLocaleString()}</div>
-            ${STATE.is_admin ? `
+            ${STATE.is_parent ? `
                 <div class="wallet-actions">
                     <button type="button" class="btn-success" onclick="openTransactionModal(${child.id}, '${escapedName}', 'reward')">
                         ➕ ADD
