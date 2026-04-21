@@ -78,6 +78,11 @@
                     <label for="editDiscordId">Discord User ID</label>
                     <input type="text" id="editDiscordId" name="discord_id" class="game-input" placeholder="e.g. 497218154586701834">
                 </div>
+
+                <div class="form-group">
+                    <label for="editEmoji">Profile Emoji</label>
+                    <input type="text" id="editEmoji" name="emoji" class="game-input" placeholder="e.g. 🦊" maxlength="8">
+                </div>
                 
                 <div class="form-group">
                     <label for="editStatus">Status</label>
@@ -94,7 +99,7 @@
             </div>
             
             <div class="modal-actions modal-actions-center">
-                <button type="submit" class="btn-primary">💾 Save Account</button>
+                <button type="submit" id="editSaveBtn" class="btn-primary">💾 Save Account</button>
             </div>
         </form>
     </div>
