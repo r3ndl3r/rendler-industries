@@ -30,6 +30,7 @@
                     <th>Created</th>
                     <th>Approved</th>
                     <th>Admin</th>
+                    <th>Parent</th>
                     <th>Family</th>
                     <th>Child</th>
                     <th class="col-actions-narrow">Actions</th>
@@ -37,7 +38,7 @@
             </thead>
             <tbody id="users-table-body">
                 <tr class="component-loading-row">
-                    <td colspan="10">
+                    <td colspan="11">
                         <div class="component-loading">
                             <div class="loading-scan-line"></div>
                             <span class="loading-icon-pulse">👤</span>
@@ -131,6 +132,13 @@
                                 <span class="slider"></span>
                             </label>
                             <span class="role-label">Admin</span>
+                        </div>
+                        <div class="role-toggle-item">
+                            <label class="switch">
+                                <input type="checkbox" name="is_parent" value="1">
+                                <span class="slider slider-parent"></span>
+                            </label>
+                            <span class="role-label">Parent</span>
                         </div>
                         <div class="role-toggle-item">
                             <label class="switch">
