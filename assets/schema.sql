@@ -586,6 +586,7 @@ CREATE TABLE `users` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `is_admin` tinyint(1) NOT NULL DEFAULT 0,
   `is_family` tinyint(1) DEFAULT 0,
+  `is_parent` tinyint(1) NOT NULL DEFAULT 0,
   `status` varchar(20) NOT NULL DEFAULT 'pending',
   `is_child` tinyint(1) DEFAULT 0,
   `emoji` varchar(10) DEFAULT '?',
