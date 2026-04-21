@@ -68,9 +68,10 @@ CREATE TABLE `canvas_shares` (
   `canvas_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
   `can_edit` tinyint(1) DEFAULT 1,
+  `sort_order` int(11) DEFAULT 0,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`canvas_id`,`user_id`),
-  KEY `user_id` (`user_id`),
+  KEY `idx_shares_user` (`user_id`,`created_at`),
   CONSTRAINT `canvas_shares_ibfk_1` FOREIGN KEY (`canvas_id`) REFERENCES `canvases` (`id`) ON DELETE CASCADE,
   CONSTRAINT `canvas_shares_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -78,8 +79,11 @@ CREATE TABLE `canvases` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `name` varchar(255) DEFAULT 'Main Workspace',
+  `sort_order` int(11) DEFAULT 0,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `password_hash` varchar(255) DEFAULT NULL,
+  `lock_version` int(11) DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -157,6 +161,16 @@ CREATE TABLE `emojis` (
   UNIQUE KEY `idx_char` (`emoji_char`),
   KEY `idx_category` (`category`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `fcm_tokens` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `token` text NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_token` (`token`(255)),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 CREATE TABLE `files` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `filename` varchar(255) NOT NULL,
@@ -174,6 +188,13 @@ CREATE TABLE `files` (
   UNIQUE KEY `filename` (`filename`),
   KEY `idx_filename` (`filename`),
   KEY `idx_uploaded_by` (`uploaded_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `gateway_owner` (
+  `id` tinyint(4) NOT NULL DEFAULT 1,
+  `pid` int(11) NOT NULL,
+  `started_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `last_heartbeat` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `go_links` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -207,6 +228,7 @@ CREATE TABLE `meal_plan` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `reminder_8am_sent` tinyint(1) DEFAULT 0,
   `reminder_12pm_sent` tinyint(1) DEFAULT 0,
+  `reminder_2pm_sent` tinyint(1) DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `plan_date` (`plan_date`),
   KEY `fk_final_suggestion` (`final_suggestion_id`),
@@ -291,6 +313,7 @@ CREATE TABLE `note_blobs` (
   `filename` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_note` (`note_id`),
+  KEY `idx_blobs_note` (`note_id`,`id`),
   CONSTRAINT `fk_blobs_note` FOREIGN KEY (`note_id`) REFERENCES `notes` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `notes` (
@@ -313,8 +336,12 @@ CREATE TABLE `notes` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `layer_id` int(11) DEFAULT 1,
   `is_deleted` tinyint(1) DEFAULT 0,
+  `locked_by_user_id` int(11) DEFAULT NULL,
+  `locked_by_session_id` varchar(32) DEFAULT NULL,
+  `locked_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_user` (`user_id`),
+  KEY `idx_notes_sync` (`canvas_id`,`is_deleted`,`updated_at`),
   CONSTRAINT `fk_notes_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `notes_viewport` (
@@ -327,10 +354,25 @@ CREATE TABLE `notes_viewport` (
   `layer_id` int(11) NOT NULL DEFAULT 1,
   PRIMARY KEY (`user_id`,`canvas_id`,`layer_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `notification_templates` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `template_key` varchar(50) NOT NULL,
+  `description` text DEFAULT NULL,
+  `available_tags` text DEFAULT NULL,
+  `subject_template` varchar(255) DEFAULT NULL,
+  `body_template` text NOT NULL,
+  `sample_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`sample_data`)),
+  `is_deprecated` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `template_key` (`template_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `notifications_log` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) DEFAULT NULL,
-  `type` enum('discord','email','pushover','gotify') NOT NULL,
+  `caller_id` int(11) DEFAULT NULL,
+  `type` enum('discord','email','pushover','gotify','fcm') NOT NULL,
   `recipient` varchar(255) NOT NULL,
   `subject` varchar(255) DEFAULT NULL,
   `message` text NOT NULL,
@@ -339,7 +381,25 @@ CREATE TABLE `notifications_log` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
+  KEY `caller_id` (`caller_id`),
   CONSTRAINT `notifications_log_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `notifications_queue` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) DEFAULT NULL,
+  `type` enum('discord','email') NOT NULL,
+  `recipient` varchar(255) NOT NULL,
+  `subject` varchar(255) DEFAULT NULL,
+  `message` text NOT NULL,
+  `status` enum('pending','processing','sent','failed') NOT NULL DEFAULT 'pending',
+  `retry_count` tinyint(4) NOT NULL DEFAULT 0,
+  `last_error` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `status` (`status`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `notifications_queue_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `point_ledger` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -390,6 +450,7 @@ CREATE TABLE `reminders` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `created_by` int(11) NOT NULL,
   `is_one_off` tinyint(1) DEFAULT 0,
+  `chore_points` int(11) DEFAULT NULL,
   `has_emoji` tinyint(1) DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `created_by` (`created_by`),
