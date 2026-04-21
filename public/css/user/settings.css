@@ -1,0 +1,175 @@
+/* /public/css/user/settings.css */
+
+.settings-container {
+    max-width: 900px;
+    margin: 0 auto;
+    min-height: 100vh;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+/* --- Card --- */
+.settings-card {
+    background: #1e293b;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.settings-card-header {
+    padding: 1.25rem 1.5rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.settings-card-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.settings-card-subtitle {
+    margin: 0.4rem 0 0;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.settings-card-body {
+    padding: 1.25rem 1.5rem;
+}
+
+.settings-card-footer {
+    padding: 1rem 1.5rem 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    display: flex;
+    justify-content: center;
+}
+
+/* --- Section divider inside profile card --- */
+.settings-section-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.25rem 0 1rem;
+    color: #475569;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.settings-section-divider::before,
+.settings-section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+/* --- Notification preference rows --- */
+.pref-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    gap: 1rem;
+}
+
+.pref-row:last-child {
+    border-bottom: none;
+}
+
+.pref-info {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.pref-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.pref-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #f1f5f9;
+}
+
+.pref-desc {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.15rem;
+}
+
+.pref-row-disabled .pref-name,
+.pref-row-disabled .pref-icon {
+    opacity: 0.4;
+}
+
+.pref-row-disabled .pref-desc {
+    color: #ef4444;
+    opacity: 0.7;
+}
+
+/* --- Toggle switch colours for notification channels --- */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #334155;
+    transition: .3s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider:before { transform: translateX(24px); }
+
+input:checked + .slider-discord { background-color: #5865f2; }
+input:checked + .slider-email   { background-color: #10b981; }
+input:checked + .slider-fcm     { background-color: #f97316; }
+
+input:disabled + .slider {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+}
