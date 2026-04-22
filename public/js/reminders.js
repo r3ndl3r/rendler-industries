@@ -17,7 +17,7 @@
  * - Mandatory Action pattern for secure record deletion
  * 
  * Dependencies:
- * - default.js: For FlipClockManager, apiPost, getIcon, setupGlobalModalClosing, and modal helpers
+ * - default.js: For FlipClockManager, apiPost, setupGlobalModalClosing, and modal helpers
  * - toast.js: For notification feedback
  */
 
