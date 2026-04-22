@@ -101,17 +101,33 @@
 
             <div class="form-group checkbox-group">
                 <label>
-                    <input type="checkbox" id="eventNotify" name="event_notify"> 
-                    🔔 Send notification (1 hour before event)
+                    <input type="checkbox" id="eventNotify" name="event_notify">
+                    🔔 Send reminder
                 </label>
             </div>
-            <input type="hidden" id="notificationMinutes" name="notification_minutes" value="0">
 
-            <div id="notificationChannelsGroup" class="form-group hidden">
-                <label>Notification Channels</label>
-                <div id="channels-container" class="selector-grid">
+            <div id="reminderPresetsGroup" class="form-group hidden">
+                <label>Remind me before event</label>
+                <div class="reminder-dropdowns">
+                    <select id="reminderDays">
+                        % for my $i (0..7) {
+                        <option value="<%= $i %>"><%= $i %> <%= $i == 1 ? 'day' : 'days' %></option>
+                        % }
+                    </select>
+                    <select id="reminderHours">
+                        % for my $i (0..23) {
+                        <option value="<%= $i %>"><%= $i %> <%= $i == 1 ? 'hour' : 'hours' %></option>
+                        % }
+                    </select>
+                    <select id="reminderMinutes">
+                        % for my $i (0..59) {
+                        <option value="<%= $i %>"><%= $i %> min</option>
+                        % }
+                    </select>
                 </div>
+                <input type="hidden" id="notificationMinutes" name="notification_minutes" value="0">
             </div>
+
             
             <div class="form-row">
                 <div class="form-group">

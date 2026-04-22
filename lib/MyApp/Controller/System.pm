@@ -501,10 +501,17 @@ sub run_calendar_notifications {
         }
         my $attendees_str = join(', ', @attendee_names);
         
-        my $channels = $event->{notification_channels} // 'email';
         my $formatted_start = $c->format_datetime($event->{start_date}, $event->{all_day});
         my $formatted_end   = $c->format_datetime($event->{end_date}, $event->{all_day});
-        my $time_label      = $event->{notification_minutes} == 60 ? "1 hour" : "$event->{notification_minutes} minutes";
+        my $mins  = $event->{notification_minutes} // 0;
+        my $d     = int($mins / 1440);
+        my $h     = int(($mins % 1440) / 60);
+        my $m     = $mins % 60;
+        my @parts;
+        push @parts, $d == 1 ? '1 day'    : "$d days"    if $d;
+        push @parts, $h == 1 ? '1 hour'   : "$h hours"   if $h;
+        push @parts, $m == 1 ? '1 minute' : "$m minutes" if $m;
+        my $time_label = @parts ? join(' ', @parts) : '0 minutes';
         
         # 3. DISPATCH via Templated System
         foreach my $uid (map { trim($_) } @uids) {
@@ -517,14 +524,6 @@ sub run_calendar_notifications {
             }, 0); # caller_id 0 for system
         }
 
-        # 4. ADMIN CHANNELS (Legacy Push Fallback)
-        if ($channels =~ /pushover/ || $channels =~ /gotify/) {
-            my $push_title = "🔔 Reminder: $event->{title}";
-            my $push_body  = "$event->{title} starts in $time_label!\n\nAttendees: $attendees_str";
-            $c->push_pushover($push_body, undef, 0) if $channels =~ /pushover/;
-            $c->push_gotify($push_body, $push_title, undef, undef, 0) if $channels =~ /gotify/;
-        }
-        
         $stats->{notifications_sent}++;
     }
 
