@@ -13,7 +13,7 @@
         <h1>✉️ <span>Notification Templates</span></h1>
         <div class="manage-actions">
             <a href="/admin/notifications/logs" class="action-btn">
-                📜 View Logs
+                📜 Logs
             </a>
         </div>
     </div>
@@ -129,7 +129,6 @@
             </div>
         </div>
         <div class="modal-actions modal-actions-center">
-            <button type="button" class="btn-secondary" onclick="closeEditorModal()">Cancel</button>
             <button type="button" class="btn-primary" id="saveTemplateBtn">
                 💾 Save
             </button>
