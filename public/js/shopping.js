@@ -16,7 +16,7 @@
  * - Sanity-checked DOM manipulation for XSS prevention
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
+ * - default.js: For apiPost, setupGlobalModalClosing, and modal helpers
  * - toast.js: For notification feedback
  */
 
