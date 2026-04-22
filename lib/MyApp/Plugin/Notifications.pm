@@ -17,15 +17,21 @@ my $_fcm_token_expiry = 0;
 # Strips Discord markdown and collapses whitespace for use in FCM notification bodies.
 sub _strip_markdown {
     my $text = shift // '';
-    $text =~ s/\*\*(.+?)\*\*/$1/gs;
-    $text =~ s/\*(.+?)\*/$1/gs;
-    $text =~ s/__(.+?)__/$1/gs;
+    # Remove bold/italics/underline (non-greedy, single line to prevent phase shifts)
+    $text =~ s/\*\*(.+?)\*\*/$1/g;
+    $text =~ s/\*(.+?)\*/$1/g;
+    $text =~ s/__(.+?)__/$1/g;
+    # Remove links [text](url) -> text
     $text =~ s/\[([^\]]+)\]\([^\)]+\)/$1/g;
+    # Remove remaining [tags]
     $text =~ s/\[[^\]]+\]//g;
+    # Remove URLs
     $text =~ s/https?:\/\/\S+//g;
+    # Normalize whitespace
     $text =~ s/\n{3,}/\n\n/g;
     $text =~ s/[^\S\n]+/ /g;
-    $text = substr($text, 0, 200) if length($text) > 200;
+    # Truncate to reasonable push notification length (FCM limit is 4KB)
+    $text = substr($text, 0, 1000) if length($text) > 1000;
     return trim($text);
 }
 
@@ -225,6 +231,22 @@ use constant MANIFEST => {
         sample  => { title => "Family Dinner", time_label => "1 hour", start => "18:00", end => "20:00", attendees => "Everyone" },
         default_subject => "Upcoming Event: [title]",
         default_body    => "🔔 **UPCOMING EVENT** 🔔\n\n**[title]** is starting in [time_label]!\n\n📅 **Start:** [start]\n🏁 **End:** [end]\n👥 **Attendees:** [attendees]\n\n[sys_url /calendar]"
+    },
+    'calendar_new' => {
+        desc    => "Sent to family when a new public event is created.",
+        tags    => "creator, title, description, start, end, category, attendees",
+        url     => '/calendar',
+        sample  => { creator => "Dad", title => "Museum Trip", description => "Bring masks", start => "10:00", end => "14:00", category => "Trip", attendees => "Everyone" },
+        default_subject => "New Calendar Event: [title]",
+        default_body    => "📅 **NEW EVENT ADDED** 📅\n\n**[creator]** added a new event to the calendar.\n\n**[title]**\n*[description]*\n\n📅 **Start:** [start]\n🏁 **End:** [end]\n🏷️ **Category:** [category]\n👥 **Participants:** [attendees]\n\n[sys_url /calendar]"
+    },
+    'calendar_update' => {
+        desc    => "Sent to family when an existing public event is modified.",
+        tags    => "editor, title, description, start, end, category, attendees",
+        url     => '/calendar',
+        sample  => { editor => "Mom", title => "Museum Trip (Updated)", description => "Bring masks and lunch", start => "11:00", end => "15:00", category => "Trip", attendees => "Everyone" },
+        default_subject => "Calendar Update: [title]",
+        default_body    => "🔄 **CALENDAR UPDATE** 🔄\n\n**[editor]** updated event details.\n\n**[title]**\n*[description]*\n\n📅 **Start:** [start]\n🏁 **End:** [end]\n🏷️ **Category:** [category]\n👥 **Participants:** [attendees]\n\n[sys_url /calendar]"
     },
 
     # --- TIMERS (timers_*) ---
@@ -536,7 +558,7 @@ sub register {
                         user_id   => $user_id,
                         caller_id => $caller_id,
                         type      => 'fcm',
-                        recipient => substr($token, 0, 20) . '...',
+                        recipient => 'Mobile Device',
                         subject   => $title,
                         message   => $clean_body,
                         status    => 'success'
@@ -553,7 +575,7 @@ sub register {
                             user_id       => $user_id,
                             caller_id     => $caller_id,
                             type          => 'fcm',
-                            recipient     => substr($token, 0, 20) . '...',
+                            recipient     => 'Mobile Device',
                             subject       => $title,
                             message       => $clean_body,
                             status        => 'failed',
@@ -568,7 +590,7 @@ sub register {
                     user_id       => $user_id,
                     caller_id     => $caller_id,
                     type          => 'fcm',
-                    recipient     => substr($token, 0, 20) . '...',
+                    recipient     => 'Mobile Device',
                     subject       => $title,
                     message       => $clean_body,
                     status        => 'failed',
@@ -586,23 +608,25 @@ sub register {
         my ($c, $user_id, $message, $subject, $tap_url, $caller_id) = @_;
         $subject //= "System Notification";
 
-        my $user = $c->db->get_user_by_id($user_id);
+        my $user  = $c->db->get_user_by_id($user_id);
         return 0 unless $user;
 
-        # FCM: Fire and forget — sent regardless of other channel outcomes
-        $c->push_fcm($user_id, $subject, $message, $tap_url, $caller_id);
+        my $prefs = $c->db->get_user_notification_prefs($user_id);
 
-        # Try Discord first
-        if ($user->{discord_id}) {
+        # FCM: Fire and forget — only when user has opted in
+        $c->push_fcm($user_id, $subject, $message, $tap_url, $caller_id) if $prefs->{fcm};
+
+        # Try Discord first (if opted in and linked)
+        if ($prefs->{discord} && $user->{discord_id}) {
             return 1 if $c->send_discord_dm($user->{discord_id}, $message, $user_id, $caller_id) >= 1;
         }
 
-        # Fallback to Email
-        if ($user->{email}) {
+        # Fallback to Email (if opted in)
+        if ($prefs->{email} && $user->{email}) {
             return $c->send_email_via_gmail($user->{email}, $subject, $message, $user_id, $caller_id);
         }
 
-        $c->app->log->warn("No notification channels for user $user_id");
+        $c->app->log->warn("No notification channels available for user $user_id");
         $c->db->log_notification(
             user_id       => $user_id,
             caller_id     => $caller_id,
@@ -610,7 +634,7 @@ sub register {
             recipient     => 'None',
             message       => $message,
             status        => 'failed',
-            error_details => 'No notification channels configured for user'
+            error_details => 'No notification channels available or all disabled for user'
         );
         return 0;
     });
