@@ -14,8 +14,7 @@
         <div class="header-meta">
             <%# Admin Management Actions %>
             <div id="adminActions" class="manage-actions">
-                <button type="button" class="btn-primary" onclick="openAddEditMealModal()">➕ Add</button>
-                <button type="button" class="btn-secondary" onclick="openManageVaultModal()">⚙️ Manage Vault</button>
+                <button type="button" class="btn-secondary" onclick="openManageVaultModal()">⚙️ Meals Vault</button>
             </div>
         </div>
     </div>
@@ -107,7 +106,7 @@
 <div id="manageVaultModal" class="modal-overlay">
     <div class="modal-content modal-vault-manage">
         <div class="modal-header">
-            <h3>⚙️ Manage Meals</h3>
+            <h3>⚙️ Meals Vault</h3>
             <span class="close-btn" onclick="closeManageVaultModal()">&times;</span>
         </div>
         <div class="modal-body">
@@ -123,6 +122,9 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+        <div class="modal-actions modal-actions-center">
+            <button type="button" class="btn-primary" onclick="openAddEditMealModal()">➕ Add</button>
         </div>
     </div>
 </div>
