@@ -50,6 +50,7 @@ use constant STALE_SECS => 90;
 
 sub register {
     my ($self, $app, $config) = @_;
+    return if defined($app->config('discord')) && $app->config('discord') == 0;
 
     # $gw holds all per-worker gateway state. It is intentionally NOT
     # initialised here (pre-fork). The closures below create it inside
