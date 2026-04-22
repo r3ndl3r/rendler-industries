@@ -14,7 +14,7 @@
  * - Integration with the master Platform Icon registry
  * 
  * Dependencies:
- * - default.js: For the getIcon utility
+ * - default.js: For platform consistency
  */
 
 /**
