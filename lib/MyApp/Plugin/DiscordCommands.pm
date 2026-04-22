@@ -34,6 +34,7 @@ my %COMMANDS = (
 
 sub register {
     my ($self, $app, $config) = @_;
+    return if defined($app->config('discord')) && $app->config('discord') == 0;
 
     $app->hook(discord_dm => sub {
         my ($dm) = @_;
