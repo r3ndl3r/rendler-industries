@@ -13,7 +13,7 @@
  * - Modal-driven deletion and batch cleanup
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
+ * - default.js: For apiPost, setupGlobalModalClosing, and modal helpers
  * - toast.js: For notification feedback
  */
 
