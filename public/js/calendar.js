@@ -17,7 +17,7 @@
  * - Strict Privacy Mandate: Private events visible only to owner/admin.
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers.
+ * - default.js: For apiPost, setupGlobalModalClosing, and modal helpers.
  * - toast.js: For operation feedback.
  */
 
@@ -159,7 +159,12 @@ async function loadEvents(force = false) {
         const data = await response.json();
         
         if (data && data.success) {
-            STATE.events = data.events;
+            STATE.events = (data.events || []).map(e => ({
+                ...e,
+                uid: e.is_recurring_instance
+                    ? `r${e.recurrence_source_id}_${(e.instance_date || '').replace(/-/g, '')}`
+                    : String(e.id)
+            }));
             applyFilters();
             renderUI();
         }
@@ -343,9 +348,9 @@ function renderDayView() {
             <div class="calendar-hour-label">${displayHour}</div>
             <div class="calendar-hour-events" onclick="openAddEventModal('${dateStr}')">
                 ${getEventsForHour(dateStr, h).map(e => `
-                    <div class="event-item" style="--event-color: ${e.color};" onclick="event.stopPropagation(); showEventDetails(${e.id})">
+                    <div class="event-item" style="--event-color: ${e.color};" onclick="event.stopPropagation(); showEventDetails('${e.uid}')">
                         ${e.is_private ? '🔒' : ''}
-                        <strong>${escapeHtml(e.title)}</strong> ${e.all_day ? '(All Day)' : ''}
+                        <strong>${escapeHtml(e.title)}</strong>${e.is_recurring_instance ? ' 🔁' : ''} ${e.all_day ? '(All Day)' : ''}
                     </div>
                 `).join('')}
             </div>
@@ -373,12 +378,14 @@ function renderEventPill(e, compact) {
         }).join('') + `</div>`;
     }
 
+    const recurIcon = e.is_recurring_instance ? ' 🔁' : '';
+
     return `
-        <div class="event-item ${e.all_day ? 'all-day' : ''} ${e.is_private ? 'private-event' : ''}" style="--event-color: ${e.color};" onclick="event.stopPropagation(); showEventDetails(${e.id})">
+        <div class="event-item ${e.all_day ? 'all-day' : ''} ${e.is_private ? 'private-event' : ''}" style="--event-color: ${e.color};" onclick="event.stopPropagation(); showEventDetails('${e.uid}')">
             <div class="event-item-content">
                 <span class="event-title">
                     ${e.is_private ? '🔒' : ''}
-                    ${escapeHtml(e.title)}${timeStr}
+                    ${escapeHtml(e.title)}${timeStr}${recurIcon}
                 </span>
                 ${attendeeHtml}
             </div>
@@ -396,9 +403,18 @@ function renderManagementTable() {
     const pastContainer = document.getElementById('pastTableContainer');
     if (!upcomingContainer || !pastContainer) return;
 
+    // Recurring events are returned as instances; show one representative row per series.
+    const seenSeries = new Set();
+    const baseEvents = STATE.filteredEvents.filter(e => {
+        if (!e.is_recurring_instance) return true;
+        if (seenSeries.has(e.recurrence_source_id)) return false;
+        seenSeries.add(e.recurrence_source_id);
+        return true;
+    });
+
     const now = new Date();
-    const upcoming = STATE.filteredEvents.filter(e => new Date(e.end_date || e.start_date) >= now).sort((a, b) => a.start_date.localeCompare(b.start_date));
-    const past = STATE.filteredEvents.filter(e => new Date(e.end_date || e.start_date) < now).sort((a, b) => b.start_date.localeCompare(a.start_date));
+    const upcoming = baseEvents.filter(e => new Date(e.end_date || e.start_date) >= now).sort((a, b) => a.start_date.localeCompare(b.start_date));
+    const past = baseEvents.filter(e => new Date(e.end_date || e.start_date) < now).sort((a, b) => b.start_date.localeCompare(a.start_date));
 
     upcomingContainer.innerHTML = renderTable(upcoming, 'No upcoming events found.');
     pastContainer.innerHTML = renderTable(past, 'No past events found.');
@@ -453,7 +469,7 @@ function renderTable(events, emptyMsg) {
                 <td>
                     <span class="event-color-dot" style="--event-color: ${e.color}"></span>
                     ${e.is_private ? '🔒' : ''}
-                    <strong>${escapeHtml(e.title)}</strong>
+                    <strong>${escapeHtml(e.title)}${e.recurrence_rule ? ' 🔁' : ''}</strong>
                     ${e.description ? `<div class="event-desc">${escapeHtml(e.description)}</div>` : ''}
                 </td>
                 <td class="date-cell">${timeDisplay}</td>
@@ -557,7 +573,7 @@ function renderUpcomingEvents() {
         const timeInfo = e.all_day ? 'All Day' : `${formatTime(e.start_date)} - ${formatTime(e.end_date)}`;
 
         html += `
-            <div class="upcoming-event-item ${e.is_private ? 'private-event' : ''}" style="--event-color: ${e.color}" onclick="showEventDetails(${e.id})">
+            <div class="upcoming-event-item ${e.is_private ? 'private-event' : ''}" style="--event-color: ${e.color}" onclick="showEventDetails('${e.uid}')">
                 <div class="upcoming-event-color"></div>
                 <div class="upcoming-event-details">
                     <div class="upcoming-event-title">
@@ -622,6 +638,22 @@ function setupEventListeners() {
                 }
             });
         };
+    }
+
+    const recurrenceSelect  = document.getElementById('recurrenceRule');
+    const recurrenceOptions = document.getElementById('recurrenceOptions');
+    const intervalLabel     = document.getElementById('recurrenceIntervalLabel');
+    const intervalLabels    = { daily: 'days', weekly: 'weeks', monthly: 'months', yearly: 'years' };
+    if (recurrenceSelect && recurrenceOptions) {
+        recurrenceSelect.addEventListener('change', () => {
+            const val = recurrenceSelect.value;
+            if (val) {
+                recurrenceOptions.classList.remove('hidden');
+                if (intervalLabel) intervalLabel.textContent = intervalLabels[val] || 'periods';
+            } else {
+                recurrenceOptions.classList.add('hidden');
+            }
+        });
     }
 
     const notifyCb      = document.getElementById('eventNotify');
@@ -800,7 +832,19 @@ function openAddEventModal(dateStr) {
     document.getElementById('deleteEventBtn').classList.add('hidden');
     document.getElementById('cloneEventBtn').classList.add('hidden');
 
-    // Reset Notifications
+    // Reset recurrence
+    const _rRule = document.getElementById('recurrenceRule');
+    const _rOpts = document.getElementById('recurrenceOptions');
+    const _rIntv = document.getElementById('recurrenceInterval');
+    const _rEnd  = document.getElementById('recurrenceEndDate');
+    const _rSkip = document.getElementById('skipOccurrenceBtn');
+    if (_rRule) _rRule.value = '';
+    if (_rOpts) _rOpts.classList.add('hidden');
+    if (_rIntv) _rIntv.value = 1;
+    if (_rEnd)  _rEnd.value  = '';
+    if (_rSkip) _rSkip.classList.add('hidden');
+
+    // Initial notification state
     const notifyCb = document.getElementById('eventNotify');
     if (notifyCb) {
         notifyCb.checked = false;
@@ -883,8 +927,21 @@ function openEditModalById(id) {
         }
     }
 
+    // Recurrence fields (management table always edits the series, never an instance)
+    const ruleEl = document.getElementById('recurrenceRule');
+    if (ruleEl) {
+        ruleEl.value = event.recurrence_rule || '';
+        ruleEl.dispatchEvent(new Event('change'));
+        const _ri = document.getElementById('recurrenceInterval');
+        const _re = document.getElementById('recurrenceEndDate');
+        if (_ri) _ri.value = event.recurrence_interval || 1;
+        if (_re) _re.value = event.recurrence_end_date || '';
+    }
+    const skipBtn = document.getElementById('skipOccurrenceBtn');
+    if (skipBtn) skipBtn.classList.add('hidden');
+
     document.getElementById('modalTitle').innerHTML = `Edit Event`;
-    
+
     // Authorization: Only owner or admin can see action buttons
     const canManage = (STATE.currentUserId == event.created_by || STATE.isAdmin);
     if (canManage) {
@@ -900,6 +957,116 @@ function openEditModalById(id) {
     const modal = document.getElementById('eventModal');
     modal.classList.add('show');
     document.body.classList.add('modal-open');
+}
+
+/**
+ * Displays the event editor for a calendar-view event or recurring instance, identified by uid.
+ * For instances, sets eventId to recurrence_source_id so the submit targets the base DB row.
+ * Instances are self-contained — no base-event lookup in STATE is needed.
+ *
+ * @param {string} uid - Synthetic uid assigned in loadEvents.
+ * @returns {void}
+ */
+function openEditModalByUid(uid) {
+    const event = STATE.events.find(e => e.uid == uid);
+    if (!event) return;
+
+    document.getElementById('eventId').value = event.is_recurring_instance
+        ? event.recurrence_source_id
+        : event.id;
+    document.getElementById('eventTitle').value = event.title;
+    document.getElementById('eventDescription').value = event.description || '';
+    document.getElementById('eventCategory').value = event.category || '';
+    document.getElementById('eventColor').value = event.color || '#3788d8';
+    document.getElementById('eventAllDay').checked = !!event.all_day;
+    document.getElementById('eventIsPrivate').checked = !!event.is_private;
+
+    const [sDate, sTime] = event.start_date.split(' ');
+    const [eDate, eTime] = event.end_date.split(' ');
+    document.getElementById('eventStartDate').value = sDate;
+    document.getElementById('eventStartTime').value = (sTime || '').substring(0, 5);
+    document.getElementById('eventEndDate').value = eDate;
+    document.getElementById('eventEndTime').value = (eTime || '').substring(0, 5);
+
+    const attendeeIds = (event.attendees || '').split(',');
+    document.querySelectorAll('#attendees-container input[type="checkbox"]').forEach(cb => {
+        cb.checked = attendeeIds.includes(cb.value);
+    });
+
+    // Notifications
+    const notifyCb      = document.getElementById('eventNotify');
+    const reminderGroup = document.getElementById('reminderPresetsGroup');
+    if (notifyCb && reminderGroup) {
+        const mins = parseInt(event.notification_minutes || 0);
+        notifyCb.checked = mins > 0;
+        if (mins > 0) {
+            reminderGroup.classList.remove('hidden');
+            _populateReminderDropdowns(mins);
+        } else {
+            reminderGroup.classList.add('hidden');
+            const _rd = document.getElementById('reminderDays');
+            const _rh = document.getElementById('reminderHours');
+            const _rm = document.getElementById('reminderMinutes');
+            const _nm = document.getElementById('notificationMinutes');
+            if (_rd) _rd.value = 0;
+            if (_rh) _rh.value = 0;
+            if (_rm) _rm.value = 0;
+            if (_nm) _nm.value = 0;
+        }
+    }
+
+    // Recurrence fields — present on both base and instance (instance is self-contained)
+    const ruleEl = document.getElementById('recurrenceRule');
+    if (ruleEl) {
+        ruleEl.value = event.recurrence_rule || '';
+        ruleEl.dispatchEvent(new Event('change'));
+        const _ri = document.getElementById('recurrenceInterval');
+        const _re = document.getElementById('recurrenceEndDate');
+        if (_ri) _ri.value = event.recurrence_interval || 1;
+        if (_re) _re.value = event.recurrence_end_date || '';
+    }
+
+    // Skip button — visible for recurring instances only
+    const skipBtn = document.getElementById('skipOccurrenceBtn');
+    if (skipBtn) {
+        skipBtn.classList.toggle('hidden', !event.is_recurring_instance);
+        if (event.is_recurring_instance) {
+            skipBtn.onclick = () => skipOccurrence(event.recurrence_source_id, event.instance_date);
+        }
+    }
+
+    document.getElementById('modalTitle').innerHTML = event.is_recurring_instance
+        ? 'Edit Event Series'
+        : (event.id ? 'Edit Event' : 'Add Event');
+
+    // Authorization
+    const canManage = (STATE.currentUserId == event.created_by || STATE.isAdmin);
+    if (canManage) {
+        document.getElementById('deleteEventBtn').classList.remove('hidden');
+        document.getElementById('cloneEventBtn').classList.remove('hidden');
+        document.getElementById('deleteEventBtn').onclick = () => confirmDeleteEvent(
+            event.is_recurring_instance ? event.recurrence_source_id : event.id, event.title);
+        document.getElementById('cloneEventBtn').onclick = () => cloneEvent(event);
+    } else {
+        document.getElementById('deleteEventBtn').classList.add('hidden');
+        document.getElementById('cloneEventBtn').classList.add('hidden');
+    }
+
+    const modal = document.getElementById('eventModal');
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+}
+
+/**
+ * Posts a date to the skip-occurrence endpoint and reloads events.
+ *
+ * @param {number} id - Base event DB id.
+ * @param {string} date - YYYY-MM-DD date string of the occurrence to skip.
+ * @returns {Promise<void>}
+ */
+async function skipOccurrence(id, date) {
+    const result = await window.apiPost('/calendar/api/skip_occurrence', { id, date });
+    if (result && result.success) { closeEventModal(); loadEvents(true); }
 }
 
 /**
@@ -953,8 +1120,8 @@ function confirmDeleteEvent(id, title) {
  * @param {number} id - Target identifier.
  * @returns {void}
  */
-function showEventDetails(id) {
-    const event = STATE.events.find(e => e.id == id);
+function showEventDetails(uid) {
+    const event = STATE.events.find(e => e.uid == uid);
     if (!event) return;
 
     const content = document.getElementById('eventDetailsContent');
@@ -979,7 +1146,7 @@ function showEventDetails(id) {
         </div>
     `;
 
-    document.getElementById('editFromDetailsBtn').onclick = () => { closeDetailsModal(); openEditModalById(event.id); };
+    document.getElementById('editFromDetailsBtn').onclick = () => { closeDetailsModal(); openEditModalByUid(event.uid); };
     
     // Hide Edit button if user cannot manage the event
     const editBtn = document.getElementById('editFromDetailsBtn');
@@ -1231,8 +1398,10 @@ function initializeViewFromUrl() {
 window.handleEventSubmit = handleEventSubmit;
 window.openAddEventModal = openAddEventModal;
 window.openEditModalById = openEditModalById;
+window.openEditModalByUid = openEditModalByUid;
 window.confirmDeleteEvent = confirmDeleteEvent;
 window.showEventDetails = showEventDetails;
 window.closeEventModal = closeEventModal;
 window.closeDetailsModal = closeDetailsModal;
 window.loadEvents = loadEvents;
+
