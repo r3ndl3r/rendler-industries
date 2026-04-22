@@ -14,7 +14,7 @@
  * - Standardized glassmorphism card UI with fade-out animations
  * 
  * Dependencies:
- * - default.js: For getIcon, apiPost, and showConfirmModal
+ * - default.js: For apiPost and showConfirmModal
  * - toast.js: For system-level action feedback
  */
 
