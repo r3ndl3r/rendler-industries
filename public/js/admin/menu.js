@@ -14,7 +14,7 @@
  * - Permission-aware link configuration
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, showConfirmModal, showToast
+ * - default.js: For apiPost, showConfirmModal, showToast
  * - sortable.min.js: For high-performance reordering logic
  */
 
