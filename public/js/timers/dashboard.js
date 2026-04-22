@@ -17,7 +17,7 @@
  * - Lifecycle-aware button states for operation feedback
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
+ * - default.js: For apiPost, setupGlobalModalClosing, and modal helpers
  * - timers/utils.js: For formatting and progress calculation
  */
 
