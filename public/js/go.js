@@ -14,7 +14,7 @@
  * - Atomic UI reconciliation via background sync guards
  * 
  * Dependencies:
- * - default.js: For getIcon, apiPost, and showConfirmModal
+ * - default.js: For apiPost and showConfirmModal
  */
 
 /**
