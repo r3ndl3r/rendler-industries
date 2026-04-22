@@ -294,6 +294,7 @@ sub startup {
     $self->helper(
         run_maintenance => sub {
             my $c = shift;
+            return if defined($c->app->config('maintenance')) && $c->app->config('maintenance') == 0;
 
             # Level 1: Simultaneous Execution Lock (Session-based)
             my ($lock) = $c->db->{dbh}->selectrow_array("SELECT GET_LOCK('mojo_maintenance', 0)");
