@@ -87,7 +87,7 @@
             <div id="notificationGroup" class="hidden">
                 <div class="form-group checkbox-group">
                     <label>
-                        <input type="checkbox" id="sendNotifications" name="send_notifications" checked value="1"> 📧 Send email notifications to family
+                        <input type="checkbox" id="sendNotifications" name="send_notifications" checked value="1"> 📢 Announce
                     </label>
                 </div>
             </div>
