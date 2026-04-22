@@ -16,7 +16,7 @@
  * - Administrative blackout and manual winner selection
  * 
  * Dependencies:
- * - default.js: For apiPost, getLoadingHtml, getIcon, and modal helpers
+ * - default.js: For apiPost, getLoadingHtml, and modal helpers
  * - emoji-picker.js: For icon-enriched meal naming
  */
 
