@@ -104,6 +104,9 @@ sub api_add {
     my $attendees = ($attendee_ids && @$attendee_ids) ? join(',', @$attendee_ids) : '';
 
     my $notification_minutes = $c->param('notification_minutes') // 0;
+    my $recurrence_rule      = $c->param('recurrence_rule')      || undef;
+    my $recurrence_interval  = $c->param('recurrence_interval')  || 1;
+    my $recurrence_end_date  = $c->param('recurrence_end_date')  || undef;
 
     return $c->render(json => { success => 0, error => 'Title is required' }) unless $title;
     return $c->render(json => { success => 0, error => 'Start date is required' }) unless $start_date;
@@ -125,7 +128,7 @@ sub api_add {
         my $event_id = $c->db->add_calendar_event(
             $title, $description, $start_date, $end_date,
             $all_day, $category, $color, $attendees, $user_id, $is_private,
-            $notification_minutes
+            $notification_minutes, $recurrence_rule, $recurrence_interval, $recurrence_end_date
         );
         
         # ONLY notify family if the event creation succeeded and it is NOT private
@@ -191,6 +194,9 @@ sub api_edit {
     my $attendees = ($attendee_ids && @$attendee_ids) ? join(',', @$attendee_ids) : '';
 
     my $notification_minutes = $c->param('notification_minutes') // 0;
+    my $recurrence_rule      = $c->param('recurrence_rule')      || undef;
+    my $recurrence_interval  = $c->param('recurrence_interval')  || 1;
+    my $recurrence_end_date  = $c->param('recurrence_end_date')  || undef;
 
     return $c->render(json => { success => 0, error => 'Event ID is required' }) unless $id;
     return $c->render(json => { success => 0, error => 'Title is required' }) unless $title;
@@ -212,10 +218,11 @@ sub api_edit {
         my $result = $c->db->update_calendar_event(
             $id, $title, $description, $start_date, $end_date,
             $all_day, $category, $color, $attendees, $is_private,
-            $notification_minutes, $reset_notification
+            $notification_minutes, $reset_notification,
+            $recurrence_rule, $recurrence_interval, $recurrence_end_date
         );
 
-        # ONLY notify family if the update succeeded, isn't private, and notifications are enabled
+        # Notify family if event is public and notifications are active
         if ($result && $result > 0 && $send_notifications && !$is_private) {
             my $family_users   = $c->db->get_family_users();
             my $attendee_names = $c->db->get_attendee_names($attendees) // 'None';
@@ -248,6 +255,34 @@ sub api_edit {
         $c->app->log->error("Failed to update calendar event: $@");
         $c->render(json => { success => 0, error => "Database error occurred" });
     }
+}
+
+# API Endpoint: Marks a single occurrence of a recurring event as skipped.
+# Appends the date to recurrence_exceptions on the base event row.
+# Route: POST /calendar/api/skip_occurrence
+sub api_skip_occurrence {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
+    my $id      = $c->param('id');
+    my $date    = $c->param('date');
+    my $user_id = $c->current_user_id;
+    my $is_admin = $c->is_admin ? 1 : 0;
+
+    return $c->render(json => { success => 0, error => 'Missing parameters' }) unless $id && $date;
+
+    my $event = $c->db->get_calendar_event_by_id($id, $user_id, $is_admin);
+    unless ($event && ($event->{created_by} == $user_id || $is_admin)) {
+        return $c->render(json => { success => 0, error => 'Forbidden' }, status => 403);
+    }
+
+    eval { $c->db->add_recurrence_exception($id, $date) };
+    if ($@) {
+        $c->app->log->error("Failed to skip occurrence: $@");
+        return $c->render(json => { success => 0, error => 'Database error' });
+    }
+
+    $c->render(json => { success => 1 });
 }
 
 # API Endpoint: Deletes a calendar event.
