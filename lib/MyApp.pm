@@ -592,7 +592,7 @@ sub startup {
     $family->post('/calendar/api/edit')->to('calendar#api_edit');
     $family->post('/calendar/api/delete')->to('calendar#api_delete');
     $family->post('/calendar/api/skip_occurrence')->to('calendar#api_skip_occurrence');
-    $family->get('/calendar/manage')->to('calendar#manage');
+
 
     # --- Timer Routes ---
     $family->get('/timers')->to('timers#dashboard');

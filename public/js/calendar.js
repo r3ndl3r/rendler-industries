@@ -39,7 +39,8 @@ let STATE = {
     currentUserId: null,            // ID of currently logged-in user
     currentDate: new Date(),        // Active temporal pointer
     currentView: 'month',           // Current display mode (month|week|day)
-    isManagementPage: false         // Context flag for administrative view
+    historyMode: false,             // Flag for full audit/history view
+    allEvents: []                   // Full history cache (when historyMode is active)
 };
 
 /**
@@ -49,7 +50,7 @@ let STATE = {
  */
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Context detection
-    STATE.isManagementPage = window.location.pathname.includes('/manage');
+    STATE.historyMode = false; // Initialized as false, triggered via UI
 
     // 2. Initial state hydration
     loadState();
@@ -62,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(renderUpcomingEvents, CONFIG.COUNTDOWN_TICK_MS);
 
     // 5. Global modal closure configuration
-    setupGlobalModalClosing(['modal-overlay'], [closeEventModal, closeDetailsModal]);
+    window.setupGlobalModalClosing(['modal-overlay'], [closeEventModal, closeDetailsModal, closeHistoryModal]);
 });
 
 /**
@@ -105,7 +106,7 @@ async function loadState(force = false) {
                 else notifyGroup.classList.add('hidden');
             }
             
-            if (!STATE.isManagementPage) {
+            if (true) { // Always initialize view from URL on main page
                 initializeViewFromUrl();
             }
             
@@ -135,12 +136,16 @@ async function loadEvents(force = false) {
 
     let start, end;
     
-    if (STATE.isManagementPage) {
+    if (STATE.historyMode) {
         start = '2020-01-01';
         end = '2030-12-31';
     } else {
+        const vEnd = getViewEndDate();
+        const buffer = new Date();
+        buffer.setDate(buffer.getDate() + 30); // Ensure at least 30 days visibility for the Upcoming widget
+
         start = formatDate(getViewStartDate());
-        end = formatDate(getViewEndDate());
+        end = formatDate(vEnd > buffer ? vEnd : buffer);
     }
 
     const container = document.getElementById('calendarView');
@@ -183,8 +188,8 @@ async function loadEvents(force = false) {
  * @returns {void}
  */
 function renderUI() {
-    if (STATE.isManagementPage) {
-        renderManagementTable();
+    if (STATE.historyMode) {
+        renderHistoryTable();
     } else {
         updatePeriodTitle();
         renderCalendar();
@@ -394,18 +399,29 @@ function renderEventPill(e, compact) {
 }
 
 /**
- * Generates the administrative management table from state.
+ * Generates the audit history table within the modal.
  * 
  * @returns {void}
  */
-function renderManagementTable() {
-    const upcomingContainer = document.getElementById('upcomingTableContainer');
-    const pastContainer = document.getElementById('pastTableContainer');
-    if (!upcomingContainer || !pastContainer) return;
+function renderHistoryTable() {
+    const container = document.getElementById('historyTableContainer');
+    if (!container) return;
 
-    // Recurring events are returned as instances; show one representative row per series.
+    // Filter by search text and category if present
+    const query = (document.getElementById('historySearchInput')?.value || '').toLowerCase();
+    const catFilter = document.getElementById('historyCategoryFilter')?.value || '';
+
+    const baseEvents = STATE.events.filter(e => {
+        const matchesQuery = !query || 
+            (e.title && e.title.toLowerCase().includes(query)) || 
+            (e.description && e.description.toLowerCase().includes(query));
+        const matchesCat = !catFilter || e.category === catFilter;
+        return matchesQuery && matchesCat;
+    });
+
+    // Recurring events are returned as instances; show one representative row per series in history.
     const seenSeries = new Set();
-    const baseEvents = STATE.filteredEvents.filter(e => {
+    const uniqueEvents = baseEvents.filter(e => {
         if (!e.is_recurring_instance) return true;
         if (seenSeries.has(e.recurrence_source_id)) return false;
         seenSeries.add(e.recurrence_source_id);
@@ -413,11 +429,48 @@ function renderManagementTable() {
     });
 
     const now = new Date();
-    const upcoming = baseEvents.filter(e => new Date(e.end_date || e.start_date) >= now).sort((a, b) => a.start_date.localeCompare(b.start_date));
-    const past = baseEvents.filter(e => new Date(e.end_date || e.start_date) < now).sort((a, b) => b.start_date.localeCompare(a.start_date));
+    const upcoming = uniqueEvents.filter(e => new Date(e.end_date || e.start_date) >= now).sort((a, b) => a.start_date.localeCompare(b.start_date));
+    const past = uniqueEvents.filter(e => new Date(e.end_date || e.start_date) < now).sort((a, b) => b.start_date.localeCompare(a.start_date));
 
-    upcomingContainer.innerHTML = renderTable(upcoming, 'No upcoming events found.');
-    pastContainer.innerHTML = renderTable(past, 'No past events found.');
+    container.innerHTML = `
+        <h3 class="history-sub-header">Upcoming Events</h3>
+        ${renderTable(upcoming, 'No upcoming events found.')}
+        <h3 class="history-sub-header past">Past Events</h3>
+        ${renderTable(past, 'No past events found.')}
+    `;
+}
+
+/**
+ * Interface entry for the History Audit modal.
+ */
+async function openHistoryModal() {
+    const modal = document.getElementById('historyModal');
+    if (!modal) return;
+    
+    STATE.historyMode = true;
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+    
+    // Clear search
+    const input = document.getElementById('historySearchInput');
+    if (input) input.value = '';
+    
+    await loadEvents(true); // Fetch wide range
+}
+
+function closeHistoryModal() {
+    const modal = document.getElementById('historyModal');
+    if (!modal) return;
+    
+    STATE.historyMode = false;
+    modal.classList.remove('show');
+    document.body.classList.remove('modal-open');
+    
+    loadEvents(true); // Restore narrow range for calendar
+}
+
+function filterHistory() {
+    renderHistoryTable();
 }
 
 /**
@@ -465,28 +518,29 @@ function renderTable(events, emptyMsg) {
         const timeDisplay = e.all_day ? 'All Day' : `${formatTime(e.start_date)} - ${formatTime(e.end_date)}`;
 
         html += `
-            <tr data-event-id="${e.id}" class="${groupClass} ${e.is_private ? 'table-row-private' : ''}">
-                <td>
-                    <span class="event-color-dot" style="--event-color: ${e.color}"></span>
-                    ${e.is_private ? '🔒' : ''}
-                    <strong>${escapeHtml(e.title)}${e.recurrence_rule ? ' 🔁' : ''}</strong>
-                    ${e.description ? `<div class="event-desc">${escapeHtml(e.description)}</div>` : ''}
-                </td>
-                <td class="date-cell">${timeDisplay}</td>
-                <td>${escapeHtml(e.category || '-')}</td>
-                <td class="attendees-cell">
-                    <div class="attendee-pills-container">
-                        ${renderAttendeePills(e.attendee_names, true)}
-                    </div>
-                </td>
-                <td>${escapeHtml(e.creator_name || 'Unknown')}</td>
-                <td class="actions-cell">
-                    <div class="action-btns">
-                        <button type="button" class="btn-icon-edit" onclick="openEditModalById(${e.id})" title="Edit">✏️</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteEvent(${e.id}, '${escapeHtml(e.title)}')" title="Delete">🗑️</button>
-                    </div>
-                </td>
-            </tr>
+        <tr data-event-id="${e.id}" class="${groupClass} ${e.is_private ? 'table-row-private' : ''}" onclick="showEventDetails('${e.uid}')" style="cursor: pointer;">
+            <td>
+                <span class="event-color-dot" style="--event-color: ${e.color}"></span>
+                ${e.is_private ? '🔒' : ''}
+                <strong>${escapeHtml(e.title)}${e.recurrence_rule ? ' 🔁' : ''}</strong>
+                ${e.description ? `<div class="event-desc">${escapeHtml(e.description)}</div>` : ''}
+            </td>
+            <td class="date-cell">${timeDisplay}</td>
+            <td>${escapeHtml(e.category || '-')}</td>
+            <td class="attendees-cell">
+                <div class="attendee-pills-container">
+                    ${renderAttendeePills(e.attendee_names, true)}
+                </div>
+            </td>
+            <td>${escapeHtml(e.creator_name || 'Unknown')}</td>
+            <td class="actions-cell">
+                <div class="action-btns">
+                    <button type="button" class="btn-icon-view" title="View Details">👁️</button>
+                    <button type="button" class="btn-icon-delete" onclick="event.stopPropagation(); confirmDeleteEvent(${e.id}, '${escapeHtml(e.title)}')" title="Delete">🗑️</button>
+                </div>
+            </td>
+        </tr>
+
         `;
     });
 
@@ -542,14 +596,16 @@ function formatTime(dtStr) {
  */
 function renderUpcomingEvents() {
     const container = document.getElementById('upcomingEventsList');
-    if (!container || STATE.isManagementPage) return;
+    if (!container) return;
 
     const now = new Date();
+    const futureLimit = new Date();
+    futureLimit.setDate(futureLimit.getDate() + 30);
+
     const upcoming = STATE.events
         .map(e => ({ ...e, parsedStart: new Date(e.start_date.replace(' ', 'T')) }))
-        .filter(e => e.parsedStart >= now)
-        .sort((a, b) => a.parsedStart - b.parsedStart)
-        .slice(0, 10);
+        .filter(e => e.parsedStart >= now && e.parsedStart <= futureLimit)
+        .sort((a, b) => a.parsedStart - b.parsedStart);
 
     if (upcoming.length === 0) {
         container.innerHTML = '<div class="upcoming-empty">No upcoming events</div>';
@@ -1140,10 +1196,13 @@ function showEventDetails(uid) {
             <div class="event-detail-row"><strong>📅 Date:</strong> <span>${dateStr}</span></div>
             <div class="event-detail-row"><strong>🕒 Time:</strong> <span>${timeInfo}</span></div>
             ${event.category ? `<div class="event-detail-row"><strong>ℹ️ Category:</strong> <span>${escapeHtml(event.category)}</span></div>` : ''}
+            ${event.recurrence_rule ? `<div class="event-detail-row"><strong>🔁 Repeat:</strong> <span>Every ${event.recurrence_interval || 1} ${event.recurrence_rule.replace('ly', 's')}${event.recurrence_end_date ? ` until ${event.recurrence_end_date.split('-').reverse().join('-')}` : ''}</span></div>` : ''}
+            ${event.notification_minutes && event.notification_minutes > 0 ? `<div class="event-detail-row"><strong>🔔 Reminder:</strong> <span>${formatReminderMinutes(event.notification_minutes)} before</span></div>` : ''}
             ${event.description ? `<div class="event-detail-row"><strong>📋 Description:</strong> <span>${escapeHtml(event.description)}</span></div>` : ''}
-            ${event.attendee_names ? `<div class="event-detail-row"><strong>👪 Attendees:</strong> <span>${renderAttendeePills(event.attendee_names, true)}</span></div>` : ''}
+            ${event.attendee_names ? `<div class="event-detail-row"><strong>👨‍👩‍👧‍👦 Attendees:</strong> <span>${renderAttendeePills(event.attendee_names, true)}</span></div>` : ''}
             <div class="event-detail-row"><strong>👤 Created By:</strong> <span>${escapeHtml(event.creator_name || 'Unknown')}</span></div>
         </div>
+
     `;
 
     document.getElementById('editFromDetailsBtn').onclick = () => { closeDetailsModal(); openEditModalByUid(event.uid); };
@@ -1279,7 +1338,28 @@ function getCountdown(target) {
 }
 
 /**
+ * Formats notification minutes into a friendly string (e.g., "1 day").
+ * 
+ * @param {number} totalMins - Minute count.
+ * @returns {string} - Friendly label.
+ */
+function formatReminderMinutes(totalMins) {
+    if (totalMins === 0) return 'At time of event';
+    const days  = Math.floor(totalMins / 1440);
+    const hours = Math.floor((totalMins % 1440) / 60);
+    const mins  = totalMins % 60;
+    
+    let parts = [];
+    if (days > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+    if (hours > 0) parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
+    if (mins > 0) parts.push(`${mins} minute${mins !== 1 ? 's' : ''}`);
+    
+    return parts.join(', ');
+}
+
+/**
  * Resolves Monday-aligned viewport start.
+
  * 
  * @returns {Date} - Start date object.
  */

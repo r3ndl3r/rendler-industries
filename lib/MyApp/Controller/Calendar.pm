@@ -72,14 +72,7 @@ sub api_events {
     });
 }
 
-# Renders the administrative management interface.
-# Route: GET /calendar/manage
-sub manage {
-    my $c = shift;
-    return $c->redirect_to('/login') unless $c->is_logged_in;
-    return $c->render('noperm') unless $c->is_family;
-    $c->render('calendar/manage');
-}
+
 
 # API Endpoint: Validates and creates a new calendar event.
 # Route: POST /calendar/api/add
