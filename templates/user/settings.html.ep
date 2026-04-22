@@ -85,7 +85,7 @@
                             <span class="pref-icon">💬</span>
                             <div>
                                 <div class="pref-name">Discord</div>
-                                <div class="pref-desc">Direct messages via your linked Discord account</div>
+                                <div class="pref-desc" id="discord-desc">Direct messages via your linked Discord account</div>
                             </div>
                         </div>
                         <label class="switch">
@@ -99,7 +99,7 @@
                             <span class="pref-icon">📧</span>
                             <div>
                                 <div class="pref-name">Email</div>
-                                <div class="pref-desc">Notifications sent to your registered email address</div>
+                                <div class="pref-desc" id="email-desc">Notifications sent to your registered email address</div>
                             </div>
                         </div>
                         <label class="switch">
