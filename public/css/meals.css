@@ -335,18 +335,6 @@
     justify-content: center;
 }
 
-.day-actions .btn-primary,
-.day-actions .btn-danger {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    padding: 0.6rem 1rem;
-    width: auto;
-    min-width: 120px;
-}
-
 /* Meal Autocomplete Dropdown */
 .meal-input-wrapper {
     position: relative;

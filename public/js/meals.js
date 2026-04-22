@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal: Configure unified closure behavior
     setupGlobalModalClosing(['modal-overlay'], [
-        closeSuggestModal, closeBlackoutModal, closeEditSuggestionModal, closeConfirmModal,
+        closeSuggestModal, closeBlackoutModal, closeEditSuggestionModal,
         closeManageVaultModal, closeAddEditMealModal
     ]);
     
@@ -115,7 +115,7 @@ async function loadState(force = false) {
 }
 
 /**
- * --- Vault Management (Admin) ---
+ * --- Meals Vault (Admin) ---
  */
 
 /**
@@ -395,14 +395,10 @@ function renderDayColumn(day, index) {
         const dayActions = isLocked ? '' : `
             <div class="day-actions">
                 ${(!day.user_has_suggested) ? `
-                    <button type="button" class="btn-clear-all" onclick="openResetModal()">🔄 Reset</button>
-                    <button type="button" class="btn-primary" onclick="openSuggestModal(${day.id}, '${day.formatted_date}')">
-                        ➕ Suggest
-                    </button>` : ''}
+                    ${STATE.isAdmin ? `<button type="button" class="btn-icon-reset" onclick="openResetModal(${day.id})" title="Reset Day (Admin Only)">🔄</button>` : ''}
+                    <button type="button" class="btn-icon-edit" onclick="openSuggestModal(${day.id}, '${day.formatted_date}')" title="Suggest Meal">➕</button>` : ''}
                 ${STATE.isAdmin ? `
-                    <button type="button" class="btn-danger" onclick="openBlackoutModal(${day.id})">
-                        🚫 Blackout
-                    </button>` : ''}
+                    <button type="button" class="btn-icon-delete" onclick="openBlackoutModal(${day.id})" title="Blackout Day">🚫</button>` : ''}
             </div>`;
 
         contentHtml = `
@@ -718,6 +714,22 @@ function closeBlackoutModal() {
     }
 }
 
+/** 
+ * Admin: Orchestrates a day reset with confirmation.
+ * @param {number} planId - Target identifier.
+ */
+function openResetModal(planId) {
+    if (!STATE.isAdmin) return;
+    window.showConfirmModal({
+        title: 'Reset Day',
+        message: 'Re-open this day for suggestions? This will clear any blackout or locked winner.',
+        confirmText: 'Reset',
+        hideCancel: true,
+        alignment: 'center',
+        onConfirm: () => adminUnlock(planId)
+    });
+}
+
 /**
  * --- Global Exposure ---
  */
@@ -729,6 +741,7 @@ window.deleteSuggestion = deleteSuggestion;
 window.submitBlackout = submitBlackout;
 window.adminLock = adminLock;
 window.adminUnlock = adminUnlock;
+window.openResetModal = openResetModal;
 window.openSuggestModal = openSuggestModal;
 window.closeSuggestModal = closeSuggestModal;
 window.openEditSuggestionModal = openEditSuggestionModal;
