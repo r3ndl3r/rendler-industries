@@ -46,14 +46,23 @@ function renderProfile() {
 
 /**
  * Renders notification preference toggles from STATE.prefs.
- * Disables the FCM toggle when no device token is registered.
+ * Always sets both enabled and disabled states so it is safe to call
+ * repeatedly (e.g. after a profile save that adds or removes a Discord ID).
  *
  * @returns {void}
  */
 function renderPrefs() {
-    const prefs   = STATE.prefs;
-    const hasFcm  = STATE.has_fcm;
+    const prefs = STATE.prefs;
+    const p     = STATE.profile;
+    
+    // Null guard for early render cycles
+    if (!prefs || !p) return;
 
+    const hasFcm     = STATE.has_fcm;
+    const hasDiscord = !!p.discord_id;
+    const hasEmail   = !!p.email;
+
+    // 1. Initial State Sync (preserve checked state regardless of usability)
     const channels = ['discord', 'email', 'fcm'];
     channels.forEach(function(ch) {
         const checkbox = document.getElementById('pref-' + ch);
@@ -61,17 +70,62 @@ function renderPrefs() {
         checkbox.checked = !!prefs[ch];
     });
 
-    const fcmBox  = document.getElementById('pref-fcm');
-    const fcmDesc = document.getElementById('fcm-desc');
-    if (!hasFcm) {
-        fcmBox.disabled = true;
-        fcmBox.checked  = false;
-        fcmDesc.textContent = 'No registered device — install the app to enable';
-        document.getElementById('pref-row-fcm').classList.add('pref-row-disabled');
-    }
+    // 2. Usability Gating (Shared Helper Pattern)
+    updatePrefRow(
+        'discord', 
+        hasDiscord, 
+        'Direct messages via your linked Discord account',
+        'No Discord account linked — add your Discord ID in your profile to enable'
+    );
+
+    updatePrefRow(
+        'email',
+        hasEmail,
+        'Notifications sent to your registered email address',
+        'No email address on file — add one in your profile to enable'
+    );
+
+    updatePrefRow(
+        'fcm', 
+        hasFcm, 
+        'Push notifications to the Rendler Industries app',
+        'No registered device — install the app to enable'
+    );
 
     document.getElementById('prefs-loading').style.display = 'none';
     document.getElementById('prefsBody').style.display     = 'block';
+}
+
+/**
+ * Updates the UI state of a notification channel row.
+ * Sets the description and enabled/disabled state based on channel usability.
+ * 
+ * @param {string}  channel         - 'discord' | 'email' | 'fcm'
+ * @param {boolean} isUsable        - Flag for usability (linked ID or token present)
+ * @param {string}  usableMessage   - Label when active
+ * @param {string}  disabledMessage - Label when inactive
+ * @returns {void}
+ */
+function updatePrefRow(channel, isUsable, usableMessage, disabledMessage) {
+    const box  = document.getElementById('pref-' + channel);
+    const row  = document.getElementById('pref-row-' + channel);
+    const desc = document.getElementById(channel + '-desc');
+
+    if (!box || !row || !desc) {
+        console.warn(`Attempted to update notification row for '${channel}' but elements are missing.`, { box, row, desc });
+        return;
+    }
+
+    if (!isUsable) {
+        box.disabled = true;
+        box.checked  = false;
+        desc.textContent = disabledMessage;
+        row.classList.add('pref-row-disabled');
+    } else {
+        box.disabled = false;
+        desc.textContent = usableMessage;
+        row.classList.remove('pref-row-disabled');
+    }
 }
 
 /**
@@ -113,6 +167,7 @@ async function handleProfileSubmit(event) {
             document.getElementById('profileCurrentPass').value = '';
             document.getElementById('profileNewPass').value     = '';
             document.getElementById('profileConfirmPass').value = '';
+            renderPrefs();
         }
     } finally {
         btn.disabled  = false;
@@ -151,10 +206,13 @@ async function togglePref(channel, checkbox) {
         const body = new FormData();
         body.append('channel', channel);
         body.append('value',   value);
+        const names = { discord: 'Discord', email: 'Email', fcm: 'Push' };
+        const label = names[channel] || channel;
         const result = await apiPost('/user/settings/api/pref', body);
 
         if (result && result.success) {
             STATE.prefs[channel] = value;
+            showToast(`${label} notifications ${value ? 'enabled' : 'disabled'}.`, 'success');
         } else {
             checkbox.checked = !value;
         }
