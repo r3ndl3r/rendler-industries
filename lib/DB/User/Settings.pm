@@ -5,6 +5,8 @@ package DB::User::Settings;
 use strict;
 use warnings;
 
+use constant MAX_NOTIFICATION_CHANNELS => 3;
+
 # Retrieves a user's full profile and notification preferences in one query.
 # Parameters:
 #   user_id : Target user ID.
@@ -53,6 +55,30 @@ sub DB::set_user_notification_pref {
     $sth->execute($user_id, $value ? 1 : 0);
 }
 
+# Returns the notification channel preferences for a user.
+# Falls back to all-enabled when no prefs row exists so new users receive
+# notifications on all channels until they opt out.
+# Parameters:
+#   user_id : Target user ID.
+# Returns:
+#   HashRef: { discord => 0|1, email => 0|1, fcm => 0|1 }
+sub DB::get_user_notification_prefs {
+    my ($self, $user_id) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        "SELECT discord, email, fcm FROM user_notification_prefs WHERE user_id = ?"
+    );
+    $sth->execute($user_id);
+    my $row = $sth->fetchrow_hashref;
+
+    return {
+        discord => $row ? ($row->{discord} // 1) : 1,
+        email   => $row ? ($row->{email}   // 1) : 1,
+        fcm     => $row ? ($row->{fcm}     // 1) : 1,
+    };
+}
+
 # Counts active notification channels for a user.
 # Used to enforce the minimum-one-channel rule before persisting a disable.
 # Parameters:
@@ -62,15 +88,26 @@ sub DB::count_active_notification_prefs {
     my ($self, $user_id) = @_;
     $self->ensure_connection;
 
+    # Checks both the preference flag AND channel usability (email present, 
+    # discord_id linked, or FCM token registered).
     my $sth = $self->{dbh}->prepare(q{
-        SELECT
-            COALESCE(discord, 1) + COALESCE(email, 1) + COALESCE(fcm, 1) AS active_count
-        FROM user_notification_prefs
-        WHERE user_id = ?
+        SELECT 
+            (CASE WHEN u.email IS NOT NULL AND COALESCE(p.email, 1) = 1 THEN 1 ELSE 0 END) +
+            (CASE WHEN u.discord_id IS NOT NULL AND COALESCE(p.discord, 1) = 1 THEN 1 ELSE 0 END) +
+            (CASE WHEN COUNT(ft.id) > 0 AND COALESCE(p.fcm, 1) = 1 THEN 1 ELSE 0 END) 
+            AS usable_active_count
+        FROM users u
+        LEFT JOIN user_notification_prefs p ON p.user_id = u.id
+        LEFT JOIN fcm_tokens              ft ON ft.user_id = u.id
+        WHERE u.id = ?
+        GROUP BY u.id
     });
     $sth->execute($user_id);
-    my $row = $sth->fetchrow_hashref;
-    return $row ? $row->{active_count} : 3;
+    my ($count) = $sth->fetchrow_array();
+    
+    # Defaults to MAX_NOTIFICATION_CHANNELS for unknown users to let them pass 
+    # the minimum-one safety check during setups.
+    return $count // MAX_NOTIFICATION_CHANNELS;
 }
 
 # Updates a user's own profile fields (email, discord_id, emoji).
