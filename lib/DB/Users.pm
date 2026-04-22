@@ -174,6 +174,31 @@ sub DB::get_family_users {
     return $sth->fetchall_arrayref({});
 }
 
+# Helper: Converts a comma-separated string of user IDs into a human-readable list of names.
+# Parameters:
+#   ids : Comma-separated string of IDs (e.g. "1,2,5")
+# Returns:
+#   String : Joined names (e.g. "Alex, Mom, Dad") or undef.
+sub DB::get_attendee_names {
+    my ($self, $ids) = @_;
+    return undef unless $ids;
+    $self->ensure_connection;
+
+    my @id_list = grep { /^\d+$/ } split(',', $ids);
+    return undef unless @id_list;
+
+    my $placeholders = join(',', ('?') x @id_list);
+    my $sth = $self->{dbh}->prepare("SELECT username FROM users WHERE id IN ($placeholders) ORDER BY username ASC");
+    $sth->execute(@id_list);
+
+    my @names;
+    while (my ($name) = $sth->fetchrow_array) {
+        push @names, $name;
+    }
+
+    return join(', ', @names);
+}
+
 # Retrieves list of approved child users.
 # Parameters: None
 # Returns:
