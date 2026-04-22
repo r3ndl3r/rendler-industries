@@ -2606,6 +2606,28 @@ pre code {
     font-family: 'Inter', sans-serif;
 }
 
+.search-result-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.search-result-copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px;
+    opacity: 0.35;
+    transition: opacity 0.2s;
+    line-height: 1;
+}
+
+.search-result-copy-btn:hover {
+    opacity: 1;
+}
+
 /* Empty State Styling */
 .search-empty-state {
     display: flex;
