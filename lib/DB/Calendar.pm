@@ -5,6 +5,8 @@ package DB::Calendar;
 use strict;
 use warnings;
 use Mojo::Util qw(trim);
+use Time::Piece;
+use Mojo::JSON qw(decode_json encode_json);
 
 # Database Helper for Family Calendar Management.
 #
@@ -13,13 +15,109 @@ use Mojo::Util qw(trim);
 #   - Category/tag support for event classification.
 #   - All-day vs timed event handling.
 #   - User tagging via attendees field (comma-separated user IDs).
+#   - Recurring event expansion: base events are synthesised into per-occurrence
+#     instances at query time within the requested date window.
 #   - Strict Privacy Mandate: Private events visible only to owner/admin.
 #
 # Integration points:
 #   - Extends DB package for database access.
 #   - Used by Calendar controller for all data operations.
 
+# Generates occurrence hashrefs for a recurring event within a date window.
+# Uses Time::Piece for daily/weekly arithmetic; manual month/year stepping with
+# leap-year-safe day clamping for monthly/yearly rules.
+#
+# Parameters:
+#   event     : Base event hashref with recurrence fields populated
+#   win_start : Window start as ISO date string (YYYY-MM-DD)
+#   win_end   : Window end as ISO date string (YYYY-MM-DD)
+# Returns:
+#   Array of instance hashrefs (empty if none fall in window).
+#   Each instance carries is_recurring_instance=>1, recurrence_source_id, instance_date.
+#   Instance count capped at 365 — a daily event over the 10-year management window
+#   hits the cap at ~year 1, which is intentional; management JS deduplicates by series.
+sub _expand_recurring {
+    my ($event, $win_start, $win_end) = @_;
+
+    my $rule         = $event->{recurrence_rule}     or return ();
+    my $interval     = $event->{recurrence_interval} || 1;
+    my $end_date_str = $event->{recurrence_end_date};
+
+    my $base_start = Time::Piece->strptime($event->{start_date}, '%Y-%m-%d %H:%M:%S');
+    my $base_end   = Time::Piece->strptime($event->{end_date},   '%Y-%m-%d %H:%M:%S');
+    my $duration   = $base_end - $base_start;
+
+    my ($base_y, $base_m, $base_d) = $event->{start_date} =~ /^(\d{4})-(\d{2})-(\d{2})/;
+    $base_d = int($base_d);
+
+    my $exc_raw    = $event->{recurrence_exceptions};
+    my $exceptions = $exc_raw ? decode_json($exc_raw) : [];
+    my %skip       = map { $_ => 1 } @$exceptions;
+
+    my @instances;
+    my $step = 0;
+
+    while (scalar(@instances) < 365) {
+        my ($occ_y, $occ_m, $occ_d);
+
+        if ($rule eq 'daily') {
+            my $tp = $base_start + $step * $interval * 86400;
+            ($occ_y, $occ_m, $occ_d) = ($tp->year, $tp->mon, $tp->mday);
+
+        } elsif ($rule eq 'weekly') {
+            my $tp = $base_start + $step * $interval * 7 * 86400;
+            ($occ_y, $occ_m, $occ_d) = ($tp->year, $tp->mon, $tp->mday);
+
+        } elsif ($rule eq 'monthly') {
+            my $total   = $base_m + $step * $interval - 1;
+            $occ_y      = $base_y + int($total / 12);
+            $occ_m      = ($total % 12) + 1;
+            # Clamp day: first-of-next-month minus one day handles variable lengths and leap years
+            my ($nx_m, $nx_y) = $occ_m == 12 ? (1, $occ_y + 1) : ($occ_m + 1, $occ_y);
+            my $last = (Time::Piece->strptime(sprintf('%04d-%02d-01', $nx_y, $nx_m), '%Y-%m-%d') - 86400)->mday;
+            $occ_d = $base_d > $last ? $last : $base_d;
+
+        } elsif ($rule eq 'yearly') {
+            $occ_y = $base_y + $step * $interval;
+            $occ_m = $base_m;
+            my ($nx_m, $nx_y) = $occ_m == 12 ? (1, $occ_y + 1) : ($occ_m + 1, $occ_y);
+            my $last = (Time::Piece->strptime(sprintf('%04d-%02d-01', $nx_y, $nx_m), '%Y-%m-%d') - 86400)->mday;
+            $occ_d = $base_d > $last ? $last : $base_d;
+
+        } else {
+            last;
+        }
+
+        $step++;
+
+        my $occ_date = sprintf('%04d-%02d-%02d', $occ_y, $occ_m, $occ_d);
+
+        last if $end_date_str && $occ_date gt $end_date_str;
+        last if $occ_date gt $win_end;
+
+        next if $skip{$occ_date};
+        next if $occ_date lt $win_start;
+
+        my $time_start   = (split ' ', $event->{start_date}, 2)[1] // '00:00:00';
+        my $occ_start_tp = Time::Piece->strptime("$occ_date $time_start", '%Y-%m-%d %H:%M:%S');
+        my $occ_end_tp   = $occ_start_tp + $duration;
+
+        push @instances, {
+            %$event,
+            start_date            => "$occ_date $time_start",
+            end_date              => $occ_end_tp->strftime('%Y-%m-%d %H:%M:%S'),
+            is_recurring_instance => 1,
+            recurrence_source_id  => $event->{id},
+            instance_date         => $occ_date,
+        };
+    }
+
+    return @instances;
+}
+
 # Retrieves calendar events within a date range with strict privacy filtering.
+# Recurring events are expanded into per-occurrence instances within the window;
+# the raw base event row is consumed by expansion and not returned directly.
 # Parameters:
 #   user_id    : ID of current user (Integer)
 #   is_admin   : Admin status flag (Boolean)
@@ -30,11 +128,9 @@ use Mojo::Util qw(trim);
 sub DB::get_calendar_events {
     my ($self, $user_id, $is_admin, $start_date, $end_date) = @_;
     $self->ensure_connection;
-    
-    # Filter events to ensure visibility is restricted to public events,
-    # the event creator, or an administrator.
+
     my $sql = qq{
-        SELECT 
+        SELECT
             e.id,
             e.title,
             e.description,
@@ -49,44 +145,70 @@ sub DB::get_calendar_events {
             e.last_notified_at,
             e.created_by,
             e.created_at,
+            e.recurrence_rule,
+            e.recurrence_interval,
+            e.recurrence_end_date,
+            e.recurrence_exceptions,
             u.username as creator_name
         FROM calendar_events e
         LEFT JOIN users u ON e.created_by = u.id
         WHERE (e.is_private = 0 OR e.created_by = ? OR ? = 1)
     };
-    
+
     my @params = ($user_id, $is_admin);
-    
-    if ($start_date) {
+
+    if ($start_date && $end_date) {
+        my $query_end = $end_date;
+        $query_end .= ' 23:59:59' if $query_end =~ /^\d{4}-\d{2}-\d{2}$/;
+        # Non-recurring events must overlap the window.
+        # Recurring events are fetched whenever their series could produce instances
+        # in the window: base date before window end, series end after window start.
+        $sql .= qq{
+            AND (
+                (e.recurrence_rule IS NULL AND e.end_date >= ? AND e.start_date <= ?)
+                OR
+                (e.recurrence_rule IS NOT NULL AND e.start_date <= ?
+                 AND (e.recurrence_end_date IS NULL OR e.recurrence_end_date >= ?))
+            )
+        };
+        push @params, $start_date, $query_end, $query_end, $start_date;
+    } elsif ($start_date) {
         $sql .= " AND e.end_date >= ?";
         push @params, $start_date;
-    }
-    
-    if ($end_date) {
+    } elsif ($end_date) {
         my $query_end = $end_date;
         $query_end .= ' 23:59:59' if $query_end =~ /^\d{4}-\d{2}-\d{2}$/;
         $sql .= " AND e.start_date <= ?";
         push @params, $query_end;
     }
-    
+
     $sql .= " ORDER BY e.start_date ASC, e.all_day DESC, e.title ASC";
-    
+
     my $sth = $self->{dbh}->prepare($sql);
     $sth->execute(@params);
-    
-    my $events = $sth->fetchall_arrayref({});
-    
-    my $all_users = $self->get_all_users();
-    my %user_map = map { $_->{id} => $_->{username} } @$all_users;
+    my $rows = $sth->fetchall_arrayref({});
 
-    for my $event (@$events) {
+    my $all_users = $self->get_all_users();
+    my %user_map  = map { $_->{id} => $_->{username} } @$all_users;
+
+    my $exp_start = $start_date || '1970-01-01';
+    my $exp_end   = $end_date   || '9999-12-31';
+
+    my @result;
+    for my $event (@$rows) {
         if ($event->{attendees}) {
             my @names = map { $user_map{trim($_)} // () } split(',', $event->{attendees});
             $event->{attendee_names} = join(', ', @names);
         }
+
+        if ($event->{recurrence_rule}) {
+            push @result, _expand_recurring($event, $exp_start, $exp_end);
+        } else {
+            push @result, $event;
+        }
     }
-    
-    return $events;
+
+    return \@result;
 }
 
 # Retrieves a single event by ID with strict privacy check.
@@ -99,38 +221,42 @@ sub DB::get_calendar_events {
 sub DB::get_calendar_event_by_id {
     my ($self, $id, $user_id, $is_admin) = @_;
     $self->ensure_connection;
-    
+
     my $sth = $self->{dbh}->prepare(qq{
-        SELECT 
+        SELECT
             e.*,
             u.username as creator_name
         FROM calendar_events e
         LEFT JOIN users u ON e.created_by = u.id
         WHERE e.id = ? AND (e.is_private = 0 OR e.created_by = ? OR ? = 1)
     });
-    
+
     $sth->execute($id, $user_id, $is_admin);
     my $event = $sth->fetchrow_hashref;
-    
+
     return undef unless $event;
-    
+
     if ($event->{attendees}) {
         my $all_users = $self->get_all_users();
-        my %user_map = map { $_->{id} => $_->{username} } @$all_users;
-        my @names = map { $user_map{trim($_)} // () } split(',', $event->{attendees});
+        my %user_map  = map { $_->{id} => $_->{username} } @$all_users;
+        my @names     = map { $user_map{trim($_)} // () } split(',', $event->{attendees});
         $event->{attendee_names} = join(', ', @names);
     }
-    
+
     return $event;
 }
 
 # Creates a new calendar event.
 # Parameters:
-#   title, description, start_date, end_date, all_day, category, color, attendees, created_by, is_private, notification_minutes
+#   title, description, start_date, end_date, all_day, category, color,
+#   attendees, created_by, is_private, notification_minutes,
+#   recurrence_rule, recurrence_interval, recurrence_end_date
 # Returns:
 #   Last inserted ID (Integer).
 sub DB::add_calendar_event {
-    my ($self, $title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $created_by, $is_private, $notification_minutes) = @_;
+    my ($self, $title, $description, $start_date, $end_date, $all_day, $category, $color,
+        $attendees, $created_by, $is_private, $notification_minutes,
+        $recurrence_rule, $recurrence_interval, $recurrence_end_date) = @_;
     $self->ensure_connection;
 
     $all_day              //= 0;
@@ -140,31 +266,43 @@ sub DB::add_calendar_event {
     $attendees            //= '';
     $is_private           //= 0;
     $notification_minutes //= 0;
+    $recurrence_interval  //= 1;
 
     my $sth = $self->{dbh}->prepare(qq{
         INSERT INTO calendar_events
-        (title, description, start_date, end_date, all_day, category, color, attendees, created_by, is_private, notification_minutes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (title, description, start_date, end_date, all_day, category, color, attendees,
+         created_by, is_private, notification_minutes,
+         recurrence_rule, recurrence_interval, recurrence_end_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     });
 
-    $sth->execute($title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $created_by, $is_private, $notification_minutes);
-    
+    $sth->execute($title, $description, $start_date, $end_date, $all_day, $category, $color,
+        $attendees, $created_by, $is_private, $notification_minutes,
+        $recurrence_rule, $recurrence_interval, $recurrence_end_date);
+
     return $self->{dbh}->last_insert_id(undef, undef, 'calendar_events', 'id');
 }
 
 # Updates an existing calendar event.
+# Updating a series resets recurrence_exceptions so prior skips do not persist
+# against a redefined schedule.
 # Parameters:
-#   id, title, description, start_date, end_date, all_day, category, color, attendees, is_private, notification_minutes, reset_notification
+#   id, title, description, start_date, end_date, all_day, category, color,
+#   attendees, is_private, notification_minutes, reset_notification,
+#   recurrence_rule, recurrence_interval, recurrence_end_date
 # Returns:
 #   Success flag (Boolean).
 sub DB::update_calendar_event {
-    my ($self, $id, $title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $is_private, $notification_minutes, $reset_notification) = @_;
+    my ($self, $id, $title, $description, $start_date, $end_date, $all_day, $category, $color,
+        $attendees, $is_private, $notification_minutes, $reset_notification,
+        $recurrence_rule, $recurrence_interval, $recurrence_end_date) = @_;
     $self->ensure_connection;
 
     $attendees            //= '';
     $all_day              //= 0;
     $is_private           //= 0;
     $notification_minutes //= 0;
+    $recurrence_interval  //= 1;
 
     my $sql = qq{
         UPDATE calendar_events SET
@@ -177,7 +315,11 @@ sub DB::update_calendar_event {
             color = ?,
             attendees = ?,
             is_private = ?,
-            notification_minutes = ?
+            notification_minutes = ?,
+            recurrence_rule = ?,
+            recurrence_interval = ?,
+            recurrence_end_date = ?,
+            recurrence_exceptions = NULL
     };
 
     $sql .= ", last_notified_at = NULL " if $reset_notification;
@@ -185,7 +327,30 @@ sub DB::update_calendar_event {
 
     my $sth = $self->{dbh}->prepare($sql);
 
-    return $sth->execute($title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $is_private, $notification_minutes, $id);
+    return $sth->execute($title, $description, $start_date, $end_date, $all_day, $category, $color,
+        $attendees, $is_private, $notification_minutes,
+        $recurrence_rule, $recurrence_interval, $recurrence_end_date,
+        $id);
+}
+
+# Appends a date string to the recurrence_exceptions JSON array for a recurring event.
+# Idempotent — inserting the same date twice produces no duplicate.
+# Parameters:
+#   id       : Base event ID (Integer)
+#   date_str : Date to skip in YYYY-MM-DD format (String)
+sub DB::add_recurrence_exception {
+    my ($self, $id, $date_str) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("SELECT recurrence_exceptions FROM calendar_events WHERE id = ?");
+    $sth->execute($id);
+    my ($raw) = $sth->fetchrow_array;
+
+    my $exceptions = $raw ? decode_json($raw) : [];
+    push @$exceptions, $date_str unless grep { $_ eq $date_str } @$exceptions;
+
+    my $upd = $self->{dbh}->prepare("UPDATE calendar_events SET recurrence_exceptions = ? WHERE id = ?");
+    $upd->execute(encode_json($exceptions), $id);
 }
 
 # Deletes a calendar event.
@@ -196,7 +361,7 @@ sub DB::update_calendar_event {
 sub DB::delete_calendar_event {
     my ($self, $id) = @_;
     $self->ensure_connection;
-    
+
     my $sth = $self->{dbh}->prepare("DELETE FROM calendar_events WHERE id = ?");
     return $sth->execute($id);
 }
@@ -208,21 +373,21 @@ sub DB::delete_calendar_event {
 sub DB::get_calendar_categories {
     my ($self) = @_;
     $self->ensure_connection;
-    
+
     my $sth = $self->{dbh}->prepare(qq{
-        SELECT DISTINCT category 
-        FROM calendar_events 
-        WHERE category IS NOT NULL AND category != '' 
+        SELECT DISTINCT category
+        FROM calendar_events
+        WHERE category IS NOT NULL AND category != ''
         ORDER BY category ASC
     });
-    
+
     $sth->execute();
-    
+
     my @categories;
     while (my ($cat) = $sth->fetchrow_array) {
         push @categories, $cat;
     }
-    
+
     return \@categories;
 }
 
