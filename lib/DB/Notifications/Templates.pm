@@ -66,6 +66,9 @@ sub DB::render_template {
         $body =~ s/\[\Q$var\E\]/$val/g;
     }
 
+    # Collapse stacking newlines caused by empty tags (Max 1 blank line)
+    $body =~ s/\n{3,}/\n\n/g;
+
     return { subject => $subj, body => $body };
 }
 
