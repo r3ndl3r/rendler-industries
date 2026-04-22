@@ -15,7 +15,7 @@
  * - Glassmorphism rule document lightbox
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, showConfirmModal, showToast
+ * - default.js: For apiPost, showConfirmModal, showToast
  */
 
 /**
