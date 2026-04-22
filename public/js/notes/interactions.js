@@ -2061,6 +2061,7 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
 
     // Visual geometry restoration for accurate dimension calculation.
     if (!el.classList.contains('is-editing') && note.is_collapsed) {
+        el.dataset.wasCollapsed = 'true'; // Preserve initial collapsed state for restoration.
         const collapsedBefore = note.is_collapsed;
         try {
             await toggleCollapse(id);
@@ -2138,6 +2139,12 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
         } else if (typeof saveNoteInline === 'function') {
             // Sequential Lifecycle: Await the save to ensure lock release doesn't race
             await saveNoteInline(id);
+        }
+
+        // Restore initial collapsed state if editing began in a collapsed view.
+        if (el.dataset.wasCollapsed === 'true') {
+            delete el.dataset.wasCollapsed;
+            await toggleCollapse(id);
         }
 
         // Failure Recovery: If saveNoteInline failed, STATE.isEditingNote was not cleared
