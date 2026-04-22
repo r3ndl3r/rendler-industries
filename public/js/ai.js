@@ -15,7 +15,7 @@
  * - High-density JSDoc documentation
  * 
  * Dependencies:
- * - default.js: For getIcon, apiPost, and modal helpers
+ * - default.js: For apiPost and modal helpers
  * - toast.js: For operation feedback
  */
 
