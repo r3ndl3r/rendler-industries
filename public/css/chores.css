@@ -97,12 +97,29 @@
     width: 100%;
     max-width: 650px;
     margin: 1.5rem auto 0 auto;
-    padding: 1.25rem 1.5rem !important; /* Force tighter padding on this specific board */
+    padding: 1.25rem 1.5rem !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-.leaderboard-panel th:first-child,
-#balancesTable td:first-child {
-    padding-left: 6rem !important;
+.leaderboard-panel .table-responsive-glass {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.leaderboard-panel .data-table-glass {
+    width: 100%;
+    max-width: 500px;
+    min-width: unset;
+}
+
+.leaderboard-panel th,
+.leaderboard-panel td {
+    text-align: center !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
 }
 
 .max-w-admin {
@@ -584,12 +601,7 @@ select.game-input-premium option {
     /* Balance table remains a table for density */
     .leaderboard-panel th {
         padding: 0.5rem 1rem !important;
-        text-align: left !important;
-    }
-
-    .leaderboard-panel th:first-child,
-    #balancesTable td:first-child {
-        padding-left: 6rem !important;
+        text-align: center !important;
     }
     
     #balancesTable td {
@@ -597,7 +609,7 @@ select.game-input-premium option {
         width: auto !important;
         background: rgba(255, 255, 255, 0.02) !important;
         padding: 0.75rem 1rem !important;
-        text-align: left !important;
+        text-align: center !important;
     }
     
     #balancesTable td:last-child { 
@@ -611,6 +623,7 @@ select.game-input-premium option {
     font-size: 0.85rem;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.4rem;
 }
 
