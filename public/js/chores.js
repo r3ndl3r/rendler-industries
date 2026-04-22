@@ -401,7 +401,12 @@ function renderUserBalances() {
         const sum = u.current_points;
         return `
             <tr>
-                <td><strong>${window.getUserIcon(u.username)} ${escapeHtml(u.username)}</strong></td>
+                <td>
+                    <div class="audit-user">
+                        <span>${window.getUserIcon(u.username)}</span>
+                        <span>${escapeHtml(u.username)}</span>
+                    </div>
+                </td>
                 <td class="${sum > 0 ? 'text-success' : ''}"><strong>${sum}</strong> <small>pts</small></td>
             </tr>
         `;
