@@ -15,7 +15,7 @@
  * - Automatic spend aggregation and merchant breakdown tiles
  * 
  * Dependencies:
- * - default.js: For apiPost, getLoadingHtml, getIcon, and modal helpers
+ * - default.js: For apiPost, getLoadingHtml, and modal helpers
  * - cropper.js: For high-resolution image manipulation
  */
 
