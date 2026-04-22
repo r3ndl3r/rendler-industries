@@ -16,7 +16,7 @@
  * - Automatic "Scroll-to-Top" orchestration for page transitions
  * 
  * Dependencies:
- * - default.js: For getIcon and platform consistency
+ * - default.js: For platform consistency
  */
 
 /**
