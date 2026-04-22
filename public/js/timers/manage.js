@@ -16,7 +16,7 @@
  * - High-density JSDoc documentation for all handlers
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, setupGlobalModalClosing, and modal helpers
+ * - default.js: For apiPost, setupGlobalModalClosing, and modal helpers
  */
 
 /**
