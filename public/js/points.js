@@ -11,7 +11,7 @@
  * - Secure atomic point mutations.
  * 
  * Dependencies:
- * - default.js: for apiPost, getIcon, escapeHtml, and modal closing logic.
+ * - default.js: for apiPost, escapeHtml, and modal closing logic.
  */
 
 let STATE = {
