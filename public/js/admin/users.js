@@ -14,7 +14,7 @@
  * - Integrated approval workflow with automated synchronization
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, setupGlobalModalClosing, showToast, and modal helpers
+ * - default.js: For apiPost, setupGlobalModalClosing, showToast, and modal helpers
  */
 
 /**
