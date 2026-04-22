@@ -600,6 +600,28 @@ a:hover {
     color: #93c5fd;
 }
 
+/* --- Responsive Modal Adjustments (Universal) --- */
+@media (max-width: 768px) {
+    .modal-overlay {
+        padding: 0.75rem 0.4rem;
+    }
+    .modal-content {
+        padding: 1rem;
+        border-radius: 0.5rem;
+    }
+    .modal-header {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+    }
+    .modal-body {
+        margin-bottom: 0.75rem;
+    }
+    .modal-actions {
+        margin-top: 0.75rem;
+        padding-top: 0.5rem;
+    }
+}
+
 ::-webkit-scrollbar {
     width: 10px;
 }
