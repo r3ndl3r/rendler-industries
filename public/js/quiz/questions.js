@@ -16,7 +16,7 @@
  * - Visual "Hint" system for image-based questions
  * 
  * Dependencies:
- * - default.js: For getIcon and platform consistency
+ * - default.js: For platform consistency
  * - toast.js: For connection feedback
  */
 
