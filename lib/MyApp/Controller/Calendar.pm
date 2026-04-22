@@ -107,8 +107,8 @@ sub api_add {
     my $all_day = $c->param('all_day') ? 1 : 0;
     my $is_private = $c->param('is_private') ? 1 : 0;
     my $send_notifications = $c->param('send_notifications');
-    
-    $send_notifications = (defined($send_notifications) && $send_notifications eq '0') ? 0 : 1;
+    # ONLY admins are permitted to suppress family announcements.
+    $send_notifications = (defined($send_notifications) && $send_notifications eq '0' && $c->is_admin) ? 0 : 1;
     
     my $category = trim($c->param('category') // '');
     my $color = trim($c->param('color') // '#3788d8');
@@ -143,62 +143,24 @@ sub api_add {
             $notification_minutes, $notification_channels
         );
         
-        # Only notify others if the event is NOT private
-        if ($send_notifications && !$is_private) {
-            my $family_users = $c->db->get_family_users();
-            my @family_emails = grep { $_->{email} } @$family_users;
-            
-            if (@family_emails) {
-                my $attendee_names = '';
-                if ($attendees) {
-                    my @attendee_ids = split(',', $attendees);
-                    my @names;
-                    for my $uid (@attendee_ids) {
-                        my $user = $c->db->get_user_by_id($uid);
-                        push @names, $user->{username} if $user;
-                    }
-                    $attendee_names = join(', ', @names) if @names;
-                }
-                
-                my $formatted_start = $c->format_datetime($start_date, $all_day);
-                my $formatted_end = $c->format_datetime($end_date, $all_day);
-                
-                my $subject = "New Calendar Event / เหตุการณ์ปฏิทินใหม่: $title";
-                my $body = qq{A new event has been added to the calendar by $creator_name
-มีเหตุการณ์ใหม่ถูกเพิ่มในปฏิทินโดย $creator_name
+        # ONLY notify family if the event creation succeeded and it is NOT private
+        if ($event_id && $send_notifications && !$is_private) {
+            my $family_users   = $c->db->get_family_users();
+            my $attendee_names = $c->db->get_attendee_names($attendees) // 'None';
 
+            foreach my $user (@$family_users) {
+                # Don't notify the creator themselves
+                next if int($user->{id}) == int($user_id);
 
-Event Details / รายละเอียดเหตุการณ์:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Title / หัวข้อ: $title};
-
-                $body .= qq{
-Description / คำอธิบาย: $description} if $description;
-
-                $body .= qq{
-
-
-Start / เริ่ม: $formatted_start
-End / สิ้นสุด: $formatted_end};
-
-                $body .= qq{
-Category / หมวดหมู่: $category} if $category;
-
-                $body .= qq{
-Participants / ผู้เข้าร่วม: $attendee_names} if $attendee_names;
-
-                $body .= qq{
-
-
-
-View the calendar / ดูปฏิทิน: } . $c->url_for('/calendar')->to_abs . qq{
-
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-This notification was sent to family members.
-การแจ้งเตือนนี้ถูกส่งถึงสมาชิกครอบครัว};
-
-                $c->send_email_via_gmail([ map { $_->{email} } @family_emails ], $subject, $body);
+                $c->notify_templated($user->{id}, 'calendar_new', {
+                    creator     => $creator_name,
+                    title       => $title,
+                    description => $description || 'No description',
+                    start       => $c->format_datetime($start_date, $all_day),
+                    end         => $c->format_datetime($end_date, $all_day),
+                    category    => $category || 'General',
+                    attendees   => $attendee_names
+                }, $event_id);
             }
         }
         
@@ -233,6 +195,10 @@ sub api_edit {
     my $end_date = $c->param('end_date');
     my $all_day = $c->param('all_day') ? 1 : 0;
     my $is_private = $c->param('is_private') ? 1 : 0;
+    my $send_notifications = $c->param('send_notifications');
+    # ONLY admins are permitted to suppress family announcements.
+    $send_notifications = (defined($send_notifications) && $send_notifications eq '0' && $c->is_admin) ? 0 : 1;
+
     my $category = trim($c->param('category') // '');
     my $color = trim($c->param('color') // '#3788d8');
     
@@ -260,12 +226,39 @@ sub api_edit {
     my $reset_notification = ($event->{start_date} ne $start_date) ? 1 : 0;
     
     eval {
-        $c->db->update_calendar_event(
+        my $result = $c->db->update_calendar_event(
             $id, $title, $description, $start_date, $end_date,
             $all_day, $category, $color, $attendees, $is_private,
             $notification_minutes, $notification_channels, $reset_notification
         );
-        $c->render(json => { success => 1, message => "Event updated" });
+
+        # ONLY notify family if the update succeeded, isn't private, and notifications are enabled
+        if ($result && $result > 0 && $send_notifications && !$is_private) {
+            my $family_users   = $c->db->get_family_users();
+            my $attendee_names = $c->db->get_attendee_names($attendees) // 'None';
+            my $editor_name    = $c->session('user') // 'Unknown';
+
+            foreach my $user (@$family_users) {
+                # Don't notify the editor themselves
+                next if int($user->{id}) == int($user_id);
+                
+                $c->notify_templated($user->{id}, 'calendar_update', {
+                    editor      => $editor_name,
+                    title       => $title,
+                    description => $description || 'No description',
+                    start       => $c->format_datetime($start_date, $all_day),
+                    end         => $c->format_datetime($end_date, $all_day),
+                    category    => $category || 'General',
+                    attendees   => $attendee_names
+                }, $id);
+            }
+        }
+
+        if ($result && $result > 0) {
+            $c->render(json => { success => 1, message => "Event updated" });
+        } else {
+            $c->render(json => { success => 0, error => "No changes made or event not found" });
+        }
     };
     
     if ($@) {
