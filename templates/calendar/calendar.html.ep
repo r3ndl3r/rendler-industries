@@ -151,6 +151,33 @@
                 </div>
             </div>
             
+            <%# Recurrence %>
+            <div class="form-group">
+                <label for="recurrenceRule">Repeat</label>
+                <select id="recurrenceRule" name="recurrence_rule">
+                    <option value="">Does not repeat</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                </select>
+            </div>
+            <div id="recurrenceOptions" class="hidden">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="recurrenceInterval">Every</label>
+                        <div class="recurrence-interval-row">
+                            <input type="number" id="recurrenceInterval" name="recurrence_interval" value="1" min="1" max="99">
+                            <span id="recurrenceIntervalLabel">weeks</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="recurrenceEndDate">Ends on (optional)</label>
+                        <input type="date" id="recurrenceEndDate" name="recurrence_end_date">
+                    </div>
+                </div>
+            </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label for="eventCategory">Category</label>
@@ -172,6 +199,7 @@
             <div class="modal-actions">
                 <button type="button" class="btn-danger btn-small hidden" id="deleteEventBtn">🗑️ Delete</button>
                 <button type="button" class="btn-clone btn-small hidden" id="cloneEventBtn">📋 Clone</button>
+                <button type="button" class="btn-warning btn-small hidden" id="skipOccurrenceBtn">⏭️ Skip</button>
                 <button type="submit" id="saveEventBtn" class="btn-primary btn-small">💾 Save</button>
             </div>
         </form>
