@@ -15,7 +15,7 @@
  * - Mobile-optimized auto-closing logic for viewport transitions
  * 
  * Dependencies:
- * - default.js: For getIcon and global interaction helpers
+ * - default.js: For global interaction helpers
  */
 
 /**
