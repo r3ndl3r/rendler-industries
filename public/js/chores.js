@@ -11,7 +11,7 @@
  * - Admin auditing and revocation
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, showToast, and modal helpers
+ * - default.js: For apiPost, showToast, and modal helpers
  */
 
 // --- Utility Helpers ---
