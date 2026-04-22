@@ -16,7 +16,7 @@
  * - Local state reconciliation for zero-latency user feedback
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, getLocalISOString, setupGlobalModalClosing, and modal helpers
+ * - default.js: For apiPost, getLocalISOString, setupGlobalModalClosing, and modal helpers
  * - toast.js: For status notifications
  */
 
