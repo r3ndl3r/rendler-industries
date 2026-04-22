@@ -430,40 +430,14 @@
     padding: 2px;
 }
 
-#notificationChannelsGroup {
-    margin-top: 15px;
-    padding: 15px;
-    background: rgba(15, 23, 42, 0.5);
-    border: 1px solid #334155;
-    border-radius: 8px;
-}
 
-#notificationChannelsGroup label {
-    color: #3b82f6;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-    font-size: 0.75em;
-    letter-spacing: 0.05em;
-}
-
-#channels-container .selector-pill {
+.reminder-dropdowns {
     display: flex;
-    align-items: center;
     gap: 8px;
-    background: #1e293b;
-    border: 1px solid #334155;
-    color: #94a3b8;
-    padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
 }
 
-#channels-container input:checked + .selector-pill {
-    background: #3b82f6;
-    border-color: #60a5fa;
-    color: #ffffff;
-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+.reminder-dropdowns select {
+    flex: 1;
 }
 
 .checkbox-group { margin-bottom: 10px; }

@@ -46,7 +46,6 @@ sub DB::get_calendar_events {
             e.attendees,
             e.is_private,
             e.notification_minutes,
-            e.notification_channels,
             e.last_notified_at,
             e.created_by,
             e.created_at,
@@ -127,13 +126,13 @@ sub DB::get_calendar_event_by_id {
 
 # Creates a new calendar event.
 # Parameters:
-#   title, description, start_date, end_date, all_day, category, color, attendees, created_by, is_private, notification_minutes, notification_channels
+#   title, description, start_date, end_date, all_day, category, color, attendees, created_by, is_private, notification_minutes
 # Returns:
 #   Last inserted ID (Integer).
 sub DB::add_calendar_event {
-    my ($self, $title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $created_by, $is_private, $notification_minutes, $notification_channels) = @_;
+    my ($self, $title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $created_by, $is_private, $notification_minutes) = @_;
     $self->ensure_connection;
-    
+
     $all_day              //= 0;
     $color                //= '#3788d8';
     $description          //= '';
@@ -141,32 +140,32 @@ sub DB::add_calendar_event {
     $attendees            //= '';
     $is_private           //= 0;
     $notification_minutes //= 0;
-    
+
     my $sth = $self->{dbh}->prepare(qq{
-        INSERT INTO calendar_events 
-        (title, description, start_date, end_date, all_day, category, color, attendees, created_by, is_private, notification_minutes, notification_channels)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO calendar_events
+        (title, description, start_date, end_date, all_day, category, color, attendees, created_by, is_private, notification_minutes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     });
-    
-    $sth->execute($title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $created_by, $is_private, $notification_minutes, $notification_channels);
+
+    $sth->execute($title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $created_by, $is_private, $notification_minutes);
     
     return $self->{dbh}->last_insert_id(undef, undef, 'calendar_events', 'id');
 }
 
 # Updates an existing calendar event.
 # Parameters:
-#   id, title, description, start_date, end_date, all_day, category, color, attendees, is_private, notification_minutes, notification_channels, reset_notification
+#   id, title, description, start_date, end_date, all_day, category, color, attendees, is_private, notification_minutes, reset_notification
 # Returns:
 #   Success flag (Boolean).
 sub DB::update_calendar_event {
-    my ($self, $id, $title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $is_private, $notification_minutes, $notification_channels, $reset_notification) = @_;
+    my ($self, $id, $title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $is_private, $notification_minutes, $reset_notification) = @_;
     $self->ensure_connection;
-    
+
     $attendees            //= '';
     $all_day              //= 0;
     $is_private           //= 0;
     $notification_minutes //= 0;
-    
+
     my $sql = qq{
         UPDATE calendar_events SET
             title = ?,
@@ -178,16 +177,15 @@ sub DB::update_calendar_event {
             color = ?,
             attendees = ?,
             is_private = ?,
-            notification_minutes = ?,
-            notification_channels = ?
+            notification_minutes = ?
     };
-    
+
     $sql .= ", last_notified_at = NULL " if $reset_notification;
     $sql .= " WHERE id = ?";
-    
+
     my $sth = $self->{dbh}->prepare($sql);
-    
-    return $sth->execute($title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $is_private, $notification_minutes, $notification_channels, $id);
+
+    return $sth->execute($title, $description, $start_date, $end_date, $all_day, $category, $color, $attendees, $is_private, $notification_minutes, $id);
 }
 
 # Deletes a calendar event.

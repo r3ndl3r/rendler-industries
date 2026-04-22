@@ -35,7 +35,6 @@ let STATE = {
     filteredEvents: [],             // Active view filtered collection
     categories: [],                 // List of unique event category labels
     users: [],                      // Family roster for attendee selection
-    channels: [],                   // Available notification channels
     isAdmin: false,                 // Authorization gate for administrative actions
     currentUserId: null,            // ID of currently logged-in user
     currentDate: new Date(),        // Active temporal pointer
@@ -94,7 +93,6 @@ async function loadState(force = false) {
         if (data && data.success) {
             STATE.categories = data.categories || [];
             STATE.users = data.users || [];
-            STATE.channels = data.channels || [];
             STATE.isAdmin = !!data.is_admin;
             STATE.currentUserId = data.current_user_id;
             
@@ -214,11 +212,6 @@ function populateDropdowns() {
     const recipients = STATE.users.map(u => ({ id: u.id, label: escapeHtml(u.username) }));
     window.renderSelectorGrid('attendees-container', recipients, { name: 'attendees[]', prefix: 'attendee', type: 'day' });
 
-    // 3. Notification Channel Checkboxes
-    if (STATE.channels.length > 0) {
-        const channelOptions = STATE.channels.map(c => ({ id: c.id, label: `${{ bell: '🔔', email: '📧', discord: '💬' }[c.icon] || '🔔'} ${escapeHtml(c.label)}` }));
-        window.renderSelectorGrid('channels-container', channelOptions, { name: 'notification_channels[]', prefix: 'channel', type: 'day' });
-    }
 }
 
 /**
@@ -631,27 +624,58 @@ function setupEventListeners() {
         };
     }
 
-    const notifyCb = document.getElementById('eventNotify');
-    const channelGroup = document.getElementById('notificationChannelsGroup');
-    const notifyMinutesInput = document.getElementById('notificationMinutes');
-    if (notifyCb && channelGroup) {
+    const notifyCb      = document.getElementById('eventNotify');
+    const reminderGroup = document.getElementById('reminderPresetsGroup');
+    if (notifyCb && reminderGroup) {
         notifyCb.onchange = () => {
             if (notifyCb.checked) {
-                channelGroup.classList.remove('hidden');
-                notifyMinutesInput.value = 60;
-                
-                // Select Email by default if nothing selected
-                const checked = document.querySelectorAll('#channels-container input:checked');
-                if (checked.length === 0) {
-                    const emailCb = document.querySelector('#channels-container input[value="email"]');
-                    if (emailCb) emailCb.checked = true;
-                }
+                reminderGroup.classList.remove('hidden');
             } else {
-                channelGroup.classList.add('hidden');
-                notifyMinutesInput.value = 0;
+                reminderGroup.classList.add('hidden');
+                const _rd = document.getElementById('reminderDays');
+                const _rh = document.getElementById('reminderHours');
+                const _rm = document.getElementById('reminderMinutes');
+                const _nm = document.getElementById('notificationMinutes');
+                if (_rd) _rd.value = 0;
+                if (_rh) _rh.value = 0;
+                if (_rm) _rm.value = 0;
+                if (_nm) _nm.value = 0;
             }
         };
+
+        ['reminderDays', 'reminderHours', 'reminderMinutes'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', _syncReminderMinutes);
+        });
     }
+}
+
+function _syncReminderMinutes() {
+    const dEl = document.getElementById('reminderDays');
+    const hEl = document.getElementById('reminderHours');
+    const mEl = document.getElementById('reminderMinutes');
+    const nEl = document.getElementById('notificationMinutes');
+    if (!dEl || !hEl || !mEl || !nEl) return;
+    const days  = parseInt(dEl.value) || 0;
+    const hours = parseInt(hEl.value) || 0;
+    const mins  = parseInt(mEl.value) || 0;
+    nEl.value = days * 1440 + hours * 60 + mins;
+}
+
+function _populateReminderDropdowns(totalMins) {
+    const days  = Math.floor(totalMins / 1440);
+    const hours = Math.floor((totalMins % 1440) / 60);
+    const mins  = totalMins % 60;
+    const dEl = document.getElementById('reminderDays');
+    const hEl = document.getElementById('reminderHours');
+    const mEl = document.getElementById('reminderMinutes');
+    const nEl = document.getElementById('notificationMinutes');
+    if (!dEl || !hEl || !mEl || !nEl) return;
+    const clampedDays = Math.min(days, 7);
+    dEl.value = clampedDays;
+    hEl.value = hours;
+    mEl.value = mins;
+    nEl.value = clampedDays * 1440 + hours * 60 + mins;
 }
 
 /**
@@ -780,10 +804,16 @@ function openAddEventModal(dateStr) {
     const notifyCb = document.getElementById('eventNotify');
     if (notifyCb) {
         notifyCb.checked = false;
-        const channelGroup = document.getElementById('notificationChannelsGroup');
-        if (channelGroup) channelGroup.classList.add('hidden');
-        document.getElementById('notificationMinutes').value = 0;
-        document.querySelectorAll('#channels-container input').forEach(cb => cb.checked = false);
+        const _rg = document.getElementById('reminderPresetsGroup');
+        const _nm = document.getElementById('notificationMinutes');
+        const _rd = document.getElementById('reminderDays');
+        const _rh = document.getElementById('reminderHours');
+        const _rm = document.getElementById('reminderMinutes');
+        if (_rg) _rg.classList.add('hidden');
+        if (_nm) _nm.value = 0;
+        if (_rd) _rd.value = 0;
+        if (_rh) _rh.value = 0;
+        if (_rm) _rm.value = 0;
     }
     
     if (dateStr) {
@@ -831,21 +861,26 @@ function openEditModalById(id) {
     });
 
     // Populate Notifications
-    const notifyCb = document.getElementById('eventNotify');
-    const minsInput = document.getElementById('notificationMinutes');
-    const channelGroup = document.getElementById('notificationChannelsGroup');
-    if (notifyCb && minsInput && channelGroup) {
+    const notifyCb      = document.getElementById('eventNotify');
+    const reminderGroup = document.getElementById('reminderPresetsGroup');
+    if (notifyCb && reminderGroup) {
         const mins = parseInt(event.notification_minutes || 0);
         notifyCb.checked = mins > 0;
-        minsInput.value = mins;
-        
-        if (mins > 0) channelGroup.classList.remove('hidden');
-        else channelGroup.classList.add('hidden');
-        
-        const channelList = (event.notification_channels || '').split(',');
-        document.querySelectorAll('#channels-container input').forEach(cb => {
-            cb.checked = channelList.includes(cb.value);
-        });
+
+        if (mins > 0) {
+            reminderGroup.classList.remove('hidden');
+            _populateReminderDropdowns(mins);
+        } else {
+            reminderGroup.classList.add('hidden');
+            const _rd = document.getElementById('reminderDays');
+            const _rh = document.getElementById('reminderHours');
+            const _rm = document.getElementById('reminderMinutes');
+            const _nm = document.getElementById('notificationMinutes');
+            if (_rd) _rd.value = 0;
+            if (_rh) _rh.value = 0;
+            if (_rm) _rm.value = 0;
+            if (_nm) _nm.value = 0;
+        }
     }
 
     document.getElementById('modalTitle').innerHTML = `Edit Event`;

@@ -40,24 +40,11 @@ sub api_state {
     my $categories = $c->db->get_calendar_categories();
     my $users      = $c->db->get_family_users();
 
-    # Determine available notification channels
-    my @channels = (
-        { id => 'email', label => 'Email', icon => 'email' },
-        { id => 'discord', label => 'Discord', icon => 'discord' }
-    );
-
-    # Admin-only channels
-    if ($c->is_admin) {
-        push @channels, { id => 'gotify', label => 'Gotify', icon => 'gotify' };
-        push @channels, { id => 'pushover', label => 'Pushover', icon => 'pushover' };
-    }
-    
     $c->render(json => {
-        success    => 1,
-        categories => $categories,
-        users      => $users,
-        channels   => \@channels,
-        is_admin   => $c->is_admin ? 1 : 0,
+        success         => 1,
+        categories      => $categories,
+        users           => $users,
+        is_admin        => $c->is_admin ? 1 : 0,
         current_user_id => $c->current_user_id
     });
 }
@@ -117,9 +104,7 @@ sub api_add {
     my $attendees = ($attendee_ids && @$attendee_ids) ? join(',', @$attendee_ids) : '';
 
     my $notification_minutes = $c->param('notification_minutes') // 0;
-    my $channel_list = $c->every_param('notification_channels[]');
-    my $notification_channels = ($channel_list && @$channel_list) ? join(',', @$channel_list) : '';
-    
+
     return $c->render(json => { success => 0, error => 'Title is required' }) unless $title;
     return $c->render(json => { success => 0, error => 'Start date is required' }) unless $start_date;
     return $c->render(json => { success => 0, error => 'End date is required' }) unless $end_date;
@@ -132,15 +117,15 @@ sub api_add {
     if ($end_date lt $start_date) {
         return $c->render(json => { success => 0, error => 'End date cannot be before start date' });
     }
-    
+
     my $user_id = $c->current_user_id;
     my $creator_name = $c->session('user') || 'Unknown';
-    
+
     eval {
         my $event_id = $c->db->add_calendar_event(
             $title, $description, $start_date, $end_date,
             $all_day, $category, $color, $attendees, $user_id, $is_private,
-            $notification_minutes, $notification_channels
+            $notification_minutes
         );
         
         # ONLY notify family if the event creation succeeded and it is NOT private
@@ -206,9 +191,7 @@ sub api_edit {
     my $attendees = ($attendee_ids && @$attendee_ids) ? join(',', @$attendee_ids) : '';
 
     my $notification_minutes = $c->param('notification_minutes') // 0;
-    my $channel_list = $c->every_param('notification_channels[]');
-    my $notification_channels = ($channel_list && @$channel_list) ? join(',', @$channel_list) : '';
-    
+
     return $c->render(json => { success => 0, error => 'Event ID is required' }) unless $id;
     return $c->render(json => { success => 0, error => 'Title is required' }) unless $title;
 
@@ -229,7 +212,7 @@ sub api_edit {
         my $result = $c->db->update_calendar_event(
             $id, $title, $description, $start_date, $end_date,
             $all_day, $category, $color, $attendees, $is_private,
-            $notification_minutes, $notification_channels, $reset_notification
+            $notification_minutes, $reset_notification
         );
 
         # ONLY notify family if the update succeeded, isn't private, and notifications are enabled
