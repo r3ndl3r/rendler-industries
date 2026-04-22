@@ -12,7 +12,7 @@
  * - Interactive AI Sandbox for training and seeding.
  * 
  * Dependencies:
- * - default.js: For apiPost, getIcon, showToast, and modal management.
+ * - default.js: For apiPost, showToast, and modal management.
  */
 
 const CONFIG = {
