@@ -1285,10 +1285,22 @@ function renderSearchResults(results, isGlobal) {
                 <div class="search-result-snippet">${window.escapeHtml(note.content || note.filename || '').substring(0, 80)}${(note.content || note.filename || '').length > 80 ? '...' : ''}</div>
             </div>
             <div class="search-result-action">
+                ${note.type === 'text' && note.content ? `<button class="search-result-copy-btn global-icon" onclick="copySearchResultContent(event, ${note.id})" title="Copy content">📋</button>` : ''}
                 <span class="global-icon">▶️</span>
             </div>
         </div>
     `).join('');
+}
+
+function copySearchResultContent(event, id) {
+    event.stopPropagation();
+    const note = (CURRENT_SEARCH_RESULTS || []).find(n => n.id == id);
+    if (!note || !note.content) return;
+    navigator.clipboard.writeText(note.content).then(function() {
+        showToast('Note copied to clipboard.', 'success');
+    }).catch(function() {
+        showToast('Failed to copy to clipboard.', 'error');
+    });
 }
 
 /**
