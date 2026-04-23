@@ -365,13 +365,9 @@ function renderCanvasList() {
             </div>
             <div class="canvas-actions">
                 ${isOwner ? `
-                    <button class="btn-icon-square btn-sm btn-primary" data-action="settings" data-canvas-id="${canvas.id}" title="Board Settings">
-                        ⚙️
-                    </button>
+                    <button class="btn-icon-edit" data-action="settings" data-canvas-id="${canvas.id}" title="Board Settings">✏️</button>
                     ${canvas.name !== 'My Notebook' ? `
-                        <button class="btn-icon-square btn-sm btn-danger" data-action="delete" data-canvas-id="${canvas.id}" title="Delete Board">
-                            🗑️
-                        </button>
+                        <button class="btn-icon-delete" data-action="delete" data-canvas-id="${canvas.id}" title="Delete Board">🗑️</button>
                     ` : ''}
                 ` : ''}
             </div>
@@ -600,9 +596,7 @@ function openMoveModal(e, id) {
                 <div class="canvas-meta">Owned by ${escapeHtml(canvas.owner_name || 'System')}</div>
             </div>
             <div class="canvas-actions">
-                <button class="btn-icon-square btn-sm btn-primary">
-                    📦
-                </button>
+                <button class="btn-icon-view">📦</button>
             </div>
         `;
         list.appendChild(item);
@@ -1419,6 +1413,7 @@ async function renderBinList() {
     try {
         const data = await NoteAPI.get(`/notes/api/bin?canvas_id=${STATE.canvas_id}`);
 
+        const emptyBtn = document.getElementById('btn-empty-bin');
         if (!data.success || !data.notes || data.notes.length === 0) {
             container.innerHTML = `
                 <div class="bin-empty">
@@ -1426,8 +1421,10 @@ async function renderBinList() {
                     <p>Your recycle bin is empty</p>
                 </div>
             `;
+            if (emptyBtn) emptyBtn.classList.add('hidden');
             return;
         }
+        if (emptyBtn) emptyBtn.classList.remove('hidden');
 
         container.innerHTML = data.notes.map(note => {
             // Parity with notes.js: Normalize color and use updated_at as deletion timestamp
@@ -1445,12 +1442,8 @@ async function renderBinList() {
                         </div>
                     </div>
                     <div class="bin-item-actions">
-                        <button class="btn-icon-square btn-success" onclick="restoreNote(${note.id})" title="Restore Note">
-                            🔄
-                        </button>
-                        <button class="btn-icon-square btn-danger" onclick="confirmNotePurge(${note.id})" title="Permanently Delete">
-                            🗑️
-                        </button>
+                        <button class="btn-icon-view" onclick="restoreNote(${note.id})" title="Restore Note">🔄</button>
+                        <button class="btn-icon-delete" onclick="confirmNotePurge(${note.id})" title="Permanently Delete">🗑️</button>
                     </div>
                 </div>
             `;
@@ -1626,6 +1619,32 @@ async function restoreNote(id) {
  * Confirmation logic for permanent deletion of a specific archived note.
  * @param {number} id - Target note ID.
  */
+/**
+ * Prompts the user to permanently delete every note in their recycle bin.
+ * Reads the current rendered item count to include in the confirmation message.
+ * @returns {void}
+ */
+function confirmEmptyBin() {
+    const count = document.querySelectorAll('#bin-results-container .bin-item').length;
+    if (!count) { showToast('Recycle bin is already empty', 'info'); return; }
+    window.showConfirmModal({
+        title: 'Empty Recycle Bin',
+        icon: '🗑️',
+        message: `Permanently delete all ${count} note${count === 1 ? '' : 's'} in the bin? This cannot be undone.`,
+        danger: true,
+        confirmText: 'EMPTY BIN',
+        confirmIcon: '🗑️',
+        hideCancel: true,
+        onConfirm: async () => {
+            const res = await NoteAPI.post('/notes/api/purge_all', {});
+            if (res && res.success) {
+                if (typeof openBinModal === 'function') openBinModal();
+                showToast('Recycle bin emptied', 'success');
+            }
+        }
+    });
+}
+
 function confirmNotePurge(id) {
     window.showConfirmModal({
         title: 'Permanent Delete',
@@ -1674,6 +1693,7 @@ window.closeBinModal = closeBinModal;
 window.renderBinList = renderBinList;
 window.restoreNote = restoreNote;
 window.confirmNotePurge = confirmNotePurge;
+window.confirmEmptyBin = confirmEmptyBin;
 window.copyViewContent = copyViewContent;
 window.openJumpToLevelModal = openJumpToLevelModal;
 
