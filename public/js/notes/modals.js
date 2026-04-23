@@ -920,7 +920,6 @@ function showBoardInfo() {
             <ul class="board-guide-list">
                 <li><strong>🖱️ > note title bar</strong> — Pick up and place note (click again to drop)</li>
                 <li><strong>🖱️x2 > note title text</strong> — Collapse / expand note</li>
-                <li><strong>🖱️x2 > note body</strong> — Pick up and place note</li>
                 <li><strong>🖱️x2 > empty canvas</strong> — Create a new note at cursor</li>
                 <li><strong>Shift + 🖱️ & drag</strong> — Lasso selection (bulk drag/delete)</li>
             </ul>
