@@ -662,6 +662,7 @@ sub startup {
     $auth->get('/notes/api/bin')->to('notes#api_bin');
     $auth->post('/notes/api/restore')->to('notes#api_restore');
     $auth->post('/notes/api/purge')->to('notes#api_purge');
+    $auth->post('/notes/api/purge_all')->to('notes#api_purge_all');
     $auth->post('/notes/api/attachment/delete')->to('notes#api_attachment_delete');
     $auth->post('/notes/api/attachment/rename')->to('notes#api_attachment_rename');
     $auth->post('/notes/api/layer/rename')->to('notes#api_layer_rename');
