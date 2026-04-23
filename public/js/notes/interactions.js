@@ -1244,23 +1244,7 @@ async function saveViewportImmediate() {
 function handleCanvasMouseDown(e) {
     if (STATE.isInitializing) return;
 
-    // 1. Double Click Dispatcher (Pick up Note)
-    // Guard against re-entry: if a pick is already active, skip to avoid double-registering
-    // updateStickyMove and corrupting STATE.originalPos with a mid-drag position.
-    if (e.detail === 2 && !STATE.pickedNoteId) {
-        const noteHandle = e.target.closest('.note-drag-handle-container');
-        if (noteHandle) {
-            // Guard: title slot double-click belongs to the collapse handler, not pick-up.
-            const isTitle = e.target.closest('.note-title-slot, .inline-title-input');
-            if (!isTitle) {
-                const id = noteHandle.closest('.sticky-note')?.dataset.id;
-                if (id) toggleStickyMove(e, id);
-            }
-            return;
-        }
-    }
-
-    // 2. Note Header Actions: Centralized delegation for all note-level buttons
+    // 1. Note Header Actions: Centralized delegation for all note-level buttons
     const hashBtn    = e.target.closest('.note-id-hash');
     const editBtn     = e.target.closest('.btn-icon-edit');
     const linkBtn     = e.target.closest('.btn-icon-link');
@@ -1392,8 +1376,8 @@ function handleCanvasMouseDown(e) {
         // Off-canvas escape hatch: capture mouseup at document level so a
         // release outside the viewport always terminates the lasso.
         document.addEventListener('mouseup', handleCanvasMouseUp, { once: true });
-    } else if (e.button === 0 && !handle && !isAction && !isTitle && 
-               !e.target.closest('input, textarea, [contenteditable], select, a[href], a[data-action], button:not([data-pan-passthrough]), .note-check-trigger, .note-link-trigger, [data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn')) {
+    } else if (e.button === 0 && !handle && !isAction && !isTitle &&
+               !e.target.closest('input, textarea, [contenteditable], select, .note-text-viewer, a[href], a[data-action], button:not([data-pan-passthrough]), .note-check-trigger, .note-link-trigger, [data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn')) {
         // --- 5B. Standard Panning — Left-Click on Background ---
         // UX Consistency: Only clear lasso selection when clicking true background,
         // not when panning originates from a note body (preserves multi-selection).
@@ -1678,16 +1662,6 @@ function handleCanvasDoubleClick(e) {
         return;
     }
 
-    // --- Path B: Pick & Place (Targeting the Note Body) ---
-    // All following actions require edit privilege and no existing pick conflict
-    if (!STATE.editMode || STATE.pickedNoteId) return;
-
-    // Defensive Guard: Block pickup if clicking specialized control buttons
-    const isAction = e.target.closest('.note-header-tab, .note-check-trigger, .note-link-trigger, .note-copy-trigger, .reel-action-btn, .hero-action-btn, .btn-icon-drawer, [data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn');
-    if (isAction) return;
-
-    // Execution: If no action was matched, we treat this as a body double-click for Pickup
-    toggleStickyMove(e, id);
 }
 
 /**
