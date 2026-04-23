@@ -8,14 +8,17 @@ use Mojo::JSON qw(encode_json decode_json);
 use List::Util qw(shuffle);
 
 # Database helper for UNO Game Logic.
+#
 # Features:
 #   - Deck generation (108 standard cards)
 #   - Shuffling and Dealing
 #   - Move validation (Color/Number matching)
 #   - Action Card logic (Skip, Draw 2, Wild)
-# Integration points:
+#
+# Integration Points:
 #   - Extends DB package via package injection
 #   - Uses Mojo::JSON for board state serialization
+#   - Coordinates with centralized Notification plugins for game alerts.
 
 # Generates a full UNO deck.
 # Parameters: None
@@ -57,13 +60,27 @@ sub DB::create_uno_lobby {
     # Generate and Shuffle Deck
     my $deck = _generate_deck();
     
-    # Flip first card for discard pile
+    # Flip first card for discard pile (ensure it's not a wild)
+    # Iteration guard to prevent infinite reshuffle loop
+    my $max_reshuffles = 20;
+    while ($deck->[-1] =~ /^wild/) {
+        $deck = [ shuffle(@$deck) ];
+        last if --$max_reshuffles <= 0;
+    }
+    
+    # Fallback: scan from end for first non-wild card and swap it to top
+    if ($deck->[-1] =~ /^wild/) {
+        my $swap_idx = (grep { $deck->[$_] !~ /^wild/ } 0..$#$deck)[-1];
+        if (defined $swap_idx) {
+            ($deck->[-1], $deck->[$swap_idx]) = ($deck->[$swap_idx], $deck->[-1]);
+        }
+    }
+    
     my $first_card = pop @$deck;
     my @discard = ($first_card);
     
-    # Determine initial color (fallback to red if first card is Wild)
+    # Determine initial color
     my ($color) = split('_', $first_card);
-    $color = 'red' if $color eq 'wild';
     
     # Cleanup old lobbies
     $self->{dbh}->do("DELETE FROM uno_sessions WHERE player1_id = ? AND status = 'waiting'", undef, $user_id);
@@ -96,11 +113,16 @@ sub DB::get_open_uno_lobbies {
     $self->ensure_connection;
     
     return $self->{dbh}->selectall_arrayref(
-        "SELECT g.id, u.username as host_name, g.created_at 
-         FROM uno_sessions g 
-         JOIN users u ON g.player1_id = u.id 
-         WHERE g.status = 'waiting' 
-         ORDER BY g.created_at DESC",
+        "SELECT g.id, u.username as host_name, g.created_at,
+                (CASE WHEN g.player1_id IS NOT NULL THEN 1 ELSE 0 END +
+                 CASE WHEN g.player2_id IS NOT NULL THEN 1 ELSE 0 END +
+                 CASE WHEN g.player3_id IS NOT NULL THEN 1 ELSE 0 END +
+                 CASE WHEN g.player4_id IS NOT NULL THEN 1 ELSE 0 END) as player_count
+          FROM uno_sessions g 
+          JOIN users u ON g.player1_id = u.id 
+          WHERE g.status = 'waiting' 
+          ORDER BY g.created_at DESC
+          LIMIT 50",
         { Slice => {} }
     );
 }
@@ -115,37 +137,175 @@ sub DB::join_uno_lobby {
     my ($self, $game_id, $user_id) = @_;
     
     $self->ensure_connection;
+    $self->{dbh}->begin_work;
     
-    my $game = $self->{dbh}->selectrow_hashref("SELECT player1_id, player2_id, player3_id, player4_id FROM uno_sessions WHERE id = ?", undef, $game_id);
-    return 0 unless $game;
+    my $game = $self->{dbh}->selectrow_hashref("SELECT player1_id, player2_id, player3_id, player4_id FROM uno_sessions WHERE id = ? FOR UPDATE", undef, $game_id);
+    unless ($game) {
+        $self->{dbh}->rollback;
+        return 0;
+    }
 
-    # Check if user is already in the game
-    return 0 if ($game->{player1_id} == $user_id || 
-                 ($game->{player2_id} && $game->{player2_id} == $user_id) ||
-                 ($game->{player3_id} && $game->{player3_id} == $user_id) ||
-                 ($game->{player4_id} && $game->{player4_id} == $user_id));
+    # Check if user is already in the game (idempotent)
+    if (($game->{player1_id} && $game->{player1_id} == $user_id) || 
+        ($game->{player2_id} && $game->{player2_id} == $user_id) ||
+        ($game->{player3_id} && $game->{player3_id} == $user_id) ||
+        ($game->{player4_id} && $game->{player4_id} == $user_id)) {
+        $self->{dbh}->commit;
+        return 1;
+    }
 
     # Find the first available slot
     my $slot;
     if (!$game->{player2_id}) { $slot = 'player2_id'; }
     elsif (!$game->{player3_id}) { $slot = 'player3_id'; }
     elsif (!$game->{player4_id}) { $slot = 'player4_id'; }
-    else { return 0; } # Game full
+    else { 
+        $self->{dbh}->rollback;
+        return 0; 
+    } # Game full
+
+    # Validate slot to prevent SQL injection
+    my %valid_join_slots; foreach (2..4) { $valid_join_slots{"player${_}_id"} = 1; }
+    unless ($valid_join_slots{$slot}) { $self->{dbh}->rollback; die "Invalid join slot: $slot"; }
 
     my $sth = $self->{dbh}->prepare(
         "UPDATE uno_sessions SET $slot = ? WHERE id = ? AND status = 'waiting'"
     );
-    return $sth->execute($user_id, $game_id);
+    if ($sth->execute($user_id, $game_id)) {
+        $self->{dbh}->commit;
+        return 1;
+    } else {
+        $self->{dbh}->rollback;
+        return 0;
+    }
+}
+
+# Removes a player from a game session.
+# Parameters:
+#   game_id : Target game ID
+#   user_id : ID of the player leaving
+sub DB::leave_uno_game {
+    my ($self, $game_id, $user_id) = @_;
+    $self->ensure_connection;
+
+    # Use transaction and row-level locking to prevent race conditions
+    $self->{dbh}->begin_work;
+    my $game = $self->{dbh}->selectrow_hashref("SELECT * FROM uno_sessions WHERE id = ? FOR UPDATE", undef, $game_id);
+    unless ($game) { $self->{dbh}->rollback; return 0; }
+
+    # If game is already finished, return success immediately
+    if ($game->{status} eq 'finished') {
+        $self->{dbh}->rollback;
+        return 1;
+    }
+
+    # If host leaves and game hasn't started, delete the session
+    # Defensive guard against uninitialized values
+    if (($game->{player1_id} // 0) == $user_id && $game->{status} eq 'waiting') {
+        my $res = $self->{dbh}->do("DELETE FROM uno_sessions WHERE id = ?", undef, $game_id);
+        $self->{dbh}->commit;
+        return $res;
+    }
+
+    # Otherwise, just null out their slot
+    my $slot;
+    my $leaving_slot_num;
+    for my $i (1..4) {
+        if ($game->{"player${i}_id"} && $game->{"player${i}_id"} == $user_id) {
+            $slot = "player${i}_id";
+            $leaving_slot_num = $i;
+            last;
+        }
+    }
+    
+    if ($slot) {
+        # Validate slot to prevent SQL injection
+        my %valid_slots; foreach (1..4) { $valid_slots{"player${_}_id"} = 1; }
+        unless ($valid_slots{$slot}) { $self->{dbh}->rollback; die "Invalid slot: $slot"; }
+
+        # Promote next available player if host leaves an active game
+        if ($leaving_slot_num && $leaving_slot_num == 1 && $game->{status} eq 'active') {
+            for my $i (2..4) {
+                if ($game->{"player${i}_id"}) {
+                    # Validate promotion column and handle transaction errors
+                    my %valid_promote; foreach (2..4) { $valid_promote{"player${_}_id"} = 1; }
+                    my $promote_col = "player${i}_id";
+                    unless ($valid_promote{$promote_col}) { $self->{dbh}->rollback; die "Invalid promote col: $promote_col"; }
+
+                    eval {
+                        $self->{dbh}->do(
+                            "UPDATE uno_sessions SET player1_id = $promote_col, $promote_col = NULL WHERE id = ?",
+                            undef, $game_id
+                        );
+                    };
+                    if ($@) { $self->{dbh}->rollback; die $@; }
+
+                    # Slot management handled inline above
+                    $slot = undef; 
+                    last;
+                }
+            }
+        }
+
+        # If it was their turn and game is active, advance turn
+        my $was_turn = ($game->{current_turn} && $game->{current_turn} == $user_id && $game->{status} eq 'active');
+        
+        if ($slot) {
+            $self->{dbh}->do("UPDATE uno_sessions SET $slot = NULL WHERE id = ?", undef, $game_id);
+        }
+        
+        # If no players left, cleanup
+        my @remaining_ids = ();
+        # Consistent locking read within transaction
+        my $game_fresh = $self->{dbh}->selectrow_hashref("SELECT * FROM uno_sessions WHERE id = ? FOR UPDATE", undef, $game_id);
+        
+        # Guard against null dereference if row was deleted concurrently
+        unless ($game_fresh) { $self->{dbh}->commit; return 1; }
+
+        for my $i (1..4) {
+            push @remaining_ids, $game_fresh->{"player${i}_id"} if $game_fresh->{"player${i}_id"};
+        }
+
+        if (!@remaining_ids) {
+            $self->{dbh}->do("DELETE FROM uno_sessions WHERE id = ?", undef, $game_id);
+        } elsif (scalar @remaining_ids == 1 && $game_fresh->{status} eq 'active') {
+            # Only one player left in active game, they win
+            $self->{dbh}->do("UPDATE uno_sessions SET status = 'finished', winner_id = ? WHERE id = ?", undef, $remaining_ids[0], $game_id);
+        } elsif ($was_turn) {
+            # Advance turn to next available player
+            # Use pre-leave snapshot so _calculate_next_turn can find $user_id
+            my $next_turn = _calculate_next_turn($game, $user_id, 0);
+            if ($next_turn && $next_turn != $user_id) {
+                $self->{dbh}->do("UPDATE uno_sessions SET current_turn = ? WHERE id = ?", undef, $next_turn, $game_id);
+            } else {
+                # Fallback: assign turn to first remaining player
+                my $fallback;
+                foreach my $idx (1..4) {
+                    if ($game_fresh->{"player${idx}_id"}) {
+                        $fallback = $game_fresh->{"player${idx}_id"};
+                        last;
+                    }
+                }
+                $self->{dbh}->do("UPDATE uno_sessions SET current_turn = ? WHERE id = ?", undef, $fallback, $game_id) if $fallback;
+            }
+        }
+        $self->{dbh}->commit;
+        return 1;
+    }
+    
+    $self->{dbh}->rollback;
+    return 0; # Explicit return 0 if slot not found
 }
 
 # Gets the game state and sanitizes opponent cards for security (supports 4 players).
 # Parameters:
 #   game_id : Unique Game ID
 #   user_id : ID of the user requesting the state
+#   lock    : Optional. If true, use FOR UPDATE lock.
 # Returns:
 #   HashRef containing game state with 'p1_ready'..'p4_ready', and masked hands
 sub DB::get_uno_game_state {
-    my ($self, $game_id, $user_id) = @_;
+    my ($self, $game_id, $user_id, $lock) = @_;
     
     $self->ensure_connection;
     
@@ -160,6 +320,8 @@ sub DB::get_uno_game_state {
                LEFT JOIN users u3 ON g.player3_id = u3.id
                LEFT JOIN users u4 ON g.player4_id = u4.id
                WHERE g.id = ?";
+    
+    if ($lock) { $sql .= " FOR UPDATE"; }
                
     my $game = $self->{dbh}->selectrow_hashref($sql, undef, $game_id);
     return undef unless $game;
@@ -172,19 +334,14 @@ sub DB::get_uno_game_state {
     $game->{p3_hand}      = decode_json($game->{p3_hand} // '[]');
     $game->{p4_hand}      = decode_json($game->{p4_hand} // '[]');
 
-    # Ensure ready flags are treated as booleans
-    $game->{p1_ready} = $game->{p1_ready} // 0;
-    $game->{p2_ready} = $game->{p2_ready} // 0;
-    $game->{p3_ready} = $game->{p3_ready} // 0;
-    $game->{p4_ready} = $game->{p4_ready} // 0;
-
-    $game->{p1_said_uno} = $game->{p1_said_uno} // 0;
-    $game->{p2_said_uno} = $game->{p2_said_uno} // 0;
-    $game->{p3_said_uno} = $game->{p3_said_uno} // 0;
-    $game->{p4_said_uno} = $game->{p4_said_uno} // 0;
+    # Ensure flags are treated as booleans/ints
+    foreach my $i (1..4) {
+        $game->{"p${i}_ready"} = $game->{"p${i}_ready"} // 0;
+        $game->{"p${i}_said_uno"} = $game->{"p${i}_said_uno"} // 0;
+        $game->{"p${i}_drawn_this_turn"} = $game->{"p${i}_drawn_this_turn"} // 0;
+    }
     
     # Map users to slots and build counts
-    my @slots = qw(p1 p2 p3 p4);
     $game->{players} = [];
     
     for my $i (1..4) {
@@ -207,6 +364,8 @@ sub DB::get_uno_game_state {
             if ($game->{$pid_col} == $user_id) {
                 $game->{my_hand} = $game->{$phand_col};
                 $game->{my_slot} = $s;
+                # Expose drawn_this_turn state to client
+                $game->{player_drawn_this_turn} = $game->{"${s}_drawn_this_turn"};
             }
             
             push @{$game->{players}}, $p_info;
@@ -222,11 +381,13 @@ sub DB::get_uno_game_state {
 # Internal Helper: Reshuffles discard pile into draw pile if empty.
 sub _reshuffle_deck_if_empty {
     my ($deck, $discard) = @_;
-    if (@$deck == 0) {
+    if (@$deck == 0 && @$discard > 0) {
         my $top_card = pop @$discard;
         @$deck = shuffle(@$discard);
         @$discard = ($top_card);
     }
+    # Warn if we still have no cards (true exhaustion)
+    warn "UNO: both deck and discard exhausted for game — data may be corrupt" if !@$deck && !@$discard;
 }
 
 # Handles drawing a card from the deck.
@@ -238,15 +399,19 @@ sub _reshuffle_deck_if_empty {
 sub DB::draw_uno_card {
     my ($self, $game_id, $user_id) = @_;
     
-    my $game = $self->get_uno_game_state($game_id, $user_id);
-    return { success => 0 } unless $game->{current_turn} == $user_id;
-    return { success => 0 } unless $game->{status} eq 'active';
+    # Wrap in transaction with FOR UPDATE lock
+    $self->{dbh}->begin_work;
+    my $game = $self->get_uno_game_state($game_id, $user_id, 1); # Pass 1 for locking read
+    
+    unless ($game && ($game->{current_turn} // 0) == $user_id) { $self->{dbh}->rollback; return { success => 0, error => "Not your turn" }; }
+    unless ($game->{status} eq 'active') { $self->{dbh}->rollback; return { success => 0, error => "Game not active" }; }
+    if ($game->{player_drawn_this_turn}) { $self->{dbh}->rollback; return { success => 0, error => "Already drew this turn" }; }
     
     my $deck = $game->{draw_pile};
     my $discard = $game->{discard_pile};
     
     _reshuffle_deck_if_empty($deck, $discard);
-    return { success => 0 } if @$deck == 0;
+    return { success => 0, error => "Deck empty" } if @$deck == 0;
     
     # Draw card
     my $new_card = pop @$deck;
@@ -257,25 +422,36 @@ sub DB::draw_uno_card {
 
     my $hand_col = $game->{my_slot} . "_hand";
     my $said_uno_col = $game->{my_slot} . "_said_uno";
+    my $drawn_col = $game->{my_slot} . "_drawn_this_turn";
     
+    # Validate interpolated column names
+    my %valid_uno_cols;   foreach (1..4) { $valid_uno_cols{"p${_}_said_uno"} = 1; }
+    my %valid_drawn_cols; foreach (1..4) { $valid_drawn_cols{"p${_}_drawn_this_turn"} = 1; }
+    die "Invalid said_uno_col: $said_uno_col" unless $valid_uno_cols{$said_uno_col};
+    die "Invalid drawn_col: $drawn_col"       unless $valid_drawn_cols{$drawn_col};
+
     # If not playable, pass turn immediately. 
     my $next_turn = $game->{current_turn};
+    my $drawn_status = 1;
     if (!$playable) {
         $next_turn = _calculate_next_turn($game, $user_id, 0);
+        $drawn_status = 0; # Reset since turn passed
     }
     
     my $sth = $self->{dbh}->prepare(
-        "UPDATE uno_sessions SET $hand_col = ?, $said_uno_col = 0, draw_pile = ?, discard_pile = ?, current_turn = ? WHERE id = ?"
+        "UPDATE uno_sessions SET $hand_col = ?, $said_uno_col = 0, $drawn_col = ?, draw_pile = ?, discard_pile = ?, current_turn = ? WHERE id = ?"
     );
     
     $sth->execute(
         encode_json($game->{my_hand}),
+        $drawn_status,
         encode_json($deck),
         encode_json($discard),
         $next_turn,
         $game_id
     );
     
+    $self->{dbh}->commit;
     return { success => 1, playable => $playable };
 }
 
@@ -312,11 +488,15 @@ sub _calculate_next_turn {
     # Find current index
     my ($current_idx) = grep { $joined[$_] == $current_uid } 0..$#joined;
     
+    # If player not found (e.g. just left), return first joined player
+    return $joined[0] unless defined $current_idx;
+
     # Calculate step
     my $direction = $game->{direction} // 1;
     my $step = (1 + $skip_count) * $direction;
     
     my $next_idx = ($current_idx + $step) % $count;
+    $next_idx += $count if $next_idx < 0;
     
     return $joined[$next_idx];
 }
@@ -325,11 +505,29 @@ sub _calculate_next_turn {
 sub DB::play_uno_card {
     my ($self, $game_id, $user_id, $card_index, $declared_color) = @_;
     
-    my $game = $self->get_uno_game_state($game_id, $user_id);
+    # Wrap in transaction with FOR UPDATE lock
+    $self->{dbh}->begin_work;
+    my $game = $self->get_uno_game_state($game_id, $user_id, 1); # Pass 1 for locking read
     
     # Validation
-    return 0 unless $game->{current_turn} == $user_id;
-    return 0 unless $game->{status} eq 'active';
+    unless ($game && ($game->{current_turn} // 0) == $user_id) { $self->{dbh}->rollback; return 0; }
+    unless ($game->{status} eq 'active') { $self->{dbh}->rollback; return 0; }
+    
+    # Pass turn validation (must have drawn)
+    if ($card_index == -1) {
+        unless ($game->{player_drawn_this_turn}) { $self->{dbh}->rollback; return 0; }
+        my $next_turn = _calculate_next_turn($game, $user_id, 0);
+        my $drawn_col = $game->{my_slot} . "_drawn_this_turn";
+        
+        # Validate drawn_col to prevent SQL injection
+        my %valid_drawn_cols; foreach (1..4) { $valid_drawn_cols{"p${_}_drawn_this_turn"} = 1; }
+        die "Invalid drawn_col: $drawn_col" unless $valid_drawn_cols{$drawn_col};
+
+        $self->{dbh}->do("UPDATE uno_sessions SET current_turn = ?, $drawn_col = 0 WHERE id = ?", undef, $next_turn, $game_id);
+        $self->{dbh}->commit;
+        return 1;
+    }
+    
     return 0 if $card_index < 0 || $card_index >= scalar @{$game->{my_hand}};
     
     my $card_to_play = $game->{my_hand}->[$card_index];
@@ -366,22 +564,22 @@ sub DB::play_uno_card {
     my $skip_count = 0;
     my $direction = $game->{direction} // 1;
     
-    if ($card_to_play =~ /skip/) {
+    if ($card_to_play eq 'wild_draw4') {
+        my $next_p_id = _calculate_next_turn($game, $user_id, 0);
+        $game = _add_cards_to_player_by_id($self, $game_id, $next_p_id, 4, $game);
         $skip_count = 1;
     }
-    elsif ($card_to_play =~ /reverse/) {
+    elsif (defined $p_val && $p_val eq 'skip') {
+        $skip_count = 1;
+    }
+    elsif (defined $p_val && $p_val eq 'reverse') {
         my @joined = grep { $game->{"player${_}_id"} } (1..4);
         if (scalar @joined == 2) { $skip_count = 1; }
         else { $direction *= -1; }
     }
-    elsif ($card_to_play =~ /draw2/) {
+    elsif (defined $p_val && $p_val eq 'draw2') {
         my $next_p_id = _calculate_next_turn($game, $user_id, 0);
         $game = _add_cards_to_player_by_id($self, $game_id, $next_p_id, 2, $game);
-        $skip_count = 1;
-    }
-    elsif ($card_to_play =~ /wild_draw4/) {
-        my $next_p_id = _calculate_next_turn($game, $user_id, 0);
-        $game = _add_cards_to_player_by_id($self, $game_id, $next_p_id, 4, $game);
         $skip_count = 1;
     }
     
@@ -391,22 +589,33 @@ sub DB::play_uno_card {
     
     my $hand_col = $game->{my_slot} . "_hand";
     my $said_uno_col = $game->{my_slot} . "_said_uno";
+    my $drawn_col = $game->{my_slot} . "_drawn_this_turn";
+
+    # Validate said_uno_col to prevent SQL injection
+    my %valid_uno_cols; foreach (1..4) { $valid_uno_cols{"p${_}_said_uno"} = 1; }
+    unless ($valid_uno_cols{$said_uno_col}) { die "Invalid said_uno_col: $said_uno_col"; }
+
+    # Validate drawn_col to prevent SQL injection
+    my %valid_drawn_cols; foreach (1..4) { $valid_drawn_cols{"p${_}_drawn_this_turn"} = 1; }
+    die "Invalid drawn_col: $drawn_col" unless $valid_drawn_cols{$drawn_col};
 
     if (scalar @{$game->{my_hand}} == 1 && !$game->{$said_uno_col}) {
         $game = _add_cards_to_player_by_id($self, $game_id, $user_id, 2, $game);
     }
-    
-    $self->{dbh}->do("UPDATE uno_sessions SET $said_uno_col = 0 WHERE id = ?", undef, $game_id);
 
     my $status = (scalar @{$game->{my_hand}} == 0) ? 'finished' : 'active';
     my $winner = ($status eq 'finished') ? $user_id : undef;
     
+    # Reset drawn_this_turn flags on card play
     my $sth = $self->{dbh}->prepare(
         "UPDATE uno_sessions SET 
             p1_hand = ?, p2_hand = ?, p3_hand = ?, p4_hand = ?,
             draw_pile = ?, discard_pile = ?, 
             current_turn = ?, current_color = ?, 
-            status = ?, winner_id = ?, direction = ?
+            status = ?, winner_id = ?, direction = ?,
+            $said_uno_col = 0, $drawn_col = 0,
+            p1_drawn_this_turn = 0, p2_drawn_this_turn = 0,
+            p3_drawn_this_turn = 0, p4_drawn_this_turn = 0
          WHERE id = ?"
     );
     
@@ -417,6 +626,7 @@ sub DB::play_uno_card {
         $next_turn, $next_color, $status, $winner, $direction, $game_id
     );
     
+    $self->{dbh}->commit;
     return 1;
 }
 
@@ -454,13 +664,16 @@ sub DB::toggle_ready {
     return 0 unless $game;
 
     my $slot;
-    if    ($game->{player1_id} == $user_id) { $slot = 'p1'; }
+    if    (($game->{player1_id} // 0) == $user_id) { $slot = 'p1'; }
     elsif ($game->{player2_id} && $game->{player2_id} == $user_id) { $slot = 'p2'; }
     elsif ($game->{player3_id} && $game->{player3_id} == $user_id) { $slot = 'p3'; }
     elsif ($game->{player4_id} && $game->{player4_id} == $user_id) { $slot = 'p4'; }
     else { return 0; }
 
     my $target_col = "${slot}_ready";
+    my %valid_ready; foreach (1..4) { $valid_ready{"p${_}_ready"} = 1; }
+    return 0 unless $valid_ready{$target_col};
+
     $self->{dbh}->do("UPDATE uno_sessions SET $target_col = NOT $target_col WHERE id = ?", undef, $game_id);
     return 'waiting';
 }
@@ -468,16 +681,18 @@ sub DB::toggle_ready {
 sub DB::start_uno_game {
     my ($self, $game_id, $user_id) = @_;
     $self->ensure_connection;
-    my $game = $self->{dbh}->selectrow_hashref('SELECT * FROM uno_sessions WHERE id = ?', undef, $game_id);
-    return (0, "Game not found") unless $game;
-    return (0, "Only host can start") unless $game->{player1_id} == $user_id;
-    return (0, "Game already active") unless $game->{status} eq 'waiting';
+    
+    $self->{dbh}->begin_work;
+    my $game = $self->{dbh}->selectrow_hashref('SELECT * FROM uno_sessions WHERE id = ? FOR UPDATE', undef, $game_id);
+    unless ($game) { $self->{dbh}->rollback; return (0, "Game not found"); }
+    unless (($game->{player1_id} // 0) == $user_id) { $self->{dbh}->rollback; return (0, "Only host can start"); }
+    unless ($game->{status} eq 'waiting') { $self->{dbh}->rollback; return (0, "Game already active"); }
 
     my @joined = grep { $game->{"player${_}_id"} } (1..4);
-    return (0, "Need at least 2 players") if scalar @joined < 2;
+    if (scalar @joined < 2) { $self->{dbh}->rollback; return (0, "Need at least 2 players"); }
 
     foreach my $i (@joined) {
-        return (0, "All players must be ready") unless $game->{"p${i}_ready"};
+        if (!$game->{"p${i}_ready"}) { $self->{dbh}->rollback; return (0, "All players must be ready"); }
     }
 
     my $deck = decode_json($game->{draw_pile} // '[]');
@@ -489,15 +704,56 @@ sub DB::start_uno_game {
         $updates{"p${i}_hand"} = encode_json(\@hand);
     }
 
-    my @fields = ("status = 'active'", "draw_pile = ?", "current_turn = ?");
-    my @values = (encode_json($deck), $game->{player1_id});
+    # First-card action rules
+    my $discard_pile_arr = decode_json($game->{discard_pile} // '[]');
+    my $top_card = $discard_pile_arr->[-1];
+    my ($tc_color, $tc_val) = split('_', $top_card, 2);
+    my $direction = 1;
+    my $skip_count = 0;
+    my $first_turn = $game->{player1_id};
+    my $current_color = $tc_color;
+
+    if ($tc_val && $tc_val eq 'skip') {
+        $skip_count = 1;
+    } elsif ($tc_val && $tc_val eq 'reverse') {
+        if (scalar @joined == 2) { $skip_count = 1; }
+        else { $direction = -1; }
+    } elsif ($tc_val && $tc_val eq 'draw2') {
+        # Player 1 draws 2 and turn skips
+        my $tmp_game = { %$game, draw_pile => $deck, players_data => \@joined };
+        $tmp_game->{p1_hand} = decode_json($updates{"p1_hand"});
+        $tmp_game = _add_cards_to_player_by_id($self, $game_id, $game->{player1_id}, 2, $tmp_game);
+        
+        # Ensure draw_pile is an arrayref
+        $deck = ref($tmp_game->{draw_pile}) eq 'ARRAY'
+            ? $tmp_game->{draw_pile}
+            : decode_json($tmp_game->{draw_pile});
+
+        $skip_count = 1;
+        # Update P1 hand in our local updates
+        my $p1_slot = "p1";
+        $updates{"${p1_slot}_hand"} = encode_json($tmp_game->{"${p1_slot}_hand"});
+    }
     
+    if ($skip_count || $direction != 1) {
+        my $tmp_game_for_calc = { %$game, direction => $direction };
+        # Need to populate joined IDs for the next turn calc
+        foreach my $idx (1..4) { $tmp_game_for_calc->{"player${idx}_id"} = $game->{"player${idx}_id"}; }
+        $first_turn = _calculate_next_turn($tmp_game_for_calc, $game->{player1_id}, $skip_count);
+    }
+
+    # Correct positional construction
+    my @fields = ("status = 'active'", "draw_pile = ?", "current_turn = ?", "current_color = ?", "direction = ?");
+    my @values = (encode_json($deck), $first_turn, $current_color, $direction);
+
     foreach my $col (keys %updates) {
         push @fields, "$col = ?"; push @values, $updates{$col};
     }
     
     push @values, $game_id;
     $self->{dbh}->prepare("UPDATE uno_sessions SET " . join(", ", @fields) . " WHERE id = ?")->execute(@values);
+    
+    $self->{dbh}->commit;
     return (1, "Game started");
 }
 
@@ -505,9 +761,124 @@ sub DB::shout_uno {
     my ($self, $game_id, $user_id) = @_;
     $self->ensure_connection;
     my $game = $self->get_uno_game_state($game_id, $user_id);
-    return 0 unless $game;
+    return 0 unless $game && $game->{my_hand};
+    
+    # Must have 1 or 2 cards to legitimately shout UNO (you can shout right before playing your 2nd to last)
+    return 0 unless scalar @{$game->{my_hand}} <= 2;
+
     my $said_uno_col = $game->{my_slot} . "_said_uno";
+    # Validate said_uno_col to prevent SQL injection
+    my %valid_uno_cols; foreach (1..4) { $valid_uno_cols{"p${_}_said_uno"} = 1; }
+    return 0 unless $valid_uno_cols{$said_uno_col};
+
     return $self->{dbh}->prepare("UPDATE uno_sessions SET $said_uno_col = 1 WHERE id = ?")->execute($game_id);
+}
+
+# Maintenance: Deletes finished or abandoned sessions.
+sub DB::cleanup_stale_uno_sessions {
+    my $self = shift;
+    $self->ensure_connection;
+    
+    # Delete finished games older than 1 hour
+    $self->{dbh}->do("DELETE FROM uno_sessions WHERE status = 'finished' AND last_updated < DATE_SUB(NOW(), INTERVAL 1 HOUR)")
+        or warn "UNO cleanup failed: " . $self->{dbh}->errstr;
+    
+    # Delete abandoned waiting lobbies (no activity for 2 hours)
+    $self->{dbh}->do("DELETE FROM uno_sessions WHERE status = 'waiting' AND last_updated < DATE_SUB(NOW(), INTERVAL 2 HOUR)")
+        or warn "UNO cleanup failed: " . $self->{dbh}->errstr;
+
+    # Delete stale active games (no activity for 4 hours)
+    $self->{dbh}->do("DELETE FROM uno_sessions WHERE status = 'active' AND last_updated < DATE_SUB(NOW(), INTERVAL 4 HOUR)")
+        or warn "UNO cleanup failed: " . $self->{dbh}->errstr;
+}
+
+# Handles catching a player who forgot to say UNO
+sub DB::catch_uno {
+    my ($self, $game_id, $user_id, $target_id) = @_;
+    $self->ensure_connection;
+    
+    $self->{dbh}->begin_work;
+    # Integrated locking read to avoid inconsistent snapshots
+    my $game = $self->get_uno_game_state($game_id, $user_id, 1);
+    unless ($game && $game->{status} eq 'active') { $self->{dbh}->rollback; return 0; }
+    
+    # Find target slot
+    my $target_slot;
+    my $target_hand_count = 0;
+    my $target_said_uno = 1; # Default: treat as "said UNO" to prevent catch if player not found
+    my $target_found = 0;
+
+    for my $p (@{$game->{players}}) {
+        if ($p->{id} == $target_id) {
+            # Figure out slot string
+            if (($game->{player1_id} // 0) == $target_id) { $target_slot = 'p1'; }
+            elsif ($game->{player2_id} && $game->{player2_id} == $target_id) { $target_slot = 'p2'; }
+            elsif ($game->{player3_id} && $game->{player3_id} == $target_id) { $target_slot = 'p3'; }
+            elsif ($game->{player4_id} && $game->{player4_id} == $target_id) { $target_slot = 'p4'; }
+            
+            $target_hand_count = $p->{card_count};
+            # Guard against missing fields
+            $target_said_uno = $p->{said_uno} // 1;
+            $target_found = 1;
+            last;
+        }
+    }
+    
+    # Can only catch if target has exactly 1 card and hasn't said UNO
+    unless ($target_found && $target_slot && $target_hand_count == 1 && !$target_said_uno) {
+        $self->{dbh}->rollback;
+        return 0;
+    }
+    
+    my $game_updated = _add_cards_to_player_by_id($self, $game_id, $target_id, 2, $game);
+    
+    my $sth = $self->{dbh}->prepare(
+        "UPDATE uno_sessions SET 
+            p1_hand = ?, p2_hand = ?, p3_hand = ?, p4_hand = ?,
+            draw_pile = ?, discard_pile = ?
+         WHERE id = ?"
+    );
+    
+    $sth->execute(
+        encode_json($game_updated->{p1_hand} // []), encode_json($game_updated->{p2_hand} // []),
+        encode_json($game_updated->{p3_hand} // []), encode_json($game_updated->{p4_hand} // []),
+        encode_json($game_updated->{draw_pile}), encode_json($game_updated->{discard_pile}),
+        $game_id
+    );
+    
+    $self->{dbh}->commit;
+    return 1;
+}
+
+# Kicks a player from the lobby (only host can kick)
+sub DB::kick_player {
+    my ($self, $game_id, $user_id, $target_id) = @_;
+    $self->ensure_connection;
+    my $game = $self->{dbh}->selectrow_hashref("SELECT * FROM uno_sessions WHERE id = ?", undef, $game_id);
+    return 0 unless $game;
+    
+    # Must be host and game must be waiting
+    return 0 unless ($game->{player1_id} // 0) == $user_id;
+    return 0 unless $game->{status} eq 'waiting';
+    return 0 if $user_id == $target_id; # Cannot kick self
+    
+    my $slot;
+    for my $i (2..4) {
+        if ($game->{"player${i}_id"} && $game->{"player${i}_id"} == $target_id) {
+            $slot = "player${i}_id"; last;
+        }
+    }
+    
+    if ($slot) {
+        # Validate slot to prevent SQL injection
+        my %valid_slots; foreach (2..4) { $valid_slots{"player${_}_id"} = 1; }
+        unless ($valid_slots{$slot}) { die "Invalid slot: $slot"; }
+
+        $self->{dbh}->do("UPDATE uno_sessions SET $slot = NULL WHERE id = ?", undef, $game_id);
+        return 1;
+    }
+    
+    return 0;
 }
 
 1;
