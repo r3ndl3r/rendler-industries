@@ -930,6 +930,17 @@ sub api_purge {
     }
 }
 
+# Permanently removes all binned notes for the current user.
+# Route: POST /notes/api/purge_all
+sub api_purge_all {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id = $c->current_user_id();
+    my $count   = $c->db->purge_all_notes($user_id);
+    $c->render(json => { success => 1, count => $count + 0 });
+}
+
 # Updates the descriptive name for a specific board level.
 # Route: POST /notes/api/layer/rename
 sub api_layer_rename {
