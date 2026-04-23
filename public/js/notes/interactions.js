@@ -844,7 +844,7 @@ async function centerOnNote(id) {
         const centerY = ny;
 
         const scrollX = (centerX * STATE.scale) - (wrapper.clientWidth  / 2);
-        const scrollY = (centerY * STATE.scale) - (wrapper.clientHeight / 6);
+        const scrollY = (centerY * STATE.scale) - (wrapper.clientHeight / 8);
 
         wrapper.scrollTo({ left: scrollX, top: scrollY, behavior: 'smooth' });
         
