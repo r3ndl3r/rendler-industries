@@ -71,11 +71,10 @@ sub api_join {
     }
 }
 
-# API: api_game
-# Retrieves the sanitized state for a specific game session.
-# 
-# @param {number} id - Game ID
-# @returns {JSON} { success, game }
+# API Endpoint: Returns full synchronized state for a specific game.
+# Route: GET /uno/api/game/:id
+# Parameters: id (Game ID)
+# Returns: JSON object { success, game }
 sub api_game {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
@@ -90,19 +89,19 @@ sub api_game {
 
     # Identify Player Role (1-4, or 0 for spectator)
     my $player_role = 0; 
-    if    ($game->{player1_id} == $uid) { $player_role = 1; }
-    elsif ($game->{player2_id} && $game->{player2_id} == $uid) { $player_role = 2; }
-    elsif ($game->{player3_id} && $game->{player3_id} == $uid) { $player_role = 3; }
-    elsif ($game->{player4_id} && $game->{player4_id} == $uid) { $player_role = 4; }
+    if    (($game->{player1_id} // 0) == $uid) { $player_role = 1; }
+    elsif (($game->{player2_id} // 0) == $uid) { $player_role = 2; }
+    elsif (($game->{player3_id} // 0) == $uid) { $player_role = 3; }
+    elsif (($game->{player4_id} // 0) == $uid) { $player_role = 4; }
 
     # Extract participant metadata with role mappings
     my @players_data;
     foreach my $p (@{$game->{players}}) {
         my $role = 0;
-        if    ($game->{player1_id} == $p->{id}) { $role = 1; }
-        elsif ($game->{player2_id} && $game->{player2_id} == $p->{id}) { $role = 2; }
-        elsif ($game->{player3_id} && $game->{player3_id} == $p->{id}) { $role = 3; }
-        elsif ($game->{player4_id} && $game->{player4_id} == $p->{id}) { $role = 4; }
+        if    (($game->{player1_id} // 0) == $p->{id}) { $role = 1; }
+        elsif (($game->{player2_id} // 0) == $p->{id}) { $role = 2; }
+        elsif (($game->{player3_id} // 0) == $p->{id}) { $role = 3; }
+        elsif (($game->{player4_id} // 0) == $p->{id}) { $role = 4; }
         
         push @players_data, { %$p, role => $role };
     }
@@ -120,18 +119,16 @@ sub api_game {
             color           => $game->{current_color},
             player_role     => $player_role,
             direction       => $game->{direction},
-            current_user_id => $uid
+            current_user_id => $uid,
+            player_drawn_this_turn => $game->{player_drawn_this_turn} ? \1 : \0
         }
     });
 }
 
-# API: api_play_card
-# Processes a card play action.
-# 
-# @param {number} id - Game ID
-# @param {number} idx - Hand index of the card
-# @param {string} color - Declared color for Wild cards
-# @returns {JSON} { success }
+# API Endpoint: Processes a card play action.
+# Route: POST /uno/api/play_card
+# Parameters: id (Game ID), idx (Hand index), color (Declared color for Wild)
+# Returns: JSON object { success }
 sub api_play_card {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
@@ -143,7 +140,9 @@ sub api_play_card {
     
     # Sanitization
     $game_id = 0 if !defined $game_id || $game_id eq 'null' || $game_id eq 'NaN' || $game_id eq '';
-    $idx = 0 if !defined $idx || $idx eq 'null' || $idx eq 'NaN' || $idx eq '';
+    $idx = -1 if !defined $idx || $idx eq 'null' || $idx eq 'NaN' || $idx eq '';
+    my %valid_colors; foreach (qw(red blue green yellow)) { $valid_colors{$_} = 1; }
+    $color = undef unless $color && $valid_colors{$color};
     
     my $uid = $c->current_user_id;
     
@@ -151,11 +150,10 @@ sub api_play_card {
     return $c->render(json => { success => $success });
 }
 
-# API: api_draw_card
-# Processes a card draw action.
-# 
-# @param {number} id - Game ID
-# @returns {JSON} { success, playable }
+# API Endpoint: Processes a card draw action.
+# Route: POST /uno/api/draw_card
+# Parameters: id (Game ID)
+# Returns: JSON object { success, playable }
 sub api_draw_card {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
@@ -172,11 +170,10 @@ sub api_draw_card {
     return $c->render(json => $result);
 }
 
-# API: api_shout
-# Records a "UNO!" shout for the current player.
-# 
-# @param {number} id - Game ID
-# @returns {JSON} { success }
+# API Endpoint: Records a "UNO!" shout for the current player.
+# Route: POST /uno/api/shout
+# Parameters: id (Game ID)
+# Returns: JSON object { success }
 sub api_shout {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
@@ -214,11 +211,10 @@ sub api_ready {
     return $c->render(json => { success => ($status ? 1 : 0), status => $status });
 }
 
-# API: api_start
-# Manually starts the game (Host only).
-# 
-# @param {number} id - Game ID
-# @returns {JSON} { success, message }
+# API Endpoint: Starts the game (Host only).
+# Route: POST /uno/api/start
+# Parameters: id (Game ID)
+# Returns: JSON object { success, message }
 sub api_start {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
@@ -233,6 +229,66 @@ sub api_start {
     
     my ($success, $message) = $c->db->start_uno_game($game_id, $uid);
     return $c->render(json => { success => $success, message => $message });
+}
+
+# API Endpoint: Removes the current player from the game session.
+# Route: POST /uno/api/leave
+# Parameters: id (Game ID)
+# Returns: JSON object { success }
+sub api_leave {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $game_id = $data->{id};
+    
+    # Sanitization
+    $game_id = 0 if !defined $game_id || $game_id eq 'null' || $game_id eq 'NaN' || $game_id eq '';
+    
+    my $uid = $c->current_user_id;
+    
+    my $success = $c->db->leave_uno_game($game_id, $uid);
+    return $c->render(json => { success => $success });
+}
+
+# API Endpoint: Catch a player who forgot to say UNO.
+# Route: POST /uno/api/catch
+# Parameters: id (Game ID), target_id (User ID to catch)
+# Returns: JSON object { success }
+sub api_catch {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $game_id   = $data->{id};
+    my $target_id = $data->{target_id};
+    
+    $game_id   = 0 if !defined $game_id   || $game_id   eq 'null' || $game_id   eq 'NaN' || $game_id   eq '';
+    $target_id = 0 if !defined $target_id || $target_id eq 'null' || $target_id eq 'NaN' || $target_id eq '';
+    
+    my $uid = $c->current_user_id;
+    my $success = $c->db->catch_uno($game_id, $uid, $target_id);
+    return $c->render(json => { success => $success });
+}
+
+# API Endpoint: Kicks a player from the lobby (Host only).
+# Route: POST /uno/api/kick
+# Parameters: id (Game ID), target_id (User ID to kick)
+# Returns: JSON object { success }
+sub api_kick {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    
+    my $data = $c->req->json || $c->req->params->to_hash;
+    my $game_id   = $data->{id};
+    my $target_id = $data->{target_id};
+    
+    $game_id   = 0 if !defined $game_id   || $game_id   eq 'null' || $game_id   eq 'NaN' || $game_id   eq '';
+    $target_id = 0 if !defined $target_id || $target_id eq 'null' || $target_id eq 'NaN' || $target_id eq '';
+    
+    my $uid = $c->current_user_id;
+    my $success = $c->db->kick_player($game_id, $uid, $target_id);
+    return $c->render(json => { success => $success });
 }
 
 1;
