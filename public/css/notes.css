@@ -3373,7 +3373,8 @@ input:checked + .switch-sm .slider:before {
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-left: 4px solid var(--note-accent, #3b82f6);
     border-radius: 12px;
-    padding: 2rem 1.5rem;
+    padding: 0.6rem 1.5rem;
+    flex-shrink: 0;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     overflow: hidden;
@@ -3449,6 +3450,20 @@ input:checked + .switch-sm .slider:before {
     width: 850px;
     max-width: 92vw;
     height: 75vh;
+}
+
+#note-bin-modal .note-modal-body {
+    padding-bottom: 4.5rem;
+}
+
+.bin-empty-float {
+    position: absolute;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    white-space: nowrap;
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.35);
 }
 
 
