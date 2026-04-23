@@ -1217,7 +1217,7 @@ pre code {
     position: relative;
     display: flex; /* Expansion anchor */
     flex-direction: column;
-    user-select: text;
+    user-select: contain;
 }
 
 .note-content textarea {
