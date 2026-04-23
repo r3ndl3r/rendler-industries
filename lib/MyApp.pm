@@ -435,7 +435,6 @@ sub startup {
     $auth->post('/user/settings/api/profile'    )->to('user-settings#api_update_profile');
     $auth->post('/user/settings/api/pref'       )->to('user-settings#api_update_pref' );
 
-    $auth->get('/chelsea')->to('chelsea#index');
     $admin_ns->get('/restart')->to('system#restart');
 
     # --- Menu Management Routes ---
