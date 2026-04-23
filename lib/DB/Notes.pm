@@ -1238,6 +1238,29 @@ sub DB::purge_note {
     return $count;
 }
 
+# Permanently removes all binned notes and their blobs for a user.
+# Collects affected canvas IDs first so each can be touched after deletion.
+# Returns: Number of notes deleted.
+sub DB::purge_all_notes {
+    my ($self, $user_id) = @_;
+    $self->ensure_connection;
+
+    my $sth_c = $self->{dbh}->prepare("SELECT DISTINCT canvas_id FROM notes WHERE user_id = ? AND is_deleted = 1");
+    $sth_c->execute($user_id);
+    my @canvas_ids = map { $_->[0] } @{ $sth_c->fetchall_arrayref() };
+
+    $self->{dbh}->do(
+        "DELETE nb FROM note_blobs nb INNER JOIN notes n ON nb.note_id = n.id WHERE n.user_id = ? AND n.is_deleted = 1",
+        undef, $user_id
+    );
+
+    my $sth = $self->{dbh}->prepare("DELETE FROM notes WHERE user_id = ? AND is_deleted = 1");
+    my $count = $sth->execute($user_id);
+
+    $self->touch_canvas($_) for @canvas_ids;
+    return $count || 0;
+}
+
 # --- Shared Layer Aliasing ---
 
 # Retrieves all layer aliases for a specific canvas.
