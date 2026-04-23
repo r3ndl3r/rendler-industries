@@ -3,21 +3,18 @@
  * 
  * Orchestrates a multiplayer UNO experience using a 100% SPA architecture.
  * Manages the transition from lobby discovery to real-time gameplay.
- * 
- * Features:
- * - Real-time matchmaking and lobby creation.
- * - Secure card masking (opponent hands are hidden).
- * - Polling-based state synchronization for multiplayer turns.
- * - Dynamic card rendering and interaction.
- * - Wild color selection workflow via unified confirm modal.
- * - Visual affordances for drawing and shouting UNO.
  */
 
 let STATE = {
     view: 'lobby', // 'lobby' or 'game'
     game_id: null,
     game: null,
-    lobbies: []
+    lobbies: [],
+    pendingAction: false,
+    colorPickerResolve: null,
+    drawnCardPlayable: false,
+    prevTopCard: null,
+    failCount: 0
 };
 
 let SYNC_INTERVAL = null;
@@ -36,21 +33,51 @@ document.addEventListener('DOMContentLoaded', () => {
         STATE.view = 'lobby';
     }
     
+    // Global dependency check
+    if (typeof window.apiPost !== 'function' || typeof window.apiGet !== 'function') {
+        const app = document.getElementById('uno-app');
+        if (app) app.innerHTML = '<div class="error-state"><p>🃏 Application failed to load. Please refresh.</p></div>';
+        return;
+    }
+
     loadInitialState();
+    startPolling();
 });
+
+/**
+ * Helper: Escapes HTML to prevent XSS.
+ * Locally defined as a defensive fallback if global is missing.
+ * @param {string} str - String to escape.
+ * @returns {string} Escaped string.
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+/**
+ * State: Fetches the appropriate state based on current view.
+ * @returns {Promise<void>}
+ */
+async function loadState() {
+    if (STATE.view === 'game') {
+        await loadGameState();
+    } else {
+        await loadLobbyState();
+    }
+}
 
 /**
  * State: Fetches initial data and starts synchronization poll.
  * @returns {Promise<void>}
  */
 async function loadInitialState() {
-    if (STATE.view === 'game') {
-        await loadGameState(true);
-        startPolling();
-    } else {
-        await loadLobbyState();
-        startPolling();
-    }
+    await loadState();
 }
 
 /**
@@ -63,12 +90,16 @@ function startPolling() {
         // Inhibition: Skip sync if user is interacting with modal or inputs
         if (document.querySelector('.modal-overlay.show')) return;
         if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+        if (STATE.colorPickerResolve) return; // Don't sync while picking color
 
-        if (STATE.view === 'game') {
-            loadGameState();
-        } else {
-            loadLobbyState();
+        // Stop polling if game is finished
+        if (STATE.game && STATE.game.status === 'finished') {
+            clearInterval(SYNC_INTERVAL);
+            SYNC_INTERVAL = null;
+            return;
         }
+
+        loadState();
     }, 2000); 
 }
 
@@ -78,9 +109,8 @@ function startPolling() {
  */
 async function loadLobbyState() {
     try {
-        const res = await fetch('/uno/api/lobby');
-        const data = await res.json();
-        if (data.success) {
+        const data = await window.apiGet('/uno/api/lobby');
+        if (data && data.success) {
             STATE.lobbies = data.lobbies;
             renderUI();
         }
@@ -91,26 +121,44 @@ async function loadLobbyState() {
 
 /**
  * API: Fetches detailed state for the active game.
- * @param {boolean} force - If true, bypasses synchronization logic (currently unused).
  * @returns {Promise<void>}
  */
-async function loadGameState(force = false) {
+async function loadGameState() {
     if (!STATE.game_id) return;
     try {
-        const res = await fetch(`/uno/api/game/${STATE.game_id}`);
-        const data = await res.json();
-        if (data.success) {
+        const data = await window.apiGet(`/uno/api/game/${STATE.game_id}`);
+        if (data && data.success) {
+            STATE.failCount = 0;
+            
+            // Action Card Toasts
+            if (STATE.game && (STATE.game.top_card !== data.game.top_card || STATE.game.color !== data.game.color)) {
+                const tc = data.game.top_card;
+                const tcVal = tc.split('_').slice(1).join('_');
+                if (tcVal === 'skip') window.showToast("Skip played!", "warning");
+                else if (tcVal === 'reverse') window.showToast("Direction reversed!", "info");
+                else if (tcVal === 'draw2') window.showToast("+2 Cards played!", "danger");
+                else if (tc === 'wild_draw4') window.showToast("+4 Cards played!", "danger");
+            }
+            
+            // Sync drawnCardPlayable from server field
+            if (data.game && data.game.turn !== data.game.current_user_id) {
+                STATE.drawnCardPlayable = false;
+            } else if (data.game && data.game.player_drawn_this_turn) {
+                STATE.drawnCardPlayable = !!data.game.player_drawn_this_turn;
+            }
+            
             STATE.game = data.game;
             renderUI();
-        } else if (res.status === 404) {
-            // Kick to lobby only if game is missing/deleted
-            STATE.view = 'lobby';
-            STATE.game_id = null;
-            history.pushState(null, '', '/uno');
-            renderUI();
+        } else if (data && data.error === 'Game not found') {
+            exitToLobby();
         }
     } catch (err) {
         console.error("Failed to load UNO game state:", err);
+        STATE.failCount++;
+        // Network disconnect warning
+        if (STATE.failCount === 2) {
+            window.showToast("Connection issues detected. Trying to reconnect...", "warning");
+        }
     }
 }
 
@@ -139,7 +187,7 @@ function renderUI() {
 function renderLobby(container) {
     let html = `
         <div class="header-bar">
-            <h1>UNO Lobby</h1>
+            <h1>🃏 UNO Lobby</h1>
             <div class="manage-actions">
                 <button onclick="createGame(this)" class="btn-emerald">Create Game</button>
             </div>
@@ -150,7 +198,10 @@ function renderLobby(container) {
                 <div class="lobby-card">
                     <div class="lobby-card-info">
                         <h3 class="lobby-card-title">${escapeHtml(l.host_name)}'s Game</h3>
-                        <p class="lobby-card-meta">Created: ${l.created_at}</p>
+                        <div class="lobby-card-meta">
+                            <span>Created: ${window.format_datetime(l.created_at)}</span>
+                            <span class="player-count-badge">${l.player_count}/4 Players</span>
+                        </div>
                     </div>
                     <button onclick="joinGame(${l.id}, this)" class="btn-slate lobby-join-btn">Join Game</button>
                 </div>
@@ -194,7 +245,7 @@ function renderWaitingRoom(container) {
         <div class="header-bar">
             <h1>Waiting Room</h1>
             <div class="manage-actions">
-                <button onclick="leaveGame()" class="btn-slate">Leave</button>
+                <button onclick="leaveGame(this)" class="btn-slate">Leave</button>
             </div>
         </div>
 
@@ -207,9 +258,12 @@ function renderWaitingRoom(container) {
                                 <span class="ready-indicator ${p.ready ? 'is-ready' : 'not-ready'}"></span>
                                 <span class="player-card-name">${escapeHtml(p.name)} ${p.role === 1 ? '(Host)' : ''}</span>
                             </div>
-                            <span class="ready-label ${p.ready ? 'is-ready' : 'not-ready'}">
-                                ${p.ready ? 'Ready' : 'Not Ready'}
-                            </span>
+                            <div class="player-card-actions">
+                                <span class="ready-label ${p.ready ? 'is-ready' : 'not-ready'}">
+                                    ${p.ready ? 'Ready' : 'Not Ready'}
+                                </span>
+                                ${isHost && p.id !== STATE.game.current_user_id ? `<button onclick="kickPlayer(${p.id}, this)" class="btn-danger btn-small">Kick</button>` : ''}
+                            </div>
                         </div>
                     `).join('')}
                 </div>
@@ -243,7 +297,7 @@ function renderBoard(container) {
     
     const orderedPlayers = getOrderedPlayers(players);
     const hasPlayable = myHand.some(c => canPlay(c));
-    const mustDraw = isMyTurn && !hasPlayable;
+    const mustDraw = isMyTurn && !hasPlayable && !STATE.drawnCardPlayable;
 
     let html = `
         <div class="game-table-container">
@@ -254,18 +308,20 @@ function renderBoard(container) {
                 <div class="game-direction">
                     ${STATE.game.direction === 1 ? '↻ Clockwise' : '↺ Counter-Clockwise'}
                 </div>
+                <button onclick="leaveGame(this)" class="btn-slate btn-small-exit">Exit Game</button>
             </div>
 
             <div class="opponents-grid">
                 ${orderedPlayers.map((p, i) => i === 0 ? '' : `
                     <div class="player-slot slot-${i} ${STATE.game.turn === p.id ? 'active-turn' : ''}">
                         <div class="player-avatar">
-                            👤
+                            ${window.getUserIcon ? window.getUserIcon(p.name) : '<div class="default-avatar">' + p.name.charAt(0).toUpperCase() + '</div>'}
                         </div>
                         <div class="player-meta">
                             <span class="player-name">${escapeHtml(p.name)}</span>
                             <span class="card-count">${p.card_count} Cards</span>
                             ${p.said_uno ? '<span class="uno-badge">UNO!</span>' : ''}
+                            ${p.card_count === 1 && !p.said_uno ? `<button onclick="catchUno(${p.id}, this)" class="btn-danger btn-small catch-btn">Catch!</button>` : ''}
                         </div>
                     </div>
                 `).join('')}
@@ -286,21 +342,26 @@ function renderBoard(container) {
                 <div class="user-meta">
                     <span class="user-name">Your Hand</span>
                     ${isMyTurn ? '<span class="turn-label">YOUR TURN</span>' : ''}
-                    <button onclick="shoutUno(this)" class="btn-shout ${myHand.length <= 2 ? 'highlight' : ''}">UNO!</button>
+                    <div class="user-actions">
+                        ${STATE.drawnCardPlayable ? `<button onclick="passTurn(this)" class="btn-slate btn-pass">Pass Turn</button>` : ''}
+                        ${myHand.length <= 2 ? `<button onclick="shoutUno(this)" class="btn-shout ${myHand.length <= 2 ? 'highlight' : ''}">UNO!</button>` : ''}
+                    </div>
                 </div>
                 <div class="hand-container">
                     ${myHand.map((c, idx) => `
-                        <div class="card-wrapper" onclick="playCard(${idx}, '${c}', this)">
+                        <div class="card-wrapper" data-idx="${idx}" data-card="${escapeHtml(c)}" onclick="playCard(this.dataset.idx, this.dataset.card, this)">
                             ${renderCard(c, isMyTurn && canPlay(c) ? 'playable' : '')}
                         </div>
                     `).join('')}
                 </div>
             </div>
         </div>
-
-        ${STATE.game.status === 'finished' ? renderWinModal() : ''}
     `;
     container.innerHTML = html;
+
+    if (STATE.game.status === 'finished') {
+        showWinModal();
+    }
 }
 
 /**
@@ -335,10 +396,12 @@ function renderCard(card, extraClass = '') {
 function canPlay(card) {
     if (card.startsWith('wild')) return true;
     const [color, value] = card.split('_', 2);
-    const [topColor, topValue] = STATE.game.top_card.split('_', 2);
+    const topCard = STATE.game.top_card;
+    const [topColor, topValue] = topCard.split('_', 2);
     
     if (color === STATE.game.color) return true;
     if (value && topValue && value === topValue) return true;
+    
     return false;
 }
 
@@ -350,8 +413,12 @@ function canPlay(card) {
  * @returns {Promise<void>}
  */
 async function playCard(idx, card, el) {
-    if (STATE.game.turn !== STATE.game.current_user_id) return;
-    if (!canPlay(card)) return;
+    if (STATE.game.turn !== STATE.game.current_user_id || STATE.pendingAction) return;
+    
+    if (!canPlay(card)) {
+        window.showToast("Cannot play this card!", "error");
+        return;
+    }
 
     let color = null;
     if (card.startsWith('wild')) {
@@ -359,17 +426,68 @@ async function playCard(idx, card, el) {
         if (!color) return; // Cancelled
     }
 
+    STATE.drawnCardPlayable = false;
     apiAction('/uno/api/play_card', { id: STATE.game_id, idx: idx, color: color }, el);
 }
 
 /**
  * Action: Draw a card from the deck.
  * @param {HTMLElement} el - Trigger element.
- * @returns {void}
+ * @returns {Promise<void>}
  */
-function drawCard(el) {
-    if (STATE.game.turn !== STATE.game.current_user_id) return;
-    apiAction('/uno/api/draw_card', { id: STATE.game_id }, el);
+async function drawCard(el) {
+    if (STATE.game.turn !== STATE.game.current_user_id || STATE.pendingAction) return;
+    
+    if (STATE.drawnCardPlayable) {
+        window.showToast("You already drew. Play the card or pass your turn.", "warning");
+        return;
+    }
+
+    STATE.pendingAction = true;
+    el.classList.add('pending');
+    
+    try {
+        const res = await window.apiPost('/uno/api/draw_card', { id: STATE.game_id });
+        if (res && res.success) {
+            if (res.playable) {
+                STATE.drawnCardPlayable = true;
+                window.showToast("You drew a playable card!", "info");
+            } else {
+                STATE.drawnCardPlayable = false;
+            }
+            loadGameState();
+        }
+    } catch (err) {
+        console.error("Draw Card Failed:", err);
+    } finally {
+        STATE.pendingAction = false;
+        el.classList.remove('pending');
+    }
+}
+
+/**
+ * Action: Pass turn after drawing a playable card.
+ * @param {HTMLElement} btn - Trigger element.
+ * @returns {Promise<void>}
+ */
+async function passTurn(btn) {
+    if (STATE.pendingAction) return;
+    STATE.pendingAction = true;
+    if (btn) btn.classList.add('pending');
+    try {
+        const res = await window.apiPost('/uno/api/play_card', { id: STATE.game_id, idx: -1 });
+        if (res && res.success) {
+            STATE.drawnCardPlayable = false;
+            loadGameState();
+        } else {
+            window.showToast(res?.error || "Pass failed", "error");
+        }
+    } catch (err) {
+        console.error("Pass Turn Failed:", err);
+    } finally {
+        STATE.pendingAction = false;
+        if (btn) btn.classList.remove('pending');
+    }
 }
 
 /**
@@ -382,36 +500,49 @@ function shoutUno(btn) {
 }
 
 /**
- * UI Component: Wild color selection modal.
+ * UI Component: Wild color selection overlay.
  * @returns {Promise<string|null>} Resolves to selected color or null.
  */
 function promptColor() {
     return new Promise((resolve) => {
-        window.showConfirmModal({
-            title: 'Select Color',
-            icon: 'ai',
-            hideCancel: false,
-            persistent: true,
-            confirmText: 'Cancel', // We hijack the modal's internal structure for a grid
-            onConfirm: () => resolve(null),
-            onCancel: () => resolve(null),
-            message: `
-                <div class="color-grid">
-                    <button class="color-btn red" onclick="window.resolveUnoColor('red')"></button>
-                    <button class="color-btn blue" onclick="window.resolveUnoColor('blue')"></button>
-                    <button class="color-btn green" onclick="window.resolveUnoColor('green')"></button>
-                    <button class="color-btn yellow" onclick="window.resolveUnoColor('yellow')"></button>
+        STATE.colorPickerResolve = resolve;
+        let overlay = document.getElementById('color-picker-overlay-global');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'color-picker-overlay-global';
+            overlay.className = 'color-picker-overlay hidden';
+            overlay.innerHTML = `
+                <div class="color-picker-content">
+                    <h2>Select Color</h2>
+                    <div class="color-grid">
+                        <button class="color-btn red" onclick="resolveColor('red')"></button>
+                        <button class="color-btn blue" onclick="resolveColor('blue')"></button>
+                        <button class="color-btn green" onclick="resolveColor('green')"></button>
+                        <button class="color-btn yellow" onclick="resolveColor('yellow')"></button>
+                    </div>
+                    <button class="btn-slate color-picker-cancel" onclick="resolveColor(null)">Cancel</button>
                 </div>
-            `
-        });
-
-        // Global bridge for the modal buttons
-        window.resolveUnoColor = (color) => {
-            window.closeConfirmModal();
-            resolve(color);
-        };
+            `;
+            document.body.appendChild(overlay);
+        }
+        overlay.classList.remove('hidden');
     });
 }
+
+/**
+ * Global bridge for color selection.
+ * @param {string|null} color - Selected color.
+ * @returns {void}
+ */
+window.resolveColor = (color) => {
+    const overlay = document.getElementById('color-picker-overlay-global');
+    if (overlay) overlay.classList.add('hidden');
+    
+    if (STATE.colorPickerResolve) {
+        STATE.colorPickerResolve(color);
+        STATE.colorPickerResolve = null;
+    }
+};
 
 /**
  * Action: Create a new game.
@@ -419,6 +550,8 @@ function promptColor() {
  * @returns {Promise<void>}
  */
 async function createGame(btn) {
+    if (STATE.pendingAction) return;
+    STATE.pendingAction = true;
     if (btn) btn.classList.add('pending');
     try {
         const res = await window.apiPost('/uno/api/create');
@@ -426,11 +559,13 @@ async function createGame(btn) {
             STATE.game_id = res.game_id;
             STATE.view = 'game';
             history.pushState(null, '', `/uno/play/${res.game_id}`);
-            loadGameState(true);
+            loadGameState();
+            startPolling();
         }
     } catch (err) {
         console.error("Failed to create UNO game:", err);
     } finally {
+        STATE.pendingAction = false;
         if (btn) btn.classList.remove('pending');
     }
 }
@@ -442,6 +577,8 @@ async function createGame(btn) {
  * @returns {Promise<void>}
  */
 async function joinGame(id, btn) {
+    if (STATE.pendingAction) return;
+    STATE.pendingAction = true;
     if (btn) btn.classList.add('pending');
     try {
         const res = await window.apiPost('/uno/api/join', { id: id });
@@ -449,27 +586,63 @@ async function joinGame(id, btn) {
             STATE.game_id = id;
             STATE.view = 'game';
             history.pushState(null, '', `/uno/play/${id}`);
-            loadGameState(true);
+            loadGameState();
+            startPolling();
         }
     } catch (err) {
         console.error("Failed to join UNO game:", err);
     } finally {
+        STATE.pendingAction = false;
         if (btn) btn.classList.remove('pending');
     }
 }
 
 /**
  * Action: Leave the current game and return to lobby.
+ * @param {HTMLElement} btn - Trigger element.
+ * @returns {Promise<void>}
+ */
+async function leaveGame(btn) {
+    if (STATE.pendingAction) return;
+    STATE.pendingAction = true;
+    if (btn) btn.classList.add('pending');
+    try {
+        const res = await window.apiPost('/uno/api/leave', { id: STATE.game_id });
+        if (res && res.success) {
+            exitToLobby();
+        }
+    } catch (err) {
+        console.error("Failed to leave UNO game:", err);
+    } finally {
+        STATE.pendingAction = false;
+        if (btn) btn.classList.remove('pending');
+    }
+}
+
+/**
+ * Helper: Transitions back to lobby state.
  * @returns {void}
  */
-function leaveGame() {
+function exitToLobby() {
     if (SYNC_INTERVAL) {
         clearInterval(SYNC_INTERVAL);
         SYNC_INTERVAL = null;
     }
+    const winModal = document.querySelector('.win-modal-body');
+    if (winModal) winModal.remove();
+    
     STATE.view = 'lobby';
     STATE.game_id = null;
     STATE.game = null;
+    STATE.drawnCardPlayable = false;
+    STATE.prevTopCard = null;
+    STATE.failCount = 0;
+    
+    if (STATE.colorPickerResolve) {
+        window.resolveColor(null);
+    }
+    STATE.colorPickerResolve = null;
+
     history.pushState(null, '', '/uno');
     loadLobbyState();
     startPolling();
@@ -486,20 +659,24 @@ function startGame(btn) {
 
 /**
  * UI Component: Win modal.
- * @returns {string} HTML fragment.
+ * Appends to body for correct stacking.
+ * @returns {void}
  */
-function renderWinModal() {
+function showWinModal() {
+    if (document.querySelector('.win-modal-body')) return;
+    
     const winnerName = STATE.game.players.find(p => p.id === STATE.game.winner)?.name || "Someone";
-    return `
-        <div class="modal-overlay show win-view">
-            <div class="modal-content win-modal">
-                <div class="win-icon">🏆</div>
-                <h1 class="win-title">WINNER!</h1>
-                <p class="win-message">${escapeHtml(winnerName)} won!</p>
-                <button onclick="leaveGame()" class="btn-emerald btn-win-action">Return to Lobby</button>
-            </div>
+    const div = document.createElement('div');
+    div.className = 'modal-overlay show win-modal-body win-modal-overlay';
+    div.innerHTML = `
+        <div class="modal-content win-modal">
+            <div class="win-icon">🏆</div>
+            <h1 class="win-title">WINNER!</h1>
+            <p class="win-message">${escapeHtml(winnerName)} won!</p>
+            <button onclick="leaveGame(this)" class="btn-emerald btn-win-action">Return to Lobby</button>
         </div>
     `;
+    document.body.appendChild(div);
 }
 
 /**
@@ -510,7 +687,7 @@ function renderWinModal() {
 function getOrderedPlayers(players) {
     if (!players || !STATE.game || !STATE.game.current_user_id) return players || [];
     
-    const myIndex = players.findIndex(p => p.id === STATE.game.current_user_id);
+    const myIndex = players.findIndex(p => Number(p.id) === Number(STATE.game.current_user_id));
     if (myIndex === -1) return players;
     
     const ordered = [];
@@ -528,21 +705,47 @@ function getOrderedPlayers(players) {
  * @returns {Promise<void>}
  */
 async function apiAction(url, params = {}, btn = null) {
+    if (STATE.pendingAction) return;
+    STATE.pendingAction = true;
     if (btn) btn.classList.add('pending');
     try {
         const res = await window.apiPost(url, params);
         if (res && res.success) {
-            loadGameState(true);
+            loadGameState();
+        } else if (res && !res.success) {
+            window.showToast(res.error || "Action failed", "error");
         }
     } catch (err) {
         console.error("API Action Failed:", url, err);
     } finally {
+        STATE.pendingAction = false;
         if (btn) btn.classList.remove('pending');
     }
-    }
+}
 
-    window.loadState = loadState;
+/**
+ * Action: Catch a player who forgot to say UNO.
+ * @param {number} targetId - User ID to catch.
+ * @param {HTMLElement} btn - Trigger element.
+ * @returns {void}
+ */
+function catchUno(targetId, btn) {
+    apiAction('/uno/api/catch', { id: STATE.game_id, target_id: targetId }, btn);
+}
 
+/**
+ * Action: Kick an AFK player from the lobby (Host only).
+ * @param {number} targetId - User ID to kick.
+ * @param {HTMLElement} btn - Trigger element.
+ * @returns {void}
+ */
+function kickPlayer(targetId, btn) {
+    window.showConfirmModal("Kick Player?", "Are you sure you want to kick this player from the game?", () => {
+        apiAction('/uno/api/kick', { id: STATE.game_id, target_id: targetId }, btn);
+    });
+}
+
+window.loadState = loadState;
 window.createGame = createGame;
 window.joinGame = joinGame;
 window.leaveGame = leaveGame;
@@ -551,4 +754,7 @@ window.drawCard = drawCard;
 window.shoutUno = shoutUno;
 window.startGame = startGame;
 window.apiAction = apiAction;
+window.passTurn = passTurn;
+window.catchUno = catchUno;
+window.kickPlayer = kickPlayer;
 
