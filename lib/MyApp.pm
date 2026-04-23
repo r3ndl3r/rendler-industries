@@ -321,6 +321,7 @@ sub startup {
                 $sys->run_chore_reminders($now);
                 $sys->run_notes_lock_maintenance();
                 $sys->run_weather_maintenance($now);
+                $sys->cleanup_stale_uno_sessions();
                 $sys->run_notification_queue();
 
                 # Nightly Normalization Gate (3:00 AM)
@@ -582,6 +583,9 @@ sub startup {
     $auth->post('/uno/api/play_card')->to('uno#api_play_card');
     $auth->post('/uno/api/draw_card')->to('uno#api_draw_card');
     $auth->post('/uno/api/shout')->to('uno#api_shout');
+    $auth->post('/uno/api/leave')->to('uno#api_leave');
+    $auth->post('/uno/api/catch')->to('uno#api_catch');
+    $auth->post('/uno/api/kick')->to('uno#api_kick');
 
     # --- Calendar Routes ---
     $family->get('/calendar')->to('calendar#index');
