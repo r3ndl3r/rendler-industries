@@ -220,12 +220,13 @@
             <h3>🗑️ Recycle Bin</h3>
             <span class="close-btn note-modal-close" data-close="modal">&times;</span>
         </div>
-        
+
         <div class="note-modal-body">
             <div id="bin-results-container" class="search-results-grid">
                 <!-- Dynamically Populated -->
             </div>
         </div>
+        <button id="btn-empty-bin" class="btn-danger bin-empty-float hidden" onclick="confirmEmptyBin()">🗑️ Empty Bin</button>
     </div>
 </div>
 
