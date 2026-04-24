@@ -273,4 +273,28 @@ sub DB::try_acquire_maintenance_lock {
     return ($rows && $rows > 0) ? 1 : 0;
 }
 
+# Atomic check-and-set for daily brief dispatch.
+# Ensures the 8am brief is only sent once per day across all worker processes.
+# Parameters:
+#   date_str : YYYY-MM-DD string
+# Returns:
+#   Boolean : True if this process claimed the dispatch for today
+sub DB::try_set_brief_sent_date {
+    my ($self, $date_str) = @_;
+    $self->ensure_connection;
+
+    # 1. Auto-init the tracking key
+    $self->{dbh}->do(
+        "INSERT IGNORE INTO app_secrets (key_name, secret_value) VALUES ('brief_sent_date', '1970-01-01')"
+    );
+
+    # 2. Atomic update: Only succeeds if the current value is NOT today's date
+    my $sql = "UPDATE app_secrets SET secret_value = ? " .
+              "WHERE key_name = 'brief_sent_date' AND secret_value != ?";
+    
+    my $rows = $self->{dbh}->do($sql, undef, $date_str, $date_str);
+    
+    return ($rows && $rows > 0) ? 1 : 0;
+}
+
 1;
