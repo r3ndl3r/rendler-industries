@@ -919,4 +919,11 @@ sub run_brief_notification {
     }
 }
 
+# Removes expired UNO sessions: finished games (>1h), abandoned lobbies (>2h),
+# and stale active games (>4h).
+sub cleanup_stale_uno_sessions {
+    my ($self) = @_;
+    $self->db->cleanup_stale_uno_sessions();
+}
+
 1;
