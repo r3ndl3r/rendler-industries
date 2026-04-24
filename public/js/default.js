@@ -680,7 +680,6 @@ const FlipClockManager = {
         if (!flipCard) return;
 
         flipCard.classList.remove('flipping');
-        void flipCard.offsetWidth; // Trigger reflow
 
         // Assign new and old values to appropriate card faces
         flipCard.querySelector('.flip-card-top').textContent = newVal;
@@ -688,14 +687,19 @@ const FlipClockManager = {
         flipCard.querySelector('.flip-card-flap-front').textContent = oldVal;
         flipCard.querySelector('.flip-card-flap-back').textContent = newVal;
 
-        flipCard.classList.add('flipping');
-
-        // Restore static state after animation completion
-        setTimeout(() => {
-            flipCard.querySelector('.flip-card-bottom').textContent = newVal;
-            flipCard.querySelector('.flip-card-flap-front').textContent = newVal;
-            flipCard.classList.remove('flipping');
-        }, 400);
+        // Use a double-requestAnimationFrame pattern to guarantee the browser 
+        // processes the class removal and layout reset before the next paint 
+        // frame where the animation class is re-added.
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                flipCard.classList.add('flipping');
+                setTimeout(() => {
+                    flipCard.querySelector('.flip-card-bottom').textContent = newVal;
+                    flipCard.querySelector('.flip-card-flap-front').textContent = newVal;
+                    flipCard.classList.remove('flipping');
+                }, 400);
+            });
+        });
     },
 
     /**
