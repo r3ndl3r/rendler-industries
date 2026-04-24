@@ -103,6 +103,20 @@
      };
  
      /**
+      * Returns the current hour (0-23) in the configured timezone.
+      * 
+      * @returns {number} - Hour of the day
+      */
+     MomentLite.prototype.hour = function() {
+         const activeTz = this._tz || (typeof APP_TZ !== 'undefined' ? APP_TZ : 'UTC');
+         return parseInt(new Intl.DateTimeFormat('en-AU', {
+             timeZone: activeTz,
+             hour: 'numeric',
+             hour12: false
+         }).format(this._date), 10);
+     };
+ 
+     /**
       * Returns the timezone abbreviation (e.g., 'AEDT').
       * 
       * @returns {string} - Short timezone notation
