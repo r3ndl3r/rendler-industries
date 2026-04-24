@@ -488,7 +488,10 @@ async function initNotes() {
         searchInput.addEventListener('input', (e) => filterSearch(e.target.value));
     }
     const globalToggle = document.getElementById('search-global-toggle');
-    if (globalToggle) globalToggle.addEventListener('change', () => filterSearch(document.getElementById('note-search-input').value));
+    if (globalToggle) {
+        globalToggle.checked = true;
+        globalToggle.addEventListener('change', () => filterSearch(document.getElementById('note-search-input').value));
+    }
     // Interaction: Global Clipboard Sync (Ctrl+V)
     document.addEventListener('paste', handleGlobalClipPaste);
 
