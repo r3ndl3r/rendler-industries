@@ -1,0 +1,34 @@
+<%# /templates/brief.html.ep %>
+
+% layout 'default', hide_navbar_title => 1, favicon => '📰';
+% title 'Daily Brief';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/calendar.css">
+    <link rel="stylesheet" href="/css/brief.css">
+    <script src="/js/moment-lite.js"></script>
+    <script src="/js/brief.js"></script>
+% end
+
+<div class="brief-container app-container">
+    <div class="header-bar">
+        <h1>📰 <span>Daily Brief</span></h1>
+    </div>
+
+    <div id="briefSummaryBar" class="brief-summary-bar hidden"></div>
+
+    <div id="briefContent" class="brief-grid hidden">
+        <div id="tile-weather"   class="brief-tile"></div>
+        <div id="tile-calendar"  class="brief-tile"></div>
+        <div id="tile-chores"    class="brief-tile"></div>
+        <div id="tile-reminders" class="brief-tile"></div>
+        <div id="tile-points"    class="brief-tile"></div>
+        <div id="tile-birthdays" class="brief-tile"></div>
+    </div>
+
+    <div id="briefLoading" class="component-loading">
+        <div class="loading-scan-line"></div>
+        <span class="loading-icon-pulse">📰</span>
+        <p class="loading-label">Assembling your day...</p>
+    </div>
+</div>
