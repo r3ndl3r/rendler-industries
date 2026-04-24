@@ -324,7 +324,17 @@ use constant MANIFEST => {
         sample  => { header => "✨ **Points Reward** ✨", amount => "+50", reason => "Helping with groceries" },
         default_subject => "Points Adjustment",
         default_body    => "[header]\n\n🪙 **[amount] pts** 🪙\n\n**Reason:** [reason]"
-    }
+    },
+
+    # --- BRIEF (brief_*) ---
+    'brief_daily' => {
+        desc    => "Sent to all family users at 8am to announce the daily brief is ready.",
+        tags    => "",
+        url     => '/brief',
+        sample  => {},
+        default_subject => "Daily Brief",
+        default_body    => "📰 **Daily Brief** 📰\n\nYour daily overview is ready. Check your calendar, chores, weather, and more.\n\n[sys_url /brief]"
+    },
 };
 
 sub register {
