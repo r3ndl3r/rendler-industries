@@ -899,4 +899,24 @@ sub _alert_admins_delivery_failed {
     }
 }
 
+# Dispatches the daily brief notification to all family users at 08:00.
+# Parameters:
+#   $now : DateTime object (localised to app timezone)
+# Returns: void
+sub run_brief_notification {
+    my ($c, $now) = @_;
+    return unless $now->hour == 8 && $now->minute == 0;
+
+    # Idempotency: Ensure brief only fires once per day
+    my $today = $now->strftime('%Y-%m-%d');
+    return unless $c->db->try_set_brief_sent_date($today);
+
+    $c->app->log->info("Brief: Dispatching daily overview to family.");
+
+    for my $user (@{ $c->db->get_family_users() }) {
+        # caller_id 0 indicates a system-originated notification
+        $c->notify_templated($user->{id}, 'brief_daily', {}, 0);
+    }
+}
+
 1;
