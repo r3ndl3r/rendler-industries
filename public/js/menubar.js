@@ -23,20 +23,14 @@
  * Manages the open/closed state of the primary sidebar and its overlay.
  */
 function toggleMenu() {
-    const menu = document.getElementById('sideMenu');
+    const menu    = document.getElementById('sideMenu');
     const overlay = document.getElementById('menuOverlay');
-    const btn = document.querySelector('.menu-btn');
-    
-    // Toggle class-based visibility states
-    if (menu.classList.contains('open')) {
-        menu.classList.remove('open');
-        overlay.classList.remove('open');
-        btn.innerHTML = '☰';
-    } else {
-        menu.classList.add('open');
-        overlay.classList.add('open');
-        btn.innerHTML = '×';
-    }
+    const btns    = document.querySelectorAll('.menu-btn');
+    const isOpen  = menu.classList.contains('open');
+
+    menu.classList.toggle('open', !isOpen);
+    overlay.classList.toggle('open', !isOpen);
+    btns.forEach(b => b.innerHTML = isOpen ? '☰' : '×');
 }
 
 /**
@@ -254,17 +248,16 @@ function renderMenuItem(item, currentPath) {
  */
 document.addEventListener('click', function(event) {
     const menu = document.getElementById('sideMenu');
-    const btn = document.querySelector('.menu-btn');
-    
-    // Detect if click originated outside both the sidebar and trigger button
-    if (menu && menu.classList.contains('open') && 
-        !menu.contains(event.target) && 
-        !btn.contains(event.target)) {
-        
+
+    // Detect if click originated outside both the sidebar and any hamburger trigger
+    if (menu && menu.classList.contains('open') &&
+        !menu.contains(event.target) &&
+        !event.target.closest('.menu-btn')) {
+
         const overlay = document.getElementById('menuOverlay');
         menu.classList.remove('open');
         overlay.classList.remove('open');
-        btn.innerHTML = '☰';
+        document.querySelectorAll('.menu-btn').forEach(b => b.innerHTML = '☰');
     }
 });
 
