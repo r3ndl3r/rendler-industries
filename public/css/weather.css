@@ -22,6 +22,7 @@
     margin: 0 auto;
     padding: 0.4rem 2rem 2rem 2rem;
     position: relative; /* For scroll hint positioning */
+    overflow-x: hidden; /* Prevent sub-pixel card overflow from triggering scrollbar flash */
 }
 
 /* --- Utilities --- */
