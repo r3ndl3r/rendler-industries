@@ -4607,5 +4607,35 @@ input:checked + .switch-sm .slider:before {
     font-size: 1rem;
 }
 
+@media (max-width: 768px) {
+    /* Reclaim top space: no navbar on mobile, so remove the negative offset lift */
+    /* Account for safe areas and the 56px bottom navigation bar */
+    .canvas-container {
+        height: calc(100vh - 1rem - 56px - env(safe-area-inset-bottom, 0px));
+        margin-top: 0;
+    }
+
+    /* Shift branding pill down from the very top edge */
+    .board-branding-pill {
+        top: 8px;
+    }
+
+    /* Quick-switcher drops from the pill bottom edge */
+    .canvas-quick-switcher {
+        top: 54px;
+    }
+
+    /* Radar minimap: sit below the pill so it doesn't collide on expand */
+    .radar-minimap-container {
+        top: 54px;
+    }
+
+    /* FABs: clear the 56px bottom nav bar and account for safe area */
+    .floating-actions,
+    .floating-info {
+        bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
 
 
