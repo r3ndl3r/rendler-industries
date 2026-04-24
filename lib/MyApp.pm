@@ -321,6 +321,7 @@ sub startup {
                 $sys->run_chore_reminders($now);
                 $sys->run_notes_lock_maintenance();
                 $sys->run_weather_maintenance($now);
+                $sys->run_brief_notification($now);
                 $sys->cleanup_stale_uno_sessions();
                 $sys->run_notification_queue();
 
@@ -473,6 +474,10 @@ sub startup {
     $admin_ns->get('/notifications/templates'             )->to('admin-notifications-templates#index'    );
     $admin_ns->get('/notifications/templates/api/state'  )->to('admin-notifications-templates#api_state');
     $admin_ns->post('/notifications/templates/api/update')->to('admin-notifications-templates#api_update');
+
+    # --- Daily Brief Routes ---
+    $auth->get('/brief')->to('brief#index');
+    $auth->get('/brief/api/state')->to('brief#api_state');
 
     # --- Reminders Administration Routes ---
     $family->get('/reminders')->to('reminders#index');
