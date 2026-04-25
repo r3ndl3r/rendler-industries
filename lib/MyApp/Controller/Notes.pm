@@ -994,10 +994,129 @@ sub api_move_layer {
     my $rows  = $c->db->move_layer_content($canvas_id, $from, $to);
     my $count = int($rows) || 0;
 
-    return $c->render(json => { 
-        success => 1, 
+    return $c->render(json => {
+        success => 1,
         count   => $count,
-        message => "Migrated $count notes to Level $to"
+        message => "$count notes moved to Level $to"
+    });
+}
+
+# Moves one or more notes to a different layer on the same canvas.
+# Route: POST /notes/api/notes/set-layer
+# Parameters: ids (JSON array of note IDs), canvas_id, layer_id
+sub api_set_layer {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id();
+    my $canvas_id = $c->param('canvas_id');
+    my $layer_id  = int($c->param('layer_id') // 0);
+    my $ids_json  = $c->param('ids') // '[]';
+
+    return $c->render(json => { success => 0, error => 'Invalid level' }) if $layer_id < 1 || $layer_id > 99;
+
+    my $ids = eval { Mojo::JSON::decode_json($ids_json) } // [];
+    return $c->render(json => { success => 0, error => 'Invalid ids' }) unless ref $ids eq 'ARRAY' && @$ids;
+
+    return $c->render(json => { success => 0, error => 'Read-Only' }, status => 403)
+        unless $c->db->check_canvas_access($canvas_id, $user_id, 1);
+
+    my $count = $c->db->set_notes_layer($ids, $canvas_id, $layer_id, $user_id);
+
+    my $unlocked_ids = $c->_get_unlocked_ids;
+    return $c->render(json => {
+        success       => 1,
+        count         => $count,
+        notes         => $c->db->get_user_notes($user_id, $canvas_id, $unlocked_ids),
+        last_mutation => $c->db->get_board_mutation_time($canvas_id)
+    });
+}
+
+# Clones one or more notes to a different layer on the same canvas.
+# Route: POST /notes/api/notes/bulk-copy-level
+# Parameters: ids (JSON array of note IDs), canvas_id, layer_id
+sub api_bulk_copy_level {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id   = $c->current_user_id();
+    my $canvas_id = $c->param('canvas_id');
+    my $layer_id  = int($c->param('layer_id') // 0);
+    my $ids_json  = $c->param('ids') // '[]';
+
+    return $c->render(json => { success => 0, error => 'Invalid level' }) if $layer_id < 1 || $layer_id > 99;
+
+    my $ids = eval { Mojo::JSON::decode_json($ids_json) } // [];
+    return $c->render(json => { success => 0, error => 'Invalid ids' }) unless ref $ids eq 'ARRAY' && @$ids;
+
+    return $c->render(json => { success => 0, error => 'Read-Only' }, status => 403)
+        unless $c->db->check_canvas_access($canvas_id, $user_id, 1);
+
+    my $count = $c->db->clone_notes_to_layer($ids, $canvas_id, $layer_id, $user_id);
+
+    my $unlocked_ids = $c->_get_unlocked_ids;
+    return $c->render(json => {
+        success       => 1,
+        count         => $count,
+        notes         => $c->db->get_user_notes($user_id, $canvas_id, $unlocked_ids),
+        last_mutation => $c->db->get_board_mutation_time($canvas_id)
+    });
+}
+
+# Copies one or more notes to a different canvas.
+# Route: POST /notes/api/notes/bulk-copy-canvas
+# Parameters: ids (JSON array of note IDs), target_canvas_id
+# Source canvas access is verified per-note inside DB::copy_note (not at controller level).
+sub api_bulk_copy_canvas {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id          = $c->current_user_id();
+    my $target_canvas_id = $c->param('target_canvas_id');
+    my $ids_json         = $c->param('ids') // '[]';
+
+    my $ids = eval { Mojo::JSON::decode_json($ids_json) } // [];
+    return $c->render(json => { success => 0, error => 'Invalid ids' }) unless ref $ids eq 'ARRAY' && @$ids;
+
+    return $c->render(json => { success => 0, error => 'Read-Only' }, status => 403)
+        unless $c->db->check_canvas_access($target_canvas_id, $user_id, 1);
+
+    my $target_layer_id = int($c->param('target_layer_id') // 1);
+
+    my $count = 0;
+    for my $id (@$ids) {
+        my $new_id = $c->db->copy_note($id, $target_canvas_id, $user_id, $target_layer_id);
+        $count++ if $new_id;
+    }
+
+    return $c->render(json => { success => 1, count => $count });
+}
+
+# Canvas reassignment for one or more notes via canvas_id modification.
+# Identifier stability ensures existing [note:id] references remain valid.
+# Route: POST /notes/api/notes/move-canvas
+# Parameters: ids (JSON array of note IDs), canvas_id (source), target_canvas_id, target_layer_id
+sub api_move_notes_canvas {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id          = $c->current_user_id();
+    my $canvas_id        = $c->param('canvas_id');
+    my $target_canvas_id = $c->param('target_canvas_id');
+    my $target_layer_id  = int($c->param('target_layer_id') // 1);
+    my $ids_json         = $c->param('ids') // '[]';
+
+    my $ids = eval { Mojo::JSON::decode_json($ids_json) } // [];
+    return $c->render(json => { success => 0, error => 'Invalid ids' }) unless ref $ids eq 'ARRAY' && @$ids;
+
+    my $count = $c->db->move_notes_to_canvas($ids, $canvas_id, $target_canvas_id, $user_id, $target_layer_id);
+
+    my $unlocked_ids = $c->_get_unlocked_ids;
+    return $c->render(json => {
+        success       => 1,
+        count         => $count,
+        notes         => $c->db->get_user_notes($user_id, $canvas_id, $unlocked_ids),
+        last_mutation => $c->db->get_board_mutation_time($canvas_id)
     });
 }
 
