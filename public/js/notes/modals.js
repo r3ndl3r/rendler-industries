@@ -577,17 +577,52 @@ function closeCanvasManager() {
     }
 }
 
-function openMoveModal(e, id) {
-    e.stopPropagation();
+/**
+ * Canvas Picker: Opens the canvas selection modal for copy or move operations.
+ * @param {Event|null} e - Originating event for stopPropagation; pass null when calling from context menu.
+ * @param {number|string} id - Single note ID (used when opts.ids is absent).
+ * @param {{ids?: number[], operation?: 'copy'|'move'}} [opts] - Optional bulk/operation overrides.
+ */
+function openMoveModal(e, id, opts = {}) {
+    if (e) e.stopPropagation();
     const modal = document.getElementById('move-note-modal');
     const list  = document.getElementById('move-canvas-list');
     if (!modal || !list) return;
-    
+
+    const ids       = opts.ids || [id];
+    const operation = opts.operation || 'copy';
+    const isBulk    = ids.length > 1;
+    const label     = isBulk ? `${ids.length} notes` : '1 note';
+
+    const titleEl = modal.querySelector('h3, .note-modal-header h3');
+    if (titleEl) {
+        titleEl.textContent = operation === 'move' ? `Move ${label} to Canvas` : `Copy ${label} to Canvas`;
+    }
+
     list.innerHTML = '';
     STATE.canvases.filter(c => c.id != STATE.canvas_id && c.can_edit).forEach(canvas => {
         const item = document.createElement('div');
         item.className = 'canvas-item';
-        item.onclick = () => copyNoteToBoard(id, canvas.id);
+        item.onclick = () => {
+            closeMoveModal();
+            window.showConfirmModal({
+                title:       `Target Level on "${canvas.name}"`,
+                icon:        '📚',
+                message:     'Which level should the notes land on?',
+                input:       { type: 'number', min: 1, max: 99, value: 1, placeholder: 'Level Number...' },
+                noEmoji:     true,
+                confirmText: operation === 'move' ? 'Move' : 'Copy',
+                onConfirm: async (val) => {
+                    const level = parseInt(val);
+                    if (isNaN(level) || level < 1 || level > 99) { showToast('Invalid level', 'error'); return; }
+                    if (operation === 'move') {
+                        if (typeof moveNotesToCanvas === 'function') moveNotesToCanvas(ids, canvas.id, level);
+                    } else {
+                        if (typeof bulkCopyToCanvas === 'function') bulkCopyToCanvas(ids, canvas.id, level);
+                    }
+                }
+            });
+        };
         item.innerHTML = `
             <div class="canvas-info">
                 <div class="canvas-name-row">
@@ -601,7 +636,7 @@ function openMoveModal(e, id) {
         `;
         list.appendChild(item);
     });
-    
+
     if (list.children.length === 0) {
         list.innerHTML = '<p class="empty-board-hint">No other editable boards found.</p>';
     }
@@ -1316,40 +1351,6 @@ async function handleSearchResultClick(id) {
     }
 }
 
-/**
- * Level Migration Orchestrator: UI for copying a note across the 99-level isolation stack.
- * @param {number|string} id - The note ID.
- */
-function openLayerActionModal(id) {
-    const note = STATE.notes.find(n => n.id == id);
-    if (!note) return;
-
-    window.showConfirmModal({
-        title: `Copy to Level`,
-        icon: '📚',
-        message: 'Select a target level (1-99) to clone this note into:',
-        input: {
-            type: 'number',
-            min: 1,
-            max: 99,
-            value: STATE.activeLayerId,
-            placeholder: 'Level Number...'
-        },
-        confirmText: "Clone to Level",
-        onConfirm: async (targetLevel) => {
-            const level = parseInt(targetLevel);
-            if (isNaN(level) || level < 1 || level > 99) {
-                showToast("Invalid level number", "error");
-                return;
-            }
-            if (typeof copyNoteToLevel === 'function') {
-                await copyNoteToLevel(id, level);
-            } else {
-                showToast('Duplication Engine unavailable', 'error');
-            }
-        }
-    });
-}
 
 /**
  * ACL Discovery Engine: Facilitates adding new collaborators to a board.
