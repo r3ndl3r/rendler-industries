@@ -149,11 +149,15 @@ body {
     display: flex;
     flex-direction: column;
     padding-top: var(--navbar-height);
-    /* FIX: Extra padding at bottom to prevent Logout from being cut off */
-    padding-bottom: 60px; 
+    padding-bottom: 60px;
     box-shadow: 5px 0 15px rgba(0,0,0,0.5);
-    overflow-y: auto; 
+    overflow-y: auto;
+    scrollbar-width: none;
     box-sizing: border-box;
+}
+
+.side-menu::-webkit-scrollbar {
+    display: none;
 }
 
 .side-menu.open {
