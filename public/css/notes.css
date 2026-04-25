@@ -2365,7 +2365,7 @@ pre code {
 }
 
 /* Global Square Icon Buttons on Note Cards (High-Density Profile) */
-.btn-icon-view, .btn-icon-edit, .btn-icon-delete, .btn-icon-sticky, .btn-icon-copy, .btn-icon-link, .btn-icon-move, .btn-icon-level-copy, .btn-icon-upload {
+.btn-icon-view, .btn-icon-edit, .btn-icon-delete, .btn-icon-sticky, .btn-icon-copy, .btn-icon-link, .btn-icon-upload {
     width: 1.75em; /* 28px calculation */
     height: 1.75em;
     border-radius: 0.375em; /* Rounded corners for standardized interactive elements */
@@ -2387,11 +2387,9 @@ pre code {
 .btn-icon-sticky   { background: #14b8a6; } /* Teal 500 */
 .btn-icon-copy     { background: #6366f1; } /* Indigo 500 */
 .btn-icon-link     { background: #ec4899; } /* Fuchsia 500 */
-.btn-icon-move     { background: #3b82f6; } /* Blue (Canvas) */
-.btn-icon-level-copy { background: #10b981; } /* Emerald (Level) */
 .btn-icon-upload   { background: #8b5cf6; } /* Violet (Attachment) */
 
-.btn-icon-view:hover, .btn-icon-edit:hover, .btn-icon-delete:hover, .btn-icon-sticky:hover, .btn-icon-copy:hover, .btn-icon-link:hover, .btn-icon-move:hover, .btn-icon-level-copy:hover, .btn-icon-upload:hover {
+.btn-icon-view:hover, .btn-icon-edit:hover, .btn-icon-delete:hover, .btn-icon-sticky:hover, .btn-icon-copy:hover, .btn-icon-link:hover, .btn-icon-upload:hover {
     transform: scale(1.1);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
     filter: brightness(1.2);
@@ -2404,8 +2402,6 @@ pre code {
 .btn-icon-sticky:hover   { border-color: rgba(20, 184, 166, 0.5); }
 .btn-icon-copy:hover     { border-color: rgba(99, 102, 241, 0.5); }
 .btn-icon-link:hover     { border-color: rgba(236, 72, 153, 0.5); }
-.btn-icon-move:hover     { border-color: rgba(59, 130, 246, 0.5); }
-.btn-icon-level-copy:hover { border-color: rgba(16, 185, 129, 0.5); }
 .btn-icon-upload:hover   { border-color: rgba(139, 92, 246, 0.5); }
 
 /* --- Paste Modal Centering --- */
@@ -2998,14 +2994,25 @@ pre code {
 }
 
 @keyframes menu-pop {
-    from { 
-        opacity: 0; 
-        transform: translateY(-50%) scale(0.95) translateX(-5px); 
+    from {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.95) translateX(-5px);
     }
-    to { 
-        opacity: 1; 
-        transform: translateY(-50%) scale(1) translateX(0); 
+    to {
+        opacity: 1;
+        transform: translateY(-50%) scale(1) translateX(0);
     }
+}
+
+.context-menu--cursor {
+    transform: none;
+    transform-origin: top left;
+    animation: menu-pop-cursor 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes menu-pop-cursor {
+    from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0);    }
 }
 
 .context-menu-item {
