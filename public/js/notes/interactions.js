@@ -1478,10 +1478,16 @@ function handleCanvasMouseMove(e) {
 
 /**
  * Canvas Mouse Up: Terminates active panning operations or lasso selection.
+ * @param {MouseEvent} e - The mouseup event.
  * @returns {void}
  */
-function handleCanvasMouseUp() {
+function handleCanvasMouseUp(e) {
     if (STATE.isLassoing) {
+        // Suppression Flag: Prevents browser context menu from popping up 
+        // after a right-click drag concludes. Clears itself in the next tick.
+        STATE.lassoJustFinished = true;
+        setTimeout(() => { STATE.lassoJustFinished = false; }, 50);
+
         const count = STATE.selectedNoteIds.size;
         resetLasso(false); // Finish selection without purging state
         if (count > 0) {
