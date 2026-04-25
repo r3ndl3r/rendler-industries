@@ -135,6 +135,20 @@
          }
      };
 
+     /**
+      * Calculates the difference between two moments.
+      * 
+      * @param {MomentLite} other - Moment to subtract
+      * @param {string} unit - 'minutes' or defaults to ms
+      * @returns {number}
+      */
+     MomentLite.prototype.diff = function(other, unit) {
+         if (!other || !other._date) return 0;
+         const diffMs = this._date - other._date;
+         if (unit === 'minutes') return Math.floor(diffMs / 60000);
+         return diffMs;
+     };
+
     /**
      * Global Entry Point
      */
