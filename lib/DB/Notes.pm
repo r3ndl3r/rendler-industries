@@ -1063,10 +1063,10 @@ sub DB::check_canvas_access {
     return 0;
 }
 
-# Copies a note to another canvas (Duplication migration).
+# Deep-copies a note to a different canvas.
 # Returns the new note_id or 0 on failure.
 sub DB::copy_note {
-    my ($self, $note_id, $new_canvas_id, $user_id) = @_;
+    my ($self, $note_id, $new_canvas_id, $user_id, $target_layer_id) = @_;
     $self->ensure_connection;
 
     # 1. Security Check: Verify EDIT access to both Source and Destination
@@ -1077,6 +1077,8 @@ sub DB::copy_note {
     return 0 unless $note && $self->check_canvas_access($note->{canvas_id}, $user_id, 1);
     return 0 unless $self->check_canvas_access($new_canvas_id, $user_id, 1);
 
+    my $layer = $target_layer_id // $note->{layer_id} // 1;
+
     # 2. Deep-Copy: Insert new note record with identical metadata
     my $sql = "INSERT INTO notes (user_id, canvas_id, type, title, content, filename, x, y, width, height, color, z_index, is_collapsed, is_options_expanded, layer_id)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -1084,7 +1086,7 @@ sub DB::copy_note {
     $sth_i->execute(
         $user_id, $new_canvas_id, $note->{type}, $note->{title}, $note->{content}, $note->{filename},
         $note->{x}, $note->{y}, $note->{width}, $note->{height}, $note->{color},
-        $note->{z_index}, $note->{is_collapsed}, $note->{is_options_expanded}, $note->{layer_id} // 1
+        $note->{z_index}, $note->{is_collapsed}, $note->{is_options_expanded}, $layer
     );
     
     my $new_id = int($self->{dbh}->last_insert_id(undef, undef, 'notes', 'id'));
@@ -1101,6 +1103,128 @@ sub DB::copy_note {
 
     return $new_id;
 }
+
+# Canvas reassignment for one or more notes via canvas_id modification.
+# Identifier stability ensures existing [note:id] references remain valid.
+# Parameters:
+#   note_ids         : Arrayref of note IDs to move.
+#   source_canvas_id : Canvas the notes currently belong to.
+#   target_canvas_id : Destination canvas.
+#   user_id          : Active user identifier.
+#   target_layer_id  : Layer on the destination canvas (defaults to 1).
+# Returns:
+#   Integer count of notes successfully moved.
+sub DB::move_notes_to_canvas {
+    my ($self, $note_ids, $source_canvas_id, $target_canvas_id, $user_id, $target_layer_id) = @_;
+    $self->ensure_connection;
+
+    return 0 unless $note_ids && @$note_ids;
+    return 0 unless $self->check_canvas_access($source_canvas_id, $user_id, 1);
+    return 0 unless $self->check_canvas_access($target_canvas_id, $user_id, 1);
+
+    my $layer = int($target_layer_id // 1);
+    my $sth = $self->{dbh}->prepare(
+        "UPDATE notes SET canvas_id = ?, layer_id = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND canvas_id = ? AND is_deleted = 0"
+    );
+
+    my $count = 0;
+    for my $id (@$note_ids) {
+        next unless defined $id && $id =~ /\A\d+\z/;
+        my $rows = $sth->execute($target_canvas_id, $layer, $id, $source_canvas_id);
+        $count += ($rows // 0);
+    }
+
+    if ($count) {
+        $self->touch_canvas($source_canvas_id);
+        $self->touch_canvas($target_canvas_id);
+    }
+    return $count;
+}
+
+# Moves one or more notes to a different layer within the same canvas.
+# Parameters:
+#   note_ids  : Arrayref of note IDs to move.
+#   canvas_id : Canvas the notes belong to (used for access verification).
+#   layer_id  : Target layer (1-99).
+#   user_id   : Active user identifier.
+# Returns:
+#   Integer count of notes successfully moved.
+sub DB::set_notes_layer {
+    my ($self, $note_ids, $canvas_id, $layer_id, $user_id) = @_;
+    $self->ensure_connection;
+
+    return 0 unless $note_ids && @$note_ids;
+    return 0 unless $self->check_canvas_access($canvas_id, $user_id, 1);
+
+    my $sth = $self->{dbh}->prepare(
+        "UPDATE notes SET layer_id = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND canvas_id = ? AND is_deleted = 0"
+    );
+
+    my $count = 0;
+    for my $id (@$note_ids) {
+        next unless defined $id && $id =~ /\A\d+\z/;
+        my $rows = $sth->execute($layer_id, $id, $canvas_id);
+        $count += ($rows // 0);
+    }
+
+    $self->touch_canvas($canvas_id) if $count;
+    return $count;
+}
+
+# Deep-copies one or more notes to a different layer on the same canvas.
+# Parameters:
+#   note_ids        : Arrayref of note IDs to clone.
+#   canvas_id       : Canvas the notes belong to.
+#   target_layer_id : Destination layer (1-99).
+#   user_id         : Active user identifier.
+# Returns:
+#   Integer count of notes successfully cloned.
+sub DB::clone_notes_to_layer {
+    my ($self, $note_ids, $canvas_id, $target_layer_id, $user_id) = @_;
+    $self->ensure_connection;
+
+    return 0 unless $note_ids && @$note_ids;
+    return 0 unless $self->check_canvas_access($canvas_id, $user_id, 1);
+
+    my $sth_n = $self->{dbh}->prepare("SELECT * FROM notes WHERE id = ? AND canvas_id = ? AND is_deleted = 0");
+    my $sth_i = $self->{dbh}->prepare(
+        "INSERT INTO notes (user_id, canvas_id, type, title, content, filename, x, y, width, height, color, z_index, is_collapsed, is_options_expanded, layer_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    );
+    my $sth_b = $self->{dbh}->prepare(
+        "INSERT INTO note_blobs (note_id, file_data, mime_type, file_size, filename)
+         SELECT ?, file_data, mime_type, file_size, filename FROM note_blobs WHERE note_id = ?"
+    );
+
+    my $count = 0;
+    for my $id (@$note_ids) {
+        next unless defined $id && $id =~ /\A\d+\z/;
+
+        $sth_n->execute($id, $canvas_id);
+        my $note = $sth_n->fetchrow_hashref();
+        next unless $note;
+
+        my $ok = $sth_i->execute(
+            $user_id, $canvas_id, $note->{type}, $note->{title}, $note->{content}, $note->{filename},
+            $note->{x} + 20, $note->{y} + 20, $note->{width}, $note->{height}, $note->{color},
+            $note->{z_index}, $note->{is_collapsed}, $note->{is_options_expanded}, $target_layer_id
+        );
+
+        my $new_id = $ok ? int($self->{dbh}->last_insert_id(undef, undef, 'notes', 'id')) : 0;
+
+        if (($note->{type} eq 'image' || $note->{type} eq 'file') && $new_id) {
+            $sth_b->execute($new_id, $id);
+        }
+
+        $count++ if $new_id;
+    }
+
+    $self->touch_canvas($canvas_id) if $count;
+    return $count;
+}
+
 # Updates the name of a canvas, respecting ownership.
 # Parameters:
 #   id      : Integer ID of the canvas.
