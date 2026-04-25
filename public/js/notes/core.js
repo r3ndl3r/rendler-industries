@@ -40,8 +40,9 @@ const STATE = {
     dragOffset:     { x: 0, y: 0 }, // Dynamic delta for 'Pick & Place'
     isPanning:      false,          // Drag-to-Scroll State
     panStart:       { x:0, y:0, scrollX:0, scrollY:0 },
-    isLassoing:     false,          // Bulk Selection State
-    lassoStart:     { x:0, y:0 },  // Marquee Anchor (Absolute Board Coords)
+    isLassoing:          false,          // Bulk Selection State
+    lassoStart:          { x:0, y:0 },  // Marquee Anchor (Absolute Board Coords)
+    lassoJustFinished:   false,          // Transient: suppresses contextmenu for 50ms after right-click lasso release
     last_mutation:  null,           // Synchronization Baseline
     heartbeatTimer: null,           // Active Polling Reference
     heartbeatController: null,      // AbortController: Standardizes request cancellation
@@ -372,7 +373,9 @@ async function initNotes() {
         if (typeof handleCanvasMouseDown === 'function') canvas.addEventListener('mousedown', handleCanvasMouseDown);
         // Suppress browser context menu so right-click drag can drive the lasso without interruption.
         canvas.addEventListener('contextmenu', e => {
-            if (e.target === STATE.canvasEl || e.target === STATE.wrapperEl) e.preventDefault();
+            if (STATE.lassoJustFinished || e.target === STATE.canvasEl || e.target === STATE.wrapperEl) {
+                e.preventDefault();
+            }
         });
         if (typeof handleCanvasWheel === 'function') wrapper.addEventListener('wheel', handleCanvasWheel, { passive: false });
 
