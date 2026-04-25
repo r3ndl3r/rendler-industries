@@ -5,8 +5,8 @@ use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
 # Controller for the Broadcast System.
-# Facilitates the dispatch of high-priority alerts to administrators through 
-# integrated communication channels (Discord, Email, Pushover, Gotify).
+# Facilitates the dispatch of high-priority alerts to administrators through
+# integrated communication channels (Discord, Email, Pushover, Gotify, FCM).
 #
 # Features:
 #   - Individual and global channel transmission.
@@ -44,12 +44,16 @@ sub api_send {
         return $c->render(json => { success => 0, error => 'Message content is required.' });
     }
 
-    my $sender = $c->session('user');
-    my $user_id = $c->current_user_id;
-    my $full_msg = "Broadcast from $sender: $message";
-    my $subject = "🔔 BROADCAST: From $sender 🔔";
+    my $sender   = $c->session('user');
+    my $user_id  = $c->current_user_id;
 
-    # Logs the distribution attempt for audit purposes
+    my $discord_msg   = "🚨 **SYSTEM BROADCAST** 🚨\n\n**From:** $sender\n\n$message";
+    my $email_subject = "🚨 SYSTEM BROADCAST 🚨 from $sender";
+    my $email_body    = "🚨 SYSTEM BROADCAST 🚨\nFrom: $sender\n\n$message";
+    my $push_msg      = "🚨 BROADCAST 🚨 from $sender: $message";
+    my $fcm_title     = "🚨 System Broadcast 🚨";
+    my $fcm_body      = "From $sender: $message";
+
     $c->app->log->info("BROADCAST: User '$sender' is sending a broadcast alert: $message");
 
     # 1. Target Administrator Resolution
@@ -59,17 +63,21 @@ sub api_send {
     # 2. Individual Channel Dispatch
     foreach my $admin (@admins) {
         if ($admin->{discord_id}) {
-            $c->send_discord_dm($admin->{discord_id}, "🚨 **SYSTEM BROADCAST** 🚨\n\n$full_msg", $user_id);
+            $c->send_discord_dm($admin->{discord_id}, $discord_msg, $user_id);
         }
 
         if ($admin->{email}) {
-            $c->send_email_via_gmail([$admin->{email}], $subject, $full_msg, $user_id);
+            $c->send_email_via_gmail([$admin->{email}], $email_subject, $email_body, $user_id);
+        }
+
+        if ($admin->{has_fcm}) {
+            $c->push_fcm($admin->{id}, $fcm_title, $fcm_body, '/broadcast', $user_id);
         }
     }
 
     # 3. Global Channel Dispatch
-    $c->push_pushover($full_msg, $user_id);
-    $c->push_gotify($full_msg, $subject, undef, $user_id);
+    $c->push_pushover($push_msg, $user_id);
+    $c->push_gotify($push_msg, "System Broadcast", 8, $user_id);
 
     $c->render(json => { 
         success => 1, 
