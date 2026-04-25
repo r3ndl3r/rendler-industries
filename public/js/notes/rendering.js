@@ -351,12 +351,6 @@ function createNoteElement(note, canEdit = true) {
                             ${canEdit ? '' : 'style="display:none;" disabled'}>
                         📎
                     </button>
-                    <button class="btn-icon-move" title="Copy to Canvas" ${canEdit ? '' : 'disabled'}>
-                        📦
-                    </button>
-                    <button class="btn-icon-level-copy" title="Copy to Level" ${canEdit ? '' : 'disabled'}>
-                        📚
-                    </button>
                     <button class="btn-icon-view" title="Quick View">
                         👁️
                     </button>
