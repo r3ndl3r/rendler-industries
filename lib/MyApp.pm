@@ -417,6 +417,10 @@ sub startup {
     $auth->post('/notes/api/attachment/rename')->to('notes#api_attachment_rename');
     $auth->post('/notes/api/layer/rename')->to('notes#api_layer_rename');
     $auth->post('/notes/api/layers/move')->to('notes#api_move_layer');
+    $auth->post('/notes/api/notes/set-layer')->to('notes#api_set_layer');
+    $auth->post('/notes/api/notes/bulk-copy-level')->to('notes#api_bulk_copy_level');
+    $auth->post('/notes/api/notes/bulk-copy-canvas')->to('notes#api_bulk_copy_canvas');
+    $auth->post('/notes/api/notes/move-canvas')->to('notes#api_move_notes_canvas');
 
     # Privacy & Lock Management
     $auth->post('/notes/api/unlock_canvas')->to('notes#api_unlock_canvas');
