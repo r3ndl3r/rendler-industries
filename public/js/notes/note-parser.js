@@ -182,15 +182,30 @@ const NoteParser = (() => {
             const style     = color ? ` style="color: ${color}"` : '';
             return `<span class="note-ref note-link-trigger" data-target-id="${id}" title="Jump to Note: ${safeTitle}"${style}>${safeTitle}</span>`;
         },
-        'copy': (data) => {
-            const id = parseInt(data.value, 10);
-            if (isNaN(id)) return null;
-            const target    = STATE.note_map[id];
-            const safeTitle = target ? window.escapeHtml(target.title || target) : `Note #${id}`;
-            const color     = (target && typeof window.normalizeColorHex === 'function')
-                ? window.normalizeColorHex(target.color) : '';
-            const style     = color ? ` style="color: ${color}"` : '';
-            return `<span class="note-ref note-copy-trigger" data-target-id="${id}" title="Copy to clipboard: ${safeTitle}"${style}>📋 ${safeTitle}</span>`;
+        'copy': (pos, noteId, rawContent, depth = 0) => {
+            if (pos.value !== '') {
+                const id = parseInt(pos.value, 10);
+                if (isNaN(id)) return null;
+                const target    = STATE.note_map[id];
+                const safeTitle = target ? window.escapeHtml(target.title || target) : `Note #${id}`;
+                const color     = (target && typeof window.normalizeColorHex === 'function')
+                    ? window.normalizeColorHex(target.color) : '';
+                const style     = color ? ` style="color: ${color}"` : '';
+                return `<span class="note-ref note-copy-trigger" data-target-id="${id}" title="Copy to clipboard: ${safeTitle}"${style}>📋 ${safeTitle}</span>`;
+            }
+
+            // [copy]...[/copy] — wrapping inline copy block; click copies visible text to clipboard
+            const closeTag = '[/copy]';
+            const endIdx   = findClosingTag('[copy]', closeTag, rawContent);
+            if (endIdx === -1) return null;
+
+            const innerText = rawContent.substring(0, endIdx);
+            const innerHtml = parseNote(innerText, noteId, depth + 1);
+
+            return {
+                html: `<span class="note-inline-copy" title="Click to copy">${innerHtml}</span>`,
+                consumed: endIdx + closeTag.length
+            };
         },
         'file': (data) => {
             const id = parseInt(data.value, 10);
