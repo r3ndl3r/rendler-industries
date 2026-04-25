@@ -2531,11 +2531,7 @@ async function copyNoteId(id) {
  */
 async function copyNoteLink(id) {
     const url = new URL(window.location.origin + window.location.pathname);
-    url.searchParams.set('canvas_id', STATE.canvas_id);
-    url.searchParams.set('note_id',   id);
-    if (STATE.activeLayerId > 1) {
-        url.searchParams.set('layer_id', STATE.activeLayerId);
-    }
+    url.searchParams.set('note_id', id);
     
     if (await copyToClipboard(url.toString())) {
         showToast('Direct View Link Copied', 'success');
