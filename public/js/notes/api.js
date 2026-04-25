@@ -688,3 +688,110 @@ async function copyNoteToLevel(id, newLevelId) {
         if (el) el.classList.remove('pending');
     }
 }
+
+/**
+ * Moves one or more notes to a different layer on the same canvas.
+ * @param {number[]} ids - Note IDs to move.
+ * @param {number} layerId - Target layer (1-99).
+ * @returns {Promise<boolean>} True on success.
+ */
+async function moveNotesToLevel(ids, layerId) {
+    const res = await NoteAPI.post('/notes/api/notes/set-layer', {
+        ids:       JSON.stringify(ids),
+        canvas_id: STATE.canvas_id,
+        layer_id:  layerId
+    });
+    if (res && res.success) {
+        if (res.notes && typeof window.mergeNoteState === 'function') {
+            window.mergeNoteState(res.notes);
+        } else if (res.notes) {
+            STATE.notes = res.notes;
+        }
+        if (res.last_mutation) STATE.last_mutation = res.last_mutation;
+        STATE.selectedNoteIds.clear();
+        if (typeof renderUI === 'function') renderUI();
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Clones one or more notes to a different layer on the same canvas.
+ * @param {number[]} ids - Note IDs to clone.
+ * @param {number} layerId - Target layer (1-99).
+ * @returns {Promise<boolean>} True on success.
+ */
+async function bulkCopyToLevel(ids, layerId) {
+    const res = await NoteAPI.post('/notes/api/notes/bulk-copy-level', {
+        ids:       JSON.stringify(ids),
+        canvas_id: STATE.canvas_id,
+        layer_id:  layerId
+    });
+    if (res && res.success) {
+        const label = ids.length === 1 ? '1 note' : `${ids.length} notes`;
+        showToast(`Copied ${label} to Level ${layerId}`, 'success');
+        if (res.notes && typeof window.mergeNoteState === 'function') {
+            window.mergeNoteState(res.notes);
+        } else if (res.notes) {
+            STATE.notes = res.notes;
+        }
+        if (res.last_mutation) STATE.last_mutation = res.last_mutation;
+        STATE.selectedNoteIds.clear();
+        if (typeof renderUI === 'function') renderUI();
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Copies one or more notes to a different canvas.
+ * @param {number[]} ids - Note IDs to copy.
+ * @param {number} targetCanvasId - Destination canvas ID.
+ * @param {number} [targetLayerId=1] - Target layer on the destination canvas.
+ * @returns {Promise<boolean>} True on success.
+ */
+async function bulkCopyToCanvas(ids, targetCanvasId, targetLayerId = 1) {
+    const res = await NoteAPI.post('/notes/api/notes/bulk-copy-canvas', {
+        ids:              JSON.stringify(ids),
+        target_canvas_id: targetCanvasId,
+        target_layer_id:  targetLayerId
+    });
+    if (res && res.success) {
+        const label = ids.length === 1 ? '1 note' : `${ids.length} notes`;
+        showToast(`Copied ${label} to canvas`, 'success');
+        STATE.selectedNoteIds.clear();
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Moves one or more notes to a different canvas by updating canvas_id in place.
+ * Note IDs are preserved so existing [note:id] references remain valid.
+ * @param {number[]} ids - Note IDs to move.
+ * @param {number} targetCanvasId - Destination canvas ID.
+ * @param {number} [targetLayerId=1] - Target layer on the destination canvas.
+ * @returns {Promise<boolean>} True on success.
+ */
+async function moveNotesToCanvas(ids, targetCanvasId, targetLayerId = 1) {
+    const res = await NoteAPI.post('/notes/api/notes/move-canvas', {
+        ids:              JSON.stringify(ids),
+        canvas_id:        STATE.canvas_id,
+        target_canvas_id: targetCanvasId,
+        target_layer_id:  targetLayerId
+    });
+    if (res && res.success) {
+        const label = ids.length === 1 ? '1 note' : `${ids.length} notes`;
+        showToast(`Moved ${label} to canvas`, 'success');
+        if (res.notes && typeof window.mergeNoteState === 'function') {
+            window.mergeNoteState(res.notes);
+        } else if (res.notes) {
+            STATE.notes = res.notes;
+        }
+        if (res.last_mutation) STATE.last_mutation = res.last_mutation;
+        STATE.selectedNoteIds.clear();
+        if (typeof renderUI === 'function') renderUI();
+        return true;
+    }
+    return false;
+}
