@@ -523,7 +523,7 @@ select.game-input-premium option {
     .chore-title { font-size: 1.1rem; }
     
     .form-row-balanced { flex-direction: column; gap: 1rem; }
-    .btn-premium-action-shrink { width: 100%; }
+    .btn-premium-action-shrink { width: auto; }
 
     /* Table Transformation to 4-line Cards */
     #adminView .glass-panel { 
