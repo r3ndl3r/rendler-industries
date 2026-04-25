@@ -654,6 +654,7 @@ async function copyNoteToLevel(id, newLevelId) {
             id: null, // Force creation of a NEW record
             source_id: id, // Link for binary deep-copy (images)
             canvas_id: STATE.canvas_id,
+            layer_id: newLevelId,
             type: note.type || 'text', // Preserve 'image' vs 'text' identity
             title: note.title, // Clean clone: No (Copy) suffix
             content: note.content,
