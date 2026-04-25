@@ -620,6 +620,21 @@ async function initNotes() {
                 return;
             }
 
+            // --- 3c. Inline Text Copy Block ---
+            const inlineCopyTrigger = e.target.closest('.note-inline-copy');
+            if (inlineCopyTrigger) {
+                e.stopPropagation();
+                const text = inlineCopyTrigger.textContent || '';
+                navigator.clipboard.writeText(text)
+                    .then(() => {
+                        inlineCopyTrigger.classList.add('copied');
+                        setTimeout(() => inlineCopyTrigger.classList.remove('copied'), 600);
+                        showToast('Copied to clipboard', 'success');
+                    })
+                    .catch(() => showToast('Clipboard access denied', 'error'));
+                return;
+            }
+
             // --- 4. Interactive Todo Checkbox ---
             const checkTrigger = e.target.closest('.note-check-trigger');
             if (checkTrigger) {
