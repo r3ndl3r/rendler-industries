@@ -65,8 +65,8 @@ function renderUI() {
             <div class="banner-text">
                 <h3>Emergency Alert System</h3>
                 <p>
-                    A broadcast notifies <strong>ALL administrators</strong> 
-                    via Discord, Email, Pushover, and Gotify. This tool is reserved for 
+                    A broadcast notifies <strong>ALL administrators</strong>
+                    via Discord, Email, Pushover, Gotify, and FCM. This tool is reserved for
                     urgent system reports or emergency communication.
                 </p>
             </div>
@@ -115,12 +115,13 @@ function confirmBroadcast() {
 
     showConfirmModal({
         title: 'Confirm System Broadcast',
-        icon: 'warning',
+        icon: '🚨',
         message: 'A high-priority alert will be sent to ALL administrators.',
-        subMessage: 'Transmission includes Discord DMs, Emails, Pushover, and Gotify. Proceed with caution.',
+        subMessage: 'Transmission includes Discord DMs, Emails, Pushover, Gotify, and FCM. Proceed with caution.',
         danger: true,
+        hideCancel: true,
         confirmText: 'Send Broadcast',
-        confirmIcon: 'pushover',
+        confirmIcon: '📢',
         alignment: 'center',
         onConfirm: async () => {
             await sendBroadcast(message);
