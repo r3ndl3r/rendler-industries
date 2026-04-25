@@ -15,6 +15,7 @@ function initResizable(el, note) {
 }
 
 let resizeFrame = null;
+let _noteContextMenuTimer = null;
 
 /**
  * Resolves the handle orientation string ('nw', 'ne', 'sw', 'se') from class list.
@@ -1249,8 +1250,6 @@ function handleCanvasMouseDown(e) {
     const editBtn     = e.target.closest('.btn-icon-edit');
     const linkBtn     = e.target.closest('.btn-icon-link');
     const uploadBtn   = e.target.closest('.btn-icon-upload');
-    const moveBtn     = e.target.closest('.btn-icon-move');
-    const levelBtn    = e.target.closest('.btn-icon-level-copy');
     const viewBtn     = e.target.closest('.btn-icon-view');
     const deleteBtn   = e.target.closest('.btn-icon-delete:not(.reel-action-btn):not(.hero-action-btn)');
 
@@ -1300,12 +1299,6 @@ function handleCanvasMouseDown(e) {
                 if (uploadBtn && typeof triggerInlineUpload === 'function') {
                     triggerInlineUpload(id); return;
                 }
-                if (moveBtn && typeof openMoveModal === 'function') {
-                    openMoveModal(e, id); return;
-                }
-                if (levelBtn && typeof openLayerActionModal === 'function') {
-                    openLayerActionModal(id); return;
-                }
                 if (viewBtn && typeof viewNote === 'function') {
                     viewNote(id); return;
                 }
@@ -1330,14 +1323,14 @@ function handleCanvasMouseDown(e) {
     }
 
     // 5. Standard Panning or Marquee Selection:
-    // Right-click drag anywhere on the canvas initiates lasso; left-click on the
-    // background initiates panning.
+    // Shift+left-click drag on the background initiates lasso; unmodified left-click
+    // on the background initiates panning.
     const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
 
-    if (e.button === 2) {
-        // --- 5A. Marquee Selection (Lasso) — Right-Click Drag ---
-        e.preventDefault();
+    if (e.button === 0 && e.shiftKey && !handle && !isAction && !isTitle) {
+        // --- 5A. Marquee Selection (Lasso) — Shift+Left-Click Drag ---
+        e.preventDefault(); // Prevents browser text-selection during drag
         STATE.isLassoing = true;
         const rect = wrapper.getBoundingClientRect();
 
@@ -1376,7 +1369,7 @@ function handleCanvasMouseDown(e) {
         // Off-canvas escape hatch: capture mouseup at document level so a
         // release outside the viewport always terminates the lasso.
         document.addEventListener('mouseup', handleCanvasMouseUp, { once: true });
-    } else if (e.button === 0 && !handle && !isAction && !isTitle &&
+    } else if (e.button === 0 && !e.shiftKey && !handle && !isAction && !isTitle &&
                !e.target.closest('input, textarea, [contenteditable], select, .note-text-viewer, a[href], a[data-action], button:not([data-pan-passthrough]), .note-check-trigger, .note-link-trigger, [data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn')) {
         // --- 5B. Standard Panning — Left-Click on Background ---
         // UX Consistency: Only clear lasso selection when clicking true background,
@@ -1483,11 +1476,6 @@ function handleCanvasMouseMove(e) {
  */
 function handleCanvasMouseUp(e) {
     if (STATE.isLassoing) {
-        // Suppression Flag: Prevents browser context menu from popping up 
-        // after a right-click drag concludes. Clears itself in the next tick.
-        STATE.lassoJustFinished = true;
-        setTimeout(() => { STATE.lassoJustFinished = false; }, 50);
-
         const count = STATE.selectedNoteIds.size;
         resetLasso(false); // Finish selection without purging state
         if (count > 0) {
@@ -2555,8 +2543,8 @@ function handleCanvasTouchStart(e) {
         // Interactive Controls Guard: Ensure touch targets exclude buttons, handles, or inputs
         const isInteractive = e.target.closest(
             '.note-drag-handle-container, .note-resize-handle, .note-header-tab, ' +
-            '.btn-icon, .btn-icon-edit, .btn-icon-link, .btn-icon-upload, .btn-icon-move, ' +
-            '.btn-icon-level-copy, .btn-icon-view, .btn-icon-delete, .note-id-hash, ' +
+            '.btn-icon, .btn-icon-edit, .btn-icon-link, .btn-icon-upload, ' +
+            '.btn-icon-view, .btn-icon-delete, .note-id-hash, ' +
             '.note-check-trigger, .note-link-trigger, .reel-action-btn, .hero-action-btn, ' +
             'input, textarea, select, [contenteditable], ' +
             'button:not([data-pan-passthrough]), a[href], a[data-action], ' +
@@ -2735,6 +2723,104 @@ function showLevelContextMenu(e) {
     };
     // Defer attachment to prevent the current menu-spawning click from closing it immediately
     setTimeout(() => document.addEventListener('click', closeMenu), 10);
+}
+
+/**
+ * Note Context Menu: Right-click menu for copy/move operations on a single note or a lasso group.
+ * Group mode activates when the right-clicked note is part of the current multi-selection (2+ notes).
+ * @param {MouseEvent} e - The contextmenu event used for cursor positioning.
+ * @param {string|number} noteId - ID of the right-clicked note.
+ * @returns {void}
+ */
+function showNoteContextMenu(e, noteId) {
+    if (STATE.isInitializing) return;
+
+    document.querySelectorAll('.context-menu').forEach(m => m.remove());
+
+    const idStr   = String(noteId);
+    const isGroup = STATE.selectedNoteIds.has(idStr) && STATE.selectedNoteIds.size > 1;
+    const ids     = isGroup ? Array.from(STATE.selectedNoteIds).map(Number) : [Number(noteId)];
+    const label   = ids.length > 1 ? `${ids.length} notes` : 'note';
+
+    const promptLevel = (operation) => {
+        window.showConfirmModal({
+            title:   operation === 'move' ? `Move ${label} to Level` : `Copy ${label} to Level`,
+            icon:    operation === 'move' ? '✂️' : '📋',
+            message: 'Select a target level (1-99):',
+            input:   { type: 'number', min: 1, max: 99, value: STATE.activeLayerId, placeholder: 'Level Number...' },
+            noEmoji: true,
+            confirmText: operation === 'move' ? 'Move' : 'Clone',
+            onConfirm: async (val) => {
+                const level = parseInt(val);
+                if (isNaN(level) || level < 1 || level > 99) { showToast('Invalid level', 'error'); return; }
+                if (operation === 'move') {
+                    await moveNotesToLevel(ids, level);
+                } else {
+                    await bulkCopyToLevel(ids, level);
+                }
+            }
+        });
+    };
+
+    const menu = document.createElement('div');
+    menu.className = 'context-menu context-menu--cursor';
+    menu.innerHTML = `
+        <div class="context-menu-item" data-action="copy-level">
+            <span class="item-icon">📋</span>
+            <span>Copy ${label} to Level...</span>
+        </div>
+        <div class="context-menu-item" data-action="copy-canvas">
+            <span class="item-icon">📋</span>
+            <span>Copy ${label} to Canvas...</span>
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="move-level">
+            <span class="item-icon">✂️</span>
+            <span>Move ${label} to Level...</span>
+        </div>
+        <div class="context-menu-item" data-action="move-canvas">
+            <span class="item-icon">✂️</span>
+            <span>Move ${label} to Canvas...</span>
+        </div>
+    `;
+
+    menu.addEventListener('click', (ev) => {
+        const action = ev.target.closest('[data-action]')?.dataset.action;
+        if (!action) return;
+        menu.remove();
+        if      (action === 'copy-level')  promptLevel('copy');
+        else if (action === 'copy-canvas') openMoveModal(null, ids[0], { ids, operation: 'copy' });
+        else if (action === 'move-level')  promptLevel('move');
+        else if (action === 'move-canvas') openMoveModal(null, ids[0], { ids, operation: 'move' });
+    });
+
+    document.body.appendChild(menu);
+
+    // Position at cursor with viewport overflow correction.
+    // getBoundingClientRect() forces a synchronous reflow so dimensions are accurate.
+    const vw   = window.innerWidth;
+    const vh   = window.innerHeight;
+    const rect = menu.getBoundingClientRect();
+    const mw   = rect.width  || 220;
+    const mh   = rect.height || 160;
+    const x    = e.clientX + mw > vw ? vw - mw - 8 : e.clientX;
+    const y    = e.clientY + mh > vh ? vh - mh - 8 : e.clientY;
+    menu.style.left = `${x}px`;
+    menu.style.top  = `${y}px`;
+
+    const closeMenu = () => {
+        menu.remove();
+        document.removeEventListener('click',   closeMenu);
+        document.removeEventListener('keydown', onKeyDown);
+    };
+    const onKeyDown = (ev) => {
+        if (ev.key === 'Escape') closeMenu();
+    };
+    clearTimeout(_noteContextMenuTimer);
+    _noteContextMenuTimer = setTimeout(() => {
+        document.addEventListener('click',   closeMenu);
+        document.addEventListener('keydown', onKeyDown);
+    }, 10);
 }
 
 /**
