@@ -42,7 +42,6 @@ const STATE = {
     panStart:       { x:0, y:0, scrollX:0, scrollY:0 },
     isLassoing:          false,          // Bulk Selection State
     lassoStart:          { x:0, y:0 },  // Marquee Anchor (Absolute Board Coords)
-    lassoJustFinished:   false,          // Transient: suppresses contextmenu for 50ms after right-click lasso release
     last_mutation:  null,           // Synchronization Baseline
     heartbeatTimer: null,           // Active Polling Reference
     heartbeatController: null,      // AbortController: Standardizes request cancellation
@@ -371,10 +370,17 @@ async function initNotes() {
     if (canvas && wrapper) {
         if (typeof handleCanvasDoubleClick === 'function') canvas.addEventListener('dblclick', handleCanvasDoubleClick);
         if (typeof handleCanvasMouseDown === 'function') canvas.addEventListener('mousedown', handleCanvasMouseDown);
-        // Suppress browser context menu so right-click drag can drive the lasso without interruption.
+        // Intercept right-clicks on notes to show the context menu; suppress on canvas background.
+        // Editable targets and any active text selection keep the native menu for copy/paste/spell-check.
         canvas.addEventListener('contextmenu', e => {
-            if (STATE.lassoJustFinished || e.target === STATE.canvasEl || e.target === STATE.wrapperEl) {
+            const noteEl     = e.target.closest('.sticky-note');
+            const isEditable = e.target.closest('[contenteditable], input, textarea, select');
+            const hasSelection = window.getSelection()?.toString().length > 0;
+            if (noteEl && !isEditable && !hasSelection && typeof showNoteContextMenu === 'function') {
                 e.preventDefault();
+                showNoteContextMenu(e, noteEl.dataset.id);
+            } else if (!noteEl) {
+                e.preventDefault(); // suppress on bare canvas background
             }
         });
         if (typeof handleCanvasWheel === 'function') wrapper.addEventListener('wheel', handleCanvasWheel, { passive: false });
@@ -845,7 +851,6 @@ async function initNotes() {
     window.toggleInlineEdit = typeof toggleInlineEdit !== 'undefined' ? toggleInlineEdit : null;
     window.copyNoteLink = typeof copyNoteLink !== 'undefined' ? copyNoteLink : null;
     window.openMoveModal = typeof openMoveModal !== 'undefined' ? openMoveModal : null;
-    window.openLayerActionModal = typeof openLayerActionModal !== 'undefined' ? openLayerActionModal : null;
     window.viewNote = typeof viewNote !== 'undefined' ? viewNote : null;
     window.toggleCollapse = typeof toggleCollapse !== 'undefined' ? toggleCollapse : null;
     window.updateNoteAccent = typeof updateNoteAccent !== 'undefined' ? updateNoteAccent : null;
