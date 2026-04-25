@@ -175,8 +175,23 @@
     font-size: 0.75rem;
     color: #94a3b8;
     display: flex;
-    gap: 0.75rem;
-    margin-top: 0.2rem;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.85rem;
+    margin-top: 0.3rem;
+    line-height: 1.2;
+}
+
+.weather-meta span {
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+.weather-summary {
+    margin-top: 0.8rem;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+    font-style: italic;
 }
 
 /* Chores */

@@ -156,12 +156,24 @@ function renderWeather() {
 
     const obs = JSON.parse(w.data);
     const cur = obs.current ?? {};
+    const daily = obs.daily?.[0] ?? {};
+    
     const temp     = cur.temp != null ? cur.temp.toFixed(1) : '—';
     const desc     = cur.weather?.[0]?.description ?? '';
+    const summary  = daily.summary ?? '';
     const iconCode = (cur.weather?.[0]?.icon ?? '').slice(0, 2);
     const icon     = WEATHER_ICONS[iconCode] ?? '🌡️';
     const humidity = cur.humidity ?? '';
     const pop      = obs.hourly?.[0]?.pop != null ? Math.round(obs.hourly[0].pop * 100) : null;
+
+    // Calculate minutes ago from observed_at
+    let timeLabel = '';
+    if (w.observed_at) {
+        // Use moment(date).tz(zone) instead of moment.tz(date, zone) for moment-lite compatibility
+        const obsTime = moment(w.observed_at).tz(APP_TZ);
+        const diff    = moment().tz(APP_TZ).diff(obsTime, 'minutes');
+        timeLabel = diff <= 1 ? 'just now' : `${diff}m ago`;
+    }
 
     html += `
         <div class="weather-location">
@@ -172,10 +184,12 @@ function renderWeather() {
                 <div class="weather-meta">
                     ${humidity ? `💧 ${humidity}%` : ''}
                     ${pop != null ? `🌂 ${pop}% rain` : ''}
+                    ${timeLabel ? `<span>🕒 ${timeLabel}</span>` : ''}
                 </div>
             </div>
             <div class="weather-temp">${temp}°C</div>
-        </div>`;
+        </div>
+        ${summary ? `<div class="weather-summary">${escapeHtml(summary)}</div>` : ''}`;
 
     tile.innerHTML = html;
 }
