@@ -34,6 +34,27 @@ let STATE = {};
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
     setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
+
+    // Add click delegation for tiles to navigate to respective modules
+    const content = document.getElementById('briefContent');
+    if (content) {
+        content.addEventListener('click', (e) => {
+            const tile = e.target.closest('.brief-tile');
+            if (!tile) return;
+
+            const urlMap = {
+                'tile-weather':   '/weather',
+                'tile-calendar':  '/calendar',
+                'tile-chores':    '/chores',
+                'tile-reminders': '/reminders',
+                'tile-points':    '/points',
+                'tile-birthdays': '/birthdays'
+            };
+
+            const url = urlMap[tile.id];
+            if (url) window.location.href = url;
+        });
+    }
 });
 
 /**
