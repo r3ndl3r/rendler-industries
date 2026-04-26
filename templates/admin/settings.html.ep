@@ -14,6 +14,7 @@
   </div>
 
   <div class="settings-layout">
+    <div class="settings-nav-wrapper">
     <nav class="settings-nav">
       <button class="settings-tab active" data-tab="notifications">
         <span class="tab-icon">🔔</span>
@@ -32,6 +33,7 @@
         <span class="tab-label">Application</span>
       </button>
     </nav>
+    </div>
 
     <div class="settings-panels" id="settingsPanelsContainer">
         <div class="component-loading">
