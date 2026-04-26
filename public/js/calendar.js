@@ -31,17 +31,28 @@ const CONFIG = {
 };
 
 let STATE = {
-    events: [],                     // Master collection of {id, title, start_date, end_date, ...}
-    filteredEvents: [],             // Active view filtered collection
+    events: [],                     // Calendar view events (date-windowed, never used by history modal)
+    filteredEvents: [],             // Active calendar view filtered collection
     categories: [],                 // List of unique event category labels
     users: [],                      // Family roster for attendee selection
     isAdmin: false,                 // Authorization gate for administrative actions
     currentUserId: null,            // ID of currently logged-in user
     currentDate: new Date(),        // Active temporal pointer
     currentView: 'month',           // Current display mode (month|week|day)
-    historyMode: false,             // Flag for full audit/history view
-    allEvents: []                   // Full history cache (when historyMode is active)
+
+    // History modal pagination — completely separate from calendar view state
+    historyEvents: [],              // Accumulated event rows across all loaded history pages
+    hasMore: false,                 // Whether more history rows exist on the server
+    historyOffset: 0,               // Current SQL OFFSET for the next history fetch
+    historyLoading: false,          // Fetch lock — prevents concurrent page loads
+    historySeen: new Set(),         // recurrence_source_ids seen across all pages; prevents duplicate series rows
+    _historyPastGroupState: { lastDay: '', groupClass: 'group-even' },  // Day-group continuity across infinite scroll pages
+    _historyUpcomingGroupState: { lastDay: '', groupClass: 'group-even' },
 };
+
+let historyObserver = null;
+let filterDebounceTimer  = null;
+let historyGeneration    = 0;
 
 /**
  * Bootstraps the module state and establishes background lifecycles.
@@ -49,20 +60,17 @@ let STATE = {
  * @returns {void}
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Context detection
-    STATE.historyMode = false; // Initialized as false, triggered via UI
-
-    // 2. Initial state hydration
+    // 1. Initial state hydration
     loadState();
 
-    // 3. Event listener registration
+    // 2. Event listener registration
     setupEventListeners();
 
-    // 4. Background lifecycles
+    // 3. Background lifecycles
     setInterval(loadEvents, CONFIG.SYNC_INTERVAL_MS);
     setInterval(renderUpcomingEvents, CONFIG.COUNTDOWN_TICK_MS);
 
-    // 5. Global modal closure configuration
+    // 4. Global modal closure configuration
     window.setupGlobalModalClosing(['modal-overlay'], [closeEventModal, closeDetailsModal, closeHistoryModal]);
 });
 
@@ -134,19 +142,12 @@ async function loadEvents(force = false) {
 
     if (!force && (anyModalOpen || inputFocused) && STATE.events.length > 0) return;
 
-    let start, end;
-    
-    if (STATE.historyMode) {
-        start = '2020-01-01';
-        end = '2030-12-31';
-    } else {
-        const vEnd = getViewEndDate();
-        const buffer = new Date();
-        buffer.setDate(buffer.getDate() + 30); // Ensure at least 30 days visibility for the Upcoming widget
+    const vEnd = getViewEndDate();
+    const buffer = new Date();
+    buffer.setDate(buffer.getDate() + 30); // Ensure at least 30 days visibility for the Upcoming widget
 
-        start = formatDate(getViewStartDate());
-        end = formatDate(vEnd > buffer ? vEnd : buffer);
-    }
+    const start = formatDate(getViewStartDate());
+    const end   = formatDate(vEnd > buffer ? vEnd : buffer);
 
     const container = document.getElementById('calendarView');
     // Show initial pulse if collection is empty
@@ -188,13 +189,9 @@ async function loadEvents(force = false) {
  * @returns {void}
  */
 function renderUI() {
-    if (STATE.historyMode) {
-        renderHistoryTable();
-    } else {
-        updatePeriodTitle();
-        renderCalendar();
-        renderUpcomingEvents();
-    }
+    updatePeriodTitle();
+    renderCalendar();
+    renderUpcomingEvents();
 }
 
 /**
@@ -399,94 +396,132 @@ function renderEventPill(e, compact) {
 }
 
 /**
- * Generates the audit history table within the modal.
- * 
+ * Fetches one page of history events using server-side search, category filter, and pagination.
+ *
+ * @async
+ * @param {boolean} append - Append rows to existing table (true) or full replace (false).
+ * @returns {Promise<void>}
+ */
+async function loadHistoryPage(append = false) {
+    if (STATE.historyLoading) return;
+    STATE.historyLoading = true;
+    const gen = historyGeneration;
+
+    const loadingEl = document.getElementById('historyLoadingIndicator');
+    if (loadingEl) loadingEl.classList.remove('hidden');
+
+    const search   = encodeURIComponent(document.getElementById('historySearchInput')?.value || '');
+    const category = encodeURIComponent(document.getElementById('historyCategoryFilter')?.value || '');
+    const url = `/calendar/api/events?limit=50&offset=${STATE.historyOffset}&search=${search}&category=${category}&sort=DESC`;
+
+    try {
+        const response = await fetch(url);
+        if (gen !== historyGeneration) return;
+        const data = await response.json();
+        if (gen !== historyGeneration) return;
+
+        if (data && data.success) {
+            const newEvents = (data.events || []).map(e => ({
+                ...e,
+                uid: e.is_recurring_instance
+                    ? `r${e.recurrence_source_id}_${(e.instance_date || '').replace(/-/g, '')}`
+                    : String(e.id)
+            }));
+
+            STATE.hasMore = !!data.has_more;
+
+            if (append) {
+                const dedupedNew = newEvents.filter(e => {
+                    if (!e.is_recurring_instance) return true;
+                    if (STATE.historySeen.has(e.recurrence_source_id)) return false;
+                    STATE.historySeen.add(e.recurrence_source_id);
+                    return true;
+                });
+                STATE.historyEvents = STATE.historyEvents.concat(dedupedNew);
+                appendHistoryRows(dedupedNew);
+                STATE.historyOffset += 50;
+            } else {
+                STATE.historyEvents = newEvents;
+                STATE.historyOffset = 50;
+                renderHistoryTable();
+            }
+
+            if (!STATE.hasMore) {
+                if (historyObserver) { historyObserver.disconnect(); historyObserver = null; }
+                const sentinel = document.getElementById('historyScrollSentinel');
+                if (sentinel) sentinel.classList.add('hidden');
+            }
+        }
+    } catch (err) {
+        if (gen === historyGeneration) {
+            console.error('loadHistoryPage failed:', err);
+            window.showToast('Failed to load events', 'error');
+        }
+    } finally {
+        STATE.historyLoading = false;
+        const finalLoadingEl = document.getElementById('historyLoadingIndicator');
+        if (finalLoadingEl) finalLoadingEl.classList.add('hidden');
+        if (STATE.hasMore) setupHistoryScrollObserver();
+    }
+}
+
+/**
+ * Renders the complete history table from STATE.historyEvents (page 1).
+ * Seeds STATE.historySeen and captures terminal day-group state into STATE._historyPastGroupState.
+ *
  * @returns {void}
  */
 function renderHistoryTable() {
     const container = document.getElementById('historyTableContainer');
     if (!container) return;
 
-    // Filter by search text and category if present
-    const query = (document.getElementById('historySearchInput')?.value || '').toLowerCase();
-    const catFilter = document.getElementById('historyCategoryFilter')?.value || '';
+    STATE.historySeen = new Set();
 
-    const baseEvents = STATE.events.filter(e => {
-        const matchesQuery = !query || 
-            (e.title && e.title.toLowerCase().includes(query)) || 
-            (e.description && e.description.toLowerCase().includes(query));
-        const matchesCat = !catFilter || e.category === catFilter;
-        return matchesQuery && matchesCat;
-    });
-
-    // Recurring events are returned as instances; show one representative row per series in history.
-    const seenSeries = new Set();
-    const uniqueEvents = baseEvents.filter(e => {
+    const uniqueEvents = STATE.historyEvents.filter(e => {
         if (!e.is_recurring_instance) return true;
-        if (seenSeries.has(e.recurrence_source_id)) return false;
-        seenSeries.add(e.recurrence_source_id);
+        if (STATE.historySeen.has(e.recurrence_source_id)) return false;
+        STATE.historySeen.add(e.recurrence_source_id);
         return true;
     });
 
     const now = new Date();
-    const upcoming = uniqueEvents.filter(e => new Date(e.end_date || e.start_date) >= now).sort((a, b) => a.start_date.localeCompare(b.start_date));
-    const past = uniqueEvents.filter(e => new Date(e.end_date || e.start_date) < now).sort((a, b) => b.start_date.localeCompare(a.start_date));
+    const upcoming = uniqueEvents
+        .filter(e => new Date(e.end_date || e.start_date) >= now);
+    const past = uniqueEvents
+        .filter(e => new Date(e.end_date || e.start_date) < now);
+
+    const upcomingResult = renderTableHtml(upcoming, 'historyUpcomingBody', 'No upcoming events found.');
+    const pastResult     = renderTableHtml(past,     'historyPastBody',     'No past events found.');
+
+    STATE._historyPastGroupState     = { lastDay: pastResult.lastDay, groupClass: pastResult.groupClass };
+    STATE._historyUpcomingGroupState = { lastDay: upcomingResult.lastDay, groupClass: upcomingResult.groupClass };
 
     container.innerHTML = `
         <h3 class="history-sub-header">Upcoming Events</h3>
-        ${renderTable(upcoming, 'No upcoming events found.')}
+        ${upcomingResult.html}
         <h3 class="history-sub-header past">Past Events</h3>
-        ${renderTable(past, 'No past events found.')}
+        ${pastResult.html}
+        <div id="historyScrollSentinel" class="history-scroll-sentinel hidden"></div>
+        <div id="historyLoadingIndicator" class="history-loading-row hidden">
+            <div class="loading-scan-line"></div>
+            <span>Loading more events...</span>
+        </div>
     `;
 }
 
 /**
- * Interface entry for the History Audit modal.
+ * Generates a full table HTML string for a list of events.
+ * Returns both the HTML and the terminal day-grouping state so that
+ * appendHistoryRows can continue grouping without duplicate headers.
+ *
+ * @param {Object[]} events  - Sorted event records.
+ * @param {string}   tbodyId - Stable ID applied to the <tbody> element.
+ * @param {string}   emptyMsg - Displayed when events array is empty.
+ * @returns {{ html: string, lastDay: string, groupClass: string }}
  */
-async function openHistoryModal() {
-    const modal = document.getElementById('historyModal');
-    if (!modal) return;
-    
-    STATE.historyMode = true;
-    modal.classList.add('show');
-    document.body.classList.add('modal-open');
-    
-    // Clear search
-    const input = document.getElementById('historySearchInput');
-    if (input) input.value = '';
-    
-    await loadEvents(true); // Fetch wide range
-}
-
-function closeHistoryModal() {
-    const modal = document.getElementById('historyModal');
-    if (!modal) return;
-    
-    STATE.historyMode = false;
-    modal.classList.remove('show');
-    document.body.classList.remove('modal-open');
-    
-    loadEvents(true); // Restore narrow range for calendar
-}
-
-function filterHistory() {
-    renderHistoryTable();
-}
-
-/**
- * Internal table generator for management views.
- * 
- * @param {Object[]} events - Record collection.
- * @param {string} emptyMsg - Label for zero-record states.
- * @returns {string} - Rendered HTML table.
- */
-function renderTable(events, emptyMsg) {
-    if (events.length === 0) return `<div class="empty-state">${emptyMsg}</div>`;
-
-    let lastDay = '';
-    let groupClass = 'group-even';
+function renderTableHtml(events, tbodyId, emptyMsg) {
     let html = `
-        <table class="events-table grouped-table">
+        <table class="events-table grouped-table ${events.length === 0 ? 'hidden' : ''}" id="${tbodyId}-table">
             <thead>
                 <tr>
                     <th class="col-title">Title</th>
@@ -497,15 +532,37 @@ function renderTable(events, emptyMsg) {
                     <th class="col-actions-header">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="${tbodyId}">
     `;
+
+    if (events.length === 0) {
+        html += `</tbody></table><div class="empty-state" id="${tbodyId}-empty">${emptyMsg}</div>`;
+        return { html, lastDay: '', groupClass: 'group-even' };
+    }
+
+    const result = renderTableRows(events, { lastDay: '', groupClass: 'group-even' });
+    html += result.html;
+    html += `</tbody></table><div class="empty-state hidden" id="${tbodyId}-empty">${emptyMsg}</div>`;
+    return { html, lastDay: result.lastDay, groupClass: result.groupClass };
+}
+
+/**
+ * Generates <tr> HTML rows for a list of events.
+ * Accepts and returns lastDay/groupClass state for seamless cross-page appends.
+ *
+ * @param {Object[]} events - Sorted event records.
+ * @param {Object}   state  - { lastDay: string, groupClass: string }
+ * @returns {{ html: string, lastDay: string, groupClass: string }}
+ */
+function renderTableRows(events, state) {
+    let { lastDay, groupClass } = state;
+    let html = '';
 
     events.forEach(e => {
         const currentDay = e.start_date.split(' ')[0];
         if (currentDay !== lastDay) {
-            lastDay = currentDay;
+            lastDay    = currentDay;
             groupClass = (groupClass === 'group-odd') ? 'group-even' : 'group-odd';
-            
             html += `
                 <tr class="day-group-header ${groupClass}">
                     <td colspan="6">
@@ -518,7 +575,8 @@ function renderTable(events, emptyMsg) {
         const timeDisplay = e.all_day ? 'All Day' : `${formatTime(e.start_date)} - ${formatTime(e.end_date)}`;
 
         html += `
-        <tr data-event-id="${e.id}" class="${groupClass} ${e.is_private ? 'table-row-private' : ''}" onclick="showEventDetails('${e.uid}')" style="cursor: pointer;">
+        <tr data-event-id="${e.id}" class="${groupClass} ${e.is_private ? 'table-row-private' : ''}"
+            onclick="showEventDetails('${e.uid}')" style="cursor: pointer;">
             <td>
                 <span class="event-color-dot" style="--event-color: ${e.color}"></span>
                 ${e.is_private ? '🔒' : ''}
@@ -536,16 +594,143 @@ function renderTable(events, emptyMsg) {
             <td class="actions-cell">
                 <div class="action-btns">
                     <button type="button" class="btn-icon-view" title="View Details">👁️</button>
-                    <button type="button" class="btn-icon-delete" onclick="event.stopPropagation(); confirmDeleteEvent(${e.id}, '${escapeHtml(e.title)}')" title="Delete">🗑️</button>
+                    <button type="button" class="btn-icon-delete"
+                        onclick="event.stopPropagation(); confirmDeleteEvent(${e.id}, '${escapeHtml(e.title)}')"
+                        title="Delete">🗑️</button>
                 </div>
             </td>
         </tr>
-
         `;
     });
 
-    html += `</tbody></table>`;
-    return html;
+    return { html, lastDay, groupClass };
+}
+
+/**
+ * Appends event rows from a new page to the existing history table tbodies.
+ * Filters duplicate recurring series via STATE.historySeen.
+ * Preserves day-grouping state across page boundaries for the past section.
+ *
+ * @param {Object[]} newEvents - New event records from the server.
+ * @returns {void}
+ */
+function appendHistoryRows(newEvents) {
+    const now = new Date();
+    const upcoming = newEvents
+        .filter(e => new Date(e.end_date || e.start_date) >= now);
+    const past = newEvents
+        .filter(e => new Date(e.end_date || e.start_date) < now);
+
+    const upcomingBody = document.getElementById('historyUpcomingBody');
+    const pastBody     = document.getElementById('historyPastBody');
+
+    if (upcoming.length && upcomingBody) {
+        const result = renderTableRows(upcoming, STATE._historyUpcomingGroupState);
+        upcomingBody.insertAdjacentHTML('beforeend', result.html);
+        STATE._historyUpcomingGroupState = { lastDay: result.lastDay, groupClass: result.groupClass };
+
+        const table = document.getElementById('historyUpcomingBody-table');
+        const empty = document.getElementById('historyUpcomingBody-empty');
+        if (table) table.classList.remove('hidden');
+        if (empty) empty.classList.add('hidden');
+    }
+
+    if (past.length && pastBody) {
+        const result = renderTableRows(past, STATE._historyPastGroupState);
+        pastBody.insertAdjacentHTML('beforeend', result.html);
+        STATE._historyPastGroupState = { lastDay: result.lastDay, groupClass: result.groupClass };
+
+        const table = document.getElementById('historyPastBody-table');
+        const empty = document.getElementById('historyPastBody-empty');
+        if (table) table.classList.remove('hidden');
+        if (empty) empty.classList.add('hidden');
+    }
+}
+
+/**
+ * Connects the IntersectionObserver to the scroll sentinel inside .history-table-wrapper.
+ * Root must be the wrapper element — without it the observer fires against the viewport
+ * and never detects the sentinel scrolling into view within the bounded container.
+ *
+ * @returns {void}
+ */
+function setupHistoryScrollObserver() {
+    if (historyObserver) { historyObserver.disconnect(); historyObserver = null; }
+
+    const sentinel = document.getElementById('historyScrollSentinel');
+    const root     = document.querySelector('.history-table-wrapper');
+    if (!sentinel || !root || !STATE.hasMore) return;
+
+    sentinel.classList.remove('hidden');
+
+    historyObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && !STATE.historyLoading && STATE.hasMore) {
+            historyObserver.disconnect();
+            historyObserver = null;
+            STATE.historyLoading = true;   // Lock immediately before async engages
+            loadHistoryPage(true);
+        }
+    }, { root: root, threshold: 0.1 });
+
+    historyObserver.observe(sentinel);
+}
+
+/**
+ * Interface entry for the History Audit modal.
+ *
+ * @async
+ * @returns {Promise<void>}
+ */
+async function openHistoryModal() {
+    const modal = document.getElementById('historyModal');
+    if (!modal) return;
+
+    STATE.historyEvents              = [];
+    STATE.historyOffset              = 0;
+    STATE.hasMore                    = false;
+    STATE.historyLoading             = false;
+    STATE.historySeen                = new Set();
+    STATE._historyPastGroupState     = { lastDay: '', groupClass: 'group-even' };
+    STATE._historyUpcomingGroupState = { lastDay: '', groupClass: 'group-even' };
+
+    if (historyObserver) { historyObserver.disconnect(); historyObserver = null; }
+
+    const input     = document.getElementById('historySearchInput');
+    const catFilter = document.getElementById('historyCategoryFilter');
+    if (input)     input.value = '';
+    if (catFilter) catFilter.value = '';
+
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+
+    await loadHistoryPage(false);
+}
+
+function closeHistoryModal() {
+    const modal = document.getElementById('historyModal');
+    if (!modal) return;
+
+    if (historyObserver) { historyObserver.disconnect(); historyObserver = null; }
+    clearTimeout(filterDebounceTimer);
+
+    modal.classList.remove('show');
+    document.body.classList.remove('modal-open');
+}
+
+function filterHistory() {
+    clearTimeout(filterDebounceTimer);
+    filterDebounceTimer = setTimeout(() => {
+        historyGeneration++;
+        if (historyObserver) { historyObserver.disconnect(); historyObserver = null; }
+        STATE.historyLoading         = false;
+        STATE.historyEvents          = [];
+        STATE.historyOffset          = 0;
+        STATE.hasMore                = false;
+        STATE.historySeen            = new Set();
+        STATE._historyPastGroupState     = { lastDay: '', groupClass: 'group-even' };
+        STATE._historyUpcomingGroupState = { lastDay: '', groupClass: 'group-even' };
+        loadHistoryPage(false);
+    }, 300);
 }
 
 /**
@@ -1024,7 +1209,8 @@ function openEditModalById(id) {
  * @returns {void}
  */
 function openEditModalByUid(uid) {
-    const event = STATE.events.find(e => e.uid == uid);
+    const event = STATE.events.find(e => e.uid == uid)
+                || STATE.historyEvents.find(e => e.uid == uid);
     if (!event) return;
 
     document.getElementById('eventId').value = event.is_recurring_instance
@@ -1165,6 +1351,20 @@ function confirmDeleteEvent(id, title) {
             if (result && result.success) {
                 closeEventModal();
                 await loadEvents(true);
+
+                // If the history modal is open, the deleted row is stale — reload from scratch.
+                const historyModal = document.getElementById('historyModal');
+                if (historyModal && historyModal.classList.contains('show')) {
+                    historyGeneration++;
+                    if (historyObserver) { historyObserver.disconnect(); historyObserver = null; }
+                    STATE.historyEvents          = [];
+                    STATE.historyOffset          = 0;
+                    STATE.hasMore                = false;
+                    STATE.historySeen            = new Set();
+                    STATE._historyPastGroupState     = { lastDay: '', groupClass: 'group-even' };
+                    STATE._historyUpcomingGroupState = { lastDay: '', groupClass: 'group-even' };
+                    await loadHistoryPage(false);
+                }
             }
         }
     });
@@ -1177,7 +1377,8 @@ function confirmDeleteEvent(id, title) {
  * @returns {void}
  */
 function showEventDetails(uid) {
-    const event = STATE.events.find(e => e.uid == uid);
+    const event = STATE.events.find(e => e.uid == uid)
+                || STATE.historyEvents.find(e => e.uid == uid);
     if (!event) return;
 
     const content = document.getElementById('eventDetailsContent');
@@ -1475,13 +1676,16 @@ function initializeViewFromUrl() {
  * --- Global Exposure ---
  */
 
-window.handleEventSubmit = handleEventSubmit;
-window.openAddEventModal = openAddEventModal;
-window.openEditModalById = openEditModalById;
+window.handleEventSubmit  = handleEventSubmit;
+window.openAddEventModal  = openAddEventModal;
+window.openEditModalById  = openEditModalById;
 window.openEditModalByUid = openEditModalByUid;
 window.confirmDeleteEvent = confirmDeleteEvent;
-window.showEventDetails = showEventDetails;
-window.closeEventModal = closeEventModal;
-window.closeDetailsModal = closeDetailsModal;
-window.loadEvents = loadEvents;
+window.showEventDetails   = showEventDetails;
+window.closeEventModal    = closeEventModal;
+window.closeDetailsModal  = closeDetailsModal;
+window.loadEvents         = loadEvents;
+window.openHistoryModal   = openHistoryModal;
+window.closeHistoryModal  = closeHistoryModal;
+window.filterHistory      = filterHistory;
 
