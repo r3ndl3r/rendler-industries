@@ -62,6 +62,23 @@
 .parent-row { background: transparent; }
 .child-row { background: rgba(15, 23, 42, 0.3); }
 
+.child-indent {
+    color: #475569;
+    margin-right: 0.35rem;
+    font-size: 0.9em;
+}
+
+.parent-container-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    white-space: nowrap;
+}
+
 .drag-handle {
     cursor: grab;
     color: #94a3b8;
