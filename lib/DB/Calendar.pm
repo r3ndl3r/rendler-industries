@@ -431,4 +431,49 @@ sub DB::get_calendar_categories {
     return \@categories;
 }
 
+# Finds recurring events whose current occurrence notification is due but not yet sent.
+# Compares last_notified_at against each occurrence's trigger time to avoid double-firing.
+# Parameters:
+#   now_str : Current datetime as 'YYYY-MM-DD HH:MM:SS'
+# Returns:
+#   ArrayRef of event hashrefs with start_date/end_date replaced by the due occurrence's datetimes.
+sub DB::get_due_recurring_reminders {
+    my ($self, $now_str) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        "SELECT * FROM calendar_events
+         WHERE recurrence_rule IS NOT NULL
+           AND notification_minutes > 0"
+    );
+    $sth->execute();
+    my $rows = $sth->fetchall_arrayref({});
+
+    my $now_tp = Time::Piece->strptime($now_str, '%Y-%m-%d %H:%M:%S');
+    my @due;
+
+    foreach my $event (@$rows) {
+        my $win_start = $now_tp->strftime('%Y-%m-%d');
+        my $win_end   = ($now_tp + ($event->{notification_minutes} * 60))->strftime('%Y-%m-%d');
+
+        my @instances = _expand_recurring($event, $win_start, $win_end);
+
+        foreach my $occ (@instances) {
+            my $occ_tp      = Time::Piece->strptime($occ->{start_date}, '%Y-%m-%d %H:%M:%S');
+            my $trigger_tp  = $occ_tp - ($event->{notification_minutes} * 60);
+            my $trigger_str = $trigger_tp->strftime('%Y-%m-%d %H:%M:%S');
+
+            next if $trigger_tp > $now_tp;
+
+            # Safety net against clock skew between DB and Perl on overlapping polls.
+            next if $event->{last_notified_at} && $event->{last_notified_at} ge $trigger_str;
+
+            push @due, { %$event, start_date => $occ->{start_date}, end_date => $occ->{end_date} };
+            last; # At most one occurrence per series per poll; last_notified_at advances to next occurrence.
+        }
+    }
+
+    return \@due;
+}
+
 1;
