@@ -31,13 +31,14 @@ use Mojo::JSON qw(decode_json encode_json);
 #   event     : Base event hashref with recurrence fields populated
 #   win_start : Window start as ISO date string (YYYY-MM-DD)
 #   win_end   : Window end as ISO date string (YYYY-MM-DD)
+#   limit     : Max instances to generate (default 365). Pass 1 for history mode
+#               where the caller only needs one representative per series.
 # Returns:
 #   Array of instance hashrefs (empty if none fall in window).
 #   Each instance carries is_recurring_instance=>1, recurrence_source_id, instance_date.
-#   Instance count capped at 365 — a daily event over the 10-year management window
-#   hits the cap at ~year 1, which is intentional; management JS deduplicates by series.
 sub _expand_recurring {
-    my ($event, $win_start, $win_end) = @_;
+    my ($event, $win_start, $win_end, $limit) = @_;
+    $limit //= 365;
 
     my $rule         = $event->{recurrence_rule}     or return ();
     my $interval     = $event->{recurrence_interval} || 1;
@@ -57,7 +58,7 @@ sub _expand_recurring {
     my @instances;
     my $step = 0;
 
-    while (scalar(@instances) < 365) {
+    while (scalar(@instances) < $limit) {
         my ($occ_y, $occ_m, $occ_d);
 
         if ($rule eq 'daily') {
@@ -115,19 +116,34 @@ sub _expand_recurring {
     return @instances;
 }
 
-# Retrieves calendar events within a date range with strict privacy filtering.
-# Recurring events are expanded into per-occurrence instances within the window;
-# the raw base event row is consumed by expansion and not returned directly.
+# Retrieves calendar events with optional server-side search, category filter,
+# sort direction, and pagination. Returns a two-element list so callers MUST
+# use list destructuring: my ($events, $has_more) = $self->get_calendar_events(...)
+# Assigning to a scalar silently captures $has_more (last list element) instead of the arrayref.
+#
 # Parameters:
 #   user_id    : ID of current user (Integer)
 #   is_admin   : Admin status flag (Boolean)
 #   start_date : ISO format date string (YYYY-MM-DD) or undef
 #   end_date   : ISO format date string (YYYY-MM-DD) or undef
+#   opts       : HashRef of optional parameters:
+#                  search   => text applied as LIKE %?% against title/description
+#                  category => exact category match
+#                  limit    => max rows (0 = no limit); fetch limit+1 to detect has_more
+#                  offset   => SQL OFFSET (default 0)
+#                  sort     => 'ASC' or 'DESC' (default 'ASC')
 # Returns:
-#   ArrayRef of HashRefs containing filtered event details.
+#   Two-element list: (\@result, $has_more)
 sub DB::get_calendar_events {
-    my ($self, $user_id, $is_admin, $start_date, $end_date) = @_;
+    my ($self, $user_id, $is_admin, $start_date, $end_date, $opts) = @_;
     $self->ensure_connection;
+
+    $opts //= {};
+    my $search   = $opts->{search}   // '';
+    my $category = $opts->{category} // '';
+    my $limit    = int($opts->{limit}  // 0);
+    my $offset   = int($opts->{offset} // 0);
+    my $sort     = (uc($opts->{sort} // '') eq 'DESC') ? 'DESC' : 'ASC';
 
     my $sql = qq{
         SELECT
@@ -182,17 +198,41 @@ sub DB::get_calendar_events {
         push @params, $query_end;
     }
 
-    $sql .= " ORDER BY e.start_date ASC, e.all_day DESC, e.title ASC";
+    if ($category ne '') {
+        $sql .= " AND e.category = ?";
+        push @params, $category;
+    }
+
+    if ($search ne '') {
+        $sql .= " AND (e.title LIKE ? OR e.description LIKE ?)";
+        my $like = '%' . $search . '%';
+        push @params, $like, $like;
+    }
+
+    $sql .= " ORDER BY e.start_date $sort, e.all_day DESC, e.title ASC";
+
+    if ($limit > 0) {
+        # Fetch one extra row to detect whether more pages exist beyond this window.
+        $sql .= " LIMIT ? OFFSET ?";
+        push @params, $limit + 1, $offset;
+    }
 
     my $sth = $self->{dbh}->prepare($sql);
     $sth->execute(@params);
     my $rows = $sth->fetchall_arrayref({});
 
+    my $has_more = 0;
+    if ($limit > 0 && scalar(@$rows) > $limit) {
+        $has_more = 1;
+        pop @$rows;
+    }
+
     my $all_users = $self->get_all_users();
     my %user_map  = map { $_->{id} => $_->{username} } @$all_users;
 
-    my $exp_start = $start_date || '1970-01-01';
-    my $exp_end   = $end_date   || '9999-12-31';
+    my $exp_start   = $start_date || '1970-01-01';
+    my $exp_end     = $end_date   || '9999-12-31';
+    my $recur_limit = 365;
 
     my @result;
     for my $event (@$rows) {
@@ -202,13 +242,13 @@ sub DB::get_calendar_events {
         }
 
         if ($event->{recurrence_rule}) {
-            push @result, _expand_recurring($event, $exp_start, $exp_end);
+            push @result, _expand_recurring($event, $exp_start, $exp_end, $recur_limit);
         } else {
             push @result, $event;
         }
     }
 
-    return \@result;
+    return (\@result, $has_more);
 }
 
 # Retrieves a single event by ID with strict privacy check.
