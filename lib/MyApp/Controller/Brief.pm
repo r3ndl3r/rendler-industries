@@ -47,8 +47,8 @@ sub api_state {
     }
 
     # Calendar: today's and tomorrow's events as separate arrays
-    my $calendar_today    = $c->db->get_calendar_events($user_id, $is_admin, $today,    $today);
-    my $calendar_tomorrow = $c->db->get_calendar_events($user_id, $is_admin, $tomorrow, $tomorrow);
+    my ($calendar_today)    = $c->db->get_calendar_events($user_id, $is_admin, $today,    $today);
+    my ($calendar_tomorrow) = $c->db->get_calendar_events($user_id, $is_admin, $tomorrow, $tomorrow);
 
     # Chores: active chores assigned to this user or unassigned
     my $chores = $c->db->get_active_chores($user_id, $is_admin);
