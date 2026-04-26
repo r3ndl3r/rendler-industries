@@ -216,6 +216,10 @@ sub startup {
     $admin_ns->get('/notifications/templates/api/state'  )->to('admin-notifications-templates#api_state');
     $admin_ns->post('/notifications/templates/api/update')->to('admin-notifications-templates#api_update');
 
+    $admin_ns->get('/notifications/test'         )->to('admin-notifications-test#index'    );
+    $admin_ns->get('/notifications/test/api/state')->to('admin-notifications-test#api_state');
+    $admin_ns->post('/notifications/test/api/send')->to('admin-notifications-test#api_send' );
+
     # --- Daily Brief Routes ---
     $auth->get('/brief')->to('brief#index');
     $auth->get('/brief/api/state')->to('brief#api_state');
