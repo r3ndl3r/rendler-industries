@@ -12,80 +12,61 @@
         <h1>⚡ <span>Quick Access</span></h1>
     </div>
 
+    <%
+        # Recursively collect all leaf links (url != '#', not separator) from a subtree.
+        # Returns an arrayref of hashrefs in depth-first order.
+        my $collect_leaves;
+        $collect_leaves = sub {
+            my ($items, $default_icon) = @_;
+            my @out;
+            for my $item (@$items) {
+                next if $item->{is_separator};
+                if ($item->{url} && $item->{url} ne '#') {
+                    push @out, { %$item, _default_icon => $default_icon };
+                }
+                push @out, @{$collect_leaves->($item->{children} || [], $default_icon)};
+            }
+            return \@out;
+        };
+    %>
+
     <div class="tile-grid">
         <%# Regular/Family Tiles %>
-        <% for my $item (@$menu_tree) { %>
-            <% next if $item->{permission_level} eq 'admin'; %>
-            <% next if $item->{is_separator}; %>
-            
-            <%# Extract emoji from label %>
-            <% 
-                my $label = $item->{label};
-                my ($icon, $name) = $label =~ /^(\X+?)\s+(.*)$/u;
-                if (!$name) { $name = $label; $icon = $item->{icon} || '🔗'; }
+        <%
+            my @regular_items = grep { $_->{permission_level} ne 'admin' } @$menu_tree;
+            my $regular_leaves = $collect_leaves->(\@regular_items, '🔗');
+        %>
+        <% for my $leaf (@$regular_leaves) { %>
+            <%
+                my ($icon, $name) = $leaf->{label} =~ /^(\X+?)\s+(.*)$/u;
+                if (!$name) { $name = $leaf->{label}; $icon = $leaf->{icon} || $leaf->{_default_icon}; }
             %>
-
-            <%# Render the item (Category or child) %>
-            <% if ($item->{url} && $item->{url} ne '#') { %>
-                <a href="<%= $item->{url} %>" class="tile">
-                    <div class="icon"><%= $icon %></div>
-                    <div class="label"><%= $name %></div>
-                </a>
-            <% } %>
-
-            <%# Render children %>
-            <% for my $child (@{$item->{children} || []}) { %>
-                <% 
-                    my $c_label = $child->{label};
-                    my ($c_icon, $c_name) = $c_label =~ /^(\X+?)\s+(.*)$/u;
-                    if (!$c_name) { $c_name = $c_label; $c_icon = $child->{icon} || '🔗'; }
-                %>
-                <a href="<%= $child->{url} %>" class="tile">
-                    <div class="icon"><%= $c_icon %></div>
-                    <div class="label"><%= $c_name %></div>
-                </a>
-            <% } %>
+            <a href="<%= $leaf->{url} %>" class="tile">
+                <div class="icon"><%= $icon %></div>
+                <div class="label"><%= $name %></div>
+            </a>
         <% } %>
 
         <%# Administration Section (Admin) %>
         <% if (is_admin()) { %>
             <div class="separator" data-label="ADMINISTRATION"></div>
-            
-            <% for my $item (@$menu_tree) { %>
-                <% next unless $item->{permission_level} eq 'admin'; %>
-                <% next if $item->{is_separator}; %>
-
-                <% 
-                    my $label = $item->{label};
-                    my ($icon, $name) = $label =~ /^(\X+?)\s+(.*)$/u;
-                    if (!$name) { $name = $label; $icon = $item->{icon} || '⚙️'; }
-                    # Strip "Admin: " prefix if present
+            <%
+                my @admin_items = grep { $_->{permission_level} eq 'admin' } @$menu_tree;
+                my $admin_leaves = $collect_leaves->(\@admin_items, '⚙️');
+            %>
+            <% for my $leaf (@$admin_leaves) { %>
+                <%
+                    my ($icon, $name) = $leaf->{label} =~ /^(\X+?)\s+(.*)$/u;
+                    if (!$name) { $name = $leaf->{label}; $icon = $leaf->{icon} || $leaf->{_default_icon}; }
                     $name =~ s/^(Admin|Manage):\s*//i;
                 %>
-
-                <% if ($item->{url} && $item->{url} ne '#') { %>
-                    <a href="<%= $item->{url} %>" class="tile admin">
-                        <div class="icon"><%= $icon %></div>
-                        <div class="label"><%= $name %></div>
-                    </a>
-                <% } %>
-
-                <%# Render children of Admin category %>
-                <% for my $child (@{$item->{children} || []}) { %>
-                    <% 
-                        my $c_label = $child->{label};
-                        my ($c_icon, $c_name) = $c_label =~ /^(\X+?)\s+(.*)$/u;
-                        if (!$c_name) { $c_name = $c_label; $c_icon = $child->{icon} || '⚙️'; }
-                        $c_name =~ s/^(Admin|Manage):\s*//i;
-                    %>
-                    <a href="<%= $child->{url} %>" class="tile admin">
-                        <div class="icon"><%= $c_icon %></div>
-                        <div class="label"><%= $c_name %></div>
-                    </a>
-                <% } %>
+                <a href="<%= $leaf->{url} %>" class="tile admin">
+                    <div class="icon"><%= $icon %></div>
+                    <div class="label"><%= $name %></div>
+                </a>
             <% } %>
 
-            <%# Special Admin/Logout Buttons %>
+            <%# Special Admin Buttons %>
             <button class="tile admin danger" onclick="startRestartSequence(event)">
                 <div class="icon">⚠️</div>
                 <div class="label">Restart</div>
