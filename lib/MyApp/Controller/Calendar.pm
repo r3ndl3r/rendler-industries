@@ -49,27 +49,48 @@ sub api_state {
     });
 }
 
-# API Endpoint: Retrieves events for the interface with STRICT PRIVACY.
+# API Endpoint: Retrieves events with optional server-side search and pagination.
 # Route: GET /calendar/api/events
+# Params:
+#   start    : ISO date string for window start (calendar view — omit for history)
+#   end      : ISO date string for window end (calendar view — omit for history)
+#   search   : Text search applied as LIKE %?% against title and description
+#   category : Exact category match applied at SQL level
+#   limit    : Max base rows per page (default 0 = no limit; enforced max 500)
+#   offset   : Pagination offset (default 0)
+#   sort     : ASC or DESC (default ASC; history mode uses DESC)
 sub api_events {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
-    
-    my $start = $c->param('start');
-    my $end   = $c->param('end');
-    
-    # Pass user context to DB for SQL-level strict filtering
-    my $events = $c->db->get_calendar_events(
-        $c->current_user_id, 
-        $c->is_admin ? 1 : 0, 
-        $start, 
-        $end
+
+    my $start    = $c->param('start')    // '';
+    my $end      = $c->param('end')      // '';
+    my $search   = $c->param('search')   // '';
+    my $category = $c->param('category') // '';
+    my $limit    = int($c->param('limit')  // 0);
+    my $offset   = int($c->param('offset') // 0);
+    my $sort     = uc($c->param('sort')  // 'ASC');
+
+    $limit  = 500 if $limit > 500;
+    $sort   = 'ASC' unless $sort eq 'DESC';
+    $offset = 0    if $offset < 0;
+
+    my ($events, $has_more) = $c->db->get_calendar_events(
+        $c->current_user_id,
+        $c->is_admin ? 1 : 0,
+        $start || undef,
+        $end   || undef,
+        { search => $search, category => $category, limit => $limit, offset => $offset, sort => $sort }
     );
+
+    my %resp = (success => 1, events => $events);
+    if ($limit > 0) {
+        $resp{has_more} = $has_more ? 1 : 0;
+        $resp{offset}   = $offset;
+        $resp{limit}    = $limit;
+    }
     
-    $c->render(json => {
-        success => 1,
-        events  => $events
-    });
+    $c->render(json => \%resp);
 }
 
 
