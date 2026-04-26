@@ -34,8 +34,8 @@ sub api_state {
     
     my $links = $c->db->get_all_menu_links();
     
-    # Get possible parents (only top-level items can be parents for now)
-    my @parents = grep { !$_->{parent_id} } @$links;
+    # Only items with url='#' are container headers and valid parent targets
+    my @parents = grep { ($_->{url} // '') eq '#' } @$links;
     
     $c->render(json => {
         success  => 1,
