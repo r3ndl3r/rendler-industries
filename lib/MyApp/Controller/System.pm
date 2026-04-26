@@ -527,6 +527,46 @@ sub run_calendar_notifications {
         $stats->{notifications_sent}++;
     }
 
+    my $recurring = $c->db->get_due_recurring_reminders($query_now);
+
+    foreach my $event (@$recurring) {
+        my $attendee_ids = $event->{attendees} // '';
+        next unless $attendee_ids;
+
+        $c->db->{dbh}->do("UPDATE calendar_events SET last_notified_at = ? WHERE id = ?", undef, $event->{start_date}, $event->{id});
+
+        my @uids = split(',', $attendee_ids);
+        my @attendee_names;
+        foreach my $uid (map { trim($_) } @uids) {
+            my $user = $c->db->get_user_by_id($uid);
+            push @attendee_names, $user->{username} if $user;
+        }
+        my $attendees_str = join(', ', @attendee_names);
+
+        my $formatted_start = $c->format_datetime($event->{start_date}, $event->{all_day});
+        my $formatted_end   = $c->format_datetime($event->{end_date},   $event->{all_day});
+        my $mins  = $event->{notification_minutes} // 0;
+        my $d     = int($mins / 1440);
+        my $h     = int(($mins % 1440) / 60);
+        my $m     = $mins % 60;
+        my @parts;
+        push @parts, $d == 1 ? '1 day'    : "$d days"    if $d;
+        push @parts, $h == 1 ? '1 hour'   : "$h hours"   if $h;
+        push @parts, $m == 1 ? '1 minute' : "$m minutes" if $m;
+        my $time_label = @parts ? join(' ', @parts) : '0 minutes';
+
+        foreach my $uid (map { trim($_) } @uids) {
+            $c->notify_templated($uid, 'calendar_reminder', {
+                title      => $event->{title},
+                time_label => $time_label,
+                start      => $formatted_start,
+                end        => $formatted_end,
+                attendees  => $attendees_str
+            }, 0);
+        }
+
+        $stats->{notifications_sent}++;
+    }
 
     return $stats;
 }
