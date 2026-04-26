@@ -456,10 +456,33 @@ sub DB::get_app_secret {
 #   HashRef of DOB records keyed by name.
 sub DB::dob {
     my ($self) = @_;
-    
+
     $self->ensure_connection;
-    
+
     return $self->{dbh}->selectall_hashref("SELECT * FROM dob", 'name');
+}
+
+# Retrieves approved family users with per-user channel availability flags for the notification test tool.
+# Returns discord_id and email so the controller can check user-specific channel eligibility,
+# and has_fcm derived from the fcm_tokens join.
+# Parameters: None
+# Returns:
+#   ArrayRef of HashRefs: { id, username, emoji, email, discord_id, is_admin, has_fcm }
+sub DB::get_family_users_for_test {
+    my ($self) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        "SELECT u.id, u.username, u.emoji, u.email, u.discord_id, u.is_admin,
+                COUNT(ft.id) > 0 AS has_fcm
+         FROM users u
+         LEFT JOIN fcm_tokens ft ON ft.user_id = u.id
+         WHERE u.status = 'approved'
+         GROUP BY u.id
+         ORDER BY u.username ASC"
+    );
+    $sth->execute();
+    return $sth->fetchall_arrayref({});
 }
 
 1;
