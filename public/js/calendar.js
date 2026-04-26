@@ -884,13 +884,25 @@ function setupEventListeners() {
     const recurrenceSelect  = document.getElementById('recurrenceRule');
     const recurrenceOptions = document.getElementById('recurrenceOptions');
     const intervalLabel     = document.getElementById('recurrenceIntervalLabel');
-    const intervalLabels    = { daily: 'days', weekly: 'weeks', monthly: 'months', yearly: 'years' };
+    const intervalLabels    = { daily: 'days', weekly: 'weeks', biweekly: 'weeks', monthly: 'months', yearly: 'years' };
     if (recurrenceSelect && recurrenceOptions) {
         recurrenceSelect.addEventListener('change', () => {
             const val = recurrenceSelect.value;
             if (val) {
                 recurrenceOptions.classList.remove('hidden');
                 if (intervalLabel) intervalLabel.textContent = intervalLabels[val] || 'periods';
+
+                const intvEl = document.getElementById('recurrenceInterval');
+                const intvRow = intvEl?.closest('.form-group');
+
+                // Shortcut rules that fix their own interval and hide the interval input
+                const fixedIntervalRules = { biweekly: 2 };
+                if (Object.prototype.hasOwnProperty.call(fixedIntervalRules, val)) {
+                    if (intvEl) intvEl.value = fixedIntervalRules[val];
+                    if (intvRow) intvRow.classList.add('hidden');
+                } else {
+                    if (intvRow) intvRow.classList.remove('hidden');
+                }
             } else {
                 recurrenceOptions.classList.add('hidden');
             }
@@ -967,6 +979,14 @@ async function handleEventSubmit(event) {
     const url = id ? '/calendar/api/edit' : '/calendar/api/add';
     
     const formData = new FormData(form);
+    
+    // Map Bi-weekly shortcut back to Weekly with Interval 2 for DB storage.
+    // recurrence_interval is authoritatively set here; the change handler's
+    // intvEl.value = 2 is a UI convenience only and must not be relied on for submission.
+    if (formData.get('recurrence_rule') === 'biweekly') {
+        formData.set('recurrence_rule', 'weekly');
+        formData.set('recurrence_interval', '2');
+    }
     
     // VALIDATION: If notifications are enabled, at least one attendee MUST be selected
     const notifyMins = parseInt(document.getElementById('notificationMinutes').value || 0);
@@ -1171,11 +1191,20 @@ function openEditModalById(id) {
     // Recurrence fields (management table always edits the series, never an instance)
     const ruleEl = document.getElementById('recurrenceRule');
     if (ruleEl) {
-        ruleEl.value = event.recurrence_rule || '';
+        // Map Weekly with Interval 2 back to Bi-weekly shortcut for display.
+        // INVARIANT: weekly + interval: 2 is always treated as biweekly by the UI.
+        const isBiweekly = (event.recurrence_rule === 'weekly' && Number(event.recurrence_interval) === 2);
+        
+        if (isBiweekly) {
+            ruleEl.value = 'biweekly';
+        } else {
+            ruleEl.value = event.recurrence_rule || '';
+        }
+        
         ruleEl.dispatchEvent(new Event('change'));
         const _ri = document.getElementById('recurrenceInterval');
         const _re = document.getElementById('recurrenceEndDate');
-        if (_ri) _ri.value = event.recurrence_interval || 1;
+        if (_ri && !isBiweekly) _ri.value = event.recurrence_interval || 1;
         if (_re) _re.value = event.recurrence_end_date || '';
     }
     const skipBtn = document.getElementById('skipOccurrenceBtn');
@@ -1260,11 +1289,20 @@ function openEditModalByUid(uid) {
     // Recurrence fields — present on both base and instance (instance is self-contained)
     const ruleEl = document.getElementById('recurrenceRule');
     if (ruleEl) {
-        ruleEl.value = event.recurrence_rule || '';
+        // Map Weekly with Interval 2 back to Bi-weekly shortcut for display.
+        // INVARIANT: weekly + interval: 2 is always treated as biweekly by the UI.
+        const isBiweekly = (event.recurrence_rule === 'weekly' && Number(event.recurrence_interval) === 2);
+
+        if (isBiweekly) {
+            ruleEl.value = 'biweekly';
+        } else {
+            ruleEl.value = event.recurrence_rule || '';
+        }
+
         ruleEl.dispatchEvent(new Event('change'));
         const _ri = document.getElementById('recurrenceInterval');
         const _re = document.getElementById('recurrenceEndDate');
-        if (_ri) _ri.value = event.recurrence_interval || 1;
+        if (_ri && !isBiweekly) _ri.value = event.recurrence_interval || 1;
         if (_re) _re.value = event.recurrence_end_date || '';
     }
 
