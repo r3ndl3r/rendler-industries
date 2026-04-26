@@ -118,7 +118,8 @@ function renderSettings() {
             buttonText: el.dataset.buttonText || '💾 Save',
             buttonType: el.dataset.buttonType || 'submit',
             buttonClass: el.dataset.buttonClass || '',
-            noButton: el.dataset.noButton === 'true'
+            noButton: el.dataset.noButton === 'true',
+            noEmoji: true
         };
         const row = renderRowInput(el, options);
         
@@ -434,7 +435,9 @@ function toggleCard(card, forceOpen) {
  */
 function activateTab(tabId) {
     document.querySelectorAll('.settings-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.tab === tabId);
+        const isActive = tab.dataset.tab === tabId;
+        tab.classList.toggle('active', isActive);
+        if (isActive) tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     });
     document.querySelectorAll('.settings-panel').forEach(panel => {
         panel.classList.toggle('active', panel.id === `panel-${tabId}`);
@@ -458,6 +461,15 @@ function restoreUIState() {
     document.querySelectorAll('.settings-tab').forEach(tab => {
         tab.onclick = () => activateTab(tab.dataset.tab);
     });
+
+    // Left-fade affordance: reveal once the user has scrolled the nav rightward
+    const nav    = document.querySelector('.settings-nav');
+    const wrapper = document.querySelector('.settings-nav-wrapper');
+    if (nav && wrapper) {
+        nav.addEventListener('scroll', () => {
+            wrapper.classList.toggle('scrolled', nav.scrollLeft > 8);
+        }, { passive: true });
+    }
 
     // Card Restoration
     getOpenCards().forEach(cardKey => {
