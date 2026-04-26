@@ -114,6 +114,8 @@ function renderTeenStatus() {
         return;
     }
 
+    card.querySelector('.status-action').classList.remove('hidden');
+
     const submissions = STATE.today_status;
     if (submissions.length === 0) {
         icon.innerHTML = '⌛';
