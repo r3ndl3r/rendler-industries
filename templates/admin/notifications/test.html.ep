@@ -1,0 +1,28 @@
+<%# /templates/admin/notifications/test.html.ep %>
+
+% layout 'default', hide_navbar_title => 1, favicon => '🧪';
+% title 'Notification Test';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/admin/notifications/test.css">
+    <script src="/js/admin/notifications/test.js"></script>
+% end
+
+<div class="app-container">
+    <div class="header-bar">
+        <h1>🧪 <span>Notification Test</span></h1>
+        <div class="manage-actions">
+            <a href="/admin/notifications/logs" class="action-btn btn-secondary-soft">
+                📋 Logs
+            </a>
+        </div>
+    </div>
+
+    <div id="testFormWrap">
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse">⌛</span>
+            <p class="loading-label">Loading users...</p>
+        </div>
+    </div>
+</div>
