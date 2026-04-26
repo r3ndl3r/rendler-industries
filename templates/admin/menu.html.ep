@@ -18,7 +18,7 @@
     </div>
 
     <div class="menu-list">
-        <table class="menu-table">
+        <table class="menu-table" id="menuTable">
             <thead>
                 <tr>
                     <th class="col-drag"></th>
@@ -45,8 +45,7 @@
     </div>
 
     <div class="manage-footer">
-        <p class="hint-text">ℹ️ Tip: Drag and drop rows to reorder the menu items.</p>
-        <button id="saveOrderBtn" class="btn-success floating-save-btn hidden" onclick="MenuMgmt.handleReorder()">💾 Save</button>
+        <p class="hint-text">ℹ️ Tip: Drag and drop rows to reorder. Order is saved automatically.</p>
     </div>
 </div>
 
@@ -70,6 +69,13 @@
                 <div class="form-group">
                     <label>URL *</label>
                     <input type="text" id="linkUrl" name="url" placeholder="e.g. /calendar or https://..." class="game-input" required>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="linkIsParent" onchange="MenuMgmt.toggleParentMode(this)">
+                        Is Parent Container (no direct link)
+                    </label>
                 </div>
 
                 <div class="form-row">
@@ -120,7 +126,7 @@
             </div>
 
             <div class="modal-actions delete-modal-actions">
-                <button type="submit" id="saveLinkBtn" class="btn-success">💾 Save Link</button>
+                <button type="submit" id="saveLinkBtn" class="btn-success">💾 Save</button>
             </div>
         </form>
     </div>
