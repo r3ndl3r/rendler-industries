@@ -70,29 +70,31 @@ sub api_upload {
     my $user_id = $c->current_user_id;
     my $username = $c->session('user');
     my $today = $c->now->strftime('%Y-%m-%d');
+    my $written = 0;
 
     eval {
         foreach my $upload (@$uploads) {
             next unless $upload->size;
-            
+
             my $original_filename = $upload->filename;
             my $mime_type = $upload->headers->content_type || 'application/octet-stream';
             my $file_data = $upload->asset->slurp;
             my $file_size = $upload->size;
-            
+
             my ($ext) = $original_filename =~ /(\.[^.]+)$/;
             my $safe_filename = sha256_hex($original_filename . time . int(rand(1000))) . lc($ext || '');
-            
-            # Store directly in room_submissions
+
             $c->db->submit_room_photo($user_id, $safe_filename, $original_filename, $mime_type, $file_size, $file_data, $today);
+            $written++;
         }
-        
-        # Alert parents of new submission
-        my $admins = $c->db->get_admins();
-        foreach my $admin (@$admins) {
-            $c->notify_templated($admin->{id}, 'room_review_needed', { 
-                user => $username 
-            }, $c->current_user_id);
+
+        if ($written) {
+            my $admins = $c->db->get_admins();
+            foreach my $admin (@$admins) {
+                $c->notify_templated($admin->{id}, 'room_review_needed', {
+                    user => $username
+                }, $c->current_user_id);
+            }
         }
     };
     if ($@) {
@@ -100,6 +102,7 @@ sub api_upload {
         return $c->render(json => { success => 0, error => 'Database error during upload' });
     }
 
+    return $c->render(json => { success => 0, error => 'No valid photos received' }) unless $written;
     $c->render(json => { success => 1, message => 'Photos submitted for review' });
 }
 
