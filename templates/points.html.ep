@@ -33,6 +33,7 @@
                             <th>User</th>
                             <th>Time</th>
                             <th>Reason</th>
+                            <th>Adjuster</th>
                             <th class="text-right">Points</th>
                         </tr>
                     </thead>

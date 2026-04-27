@@ -153,11 +153,16 @@ function renderHistory() {
         const userIcon = window.getUserIcon(tx.username);
         const escapedName = escapeHtml(tx.username);
         const displayName = userIcon ? `${userIcon} ${escapedName}` : escapedName;
+
+        const adjusterIcon = window.getUserIcon(tx.adjusted_by_name);
+        const escapedAdjuster = escapeHtml(tx.adjusted_by_name || 'System');
+        const displayAdjuster = adjusterIcon ? `${adjusterIcon} ${escapedAdjuster}` : escapedAdjuster;
         
         tr.innerHTML = `
             <td data-label="User"><strong>${displayName}</strong></td>
             <td data-label="Time">${dateStr}</td>
             <td data-label="Reason">${escapeHtml(tx.reason)}</td>
+            <td data-label="Adjuster">${displayAdjuster}</td>
             <td data-label="Amount" class="${amountClass} text-right">${formattedAmount}</td>
         `;
         tbody.appendChild(tr);

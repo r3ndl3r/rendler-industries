@@ -95,7 +95,7 @@ sub register {
     $self->helper(
         add_points => sub {
             my ($c, $user_id, $amount, $reason) = @_;
-            return $c->db->add_user_points($user_id, $amount, $reason);
+            return $c->db->add_user_points($user_id, $amount, $reason, $c->current_user_id);
         }
     );
 
