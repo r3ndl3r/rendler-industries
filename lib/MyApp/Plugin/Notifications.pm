@@ -320,10 +320,10 @@ use constant MANIFEST => {
     },
     'points_adjustment' => {
         desc    => "Sent to children when their point balance is manually updated.",
-        tags    => "header, amount, reason",
-        sample  => { header => "✨ **Points Reward** ✨", amount => "+50", reason => "Helping with groceries" },
+        tags    => "header, amount, reason, adjuster",
+        sample  => { header => "✨ **Points Reward** ✨", amount => "+50", reason => "Helping with groceries", adjuster => "rendler" },
         default_subject => "Points Adjustment",
-        default_body    => "[header]\n\n🪙 **[amount] pts** 🪙\n\n**Reason:** [reason]"
+        default_body    => "[header]\n\n🪙 **[amount] pts** 🪙\n\n**Reason:** [reason]\n**By:** [adjuster]"
     },
 
     # --- BRIEF (brief_*) ---

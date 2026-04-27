@@ -33,18 +33,19 @@ sub DB::get_user_points {
 
 # Deposits or withdraws points from a user's ledger.
 # Parameters:
-#   $self    : DB Instance
-#   $user_id : Target User ID
-#   $amount  : Integer value (positive for addition, negative for deduction)
-#   $reason  : String describing the transaction
+#   $self        : DB Instance
+#   $user_id     : Target User ID
+#   $amount      : Integer value (positive for addition, negative for deduction)
+#   $reason      : String describing the transaction
+#   $adjusted_by : (Optional) User ID of the person who made the adjustment
 # Returns:
 #   Boolean success state.
 sub DB::add_user_points {
-    my ($self, $user_id, $amount, $reason) = @_;
+    my ($self, $user_id, $amount, $reason, $adjusted_by) = @_;
     $self->ensure_connection();
 
-    my $sth = $self->{dbh}->prepare("INSERT INTO point_ledger (user_id, amount, reason) VALUES (?, ?, ?)");
-    return $sth->execute($user_id, $amount, $reason);
+    my $sth = $self->{dbh}->prepare("INSERT INTO point_ledger (user_id, amount, reason, adjusted_by) VALUES (?, ?, ?, ?)");
+    return $sth->execute($user_id, $amount, $reason, $adjusted_by);
 }
 
 # Retrieves the transaction history for a user.
@@ -59,10 +60,11 @@ sub DB::get_point_history {
 
     # SQL-level filtering for the specific user context
     my $sth = $self->{dbh}->prepare(
-        "SELECT id, amount, reason, created_at 
-         FROM point_ledger 
-         WHERE user_id = ? 
-         ORDER BY created_at DESC 
+        "SELECT pl.id, pl.amount, pl.reason, pl.created_at, u.username AS adjusted_by_name 
+         FROM point_ledger pl
+         LEFT JOIN users u ON pl.adjusted_by = u.id
+         WHERE pl.user_id = ? 
+         ORDER BY pl.created_at DESC 
          LIMIT 50"
     );
     $sth->execute($user_id);
@@ -104,9 +106,10 @@ sub DB::get_global_point_history {
     $self->ensure_connection();
 
     my $sth = $self->{dbh}->prepare(
-        "SELECT pl.id, pl.user_id, u.username, pl.amount, pl.reason, pl.created_at 
+        "SELECT pl.id, pl.user_id, u.username, pl.amount, pl.reason, pl.created_at, adj.username AS adjusted_by_name 
          FROM point_ledger pl
          JOIN users u ON pl.user_id = u.id
+         LEFT JOIN users adj ON pl.adjusted_by = adj.id
          WHERE u.is_child = 1 AND u.is_admin = 0
          ORDER BY pl.created_at DESC 
          LIMIT 30"

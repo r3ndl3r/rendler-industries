@@ -153,6 +153,17 @@
     border-right: 1px solid rgba(255, 255, 255, 0.03);
 }
 
+.data-table-glass td:nth-child(1),
+.data-table-glass td:nth-child(2),
+.data-table-glass td:nth-child(4),
+.data-table-glass td:nth-child(5) {
+    white-space: nowrap;
+}
+
+.data-table-glass td:nth-child(3) {
+    width: 100%;
+}
+
 .text-right { text-align: right !important; }
 
 .amount-positive {

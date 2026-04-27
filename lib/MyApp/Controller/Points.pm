@@ -81,9 +81,10 @@ sub api_add {
         
         # Audit Integrity: Include current_user_id for event attribution
         $c->notify_templated($user_id, 'points_adjustment', { 
-            header => $header, 
-            amount => $formatted_amount, 
-            reason => $reason 
+            header   => $header, 
+            amount   => $formatted_amount, 
+            reason   => $reason,
+            adjuster => $c->session('user') // 'System'
         }, $c->current_user_id);
 
         # Refresh administrative state for UI synchronization
