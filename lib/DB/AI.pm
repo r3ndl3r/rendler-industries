@@ -89,11 +89,13 @@ sub DB::get_dashboard_snapshot {
     my @future = localtime(time + (86400 * 14));
     my $end = sprintf("%04d-%02d-%02d", $future[5]+1900, $future[4]+1, $future[3]);
 
+    my ($cal_events) = $self->get_calendar_events(0, 1, $start, $end);
+
     my $snapshot = {
         current_time => scalar(localtime),
         medication   => $self->get_medication_logs_by_user(),
         shopping     => $self->get_shopping_items(),
-        calendar     => $self->get_calendar_events($start, $end),
+        calendar     => $cal_events,
         swear_jar    => {
             total_balance => $self->get_jar_balance(),
             unpaid_fines  => $self->get_swear_leaderboard()
