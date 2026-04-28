@@ -63,4 +63,10 @@ sub synthesize {
     });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{auth}->post('/tts/api/synthesize')->to('TTS#synthesize');
+}
+
 1;
