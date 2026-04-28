@@ -359,4 +359,20 @@ sub api_delete_meal_from_vault {
     }
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/meals')->to('meals#index');
+    $r->{family}->get('/meals/api/state')->to('meals#api_state');
+    $r->{family}->post('/meals/api/suggest')->to('meals#api_suggest');
+    $r->{family}->post('/meals/api/vote')->to('meals#api_vote');
+    $r->{family}->post('/meals/api/edit_suggestion')->to('meals#api_edit_suggestion');
+    $r->{family}->post('/meals/api/delete_suggestion')->to('meals#api_delete_suggestion');
+    $r->{admin}->post('/meals/api/admin/lock')->to('meals#api_admin_lock');
+    $r->{admin}->get('/meals/api/vault')->to('meals#api_get_vault_data');
+    $r->{admin}->post('/meals/api/vault/add')->to('meals#api_add_meal_to_vault');
+    $r->{admin}->post('/meals/api/vault/update')->to('meals#api_update_meal_in_vault');
+    $r->{admin}->post('/meals/api/vault/delete')->to('meals#api_delete_meal_from_vault');
+}
+
 1;
