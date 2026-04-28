@@ -90,7 +90,9 @@
                         <select id="linkPermission" name="permission_level" class="game-input">
                             <option value="guest">Guest (Public)</option>
                             <option value="user" selected>User (Logged In)</option>
+                            <option value="child">Child</option>
                             <option value="family">Family (Members)</option>
+                            <option value="parent">Parent Only</option>
                             <option value="admin">Admin Only</option>
                         </select>
                     </div>
