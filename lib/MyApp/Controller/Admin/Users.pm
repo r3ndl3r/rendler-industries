@@ -323,4 +323,16 @@ sub toggle_role {
     }
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{admin}->get('/admin/users')->to('admin-users#user_list');
+    $r->{admin}->get('/admin/users/api/state')->to('admin-users#api_state');
+    $r->{admin}->post('/admin/users/api/add')->to('admin-users#api_user_add');
+    $r->{admin}->post('/admin/users/toggle_role')->to('admin-users#toggle_role');
+    $r->{admin}->post('/admin/users/delete/:id')->to('admin-users#delete_user');
+    $r->{admin}->post('/admin/users/approve/:id')->to('admin-users#approve_user');
+    $r->{admin}->post('/admin/users/update/:id')->to('admin-users#edit_user');
+}
+
 1;
