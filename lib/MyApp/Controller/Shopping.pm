@@ -137,4 +137,16 @@ sub api_clear {
     return $c->render(json => { success => 1, message => "Cleared completed items" });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/shopping')->to('shopping#index');
+    $r->{family}->get('/shopping/api/state')->to('shopping#api_state');
+    $r->{family}->post('/shopping/api/add')->to('shopping#api_add');
+    $r->{family}->post('/shopping/api/toggle/:id')->to('shopping#api_toggle');
+    $r->{family}->post('/shopping/api/delete/:id')->to('shopping#api_delete');
+    $r->{family}->post('/shopping/api/clear')->to('shopping#api_clear');
+    $r->{family}->post('/shopping/api/edit/:id')->to('shopping#api_edit');
+}
+
 1;
