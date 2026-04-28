@@ -101,4 +101,12 @@ sub api_add {
     }
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/points')->to('points#index');
+    $r->{family}->get('/points/api/state')->to('points#api_state');
+    $r->{family}->post('/points/api/add')->to('points#api_add');
+}
+
 1;
