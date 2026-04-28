@@ -132,4 +132,13 @@ sub clear {
     $c->render(json => { success => 1 });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/ai')->to('AI#index');
+    $r->{family}->get('/ai/api/state')->to('AI#api_state');
+    $r->{family}->post('/ai/api/chat')->to('AI#chat');
+    $r->{family}->post('/ai/api/clear')->to('AI#clear');
+}
+
 1;
