@@ -198,4 +198,14 @@ Please log in to the admin panel to approve or reject this account.
     $c->render('auth/registration_success', username => $username);
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{r}->get('/login')->to('auth#login_form');
+    $r->{r}->post('/login')->to('auth#login');
+    $r->{r}->get('/logout')->to('auth#logout');
+    $r->{r}->get('/register')->to('auth#register_form');
+    $r->{r}->post('/register')->to('auth#register');
+}
+
 1;
