@@ -107,4 +107,11 @@ sub api_state {
     });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{auth}->get('/brief')->to('brief#index');
+    $r->{auth}->get('/brief/api/state')->to('brief#api_state');
+}
+
 1;
