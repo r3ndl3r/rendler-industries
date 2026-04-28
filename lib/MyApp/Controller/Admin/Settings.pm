@@ -184,4 +184,12 @@ sub update {
     return $c->render(json => { success => 0, error => 'Unknown settings section' });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{admin}->get('/admin/settings')->to('admin-settings#index');
+    $r->{admin}->get('/admin/settings/api/state')->to('admin-settings#api_state');
+    $r->{admin}->post('/admin/settings/update')->to('admin-settings#update');
+}
+
 1;
