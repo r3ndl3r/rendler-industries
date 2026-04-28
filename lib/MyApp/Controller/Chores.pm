@@ -208,4 +208,15 @@ sub api_delete {
     $c->render(json => { success => 1 });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/chores')->to('chores#index');
+    $r->{family}->get('/chores/api/state')->to('chores#api_state');
+    $r->{family}->post('/chores/api/complete')->to('chores#api_complete');
+    $r->{admin}->post('/chores/api/add')->to('chores#api_add');
+    $r->{admin}->post('/chores/api/revoke')->to('chores#api_revoke');
+    $r->{admin}->post('/chores/api/delete')->to('chores#api_delete');
+}
+
 1;
