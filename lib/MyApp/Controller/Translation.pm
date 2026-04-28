@@ -64,4 +64,10 @@ sub translate {
     });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{auth}->post('/translation/api/translate')->to('Translation#translate');
+}
+
 1;
