@@ -174,6 +174,8 @@ sub get_state {
     my $permission = 'guest';
     if ($c->is_admin) {
         $permission = 'admin';
+    } elsif ($c->is_parent) {
+        $permission = 'parent';
     } elsif ($c->is_family) {
         $permission = 'family';
     } elsif ($c->is_logged_in) {
@@ -213,6 +215,18 @@ sub _enrich_menu_item {
             _enrich_menu_item($child);
         }
     }
+}
+
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{r}->get('/menu/api/menubar')->to('admin-menu#get_state');
+    $r->{admin}->get('/admin/menu')->to('admin-menu#manage');
+    $r->{admin}->get('/admin/menu/api/state')->to('admin-menu#api_state');
+    $r->{admin}->post('/admin/menu/api/add')->to('admin-menu#api_add');
+    $r->{admin}->post('/admin/menu/api/update')->to('admin-menu#api_update');
+    $r->{admin}->post('/admin/menu/api/delete')->to('admin-menu#api_delete');
+    $r->{admin}->post('/admin/menu/api/reorder')->to('admin-menu#api_reorder');
 }
 
 1;
