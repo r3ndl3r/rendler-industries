@@ -883,6 +883,9 @@ async function initNotes() {
 
     // 5. Security Context: Attach privacy lock listeners
     if (typeof setupSecurityInteractions === 'function') setupSecurityInteractions();
+
+    // 6. Edit Ribbon: Wire button delegation
+    if (typeof window.initRibbon === 'function') window.initRibbon();
 }
 
 
