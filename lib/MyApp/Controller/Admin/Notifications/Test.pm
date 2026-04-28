@@ -85,4 +85,12 @@ sub api_send {
     });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{admin}->get('/admin/notifications/test')->to('admin-notifications-test#index');
+    $r->{admin}->get('/admin/notifications/test/api/state')->to('admin-notifications-test#api_state');
+    $r->{admin}->post('/admin/notifications/test/api/send')->to('admin-notifications-test#api_send');
+}
+
 1;
