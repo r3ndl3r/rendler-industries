@@ -224,4 +224,16 @@ sub api_toggle_day {
     return $c->render(json => { success => 0, error => 'Invalid parameters' });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/reminders')->to('reminders#index');
+    $r->{family}->get('/reminders/api/state')->to('reminders#api_state');
+    $r->{family}->post('/reminders/api/add')->to('reminders#api_add');
+    $r->{family}->post('/reminders/api/update/:id')->to('reminders#api_update');
+    $r->{family}->post('/reminders/api/delete/:id')->to('reminders#api_delete');
+    $r->{family}->post('/reminders/api/toggle/:id')->to('reminders#api_toggle');
+    $r->{family}->post('/reminders/api/toggle_day')->to('reminders#api_toggle_day');
+}
+
 1;
