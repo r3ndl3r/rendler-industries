@@ -131,4 +131,13 @@ sub api_update_pref {
     return $c->render(json => { success => 1 });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{auth}->get('/user/settings')->to('user-settings#index');
+    $r->{auth}->get('/user/settings/api/state')->to('user-settings#api_state');
+    $r->{auth}->post('/user/settings/api/profile')->to('user-settings#api_update_profile');
+    $r->{auth}->post('/user/settings/api/pref')->to('user-settings#api_update_pref');
+}
+
 1;
