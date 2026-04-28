@@ -197,6 +197,8 @@ function renderMenuItem(item, currentPath) {
     // Constant: mapping of permission keys to descriptive titles
     const permAltMap = {
         'perm_admin': 'Admin',
+        'perm_parent': 'Parent Only',
+        'perm_child': 'Child',
         'perm_family': 'Family',
         'perm_user': 'Users',
         'perm_guest': 'Public'
@@ -205,6 +207,8 @@ function renderMenuItem(item, currentPath) {
     const altText = permAltMap[item.perm_icon] || '';
     const emojiMap = {
         'perm_admin': '🛡️',
+        'perm_parent': '🧑‍🧒‍🧒',
+        'perm_child': '🧒',
         'perm_family': '👨‍👩‍👧‍👦',
         'perm_user': '👤',
         'perm_guest': '🌍'
