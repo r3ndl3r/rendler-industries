@@ -164,4 +164,16 @@ sub api_clear {
     return $c->render(json => { success => 1, message => "Cleared all completed tasks." });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{auth}->get('/todo')->to('todo#index');
+    $r->{auth}->get('/todo/api/state')->to('todo#api_state');
+    $r->{auth}->post('/todo/api/add')->to('todo#api_add');
+    $r->{auth}->post('/todo/api/toggle/:id')->to('todo#api_toggle');
+    $r->{auth}->post('/todo/api/delete/:id')->to('todo#api_delete');
+    $r->{auth}->post('/todo/api/edit/:id')->to('todo#api_edit');
+    $r->{auth}->post('/todo/api/clear')->to('todo#api_clear');
+}
+
 1;
