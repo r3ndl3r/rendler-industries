@@ -966,4 +966,11 @@ sub cleanup_stale_uno_sessions {
     $self->db->cleanup_stale_uno_sessions();
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{auth}->post('/api/fcm/register')->to('system#api_fcm_register');
+    $r->{admin}->get('/admin/restart')->to('system#restart');
+}
+
 1;
