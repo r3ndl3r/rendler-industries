@@ -165,6 +165,8 @@ sub register {
             my $permission = 'guest';
             if ($c->is_admin) {
                 $permission = 'admin';
+            } elsif ($c->is_parent) {
+                $permission = 'parent';
             } elsif ($c->is_child) {
                 $permission = 'child';
             } elsif ($c->is_family) {
