@@ -211,4 +211,17 @@ sub delete_registry {
     }
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/medication')->to('medication#index');
+    $r->{family}->get('/medication/api/state')->to('medication#api_state');
+    $r->{family}->post('/medication/api/add')->to('medication#add');
+    $r->{family}->post('/medication/api/edit/:id')->to('medication#edit');
+    $r->{family}->post('/medication/api/reset/:id')->to('medication#reset');
+    $r->{family}->post('/medication/api/delete/:id')->to('medication#delete');
+    $r->{admin}->post('/medication/api/manage/update/:id')->to('medication#update_registry');
+    $r->{admin}->post('/medication/api/manage/delete/:id')->to('medication#delete_registry');
+}
+
 1;
