@@ -195,4 +195,18 @@ sub api_respond_draw {
     $c->render(json => { success => $success });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{auth}->get('/chess')->to('chess#index');
+    $r->{auth}->get('/chess/play/:id')->to('chess#index');
+    $r->{auth}->get('/chess/api/lobby')->to('chess#api_lobby');
+    $r->{auth}->post('/chess/api/create')->to('chess#api_create');
+    $r->{auth}->post('/chess/api/join')->to('chess#api_join');
+    $r->{auth}->get('/chess/api/game/:id')->to('chess#api_game');
+    $r->{auth}->post('/chess/api/move')->to('chess#api_move');
+    $r->{auth}->post('/chess/api/offer_draw/:id')->to('chess#api_offer_draw');
+    $r->{auth}->post('/chess/api/respond_draw/:id')->to('chess#api_respond_draw');
+}
+
 1;
