@@ -16,6 +16,7 @@ function initResizable(el, note) {
 
 let resizeFrame = null;
 let _noteContextMenuTimer = null;
+let _ribbonTextarea = null;
 
 /**
  * Resolves the handle orientation string ('nw', 'ne', 'sw', 'se') from class list.
@@ -2074,6 +2075,13 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
             textarea.readOnly = false;
             textarea.focus();
 
+            // Activate the formatting ribbon and bind it to this note's textarea
+            const ribbon = document.getElementById('notes-edit-ribbon');
+            if (ribbon) {
+                _ribbonTextarea = textarea;
+                ribbon.classList.add('show');
+            }
+
             // UI Logic: Dynamic height adaptation for text entry
             // Optimization: Skip auto-expansion for Dashboard notelets to prevent layout jumps 
             // when editing long URL lists. Let the textarea handle internal scrolling instead.
@@ -2129,7 +2137,14 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
         btn.innerHTML = '✏️';
         btn.title     = 'Edit Content';
         btn.classList.remove('pulse-glow');
-        
+
+        // Deactivate the formatting ribbon
+        const ribbon = document.getElementById('notes-edit-ribbon');
+        if (ribbon) {
+            _ribbonTextarea = null;
+            ribbon.classList.remove('show');
+        }
+
         const txt = txtArea ? txtArea.value : '';
         const textSect = el.querySelector('.note-text-section');
         if (textSect && (!txt || txt.trim() === '')) {
@@ -2953,4 +2968,135 @@ window.handleCanvasTouchStart  = handleCanvasTouchStart;
 window.handleCanvasTouchMove   = handleCanvasTouchMove;
 window.handleCanvasTouchEnd    = handleCanvasTouchEnd;
 window.handleGlobalKeydown     = handleGlobalKeydown;
+
+// ── Edit Ribbon ──────────────────────────────────────────────────────────────
+
+/**
+ * Wraps selected text in the ribbon's active textarea with before/after strings.
+ * Falls back to inserting "text" placeholder when nothing is selected.
+ * @param {HTMLTextAreaElement} ta
+ * @param {string} before
+ * @param {string} after
+ * @returns {void}
+ */
+function applyRibbonWrap(ta, before, after) {
+    const start = ta.selectionStart;
+    const end   = ta.selectionEnd;
+    const sel   = ta.value.slice(start, end) || 'text';
+    ta.value    = ta.value.slice(0, start) + before + sel + after + ta.value.slice(end);
+    ta.setSelectionRange(start + before.length, start + before.length + sel.length);
+    ta.dispatchEvent(new Event('input'));
+}
+
+/**
+ * Prepends prefix to the line the cursor is currently on.
+ * @param {HTMLTextAreaElement} ta
+ * @param {string} prefix
+ * @returns {void}
+ */
+function applyRibbonLinePrefix(ta, prefix) {
+    const start     = ta.selectionStart;
+    const end       = ta.selectionEnd;
+    const lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
+    ta.value        = ta.value.slice(0, lineStart) + prefix + ta.value.slice(lineStart);
+    ta.setSelectionRange(start + prefix.length, end + prefix.length);
+    ta.dispatchEvent(new Event('input'));
+}
+
+/**
+ * Inserts text at the current cursor position.
+ * @param {HTMLTextAreaElement} ta
+ * @param {string} text
+ * @returns {void}
+ */
+function applyRibbonInsert(ta, text) {
+    const start = ta.selectionStart;
+    ta.value    = ta.value.slice(0, start) + text + ta.value.slice(start);
+    ta.setSelectionRange(start + text.length, start + text.length);
+    ta.dispatchEvent(new Event('input'));
+}
+
+/**
+ * Wires the edit ribbon click delegation. Must be called once after DOM ready.
+ * Ribbon buttons dispatch to applyRibbonWrap, applyRibbonLinePrefix, or
+ * applyRibbonInsert depending on their data-ribbon-action attribute.
+ * The mousedown guard prevents canvas drag handlers from stealing focus before
+ * the click fires, which would zero out selectionStart/selectionEnd.
+ * @returns {void}
+ */
+window.initRibbon = function() {
+    const ribbon = document.getElementById('notes-edit-ribbon');
+    if (!ribbon) return;
+
+    function closeAllDropdowns() {
+        ribbon.querySelectorAll('.ribbon-dropdown-menu.open').forEach((m) => m.classList.remove('open'));
+        ribbon.querySelectorAll('.ribbon-dropdown-trigger.open').forEach((t) => t.classList.remove('open'));
+    }
+
+    function openDropdown(menuEl, trigger) {
+        const ribbonRect = ribbon.getBoundingClientRect();
+        const trigRect   = trigger.getBoundingClientRect();
+        // Position relative to ribbon's own coordinate space
+        menuEl.style.top  = (ribbon.offsetHeight + 4) + 'px';
+        menuEl.style.left = (trigRect.left + trigRect.width / 2 - ribbonRect.left) + 'px';
+        menuEl.classList.add('open');
+        trigger.classList.add('open');
+    }
+
+    ribbon.addEventListener('mousedown', (e) => e.stopPropagation());
+
+    ribbon.addEventListener('click', (e) => {
+        const trigger = e.target.closest('.ribbon-dropdown-trigger');
+        if (trigger) {
+            e.preventDefault();
+            const menuEl = document.getElementById(trigger.dataset.menu);
+            if (!menuEl) return;
+            const isOpen = menuEl.classList.contains('open');
+            closeAllDropdowns();
+            if (!isOpen) openDropdown(menuEl, trigger);
+            return;
+        }
+
+        const btn = e.target.closest('[data-ribbon-action]');
+        if (!btn || !_ribbonTextarea) return;
+        e.preventDefault();
+
+        closeAllDropdowns();
+
+        const ta     = _ribbonTextarea;
+        const action = btn.dataset.ribbonAction;
+
+        if (action === 'color-pick') {
+            const picker = document.getElementById('ribbon-color-picker');
+            if (!picker) return;
+            // Snapshot selection before the picker steals focus
+            const selStart = ta.selectionStart;
+            const selEnd   = ta.selectionEnd;
+            picker.onchange = () => {
+                ta.setSelectionRange(selStart, selEnd);
+                applyRibbonWrap(ta, '[color:' + picker.value + ']', '[/color]');
+                ta.focus();
+                picker.onchange = null;
+            };
+            picker.click();
+            return;
+        } else if (action === 'wrap') {
+            applyRibbonWrap(ta, btn.dataset.before, btn.dataset.after);
+        } else if (action === 'line') {
+            applyRibbonLinePrefix(ta, btn.dataset.prefix);
+        } else if (action === 'hr') {
+            applyRibbonInsert(ta, '\n---\n');
+        } else if (action === 'tag') {
+            applyRibbonInsert(ta, btn.dataset.text);
+        } else if (action === 'date') {
+            applyRibbonInsert(ta, '[date:' + new Date().toISOString().slice(0, 10) + ']');
+        }
+
+        ta.focus();
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!ribbon.contains(e.target)) closeAllDropdowns();
+    }, true);
+};
 
