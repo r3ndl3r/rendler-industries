@@ -72,19 +72,30 @@ sub api_upload {
     my $today = $c->now->strftime('%Y-%m-%d');
     my $written = 0;
 
+    $c->app->log->info("Room upload started for $username ($user_id). File count: " . scalar(@$uploads));
+
     eval {
         foreach my $upload (@$uploads) {
-            next unless $upload->size;
-
+            my $file_size = $upload->size;
             my $original_filename = $upload->filename;
+            
+            $c->app->log->info("Processing file: $original_filename, size: $file_size bytes");
+
+            if (!$file_size) {
+                $c->app->log->warn("Skipping zero-size file: $original_filename");
+                next;
+            }
+
             my $mime_type = $upload->headers->content_type || 'application/octet-stream';
             my $file_data = $upload->asset->slurp;
-            my $file_size = $upload->size;
 
             my ($ext) = $original_filename =~ /(\.[^.]+)$/;
             my $safe_filename = sha256_hex($original_filename . time . int(rand(1000))) . lc($ext || '');
 
-            $c->db->submit_room_photo($user_id, $safe_filename, $original_filename, $mime_type, $file_size, $file_data, $today);
+            $c->app->log->info("Attempting DB insert for $original_filename ($file_size bytes)");
+            my $rows = $c->db->submit_room_photo($user_id, $safe_filename, $original_filename, $mime_type, $file_size, $file_data, $today);
+            $c->app->log->info("DB insert finished. Rows affected: " . ($rows // 'undef'));
+            
             $written++;
         }
 
@@ -254,6 +265,21 @@ sub api_delete {
 
     $c->db->delete_room_submission($id);
     $c->render(json => { success => 1 });
+}
+
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/room')->to('room#index');
+    $r->{family}->get('/room/api/state')->to('room#api_state');
+    $r->{family}->post('/room/api/upload')->to('room#api_upload');
+    $r->{family}->get('/room/serve/:id')->to('room#serve');
+    $r->{family}->post('/room/api/delete/:id')->to('room#api_delete');
+    $r->{admin}->post('/room/api/update_status')->to('room#api_update_status');
+    $r->{admin}->post('/room/api/save_config')->to('room#api_save_config');
+    $r->{admin}->post('/room/api/trim')->to('room#api_trim');
+    $r->{admin}->post('/room/api/add_blackout')->to('room#api_add_blackout');
+    $r->{admin}->post('/room/api/delete_blackout')->to('room#api_delete_blackout');
 }
 
 1;
