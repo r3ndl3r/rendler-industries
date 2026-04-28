@@ -1414,4 +1414,47 @@ sub refresh_canvas_lock {
     $c->session(unlocked_canvases => $unlocked);
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{auth}->get('/notes')->to('notes#index');
+    $r->{auth}->get('/notes/api/state')->to('notes#api_state');
+    $r->{auth}->get('/notes/api/search')->to('notes#api_search');
+    $r->{auth}->post('/notes/api/save')->to('notes#api_save');
+    $r->{auth}->post('/notes/api/geometry')->to('notes#api_save_geometry');
+    $r->{auth}->post('/notes/api/delete')->to('notes#api_delete');
+    $r->{auth}->post('/notes/api/batch_geometry')->to('notes#api_batch_geometry');
+    $r->{auth}->post('/notes/api/batch_delete')->to('notes#api_batch_delete');
+    $r->{auth}->post('/notes/api/upload')->to('notes#api_upload');
+    $r->{auth}->post('/notes/api/viewport')->to('notes#api_save_viewport');
+    $r->{auth}->get('/notes/serve/:note_id')->to('notes#serve_blob');
+    $r->{auth}->get('/notes/attachment/serve/:blob_id')->to('notes#serve_attachment_blob');
+    $r->{auth}->post('/notes/api/lock')->to('notes#api_lock');
+    $r->{auth}->post('/notes/api/unlock')->to('notes#api_unlock');
+    $r->{auth}->post('/notes/api/canvases/create')->to('notes#api_canvas_create');
+    $r->{auth}->post('/notes/api/canvases/delete')->to('notes#api_canvas_delete');
+    $r->{auth}->post('/notes/api/canvases/rename')->to('notes#api_canvas_rename');
+    $r->{auth}->post('/notes/api/canvases/reorder')->to('notes#api_canvas_reorder');
+    $r->{auth}->post('/notes/api/canvases/share')->to('notes#api_canvas_share');
+    $r->{auth}->get('/notes/api/users/search')->to('notes#api_user_search');
+    $r->{auth}->post('/notes/api/notes/copy')->to('notes#api_copy_note');
+    $r->{auth}->get('/notes/api/bin')->to('notes#api_bin');
+    $r->{auth}->post('/notes/api/restore')->to('notes#api_restore');
+    $r->{auth}->post('/notes/api/purge')->to('notes#api_purge');
+    $r->{auth}->post('/notes/api/purge_all')->to('notes#api_purge_all');
+    $r->{auth}->post('/notes/api/attachment/delete')->to('notes#api_attachment_delete');
+    $r->{auth}->post('/notes/api/attachment/rename')->to('notes#api_attachment_rename');
+    $r->{auth}->post('/notes/api/layer/rename')->to('notes#api_layer_rename');
+    $r->{auth}->post('/notes/api/layers/move')->to('notes#api_move_layer');
+    $r->{auth}->post('/notes/api/notes/set-layer')->to('notes#api_set_layer');
+    $r->{auth}->post('/notes/api/notes/bulk-copy-level')->to('notes#api_bulk_copy_level');
+    $r->{auth}->post('/notes/api/notes/bulk-copy-canvas')->to('notes#api_bulk_copy_canvas');
+    $r->{auth}->post('/notes/api/notes/move-canvas')->to('notes#api_move_notes_canvas');
+    $r->{auth}->post('/notes/api/unlock_canvas')->to('notes#api_unlock_canvas');
+    $r->{auth}->post('/notes/api/lock_canvas')->to('notes#api_lock_canvas');
+    $r->{auth}->post('/notes/api/canvas/password/set')->to('notes#api_canvas_password_set');
+    $r->{auth}->post('/notes/api/canvas/password/clear')->to('notes#api_canvas_password_clear');
+    $r->{auth}->get('/notes/api/heartbeat/:canvas_id')->to('notes#api_heartbeat');
+}
+
 1;
