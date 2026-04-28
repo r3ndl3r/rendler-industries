@@ -16,6 +16,65 @@
     <script src="/js/notes/core.js"></script>
 <% end %>
 
+<%# edit ribbon — slides in from top when any note enters edit mode %>
+<div id="notes-edit-ribbon" class="notes-edit-ribbon">
+    <div class="ribbon-inner">
+        <div class="ribbon-group">
+            <button class="ribbon-btn" data-ribbon-action="wrap" data-before="**" data-after="**" title="Bold">𝐁</button>
+            <button class="ribbon-btn" data-ribbon-action="wrap" data-before="*" data-after="*" title="Italic">𝐼</button>
+            <button class="ribbon-btn" data-ribbon-action="wrap" data-before="~~" data-after="~~" title="Strikethrough"><s>S</s></button>
+            <button class="ribbon-btn" data-ribbon-action="wrap" data-before="`" data-after="`" title="Inline code">⌨</button>
+            <button class="ribbon-btn ribbon-dropdown-trigger" data-menu="ribbon-menu-size" title="Text size">Aa</button>
+        </div>
+        <div class="ribbon-sep"></div>
+        <div class="ribbon-group">
+            <button class="ribbon-btn ribbon-dropdown-trigger" data-menu="ribbon-menu-heading" title="Headings">H</button>
+            <button class="ribbon-btn" data-ribbon-action="line" data-prefix="* " title="Bullet list">•</button>
+            <button class="ribbon-btn" data-ribbon-action="line" data-prefix="1. " title="Numbered list">1.</button>
+            <button class="ribbon-btn" data-ribbon-action="hr" title="Horizontal rule">─</button>
+            <button class="ribbon-btn" data-ribbon-action="line" data-prefix="[ ] " title="Unchecked checkbox">☐</button>
+            <button class="ribbon-btn" data-ribbon-action="line" data-prefix="[x] " title="Checked checkbox">☑</button>
+        </div>
+        <div class="ribbon-sep"></div>
+        <div class="ribbon-group">
+            <button class="ribbon-btn" data-ribbon-action="color-pick" title="Text colour">🎨</button>
+            <input type="color" id="ribbon-color-picker" value="#ff0000" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;">
+            <button class="ribbon-btn" data-ribbon-action="wrap" data-before="[bg:yellow]" data-after="[/bg]" title="Highlight">🖊</button>
+            <button class="ribbon-btn" data-ribbon-action="wrap" data-before="[spoiler:Reveal]" data-after="[/spoiler]" title="Spoiler">👁</button>
+            <button class="ribbon-btn" data-ribbon-action="tag" data-text="[tag:label|info]" title="Badge tag">🏷</button>
+        </div>
+        <div class="ribbon-sep"></div>
+        <div class="ribbon-group">
+            <button class="ribbon-btn" data-ribbon-action="tag" data-text="[progress:50|50% complete]" title="Progress bar">📊</button>
+            <button class="ribbon-btn" data-ribbon-action="date" title="Insert today's date">📅</button>
+            <button class="ribbon-btn" data-ribbon-action="tag" data-text="[link:https://|label]" title="Link">🔗</button>
+            <button class="ribbon-btn" data-ribbon-action="tag" data-text="[divider:Section]" title="Section divider">⊟</button>
+        </div>
+        <div class="ribbon-sep"></div>
+        <div class="ribbon-group">
+            <button class="ribbon-btn" data-ribbon-action="tag" data-text="[note:id]" title="Note reference">📝</button>
+            <button class="ribbon-btn" data-ribbon-action="tag" data-text="[img:id]" title="Embed image from note">🖼</button>
+            <button class="ribbon-btn" data-ribbon-action="tag" data-text="[file:id]" title="File download link">📁</button>
+            <button class="ribbon-btn" data-ribbon-action="wrap" data-before="[copy]" data-after="[/copy]" title="Inline copy block">📋</button>
+            <button class="ribbon-btn" data-ribbon-action="tag" data-text="[iframe:https://|400]" title="Embed iframe">⬜</button>
+        </div>
+    </div>
+    <%# dropdown menus — direct children of ribbon (outside overflow container) so they can render below %>
+    <div id="ribbon-menu-size" class="ribbon-dropdown-menu">
+        <button class="ribbon-btn" data-ribbon-action="wrap" data-before="[size:xs]" data-after="[/size]" title="Extra small">xs</button>
+        <button class="ribbon-btn" data-ribbon-action="wrap" data-before="[size:sm]" data-after="[/size]" title="Small">sm</button>
+        <button class="ribbon-btn" data-ribbon-action="wrap" data-before="[size:md]" data-after="[/size]" title="Medium">md</button>
+        <button class="ribbon-btn" data-ribbon-action="wrap" data-before="[size:lg]" data-after="[/size]" title="Large">lg</button>
+        <button class="ribbon-btn" data-ribbon-action="wrap" data-before="[size:xl]" data-after="[/size]" title="Extra large">xl</button>
+        <button class="ribbon-btn" data-ribbon-action="wrap" data-before="[size:2xl]" data-after="[/size]" title="2× large">2xl</button>
+    </div>
+    <div id="ribbon-menu-heading" class="ribbon-dropdown-menu">
+        <button class="ribbon-btn" data-ribbon-action="line" data-prefix="# " title="Heading 1">H1</button>
+        <button class="ribbon-btn" data-ribbon-action="line" data-prefix="## " title="Heading 2">H2</button>
+        <button class="ribbon-btn" data-ribbon-action="line" data-prefix="### " title="Heading 3">H3</button>
+    </div>
+</div>
+
 <div class="board-branding-pill" id="active-board-branding" title="Switch Canvas" role="button" aria-haspopup="listbox" aria-expanded="false">
     <span id="active-board-name-pill">Loading Canvas...</span>
     <svg class="pill-chevron" viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
