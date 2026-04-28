@@ -303,4 +303,22 @@ sub api_transfer {
     }
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/timers')->to('timers#dashboard');
+    $r->{family}->get('/timers/api/state')->to('timers#api_state');
+    $r->{family}->post('/timers/api/start')->to('timers#start_timer');
+    $r->{family}->post('/timers/api/stop')->to('timers#stop_timer');
+    $r->{family}->post('/timers/api/pause')->to('timers#toggle_pause');
+    $r->{family}->post('/timers/api/redeem')->to('timers#api_redeem');
+    $r->{parent}->post('/timers/api/transfer')->to('timers#api_transfer');
+    $r->{parent}->get('/timers/manage')->to('timers#manage');
+    $r->{parent}->get('/timers/api/manage/state')->to('timers#api_manage_state');
+    $r->{parent}->post('/timers/api/create')->to('timers#create');
+    $r->{parent}->post('/timers/api/update/:id')->to('timers#update');
+    $r->{parent}->post('/timers/api/delete/:id')->to('timers#delete');
+    $r->{parent}->post('/timers/api/bonus')->to('timers#grant_bonus');
+}
+
 1;
