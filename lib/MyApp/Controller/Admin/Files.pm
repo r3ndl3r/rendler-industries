@@ -224,4 +224,15 @@ sub api_permissions {
     return $c->render(json => { success => 1, message => 'Access permissions synchronized.' });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{r}->get('/files/serve/:id')->to('admin-files#serve');
+    $r->{admin}->get('/admin/files')->to('admin-files#index');
+    $r->{admin}->get('/admin/files/api/state')->to('admin-files#api_state');
+    $r->{admin}->post('/admin/files/api/upload')->to('admin-files#api_upload');
+    $r->{admin}->post('/admin/files/api/delete/:id')->to('admin-files#api_delete');
+    $r->{admin}->post('/admin/files/api/permissions/:id')->to('admin-files#api_permissions');
+}
+
 1;
