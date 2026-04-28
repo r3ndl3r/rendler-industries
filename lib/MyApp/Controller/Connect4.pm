@@ -166,4 +166,17 @@ sub api_restart {
     $c->render(json => { success => $success });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{auth}->get('/connect4')->to('connect4#index');
+    $r->{auth}->get('/connect4/play/:id')->to('connect4#index');
+    $r->{auth}->get('/connect4/api/lobby')->to('connect4#api_lobby');
+    $r->{auth}->post('/connect4/api/create')->to('connect4#api_create');
+    $r->{auth}->post('/connect4/api/join')->to('connect4#api_join');
+    $r->{auth}->get('/connect4/api/game/:id')->to('connect4#api_game');
+    $r->{auth}->post('/connect4/api/move')->to('connect4#api_move');
+    $r->{auth}->post('/connect4/api/restart')->to('connect4#api_restart');
+}
+
 1;
