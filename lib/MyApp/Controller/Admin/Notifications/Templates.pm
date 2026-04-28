@@ -7,7 +7,7 @@ use strict;
 use warnings;
 
 # Controller for Notification Template Management.
-# Restricted to Admin users via the $admin_ns bridge in MyApp.pm.
+# Restricted to Admin users via the $admin bridge.
 #
 # Routes:
 #   GET  /admin/notifications/templates          - Main UI
@@ -56,6 +56,14 @@ sub api_update {
         success => $success ? 1 : 0,
         error   => $success ? undef : "Database update failed"
     });
+}
+
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{admin}->get('/admin/notifications/templates')->to('admin-notifications-templates#index');
+    $r->{admin}->get('/admin/notifications/templates/api/state')->to('admin-notifications-templates#api_state');
+    $r->{admin}->post('/admin/notifications/templates/api/update')->to('admin-notifications-templates#api_update');
 }
 
 1;
