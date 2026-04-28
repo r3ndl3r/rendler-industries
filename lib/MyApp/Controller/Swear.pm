@@ -169,4 +169,16 @@ sub delete_member {
     return $c->render(json => { success => 1, message => "Member removed successfully" });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/swear')->to('swear#index');
+    $r->{family}->get('/swear/api/state')->to('swear#api_state');
+    $r->{family}->post('/swear/api/add')->to('swear#add_fine');
+    $r->{family}->post('/swear/api/pay')->to('swear#pay_debt');
+    $r->{family}->post('/swear/api/spend')->to('swear#spend');
+    $r->{family}->post('/swear/api/member/add')->to('swear#add_member');
+    $r->{family}->post('/swear/api/member/delete')->to('swear#delete_member');
+}
+
 1;
