@@ -73,4 +73,13 @@ sub api_prune {
     }
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{admin}->get('/admin/notifications/logs')->to('admin-notifications-logs#index');
+    $r->{admin}->get('/admin/notifications/logs/api/state')->to('admin-notifications-logs#api_state');
+    $r->{admin}->post('/admin/notifications/logs/api/delete/:id')->to('admin-notifications-logs#api_delete');
+    $r->{admin}->post('/admin/notifications/logs/api/prune')->to('admin-notifications-logs#api_prune');
+}
+
 1;
