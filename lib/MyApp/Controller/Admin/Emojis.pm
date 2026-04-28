@@ -142,4 +142,15 @@ sub api_test {
     });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{admin}->get('/admin/emojis')->to('admin-emojis#index');
+    $r->{admin}->get('/admin/emojis/api/state')->to('admin-emojis#api_state');
+    $r->{admin}->get('/admin/emojis/api/list')->to('admin-emojis#api_list');
+    $r->{admin}->post('/admin/emojis/api/update')->to('admin-emojis#api_update');
+    $r->{admin}->post('/admin/emojis/api/delete')->to('admin-emojis#api_delete');
+    $r->{admin}->post('/admin/emojis/api/test')->to('admin-emojis#api_test');
+}
+
 1;
