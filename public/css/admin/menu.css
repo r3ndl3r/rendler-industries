@@ -100,7 +100,9 @@
 
 .tag-guest { background-color: #64748b; color: #fff; }
 .tag-user { background-color: #10b981; color: #fff; }
+.tag-child { background-color: #f59e0b; color: #fff; }
 .tag-family { background-color: #a855f7; color: #fff; }
+.tag-parent { background-color: #db2777; color: #fff; }
 .tag-admin { background-color: #3b82f6; color: #fff; }
 
 .status-pill {
