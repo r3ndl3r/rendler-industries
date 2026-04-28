@@ -84,7 +84,7 @@ sub DB::submit_room_photo {
     $sth->bind_param(5, $file_size);
     $sth->bind_param(6, $file_data, SQL_BLOB);
     $sth->bind_param(7, $date);
-    $sth->execute();
+    return $sth->execute();
 }
 
 # Retrieves all pending or failed submissions for admin review.
