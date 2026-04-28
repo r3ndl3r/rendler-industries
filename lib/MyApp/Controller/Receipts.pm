@@ -337,4 +337,19 @@ sub api_ocr {
     });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/receipts')->to('receipts#index');
+    $r->{family}->get('/receipts/api/state')->to('receipts#api_state');
+    $r->{family}->get('/receipts/api/list')->to('receipts#api_list');
+    $r->{family}->post('/receipts/api/upload')->to('receipts#upload');
+    $r->{family}->post('/receipts/api/update/:id')->to('receipts#api_update');
+    $r->{family}->post('/receipts/api/delete/:id')->to('receipts#api_delete');
+    $r->{family}->get('/receipts/serve/:id')->to('receipts#serve');
+    $r->{family}->post('/receipts/api/crop/:id')->to('receipts#api_crop');
+    $r->{family}->post('/receipts/api/ocr/:id')->to('receipts#api_ocr');
+    $r->{family}->post('/receipts/api/ai_analyze/:id')->to('receipts#api_ai_analyze');
+}
+
 1;
