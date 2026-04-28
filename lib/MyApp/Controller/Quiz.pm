@@ -74,4 +74,13 @@ sub study_mode {
     $c->render(template => 'quiz/study');
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{r}->get('/quiz')->to('quiz#index');
+    $r->{r}->get('/quiz/all')->to('quiz#index', mode => 'all');
+    $r->{r}->get('/quiz/study')->to('quiz#study_mode');
+    $r->{r}->get('/quiz/api/questions')->to('quiz#get_questions');
+}
+
 1;
