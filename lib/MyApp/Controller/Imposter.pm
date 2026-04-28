@@ -361,4 +361,22 @@ sub _delete_previous_image {
     }
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/imposter')->to('imposter#index');
+    $r->{family}->get('/imposter/api/state')->to('imposter#api_state');
+    $r->{family}->post('/imposter/api/add_player')->to('imposter#api_add_player');
+    $r->{family}->post('/imposter/api/edit_player')->to('imposter#api_edit_player');
+    $r->{family}->post('/imposter/api/remove_player')->to('imposter#api_remove_player');
+    $r->{family}->post('/imposter/api/clear_lobby')->to('imposter#api_reset');
+    $r->{family}->post('/imposter/api/start')->to('imposter#api_start');
+    $r->{family}->post('/imposter/api/toggle_view')->to('imposter#api_toggle_view');
+    $r->{family}->post('/imposter/api/set_lang')->to('imposter#api_set_lang');
+    $r->{family}->post('/imposter/api/next_player')->to('imposter#api_next_player');
+    $r->{family}->post('/imposter/api/end_game_early')->to('imposter#api_end_early');
+    $r->{family}->post('/imposter/api/reveal')->to('imposter#api_reveal');
+    $r->{family}->post('/imposter/api/play_again')->to('imposter#api_reset');
+}
+
 1;
