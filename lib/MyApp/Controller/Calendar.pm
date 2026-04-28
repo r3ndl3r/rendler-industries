@@ -328,4 +328,16 @@ sub api_delete {
     }
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/calendar')->to('calendar#index');
+    $r->{family}->get('/calendar/api/state')->to('calendar#api_state');
+    $r->{family}->get('/calendar/api/events')->to('calendar#api_events');
+    $r->{family}->post('/calendar/api/add')->to('calendar#api_add');
+    $r->{family}->post('/calendar/api/edit')->to('calendar#api_edit');
+    $r->{family}->post('/calendar/api/delete')->to('calendar#api_delete');
+    $r->{family}->post('/calendar/api/skip_occurrence')->to('calendar#api_skip_occurrence');
+}
+
 1;
