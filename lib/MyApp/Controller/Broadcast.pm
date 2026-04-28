@@ -85,4 +85,11 @@ sub api_send {
     });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/broadcast')->to('broadcast#index');
+    $r->{family}->post('/broadcast/api/send')->to('broadcast#api_send');
+}
+
 1;
