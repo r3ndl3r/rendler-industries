@@ -112,25 +112,16 @@ sub startup {
     # Define Application Routes
     my $r = $self->routes;
 
-    # Protected Application Routes (Require Login or Admin)
+    # Protected Application Routes
     my $auth = $r->under('/')->to('auth#check_login');
-    
-    # Admin bridge nested under the auth bridge
+
     my $admin = $auth->under(sub {
         my $c = shift;
-
-        # Use your existing helper which is already working in Timers.pm
         return 1 if $c->is_admin;
-
         $c->render('noperm');
         return undef;
     });
 
-    # Admin Namespace: URL prefix for system-level modules with /admin/ paths.
-    # Carries the same is_admin middleware as $admin — no additional auth layer.
-    my $admin_ns = $admin->under('/admin');
-
-    # Family bridge nested under the auth bridge
     my $family = $auth->under(sub {
         my $c = shift;
         return 1 if $c->is_family;
@@ -138,7 +129,6 @@ sub startup {
         return undef;
     });
 
-    # Parent bridge: grants access to admin and parent roles
     my $parent = $auth->under(sub {
         my $c = shift;
         return 1 if $c->is_parent;
@@ -146,368 +136,31 @@ sub startup {
         return undef;
     });
 
+    # Auto-discover and register routes from each controller.
+    # Each controller may define a register_routes($bridges) class method.
+    my %bridges = (
+        r      => $r,
+        auth   => $auth,
+        family => $family,
+        admin  => $admin,
+        parent => $parent,
+    );
 
+    my $ctrl_dir = $self->home->child('lib', 'MyApp', 'Controller');
+    my $lib_dir  = $self->home->child('lib');
 
-    $r->get('/login')->to('auth#login_form');
-    $r->post('/login')->to('auth#login');
-    $r->get('/logout')->to('auth#logout');
-    $r->get('/register')->to('auth#register_form');
-    $r->post('/register')->to('auth#register');
-    
-    # --- Root / Utility / Misc Routes ---
-    $r->get('/')->to('root#index');
-    $r->get('/noperm')->to('root#no_permission');
-    $r->get('/source')->to('root#view_source');
-    $r->get('/cwd')->to('root#cwd');
-    $r->get('/age')->to('root#age');
-    $r->get('/contacts')->to('root#contact');
-    $r->get('/contact')->to('root#contact');
-    $r->get('/c')->to('root#contact');
-    $r->get('/p')->to('root#p_page');
-    $r->get('/m')->to('root#p_page');
-    $r->get('/phone')->to('root#p_page');
-    $r->get('/mobile')->to('root#p_page');
-    $r->get('/this.is.totally.not.sus')->to('root#sus');
-    $r->get('/api/user_icons')->to('root#api_user_icons');
-    $r->get('/system/api/file_map')->to('root#file_map_json');
-    $r->get('/quick')->to('root#quick');
-    $auth->post('/api/fcm/register')->to('system#api_fcm_register');
-
-    $auth->get('/user/settings'                 )->to('user-settings#index'           );
-    $auth->get('/user/settings/api/state'       )->to('user-settings#api_state'       );
-    $auth->post('/user/settings/api/profile'    )->to('user-settings#api_update_profile');
-    $auth->post('/user/settings/api/pref'       )->to('user-settings#api_update_pref' );
-
-    $admin_ns->get('/restart')->to('system#restart');
-
-    # --- Menu Management Routes ---
-    $admin_ns->get('/menu')->to('admin-menu#manage');
-    $admin_ns->get('/menu/api/state')->to('admin-menu#api_state');
-    $admin_ns->post('/menu/api/add')->to('admin-menu#api_add');
-    $admin_ns->post('/menu/api/update')->to('admin-menu#api_update');
-    $admin_ns->post('/menu/api/delete')->to('admin-menu#api_delete');
-    $admin_ns->post('/menu/api/reorder')->to('admin-menu#api_reorder');
-    $r->get('/menu/api/menubar')->to('admin-menu#get_state');
-    
-    # --- Clipboard Routes ---
-    $auth->get('/clipboard')->to('root#copy_get');
-    $auth->get('/copy')->to('root#copy_get');
-    $auth->get('/clipboard/api/state')->to('root#copy_api_state');
-    $auth->post('/copy')->to('root#copy_post');
-    $auth->post('/clipboard/update')->to('root#copy_update');
-    $auth->post('/clipboard/delete')->to('root#remove_message');
-
-    # --- User Management Routes ---
-    $admin_ns->get('/users')->to('admin-users#user_list');
-    $admin_ns->get('/users/api/state')->to('admin-users#api_state');
-    $admin_ns->post('/users/api/add')->to('admin-users#api_user_add');
-    $admin_ns->post('/users/toggle_role')->to('admin-users#toggle_role');
-    $admin_ns->post('/users/delete/:id')->to('admin-users#delete_user');
-    $admin_ns->post('/users/approve/:id')->to('admin-users#approve_user');
-    $admin_ns->post('/users/update/:id')->to('admin-users#edit_user');
-
-    # --- Notification History & Template Routes ---
-    $admin_ns->get('/notifications/logs'               )->to('admin-notifications-logs#index'    );
-    $admin_ns->get('/notifications/logs/api/state'     )->to('admin-notifications-logs#api_state');
-    $admin_ns->post('/notifications/logs/api/delete/:id')->to('admin-notifications-logs#api_delete');
-    $admin_ns->post('/notifications/logs/api/prune'    )->to('admin-notifications-logs#api_prune');
-
-    $admin_ns->get('/notifications/templates'             )->to('admin-notifications-templates#index'    );
-    $admin_ns->get('/notifications/templates/api/state'  )->to('admin-notifications-templates#api_state');
-    $admin_ns->post('/notifications/templates/api/update')->to('admin-notifications-templates#api_update');
-
-    $admin_ns->get('/notifications/test'         )->to('admin-notifications-test#index'    );
-    $admin_ns->get('/notifications/test/api/state')->to('admin-notifications-test#api_state');
-    $admin_ns->post('/notifications/test/api/send')->to('admin-notifications-test#api_send' );
-
-    # --- Daily Brief Routes ---
-    $auth->get('/brief')->to('brief#index');
-    $auth->get('/brief/api/state')->to('brief#api_state');
-
-    # --- Reminders Administration Routes ---
-    $family->get('/reminders')->to('reminders#index');
-    $family->get('/reminders/api/state')->to('reminders#api_state');
-    $family->post('/reminders/api/add')->to('reminders#api_add');
-    $family->post('/reminders/api/update/:id')->to('reminders#api_update');
-    $family->post('/reminders/api/delete/:id')->to('reminders#api_delete');
-    $family->post('/reminders/api/toggle/:id')->to('reminders#api_toggle');
-    $family->post('/reminders/api/toggle_day')->to('reminders#api_toggle_day');
-    
-    # --- Imposter Game Routes ---
-    $family->get('/imposter')->to('imposter#index');
-    $family->get('/imposter/api/state')->to('imposter#api_state');
-    $family->post('/imposter/api/add_player')->to('imposter#api_add_player');
-    $family->post('/imposter/api/edit_player')->to('imposter#api_edit_player');
-    $family->post('/imposter/api/remove_player')->to('imposter#api_remove_player');
-    $family->post('/imposter/api/clear_lobby')->to('imposter#api_reset');
-    $family->post('/imposter/api/start')->to('imposter#api_start');
-    $family->post('/imposter/api/toggle_view')->to('imposter#api_toggle_view');
-    $family->post('/imposter/api/set_lang')->to('imposter#api_set_lang');
-    $family->post('/imposter/api/next_player')->to('imposter#api_next_player');
-    $family->post('/imposter/api/end_game_early')->to('imposter#api_end_early');
-    $family->post('/imposter/api/reveal')->to('imposter#api_reveal');
-    $family->post('/imposter/api/play_again')->to('imposter#api_reset');
-    
-    # --- Swear Jar Routes ---
-    $family->get('/swear')->to('swear#index');
-    $family->get('/swear/api/state')->to('swear#api_state');
-    $family->post('/swear/api/add')->to('swear#add_fine');
-    $family->post('/swear/api/pay')->to('swear#pay_debt');
-    $family->post('/swear/api/spend')->to('swear#spend');
-    $family->post('/swear/api/member/add')->to('swear#add_member');
-    $family->post('/swear/api/member/delete')->to('swear#delete_member');
-    
-    # --- Birthday Calendar Routes ---
-    $family->get('/birthdays')->to('birthdays#index');
-    $family->get('/birthdays/api/state')->to('birthdays#api_state');
-    $admin->post('/birthdays/api/add')->to('birthdays#api_add');
-    $admin->post('/birthdays/api/edit/:id')->to('birthdays#api_edit');
-    $admin->post('/birthdays/api/delete/:id')->to('birthdays#api_delete');
-
-    # --- Admin Settings Routes ---
-    $admin_ns->get('/settings')->to('admin-settings#index');
-    $admin_ns->get('/settings/api/state')->to('admin-settings#api_state');
-    $admin_ns->post('/settings/update')->to('admin-settings#update');
-
-    # --- Points Management Routes ---
-    $family->get('/points')->to('points#index');
-    $family->get('/points/api/state')->to('points#api_state');
-    $family->post('/points/api/add')->to('points#api_add');
-
-    # --- Emoji Management Routes ---
-    $admin_ns->get('/emojis')->to('admin-emojis#index');
-    $admin_ns->get('/emojis/api/state')->to('admin-emojis#api_state');
-    $admin_ns->get('/emojis/api/list')->to('admin-emojis#api_list');
-    $admin_ns->post('/emojis/api/update')->to('admin-emojis#api_update');
-    $admin_ns->post('/emojis/api/delete')->to('admin-emojis#api_delete');
-    $admin_ns->post('/emojis/api/test')->to('admin-emojis#api_test');
-
-    # --- File Management Routes ---
-    $r->get('/files/serve/:id')->to('admin-files#serve');
-    $admin_ns->get('/files')->to('admin-files#index');
-    $admin_ns->get('/files/api/state')->to('admin-files#api_state');
-    $admin_ns->post('/files/api/upload')->to('admin-files#api_upload');
-    $admin_ns->post('/files/api/delete/:id')->to('admin-files#api_delete');
-    $admin_ns->post('/files/api/permissions/:id')->to('admin-files#api_permissions');
-    # --- Shopping List Routes ---
-    $family->get('/shopping')->to('shopping#index');
-    $family->get('/shopping/api/state')->to('shopping#api_state');
-    $family->post('/shopping/api/add')->to('shopping#api_add');
-    $family->post('/shopping/api/toggle/:id')->to('shopping#api_toggle');
-    $family->post('/shopping/api/delete/:id')->to('shopping#api_delete');
-    $family->post('/shopping/api/clear')->to('shopping#api_clear');
-    $family->post('/shopping/api/edit/:id')->to('shopping#api_edit');
-
-    # --- Todo List Routes ---
-    $auth->get('/todo')->to('todo#index');
-    $auth->get('/todo/api/state')->to('todo#api_state');
-    $auth->post('/todo/api/add')->to('todo#api_add');
-    $auth->post('/todo/api/toggle/:id')->to('todo#api_toggle');
-    $auth->post('/todo/api/delete/:id')->to('todo#api_delete');
-    $auth->post('/todo/api/edit/:id')->to('todo#api_edit');
-    $auth->post('/todo/api/clear')->to('todo#api_clear');
-
-    # --- Google Cloud API Routes ---
-    $auth->post('/tts/api/synthesize')->to('TTS#synthesize');
-    $auth->post('/translation/api/translate')->to('Translation#translate');
-
-    # --- Connect 4 Routes ---
-    $auth->get('/connect4')->to('connect4#index');
-    $auth->get('/connect4/play/:id')->to('connect4#index');
-    $auth->get('/connect4/api/lobby')->to('connect4#api_lobby');
-    $auth->post('/connect4/api/create')->to('connect4#api_create');
-    $auth->post('/connect4/api/join')->to('connect4#api_join');
-    $auth->get('/connect4/api/game/:id')->to('connect4#api_game');
-    $auth->post('/connect4/api/move')->to('connect4#api_move');
-    $auth->post('/connect4/api/restart')->to('connect4#api_restart');
-
-    # --- UNO Routes ---
-    $auth->get('/uno')->to('uno#index');
-    $auth->get('/uno/play/:id')->to('uno#index');
-    $auth->get('/uno/api/lobby')->to('uno#api_lobby');
-    $auth->post('/uno/api/create')->to('uno#api_create');
-    $auth->post('/uno/api/join')->to('uno#api_join');
-    $auth->get('/uno/api/game/:id')->to('uno#api_game');
-    $auth->post('/uno/api/ready')->to('uno#api_ready');
-    $auth->post('/uno/api/start')->to('uno#api_start');
-    $auth->post('/uno/api/play_card')->to('uno#api_play_card');
-    $auth->post('/uno/api/draw_card')->to('uno#api_draw_card');
-    $auth->post('/uno/api/shout')->to('uno#api_shout');
-    $auth->post('/uno/api/leave')->to('uno#api_leave');
-    $auth->post('/uno/api/catch')->to('uno#api_catch');
-    $auth->post('/uno/api/kick')->to('uno#api_kick');
-
-    # --- Calendar Routes ---
-    $family->get('/calendar')->to('calendar#index');
-    $family->get('/calendar/api/state')->to('calendar#api_state');
-    $family->get('/calendar/api/events')->to('calendar#api_events');
-    $family->post('/calendar/api/add')->to('calendar#api_add');
-    $family->post('/calendar/api/edit')->to('calendar#api_edit');
-    $family->post('/calendar/api/delete')->to('calendar#api_delete');
-    $family->post('/calendar/api/skip_occurrence')->to('calendar#api_skip_occurrence');
-
-
-    # --- Timer Routes ---
-    $family->get('/timers')->to('timers#dashboard');
-    $family->get('/timers/api/state')->to('timers#api_state');
-    $family->post('/timers/api/start')->to('timers#start_timer');
-    $family->post('/timers/api/stop')->to('timers#stop_timer');
-    $family->post('/timers/api/pause')->to('timers#toggle_pause');
-    $family->post('/timers/api/redeem')->to('timers#api_redeem');
-    $parent->post('/timers/api/transfer')->to('timers#api_transfer');
-    
-    $parent->get('/timers/manage')->to('timers#manage');
-    $parent->get('/timers/api/manage/state')->to('timers#api_manage_state');
-    $parent->post('/timers/api/create')->to('timers#create');
-    $parent->post('/timers/api/update/:id')->to('timers#update');
-    $parent->post('/timers/api/delete/:id')->to('timers#delete');
-    $parent->post('/timers/api/bonus')->to('timers#grant_bonus');
-
-    # --- Citizenship Quiz Routes ---
-    $r->get('/quiz')->to('quiz#index');
-    $r->get('/quiz/all')->to('quiz#index', mode => 'all');
-    $r->get('/quiz/study')->to('quiz#study_mode');
-    $r->get('/quiz/api/questions')->to('quiz#get_questions');
-
-    # --- Go Links Routes ---
-    $r->get('/g/:keyword')->to('go#resolve');
-    $admin->get('/go')->to('go#index');
-    $admin->get('/go/api/state')->to('go#api_state');
-    $admin->post('/go/api/add')->to('go#api_add');
-    $admin->post('/go/api/edit')->to('go#api_edit');
-    $admin->post('/go/api/delete')->to('go#api_delete');
-
-    # --- Receipts Management Routes ---
-    $family->get('/receipts')->to('receipts#index');
-    $family->get('/receipts/api/state')->to('receipts#api_state');
-    $family->get('/receipts/api/list')->to('receipts#api_list');
-    $family->post('/receipts/api/upload')->to('receipts#upload');
-    $family->post('/receipts/api/update/:id')->to('receipts#api_update');
-    $family->post('/receipts/api/delete/:id')->to('receipts#api_delete');
-    $family->get('/receipts/serve/:id')->to('receipts#serve');
-    $family->post('/receipts/api/crop/:id')->to('receipts#api_crop');
-    $family->post('/receipts/api/ocr/:id')->to('receipts#api_ocr');
-    $family->post('/receipts/api/ai_analyze/:id')->to('receipts#api_ai_analyze');
-
-    # --- Notes Whiteboard Routes ---
-    $auth->get('/notes')->to('notes#index');
-    $auth->get('/notes/api/state')->to('notes#api_state');
-    $auth->get('/notes/api/search')->to('notes#api_search');
-    $auth->post('/notes/api/save')->to('notes#api_save');
-    $auth->post('/notes/api/geometry')->to('notes#api_save_geometry');
-    $auth->post('/notes/api/delete')->to('notes#api_delete');
-    $auth->post('/notes/api/batch_geometry')->to('notes#api_batch_geometry');
-    $auth->post('/notes/api/batch_delete')->to('notes#api_batch_delete');
-    $auth->post('/notes/api/upload')->to('notes#api_upload');
-    $auth->post('/notes/api/viewport')->to('notes#api_save_viewport');
-    $auth->get('/notes/serve/:note_id')->to('notes#serve_blob');
-    $auth->get('/notes/attachment/serve/:blob_id')->to('notes#serve_attachment_blob');
-    $auth->post('/notes/api/lock')->to('notes#api_lock');
-    $auth->post('/notes/api/unlock')->to('notes#api_unlock');
-    
-    # Multi-Canvas & Collaborative Switching
-    $auth->post('/notes/api/canvases/create')->to('notes#api_canvas_create');
-    $auth->post('/notes/api/canvases/delete')->to('notes#api_canvas_delete');
-    $auth->post('/notes/api/canvases/rename')->to('notes#api_canvas_rename');
-    $auth->post('/notes/api/canvases/reorder')->to('notes#api_canvas_reorder');
-    $auth->post('/notes/api/canvases/share')->to('notes#api_canvas_share');
-    $auth->get('/notes/api/users/search')->to('notes#api_user_search');
-    $auth->post('/notes/api/notes/copy')->to('notes#api_copy_note');
-    $auth->get('/notes/api/bin')->to('notes#api_bin');
-    $auth->post('/notes/api/restore')->to('notes#api_restore');
-    $auth->post('/notes/api/purge')->to('notes#api_purge');
-    $auth->post('/notes/api/purge_all')->to('notes#api_purge_all');
-    $auth->post('/notes/api/attachment/delete')->to('notes#api_attachment_delete');
-    $auth->post('/notes/api/attachment/rename')->to('notes#api_attachment_rename');
-    $auth->post('/notes/api/layer/rename')->to('notes#api_layer_rename');
-    $auth->post('/notes/api/layers/move')->to('notes#api_move_layer');
-    $auth->post('/notes/api/notes/set-layer')->to('notes#api_set_layer');
-    $auth->post('/notes/api/notes/bulk-copy-level')->to('notes#api_bulk_copy_level');
-    $auth->post('/notes/api/notes/bulk-copy-canvas')->to('notes#api_bulk_copy_canvas');
-    $auth->post('/notes/api/notes/move-canvas')->to('notes#api_move_notes_canvas');
-
-    # Privacy & Lock Management
-    $auth->post('/notes/api/unlock_canvas')->to('notes#api_unlock_canvas');
-    $auth->post('/notes/api/lock_canvas')->to('notes#api_lock_canvas');
-    $auth->post('/notes/api/canvas/password/set')->to('notes#api_canvas_password_set');
-    $auth->post('/notes/api/canvas/password/clear')->to('notes#api_canvas_password_clear');
-
-    # Real-Time Synchronization 
-    # Mutation Heartbeat for cross-session/cross-worker consistency
-    $auth->get('/notes/api/heartbeat/:canvas_id')->to('notes#api_heartbeat');
-
-    # --- Room Tracker Routes ---
-    $family->get('/room')->to('room#index');
-    $family->get('/room/api/state')->to('room#api_state');
-    $family->post('/room/api/upload')->to('room#api_upload');
-    $family->get('/room/serve/:id')->to('room#serve');
-    $admin->post('/room/api/update_status')->to('room#api_update_status');
-    $family->post('/room/api/delete/:id')->to('room#api_delete');
-    $admin->post('/room/api/save_config')->to('room#api_save_config');
-    $admin->post('/room/api/trim')->to('room#api_trim');
-    $admin->post('/room/api/add_blackout')->to('room#api_add_blackout');
-    $admin->post('/room/api/delete_blackout')->to('room#api_delete_blackout');
-
-    # --- Medication Tracker Routes ---
-    $family->get('/medication')->to('medication#index');
-    $family->get('/medication/api/state')->to('medication#api_state');
-    $family->post('/medication/api/add')->to('medication#add');
-    $family->post('/medication/api/edit/:id')->to('medication#edit');
-    $family->post('/medication/api/reset/:id')->to('medication#reset');
-    $family->post('/medication/api/delete/:id')->to('medication#delete');
-    $admin->post('/medication/api/manage/update/:id')->to('medication#update_registry');
-    $admin->post('/medication/api/manage/delete/:id')->to('medication#delete_registry');
-
-    # --- Meal Planner Routes ---
-    $family->get('/meals')->to('meals#index');
-    $family->get('/meals/api/state')->to('meals#api_state');
-    $family->post('/meals/api/suggest')->to('meals#api_suggest');
-    $family->post('/meals/api/vote')->to('meals#api_vote');
-    $family->post('/meals/api/edit_suggestion')->to('meals#api_edit_suggestion');
-    $family->post('/meals/api/delete_suggestion')->to('meals#api_delete_suggestion');
-    $admin->post('/meals/api/admin/lock')->to('meals#api_admin_lock');
-    $admin->get('/meals/api/vault')->to('meals#api_get_vault_data');
-    $admin->post('/meals/api/vault/add')->to('meals#api_add_meal_to_vault');
-    $admin->post('/meals/api/vault/update')->to('meals#api_update_meal_in_vault');
-    $admin->post('/meals/api/vault/delete')->to('meals#api_delete_meal_from_vault');
-
-    # --- Broadcast Routes ---
-    $family->get('/broadcast')->to('broadcast#index');
-    $family->post('/broadcast/api/send')->to('broadcast#api_send');
-
-    # --- Family Pulse AI Routes ---
-    $family->get('/ai')->to('AI#index');
-    $family->get('/ai/api/state')->to('AI#api_state');
-    $family->post('/ai/api/chat')->to('AI#chat');
-    $family->post('/ai/api/clear')->to('AI#clear');
-
-    # --- Chess Routes ---
-    $auth->get('/chess')->to('chess#index');
-    $auth->get('/chess/play/:id')->to('chess#index');
-    $auth->get('/chess/api/lobby')->to('chess#api_lobby');
-    $auth->post('/chess/api/create')->to('chess#api_create');
-    $auth->post('/chess/api/join')->to('chess#api_join');
-    $auth->get('/chess/api/game/:id')->to('chess#api_game');
-    $auth->post('/chess/api/move')->to('chess#api_move');
-    $auth->post('/chess/api/offer_draw/:id')->to('chess#api_offer_draw');
-    $auth->post('/chess/api/respond_draw/:id')->to('chess#api_respond_draw');
-
-    # --- Chores Modules Routes ---
-    $family->get('/chores')->to('chores#index');
-    $family->get('/chores/api/state')->to('chores#api_state');
-    $family->post('/chores/api/complete')->to('chores#api_complete');
-    $admin->post('/chores/api/add')->to('chores#api_add');
-    $admin->post('/chores/api/revoke')->to('chores#api_revoke');
-    $admin->post('/chores/api/delete')->to('chores#api_delete');
-
-    # --- Weather Board Routes ---
-    $auth->get('/weather')->to('weather#index');
-    $auth->post('/weather/api/state')->to('weather#api_state');
-    $admin->post('/weather/api/geocode')->to('weather#api_geocode');
-    $admin->post('/weather/api/add')->to('weather#api_add');
-    $admin->post('/weather/api/update/:id')->to('weather#api_update');
-    $admin->post('/weather/api/delete/:id')->to('weather#api_delete');
-    $admin->post('/weather/api/reorder')->to('weather#api_reorder');
+    $ctrl_dir->list_tree->sort->each(sub {
+        my $file = shift;
+        return if $file->is_dir || $file->basename !~ /\.pm$/;
+        my $pkg = $file->to_rel($lib_dir)->to_string;
+        $pkg =~ s|/|::|g;
+        $pkg =~ s/\.pm$//;
+        eval "require $pkg" or do {
+            $self->log->error("Route loader: could not load $pkg: $@");
+            return;
+        };
+        $pkg->register_routes(\%bridges) if $pkg->can('register_routes');
+    });
 }
 
 1;
