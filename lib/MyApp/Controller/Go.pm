@@ -142,4 +142,15 @@ sub api_delete {
     }
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{r}->get('/g/:keyword')->to('go#resolve');
+    $r->{admin}->get('/go')->to('go#index');
+    $r->{admin}->get('/go/api/state')->to('go#api_state');
+    $r->{admin}->post('/go/api/add')->to('go#api_add');
+    $r->{admin}->post('/go/api/edit')->to('go#api_edit');
+    $r->{admin}->post('/go/api/delete')->to('go#api_delete');
+}
+
 1;
