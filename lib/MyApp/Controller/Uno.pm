@@ -291,4 +291,23 @@ sub api_kick {
     return $c->render(json => { success => $success });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{auth}->get('/uno')->to('uno#index');
+    $r->{auth}->get('/uno/play/:id')->to('uno#index');
+    $r->{auth}->get('/uno/api/lobby')->to('uno#api_lobby');
+    $r->{auth}->post('/uno/api/create')->to('uno#api_create');
+    $r->{auth}->post('/uno/api/join')->to('uno#api_join');
+    $r->{auth}->get('/uno/api/game/:id')->to('uno#api_game');
+    $r->{auth}->post('/uno/api/ready')->to('uno#api_ready');
+    $r->{auth}->post('/uno/api/start')->to('uno#api_start');
+    $r->{auth}->post('/uno/api/play_card')->to('uno#api_play_card');
+    $r->{auth}->post('/uno/api/draw_card')->to('uno#api_draw_card');
+    $r->{auth}->post('/uno/api/shout')->to('uno#api_shout');
+    $r->{auth}->post('/uno/api/leave')->to('uno#api_leave');
+    $r->{auth}->post('/uno/api/catch')->to('uno#api_catch');
+    $r->{auth}->post('/uno/api/kick')->to('uno#api_kick');
+}
+
 1;
