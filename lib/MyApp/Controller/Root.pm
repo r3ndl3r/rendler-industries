@@ -352,4 +352,31 @@ sub api_user_icons {
     $c->render(json => $c->icons_json_users);
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{r}->get('/')->to('root#index');
+    $r->{r}->get('/noperm')->to('root#no_permission');
+    $r->{r}->get('/source')->to('root#view_source');
+    $r->{r}->get('/cwd')->to('root#cwd');
+    $r->{r}->get('/age')->to('root#age');
+    $r->{r}->get('/contacts')->to('root#contact');
+    $r->{r}->get('/contact')->to('root#contact');
+    $r->{r}->get('/c')->to('root#contact');
+    $r->{r}->get('/p')->to('root#p_page');
+    $r->{r}->get('/m')->to('root#p_page');
+    $r->{r}->get('/phone')->to('root#p_page');
+    $r->{r}->get('/mobile')->to('root#p_page');
+    $r->{r}->get('/this.is.totally.not.sus')->to('root#sus');
+    $r->{r}->get('/api/user_icons')->to('root#api_user_icons');
+    $r->{r}->get('/system/api/file_map')->to('root#file_map_json');
+    $r->{r}->get('/quick')->to('root#quick');
+    $r->{auth}->get('/clipboard')->to('root#copy_get');
+    $r->{auth}->get('/copy')->to('root#copy_get');
+    $r->{auth}->get('/clipboard/api/state')->to('root#copy_api_state');
+    $r->{auth}->post('/copy')->to('root#copy_post');
+    $r->{auth}->post('/clipboard/update')->to('root#copy_update');
+    $r->{auth}->post('/clipboard/delete')->to('root#remove_message');
+}
+
 1;
