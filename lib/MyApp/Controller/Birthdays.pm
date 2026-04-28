@@ -131,4 +131,14 @@ sub api_delete {
     $c->render(json => { success => 1, message => "Birthday record removed" });
 }
 
+
+sub register_routes {
+    my ($class, $r) = @_;
+    $r->{family}->get('/birthdays')->to('birthdays#index');
+    $r->{family}->get('/birthdays/api/state')->to('birthdays#api_state');
+    $r->{admin}->post('/birthdays/api/add')->to('birthdays#api_add');
+    $r->{admin}->post('/birthdays/api/edit/:id')->to('birthdays#api_edit');
+    $r->{admin}->post('/birthdays/api/delete/:id')->to('birthdays#api_delete');
+}
+
 1;
