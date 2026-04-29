@@ -1,0 +1,69 @@
+<%# /templates/quiz/study/custom.html.ep %>
+
+% layout 'default', hide_navbar_title => 1, favicon => '🦘';
+% title 'My Study List';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/quiz/study/custom.css">
+    <script src="/js/quiz/study/custom.js"></script>
+% end
+
+<div class="app-container quiz-container">
+  <div class="header-bar">
+    <div class="header-title">
+      <h1>
+        ⭐ <span>My Study List</span>
+      </h1>
+      <p class="thai-subtitle">รายการการศึกษาของฉัน</p>
+    </div>
+    <div class="manage-actions">
+      <a href="/quiz/study" class="btn-back">⬅️ All Questions</a>
+      <button id="manage-btn" class="btn-primary">✏️ Manage List</button>
+      <a href="/quiz/study/custom/print" class="btn-primary">🖨️ Print</a>
+    </div>
+  </div>
+
+  <%# Loading State %>
+  <div id="loading-state" class="component-loading">
+    <div class="loading-scan-line"></div>
+    <span class="loading-icon-pulse">⭐</span>
+    <p class="loading-label">Synchronizing...</p>
+  </div>
+
+  <%# Error State %>
+  <div id="error-state" class="state-container hidden">
+    <p class="text-danger">Failed to load your study list.</p>
+  </div>
+
+  <%# Empty State %>
+  <div id="empty-state" class="state-container hidden">
+    <p class="custom-empty-icon">📋</p>
+    <p class="text-secondary">Your study list is empty.</p>
+    <p class="text-secondary">Click <strong>✏️ Manage List</strong> to add questions.</p>
+  </div>
+
+  <%# Questions Container %>
+  <div id="questions-container" class="hidden"></div>
+
+  <%# Pagination Controls %>
+  <div id="pagination-controls" class="controls-area study-pagination hidden">
+      <button id="prev-btn" class="btn-next btn-prev-manual hidden">⬅️ Previous</button>
+      <span id="page-indicator" class="page-indicator"></span>
+      <button id="next-btn" class="btn-next">Next ➜</button>
+  </div>
+</div>
+
+<%# Manage List Modal %>
+<div id="custom-manage-modal" class="custom-modal-overlay hidden">
+  <div class="custom-modal-box">
+    <div class="custom-modal-header">
+      <h2>✏️ Manage Study List</h2>
+      <button id="modal-close-btn" class="custom-modal-close">✕</button>
+    </div>
+    <div class="custom-modal-search-wrap">
+      <input type="text" id="question-search" class="custom-modal-search no-emoji" placeholder="🔍 Search questions...">
+    </div>
+    <div id="modal-count" class="custom-modal-count"></div>
+    <div id="modal-question-list" class="custom-modal-list"></div>
+  </div>
+</div>
