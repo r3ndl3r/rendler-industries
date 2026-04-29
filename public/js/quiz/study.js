@@ -45,27 +45,21 @@ async function initStudyMode() {
     const errorState = document.getElementById('error-state');
     const totalDisplay = document.getElementById('total-questions');
 
-    try {
-        const response = await fetch('/quiz/api/questions?mode=all');
-        if (!response.ok) throw new Error('Failed to fetch questions');
-        
-        questions = await response.json();
+    const data = await apiGet('/quiz/api/questions?mode=all');
+    
+    if (data && data.success) {
+        questions = data.questions;
         
         if (loadingState) loadingState.classList.add('hidden');
         
         if (questions.length > 0) {
-            // UI: Update metadata and show containers
-            if (totalDisplay) totalDisplay.textContent = `${questions.length} Questions Total`;
             if (questionsContainer) questionsContainer.classList.remove('hidden');
             if (controlsContainer) controlsContainer.classList.remove('hidden');
-            
-            // Initial Render
             renderPage();
         } else {
-            throw new Error('No questions received');
+            if (errorState) errorState.classList.remove('hidden');
         }
-    } catch (error) {
-        console.error('initStudyMode failure:', error);
+    } else {
         if (loadingState) loadingState.classList.add('hidden');
         if (errorState) errorState.classList.remove('hidden');
     }
