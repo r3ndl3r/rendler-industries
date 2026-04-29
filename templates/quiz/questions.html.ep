@@ -8,24 +8,25 @@
     <script src="/js/quiz/questions.js"></script>
 % end
 
-<div class="quiz-container">
+<div class="app-container quiz-container">
     <div class="header-bar">
         <div class="header-title">
             <h1>🦘 <span>Citizenship Test</span> 🦘</h1>
             <span class="thai-subtitle">แบบทดสอบสัญชาติออสเตรเลีย</span>
         </div>
         
-        <div class="header-actions">
-            <a href="/quiz/study" class="btn-study">
-                📁 Study Mode <span class="thai-text">(โหมดการศึกษา)</span>
+        <div class="manage-actions">
+            <a href="/quiz/study" class="btn-primary">
+                📁 Study
             </a>
         </div>
     </div>
 
     <%# Loading State %>
-    <div id="loading-state" class="state-container">
-        <div class="spinner"></div>
-        <p>Loading questions... <br><span class="thai-text text-secondary small">กำลังโหลดคำถาม...</span></p>
+    <div id="loading-state" class="component-loading">
+        <div class="loading-scan-line"></div>
+        <span class="loading-icon-pulse">🦘</span>
+        <p class="loading-label">Synchronizing...</p>
     </div>
 
     <%# Error State %>
