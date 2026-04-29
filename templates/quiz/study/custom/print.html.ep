@@ -1,0 +1,47 @@
+<%# /templates/quiz/study/custom/print.html.ep %>
+
+% layout 'print';
+% title 'My Study List - Print';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/quiz/study/custom/print.css">
+    <script src="/js/quiz/study/custom/print.js"></script>
+% end
+
+<div class="app-container">
+  <div class="header-bar no-print">
+    <div class="header-title">
+      <h1>🖨️ <span>Print Preview</span></h1>
+    </div>
+    <div class="manage-actions">
+      <a href="/quiz/study/custom" class="btn-back">⬅️ Back</a>
+      <button id="print-btn" class="btn-primary">🖨️ Print</button>
+    </div>
+  </div>
+
+  <%# Loading State %>
+  <div id="loading-state" class="component-loading no-print">
+    <div class="loading-scan-line"></div>
+    <span class="loading-icon-pulse">🖨️</span>
+    <p class="loading-label">Preparing Print View...</p>
+  </div>
+
+  <%# Error State %>
+  <div id="error-state" class="print-state hidden no-print">
+    <p>Failed to load your study list.</p>
+  </div>
+
+  <%# Empty State %>
+  <div id="empty-state" class="print-state hidden no-print">
+    <p>Your study list is empty. <a href="/quiz/study/custom">Add questions first.</a></p>
+  </div>
+
+  <%# Print Content %>
+  <div id="print-content" class="hidden">
+    <div class="print-title-block">
+      <h1>My Study List</h1>
+      <p class="print-subtitle" id="print-subtitle"></p>
+    </div>
+    <div id="questions-list"></div>
+  </div>
+</div>
