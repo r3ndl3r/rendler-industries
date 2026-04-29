@@ -151,7 +151,7 @@ sub startup {
 
     $ctrl_dir->list_tree->sort->each(sub {
         my $file = shift;
-        return if $file->is_dir || $file->basename !~ /\.pm$/;
+        return if -d $file || $file->basename !~ /\.pm$/;
         my $pkg = $file->to_rel($lib_dir)->to_string;
         $pkg =~ s|/|::|g;
         $pkg =~ s/\.pm$//;
