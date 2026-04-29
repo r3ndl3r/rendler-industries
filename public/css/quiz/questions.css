@@ -41,16 +41,14 @@ body {
 }
 
 /* Layout Container */
-.quiz-container {
+/* Layout Container - Constrain width for readable quiz cards */
+.app-container.quiz-container {
     max-width: 720px;
-    margin: 0 auto;
     padding: 20px;
 }
 
 /* Header Section */
 .header-bar {
-    text-align: center;
-    margin-bottom: 2rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--glass-border);
 }
@@ -73,11 +71,13 @@ body {
 .header-title h1 span {
     background: linear-gradient(90deg, #fff, #cbd5e1);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
-.header-actions {
-    margin-top: 1rem;
+.manage-actions {
+    display: flex;
+    gap: 0.5rem;
 }
 
 .back-link {
@@ -687,6 +687,151 @@ body {
     color: var(--danger-red) !important;
 }
 
+/* Custom Study — Empty State */
+.custom-empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+/* Custom Study — Management Modal Overlay */
+.custom-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.custom-modal-box {
+    background: #1e293b;
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+}
+
+.custom-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--glass-border);
+    flex-shrink: 0;
+}
+
+.custom-modal-header h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.custom-modal-close {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.custom-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.custom-modal-search-wrap {
+    padding: 1rem 1.5rem 0.5rem;
+    flex-shrink: 0;
+}
+
+.custom-modal-search {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: var(--text-primary);
+    padding: 0.6rem 1rem;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.custom-modal-search:focus {
+    border-color: #3b82f6;
+}
+
+.custom-modal-count {
+    padding: 0.25rem 1.5rem 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.custom-modal-list {
+    overflow-y: auto;
+    padding: 0.25rem 1.5rem 1.5rem;
+    flex: 1;
+}
+
+.custom-modal-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.custom-modal-item:last-child {
+    border-bottom: none;
+}
+
+.custom-modal-item.in-list .custom-modal-q-text {
+    color: var(--text-primary);
+}
+
+.custom-modal-q-text {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.custom-modal-toggle {
+    background: none;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 1rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s;
+    color: var(--text-primary);
+}
+
+.custom-modal-toggle:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.custom-modal-toggle:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
 /* Mobile Tweaks */
 @media (max-width: 600px) {
     .question-card {
@@ -699,5 +844,27 @@ body {
     
     .answer-btn {
         padding: 1rem;
+    }
+}
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    .header-bar {
+        flex-direction: column !important;
+        gap: 15px !important;
+        text-align: center !important;
+    }
+
+    .header-bar h1 {
+        justify-content: center !important;
+    }
+
+    .manage-actions {
+        width: 100% !important;
+        justify-content: center !important;
+        flex-wrap: wrap !important;
+    }
+
+    .btn-primary, .btn-back, .btn-study {
+        white-space: nowrap !important;
     }
 }
