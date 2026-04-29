@@ -1,0 +1,283 @@
+/* /public/css/quiz/study/custom/print.css */
+:root {
+    --bg-color: #050c1d;
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --aus-gold: #FFC107;
+    --aus-green: #00C853;
+    --accent-blue: #3b82f6;
+    --accent-blue-hover: #2563eb;
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-bg: rgba(255, 255, 255, 0.04);
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;600&family=Roboto:wght@400;500;700&display=swap');
+
+/* Screen styles */
+body {
+    font-family: 'Roboto', sans-serif;
+    background: var(--bg-color);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding-bottom: 40px;
+}
+
+.print-container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.print-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.print-back-link {
+    color: var(--aus-gold);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.print-btn {
+    background: var(--accent-blue);
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 50px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.print-btn:hover {
+    background: var(--accent-blue-hover);
+}
+
+.print-title-block {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.print-title-block h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+}
+
+.print-subtitle {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9rem;
+}
+
+.print-item {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+    page-break-inside: avoid;
+}
+
+.print-q-num {
+    color: var(--aus-gold);
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.print-q-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+    line-height: 1.4;
+}
+
+.print-q-ph {
+    font-size: 0.85rem;
+    color: var(--aus-gold);
+    font-style: italic;
+    margin-bottom: 0.25rem;
+    opacity: 0.85;
+}
+
+.print-q-th {
+    font-family: 'Noto Sans Thai', sans-serif;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.print-answer-block {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.print-answer-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--aus-green);
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.print-answer-text {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--aus-green);
+    margin-bottom: 0.25rem;
+}
+
+.print-answer-ph {
+    font-size: 0.85rem;
+    color: var(--aus-gold);
+    font-style: italic;
+    margin-bottom: 0.2rem;
+    opacity: 0.85;
+}
+
+.print-answer-th {
+    font-family: 'Noto Sans Thai', sans-serif;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.print-explanation {
+    margin-top: 0.6rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-style: italic;
+    line-height: 1.5;
+    border-left: 2px solid #FFC107;
+    padding-left: 10px;
+}
+
+.print-explanation-label {
+    font-style: normal;
+}
+
+.print-state {
+    text-align: center;
+    padding: 3rem 0;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Print media — compact black-on-white output */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-size: 9pt;
+        line-height: 1.3;
+    }
+
+    .print-container {
+        max-width: 100%;
+        padding: 0;
+    }
+
+    .print-title-block {
+        margin-bottom: 6pt;
+    }
+
+    .print-title-block h1 {
+        color: #000000;
+        font-size: 13pt;
+        margin-bottom: 1pt;
+    }
+
+    .print-subtitle {
+        color: #555555;
+        font-size: 8pt;
+    }
+
+    .print-item {
+        background: #ffffff !important;
+        border: none !important;
+        border-bottom: 1px solid #dddddd !important;
+        border-radius: 0;
+        padding: 4pt 0;
+        margin-bottom: 0;
+        page-break-inside: avoid;
+    }
+
+    .print-q-num {
+        color: #888888 !important;
+        font-size: 7pt;
+        margin-bottom: 1pt;
+    }
+
+    .print-q-text {
+        color: #000000 !important;
+        font-size: 9.5pt;
+        font-weight: 700;
+        margin-bottom: 1pt;
+    }
+
+    .print-q-ph {
+        color: #555555 !important;
+        font-size: 7.5pt;
+        margin-bottom: 1pt;
+    }
+
+    .print-q-th {
+        color: #555555 !important;
+        font-size: 7.5pt;
+        margin-bottom: 2pt;
+    }
+
+    .print-answer-block {
+        border-top: none !important;
+        padding-top: 2pt;
+        margin-top: 2pt;
+    }
+
+    .print-answer-label {
+        color: #1a7a3a !important;
+        font-size: 7pt;
+        margin-bottom: 1pt;
+    }
+
+    .print-answer-text {
+        color: #1a7a3a !important;
+        font-size: 9pt;
+        font-weight: 600;
+        margin-bottom: 1pt;
+    }
+
+    .print-answer-ph {
+        color: #555555 !important;
+        font-size: 7.5pt;
+        margin-bottom: 1pt;
+    }
+
+    .print-answer-th {
+        color: #555555 !important;
+        font-size: 7.5pt;
+    }
+
+    .print-explanation {
+        color: #444444 !important;
+        border-left: 1px solid #aaaaaa !important;
+        font-size: 7.5pt;
+        margin-top: 2pt;
+        padding-left: 5pt;
+    }
+}
