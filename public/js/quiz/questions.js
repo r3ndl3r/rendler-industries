@@ -49,22 +49,19 @@ async function initQuiz() {
     const isAllMode = window.location.pathname.includes('/all');
     const apiUrl = isAllMode ? '/quiz/api/questions?mode=all' : '/quiz/api/questions';
 
-    try {
-        const response = await fetch(apiUrl);
-        if (!response.ok) throw new Error('Failed to fetch questions');
-
-        questions = await response.json();
+    const data = await apiGet(apiUrl);
+    
+    if (data && data.success) {
+        questions = data.questions;
         
         if (loadingState) loadingState.classList.add('hidden');
         if (questions.length > 0) {
             if (quizInterface) quizInterface.classList.remove('hidden');
             startQuiz();
         } else {
-            throw new Error('No questions received');
+            if (errorState) errorState.classList.remove('hidden');
         }
-
-    } catch (error) {
-        console.error('initQuiz failure:', error);
+    } else {
         if (loadingState) loadingState.classList.add('hidden');
         if (errorState) errorState.classList.remove('hidden');
     }
