@@ -8,7 +8,7 @@
     <script src="/js/quiz/study.js"></script>
 % end
 
-<div class="quiz-container">
+<div class="app-container quiz-container">
   <div class="header-bar">
     <div class="header-title">
       <h1>
@@ -16,16 +16,17 @@
       </h1>
       <p class="thai-subtitle">คู่มือการศึกษา - คำถามและคำตอบทั้งหมด</p>
     </div>
-    <div class="header-actions">
-      <a href="/quiz" class="back-link">⬅️ Back to Quiz</a>
-      <span id="total-questions" class="total-count"></span>
+    <div class="manage-actions">
+      <a href="/quiz" class="btn-back">⬅️ Back to Quiz</a>
+      <a href="/quiz/study/custom" class="btn-primary">⭐ My Study List</a>
     </div>
   </div>
 
   <%# Loading State %>
-  <div id="loading-state" class="state-container">
-    <div class="spinner"></div>
-    <p class="text-secondary">Loading questions... กำลังโหลดคำถาม...</p>
+  <div id="loading-state" class="component-loading">
+    <div class="loading-scan-line"></div>
+    <span class="loading-icon-pulse">📁</span>
+    <p class="loading-label">Synchronizing...</p>
   </div>
 
   <%# Error State %>
