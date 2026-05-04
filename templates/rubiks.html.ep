@@ -1,0 +1,109 @@
+<%# /templates/rubiks.html.ep %>
+
+% layout 'default';
+% title '🧊 Rubik\'s Generator';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/rubiks.css">
+    <script src="/js/rubiks.js"></script>
+% end
+
+<div class="rubiks-container app-container">
+    <div class="header-bar">
+        <h1>🧊 <span>Rubik's Moves Generator</span></h1>
+        <div class="manage-actions">
+            <button class="btn-icon-reset" onclick="resetCube()">🔄 Reset</button>
+        </div>
+    </div>
+
+    <div class="generator-layout">
+        <div class="control-panel glass-card">
+            <div class="form-group">
+                <label for="cubeSize">Cube Size</label>
+                <div class="size-selector">
+                    <button class="btn-tab active" data-size="3" onclick="setCubeSize(3)">3x3</button>
+                    <button class="btn-tab" data-size="4" onclick="setCubeSize(4)">4x4</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="label-with-value">
+                    <label for="gridScale">Grid Scale</label>
+                    <span id="scale-value">40px</span>
+                </div>
+                <input type="range" id="gridScale" min="10" max="80" value="40" step="5" oninput="setGridScale(this.value)">
+            </div>
+
+            <div class="form-group">
+                <label for="moveSequence">Move Sequence</label>
+                <textarea id="moveSequence" class="game-input" placeholder="e.g. Rw U2 X Rw U2" rows="3"></textarea>
+                <p class="input-hint">Standard notation: U D L R F B. 4x4: Rw, Lw, r, l. Rotations: X, Y, Z.</p>
+            </div>
+
+            <div class="action-grid">
+                <button class="btn-primary" onclick="generateDiagram()">🔄 Generate</button>
+                <button class="btn-secondary" onclick="openSaveModal()">💾 Save to Library</button>
+            </div>
+
+            <div class="algorithm-library">
+                <div class="library-header">
+                    <label>📁 Family Library</label>
+                    <span id="library-count" class="badge">0</span>
+                </div>
+                <input type="text" id="library-search" class="game-input library-search" placeholder="Search by name, category, or sequence..." oninput="searchLibrary()">
+                <div id="algorithm-list" class="library-list">
+                    <div class="component-loading">
+                        <div class="loading-scan-line"></div>
+                        <span class="loading-icon-pulse">🧊</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-panel glass-card">
+            <div id="cube-diagram-container" class="diagram-canvas">
+                <div class="empty-state">
+                    <p>⌨️ Enter a move sequence to begin...</p>
+                </div>
+            </div>
+            <div class="diagram-actions">
+                 <button class="btn-icon" title="Download SVG" onclick="downloadSVG()">💾 Download SVG</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%# Save Algorithm Modal %>
+<div id="saveModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>💾 Save Algorithm</h3>
+            <span class="close-btn" onclick="closeSaveModal()">&times;</span>
+        </div>
+        <form id="saveForm" onsubmit="handleSaveAlgorithm(event)">
+            <input type="hidden" id="edit-id" name="edit-id">
+            <div class="form-group">
+                <label for="alg-name">Algorithm Name</label>
+                <input type="text" id="alg-name" name="alg-name" class="game-input" required placeholder="e.g. Sune, T-Perm, Parity Fix">
+            </div>
+            <div class="form-group">
+                <label for="alg-category">Category</label>
+                <select id="alg-category" name="alg-category" class="game-input">
+                    <option value="General">General</option>
+                    <option value="OLL">OLL</option>
+                    <option value="PLL">PLL</option>
+                    <option value="CMLL">CMLL</option>
+                    <option value="Parity">Parity</option>
+                    <option value="Blind">Blind</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="alg-sequence">Sequence</label>
+                <input type="text" id="alg-sequence" name="alg-sequence" class="game-input" readonly>
+            </div>
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" id="saveBtn" class="btn-primary">💾 Confirm Save</button>
+            </div>
+        </form>
+    </div>
+</div>
