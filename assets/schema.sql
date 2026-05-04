@@ -58,6 +58,8 @@ CREATE TABLE `calendar_events` (
   KEY `idx_category` (`category`),
   KEY `idx_created_by` (`created_by`),
   KEY `idx_calendar_emoji` (`has_emoji`),
+  KEY `idx_priv_cat_start` (`is_private`,`category`,`start_date`),
+  KEY `idx_priv_start` (`is_private`,`start_date`),
   CONSTRAINT `calendar_events_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `canvas_layers` (
@@ -298,7 +300,7 @@ CREATE TABLE `menu_links` (
   `icon` varchar(50) DEFAULT '',
   `parent_id` int(11) DEFAULT NULL,
   `sort_order` int(11) DEFAULT 0,
-  `permission_level` enum('guest','user','family','admin','child') DEFAULT 'user',
+  `permission_level` enum('guest','user','family','admin','child','parent') DEFAULT 'user',
   `css_class` varchar(50) DEFAULT '',
   `target` varchar(20) DEFAULT '_self',
   `is_active` tinyint(1) DEFAULT 1,
@@ -404,19 +406,42 @@ CREATE TABLE `notifications_queue` (
   KEY `user_id` (`user_id`),
   CONSTRAINT `notifications_queue_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `party_rsvp` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `status` enum('coming','not_coming') NOT NULL,
+  `cookie_token` varchar(64) NOT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `cookie_token` (`cookie_token`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `point_ledger` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `amount` int(11) NOT NULL,
   `reason` varchar(255) NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `adjusted_by` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_ledger_user` (`user_id`),
+  KEY `fk_adjusted_by` (`adjusted_by`),
+  CONSTRAINT `fk_adjusted_by` FOREIGN KEY (`adjusted_by`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_ledger_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `pushover` (
   `token` text DEFAULT NULL,
   `user` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `quiz_custom_questions` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `question_index` int(11) NOT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user_question` (`user_id`,`question_index`),
+  KEY `idx_user_id` (`user_id`),
+  CONSTRAINT `quiz_custom_questions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `receipts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -494,6 +519,15 @@ CREATE TABLE `room_submissions` (
   KEY `fk_room_sub_user` (`user_id`),
   CONSTRAINT `fk_room_sub_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE `rubiks_algorithms` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `sequence` text NOT NULL,
+  `category` varchar(50) DEFAULT 'General',
+  `created_by` int(11) NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `shopping_list` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `item_name` varchar(255) NOT NULL,
