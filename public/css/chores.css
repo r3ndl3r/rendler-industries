@@ -521,7 +521,10 @@ select.game-input-premium option {
     .app-container { padding: 1rem 0.75rem !important; }
     .chore-grid { grid-template-columns: 1fr; gap: 1.5rem; }
     .chore-title { font-size: 1.1rem; }
-    
+
+    .header-bar { flex-wrap: wrap; gap: 0.75rem; }
+    .header-actions { flex-wrap: wrap; width: 100%; justify-content: space-between; }
+
     .form-row-balanced { flex-direction: column; gap: 1rem; }
     .btn-premium-action-shrink { width: auto; }
 
@@ -542,41 +545,45 @@ select.game-input-premium option {
         border: none; 
     }
     
-    #historyTable tr {
-        display: block; 
-        background: #1e293b; 
-        border-radius: 1rem; 
-        padding: 1rem 1.25rem; 
-        margin-bottom: 1rem; 
-        border: 1px solid #334155; 
+    #historyTable tr,
+    #pendingSubmissionsTable tr {
+        display: block;
+        background: #1e293b;
+        border-radius: 1rem;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+        border: 1px solid #334155;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        position: relative; /* For top-right button anchoring */
+        position: relative;
     }
 
-    #historyTable td { 
+    #historyTable td,
+    #pendingSubmissionsTable td {
         display: flex;
         align-items: center;
-        padding: 0.35rem 0 !important; 
-        border: none !important; 
-        width: 100% !important; 
-        text-align: left !important; 
+        padding: 0.35rem 0 !important;
+        border: none !important;
+        width: 100% !important;
+        text-align: left !important;
         background: transparent !important;
         font-size: 0.85rem;
     }
 
-    #historyTable td::before {
-        content: attr(data-label); 
-        font-weight: 600; 
-        color: #94a3b8; 
-        text-transform: uppercase; 
-        font-size: 0.65rem; 
-        margin-right: 1rem; 
-        min-width: 70px; 
+    #historyTable td::before,
+    #pendingSubmissionsTable td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        font-size: 0.65rem;
+        margin-right: 1rem;
+        min-width: 70px;
         flex-shrink: 0;
     }
 
     /* Anchor action button to top-right on mobile cards */
-    #historyTable td.col-actions { 
+    #historyTable td.col-actions,
+    #pendingSubmissionsTable td.col-actions {
         position: absolute;
         top: 1.25rem;
         right: 1.25rem;
@@ -585,9 +592,18 @@ select.game-input-premium option {
         display: flex !important;
         justify-content: flex-end;
     }
-    
-    #historyTable tr::after {
-        display: none; /* Just cleaning up */
+
+    #historyTable tr::after,
+    #pendingSubmissionsTable tr::after {
+        display: none;
+    }
+
+    .submission-section-margin {
+        margin-top: 2rem;
+    }
+
+    .pending-submissions-margin {
+        margin-bottom: 2rem;
     }
 
     /* Standardized widths for desktop table view */
@@ -623,7 +639,7 @@ select.game-input-premium option {
     font-size: 0.85rem;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 0.4rem;
 }
 
@@ -657,4 +673,180 @@ select.game-input-premium option {
 
 @media (max-width: 600px) {
     .app-container { padding: 0 1rem; }
+}
+
+/* --- Chore Submission Cards (Child "My Submissions") --- */
+
+.submission-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.submission-card-desc {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.submission-card-meta {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.35);
+    margin-top: 0.25rem;
+}
+
+.submission-status-badge {
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.submission-status-badge.pending {
+    background: rgba(234, 179, 8, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(234, 179, 8, 0.2);
+}
+
+.submission-status-badge.approved {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.submission-status-badge.rejected {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.submission-empty-hint {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.85rem;
+    padding: 2rem 1rem;
+}
+
+/* --- Review Modal Photo Grid --- */
+
+.review-photo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.review-photo-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.review-photo-label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.review-photo-img {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    object-fit: cover;
+    max-height: 280px;
+}
+
+.review-description {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+}
+
+.review-points-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.review-points-row label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+}
+
+.review-comment-row {
+    margin-bottom: 1.5rem;
+}
+
+.review-comment-row label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 0.5rem;
+}
+
+.review-modal-meta {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+    margin-bottom: 0.5rem;
+}
+
+.review-photo-unavailable {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.review-points-input {
+    max-width: 120px;
+}
+
+.review-modal-actions {
+    gap: 1rem;
+}
+
+.btn-danger-action {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.btn-danger-action:hover {
+    background: linear-gradient(135deg, #dc2626, #991b1b);
+}
+
+.submission-card-body {
+    min-width: 0;
+    flex: 1;
+}
+
+@media (max-width: 600px) {
+    .review-photo-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .submission-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
