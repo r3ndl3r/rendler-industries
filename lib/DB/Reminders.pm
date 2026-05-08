@@ -18,6 +18,21 @@ use warnings;
 #   - Acts as the primary data source for the Reminders controller.
 #   - Coordinates with global maintenance API for automated dispatch triggers.
 
+# Returns the created_by user ID for a single reminder.
+# Parameters:
+#   id : Reminder ID.
+# Returns:
+#   Integer user ID, or undef if not found.
+sub DB::get_reminder_owner {
+    my ($self, $id) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("SELECT created_by FROM reminders WHERE id = ?");
+    $sth->execute($id);
+    my ($owner_id) = $sth->fetchrow_array();
+    return $owner_id;
+}
+
 # Retrieves all reminders with their associated recipient data.
 # Returns: ArrayRef of HashRefs containing reminder rules and metadata.
 sub DB::get_all_reminders {
