@@ -111,15 +111,22 @@ sub api_update {
     my $time  = trim($c->param('reminder_time') // '');
     my @days  = $c->every_param('days[]');
     my @uids  = $c->every_param('recipients[]');
-    
+
     # Robust flattening
     @days = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @days;
     @uids = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @uids;
-    
+
     unless ($id && $title && $time && @days && @uids) {
         return $c->render(json => { success => 0, error => "All required fields must be provided." });
     }
-    
+
+    unless ($c->is_admin) {
+        my $owner_id = $c->db->get_reminder_owner($id);
+        unless ($owner_id && $owner_id == $c->current_user_id) {
+            return $c->render(json => { success => 0, error => "You can only edit your own reminders." }, status => 403);
+        }
+    }
+
     # Standardize time format
     $time .= ":00" if $time =~ /^\d{2}:\d{2}$/;
     
@@ -152,9 +159,15 @@ sub api_delete {
         unless $c->is_logged_in && $c->is_family;
 
     my $id = $c->param('id');
-    
+
     # Validate ID format before processing
     if ($id && $id =~ /^\d+$/) {
+        unless ($c->is_admin) {
+            my $owner_id = $c->db->get_reminder_owner($id);
+            unless ($owner_id && $owner_id == $c->current_user_id) {
+                return $c->render(json => { success => 0, error => "You can only delete your own reminders." }, status => 403);
+            }
+        }
         eval {
             $c->db->delete_reminder($id);
         };
@@ -181,6 +194,12 @@ sub api_toggle {
     my $active = $c->param('active') ? 1 : 0;
     
     if ($id && $id =~ /^\d+$/) {
+        unless ($c->is_admin) {
+            my $owner_id = $c->db->get_reminder_owner($id);
+            unless ($owner_id && $owner_id == $c->current_user_id) {
+                return $c->render(json => { success => 0, error => "You can only modify your own reminders." }, status => 403);
+            }
+        }
         eval {
             $c->db->toggle_reminder_status($id, $active);
         };
@@ -188,9 +207,9 @@ sub api_toggle {
             $c->app->log->error("Failed to toggle reminder $id status: $@");
             return $c->render(json => { success => 0, error => "Database error" });
         }
-        return $c->render(json => { 
-            success => 1, 
-            message => ($active ? "Reminder resumed" : "Reminder paused") 
+        return $c->render(json => {
+            success => 1,
+            message => ($active ? "Reminder resumed" : "Reminder paused")
         });
     }
     
@@ -211,6 +230,12 @@ sub api_toggle_day {
     my $active = $c->param('active') ? 1 : 0;
     
     if ($id && $id =~ /^\d+$/ && $day && $day =~ /^[1-7]$/) {
+        unless ($c->is_admin) {
+            my $owner_id = $c->db->get_reminder_owner($id);
+            unless ($owner_id && $owner_id == $c->current_user_id) {
+                return $c->render(json => { success => 0, error => "You can only modify your own reminders." }, status => 403);
+            }
+        }
         eval {
             $c->db->toggle_reminder_day($id, $day, $active);
         };
