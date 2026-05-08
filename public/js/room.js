@@ -31,6 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global modal closure integration
     setupGlobalModalClosing(['modal-overlay'], [closeUploadModal, closePhotoModal, closeSettingsModal]);
+
+    if (sessionStorage.getItem('room_camera_pending')) {
+        sessionStorage.removeItem('room_camera_pending');
+        showToast('It looks like the app restarted while the camera was open. Please try uploading again.', 'error');
+    }
 });
 
 /**
@@ -765,28 +770,42 @@ function confirmDeleteSubmission(id) {
 }
 
 /**
- * Opens a fresh camera-capture input. A new element is created each time to
- * prevent iOS from caching capture state. Appended to body, triggered, then
- * self-removes after selection.
+ * Opens a fresh file-picker input. A new element is created each time to
+ * avoid stale capture state. A sessionStorage sentinel is written before the
+ * picker launches so that a process-kill/reload cycle can be detected on the
+ * next page load and a recovery notice shown to the user.
  */
 function openRoomFileInput() {
     const input = document.createElement('input');
     input.type   = 'file';
     input.name   = 'files[]';
     input.accept = 'image/*';
-    input.setAttribute('capture', 'environment');
     input.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0;';
 
     input.onchange = () => {
-        const files = Array.from(input.files);
-        if (files.length > 0) {
-            UPLOAD_QUEUE = [...UPLOAD_QUEUE, ...files];
+        // Sentinel cleared: process survived the camera round-trip.
+        sessionStorage.removeItem('room_camera_pending');
+
+        const allFiles  = Array.from(input.files);
+        const validFiles = allFiles.filter(f => f.size > 0);
+        const badCount  = allFiles.length - validFiles.length;
+
+        if (allFiles.length === 0) {
+            showToast('No photo was captured. Please try again.', 'error');
+        } else if (badCount > 0) {
+            showToast('One or more photos came back empty. Please try again.', 'error');
+        }
+
+        if (validFiles.length > 0) {
+            UPLOAD_QUEUE = [...UPLOAD_QUEUE, ...validFiles];
             renderUploadPreviews();
         }
+
         input.remove();
     };
 
     document.body.appendChild(input);
+    sessionStorage.setItem('room_camera_pending', '1');
     input.click();
 }
 
