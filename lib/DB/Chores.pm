@@ -4,6 +4,7 @@ package DB::Chores;
 
 use strict;
 use warnings;
+use DBI qw(:sql_types);
 
 # DB Helper module managing Chores / Bounty Board.
 
@@ -119,11 +120,16 @@ sub DB::get_completed_chores_history {
     $self->ensure_connection();
 
     my $sth = $self->{dbh}->prepare(
-        "SELECT c.id, c.title, c.points, c.completed_at, c.completed_by, u.username as completed_by_name, u.emoji as completed_by_emoji
+        "SELECT c.id, c.title, c.points, c.completed_at, u.username as completed_by_name, u.emoji as completed_by_emoji, CAST('chore' AS CHAR) as source
          FROM chores c
          LEFT JOIN users u ON c.completed_by = u.id
          WHERE c.status = 'completed'
-         ORDER BY c.completed_at DESC 
+         UNION ALL
+         SELECT cs.id, cs.description as title, cs.points_awarded as points, cs.reviewed_at as completed_at, u.username as completed_by_name, u.emoji as completed_by_emoji, CAST('submission' AS CHAR) as source
+         FROM chore_submissions cs
+         JOIN users u ON cs.user_id = u.id
+         WHERE cs.status = 'approved'
+         ORDER BY completed_at DESC
          LIMIT 50"
     );
     $sth->execute();
@@ -174,6 +180,174 @@ sub DB::delete_chore {
     my $sth = $self->{dbh}->prepare("DELETE FROM chores WHERE id = ?");
     $sth->execute($chore_id);
     return 1;
+}
+
+# Inserts a new voluntary chore submission record.
+# Parameters:
+#   $self        : DB instance
+#   $user_id     : Submitting child's user ID
+#   $description : Text description of the chore performed
+# Returns:
+#   Integer new row ID
+sub DB::add_chore_submission {
+    my ($self, $user_id, $description) = @_;
+    $self->ensure_connection();
+    my $sth = $self->{dbh}->prepare(
+        "INSERT INTO chore_submissions (user_id, description) VALUES (?, ?)"
+    );
+    $sth->execute($user_id, $description);
+    return $self->{dbh}->last_insert_id(undef, undef, 'chore_submissions', undef);
+}
+
+# Stores a single photo blob attached to a submission.
+# Parameters:
+#   $self              : DB instance
+#   $submission_id     : Parent submission ID
+#   $photo_type        : 'before' or 'after'
+#   $filename          : SHA-derived safe filename
+#   $original_filename : Original upload filename
+#   $mime_type         : MIME type string
+#   $file_size         : Integer byte count
+#   $file_data         : Binary blob
+# Returns:
+#   Boolean (execute result)
+sub DB::add_chore_submission_photo {
+    my ($self, $submission_id, $photo_type, $filename, $original_filename, $mime_type, $file_size, $file_data) = @_;
+    $self->ensure_connection();
+    my $sth = $self->{dbh}->prepare(
+        "INSERT INTO chore_submission_photos
+         (submission_id, photo_type, filename, original_filename, mime_type, file_size, file_data)
+         VALUES (?, ?, ?, ?, ?, ?, ?)"
+    );
+    $sth->bind_param(1, $submission_id);
+    $sth->bind_param(2, $photo_type);
+    $sth->bind_param(3, $filename);
+    $sth->bind_param(4, $original_filename);
+    $sth->bind_param(5, $mime_type);
+    $sth->bind_param(6, $file_size);
+    $sth->bind_param(7, $file_data, DBI::SQL_BLOB);
+    return $sth->execute();
+}
+
+# Retrieves a single photo record including binary data for serving.
+# Parameters:
+#   $self : DB instance
+#   $id   : chore_submission_photos row ID
+# Returns:
+#   HashRef or undef
+sub DB::get_chore_submission_photo_by_id {
+    my ($self, $id) = @_;
+    $self->ensure_connection();
+    my $sth = $self->{dbh}->prepare("SELECT * FROM chore_submission_photos WHERE id = ?");
+    $sth->execute($id);
+    return $sth->fetchrow_hashref();
+}
+
+# Retrieves all pending submissions for admin review, joined with username and photo IDs.
+# Returns:
+#   ArrayRef of hashrefs with id, user_id, username, description, submitted_at,
+#   before_photo_id, after_photo_id
+sub DB::get_pending_chore_submissions {
+    my ($self) = @_;
+    $self->ensure_connection();
+    my $sth = $self->{dbh}->prepare(
+        "SELECT cs.id, cs.user_id, cs.description, cs.submitted_at, u.username,
+                (SELECT id FROM chore_submission_photos WHERE submission_id = cs.id AND photo_type = 'before' LIMIT 1) AS before_photo_id,
+                (SELECT id FROM chore_submission_photos WHERE submission_id = cs.id AND photo_type = 'after'  LIMIT 1) AS after_photo_id
+         FROM chore_submissions cs
+         JOIN users u ON cs.user_id = u.id
+         WHERE cs.status = 'pending'
+         ORDER BY cs.submitted_at ASC"
+    );
+    $sth->execute();
+    return $sth->fetchall_arrayref({});
+}
+
+# Retrieves a single submission record with its photo IDs (not blobs).
+# Parameters:
+#   $self : DB instance
+#   $id   : chore_submissions row ID
+# Returns:
+#   HashRef including 'photos' ArrayRef of {id, photo_type}
+sub DB::get_chore_submission_by_id {
+    my ($self, $id) = @_;
+    $self->ensure_connection();
+    my $sth = $self->{dbh}->prepare(
+        "SELECT cs.*, u.username FROM chore_submissions cs
+         JOIN users u ON cs.user_id = u.id
+         WHERE cs.id = ?"
+    );
+    $sth->execute($id);
+    return $sth->fetchrow_hashref();
+}
+
+# Marks a submission as approved and records points awarded and review timestamp.
+# Parameters:
+#   $self           : DB instance
+#   $submission_id  : Row ID
+#   $points_awarded : Integer points
+# Returns:
+#   1
+sub DB::approve_chore_submission {
+    my ($self, $submission_id, $points_awarded) = @_;
+    $self->ensure_connection();
+    my $sth = $self->{dbh}->prepare(
+        "UPDATE chore_submissions
+         SET status = 'approved', points_awarded = ?, reviewed_at = NOW()
+         WHERE id = ?"
+    );
+    $sth->execute($points_awarded, $submission_id);
+    return 1;
+}
+
+
+# Removes all photo blob rows for a submission from chore_submission_photos.
+# Parameters:
+#   $self          : DB instance
+#   $submission_id : Parent submission ID
+# Returns:
+#   1
+sub DB::purge_chore_submission_photos {
+    my ($self, $submission_id) = @_;
+    $self->ensure_connection();
+    my $sth = $self->{dbh}->prepare("DELETE FROM chore_submission_photos WHERE submission_id = ?");
+    $sth->execute($submission_id);
+    return 1;
+}
+
+# Deletes a submission record entirely (called after rejection).
+# Parameters:
+#   $self          : DB instance
+#   $submission_id : Row ID
+# Returns:
+#   1
+sub DB::delete_chore_submission {
+    my ($self, $submission_id) = @_;
+    $self->ensure_connection();
+    my $sth = $self->{dbh}->prepare("DELETE FROM chore_submissions WHERE id = ?");
+    $sth->execute($submission_id);
+    return 1;
+}
+
+# Retrieves a child's pending submissions and approved submissions from the last 30 days.
+# Parameters:
+#   $self    : DB instance
+#   $user_id : Child's user ID
+# Returns:
+#   ArrayRef of hashrefs (id, description, status, points_awarded, submitted_at)
+sub DB::get_my_chore_submissions {
+    my ($self, $user_id) = @_;
+    $self->ensure_connection();
+    my $sth = $self->{dbh}->prepare(
+        "SELECT id, description, status, points_awarded, submitted_at
+         FROM chore_submissions
+         WHERE user_id = ?
+           AND (status = 'pending' OR (status = 'approved' AND submitted_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)))
+         ORDER BY submitted_at DESC
+         LIMIT 20"
+    );
+    $sth->execute($user_id);
+    return $sth->fetchall_arrayref({});
 }
 
 # Identifies chores older than 1 hour without a recent reminder. 
