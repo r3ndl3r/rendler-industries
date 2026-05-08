@@ -224,6 +224,18 @@
     cursor: pointer;
 }
 
+.day-dot.locked {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.day-dot.locked:hover {
+    background: rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.2);
+    box-shadow: none;
+}
+
 .day-dot.active {
     background: var(--accent-color, #3b82f6);
     border-color: var(--accent-light, #60a5fa);
@@ -310,11 +322,21 @@
 }
 
 .one-off-hint {
-    display: block; 
-    color: rgba(255,255,255,0.4); 
-    margin-top: 5px; 
-    font-style: italic; 
+    display: block;
+    color: rgba(255,255,255,0.4);
+    margin-top: 5px;
+    font-style: italic;
     padding-left: 2rem;
+}
+
+.reminder-owner-badge {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.85);
+    padding: 0.3rem 0.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    align-self: center;
 }
 
 .modal-reminders {
