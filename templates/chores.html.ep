@@ -20,6 +20,11 @@
                     ➕ Chore
                 </button>
             </div>
+            <div id="childSubmitActions" class="manage-actions hidden">
+                <button type="button" class="btn-primary" onclick="openSubmitModal()">
+                    📸 Submit Chore
+                </button>
+            </div>
         </div>
     </div>
 
@@ -50,10 +55,43 @@
                 </table>
             </div>
         </div>
+
+        <%# Child's own submission history %>
+        <div id="mySubmissionsSection" class="chores-section submission-section-margin hidden">
+            <div class="glass-panel w-100 max-w-admin">
+                <h3 class="panel-title">📋 My Submissions</h3>
+                <div id="mySubmissionsList">
+                    <div class="component-loading">
+                        <div class="loading-scan-line"></div>
+                        <span class="loading-icon-pulse">⌛</span>
+                        <p class="loading-label">Loading submissions...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <%# Admin Oversight and Management %>
     <div id="adminView" class="chores-section hidden">
+        <div id="pendingSubmissionsPanel" class="glass-panel w-100 max-w-admin pending-submissions-margin hidden">
+            <h3 class="panel-title">📬 Pending Submissions</h3>
+            <div class="table-responsive-glass">
+                <table class="data-table-glass">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Time</th>
+                            <th>Task</th>
+                            <th class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingSubmissionsTable">
+                        <%# Populated via JS %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="glass-panel w-100 max-w-admin">
             <h3 class="panel-title">📜 Completion History</h3>
             <div class="table-responsive-glass">
@@ -131,6 +169,52 @@
                 <div class="quick-repost-grid" id="quickAddGrid">
                     <%# Populated via JS %>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%# Submit Chore Modal (child) %>
+<div id="submitWorkModal" class="modal-overlay">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h3>📸 Submit Chore</h3>
+            <span class="close-btn" onclick="closeSubmitModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="submitWorkForm" onsubmit="submitWork(event)" enctype="multipart/form-data" class="premium-form">
+                <div class="form-group-glass">
+                    <label>What did you do?</label>
+                    <textarea name="description" class="game-input-premium no-emoji" rows="3" placeholder="e.g. I vacuumed the living room and tidied the cushions" required></textarea>
+                </div>
+                <div class="form-group-glass">
+                    <label>Before Photo</label>
+                    <input type="file" name="before" accept="image/*" class="game-input-premium no-emoji" required>
+                </div>
+                <div class="form-group-glass">
+                    <label>After Photo</label>
+                    <input type="file" name="after" accept="image/*" class="game-input-premium no-emoji" required>
+                </div>
+                <div class="modal-actions modal-actions-center">
+                    <button type="submit" id="submitWorkBtn" class="btn-premium-action-shrink">
+                        📤 Submit for Review
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<%# Review Submission Modal (admin) %>
+<div id="reviewSubmissionModal" class="modal-overlay">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3>🔍 Review Submission</h3>
+            <span class="close-btn" onclick="closeReviewModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="reviewModalBody">
+                <%# Populated via JS %>
             </div>
         </div>
     </div>
