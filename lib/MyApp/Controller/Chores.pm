@@ -4,6 +4,7 @@ package MyApp::Controller::Chores;
 
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
+use Digest::SHA qw(sha256_hex);
 
 # Controller mapping the Bounty Board / Chores gamification workflow.
 # Features:
@@ -38,9 +39,10 @@ sub api_state {
 
     # Inject extended datasets if the user is a reviewer
     if ($c->is_admin) {
-        $state->{all_users}         = $c->db->get_all_users();
-        $state->{history}           = $c->db->get_completed_chores_history();
-        $state->{quick_add_chores}  = $c->db->get_recent_chore_templates();
+        $state->{all_users}             = $c->db->get_all_users();
+        $state->{history}               = $c->db->get_completed_chores_history();
+        $state->{quick_add_chores}      = $c->db->get_recent_chore_templates();
+        $state->{pending_submissions}   = $c->db->get_pending_chore_submissions();
     }
 
     $c->render(json => $state);
@@ -209,14 +211,185 @@ sub api_delete {
 }
 
 
+# Accepts a voluntary chore submission from a child with before/after photos.
+#
+# Route:      POST /chores/api/submit
+# Parameters: description (string), before (file upload), after (file upload)
+# Returns:    JSON { success, message|error }
+sub api_submit {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_child;
+
+    my $description = trim($c->param('description') || '');
+    return $c->render(json => { success => 0, error => 'Description is required' }) unless $description;
+
+    my $before = $c->req->upload('before');
+    my $after  = $c->req->upload('after');
+    return $c->render(json => { success => 0, error => 'Both before and after photos are required' })
+        unless $before && $after;
+
+    return $c->render(json => { success => 0, error => "The before photo is empty or invalid" }) unless $before->size;
+    return $c->render(json => { success => 0, error => "The after photo is empty or invalid" }) unless $after->size;
+
+    my $user_id  = $c->current_user_id;
+    my $username = $c->session('user');
+
+    my $submission_id;
+    eval {
+        $submission_id = $c->db->add_chore_submission($user_id, $description);
+
+        for my $pair ([$before, 'before'], [$after, 'after']) {
+            my ($upload, $type) = @$pair;
+            my $original = $upload->filename;
+            my $mime     = $upload->headers->content_type || 'application/octet-stream';
+            my $size     = $upload->size;
+
+            my $data     = $upload->asset->slurp;
+            my ($ext)    = $original =~ /(\.[^.]+)$/;
+            my $safe     = sha256_hex($original . time . int(rand(1000))) . lc($ext || '');
+            $c->db->add_chore_submission_photo($submission_id, $type, $safe, $original, $mime, $size, $data);
+        }
+    };
+    if ($@) {
+        $c->app->log->error("Chore submission failed: $@");
+        if ($submission_id) {
+            eval { $c->db->purge_chore_submission_photos($submission_id) };
+            eval { $c->db->delete_chore_submission($submission_id) };
+        }
+        return $c->render(json => { success => 0, error => 'Submission failed' });
+    }
+
+    my $excerpt = length($description) > 60 ? substr($description, 0, 57) . '...' : $description;
+    my $admins  = $c->db->get_admins();
+    foreach my $admin (@$admins) {
+        $c->notify_templated($admin->{id}, 'chore_submission_received', {
+            user        => $username,
+            description => $excerpt
+        }, $c->current_user_id);
+    }
+
+    $c->render(json => { success => 1, message => 'Submitted for review!' });
+}
+
+# Serves a chore submission photo blob by chore_submission_photos.id.
+#
+# Route:      GET /chores/serve/:id
+# Parameters: id (path param)
+# Returns:    Binary image data or 404
+sub serve {
+    my $c = shift;
+    return $c->render(text => 'Unauthorized', status => 403) unless $c->is_logged_in;
+
+    my $id    = $c->stash('id');
+    my $photo = $c->db->get_chore_submission_photo_by_id($id);
+    return $c->render(text => 'Not found', status => 404) unless $photo;
+
+    $c->res->headers->content_type($photo->{mime_type});
+    $c->render(data => $photo->{file_data});
+}
+
+# Returns the current child's submission history (pending + recent approved).
+#
+# Route:      GET /chores/api/my_submissions
+# Returns:    JSON { success, submissions[] }
+sub api_my_submissions {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
+    my $user_id = $c->current_user_id;
+    my $subs    = $c->db->get_my_chore_submissions($user_id);
+    $c->render(json => { success => 1, submissions => $subs });
+}
+
+# Approves a chore submission, records points awarded, and removes associated photo blobs.
+#
+# Route:      POST /chores/api/approve
+# Parameters: id (submission ID), points (integer)
+# Returns:    JSON { success, error }
+sub api_approve {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
+    my $id     = $c->param('id');
+    my $points = int($c->param('points') || 0);
+    return $c->render(json => { success => 0, error => 'Points must be greater than 0' }) unless $points > 0;
+
+    my $sub = $c->db->get_chore_submission_by_id($id);
+    return $c->render(json => { success => 0, error => 'Not found' }) unless $sub;
+
+    eval {
+        $c->db->{dbh}->begin_work;
+        $c->db->approve_chore_submission($id, $points);
+        my $reason = "Chore Submission Approved: " . $sub->{description};
+        $c->add_points($sub->{user_id}, $points, $reason);
+        $c->db->purge_chore_submission_photos($id);
+        $c->db->{dbh}->commit;
+    };
+    if ($@) {
+        $c->db->{dbh}->rollback if $c->db->{dbh}->{Active};
+        $c->app->log->error("Chore approve failed: $@");
+        return $c->render(json => { success => 0, error => 'Approval failed' });
+    }
+
+    my $excerpt = length($sub->{description}) > 60 ? substr($sub->{description}, 0, 57) . '...' : $sub->{description};
+    $c->notify_templated($sub->{user_id}, 'chore_submission_approved', {
+        description => $excerpt,
+        points      => $points
+    }, $c->current_user_id);
+
+    $c->render(json => { success => 1 });
+}
+
+# Marks a submission rejected and removes all associated photos and the submission record.
+#
+# Route:      POST /chores/api/reject
+# Parameters: id (submission ID), comment (string)
+# Returns:    JSON { success, error }
+sub api_reject {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
+    my $id      = $c->param('id');
+    my $comment = trim($c->param('comment') || '');
+    return $c->render(json => { success => 0, error => 'A reason is required for rejection' }) unless $comment;
+
+    my $sub = $c->db->get_chore_submission_by_id($id);
+    return $c->render(json => { success => 0, error => 'Not found' }) unless $sub;
+
+    eval {
+        $c->db->{dbh}->begin_work;
+        $c->db->purge_chore_submission_photos($id);
+        $c->db->delete_chore_submission($id);
+        $c->db->{dbh}->commit;
+    };
+    if ($@) {
+        $c->db->{dbh}->rollback if $c->db->{dbh}->{Active};
+        $c->app->log->error("Chore reject failed: $@");
+        return $c->render(json => { success => 0, error => 'Rejection failed' });
+    }
+
+    my $excerpt = length($sub->{description}) > 60 ? substr($sub->{description}, 0, 57) . '...' : $sub->{description};
+    $c->notify_templated($sub->{user_id}, 'chore_submission_rejected', {
+        description => $excerpt,
+        comment     => $comment
+    }, $c->current_user_id);
+
+    $c->render(json => { success => 1 });
+}
+
 sub register_routes {
     my ($class, $r) = @_;
     $r->{family}->get('/chores')->to('chores#index');
     $r->{family}->get('/chores/api/state')->to('chores#api_state');
     $r->{family}->post('/chores/api/complete')->to('chores#api_complete');
+    $r->{family}->post('/chores/api/submit')->to('chores#api_submit');
+    $r->{family}->get('/chores/serve/:id')->to('chores#serve');
+    $r->{family}->get('/chores/api/my_submissions')->to('chores#api_my_submissions');
     $r->{admin}->post('/chores/api/add')->to('chores#api_add');
     $r->{admin}->post('/chores/api/revoke')->to('chores#api_revoke');
     $r->{admin}->post('/chores/api/delete')->to('chores#api_delete');
+    $r->{admin}->post('/chores/api/approve')->to('chores#api_approve');
+    $r->{admin}->post('/chores/api/reject')->to('chores#api_reject');
 }
 
 1;
