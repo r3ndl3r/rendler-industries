@@ -145,7 +145,8 @@ function renderReminderCard(r) {
     const isActive = !!r.is_active;
     const isOneOff = !!r.is_one_off;
     const reminderTime = (r.reminder_time || '00:00').substring(0, 5);
-    
+    const canEdit = STATE.isAdmin || (r.creator_name === STATE.currentUser);
+
     // Localize: convert 24h server time to display format
     const [hRaw, mRaw] = reminderTime.split(':');
     let h = parseInt(hRaw || 0);
@@ -153,19 +154,38 @@ function renderReminderCard(r) {
     h = h % 12 || 12;
     const displayTime = `${h}:${mRaw || '00'}`;
 
-    // Interactive day-of-week toggles
+    // Day dots are interactive only for the owner/admin
     const activeDays = (r.days_of_week || '').split(',').reduce((acc, d) => { if(d) acc[d] = true; return acc; }, {});
     const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     const dayDots = dayLabels.map((label, idx) => {
         const dayNum = idx + 1;
         const active = activeDays[dayNum];
-        return `<span class="day-dot ${active ? 'active' : ''}" onclick="toggleDay(${r.id}, ${dayNum}, ${active ? 0 : 1})" title="${getDayFullName(dayNum)}">${label}</span>`;
+        if (canEdit) {
+            return `<span class="day-dot ${active ? 'active' : ''}" onclick="toggleDay(${r.id}, ${dayNum}, ${active ? 0 : 1})" title="${getDayFullName(dayNum)}">${label}</span>`;
+        }
+        return `<span class="day-dot ${active ? 'active' : ''} locked" title="${getDayFullName(dayNum)}">${label}</span>`;
     }).join('');
 
     // Recipient branding
-    const recipientPills = (r.recipient_names || '').split(',').filter(n => n).map(name => 
+    const recipientPills = (r.recipient_names || '').split(',').filter(n => n).map(name =>
         `<span class="recipient-badge">🔔 ${escapeHtml(name)}</span>`
     ).join('');
+
+    const footerActions = canEdit ? `
+        <button class="btn-icon-${isActive ? 'copy' : 'view'}"
+                onclick="toggleReminder(${r.id}, ${isActive ? 0 : 1})"
+                title="${isActive ? 'Pause Reminder' : 'Resume Reminder'}">
+            ${isActive ? '⏸️' : '▶️'}
+        </button>
+        <button class="btn-icon-edit"
+                onclick="openEditModal(${r.id})"
+                title="Edit Reminder">✎
+        </button>
+        <button class="btn-icon-delete"
+                onclick="confirmDeleteReminder(${r.id}, \`${(r.title || 'Untitled').replace(/`/g, '\\`')}\`)"
+                title="Delete Reminder">🗑️
+        </button>
+    ` : `<span class="reminder-owner-badge">${window.getUserIcon?.(r.creator_name) ?? '👤'} ${escapeHtml(r.creator_name || 'Unknown')}</span>`;
 
     return `
         <div class="reminder-card ${isActive ? '' : 'paused'}"
@@ -204,19 +224,7 @@ function renderReminderCard(r) {
             </div>
 
             <div class="reminder-footer-actions">
-                <button class="btn-icon-${isActive ? 'copy' : 'view'}"
-                        onclick="toggleReminder(${r.id}, ${isActive ? 0 : 1})"
-                        title="${isActive ? 'Pause Reminder' : 'Resume Reminder'}">
-                    ${isActive ? '⏸️' : '▶️'}
-                </button>
-                <button class="btn-icon-edit"
-                        onclick="openEditModal(${r.id})"
-                        title="Edit Reminder">✎
-                </button>
-                <button class="btn-icon-delete"
-                        onclick="confirmDeleteReminder(${r.id}, \`${(r.title || 'Untitled').replace(/`/g, '\\`')}\`)"
-                        title="Delete Reminder">🗑️
-                </button>
+                ${footerActions}
             </div>
         </div>
     `;
