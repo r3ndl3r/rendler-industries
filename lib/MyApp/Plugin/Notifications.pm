@@ -170,6 +170,30 @@ use constant MANIFEST => {
         default_subject => "Pending Chore: [task]",
         default_body    => "[icon] **Chore Reminder:** '[task]' has been waiting for an hour!\n\nGrab the [points] pts.\n\n(Assigned to: [target])"
     },
+    'chore_submission_received' => {
+        desc    => "Sent to admins when a child submits a voluntary chore for review.",
+        tags    => "user, description",
+        url     => '/chores',
+        sample  => { user => "Alex", description => "I vacuumed the living room" },
+        default_subject => "Chore Submission from [user]",
+        default_body    => "🧹 **New Chore Submission** 🧹\n\n**[user]** submitted a chore for review:\n> [description]\n\n[sys_url]"
+    },
+    'chore_submission_approved' => {
+        desc    => "Sent to a child when their voluntary chore submission is approved.",
+        tags    => "description, points",
+        url     => '/chores',
+        sample  => { description => "I vacuumed the living room", points => 25 },
+        default_subject => "Chore Approved! +[points] pts",
+        default_body    => "🌟 **Chore Approved!** 🌟\n\nYour chore was approved!\n> [description]\n\nYou earned **[points] points**!\n\n[sys_url]"
+    },
+    'chore_submission_rejected' => {
+        desc    => "Sent to a child when their voluntary chore submission is rejected.",
+        tags    => "description, comment",
+        url     => '/chores',
+        sample  => { description => "I vacuumed the living room", comment => "Please redo the corners" },
+        default_subject => "Chore Submission Not Approved",
+        default_body    => "❌ **Chore Not Approved** ❌\n\nYour chore submission was not approved:\n> [description]\n\n**Feedback:** [comment]\n\nYou can submit again from scratch.\n\n[sys_url]"
+    },
 
     # --- MEALS (meals_*) ---
     'meals_reminder' => {
