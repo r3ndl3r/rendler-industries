@@ -33,7 +33,9 @@ let STATE = {
     all_users: [],
     history: [],
     quick_add_chores: [],
-    child_balances: []
+    child_balances: [],
+    pending_submissions: [],
+    my_submissions: []
 };
 
 /**
@@ -43,8 +45,9 @@ let STATE = {
  */
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
-    setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
-    setupGlobalModalClosing(['modal-overlay'], [closeAddModal]);
+    loadMySubmissions();
+    setInterval(() => { loadState(); loadMySubmissions(); }, CONFIG.SYNC_INTERVAL_MS);
+    setupGlobalModalClosing(['modal-overlay'], [closeAddModal, closeSubmitModal, closeReviewModal]);
 });
 
 /**
@@ -77,6 +80,30 @@ async function loadState(force = false) {
 }
 
 /**
+ * Fetches the current child's submission history.
+ *
+ * @async
+ * @param {boolean} force - If true, bypasses inhibition checks.
+ * @returns {Promise<void>}
+ */
+async function loadMySubmissions(force = false) {
+    const anyModalOpen = document.querySelector('.modal-overlay.show') || document.querySelector('.delete-modal-overlay.show');
+    const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+    if (!force && (anyModalOpen || inputFocused)) return;
+
+    try {
+        const res = await fetch('/chores/api/my_submissions');
+        const data = await res.json();
+        if (data && data.success) {
+            STATE.my_submissions = data.submissions || [];
+            renderMySubmissions();
+        }
+    } catch (err) {
+        console.error("loadMySubmissions failed:", err);
+    }
+}
+
+/**
  * Orchestrates role-based visibility and dashboard rendering.
  *
  * @returns {void}
@@ -104,13 +131,17 @@ function renderUI() {
         renderAdminControlPanel();
         renderChores();
         renderUserBalances();
+        renderPendingSubmissions();
     } else if (STATE.is_child) {
         if (childView) childView.classList.remove('hidden');
         if (adminView) adminView.classList.add('hidden');
         if (noAccessView) noAccessView.classList.add('hidden');
         if (adminActions) adminActions.classList.add('hidden');
+        const childSubmitActions = document.getElementById('childSubmitActions');
+        if (childSubmitActions) childSubmitActions.classList.remove('hidden');
         renderChores();
         renderUserBalances();
+        renderMySubmissions();
     } else {
         if (childView) childView.classList.add('hidden');
         if (adminView) adminView.classList.add('hidden');
@@ -271,7 +302,7 @@ function openAddModal() {
 
 /**
  * Modal Management: Close the "Add Chore" dialog.
- * 
+ *
  * @returns {void}
  */
 function closeAddModal() {
@@ -280,6 +311,193 @@ function closeAddModal() {
         modal.classList.remove('show');
         document.body.classList.remove('modal-open');
     }
+}
+
+/**
+ * Opens the "Submit My Work" modal.
+ *
+ * @returns {void}
+ */
+function openSubmitModal() {
+    const modal = document.getElementById('submitWorkModal');
+    if (modal) {
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+    }
+}
+
+/**
+ * Closes the "Submit My Work" modal and resets the form.
+ *
+ * @returns {void}
+ */
+function closeSubmitModal() {
+    const modal = document.getElementById('submitWorkModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+    }
+    const form = document.getElementById('submitWorkForm');
+    if (form) form.reset();
+}
+
+/**
+ * Handles the "Submit My Work" form submission including file uploads.
+ *
+ * @async
+ * @param {Event} e - Form submit event
+ * @returns {Promise<void>}
+ */
+async function submitWork(e) {
+    if (e) e.preventDefault();
+    const form = e.target;
+    const btn  = document.getElementById('submitWorkBtn');
+    const originalHtml = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '⌛ Submitting...';
+
+    try {
+        const formData = new FormData(form);
+        const res = await apiPost('/chores/api/submit', formData);
+        if (res && res.success) {
+            closeSubmitModal();
+            await loadMySubmissions(true);
+        } else if (res) {
+            showToast(res.error || 'Submission failed', 'error');
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+/**
+ * Opens the review modal for a pending submission, rendering photos from STATE.
+ *
+ * @param {number} submissionId - chore_submissions.id
+ * @returns {void}
+ */
+function openReviewModal(submissionId) {
+    const modal = document.getElementById('reviewSubmissionModal');
+    const body  = document.getElementById('reviewModalBody');
+    if (!modal || !body) return;
+
+    const sub = STATE.pending_submissions.find(s => s.id === submissionId);
+    if (!sub) {
+        body.innerHTML = `<p class="text-center">Submission not found.</p>`;
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+        return;
+    }
+
+    const beforeSrc = sub.before_photo_id ? `/chores/serve/${sub.before_photo_id}` : '';
+    const afterSrc  = sub.after_photo_id  ? `/chores/serve/${sub.after_photo_id}`  : '';
+
+    body.innerHTML = `
+        <p class="review-modal-meta">
+            ${escapeHtml(sub.username)} — ${format_datetime(sub.submitted_at)}
+        </p>
+        <div class="review-description">${escapeHtml(sub.description)}</div>
+        <div class="review-photo-grid">
+            <div class="review-photo-cell">
+                <div class="review-photo-label">Before</div>
+                ${beforeSrc ? `<img class="review-photo-img" src="${beforeSrc}" alt="Before Photo">` : '<p class="review-photo-unavailable">Photo unavailable</p>'}
+            </div>
+            <div class="review-photo-cell">
+                <div class="review-photo-label">After</div>
+                ${afterSrc ? `<img class="review-photo-img" src="${afterSrc}" alt="After Photo">` : '<p class="review-photo-unavailable">Photo unavailable</p>'}
+            </div>
+        </div>
+        <div class="review-points-row">
+            <label>⭐ Points to Award</label>
+            <input type="number" id="reviewPoints" class="game-input-premium no-emoji review-points-input" min="1" placeholder="e.g. 10">
+        </div>
+        <div class="review-comment-row">
+            <label>Comment (required for rejection)</label>
+            <textarea id="reviewComment" class="game-input-premium no-emoji" rows="2" placeholder="Optional for approval, required for rejection"></textarea>
+        </div>
+        <div class="modal-actions modal-actions-center review-modal-actions">
+            <button class="btn-premium-action-shrink" onclick="confirmApprove(${submissionId})">✅ Approve</button>
+            <button class="btn-premium-action-shrink btn-danger-action" onclick="confirmReject(${submissionId})">❌ Reject</button>
+        </div>
+    `;
+
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+}
+
+/**
+ * Closes the review modal.
+ *
+ * @returns {void}
+ */
+function closeReviewModal() {
+    const modal = document.getElementById('reviewSubmissionModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+    }
+}
+
+/**
+ * Confirms and sends an approval for a pending submission.
+ *
+ * @param {number} submissionId - chore_submissions.id
+ * @returns {void}
+ */
+function confirmApprove(submissionId) {
+    const points = parseInt(document.getElementById('reviewPoints')?.value || '0', 10);
+    if (!points || points < 1) {
+        showToast('Enter a points value greater than 0 to approve.', 'error');
+        return;
+    }
+    const comment = document.getElementById('reviewComment')?.value || '';
+
+    showConfirmModal({
+        title: 'Approve Submission',
+        message: `Award <strong>${points} points</strong> and approve this submission?`,
+        confirmText: 'Approve',
+        hideCancel: true,
+        onConfirm: async () => {
+            const res = await apiPost('/chores/api/approve', { id: submissionId, points, comment });
+            if (res && res.success) {
+                showToast('Submission approved and points awarded!', 'success');
+                closeReviewModal();
+                await loadState(true);
+            }
+        }
+    });
+}
+
+/**
+ * Confirms and sends a rejection for a pending submission.
+ *
+ * @param {number} submissionId - chore_submissions.id
+ * @returns {void}
+ */
+function confirmReject(submissionId) {
+    const comment = document.getElementById('reviewComment')?.value?.trim() || '';
+    if (!comment) {
+        showToast('A reason is required when rejecting a submission.', 'error');
+        return;
+    }
+
+    showConfirmModal({
+        title: 'Reject Submission',
+        message: `Reject this submission and notify the child with your feedback?`,
+        confirmText: 'Reject',
+        danger: true,
+        hideCancel: true,
+        onConfirm: async () => {
+            const res = await apiPost('/chores/api/reject', { id: submissionId, comment });
+            if (res && res.success) {
+                showToast('Submission rejected. Child notified.', 'success');
+                closeReviewModal();
+                await loadState(true);
+            }
+        }
+    });
 }
 
 /**
@@ -414,8 +632,82 @@ function renderUserBalances() {
 }
 
 /**
+ * Renders the child's own submission history cards below the bounty board.
+ *
+ * @returns {void}
+ */
+function renderMySubmissions() {
+    const section = document.getElementById('mySubmissionsSection');
+    const list    = document.getElementById('mySubmissionsList');
+    if (!section || !list) return;
+
+    if (!STATE.is_child || STATE.is_admin) {
+        section.classList.add('hidden');
+        return;
+    }
+
+    if (STATE.my_submissions.length === 0) {
+        section.classList.add('hidden');
+        return;
+    }
+
+    section.classList.remove('hidden');
+    list.innerHTML = STATE.my_submissions.map(s => {
+        const desc = s.description || '';
+        const badgeClass = s.status === 'pending' ? 'pending' : (s.status === 'approved' ? 'approved' : 'rejected');
+        const badgeText  = s.status === 'pending'
+            ? '⏳ Pending Review'
+            : (s.status === 'approved' ? `✅ Approved — ${s.points_awarded} pts` : (s.status === 'rejected' ? '❌ Rejected' : `❓ ${s.status}`));
+
+        return `
+            <div class="submission-card">
+                <div class="submission-card-body">
+                    <div class="submission-card-desc">${escapeHtml(desc)}</div>
+                    <div class="submission-card-meta">${format_datetime(s.submitted_at)}</div>
+                </div>
+                <span class="submission-status-badge ${badgeClass}">${badgeText}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Renders the admin pending submissions table and toggles panel visibility.
+ *
+ * @returns {void}
+ */
+function renderPendingSubmissions() {
+    const panel = document.getElementById('pendingSubmissionsPanel');
+    const tbody = document.getElementById('pendingSubmissionsTable');
+    if (!panel || !tbody) return;
+
+    if (!STATE.pending_submissions || STATE.pending_submissions.length === 0) {
+        panel.classList.add('hidden');
+        return;
+    }
+
+    panel.classList.remove('hidden');
+    tbody.innerHTML = STATE.pending_submissions.map(s => {
+        const desc = s.description || '';
+        const excerpt = desc.length > 55 ? desc.substring(0, 52) + '...' : desc;
+        return `
+            <tr>
+                <td data-label="User" class="col-user">
+                    <span class="audit-user">${window.getUserIcon(s.username)} ${escapeHtml(s.username)}</span>
+                </td>
+                <td data-label="Time" class="col-time"><small>${format_datetime(s.submitted_at)}</small></td>
+                <td data-label="Task" class="col-task">${escapeHtml(excerpt)}</td>
+                <td class="text-right col-actions">
+                    <button class="btn-icon-view" title="Review Submission" onclick="openReviewModal(${s.id})">🔍</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+/**
  * Maps recent history for an admin allowing revocation.
- * 
+ *
  * @returns {void}
  */
 function renderHistory() {
@@ -440,9 +732,7 @@ function renderHistory() {
                     <strong>${h.points > 0 ? `+${h.points}` : '0'}</strong>
                 </td>
                 <td class="text-right col-actions">
-                    <button class="btn-icon-delete" title="Revoke Completion" onclick="confirmRevoke(${h.id})">
-                        🗑️
-                    </button>
+                    ${h.source !== 'submission' ? `<button class="btn-icon-delete" title="Revoke Completion" onclick="confirmRevoke(${h.id})">🗑️</button>` : ''}
                 </td>
             </tr>
         `;
@@ -488,3 +778,10 @@ window.fillChoreForm = fillChoreForm;
 window.confirmRevoke = confirmRevoke;
 window.openAddModal = openAddModal;
 window.closeAddModal = closeAddModal;
+window.openSubmitModal = openSubmitModal;
+window.closeSubmitModal = closeSubmitModal;
+window.submitWork = submitWork;
+window.openReviewModal = openReviewModal;
+window.closeReviewModal = closeReviewModal;
+window.confirmApprove = confirmApprove;
+window.confirmReject = confirmReject;
