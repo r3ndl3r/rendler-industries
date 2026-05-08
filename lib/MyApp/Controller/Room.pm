@@ -89,6 +89,11 @@ sub api_upload {
             my $mime_type = $upload->headers->content_type || 'application/octet-stream';
             my $file_data = $upload->asset->slurp;
 
+            unless (length($file_data)) {
+                $c->app->log->warn("Skipping file with empty content despite non-zero size: $original_filename ($file_size bytes reported)");
+                next;
+            }
+
             my ($ext) = $original_filename =~ /(\.[^.]+)$/;
             my $safe_filename = sha256_hex($original_filename . time . int(rand(1000))) . lc($ext || '');
 
