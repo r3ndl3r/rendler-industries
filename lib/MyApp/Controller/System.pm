@@ -706,8 +706,12 @@ sub run_emoji_maintenance_p {
 }
 
 # Maintenance: Daily normalization of whiteboard z-indices.
+# Only performs work at 3:00 AM to avoid disrupting active users.
+# Parameters:
+#   $now : DateTime object (passed by the maintenance loop)
 sub run_notes_znorm_maintenance {
-    my $self = shift;
+    my ($self, $now) = @_;
+    return unless $now && $now->hour == 3 && $now->minute == 0;
     my $rows = $self->db->normalize_note_z_indices();
     if ($rows > 0) {
         $self->app->log->info("Notes Maintenance: Normalized $rows z-index values across canvases.");
