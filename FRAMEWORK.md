@@ -80,10 +80,18 @@ Don't reinvent the wheel. Use these pre-built "Power Tools" for rapid developmen
 
 ## ⚙️ 6. Background Tasks (Maintenance)
 
-If your app needs a background poller (e.g., checking for expiring timers every minute):
+Maintenance tasks are database-driven. The loop in `lib/MyApp/Plugin/Helpers.pm` (`run_maintenance`) loads all enabled tasks from the `maintenance_tasks` table each tick and calls them dynamically via `$sys->$fn($now)`. No hardcoded dispatch — adding a task is an `INSERT`, not a code edit.
+
+To add a new background task:
 1.  Add a public method to `lib/MyApp/Controller/System.pm` (e.g., `run_tasks_maintenance`).
-2.  Invoke it inside the `run_maintenance` helper in `lib/MyApp.pm`.
-3.  The system will automatically execute it every 60 seconds with singleton protection (Global Lock).
+2.  Insert a row into `maintenance_tasks`:
+    ```sql
+    INSERT INTO maintenance_tasks (name, label, description, function_name, is_async, is_enabled, interval_minutes)
+    VALUES ('tasks_maintenance', 'Tasks Maintenance', 'What it does.', 'run_tasks_maintenance', 0, 1, 1);
+    ```
+3.  The loop will call it every 60 seconds (subject to `interval_minutes`) with singleton protection via MariaDB `GET_LOCK`.
+
+Tasks can be toggled, have their interval adjusted, or be run immediately via `/admin/maintenance`. Async tasks (returning a `Mojo::Promise`) must set `is_async = 1` — the lock is held until the promise resolves.
 
 ---
 
