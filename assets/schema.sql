@@ -112,6 +112,31 @@ CREATE TABLE `chess_sessions` (
   CONSTRAINT `fk_chess_player1` FOREIGN KEY (`player1_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_chess_player2` FOREIGN KEY (`player2_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `chore_submission_photos` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `submission_id` int(10) unsigned NOT NULL,
+  `photo_type` enum('before','after') NOT NULL,
+  `filename` varchar(255) NOT NULL,
+  `original_filename` varchar(255) NOT NULL,
+  `mime_type` varchar(100) NOT NULL,
+  `file_size` int(10) unsigned NOT NULL,
+  `file_data` longblob NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `submission_id` (`submission_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `chore_submissions` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int(10) unsigned NOT NULL,
+  `description` text NOT NULL,
+  `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `points_awarded` int(10) unsigned DEFAULT NULL,
+  `admin_comment` text DEFAULT NULL,
+  `submitted_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `reviewed_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `chores` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
@@ -220,6 +245,20 @@ CREATE TABLE `gotify` (
 CREATE TABLE `imposter_players` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `maintenance_tasks` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `label` varchar(150) NOT NULL,
+  `description` text DEFAULT NULL,
+  `function_name` varchar(100) NOT NULL,
+  `is_async` tinyint(1) NOT NULL DEFAULT 0,
+  `run_last` tinyint(1) NOT NULL DEFAULT 0,
+  `is_enabled` tinyint(1) NOT NULL DEFAULT 1,
+  `interval_minutes` int(11) NOT NULL DEFAULT 1,
+  `last_run_epoch` bigint(20) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
