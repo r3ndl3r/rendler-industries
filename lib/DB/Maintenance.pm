@@ -297,4 +297,111 @@ sub DB::try_set_brief_sent_date {
     return ($rows && $rows > 0) ? 1 : 0;
 }
 
+
+# Returns all maintenance task rows as an ordered arrayref for the maintenance loop.
+# Ordered by id ASC so execution sequence matches insertion order.
+# Returns:
+#   ArrayRef of hashrefs: { id, name, label, function_name, is_async,
+#                           is_enabled, interval_minutes, last_run_epoch }
+sub DB::get_maintenance_task_configs {
+    my ($self) = @_;
+    $self->ensure_connection;
+    return $self->{dbh}->selectall_arrayref(
+        "SELECT id, name, label, function_name, is_async, run_last,
+                is_enabled, interval_minutes, last_run_epoch
+         FROM maintenance_tasks
+         ORDER BY id ASC",
+        { Slice => {} }
+    );
+}
+
+# Returns all maintenance task rows for the admin UI, ordered alphabetically by label.
+# Returns:
+#   ArrayRef of hashrefs (all columns including description)
+sub DB::get_all_maintenance_tasks {
+    my ($self) = @_;
+    $self->ensure_connection;
+    return $self->{dbh}->selectall_arrayref(
+        "SELECT id, name, label, description, function_name, is_async, run_last,
+                is_enabled, interval_minutes, last_run_epoch
+         FROM maintenance_tasks
+         ORDER BY label ASC",
+        { Slice => {} }
+    );
+}
+
+# Updates the enabled flag and minimum interval for a single task.
+# Parameters:
+#   $name             : Task name key (must exist in table)
+#   $is_enabled       : 0 or 1
+#   $interval_minutes : Integer >= 1
+# Returns: 1
+sub DB::update_maintenance_task {
+    my ($self, $name, $is_enabled, $interval_minutes) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare(
+        "UPDATE maintenance_tasks SET is_enabled = ?, interval_minutes = ? WHERE name = ?"
+    );
+    $sth->execute($is_enabled ? 1 : 0, $interval_minutes, $name);
+    return 1;
+}
+
+# Inserts a new maintenance task record.
+# Parameters:
+#   $name, $label, $description, $function_name, $is_async, $is_enabled, $interval_minutes
+# Returns: new row ID
+sub DB::create_maintenance_task {
+    my ($self, $name, $label, $description, $function_name, $is_async, $run_last, $is_enabled, $interval_minutes) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare(
+        "INSERT INTO maintenance_tasks
+             (name, label, description, function_name, is_async, run_last, is_enabled, interval_minutes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    );
+    $sth->execute($name, $label, $description // '', $function_name, $is_async ? 1 : 0, $run_last ? 1 : 0, $is_enabled ? 1 : 0, $interval_minutes);
+    return $self->{dbh}->last_insert_id(undef, undef, 'maintenance_tasks', undef);
+}
+
+# Updates all editable fields for a single task (full record edit).
+# Parameters:
+#   $name, $label, $description, $function_name, $is_async, $is_enabled, $interval_minutes
+# Returns: 1
+sub DB::edit_maintenance_task {
+    my ($self, $name, $label, $description, $function_name, $is_async, $run_last, $is_enabled, $interval_minutes) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare(
+        "UPDATE maintenance_tasks
+         SET label = ?, description = ?, function_name = ?, is_async = ?, run_last = ?, is_enabled = ?, interval_minutes = ?
+         WHERE name = ?"
+    );
+    $sth->execute($label, $description // '', $function_name, $is_async ? 1 : 0, $run_last ? 1 : 0, $is_enabled ? 1 : 0, $interval_minutes, $name);
+    return 1;
+}
+
+# Deletes a maintenance task record by name.
+# Parameters:
+#   $name : Task name key
+# Returns: 1
+sub DB::delete_maintenance_task {
+    my ($self, $name) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare("DELETE FROM maintenance_tasks WHERE name = ?");
+    $sth->execute($name);
+    return 1;
+}
+
+# Records the current unix timestamp as last_run_epoch for a task.
+# Parameters:
+#   $name : Task name key
+# Returns: 1
+sub DB::mark_maintenance_task_ran {
+    my ($self, $name) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare(
+        "UPDATE maintenance_tasks SET last_run_epoch = UNIX_TIMESTAMP() WHERE name = ?"
+    );
+    $sth->execute($name);
+    return 1;
+}
+
 1;
