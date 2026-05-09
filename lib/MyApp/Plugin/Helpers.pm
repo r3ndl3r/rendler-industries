@@ -211,52 +211,68 @@ sub register {
             my $epoch_min = int(time / 60);
             return unless $c->db->try_acquire_maintenance_lock($epoch_min);
 
-            $c->log->info("Background maintenance: Lock acquired. Starting tasks...");
-
             eval {
-                my $now = $c->now;
+                my $now   = $c->now;
+                my $epoch = time();
+                my $tasks = $c->db->get_maintenance_task_configs();
 
                 require MyApp::Controller::System;
                 my $sys = MyApp::Controller::System->new(app => $c->app, tx => $c->tx);
 
-                $sys->run_timer_maintenance();
-                $sys->run_reminder_maintenance($now);
-                $sys->run_calendar_notifications($now);
-                $sys->run_meals_maintenance($now);
-                $sys->run_room_reminders($now);
-                $sys->run_chore_reminders($now);
-                $sys->run_notes_lock_maintenance();
-                $sys->run_weather_maintenance($now);
-                $sys->run_brief_notification($now);
-                $sys->cleanup_stale_uno_sessions();
-                $sys->run_notification_queue();
+                my @async_promises;
+                my $ran = 0;
+                my $skipped = 0;
 
-                # Nightly Normalization Gate (3:00 AM)
-                if ($now->hour == 3 && $now->minute == 0) {
-                    $sys->run_notes_znorm_maintenance();
+                my @normal_tasks   = grep { !$_->{run_last} } @$tasks;
+                my @deferred_tasks = grep {  $_->{run_last} } @$tasks;
+                my $enabled_count  = grep { $_->{is_enabled} } @$tasks;
+
+                my $run_task = sub {
+                    my $task = shift;
+                    if ($task->{last_run_epoch}
+                        && ($epoch - $task->{last_run_epoch}) < ($task->{interval_minutes} * 60)) {
+                        $skipped++;
+                        return;
+                    }
+                    my $fn   = $task->{function_name};
+                    my $name = $task->{name};
+                    if ($task->{is_async}) {
+                        $c->db->mark_maintenance_task_ran($name);
+                        push @async_promises, $sys->$fn($now)->catch(sub {
+                            $c->log->error("Async task [$name] failed: $_[0]");
+                        });
+                        $ran++;
+                    } else {
+                        eval { $sys->$fn($now) };
+                        if ($@) { $c->log->error("Maintenance task [$name] failed: $@"); }
+                        else     { $c->db->mark_maintenance_task_ran($name); $ran++; }
+                    }
+                };
+
+                foreach my $task (@normal_tasks) {
+                    next unless $task->{is_enabled};
+                    $run_task->($task);
+                }
+                foreach my $task (@deferred_tasks) {
+                    next unless $task->{is_enabled};
+                    $run_task->($task);
                 }
 
-                # Asynchronous Emoji Task: Correct lock release chain
-                $sys->run_emoji_maintenance_p()->then(sub {
-                    my $emoji_stats = shift;
-                    if ($emoji_stats->{processed} > 0) {
-                        $c->log->info(sprintf(
-                            "Emoji Maintenance: Processed %d items (AI Hits: %d, Dict Hits: %d). System sync complete.",
-                            $emoji_stats->{processed},
-                            $emoji_stats->{ai_hits} // 0,
-                            $emoji_stats->{dict_hits} // 0
-                        ));
-                    } else {
-                        $c->log->debug("Emoji Maintenance: No new items found this cycle.");
-                    }
-                })->catch(sub {
-                    my $err = shift;
-                    $c->log->error("Emoji Maintenance Failed: $err");
-                })->finally(sub {
-                    # RELEASE LOCK only after the async part is fully done or failed
+                $c->log->info(sprintf(
+                    "Background maintenance: ran %d/%d tasks%s.",
+                    $ran, $enabled_count,
+                    $skipped ? " ($skipped skipped)" : ''
+                ));
+
+                if (@async_promises) {
+                    Mojo::Promise->all(@async_promises)->finally(sub {
+                        $c->db->{dbh}->do("SELECT RELEASE_LOCK('mojo_maintenance')");
+                        $c->log->info("Background maintenance: Lock released.");
+                    });
+                } else {
                     $c->db->{dbh}->do("SELECT RELEASE_LOCK('mojo_maintenance')");
                     $c->log->info("Background maintenance: Lock released.");
-                });
+                }
             };
 
             if ($@) {
