@@ -93,6 +93,40 @@ const NoteParser = (() => {
     };
 
     /**
+     * Resolves a [[Title]] wikilink against STATE.note_map.
+     * Returns a note-link span if resolved, a dead-link span if not.
+     * @param {string} title - Raw title string from [[...]].
+     * @returns {string} - HTML span.
+     */
+    const renderWikilink = (title) => {
+        const lower = title.toLowerCase();
+        const match = Object.values(STATE.note_map || {}).find(
+            n => n.title && n.title.toLowerCase() === lower
+        );
+
+        const safeTitle = window.escapeHtml(title);
+
+        if (!match) {
+            return `<span class="note-ref note-ref-dead" title="Unresolved link: ${safeTitle}">${safeTitle}</span>`;
+        }
+
+        const color = (typeof window.normalizeColorHex === 'function')
+            ? window.normalizeColorHex(match.color) : '';
+        const style = color ? ` style="color: ${color}"` : '';
+        return `<span class="note-ref note-link-trigger" data-target-id="${match.id}" title="Jump to: ${safeTitle}"${style}>${safeTitle}</span>`;
+    };
+
+    const CALLOUT_META = {
+        note:     { icon: '📝', label: 'Note'     },
+        tip:      { icon: '💡', label: 'Tip'      },
+        warning:  { icon: '⚠️', label: 'Warning'  },
+        danger:   { icon: '🔥', label: 'Danger'   },
+        success:  { icon: '✅', label: 'Success'  },
+        info:     { icon: 'ℹ️', label: 'Info'     },
+        question: { icon: '❓', label: 'Question' },
+    };
+
+    /**
      * Stack-balanced closing-tag scanner for wrapping renderers.
      * Finds the matching [/tag] position in rawContent, respecting nested
      * open/close pairs so inner tags do not prematurely end an outer block.
@@ -150,8 +184,15 @@ const NoteParser = (() => {
         },
         'img': (data) => RENDERERS.image(data),
         'image': (data) => {
-            const id = parseInt(data.value, 10);
-            if (isNaN(id)) return null;
+            let id = parseInt(data.value, 10);
+            if (isNaN(id)) {
+                const lower = data.value.toLowerCase();
+                const match = Object.values(STATE.note_map || {}).find(
+                    n => n.title && n.title.toLowerCase() === lower
+                );
+                if (!match) return null;
+                id = match.id;
+            }
             const meta = STATE.note_map[id];
             
             let scale = parseFloat(data.params[0] || '1.0');
@@ -173,8 +214,15 @@ const NoteParser = (() => {
             return `<div class="note-embedded-wrap" ${dataAttrs} title="View: ${safeTitle}" style="width: ${width}%;"><img src="${src}" class="note-embedded-img" alt="${safeTitle}" loading="lazy"><div class="note-embedded-caption">🖼️ ${safeTitle} (${metaInfo})</div></div>`;
         },
         'note': (data) => {
-            const id = parseInt(data.value, 10);
-            if (isNaN(id)) return null;
+            let id = parseInt(data.value, 10);
+            if (isNaN(id)) {
+                const lower = data.value.toLowerCase();
+                const match = Object.values(STATE.note_map || {}).find(
+                    n => n.title && n.title.toLowerCase() === lower
+                );
+                if (!match) return null;
+                id = match.id;
+            }
             const target    = STATE.note_map[id];
             const safeTitle = target ? window.escapeHtml(target.title || target) : `Note #${id}`;
             const color     = (target && typeof window.normalizeColorHex === 'function')
@@ -182,10 +230,17 @@ const NoteParser = (() => {
             const style     = color ? ` style="color: ${color}"` : '';
             return `<span class="note-ref note-link-trigger" data-target-id="${id}" title="Jump to Note: ${safeTitle}"${style}>${safeTitle}</span>`;
         },
-        'copy': (pos, noteId, rawContent, depth = 0) => {
+        'copy': (pos, noteId, rawContent, depth = 0, startLine = 0) => {
             if (pos.value !== '') {
-                const id = parseInt(pos.value, 10);
-                if (isNaN(id)) return null;
+                let id = parseInt(pos.value, 10);
+                if (isNaN(id)) {
+                    const lower = pos.value.toLowerCase();
+                    const match = Object.values(STATE.note_map || {}).find(
+                        n => n.title && n.title.toLowerCase() === lower
+                    );
+                    if (!match) return null;
+                    id = match.id;
+                }
                 const target    = STATE.note_map[id];
                 const safeTitle = target ? window.escapeHtml(target.title || target) : `Note #${id}`;
                 const color     = (target && typeof window.normalizeColorHex === 'function')
@@ -200,7 +255,7 @@ const NoteParser = (() => {
             if (endIdx === -1) return null;
 
             const innerText = rawContent.substring(0, endIdx);
-            const innerHtml = parseNote(innerText, noteId, depth + 1);
+            const innerHtml = parseNote(innerText, noteId, depth + 1, startLine);
 
             return {
                 html: `<span class="note-inline-copy" title="Click to copy">${innerHtml}</span>`,
@@ -208,8 +263,15 @@ const NoteParser = (() => {
             };
         },
         'file': (data) => {
-            const id = parseInt(data.value, 10);
-            if (isNaN(id)) return null;
+            let id = parseInt(data.value, 10);
+            if (isNaN(id)) {
+                const lower = data.value.toLowerCase();
+                const match = Object.values(STATE.note_map || {}).find(
+                    n => n.title && n.title.toLowerCase() === lower
+                );
+                if (!match) return null;
+                id = match.id;
+            }
             const meta        = STATE.note_map[id];
             const attachments = meta ? (meta.attachments || []) : [];
             const blobId      = (meta && meta.blob_id) ? meta.blob_id : (attachments[0] ? attachments[0].blob_id : null);
@@ -217,7 +279,7 @@ const NoteParser = (() => {
             const safeTitle   = meta   ? window.escapeHtml(meta.title || id) : `File #${id}`;
             return `<a href="${src}" class="note-ref" download data-action="stop-propagation"><span class="global-icon">📁</span> ${safeTitle}</a>`;
         },
-        'color': (pos, noteId, rawContent, depth = 0) => {
+        'color': (pos, noteId, rawContent, depth = 0, startLine = 0) => {
             const color = pos.value.toLowerCase();
             const isHex = CONFIG.hexRegex.test(color);
             const isNamed = CONFIG.colors.includes(color);
@@ -235,14 +297,27 @@ const NoteParser = (() => {
             if (endIdx === -1) return null;
 
             const innerText = rawContent.substring(0, endIdx);
-            const innerHtml = parseNote(innerText, noteId, depth + 1);
+            const innerHtml = parseNote(innerText, noteId, depth + 1, startLine);
 
             return {
                 html: `<span style="color: ${hexColor}">${innerHtml}</span>`,
                 consumed: endIdx + closeTag.length
             };
         },
-        'size': (pos, noteId, rawContent, depth = 0) => {
+        'colour': (pos, noteId, rawContent, depth = 0, startLine = 0) => {
+            const color = pos.value.toLowerCase();
+            const isHex   = CONFIG.hexRegex.test(color);
+            const isNamed = CONFIG.colors.includes(color);
+            if (!isHex && !isNamed) return null;
+            const hexColor = (typeof window.normalizeColorHex === 'function')
+                ? window.normalizeColorHex(color)
+                : color;
+            const endIdx = findClosingTag('[colour:', '[/colour]', rawContent);
+            if (endIdx === -1) return null;
+            const innerHtml = parseNote(rawContent.substring(0, endIdx), noteId, depth + 1, startLine);
+            return { html: `<span style="color: ${hexColor}">${innerHtml}</span>`, consumed: endIdx + '[/colour]'.length };
+        },
+        'size': (pos, noteId, rawContent, depth = 0, startLine = 0) => {
             const size = pos.value.toLowerCase();
             const valid = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
             if (!valid.includes(size)) return null;
@@ -253,14 +328,14 @@ const NoteParser = (() => {
             if (endIdx === -1) return null;
 
             const innerText = rawContent.substring(0, endIdx);
-            const innerHtml = parseNote(innerText, noteId, depth + 1);
+            const innerHtml = parseNote(innerText, noteId, depth + 1, startLine);
 
             return {
                 html: `<span class="note-text-${size}">${innerHtml}</span>`,
                 consumed: endIdx + closeTag.length
             };
         },
-        'bg': (pos, noteId, rawContent, depth = 0) => {
+        'bg': (pos, noteId, rawContent, depth = 0, startLine = 0) => {
             const color = pos.value.toLowerCase();
             const isHex = CONFIG.hexRegex.test(color);
             const isNamed = CONFIG.colors.includes(color);
@@ -276,7 +351,7 @@ const NoteParser = (() => {
             if (endIdx === -1) return null;
 
             const innerText = rawContent.substring(0, endIdx);
-            const innerHtml = parseNote(innerText, noteId, depth + 1);
+            const innerHtml = parseNote(innerText, noteId, depth + 1, startLine);
 
             return {
                 html: `<span class="note-bg-highlight" style="background-color: ${hexColor}">${innerHtml}</span>`,
@@ -322,7 +397,7 @@ const NoteParser = (() => {
             const label = data.value ? renderInline(data.value) : '';
             return `<div class="note-divider-wrap"><hr class="note-hr">${label ? `<span class="note-divider-label">${label}</span>` : ''}</div>`;
         },
-        'spoiler': (pos, noteId, rawContent, depth = 0) => {
+        'spoiler': (pos, noteId, rawContent, depth = 0, startLine = 0) => {
             const label = pos.value ? renderInline(pos.value) : 'Click to reveal';
             const closeTag = '[/spoiler]';
 
@@ -354,12 +429,122 @@ const NoteParser = (() => {
             if (endIdx === -1) return null;
 
             const innerText = rawContent.substring(0, endIdx);
-            const innerHtml = parseNote(innerText, noteId, depth + 1);
+            const innerHtml = parseNote(innerText, noteId, depth + 1, startLine);
 
             return {
                 html: `<details class="note-spoiler"><summary>${label}</summary><div class="note-spoiler-content">${innerHtml}</div></details>`,
                 consumed: endIdx + closeTag.length
             };
+        },
+        'date': (data) => {
+            const val = data.value.trim();
+            const d   = new Date(val + 'T00:00:00');
+            if (isNaN(d.getTime())) return `<span class="note-date-tag">📅 ${window.escapeHtml(val)}</span>`;
+
+            const formatted = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+            const nowDate    = new Date(); nowDate.setHours(0, 0, 0, 0);
+            const targetDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const diffDays   = Math.round((targetDate - nowDate) / 86400000);
+
+            const relative = diffDays === 0  ? 'today'
+                           : diffDays === 1  ? 'tomorrow'
+                           : diffDays === -1 ? 'yesterday'
+                           : diffDays > 1    ? `in ${diffDays}d`
+                           :                   `${Math.abs(diffDays)}d ago`;
+
+            return `<span class="note-date-tag" title="${window.escapeHtml(val)}">📅 ${formatted} <span class="note-date-relative">(${relative})</span></span>`;
+        },
+        'table': (data, noteId, rawContent, depth = 0, startLine = 0) => {
+            const closeTag = '[/table]';
+            const endIdx   = findClosingTag('[table:]', closeTag, rawContent);
+            if (endIdx === -1) return null;
+
+            // Keep raw indices so each row's absolute line number in the note is traceable.
+            // rawContent starts with the character immediately after the closing ] of [table:...],
+            // which is always \n, so rawIndex 0 is empty and real rows start at rawIndex 1+.
+            const rawTableLines = rawContent.substring(0, endIdx).split('\n');
+            const lineObjects   = rawTableLines
+                .map((l, rawIndex) => ({ text: l.trim(), rawIndex }))
+                .filter(o => o.text.length > 0);
+
+            const sepIdx       = lineObjects.findIndex(o => /^[\-|: ]+$/.test(o.text));
+            const headerObjs   = sepIdx !== -1 ? lineObjects.slice(0, sepIdx)  : [];
+            const bodyObjs     = sepIdx !== -1 ? lineObjects.slice(sepIdx + 1) : lineObjects;
+
+            // Extract per-column alignment from the separator row
+            const alignments = [];
+            if (sepIdx !== -1) {
+                parseCols(lineObjects[sepIdx].text).forEach(col => {
+                    const l = col.startsWith(':'), r = col.endsWith(':');
+                    alignments.push(l && r ? 'center' : r ? 'right' : l ? 'left' : null);
+                });
+            }
+
+            const getAlign = (i) => alignments[i] ? ` style="text-align:${alignments[i]}"` : '';
+
+            // Bracket-aware column splitter: | inside [...] is a tag param, not a cell boundary
+            function parseCols(line) {
+                const cells = [];
+                let d = 0, current = '';
+                for (const ch of line) {
+                    if      (ch === '[') { d++;  current += ch; }
+                    else if (ch === ']') { d--;  current += ch; }
+                    else if (ch === '|' && d === 0) { cells.push(current.trim()); current = ''; }
+                    else { current += ch; }
+                }
+                cells.push(current.trim());
+                if (cells[0] === '') cells.shift();
+                if (cells[cells.length - 1] === '') cells.pop();
+                return cells;
+            }
+
+            // rowLine: absolute line index in the full note for this table row
+            const parseCell = (cell, rowLine) => parseNote(cell, noteId, depth + 1, rowLine);
+
+            let html = '<div class="note-table-wrap"><table class="note-table">';
+
+            if (headerObjs.length) {
+                html += '<thead><tr>';
+                const rowLine = startLine + headerObjs[0].rawIndex;
+                parseCols(headerObjs[0].text).forEach((cell, i) => { html += `<th${getAlign(i)}>${parseCell(cell, rowLine)}</th>`; });
+                html += '</tr></thead>';
+            }
+
+            html += '<tbody>';
+            bodyObjs.forEach(rowObj => {
+                const rowLine = startLine + rowObj.rawIndex;
+                html += '<tr>';
+                parseCols(rowObj.text).forEach((cell, i) => { html += `<td${getAlign(i)}>${parseCell(cell, rowLine)}</td>`; });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+
+            return { html, consumed: endIdx + closeTag.length };
+        },
+        'embed': (data, noteId, rawContent, depth = 0) => {
+            if (depth > 2) return '<div class="note-embed-block note-embed-too-deep">⚠ Embed depth limit reached</div>';
+
+            let id = parseInt(data.value, 10);
+            if (isNaN(id)) {
+                const lower = data.value.toLowerCase();
+                const match = Object.values(STATE.note_map || {}).find(
+                    n => n.title && n.title.toLowerCase() === lower
+                );
+                if (!match) return `<div class="note-embed-block note-embed-dead">📎 ${window.escapeHtml(data.value)}</div>`;
+                id = match.id;
+            }
+
+            const meta    = STATE.note_map[id];
+            const source  = (STATE.notes || []).find(n => n.id == id)
+                || (STATE.embed_cache || {})[id];
+            const title   = meta ? window.escapeHtml(meta.title || `Note #${id}`) : `Note #${id}`;
+
+            if (!source) return `<div class="note-embed-block note-embed-dead">📎 ${title} <span class="note-embed-unavailable">(unavailable)</span></div>`;
+
+            const canvasName = meta && meta.canvas_name ? window.escapeHtml(meta.canvas_name) : '';
+            const subtitle   = canvasName ? ` · ${canvasName}` : '';
+            return `<div class="note-embed-block"><div class="note-embed-title">📎 ${title}${subtitle}</div><div class="note-embed-content">${parseNote(source.content || '', id, depth + 1)}</div></div>`;
         }
     };
 
@@ -559,7 +744,7 @@ const NoteParser = (() => {
      * @param {number} depth - Current recursion depth (Guard against infinite loops).
      * @returns {string} - Rendered HTML.
      */
-    parseNote = (text, noteId, depth = 0) => {
+    parseNote = (text, noteId, depth = 0, lineOffset = 0) => {
         if (!text) return '';
 
         // 0. Safety Guards: Length and Depth Limits
@@ -609,7 +794,7 @@ const NoteParser = (() => {
                 const lineRemainder = text.substring(cursor);
                 
                 // a) Headings: # Title, ## Section
-                const hMatch = lineRemainder.match(/^(\s*)(#{1,3})\s+(.*?)(\n|$)/);
+                const hMatch = lineRemainder.match(/^([ \t]*)(#{1,3})\s+(.*?)(\n|$)/);
                 if (hMatch) {
                     flushBuffer();
                     const level = hMatch[2].length;
@@ -621,7 +806,7 @@ const NoteParser = (() => {
                 }
 
                 // b) Horizontal Rule: ---
-                const hrMatch = lineRemainder.match(/^(\s*)---(\s*)(\n|$)/);
+                const hrMatch = lineRemainder.match(/^([ \t]*)---(\s*)(\n|$)/);
                 if (hrMatch) {
                     flushBuffer();
                     output += '<hr class="note-hr">';
@@ -630,8 +815,28 @@ const NoteParser = (() => {
                     continue;
                 }
 
+                // c+d+e) Checkbox first — catches `[ ] task`, `- [ ] task`, `* [ ] task`, `1. [ ] task`
+                // before numbered/bullet patterns can consume the prefix.
+                const cbMatch = lineRemainder.match(/^([ \t]*)(?:[-*]\s+|\d+\.\s+)?\[([ xX]?)\]/);
+                if (cbMatch) {
+                    flushBuffer();
+                    const prefix  = cbMatch[1];
+                    const state   = cbMatch[2].toLowerCase();
+                    const checked = state === 'x';
+                    const checkedClass = checked ? 'checked' : '';
+
+                    let lineIndex = lineOffset;
+                    for (let i = 0; i < cursor; i++) if (text[i] === '\n') lineIndex++;
+                    output += `${window.escapeHtml(prefix)}<span class="checkbox-row-inline note-check-trigger ${checkedClass}" data-note-id="${noteId}" data-index="${lineIndex}"><span class="cb ${checkedClass}"></span>`;
+
+                    inCheckboxRow = true;
+                    isLineStart = false;
+                    cursor += cbMatch[0].length;
+                    continue;
+                }
+
                 // c) Numbered Lists: 1. item
-                const numMatch = lineRemainder.match(/^(\s*)(\d+)\.\s+/);
+                const numMatch = lineRemainder.match(/^([ \t]*)(\d+)\.\s+/);
                 if (numMatch) {
                     flushBuffer();
                     output += `${window.escapeHtml(numMatch[1])}<span class="note-number">${numMatch[2]}.</span> `;
@@ -641,33 +846,62 @@ const NoteParser = (() => {
                 }
 
                 // d) Bullet Points: * item or - item
-                const bulletMatch = lineRemainder.match(/^(\s*)([*•-])\s+/);
+                const bulletMatch = lineRemainder.match(/^([ \t]*)([*•-])\s+/);
                 if (bulletMatch) {
                     flushBuffer();
-                    output += `${window.escapeHtml(bulletMatch[1])}<span class="note-bullet"></span> `;
+                    output += `${window.escapeHtml(bulletMatch[1])}<span class="note-bullet">•</span> `;
                     cursor += bulletMatch[0].length;
                     isLineStart = false;
                     continue;
                 }
 
-                // e) Checkbox Detection
-                const cbMatch = lineRemainder.match(/^([ \t]*)\[([ xX]?)\]/);
-                if (cbMatch) {
+                // f) Callout: > [!type] Optional Title
+                const calloutMatch = lineRemainder.match(/^> \[!([\w-]+)\]([^\n]*)(\n|$)/);
+                if (calloutMatch) {
                     flushBuffer();
-                    const prefix  = cbMatch[1];
-                    const state   = cbMatch[2].toLowerCase();
-                    const checked = state === 'x';
-                    const checkedClass = checked ? 'checked' : '';
-                    
-                    let lineIndex = 0;
-                    for (let i = 0; i < cursor; i++) if (text[i] === '\n') lineIndex++;
+                    const calloutStartCursor = cursor;
+                    const type  = calloutMatch[1].toLowerCase().replace(/[^a-z0-9-]/g, '');
+                    const title = calloutMatch[2].trim();
+                    cursor     += calloutMatch[0].length;
 
-                    output += `${window.escapeHtml(prefix)}<span class="checkbox-row-inline note-check-trigger ${checkedClass}" data-note-id="${noteId}" data-index="${lineIndex}"><span class="cb ${checkedClass}"></span>`;
-                    
-                    inCheckboxRow = true;
-                    isLineStart = false;
-                    cursor += cbMatch[0].length;
+                    const bodyLines = [];
+                    while (cursor < text.length) {
+                        const lineEnd = text.indexOf('\n', cursor);
+                        const line    = lineEnd === -1 ? text.substring(cursor) : text.substring(cursor, lineEnd);
+                        if (line.startsWith('> ') || line === '>') {
+                            bodyLines.push(line.startsWith('> ') ? line.substring(2) : '');
+                            cursor = lineEnd === -1 ? text.length : lineEnd + 1;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // Compute absolute line of the first body line in the full note
+                    let calloutBodyOffset = lineOffset;
+                    for (let i = 0; i < calloutStartCursor; i++) if (text[i] === '\n') calloutBodyOffset++;
+                    calloutBodyOffset++; // skip the callout header line itself
+
+                    const meta      = CALLOUT_META[type] || { icon: '📌', label: type };
+                    const safeTitle = title ? window.escapeHtml(title) : meta.label;
+                    const bodyHtml  = parseNote(bodyLines.join('\n'), noteId, depth + 1, calloutBodyOffset);
+                    output += `<div class="note-callout note-callout--${type}"><div class="note-callout-header"><span class="note-callout-icon">${meta.icon}</span><span class="note-callout-title">${safeTitle}</span></div><div class="note-callout-body">${bodyHtml}</div></div>`;
+                    isLineStart = true;
                     continue;
+                }
+            }
+
+            // 1.5. Wikilink: [[Title]] — resolved client-side against STATE.note_map
+            if (char === '[' && text[cursor + 1] === '[') {
+                const closeIdx = text.indexOf(']]', cursor + 2);
+                if (closeIdx !== -1) {
+                    const title = text.substring(cursor + 2, closeIdx);
+                    if (title.length > 0 && !title.includes('[') && !title.includes(']') && !title.includes('\n')) {
+                        flushBuffer();
+                        output += renderWikilink(title);
+                        cursor = closeIdx + 2;
+                        isLineStart = false;
+                        continue;
+                    }
                 }
             }
 
@@ -688,8 +922,9 @@ const NoteParser = (() => {
                 const renderer = RENDERERS[pos.type];
                 
                 if (renderer) {
-                    // Pass current depth to the renderer for potential recursion
-                    const result = renderer(pos, noteId, text.substring(endIdx + 1), depth);
+                    let startLine = lineOffset;
+                    for (let i = 0; i <= endIdx; i++) if (text[i] === '\n') startLine++;
+                    const result = renderer(pos, noteId, text.substring(endIdx + 1), depth, startLine);
                     if (result !== null) {
                         flushBuffer();
                         const html = typeof result === 'string' ? result : result.html;
