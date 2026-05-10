@@ -930,7 +930,7 @@ function copyViewContent() {
 
 /**
  * Displays a tabbed information modal explaining whiteboard features.
- * Tabs: Formatting | Links & Embeds | Bookmarks | Controls
+ * Tabs: Controls | Formatting | Wikilinks | Bookmarks
  * Tab switching is handled via delegated click on #globalConfirmModalContent
  * using data-action="guide-tab" — no inline handlers.
  * @returns {void}
@@ -940,91 +940,167 @@ function showBoardInfo() {
         <nav class="guide-tab-nav">
             <button class="guide-tab-btn active" data-action="guide-tab" data-tab="controls">⌨️ Controls</button>
             <button class="guide-tab-btn" data-action="guide-tab" data-tab="formatting">✏️ Formatting</button>
-            <button class="guide-tab-btn" data-action="guide-tab" data-tab="embeds">🔗 Links &amp; Embeds</button>
+            <button class="guide-tab-btn" data-action="guide-tab" data-tab="embeds">🔗 Wikilinks</button>
             <button class="guide-tab-btn" data-action="guide-tab" data-tab="bookmarks">🔖 Bookmarks</button>
         </nav>
 
         <div class="guide-tab-panel active" data-panel="controls">
-            <p class="board-guide-subheading">Notes</p>
-            <ul class="board-guide-list">
-                <li><strong>🖱️ > note title bar</strong> — Pick up and place note (click again to drop)</li>
-                <li><strong>🖱️x2 > note title text</strong> — Collapse / expand note</li>
-                <li><strong>🖱️x2 > empty canvas</strong> — Create a new note at cursor</li>
-                <li><strong>🖱️ (Right Click) & drag</strong> — Lasso selection (bulk drag/delete)</li>
-            </ul>
-            <p class="board-guide-subheading">Board</p>
-            <ul class="board-guide-list">
-                <li><strong>🖱️ &amp; drag</strong> — Pan the board</li>
-                <li><strong>🖱️ Wheel</strong> — Pan vertically</li>
-                <li><strong>🖱️ Shift + Wheel</strong> — Pan horizontally</li>
-                <li><strong>🖱️ Ctrl + Wheel</strong> — Zoom in / out (anchored to cursor)</li>
-                <li><strong>🤌 Pinch (touch)</strong> — Zoom in / out</li>
-                <li><strong>Ctrl+V</strong> — Paste image or file as a new note</li>
-            </ul>
-            <p class="board-guide-subheading">Keyboard</p>
-            <ul class="board-guide-list">
-                <li><strong>Ctrl+F</strong> — Open board search</li>
-                <li><strong>Ctrl+E</strong> — Toggle edit mode on hovered note / exit if already editing</li>
-                <li><strong>Ctrl+S</strong> — Save active note (incremental while editing)</li>
-                <li><strong>Ctrl+Enter</strong> — Save and exit edit mode</li>
-                <li><strong>Escape</strong> — Discard changes &amp; exit / cancel move / close modals</li>
-            </ul>
+            <div class="guide-tab-cols">
+                <div>
+                    <p class="board-guide-subheading">Notes</p>
+                    <ul class="board-guide-list">
+                        <li><strong>🖱️ > note title bar</strong> — Pick up and place note (click again to drop)</li>
+                        <li><strong>🖱️x2 > note title text</strong> — Collapse / expand note</li>
+                        <li><strong>🖱️x2 > empty canvas</strong> — Create a new note at cursor</li>
+                        <li><strong>🖱️ (Right Click) &amp; drag</strong> — Lasso selection (bulk drag/delete)</li>
+                    </ul>
+                    <p class="board-guide-subheading">Board</p>
+                    <ul class="board-guide-list">
+                        <li><strong>🖱️ &amp; drag</strong> — Pan the board</li>
+                        <li><strong>🖱️ Wheel</strong> — Pan vertically</li>
+                        <li><strong>🖱️ Shift + Wheel</strong> — Pan horizontally</li>
+                        <li><strong>🖱️ Ctrl + Wheel</strong> — Zoom in / out (anchored to cursor)</li>
+                        <li><strong>🤌 Pinch (touch)</strong> — Zoom in / out</li>
+                        <li><strong>Ctrl+V</strong> — Paste image or file as a new note</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="board-guide-subheading">Keyboard</p>
+                    <ul class="board-guide-list">
+                        <li><strong>Ctrl+F</strong> — Open board search</li>
+                        <li><strong>Ctrl+E</strong> — Toggle edit mode on hovered note / exit if already editing</li>
+                        <li><strong>Ctrl+S</strong> — Save active note (incremental while editing)</li>
+                        <li><strong>Ctrl+Enter</strong> — Save and exit edit mode</li>
+                        <li><strong>Escape</strong> — Discard changes &amp; exit / cancel move / close modals</li>
+                    </ul>
+                </div>
+            </div>
         </div>
 
         <div class="guide-tab-panel" data-panel="formatting">
-            <div class="guide-cheatsheet">
-                <code class="guide-cs-code"># Header</code>     <span class="guide-cs-preview"><strong style="font-size: 1.1rem;">Header</strong></span>
-                <code class="guide-cs-code">## Sub</code>       <span class="guide-cs-preview"><strong style="font-size: 0.9rem;">Sub</strong></span>
-                <code class="guide-cs-code">**Bold**</code>       <span class="guide-cs-preview"><strong>Bold</strong></span>
-                <code class="guide-cs-code">*Italic*</code>       <span class="guide-cs-preview"><em>Italic</em></span>
-                <code class="guide-cs-code">~~Strike~~</code>     <span class="guide-cs-preview"><del>Strike</del></span>
-                <code class="guide-cs-code">\`code\`</code>        <span class="guide-cs-preview"><code class="guide-cs-inline">code</code></span>
-                <code class="guide-cs-code">- item</code>         <span class="guide-cs-preview">• Bullet</span>
-                <code class="guide-cs-code">1. item</code>        <span class="guide-cs-preview">1. Number</span>
-                <code class="guide-cs-code">- [ ] / [x]</code>   <span class="guide-cs-preview">☐ / ☑ Checklist</span>
-                <code class="guide-cs-code">---</code>            <span class="guide-cs-preview"><span class="guide-cs-hr"></span></span>
-            </div>
-
-            <p class="board-guide-subheading board-guide-subheading--spaced">Advanced Components</p>
-            <div class="guide-cheatsheet">
-                <code class="guide-cs-code">[size:lg]...[/size]</code> <span class="guide-cs-preview" style="font-size: 1.1rem;">Large</span>
-                <code class="guide-cs-code">[bg:hex]...[/bg]</code>     <span class="guide-cs-preview"><span style="background: #f59e0b; color: #000; padding: 0 4px; border-radius: 3px;">Highlight</span></span>
-                <code class="guide-cs-code">[progress:75|Label]</code>  <span class="guide-cs-preview">Progress Bar</span>
-                <code class="guide-cs-code">[date:YYYY-MM-DD]</code>    <span class="guide-cs-preview">📅 Date Tag</span>
-                <code class="guide-cs-code">[tag:Label|color]</code>    <span class="guide-cs-preview"><span class="note-badge badge-info" style="margin:0;">Tag</span></span>
-                <code class="guide-cs-code">[divider:Title]</code>      <span class="guide-cs-preview">Labelled HR</span>
-                <code class="guide-cs-code">[spoiler:Title]...[/spoiler]</code> <span class="guide-cs-preview">Accordion</span>
-            </div>
-
-            <p class="board-guide-subheading board-guide-subheading--spaced">[color:name]text[/color]</p>
-            <div class="guide-color-swatches">
-                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--yellow"></span>yellow</span>
-                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--orange"></span>orange</span>
-                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--red"></span>red</span>
-                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--pink"></span>pink</span>
-                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--green"></span>green</span>
-                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--blue"></span>blue</span>
-                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--indigo"></span>indigo</span>
-                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--violet"></span>violet</span>
-                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--slate"></span>slate</span>
-                <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--hex"></span>#HEX</span>
+            <div class="guide-tab-cols">
+                <div>
+                    <div class="guide-cheatsheet">
+                        <code class="guide-cs-code"># Header</code>     <span class="guide-cs-preview"><strong class="guide-size-lg">Header</strong></span>
+                        <code class="guide-cs-code">## Sub</code>       <span class="guide-cs-preview"><strong class="guide-size-sub">Sub</strong></span>
+                        <code class="guide-cs-code">### Sub-sub</code>  <span class="guide-cs-preview"><strong class="guide-size-xs">Sub-sub</strong></span>
+                        <code class="guide-cs-code">**Bold**</code>       <span class="guide-cs-preview"><strong>Bold</strong></span>
+                        <code class="guide-cs-code">*Italic*</code>       <span class="guide-cs-preview"><em>Italic</em></span>
+                        <code class="guide-cs-code">~~Strike~~</code>     <span class="guide-cs-preview"><del>Strike</del></span>
+                        <code class="guide-cs-code">\`code\`</code>        <span class="guide-cs-preview"><code class="guide-cs-inline">code</code></span>
+                        <code class="guide-cs-code">- item</code>         <span class="guide-cs-preview">• Bullet</span>
+                        <code class="guide-cs-code">1. item</code>        <span class="guide-cs-preview">1. Number</span>
+                        <code class="guide-cs-code">- [ ] / [x]</code>   <span class="guide-cs-preview">☐ / ☑ Checklist</span>
+                        <code class="guide-cs-code">---</code>            <span class="guide-cs-preview"><span class="guide-cs-hr"></span></span>
+                    </div>
+                    <p class="board-guide-subheading board-guide-subheading--spaced">Advanced Components</p>
+                    <div class="guide-cheatsheet">
+                        <code class="guide-cs-code">[size:lg]...[/size]</code>            <span class="guide-cs-preview guide-size-lg">Large</span>
+                        <code class="guide-cs-code">[bg:color]...[/bg]</code>             <span class="guide-cs-preview"><span class="guide-preview-highlight">Highlight</span></span>
+                        <code class="guide-cs-code">[progress:75|Label]</code>            <span class="guide-cs-preview">Progress Bar</span>
+                        <code class="guide-cs-code">[date:YYYY-MM-DD]</code>              <span class="guide-cs-preview">📅 Date Tag</span>
+                        <code class="guide-cs-code">[tag:Label|color]</code>              <span class="guide-cs-preview"><span class="note-badge badge-info guide-preview-badge">Tag</span></span>
+                        <code class="guide-cs-code">[divider:Title]</code>                <span class="guide-cs-preview">Labelled HR</span>
+                        <code class="guide-cs-code">[spoiler:Title]...[/spoiler]</code>   <span class="guide-cs-preview">Accordion</span>
+                        <code class="guide-cs-code">[table:]...[/table]</code>            <span class="guide-cs-preview">Table</span>
+                        <code class="guide-cs-code">&gt; [!note] Title</code>             <span class="guide-cs-preview">Callout</span>
+                    </div>
+                    <p class="board-guide-subheading board-guide-subheading--spaced">Callout types</p>
+                    <div class="guide-cheatsheet">
+                        <code class="guide-cs-code">note</code>     <span class="guide-cs-preview">📝 Note</span>
+                        <code class="guide-cs-code">tip</code>      <span class="guide-cs-preview">💡 Tip</span>
+                        <code class="guide-cs-code">info</code>     <span class="guide-cs-preview">ℹ️ Info</span>
+                        <code class="guide-cs-code">success</code>  <span class="guide-cs-preview">✅ Success</span>
+                        <code class="guide-cs-code">warning</code>  <span class="guide-cs-preview">⚠️ Warning</span>
+                        <code class="guide-cs-code">danger</code>   <span class="guide-cs-preview">🔥 Danger</span>
+                        <code class="guide-cs-code">question</code> <span class="guide-cs-preview">❓ Question</span>
+                    </div>
+                    <ul class="board-guide-list">
+                        <li>Body lines must start with <strong>&gt; </strong> (blockquote prefix)</li>
+                        <li>A blank <strong>&gt;</strong> line creates a paragraph break inside the callout</li>
+                        <li>Body supports all inline formatting — bold, wikilinks, tags, etc.</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="board-guide-subheading">[color:name]text[/color]</p>
+                    <div class="guide-color-swatches">
+                        <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--yellow"></span>yellow</span>
+                        <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--orange"></span>orange</span>
+                        <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--red"></span>red</span>
+                        <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--pink"></span>pink</span>
+                        <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--green"></span>green</span>
+                        <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--blue"></span>blue</span>
+                        <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--indigo"></span>indigo</span>
+                        <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--violet"></span>violet</span>
+                        <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--slate"></span>slate</span>
+                        <span class="guide-color-swatch"><span class="guide-color-dot guide-color-dot--hex"></span>#HEX</span>
+                    </div>
+                    <p class="board-guide-subheading board-guide-subheading--spaced">[table:] syntax</p>
+                    <ul class="board-guide-list">
+                        <li>One row per line, columns separated by <strong>|</strong></li>
+                        <li>A <strong>--- | ---</strong> separator row defines the header above it</li>
+                        <li>Alignment: <strong>:---</strong> left &nbsp;·&nbsp; <strong>---:</strong> right &nbsp;·&nbsp; <strong>:---:</strong> center</li>
+                        <li>Cell content supports all tags — <strong>[color:]</strong>, <strong>[tag:]</strong>, <strong>[date:]</strong>, <strong>[[links]]</strong></li>
+                    </ul>
+                    <p class="board-guide-subheading board-guide-subheading--spaced">Size values</p>
+                    <div class="guide-cheatsheet">
+                        <code class="guide-cs-code">xs</code>  <span class="guide-cs-preview guide-size-xs">Extra small</span>
+                        <code class="guide-cs-code">sm</code>  <span class="guide-cs-preview guide-size-sm">Small</span>
+                        <code class="guide-cs-code">md</code>  <span class="guide-cs-preview">Medium (default)</span>
+                        <code class="guide-cs-code">lg</code>  <span class="guide-cs-preview guide-size-lg">Large</span>
+                        <code class="guide-cs-code">xl</code>  <span class="guide-cs-preview guide-size-xl">X-Large</span>
+                        <code class="guide-cs-code">2xl</code> <span class="guide-cs-preview guide-size-2xl">2X-Large</span>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="guide-tab-panel" data-panel="embeds">
-            <p class="board-guide-subheading">Link to other notes</p>
-            <ul class="board-guide-list">
-                <li><strong>[note:ID]</strong> — Jump link to another note</li>
-                <li><strong>[image:ID]</strong> — Embed an image note inline</li>
-                <li><strong>[file:ID]</strong> — Embed a file download</li>
-            </ul>
-            <p class="board-guide-subheading">External links</p>
-            <ul class="board-guide-list">
-                <li>Paste any <strong>https://…</strong> URL — it becomes a clickable link automatically</li>
-                <li><strong>[link:url|Label]</strong> — Link with custom display text</li>
-                <li><strong>[Label](url)</strong> — Alternative compact link format</li>
-                <li><strong>[iframe:url|height]</strong> — Embed an external webpage inline</li>
-            </ul>
+            <div class="guide-tab-cols">
+                <div>
+                    <p class="board-guide-subheading">Wikilinks — autocomplete with <kbd class="guide-kbd">[[</kbd></p>
+                    <ul class="board-guide-list">
+                        <li><strong>[[Title]]</strong> — Jump link resolved by note title. Click to scroll to the note.</li>
+                        <li><strong>[note:Title or ID]</strong> — Same as above, alternative syntax</li>
+                        <li>Click any note to open the <strong>Backlinks sidebar</strong> showing all notes that link to it</li>
+                    </ul>
+                    <p class="board-guide-subheading">Inline embeds — autocomplete with <kbd class="guide-kbd">[embed:</kbd></p>
+                    <ul class="board-guide-list">
+                        <li><strong>[embed:Title or ID]</strong> — Renders another note's full content inline</li>
+                        <li>Works <strong>cross-canvas</strong> — embed notes from any board you can access</li>
+                        <li>Embeds <strong>live-refresh</strong> when the source note is saved in the same session</li>
+                        <li>Depth limit: 2 levels of nesting</li>
+                    </ul>
+                    <p class="board-guide-subheading">Other note references</p>
+                    <ul class="board-guide-list">
+                        <li><strong>[copy:Title or ID]</strong> — Click to copy the note's content to clipboard</li>
+                        <li><strong>[image:Title or ID]</strong> — Embed an image note inline (cross-canvas)</li>
+                        <li><strong>[img:Title or ID]</strong> — Shorthand for [image:]</li>
+                        <li><strong>[file:Title or ID]</strong> — Inline file download link (cross-canvas)</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="board-guide-subheading">Autocomplete triggers</p>
+                    <div class="guide-cheatsheet">
+                        <code class="guide-cs-code">[[</code>                          <span class="guide-cs-preview">Wikilink — all notes</span>
+                        <code class="guide-cs-code">[embed:</code>                     <span class="guide-cs-preview">Embed — all notes</span>
+                        <code class="guide-cs-code">[copy:</code>                      <span class="guide-cs-preview">Copy — all notes</span>
+                        <code class="guide-cs-code">[note:</code>                      <span class="guide-cs-preview">Jump link — all notes</span>
+                        <code class="guide-cs-code">[image: / [file:</code>            <span class="guide-cs-preview">Blob/attachment notes only</span>
+                        <code class="guide-cs-code">[tag:</code>                       <span class="guide-cs-preview">Existing tag labels</span>
+                        <code class="guide-cs-code">[tag:Label|</code>                 <span class="guide-cs-preview">Tag colour picker</span>
+                        <code class="guide-cs-code">[date:</code>                      <span class="guide-cs-preview">Calendar date picker</span>
+                        <code class="guide-cs-code">[color: / [bg: / [size:</code>     <span class="guide-cs-preview">Value list</span>
+                    </div>
+                    <p class="board-guide-subheading board-guide-subheading--spaced">External links</p>
+                    <ul class="board-guide-list">
+                        <li>Paste any <strong>https://…</strong> URL — becomes a clickable link automatically</li>
+                        <li><strong>[link:url|Label]</strong> — Link with custom display text</li>
+                        <li><strong>[Label](url)</strong> — Compact Markdown-style link</li>
+                        <li><strong>[iframe:url|height]</strong> — Embed an external webpage inline</li>
+                    </ul>
+                </div>
+            </div>
         </div>
 
         <div class="guide-tab-panel" data-panel="bookmarks">
@@ -1050,8 +1126,11 @@ function showBoardInfo() {
         width: 'large'
     });
 
-    // Delegated tab switching: wired after showConfirmModal renders the DOM synchronously.
+    // Widen beyond modal-lg for the guide specifically
     const modalContent = document.getElementById('globalConfirmModalContent');
+    if (modalContent) modalContent.classList.add('modal-guide');
+
+    // Delegated tab switching: wired after showConfirmModal renders the DOM synchronously.
     if (!modalContent) return;
 
     modalContent.addEventListener('click', (e) => {
