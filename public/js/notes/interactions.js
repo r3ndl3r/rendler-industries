@@ -1,5 +1,344 @@
 // /public/js/notes/interactions.js
 
+// --- Wikilink Autocomplete ---
+
+(function () {
+    let _dropdown = null;
+    let _triggerStart = -1;
+
+    let _insertTemplate = (title) => `[[${title}]]`;
+
+    function buildDropdown(matches, textarea, template) {
+        removeDropdown();
+        if (template) _insertTemplate = template;
+        if (!matches.length) return;
+
+        _dropdown = document.createElement('div');
+        _dropdown.className = 'wikilink-dropdown';
+
+        matches.forEach(({ id, title, canvas_name }) => {
+            const item = document.createElement('div');
+            item.className = 'wikilink-dropdown-item';
+            item.textContent = canvas_name ? `${title} (${canvas_name})` : title;
+            item.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                insertWikilink(textarea, title);
+            });
+            _dropdown.appendChild(item);
+        });
+
+        positionDropdown(textarea);
+    }
+
+    function positionDropdown(textarea) {
+        const rect       = textarea.getBoundingClientRect();
+        const scale      = (typeof STATE !== 'undefined' && STATE.scale) || 1;
+        const linesBefore = textarea.value.substring(0, textarea.selectionStart).split('\n').length - 1;
+        const lineHeight  = parseFloat(getComputedStyle(textarea).lineHeight) || 20;
+        const scaledLine  = lineHeight * scale;
+        const rawY        = linesBefore * scaledLine - textarea.scrollTop * scale;
+        const cursorY     = Math.max(0, Math.min(rawY, rect.height - scaledLine));
+
+        // Append with .measuring (visibility:hidden) so offsetHeight is available before reveal
+        _dropdown.classList.add('measuring');
+        document.body.appendChild(_dropdown);
+        const ddH = _dropdown.offsetHeight;
+        _dropdown.classList.remove('measuring');
+
+        const gap       = 4;
+        const belowTop  = rect.top + cursorY + scaledLine + gap;
+        const aboveTop  = rect.top + cursorY - ddH - gap;
+        const top       = (belowTop + ddH <= window.innerHeight) ? belowTop : Math.max(0, aboveTop);
+
+        _dropdown.style.left = `${rect.left + window.scrollX}px`;
+        _dropdown.style.top  = `${top + window.scrollY}px`;
+    }
+
+    function removeDropdown() {
+        if (_dropdown) { _dropdown.remove(); _dropdown = null; }
+        _triggerStart = -1;
+        _insertTemplate = (title) => `[[${title}]]`;
+    }
+
+    function insertWikilink(textarea, title) {
+        const val    = textarea.value;
+        const cursor = textarea.selectionStart;
+        const before = val.substring(0, _triggerStart);
+        const after  = val.substring(cursor);
+        const result = _insertTemplate(title);
+        const text   = typeof result === 'object' ? result.text : result;
+        const newCursor = _triggerStart + (typeof result === 'object' ? result.cursor : text.length);
+        textarea.value = `${before}${text}${after}`;
+        textarea.setSelectionRange(newCursor, newCursor);
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        removeDropdown();
+    }
+
+    function getTagMatches(query) {
+        const lq = query.toLowerCase();
+        const seen = new Set();
+        (STATE.notes || []).forEach(n => {
+            const matches = (n.content || '').matchAll(/\[tag:([^\]|]+)/g);
+            for (const m of matches) seen.add(m[1].trim());
+        });
+        return [...seen]
+            .filter(t => t.toLowerCase().includes(lq))
+            .sort((a, b) => a.toLowerCase().indexOf(lq) - b.toLowerCase().indexOf(lq) || a.localeCompare(b))
+            .slice(0, 8)
+            .map(t => ({ id: null, title: t, canvas_name: null }));
+    }
+
+    function getStaticMatches(query, options) {
+        const lq = query.toLowerCase();
+        return options
+            .filter(o => o.includes(lq))
+            .sort((a, b) => a.indexOf(lq) - b.indexOf(lq) || a.localeCompare(b))
+            .map(o => ({ id: null, title: o, canvas_name: null }));
+    }
+
+    function buildCalendar(textarea) {
+        removeDropdown();
+        _insertTemplate = (dateStr) => `[date:${dateStr}]`;
+
+        let calYear  = new Date().getFullYear();
+        let calMonth = new Date().getMonth();
+
+        _dropdown = document.createElement('div');
+        _dropdown.className = 'wikilink-calendar';
+
+        function renderCalGrid() {
+            const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+            const firstDay    = new Date(calYear, calMonth, 1).getDay();
+            const monthName   = new Date(calYear, calMonth).toLocaleString('default', { month: 'long' });
+            const today       = new Date();
+
+            _dropdown.innerHTML = `
+                <div class="cal-header">
+                    <button class="cal-nav" data-dir="-1">&#8249;</button>
+                    <span class="cal-title">${monthName} ${calYear}</span>
+                    <button class="cal-nav" data-dir="1">&#8250;</button>
+                </div>
+                <div class="cal-days-header">
+                    <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                </div>
+                <div class="cal-grid"></div>
+            `;
+
+            const grid = _dropdown.querySelector('.cal-grid');
+
+            for (let i = 0; i < firstDay; i++) {
+                const empty = document.createElement('span');
+                empty.className = 'cal-day cal-empty';
+                grid.appendChild(empty);
+            }
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const isToday = d === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
+                const cell = document.createElement('span');
+                cell.className = 'cal-day' + (isToday ? ' cal-today' : '');
+                cell.textContent = d;
+                cell.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    const mm = String(calMonth + 1).padStart(2, '0');
+                    const dd = String(d).padStart(2, '0');
+                    insertWikilink(textarea, `${calYear}-${mm}-${dd}`);
+                });
+                grid.appendChild(cell);
+            }
+
+            _dropdown.querySelectorAll('.cal-nav').forEach(btn => {
+                btn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    calMonth += parseInt(btn.dataset.dir);
+                    if (calMonth < 0)  { calMonth = 11; calYear--; }
+                    if (calMonth > 11) { calMonth = 0;  calYear++; }
+                    renderCalGrid();
+                    positionDropdown(textarea);
+                });
+            });
+        }
+
+        renderCalGrid();
+
+        positionDropdown(textarea);
+    }
+
+    function getBlobMatches(query) {
+        const lq = query.toLowerCase();
+        const map = STATE.note_map || {};
+        const seen = {};
+        return Object.values(map)
+            .filter(n => n.title && n.title.toLowerCase().includes(lq) && (n.blob_id || (n.attachments && n.attachments.length > 0)))
+            .sort((a, b) => {
+                const ai = a.title.toLowerCase().indexOf(lq);
+                const bi = b.title.toLowerCase().indexOf(lq);
+                return ai - bi || a.title.localeCompare(b.title);
+            })
+            .reduce((acc, n) => {
+                if (!seen[n.title]) {
+                    const hasDupe = Object.values(map).filter(x => x.title === n.title).length > 1;
+                    acc.push({ id: n.id, title: n.title, canvas_name: hasDupe ? n.canvas_name : null });
+                    seen[n.title] = true;
+                }
+                return acc;
+            }, [])
+            .slice(0, 8);
+    }
+
+    function getSortedMatches(query) {
+        const lq = query.toLowerCase();
+        const map = STATE.note_map || {};
+        const seen = {};
+
+        return Object.values(map)
+            .filter(n => n.title && n.title.toLowerCase().includes(lq))
+            .sort((a, b) => {
+                const ai = a.title.toLowerCase().indexOf(lq);
+                const bi = b.title.toLowerCase().indexOf(lq);
+                return ai - bi || a.title.localeCompare(b.title);
+            })
+            .reduce((acc, n) => {
+                if (!seen[n.title]) {
+                    const hasDupe = Object.values(map).filter(x => x.title === n.title).length > 1;
+                    acc.push({ id: n.id, title: n.title, canvas_name: hasDupe ? n.canvas_name : null });
+                    seen[n.title] = true;
+                }
+                return acc;
+            }, [])
+            .slice(0, 8);
+    }
+
+    document.addEventListener('input', (e) => {
+        const textarea = e.target;
+        if (!textarea.matches('textarea[data-action="note-keydown"]')) return;
+
+        const val    = textarea.value;
+        const cursor = textarea.selectionStart;
+        const before = val.substring(0, cursor);
+
+        // [copy: / [img: / [image: / [file: triggers
+        const COLORS = ['yellow', 'blue', 'pink', 'orange', 'violet', 'indigo', 'slate', 'green', 'red', 'accent', 'info', 'success', 'danger', 'warning'];
+        const SIZES  = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
+
+        const staticTriggers = [
+            { prefix: '[color:',  options: COLORS, template: (t) => `[color:${t}][/color]`,   cursorOffset: 8 },
+            { prefix: '[colour:', options: COLORS, template: (t) => `[colour:${t}][/colour]`, cursorOffset: 9 },
+            { prefix: '[bg:',    options: COLORS, template: (t) => `[bg:${t}][/bg]`,       cursorOffset: 5 },
+            { prefix: '[size:',  options: SIZES,  template: (t) => `[size:${t}][/size]`,   cursorOffset: 7 },
+        ];
+        for (const { prefix, options, template, cursorOffset } of staticTriggers) {
+            const idx = before.lastIndexOf(prefix);
+            if (idx !== -1) {
+                const between = before.substring(idx + prefix.length);
+                if (!between.includes(']') && !between.includes('\n')) {
+                    const matches = getStaticMatches(between, options);
+                    buildDropdown(matches, textarea, (t) => {
+                        const inserted = template(t);
+                        // Position cursor inside the opening tag, before closing tag
+                        return { text: inserted, cursor: inserted.length - cursorOffset };
+                    });
+                    _triggerStart = idx;
+                    return;
+                }
+            }
+        }
+
+        // [date: calendar trigger
+        const dateIdx = before.lastIndexOf('[date:');
+        if (dateIdx !== -1) {
+            const between = before.substring(dateIdx + 6);
+            if (!between.includes(']') && !between.includes('\n')) {
+                buildCalendar(textarea);
+                _triggerStart = dateIdx;
+                return;
+            }
+        }
+
+        // [tag:Label| colour trigger — second param after the pipe separator
+        const tagColorMatch = before.match(/\[tag:([^\]|\n]+)\|([^\]|\n]*)$/);
+        if (tagColorMatch) {
+            const label      = tagColorMatch[1];
+            const colorQuery = tagColorMatch[2];
+            const tagStart   = before.lastIndexOf('[tag:');
+            const matches    = getStaticMatches(colorQuery, COLORS);
+            buildDropdown(matches, textarea, (color) => `[tag:${label}|${color}]`);
+            _triggerStart = tagStart;
+            return;
+        }
+
+        const bracketTriggers = [
+            { prefix: '[copy:',  template: (t) => `[copy:${t}]`,  matcher: getSortedMatches },
+            { prefix: '[img:',   template: (t) => `[img:${t}]`,   matcher: getBlobMatches   },
+            { prefix: '[image:', template: (t) => `[image:${t}]`, matcher: getBlobMatches   },
+            { prefix: '[file:',  template: (t) => `[file:${t}]`,  matcher: getBlobMatches   },
+            { prefix: '[embed:', template: (t) => `[embed:${t}]`, matcher: getSortedMatches },
+            { prefix: '[tag:',   template: (t) => `[tag:${t}]`,   matcher: getTagMatches    },
+        ];
+        for (const { prefix, template, matcher } of bracketTriggers) {
+            const idx = before.lastIndexOf(prefix);
+            if (idx !== -1) {
+                const between = before.substring(idx + prefix.length);
+                if (!between.includes(']') && !between.includes('\n')) {
+                    const matches = matcher(between);
+                    buildDropdown(matches, textarea, template);
+                    _triggerStart = idx;
+                    return;
+                }
+            }
+        }
+
+        // [[ trigger
+        const lastOpen = before.lastIndexOf('[[');
+        if (lastOpen === -1) { removeDropdown(); return; }
+
+        const between = before.substring(lastOpen + 2);
+        if (between.includes(']]') || between.includes('\n')) { removeDropdown(); return; }
+
+        const matches = getSortedMatches(between);
+        buildDropdown(matches, textarea);
+        // Set after buildDropdown — buildDropdown calls removeDropdown() which resets _triggerStart
+        _triggerStart = lastOpen;
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (!_dropdown) return;
+        if (e.key === 'Escape') { removeDropdown(); return; }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const items = _dropdown.querySelectorAll('.wikilink-dropdown-item');
+            const active = _dropdown.querySelector('.active');
+            const next = active ? active.nextElementSibling : items[0];
+            if (active) active.classList.remove('active');
+            if (next) next.classList.add('active');
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const items = _dropdown.querySelectorAll('.wikilink-dropdown-item');
+            const active = _dropdown.querySelector('.active');
+            const prev = active ? active.previousElementSibling : items[items.length - 1];
+            if (active) active.classList.remove('active');
+            if (prev) prev.classList.add('active');
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+            const active = _dropdown.querySelector('.active');
+            if (active) {
+                e.preventDefault();
+                active.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            }
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (_dropdown && !_dropdown.contains(e.target)) removeDropdown();
+    });
+
+    document.addEventListener('focusout', (e) => {
+        if (e.target.matches('textarea[data-action="note-keydown"]') && _dropdown) {
+            removeDropdown();
+        }
+    });
+})();
+
 /**
  * Resize engine initialization
  * @param {HTMLElement} el - The note element.
@@ -1740,12 +2079,12 @@ async function saveNoteInline(id, stayInEditMode = false) {
             }
 
             if (res.notes && typeof window.mergeNoteState === 'function') {
-                window.mergeNoteState(res.notes);
+                window.mergeNoteState(res.notes, id);
             } else if (res.notes) {
                 STATE.notes = res.notes;
             }
             STATE.last_mutation = res.last_mutation;
-            
+
             // Targeted DOM Update: Refresh viewer and title without board re-render
             const viewer = el.querySelector('.note-text-viewer');
             const slot   = el.querySelector('.note-title-slot');
@@ -1792,12 +2131,60 @@ async function saveNoteInline(id, stayInEditMode = false) {
             const accentColor = typeof normalizeColorHex === 'function' ? normalizeColorHex(color) : color;
             el.style.setProperty('--note-accent', accentColor);
             
+            // Backlinks sidebar must reflect the current link graph after every save
+            const sidebar = document.getElementById('backlinks-sidebar');
+            if (sidebar && !sidebar.classList.contains('hidden') && sidebar.dataset.noteId) {
+                const sidebarNoteId = sidebar.dataset.noteId;
+                const sidebarMeta   = STATE.note_map?.[sidebarNoteId];
+                const sidebarTitle  = sidebarMeta?.title || 'Note';
+                if (typeof loadBacklinks === 'function') {
+                    delete sidebar.dataset.noteId; // force re-fetch even for same note
+                    loadBacklinks(sidebarNoteId, sidebarTitle);
+                }
+            }
+
+            refreshEmbedsOf(id, title, content);
+
             showToast('Note Saved', 'success');
         }
     } finally {
         el.classList.remove('pending');
         if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
     }
+}
+
+/**
+ * Re-renders any note on the current canvas that embeds the just-saved note.
+ * Also updates embed_cache so cross-canvas embedders reflect the new content.
+ * @param {number|string} savedId      - ID of the note that was saved.
+ * @param {string}        savedTitle   - Title of the saved note.
+ * @param {string}        savedContent - New content of the saved note.
+ */
+function refreshEmbedsOf(savedId, savedTitle, savedContent) {
+    const idStr    = String(savedId);
+    const titleLow = (savedTitle || '').toLowerCase();
+
+    if (STATE.embed_cache && STATE.embed_cache[idStr]) {
+        STATE.embed_cache[idStr] = Object.assign({}, STATE.embed_cache[idStr], { content: savedContent });
+    }
+
+    (STATE.notes || []).forEach(note => {
+        if (String(note.id) === idStr) return;
+        const content    = note.content || '';
+        const contentLow = content.toLowerCase();
+
+        const hasEmbed = content.includes(`[embed:${savedId}]`)
+            || (titleLow && contentLow.includes(`[embed:${titleLow}]`));
+        if (!hasEmbed) return;
+
+        const noteEl = document.getElementById(`note-${note.id}`);
+        if (!noteEl) return;
+        const viewer = noteEl.querySelector('.note-text-viewer');
+        if (!viewer) return;
+
+        viewer.innerHTML = formatNoteContent(content, note.id);
+        noteEl.dataset.lastContent = content;
+    });
 }
 
 /**
@@ -2285,11 +2672,14 @@ async function toggleNoteCheckbox(event, id, lineIndex) {
     if (lineIndex < 0 || lineIndex >= lines.length) return;
 
     let line = lines[lineIndex];
-    const match = line.match(/^(\s*)\[( |x|)\](.*)$/);
+    // Standard: checkbox at line start (standalone or with list prefix)
+    // Fallback: checkbox anywhere in the line (e.g. inside a table cell)
+    const match = line.match(/^([ \t]*(?:[-*]\s+|\d+\.\s+)?)\[([ xX]?)\](.*)$/)
+               || line.match(/^(.*?)\[([ xX]?)\](.*)$/);
     if (!match) return; // Safety: Line has changed since render
 
     const prefix = match[1];
-    const state  = match[2];
+    const state  = match[2].toLowerCase();
     const text   = match[3];
 
     // Simple Toggle: x -> [ ] | anything else -> [x]
