@@ -405,15 +405,12 @@ pre code {
 }
 
 .note-bullet {
-    display: inline-block;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #60a5fa; /* Theme Active Blue */
-    margin-right: 0.5rem;
-    vertical-align: middle;
-    box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
-    margin-bottom: 2px;
+    display: inline;
+    color: #60a5fa;
+    margin-right: 0.25rem;
+    text-shadow: 0 0 6px rgba(96, 165, 250, 0.6);
+    font-size: 1em;
+    line-height: inherit;
 }
 
 .note-number {
@@ -1491,6 +1488,22 @@ pre code {
 }
 
 /* Informational Guide Modal — Browser-style Tabs */
+/* Guide modal — wider on desktop, two-column panels */
+.modal-guide {
+    max-width: min(1500px, 96vw);
+}
+
+.guide-tab-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 36px;
+}
+
+@media (max-width: 768px) {
+    .modal-guide { max-width: 98vw; }
+    .guide-tab-cols { grid-template-columns: 1fr; }
+}
+
 .guide-tab-nav {
     display: flex;
     gap: 3px;
@@ -1563,6 +1576,34 @@ pre code {
 .guide-cs-preview {
     font-size: 0.82em;
     color: #cbd5e1;
+}
+
+.guide-size-xs  { font-size: 0.65rem; }
+.guide-size-sm  { font-size: 0.78rem; }
+.guide-size-sub { font-size: 0.9rem; }
+.guide-size-lg  { font-size: 1.1rem; }
+.guide-size-xl  { font-size: 1.25rem; }
+.guide-size-2xl { font-size: 1.4rem; }
+
+.guide-preview-highlight {
+    background: #f59e0b;
+    color: #000;
+    padding: 0 4px;
+    border-radius: 3px;
+}
+
+.guide-preview-badge { margin: 0; }
+
+.guide-kbd {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75em;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    padding: 1px 6px;
+    color: #7dd3fc;
+    white-space: nowrap;
 }
 
 .guide-cs-inline {
@@ -4794,3 +4835,400 @@ input:checked + .switch-sm .slider:before {
     }
 }
 
+/* --- Wikilink: Dead Link --- */
+.note-ref-dead {
+    color: #ef4444;
+    text-decoration: underline dotted;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* --- Wikilink Autocomplete Dropdown --- */
+.wikilink-dropdown {
+    position: absolute;
+    z-index: 9999;
+    background: #1e293b;
+    border: 1px solid #3b82f6;
+    border-radius: 8px;
+    min-width: 220px;
+    max-width: 360px;
+    max-height: 240px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.wikilink-dropdown-item {
+    padding: 8px 14px;
+    font-size: 0.875rem;
+    color: #e2e8f0;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.15s;
+}
+
+.wikilink-dropdown-item:hover,
+.wikilink-dropdown-item.active {
+    background: rgba(59, 130, 246, 0.25);
+    color: #93c5fd;
+}
+
+/* --- Backlinks Sidebar --- */
+.backlinks-sidebar {
+    position: fixed;
+    top: 55px;
+    right: 75px;
+    width: 280px;
+    max-height: calc(100vh - 75px);
+    overflow-y: auto;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 12px;
+    padding: 0;
+    z-index: 1100;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.backlinks-sidebar.hidden {
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.backlinks-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+    gap: 8px;
+}
+
+.backlinks-sidebar-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.backlinks-sidebar-close {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    transition: color 0.15s, background 0.15s;
+}
+
+.backlinks-sidebar-close:hover {
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.backlinks-sidebar-count {
+    padding: 8px 16px;
+    font-size: 0.75rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.backlinks-sidebar-list {
+    padding: 4px 10px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+
+.backlinks-empty {
+    padding: 16px;
+    color: #64748b;
+    font-size: 0.875rem;
+    text-align: center;
+    font-style: italic;
+}
+
+/* --- Backlink Card --- */
+.backlink-card {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.backlink-card:hover {
+    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.backlink-card-deleted {
+    opacity: 0.55;
+    border-style: dashed;
+}
+
+.backlink-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+}
+
+.backlink-card-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.backlink-deleted-badge {
+    font-size: 0.65rem;
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border-radius: 4px;
+    padding: 1px 5px;
+    flex-shrink: 0;
+}
+
+.backlink-card-canvas {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 4px;
+}
+
+.backlink-card-excerpt {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+
+/* Hides an element while preserving layout space, allowing offsetHeight measurement before positioning */
+.measuring {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* --- Note Embed Block --- */
+.note-embed-block {
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 8px;
+    margin: 6px 0;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.4);
+}
+
+.note-embed-title {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #93c5fd;
+    background: rgba(59, 130, 246, 0.1);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.note-embed-content {
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+}
+
+.note-embed-dead {
+    padding: 6px 10px;
+    color: #64748b;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+.note-embed-unavailable {
+    font-size: 0.75rem;
+    color: #475569;
+}
+
+.note-embed-too-deep {
+    padding: 6px 10px;
+    color: #f59e0b;
+    font-size: 0.75rem;
+}
+
+/* --- Date Tag --- */
+.note-date-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 1px 7px;
+    border-radius: 4px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.28);
+    color: #93c5fd;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    cursor: default;
+}
+
+.note-date-relative {
+    color: #64748b;
+    font-size: 0.7rem;
+}
+
+/* --- Calendar Widget --- */
+.wikilink-calendar {
+    position: absolute;
+    z-index: 10000;
+    background: rgba(15, 23, 42, 0.97);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    border-radius: 10px;
+    padding: 10px;
+    width: 210px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    user-select: none;
+}
+
+.cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.cal-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #93c5fd;
+}
+
+.cal-nav {
+    background: none;
+    border: none;
+    color: #93c5fd;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+}
+.cal-nav:hover { background: rgba(59, 130, 246, 0.2); }
+
+.cal-days-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 4px;
+}
+.cal-days-header span {
+    text-align: center;
+    font-size: 0.65rem;
+    color: #475569;
+    padding: 2px 0;
+}
+
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.cal-day {
+    text-align: center;
+    font-size: 0.7rem;
+    color: #94a3b8;
+    padding: 4px 2px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.cal-day:not(.cal-empty):hover {
+    background: rgba(59, 130, 246, 0.25);
+    color: #e2e8f0;
+}
+.cal-day.cal-today {
+    color: #3b82f6;
+    font-weight: 700;
+}
+.cal-empty { cursor: default; }
+
+/* --- Table Tag --- */
+.note-table-wrap {
+    overflow-x: auto;
+    margin: 6px 0;
+    border-radius: 6px;
+}
+
+.note-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.78rem;
+}
+
+.note-table th,
+.note-table td {
+    border: 1px solid rgba(59, 130, 246, 0.18);
+    padding: 5px 10px;
+    text-align: left;
+    color: #e2e8f0;
+}
+
+.note-table th {
+    background: rgba(59, 130, 246, 0.1);
+    color: #93c5fd;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.note-table tr:nth-child(even) td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* --- Callout Blocks --- */
+.note-callout {
+    border-radius: 6px;
+    margin: 6px 0;
+    overflow: hidden;
+    border-left: 3px solid var(--callout-color, #3b82f6);
+    background: rgba(var(--callout-rgb, 59, 130, 246), 0.07);
+}
+
+.note-callout-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(var(--callout-rgb, 59, 130, 246), 0.12);
+}
+
+.note-callout-icon { font-size: 0.85rem; line-height: 1; }
+
+.note-callout-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--callout-color, #93c5fd);
+}
+
+.note-callout-body {
+    padding: 7px 10px;
+    font-size: 0.8rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+}
+
+.note-callout--note     { --callout-color: #60a5fa; --callout-rgb: 96, 165, 250; }
+.note-callout--tip      { --callout-color: #34d399; --callout-rgb: 52, 211, 153; }
+.note-callout--warning  { --callout-color: #fbbf24; --callout-rgb: 251, 191, 36; }
+.note-callout--danger   { --callout-color: #f87171; --callout-rgb: 248, 113, 113; }
+.note-callout--success  { --callout-color: #34d399; --callout-rgb: 52, 211, 153; }
+.note-callout--info     { --callout-color: #38bdf8; --callout-rgb: 56, 189, 248; }
+.note-callout--question { --callout-color: #a78bfa; --callout-rgb: 167, 139, 250; }
