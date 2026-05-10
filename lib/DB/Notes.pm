@@ -584,7 +584,7 @@ sub DB::delete_note {
     my $sth = $self->{dbh}->prepare("SELECT canvas_id FROM notes WHERE id = ?");
     $sth->execute($note_id);
     my ($cid) = $sth->fetchrow_array();
-    
+
     return 0 unless $cid && $self->check_canvas_access($cid, $user_id, 1);
 
     my $sql = "UPDATE notes SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP
@@ -595,6 +595,13 @@ sub DB::delete_note {
     $sth_del->execute($note_id);
 
     return -1 unless $sth_del->rows;
+
+    # Remove outgoing wikilinks from the deleted note — it no longer links to anything.
+    # Incoming links (target_note_id = this note) are intentionally preserved so the
+    # backlinks sidebar can badge them as deleted until the note is purged.
+    $self->{dbh}->do(
+        "DELETE FROM note_links WHERE source_note_id = ?", undef, $note_id
+    );
 
     $self->touch_canvas($cid);
     return 1;
@@ -643,6 +650,7 @@ sub DB::delete_batch_notes {
 
             if ($sth->rows > 0) {
                 push @deleted_ids, $note_id;
+                $dbh->do("DELETE FROM note_links WHERE source_note_id = ?", undef, $note_id);
             } else {
                 die "Note #" . $note_id . " is locked or missing";
             }
@@ -1566,6 +1574,224 @@ sub DB::normalize_note_z_indices {
     };
 
     my $rows = $self->{dbh}->do($sql);
+    return $rows;
+}
+
+# Fetches the current title for a note by ID.
+# Parameters:
+#   note_id : Integer note ID.
+# Returns:
+#   String title or undef if not found.
+sub DB::get_note_title {
+    my ($self, $note_id) = @_;
+    $self->ensure_connection;
+    my ($title) = $self->{dbh}->selectrow_array(
+        "SELECT title FROM notes WHERE id = ?", undef, $note_id
+    );
+    return $title;
+}
+
+# Parses [[Title]] wikilinks from note content and synchronises the note_links table.
+# Resolves titles against non-password-protected canvases the user can access.
+# Unresolvable titles are skipped silently (render as dead links on the client).
+# Self-links (source == target) are ignored.
+# When a title resolves to a target that is already linked, link_text is updated
+# if it has changed (last wikilink wins when multiple aliases point to the same target).
+# Parameters:
+#   source_note_id : Integer ID of the note being saved.
+#   content        : Raw text content of the note.
+#   user_id        : ID of the saving user (for canvas ACL resolution).
+# Returns: Void.
+sub DB::sync_note_links {
+    my ($self, $source_note_id, $content, $user_id) = @_;
+    $self->ensure_connection;
+
+    # Extract unique [[Title]] strings from content; trim surrounding whitespace
+    my %seen_titles;
+    for ($content =~ /\[\[([^\[\]\n]+)\]\]/g) {
+        (my $t = $_) =~ s/^\s+|\s+$//g;
+        $seen_titles{$t} = 1 if length $t;
+    }
+    my @titles = keys %seen_titles;
+
+    # Resolve each title to a note_id (first match by canvas sort order, non-protected only)
+    my %resolved; # typed_title => { id => note_id, canonical => db_title }
+    if (@titles) {
+        my $resolve_sql = "
+            SELECT n.id, n.title
+            FROM notes n
+            JOIN canvases c ON n.canvas_id = c.id
+            WHERE n.title = ?
+            AND n.is_deleted = 0
+            AND c.password_hash IS NULL
+            AND (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
+            ORDER BY c.sort_order ASC, n.id ASC
+            LIMIT 1
+        ";
+        my $sth_r = $self->{dbh}->prepare($resolve_sql);
+        for my $title (@titles) {
+            $sth_r->execute($title, $user_id, $user_id);
+            my $row = $sth_r->fetchrow_hashref();
+            if ($row && $row->{id} != $source_note_id) {
+                $resolved{$title} = { id => $row->{id}, canonical => $row->{title} };
+            }
+        }
+    }
+
+    # Fetch existing links for this source: target_note_id => link_text
+    my $sth_ex = $self->{dbh}->prepare(
+        "SELECT target_note_id, link_text FROM note_links WHERE source_note_id = ?"
+    );
+    $sth_ex->execute($source_note_id);
+    my %existing = map { $_->[0] => $_->[1] } @{ $sth_ex->fetchall_arrayref() };
+
+    # Build desired set: target_note_id => canonical_link_text
+    # Canonical title is used so cascade_rename_links can match link_text exactly.
+    # When multiple aliases resolve to the same target, last-in wins (hash key collision).
+    my %desired;
+    for my $title (keys %resolved) {
+        $desired{ $resolved{$title}{id} } = $resolved{$title}{canonical};
+    }
+
+    # Upsert links: insert new rows or update link_text when the alias changed
+    my $sth_ins = $self->{dbh}->prepare(
+        "INSERT INTO note_links (source_note_id, target_note_id, link_text) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE link_text = VALUES(link_text)"
+    );
+    for my $tid (keys %desired) {
+        my $new_text = $desired{$tid};
+        if (!exists $existing{$tid} || ($existing{$tid} // '') ne $new_text) {
+            $sth_ins->execute($source_note_id, $tid, $new_text);
+        }
+    }
+
+    # Delete stale links
+    my $sth_del = $self->{dbh}->prepare(
+        "DELETE FROM note_links WHERE source_note_id = ? AND target_note_id = ?"
+    );
+    for my $tid (keys %existing) {
+        $sth_del->execute($source_note_id, $tid)
+            unless exists $desired{$tid};
+    }
+}
+
+# Propagates a note title rename to all notes that reference it via [[OldTitle]].
+# Performs a case-insensitive find-replace of [[old_title]] -> [[new_title]] in each
+# source note's content. Skips notes actively locked by a different session and logs a warning.
+# Parameters:
+#   target_note_id     : Integer ID of the renamed note.
+#   old_title          : Previous title string.
+#   new_title          : New title string.
+#   current_session_id : Session token of the renaming user (to skip own locks).
+# Returns: Integer count of notes updated.
+sub DB::cascade_rename_links {
+    my ($self, $target_note_id, $old_title, $new_title, $current_session_id) = @_;
+    $self->ensure_connection;
+
+    return 0 if $old_title eq $new_title;
+
+    # Fetch all source notes that used this exact link_text
+    my $sth_src = $self->{dbh}->prepare(
+        "SELECT source_note_id FROM note_links WHERE target_note_id = ? AND link_text = ?"
+    );
+    $sth_src->execute($target_note_id, $old_title);
+    my @source_ids = map { $_->[0] } @{ $sth_src->fetchall_arrayref() };
+    return 0 unless @source_ids;
+
+    my $old_wikilink = "[[${old_title}]]";
+    my $new_wikilink = "[[${new_title}]]";
+    my $updated = 0;
+
+    my $sth_lock = $self->{dbh}->prepare(
+        "SELECT locked_by_session_id FROM notes
+         WHERE id = ?
+         AND locked_by_session_id IS NOT NULL
+         AND locked_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 MINUTE)"
+    );
+    my $sth_content = $self->{dbh}->prepare("SELECT content FROM notes WHERE id = ?");
+    my $sth_update  = $self->{dbh}->prepare(
+        "UPDATE notes SET content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    );
+
+    for my $sid (@source_ids) {
+        # Skip notes locked by a different session
+        $sth_lock->execute($sid);
+        my ($locked_by) = $sth_lock->fetchrow_array();
+        if ($locked_by && $locked_by ne ($current_session_id // '')) {
+            warn "cascade_rename_links: skipping note #$sid locked by session $locked_by\n";
+            next;
+        }
+
+        $sth_content->execute($sid);
+        my ($content) = $sth_content->fetchrow_array();
+        next unless defined $content;
+
+        # Case-insensitive replace — preserve exact bracket syntax
+        (my $new_content = $content) =~ s/\Q$old_wikilink\E/$new_wikilink/gi;
+        next if $new_content eq $content;
+
+        $sth_update->execute($new_content, $sid);
+        $updated++;
+    }
+
+    # Update link_text to reflect the new title
+    $self->{dbh}->do(
+        "UPDATE note_links SET link_text = ? WHERE target_note_id = ? AND link_text = ?",
+        undef, $new_title, $target_note_id, $old_title
+    );
+
+    return $updated;
+}
+
+# Retrieves all notes that contain a [[wikilink]] pointing to the given note.
+# Enforces ACL: only returns source notes on non-protected canvases accessible to user_id.
+# Soft-deleted source notes are included with is_deleted = 1 so the sidebar can badge them.
+# Includes a ~160-char excerpt of source content surrounding the [[Title]] reference.
+# Parameters:
+#   note_id : Integer ID of the target note.
+#   user_id : Active user identifier.
+# Returns: ArrayRef of HashRefs { id, title, canvas_name, excerpt, is_deleted }.
+sub DB::get_note_backlinks {
+    my ($self, $note_id, $user_id) = @_;
+    $self->ensure_connection;
+
+    # ACL Gate: Verify read access to the target note's canvas
+    my ($canvas_id) = $self->{dbh}->selectrow_array(
+        "SELECT canvas_id FROM notes WHERE id = ?", undef, $note_id
+    );
+    return [] unless $canvas_id && $self->check_canvas_access($canvas_id, $user_id, 0);
+
+    my ($target_title) = $self->{dbh}->selectrow_array(
+        "SELECT title FROM notes WHERE id = ?", undef, $note_id
+    );
+    return [] unless $target_title;
+
+    my $sql = "
+        SELECT n.id, n.title, n.content, n.is_deleted, c.name AS canvas_name
+        FROM note_links nl
+        JOIN notes n  ON nl.source_note_id = n.id
+        JOIN canvases c ON n.canvas_id = c.id
+        WHERE nl.target_note_id = ?
+        AND c.password_hash IS NULL
+        AND (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
+        ORDER BY n.updated_at DESC
+    ";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute($note_id, $user_id, $user_id);
+    my $rows = $sth->fetchall_arrayref({});
+
+    # Build excerpt: 80 chars either side of the [[Title]] reference
+    for my $row (@$rows) {
+        my $content = $row->{content} // '';
+        my $pattern = quotemeta("[[${target_title}]]");
+        if ($content =~ /(.{0,80})(?i:$pattern)(.{0,80})/s) {
+            $row->{excerpt} = "$1\[\[${target_title}\]\]$2";
+        } else {
+            $row->{excerpt} = substr($content, 0, 160);
+        }
+        delete $row->{content};
+    }
+
     return $rows;
 }
 
