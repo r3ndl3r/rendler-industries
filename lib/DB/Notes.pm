@@ -519,6 +519,7 @@ sub DB::get_all_accessible_note_metadata {
             n.id, n.canvas_id, n.title, n.type, n.x, n.y, n.width, n.height, n.layer_id,
             n.color, n.is_collapsed, n.is_options_expanded,
             n.locked_by_user_id, n.locked_by_session_id, lu.username as locking_user_name,
+            c.name AS canvas_name,
             b.id        AS blob_id,
             b.filename  AS blob_filename,
             b.mime_type AS blob_mime,
@@ -1734,11 +1735,14 @@ sub DB::cascade_rename_links {
         $updated++;
     }
 
-    # Update link_text to reflect the new title
-    $self->{dbh}->do(
-        "UPDATE note_links SET link_text = ? WHERE target_note_id = ? AND link_text = ?",
-        undef, $new_title, $target_note_id, $old_title
-    );
+    if (@source_ids) {
+        my $placeholders = join(',', ('?') x scalar @source_ids);
+        $self->{dbh}->do(
+            "UPDATE note_links SET link_text = ?
+             WHERE target_note_id = ? AND link_text = ? AND source_note_id IN ($placeholders)",
+            undef, $new_title, $target_note_id, $old_title, @source_ids
+        );
+    }
 
     return $updated;
 }
@@ -1793,6 +1797,31 @@ sub DB::get_note_backlinks {
     }
 
     return $rows;
+}
+
+# Fetches a single note's id, title, and content for cross-canvas embedding.
+# ACL-gated: excludes password-protected canvases; requires read access.
+# Parameters:
+#   note_id : Integer note ID to fetch.
+#   user_id : Requesting user's ID.
+# Returns: Hashref { id, title, content, canvas_name } or undef if not accessible.
+sub DB::get_note_for_embed {
+    my ($self, $note_id, $user_id) = @_;
+    $self->ensure_connection;
+
+    my $sql = "
+        SELECT n.id, n.title, n.content, c.name AS canvas_name
+        FROM notes n
+        JOIN canvases c ON n.canvas_id = c.id
+        WHERE n.id = ?
+          AND n.is_deleted = 0
+          AND c.password_hash IS NULL
+          AND (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
+        LIMIT 1
+    ";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute($note_id, $user_id, $user_id);
+    return $sth->fetchrow_hashref();
 }
 
 1;
