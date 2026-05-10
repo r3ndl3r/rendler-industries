@@ -158,18 +158,28 @@ sub api_save {
     }
     $params->{session_id} = $sid;
 
+    my $old_title = $params->{id} ? $c->db->get_note_title($params->{id}) : undef;
+
     my $result_id = $c->db->save_note($params);
 
     if (defined $result_id && $result_id == -1) {
         return $c->render(json => { success => 0, error => 'Note is locked by another session' }, status => 403);
     }
-    
+
     unless (defined $result_id) {
         return $c->render(json => { success => 0, error => 'Board Permission Denied (Read-Only?)' }, status => 403);
     }
 
     $c->refresh_canvas_lock($canvas_id) if defined $canvas_id;
-    
+
+    $c->db->sync_note_links($result_id, $params->{content}, $user_id)
+        if defined $params->{content};
+
+    if ($params->{id} && defined $old_title && defined $params->{title}
+            && $params->{title} ne '' && $old_title ne $params->{title}) {
+        $c->db->cascade_rename_links($result_id, $old_title, $params->{title}, $params->{session_id});
+    }
+
     # Optional Purge: Process any attachments marked for deletion in this save cycle
     my $deleted_blobs_json = $c->param('deleted_blobs');
     if ($deleted_blobs_json) {
@@ -1415,6 +1425,42 @@ sub refresh_canvas_lock {
 }
 
 
+# Returns all notes that contain a [[wikilink]] pointing to the given note.
+# Route: GET /notes/api/backlinks/:note_id
+# Parameters:
+#   note_id : Path parameter — target note ID.
+# Returns: JSON { success, backlinks: [{ id, title, canvas_name, excerpt, is_deleted }] }
+sub api_backlinks {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_logged_in;
+
+    my $note_id = $c->stash('note_id');
+    my $user_id = $c->current_user_id();
+
+    my $backlinks = $c->db->get_note_backlinks($note_id, $user_id);
+    $c->render(json => { success => 1, backlinks => $backlinks });
+}
+
+# Returns a note's content for cross-canvas embedding.
+# ACL-gated: excludes password-protected canvases.
+# Route: GET /notes/api/note/:note_id
+# Returns: JSON { success, note: { id, title, content, canvas_name } }
+sub api_note {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_logged_in;
+
+    my $note_id = $c->stash('note_id');
+    my $user_id = $c->current_user_id();
+
+    my $note = $c->db->get_note_for_embed($note_id, $user_id);
+    return $c->render(json => { success => 0, error => 'Not found' }, status => 404)
+        unless $note;
+
+    $c->render(json => { success => 1, note => $note });
+}
+
 sub register_routes {
     my ($class, $r) = @_;
     $r->{auth}->get('/notes')->to('notes#index');
@@ -1455,6 +1501,8 @@ sub register_routes {
     $r->{auth}->post('/notes/api/canvas/password/set')->to('notes#api_canvas_password_set');
     $r->{auth}->post('/notes/api/canvas/password/clear')->to('notes#api_canvas_password_clear');
     $r->{auth}->get('/notes/api/heartbeat/:canvas_id')->to('notes#api_heartbeat');
+    $r->{auth}->get('/notes/api/backlinks/:note_id')->to('notes#api_backlinks');
+    $r->{auth}->get('/notes/api/note/:note_id')->to('notes#api_note');
 }
 
 1;
