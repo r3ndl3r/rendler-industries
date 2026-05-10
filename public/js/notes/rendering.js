@@ -546,7 +546,54 @@ window.formatBytes = function(bytes, decimals = 1) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
+/**
+ * Renders the backlinks sidebar panel for a given note.
+ * @param {object} note - Note object with at least { id, title }.
+ * @param {Array}  backlinks - Array of { id, title, canvas_name, excerpt, is_deleted }.
+ * @returns {string} - HTML string for the sidebar inner content.
+ */
+function renderBacklinksSidebar(note, backlinks) {
+    const safeTitle = window.escapeHtml(note.title || 'Untitled');
+    const count = backlinks.length;
+
+    const cards = backlinks.map(bl => {
+        const deletedBadge = bl.is_deleted
+            ? '<span class="backlink-deleted-badge">deleted</span>'
+            : '';
+        const safeBlTitle  = window.escapeHtml(bl.title || 'Untitled');
+        const safeCanvas   = window.escapeHtml(bl.canvas_name || '');
+
+        return `
+            <div class="backlink-card ${bl.is_deleted ? 'backlink-card-deleted' : ''}"
+                 data-action="backlink-jump" data-note-id="${bl.id}">
+                <div class="backlink-card-header">
+                    <span class="backlink-card-title">📄 ${safeBlTitle}</span>
+                    ${deletedBadge}
+                </div>
+                <div class="backlink-card-canvas">${safeCanvas}</div>
+            </div>
+        `;
+    }).join('');
+
+    const emptyState = count === 0
+        ? '<p class="backlinks-empty">No other notes link here yet.</p>'
+        : '';
+
+    return `
+        <div class="backlinks-sidebar-header">
+            <span class="backlinks-sidebar-title">${safeTitle}</span>
+            <button class="backlinks-sidebar-close btn-icon-sm" data-action="close-backlinks">✕</button>
+        </div>
+        <div class="backlinks-sidebar-count">Referenced by (${count})</div>
+        <div class="backlinks-sidebar-list">
+            ${cards}
+            ${emptyState}
+        </div>
+    `;
+}
+
 // Global Orchestration Handlers
 window.normalizeColorHex = typeof normalizeColorHex !== 'undefined' ? normalizeColorHex : null;
 window.generateNoteContentHtml = typeof generateNoteContentHtml !== 'undefined' ? generateNoteContentHtml : null;
 window.renderUI = typeof renderUI !== 'undefined' ? renderUI : null;
+window.renderBacklinksSidebar = typeof renderBacklinksSidebar !== 'undefined' ? renderBacklinksSidebar : null;
