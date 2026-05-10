@@ -53,6 +53,7 @@ const STATE = {
     isSwitchingLayer: false,         // Interaction Guard: Prevents overlapping transitions
     note_map:       {},              // Metadata Registry for [note:#] resolution
     note_map_hash:  null,            // Synchronization Fingerprint: Enables O(1) heartbeat handshake
+    embed_cache:    {},              // Cross-canvas embed content keyed by note ID
     autoScroll: {
         lastEvent: null,
         frame:     null,
@@ -341,6 +342,47 @@ window.addEventListener('beforeunload', () => {
 });
 
 /**
+ * Fetches backlinks for a note and renders them in the sidebar.
+ * Only fires if the sidebar is not already showing this note.
+ * @param {number|string} noteId    - ID of the note to show backlinks for.
+ * @param {string}        noteTitle - Display title for the sidebar header.
+ */
+async function loadBacklinks(noteId, noteTitle) {
+    const sidebar = document.getElementById('backlinks-sidebar');
+    if (!sidebar) return;
+
+    if (sidebar.dataset.noteId === String(noteId) && !sidebar.classList.contains('hidden')) return;
+
+    sidebar.dataset.noteId = String(noteId);
+
+    try {
+        const res  = await fetch(`/notes/api/backlinks/${noteId}`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (sidebar.dataset.noteId !== String(noteId)) return;
+        if (data.success && data.backlinks.length > 0) {
+            const currentTitle = STATE.note_map?.[noteId]?.title || noteTitle;
+            sidebar.innerHTML = window.renderBacklinksSidebar({ id: noteId, title: currentTitle }, data.backlinks);
+            sidebar.classList.remove('hidden');
+        } else {
+            closeBacklinks();
+        }
+    } catch (e) {
+        closeBacklinks();
+    }
+}
+
+/**
+ * Closes the backlinks sidebar and clears its note state.
+ */
+function closeBacklinks() {
+    const sidebar = document.getElementById('backlinks-sidebar');
+    if (sidebar) {
+        sidebar.classList.add('hidden');
+        delete sidebar.dataset.noteId;
+    }
+}
+
+/**
  * Initializes the whiteboard module.
  * Attaches global listeners and hydrates initial state.
  * @returns {Promise<void>}
@@ -362,6 +404,14 @@ async function initNotes() {
         marquee.id = 'lasso-marquee';
         marquee.className = 'selection-marquee';
         STATE.canvasEl.appendChild(marquee);
+    }
+
+    // Inject the backlinks sidebar if not already present
+    if (!document.getElementById('backlinks-sidebar')) {
+        const sidebar = document.createElement('div');
+        sidebar.id        = 'backlinks-sidebar';
+        sidebar.className = 'backlinks-sidebar hidden';
+        document.body.appendChild(sidebar);
     }
 
     // Event Delegation for Canvas Interactions
@@ -615,7 +665,20 @@ async function initNotes() {
                 if (typeof handleNoteLinkClick === 'function') {
                     handleNoteLinkClick(targetId);
                 }
+                const targetTitle = STATE.note_map?.[targetId]?.title || 'Note';
+                loadBacklinks(targetId, targetTitle);
                 return;
+            }
+
+            // Open backlinks sidebar when a note is clicked (not on a wikilink — handled above)
+            if (noteEl && noteId) {
+                const title = STATE.note_map?.[noteId]?.title || 'Note';
+                loadBacklinks(noteId, title);
+            }
+
+            // Close sidebar when clicking canvas background (not on a note or sidebar)
+            if (!noteEl && !e.target.closest('#backlinks-sidebar')) {
+                closeBacklinks();
             }
 
             // --- 3b. Note Copy to Clipboard ---
@@ -803,6 +866,20 @@ async function initNotes() {
             if (typeof closeImageViewer === 'function') closeImageViewer();
             if (typeof closePDFViewer === 'function') closePDFViewer();
         }
+
+        const trigger = e.target.closest('[data-action]');
+        if (!trigger) return;
+
+        if (trigger.dataset.action === 'close-backlinks') {
+            closeBacklinks();
+        }
+
+        if (trigger.dataset.action === 'backlink-jump') {
+            const targetId = trigger.dataset.noteId;
+            if (targetId && typeof handleNoteLinkClick === 'function') {
+                handleNoteLinkClick(targetId);
+            }
+        }
     });
 
     // Copy button in the view modal
@@ -888,6 +965,60 @@ async function initNotes() {
     if (typeof window.initRibbon === 'function') window.initRibbon();
 }
 
+
+/**
+ * Scans current-canvas notes for cross-canvas [embed:ID] references, fetches their
+ * content from the API, and stores them in STATE.embed_cache. Triggers a re-render
+ * only when at least one new embed is resolved.
+ * @returns {Promise<void>}
+ */
+async function prefetchCrossCanvasEmbeds() {
+    const localIds = new Set((STATE.notes || []).map(n => String(n.id)));
+    const needed   = new Set();
+
+    const embedRe = /\[embed:([^\]]+)\]/g;
+    for (const note of (STATE.notes || [])) {
+        for (const m of (note.content || '').matchAll(embedRe)) {
+            const val = m[1].trim();
+            let id = parseInt(val, 10);
+            if (isNaN(id)) {
+                const lower = val.toLowerCase();
+                const match = Object.values(STATE.note_map || {}).find(
+                    n => n.title && n.title.toLowerCase() === lower
+                );
+                if (match) id = match.id;
+            }
+            if (!isNaN(id) && !localIds.has(String(id))) needed.add(String(id));
+        }
+    }
+
+    if (!needed.size) {
+        STATE.embed_cache = {};
+        return;
+    }
+
+    const fresh = {};
+    await Promise.all([...needed].map(async (id) => {
+        try {
+            const res  = await fetch(`/notes/api/note/${id}`, { credentials: 'same-origin' });
+            const data = await res.json();
+            if (data.success && data.note) fresh[id] = data.note;
+        } catch (_) {}
+    }));
+
+    STATE.embed_cache = fresh;
+    if (Object.keys(fresh).length) {
+        // Force content reconciliation: renderUI skips notes whose dataset.lastContent matches
+        // note.content, so we clear the marker for any note referencing a newly-cached embed.
+        (STATE.notes || []).forEach(note => {
+            if ((note.content || '').includes('[embed:')) {
+                const el = document.getElementById(`note-${note.id}`);
+                if (el) delete el.dataset.lastContent;
+            }
+        });
+        if (typeof renderUI === 'function') renderUI();
+    }
+}
 
 /**
  * Fetches the Single Source of Truth state from the backend.
@@ -1155,6 +1286,9 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
 
         // Render UI after all state is consolidated
         if (typeof renderUI === 'function') renderUI();
+
+        // Non-blocking: resolve cross-canvas embed content and re-render if needed
+        prefetchCrossCanvasEmbeds();
     }
     // Non-throwing paths return true to preserve the established return contract.
     // Throwing paths (initial=false failures) propagate the throw before reaching this line.
