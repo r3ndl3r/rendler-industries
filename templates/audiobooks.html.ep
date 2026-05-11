@@ -12,6 +12,7 @@
     <div class="header-bar">
         <h1>🎧 <span>Audiobooks</span></h1>
         <div class="manage-actions">
+            <a href="/audiobooks/admin" id="adminLink" class="btn-secondary hidden">⚙️ Admin</a>
             <input type="text" id="librarySearch" class="game-input search-input" placeholder="Search library…" autocomplete="off">
         </div>
     </div>
