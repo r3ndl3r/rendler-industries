@@ -369,6 +369,10 @@ function createNoteElement(note, canEdit = true) {
         <div class="note-resize-handle ne" ${canEdit ? '' : 'style="display:none;"'}></div>
         <div class="note-resize-handle sw" ${canEdit ? '' : 'style="display:none;"'}></div>
         <div class="note-resize-handle se" ${canEdit ? '' : 'style="display:none;"'}></div>
+        <div class="note-resize-handle n"  ${canEdit ? '' : 'style="display:none;"'}></div>
+        <div class="note-resize-handle s"  ${canEdit ? '' : 'style="display:none;"'}></div>
+        <div class="note-resize-handle w"  ${canEdit ? '' : 'style="display:none;"'}></div>
+        <div class="note-resize-handle e"  ${canEdit ? '' : 'style="display:none;"'}></div>
     `;
 
     if (isExternallyLocked) {

@@ -1220,6 +1220,12 @@ pre code {
 .note-resize-handle.sw { bottom: 0; left: 0; cursor: sw-resize; }
 .note-resize-handle.se { bottom: 0; right: 0; cursor: se-resize; }
 
+/* Edge resize handles — thin strips centered on each border */
+.note-resize-handle.n  { top: 0; left: 14px; right: 14px; width: auto; height: 6px; cursor: n-resize; }
+.note-resize-handle.s  { bottom: 0; left: 14px; right: 14px; width: auto; height: 6px; cursor: s-resize; }
+.note-resize-handle.w  { left: 0; top: 14px; bottom: 14px; width: 6px; height: auto; cursor: w-resize; }
+.note-resize-handle.e  { right: 0; top: 14px; bottom: 14px; width: 6px; height: auto; cursor: e-resize; }
+
 .sticky-note:hover .note-resize-handle {
     opacity: 0.6;
 }
