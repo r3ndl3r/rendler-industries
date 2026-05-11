@@ -105,18 +105,20 @@ sub _format_book_entry {
 
     my $chapters = (ref $meta->{chapters} eq 'ARRAY') ? $meta->{chapters} : [];
 
+    my $str = sub { my $v = shift; (defined $v && !ref $v) ? $v : '' };
     return {
         slug           => $slug,
-        title          => escapeHtmlPerl($meta->{title}       // $slug),
-        author         => escapeHtmlPerl($meta->{author}      // ''),
-        narrator       => escapeHtmlPerl($meta->{narrator}    // ''),
-        description    => escapeHtmlPerl($meta->{description} // ''),
-        series         => escapeHtmlPerl($meta->{series}       // ''),
+        title          => ($str->($meta->{title})       || $slug),
+        author         => ($str->($meta->{author})      // ''),
+        narrator       => ($str->($meta->{narrator})    // ''),
+        description    => ($str->($meta->{description}) // ''),
+        series         => ($str->($meta->{series})      // ''),
         series_index   => ($meta->{series_index}              // 0) + 0,
         cover_url      => ($meta->{cover} ? '/audiobooks/api/cover/' . Mojo::Util::url_escape($slug) : ''),
         chapters       => $chapters,
         total_chapters => scalar @$chapters,
         progress       => $prog,
+        date_added     => ($meta->{date_added} // 0) + 0,
     };
 }
 
@@ -521,6 +523,7 @@ sub _build_book_entry_async {
                 series_index => $slug_idx,
                 cover        => _find_cover($dir),
                 chapters     => $cue_meta->{chapters},
+                date_added   => time(),
             };
             _write_meta_json($dir, $meta);
             $meta_promise = Mojo::Promise->resolve($meta);
@@ -549,6 +552,7 @@ sub _build_book_entry_async {
                     series_index => ($result->{series_index} || $slug_i),
                     cover        => _find_cover($dir),
                     chapters     => $chapters,
+                    date_added   => time(),
                 };
                 _write_meta_json($dir, $meta) if @$chapters;
                 return $meta;
@@ -563,7 +567,7 @@ sub _build_book_entry_async {
         $title =~ s/[-_]/ /g;
         $title =~ s/\b(\w)/uc($1)/ge;
         my ($slug_s, $slug_i) = _parse_slug_series($slug);
-        $meta_promise = Mojo::Promise->resolve({
+        my $meta = {
             title        => $title,
             author       => '',
             narrator     => '',
@@ -572,7 +576,10 @@ sub _build_book_entry_async {
             series_index => $slug_i,
             cover        => _find_cover($dir),
             chapters     => \@chapters,
-        });
+            date_added   => time(),
+        };
+        _write_meta_json($dir, $meta) if @chapters;
+        $meta_promise = Mojo::Promise->resolve($meta);
     }
 
     # Common tail: if no cover is set, attempt embedded art extraction once.
@@ -817,6 +824,7 @@ sub api_save_meta {
             series_index => (($c->param('series_index') // $json_body->{series_index} // $existing->{series_index} // 0) + 0),
             cover        => ($existing->{cover} // ''),
             chapters     => $chapters,
+            ($existing->{date_added} ? (date_added => $existing->{date_added}) : ()),
         };
 
         truncate($fh, 0);
@@ -833,6 +841,178 @@ sub api_save_meta {
     $c->render(json => { success => 1 });
 }
 
+# Renders the audiobooks admin panel skeleton.
+# Route: GET /audiobooks/admin
+sub admin_index {
+    my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    return $c->render('noperm') unless $c->is_admin;
+    $c->render('audiobooks/admin');
+}
+
+# Returns all books with admin-level flags for the admin panel.
+# Route: GET /audiobooks/admin/api/state
+# Each book entry includes:
+#   meta_cached    : 1 if meta.json exists on disk, 0 otherwise.
+#   has_cover_file : 1 if cover.jpg or cover.png exists, 0 otherwise.
+# Returns:
+#   JSON: { books: [...], success: 1 }
+sub api_admin_state {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_admin;
+
+    $c->render_later;
+
+    my $root  = _books_root($c);
+    my @slugs;
+
+    if (-d $root && opendir(my $dh, $root)) {
+        @slugs = sort grep { !/^\./ && -d $root->child($_) }
+                      map  { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
+        closedir($dh);
+    }
+
+    my @promises = map {
+        my $slug = $_;
+        _safe_component($slug)
+            ? _build_book_entry_async($slug, $root->child($slug), undef)
+            : Mojo::Promise->resolve(undef);
+    } @slugs;
+
+    Mojo::Promise->all(@promises)->then(sub {
+        my @books = grep { defined } map { $_->[0] } @_;
+        # Flags are read after all async work completes so they reflect final on-disk state.
+        my $prog_by_slug = $c->db->get_all_users_audiobook_progress();
+        for my $book (@books) {
+            my $dir = $root->child($book->{slug});
+            $book->{meta_cached}    = (-f $dir->child('meta.json')) ? 1 : 0;
+            $book->{has_cover_file} = (_find_cover($dir) ne '')     ? 1 : 0;
+            $book->{user_progress}  = $prog_by_slug->{ $book->{slug} } // [];
+        }
+        $c->render(json => { books => \@books, success => 1 });
+    })->catch(sub {
+        my $err = shift;
+        $c->app->log->error("Audiobooks api_admin_state error: $err");
+        $c->render(json => { success => 0, error => 'Internal error' }, status => 500);
+    });
+}
+
+# Deletes cached meta.json for one or all books, forcing metadata re-discovery
+# on the next api_state or api_admin_state request.
+# Route: POST /audiobooks/admin/api/rescan
+# Parameters:
+#   slug : (optional) book directory slug — omit to rescan all books.
+# Returns:
+#   JSON: { success: 1, rescanned: N }
+sub api_admin_rescan {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_admin;
+
+    my $slug  = trim($c->param('slug') // '');
+    my $root  = _books_root($c);
+    my $count = 0;
+
+    if ($slug) {
+        return $c->render(json => { error => 'Invalid slug' }, status => 400)
+            unless _safe_component($slug);
+        my $meta = $root->child($slug)->child('meta.json');
+        if (-f $meta) {
+            unlink $meta->to_string;
+            $count++;
+        }
+    } else {
+        if (-d $root && opendir(my $dh, $root)) {
+            my @dirs = grep { !/^\./ && -d $root->child($_) }
+                           map { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
+            closedir($dh);
+            for my $dir (@dirs) {
+                next unless _safe_component($dir);
+                my $meta = $root->child($dir)->child('meta.json');
+                if (-f $meta) {
+                    unlink $meta->to_string;
+                    $count++;
+                }
+            }
+        }
+    }
+
+    $c->render(json => { success => 1, rescanned => $count });
+}
+
+# Replaces the cover image for a book via a multipart file upload.
+# Route: POST /audiobooks/admin/api/cover/:slug
+# Accepts: multipart field 'cover' — JPEG or PNG only, max 5 MB.
+# Sets the cover field in meta.json if the file exists.
+# Returns:
+#   JSON: { success: 1, cover_url: '...' }
+sub api_admin_upload_cover {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_admin;
+
+    my $slug = $c->param('slug');
+    return $c->render(json => { error => 'Invalid slug' }, status => 400)
+        unless _safe_component($slug);
+
+    my $root = _books_root($c);
+    my $dir  = $root->child($slug);
+    return $c->render(json => { error => 'Book not found' }, status => 404)
+        unless -d $dir;
+
+    my $upload = $c->req->upload('cover');
+    return $c->render(json => { error => 'No file uploaded' }, status => 400)
+        unless $upload && $upload->size > 0;
+
+    return $c->render(json => { error => 'Image exceeds 5 MB limit' }, status => 400)
+        if $upload->size > 5 * 1024 * 1024;
+
+    my $mime = $upload->headers->content_type // '';
+    my $ext;
+    if    ($mime =~ /jpeg|jpg/i) { $ext = 'jpg' }
+    elsif ($mime =~ /png/i)      { $ext = 'png' }
+    else {
+        my $fname = $upload->filename // '';
+        if    ($fname =~ /\.jpe?g$/i) { $ext = 'jpg' }
+        elsif ($fname =~ /\.png$/i)   { $ext = 'png' }
+        else {
+            return $c->render(json => { error => 'Only JPEG and PNG images are accepted' }, status => 400);
+        }
+    }
+
+    # Remove any existing cover before saving the replacement.
+    for my $old_ext (qw(jpg png)) {
+        my $old = $dir->child("cover.$old_ext");
+        unlink $old->to_string if -f $old;
+    }
+
+    my $dest = $dir->child("cover.$ext");
+    eval { $upload->move_to($dest->to_string) };
+    if ($@) {
+        $c->app->log->error("Cover upload failed for $slug: $@");
+        return $c->render(json => { error => 'Failed to save image' }, status => 500);
+    }
+
+    # Persist the cover field so async rebuilds do not re-run cover extraction
+    # and overwrite the uploaded image. A minimal stub is written when meta.json
+    # does not yet exist (e.g. after a rescan cleared it).
+    my $meta_file = $dir->child('meta.json');
+    my $raw       = (-f $meta_file) ? eval { $meta_file->slurp } : undef;
+    my $meta      = $raw            ? eval { decode_json($raw)  } : undef;
+    $meta = { title => $slug, author => '', narrator => '', description => '',
+              series => '', series_index => 0, chapters => [],
+              date_added => time() }
+        unless ref $meta eq 'HASH';
+    $meta->{cover} = "cover.$ext";
+    _write_meta_json($dir, $meta);
+
+    $c->render(json => {
+        success   => 1,
+        cover_url => '/audiobooks/api/cover/' . Mojo::Util::url_escape($slug),
+    });
+}
+
 # Registers all routes for this controller.
 sub register_routes {
     my ($class, $r) = @_;
@@ -842,6 +1022,10 @@ sub register_routes {
     $r->{r}->get('/audiobooks/api/cover/#slug')->to('Audiobooks#api_cover');
     $r->{family}->post('/audiobooks/api/progress')->to('Audiobooks#api_save_progress');
     $r->{admin}->post('/audiobooks/api/meta/#slug')->to('Audiobooks#api_save_meta');
+    $r->{admin}->get('/audiobooks/admin')->to('Audiobooks#admin_index');
+    $r->{admin}->get('/audiobooks/admin/api/state')->to('Audiobooks#api_admin_state');
+    $r->{admin}->post('/audiobooks/admin/api/rescan')->to('Audiobooks#api_admin_rescan');
+    $r->{admin}->post('/audiobooks/admin/api/cover/#slug')->to('Audiobooks#api_admin_upload_cover');
 }
 
 1;
