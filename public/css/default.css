@@ -316,7 +316,7 @@ body.modal-open {
     background: #059669; 
 }
 
-.btn-icon-view, .btn-icon-copy, .btn-icon-edit, .btn-icon-delete, .btn-icon-bonus, .btn-icon-crop, .btn-icon-ai, .btn-icon-reset, .btn-icon-vote, .btn-icon-transfer {
+.btn-icon-view, .btn-icon-copy, .btn-icon-edit, .btn-icon-delete, .btn-icon-bonus, .btn-icon-crop, .btn-icon-ai, .btn-icon-reset, .btn-icon-vote, .btn-icon-transfer, .btn-icon-rescan, .btn-icon-cover {
     width: 32px;
     height: 32px;
     padding: 0;
