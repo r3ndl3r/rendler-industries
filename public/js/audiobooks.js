@@ -81,9 +81,9 @@ function _isCueMode(book) {
     return chapters.length > 0 && typeof chapters[0].start === 'number';
 }
 
-// Series names currently collapsed, persisted to localStorage.
-const COLLAPSED_SERIES = new Set(
-    JSON.parse(localStorage.getItem('ab_collapsed_series') || '[]')
+// Series names currently expanded, persisted to localStorage.
+const EXPANDED_SERIES = new Set(
+    JSON.parse(localStorage.getItem('ab_expanded_series') || '[]')
 );
 
 // Background sync interval reference
@@ -158,6 +158,8 @@ async function loadState(force = false) {
     STATE.books    = Array.isArray(res.books) ? res.books : [];
     STATE.is_admin = res.is_admin ? true : false;
 
+    document.getElementById('adminLink')?.classList.toggle('hidden', !STATE.is_admin);
+
     // Refresh book reference in PLAYER if a book is loaded.
     if (PLAYER.slug) {
         PLAYER.book = STATE.books.find(b => b.slug === PLAYER.slug) || null;
@@ -207,21 +209,26 @@ function _renderBookRow(book) {
         ? `<p class="book-row-status${prog.completed ? ' complete' : ''}">${escapeHtml(status)}</p>`
         : '';
 
+    const progressWrap = (pct > 0 || statusHtml)
+        ? `<div class="book-row-progress-wrap">${progressBar}${statusHtml}</div>`
+        : '';
+
     const chapIdx   = prog.completed ? 0 : (prog.chapter_idx || 0);
     const slugJs    = escapeHtml(JSON.stringify(book.slug));
     const seriesNum = book.series_index > 0
         ? `<span class="book-row-series">Book ${book.series_index}</span>`
         : '';
+    const isNew    = book.date_added > 0 && (Date.now() / 1000 - book.date_added) < 7 * 86400;
+    const newBadge = isNew ? '<span class="book-new-badge">NEW</span>' : '';
 
     return `<div class="book-row" onclick="openPlayer(${slugJs}, ${chapIdx})" role="button" tabindex="0"
                  onkeydown="if(event.key==='Enter')openPlayer(${slugJs}, ${chapIdx})">
                 <div class="book-row-cover">${thumbHtml}</div>
                 <div class="book-row-info">
-                    <p class="book-row-title">${escapeHtml(book.title || book.slug)}</p>
+                    <p class="book-row-title">${escapeHtml(book.title || book.slug)}${newBadge}</p>
                     ${seriesNum}
                     <p class="book-row-author">${escapeHtml(book.author || '')}</p>
-                    ${progressBar}
-                    ${statusHtml}
+                    ${progressWrap}
                 </div>
                 <div class="book-row-actions">
                     <button type="button" class="book-row-play-btn" aria-label="Play" tabindex="-1"
@@ -304,7 +311,7 @@ function renderLibrary() {
 
     for (const [seriesName, group] of seriesMap) {
         const n         = group.length;
-        const collapsed = COLLAPSED_SERIES.has(seriesName);
+        const collapsed = !EXPANDED_SERIES.has(seriesName);
         const chevron   = collapsed ? '▸' : '▾';
         const seriesJs  = escapeHtml(JSON.stringify(seriesName));
         html += `<div class="series-group" data-series="${escapeHtml(seriesName)}">
@@ -341,16 +348,16 @@ function setFilter(f) {
  * @returns {void}
  */
 function toggleSeriesCollapse(seriesName) {
-    if (COLLAPSED_SERIES.has(seriesName)) {
-        COLLAPSED_SERIES.delete(seriesName);
+    if (EXPANDED_SERIES.has(seriesName)) {
+        EXPANDED_SERIES.delete(seriesName);
     } else {
-        COLLAPSED_SERIES.add(seriesName);
+        EXPANDED_SERIES.add(seriesName);
     }
-    localStorage.setItem('ab_collapsed_series', JSON.stringify([...COLLAPSED_SERIES]));
+    localStorage.setItem('ab_expanded_series', JSON.stringify([...EXPANDED_SERIES]));
 
     const group = document.querySelector(`.series-group[data-series="${CSS.escape(seriesName)}"]`);
     if (!group) return;
-    const collapsed = COLLAPSED_SERIES.has(seriesName);
+    const collapsed = !EXPANDED_SERIES.has(seriesName);
     group.querySelector('.series-books').classList.toggle('hidden', collapsed);
     const chevron = group.querySelector('.series-chevron');
     if (chevron) chevron.textContent = collapsed ? '▸' : '▾';
@@ -397,10 +404,15 @@ function _progressPercent(book) {
 function _statusLabel(book) {
     const prog = book.progress || {};
     if (prog.completed) return 'Finished';
-    if (!prog.position_sec && !(prog.chapter_idx)) return '';
 
     const total    = _totalBookDuration(book);
     const chapters = Array.isArray(book.chapters) ? book.chapters : [];
+
+    if (!prog.position_sec && !(prog.chapter_idx)) {
+        if (total > 0 && chapters.length > 0) return _formatDuration(total);
+        return '';
+    }
+
     if (!total || !chapters.length) return '';
 
     let remaining;
@@ -498,7 +510,6 @@ function openPlayerEdit() {
  */
 function _initAudio() {
     const audio = new Audio();
-    audio.crossOrigin = "anonymous";
     PLAYER.audio = audio;
 
     audio.addEventListener('timeupdate', _onTimeUpdate);
