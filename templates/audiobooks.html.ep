@@ -1,0 +1,155 @@
+<%# /templates/audiobooks.html.ep %>
+
+% layout 'default', hide_navbar_title => 1, favicon => '🎧';
+% title 'Audiobooks';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/audiobooks.css">
+    <script src="/js/audiobooks.js"></script>
+% end
+
+<div class="audiobooks-container app-container">
+    <div class="header-bar">
+        <h1>🎧 <span>Audiobooks</span></h1>
+        <div class="manage-actions">
+            <input type="text" id="librarySearch" class="game-input search-input" placeholder="Search library…" autocomplete="off">
+        </div>
+    </div>
+
+    <%# Filter chips — populated/activated by JS %>
+    <div class="library-filter-bar">
+        <button type="button" class="filter-chip active" data-filter="all"         onclick="setFilter('all')">All</button>
+        <button type="button" class="filter-chip"         data-filter="not_started" onclick="setFilter('not_started')">Not Started</button>
+        <button type="button" class="filter-chip"         data-filter="in_progress" onclick="setFilter('in_progress')">In Progress</button>
+        <span id="libraryCount" class="library-count"></span>
+    </div>
+
+    <%# Library list — populated by JS %>
+    <div id="libraryGrid" class="library-list">
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse">🎧</span>
+            <p class="loading-label">Loading your library…</p>
+        </div>
+    </div>
+</div>
+
+<%# ─── Book Detail Panel ──────────────────────────────────────────────────── %>
+<div id="detailPanel" class="detail-panel">
+    <div class="detail-header">
+        <span id="detailHeaderTitle" class="detail-header-title"></span>
+    </div>
+    <div class="detail-scroll">
+        <div class="detail-cover-row">
+            <div class="detail-cover-wrap">
+                <img id="detailCover" src="" alt="" class="detail-cover hidden">
+                <div id="detailCoverFallback" class="detail-cover-fallback">🎧</div>
+            </div>
+            <div class="detail-meta">
+                <h2 id="detailTitle" class="detail-title"></h2>
+                <p id="detailAuthor" class="detail-author"></p>
+                <p id="detailNarrator" class="detail-narrator"></p>
+                <p id="detailDuration" class="detail-duration"></p>
+            </div>
+        </div>
+        <p id="detailDescription" class="detail-description"></p>
+
+        <%# Admin edit form — opened via edit button in player header %>
+        <div id="adminEditForm" class="admin-edit-form hidden">
+            <h3 class="admin-edit-heading">Edit Details</h3>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="editTitle" class="game-input no-emoji">
+            </div>
+            <div class="form-group">
+                <label>Author</label>
+                <input type="text" id="editAuthor" class="game-input no-emoji">
+            </div>
+            <div class="form-group">
+                <label>Narrator</label>
+                <input type="text" id="editNarrator" class="game-input no-emoji">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="editDescription" class="game-input no-emoji" rows="4"></textarea>
+            </div>
+            <div class="modal-actions-center">
+                <button type="button" id="saveMetaBtn" class="btn-primary" onclick="saveMeta()">💾 Save</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<%# ─── Full-Screen Player Panel ──────────────────────────────────────────── %>
+<div id="playerPanel" class="player-panel">
+    <div class="player-header">
+        <button type="button" class="icon-btn player-edit-btn hidden" id="playerEditBtn" onclick="openPlayerEdit()" aria-label="Edit">✏️</button>
+        <span id="playerHeaderTitle" class="player-header-title"></span>
+        <button type="button" class="icon-btn" onclick="closePlayer()" aria-label="Close">✕</button>
+    </div>
+
+    <div class="player-body">
+        <div class="player-cover-wrap">
+            <img id="playerCover" src="" alt="" class="player-cover hidden">
+            <div id="playerCoverFallback" class="player-cover-fallback">🎧</div>
+        </div>
+
+        <div class="player-chapter-name-row">
+            <p id="playerChapterName" class="player-chapter-name"></p>
+            <p id="playerAuthor" class="player-author"></p>
+        </div>
+
+        <div class="player-seek-row">
+            <span id="playerElapsed" class="seek-time">0:00</span>
+            <input type="range" id="seekBar" class="seek-bar no-emoji" min="0" max="100" value="0" step="0.1">
+            <span id="playerRemaining" class="seek-time">-0:00</span>
+        </div>
+
+        <div class="player-controls">
+            <button type="button" class="ctrl-btn ctrl-chapter" id="prevChapterBtn" onclick="prevChapter()" aria-label="Previous chapter">⏮</button>
+            <button type="button" class="ctrl-btn ctrl-rewind" onclick="rewind30()" aria-label="Rewind 30 seconds">
+                <span class="rewind-icon">↺</span><span class="rewind-label">30</span>
+            </button>
+            <button type="button" class="ctrl-btn ctrl-play" id="playPauseBtn" onclick="togglePlay()" aria-label="Play/Pause">▶</button>
+            <button type="button" class="ctrl-btn ctrl-rewind" onclick="forward30()" aria-label="Forward 30 seconds">
+                <span class="rewind-icon">↻</span><span class="rewind-label">30</span>
+            </button>
+            <button type="button" class="ctrl-btn ctrl-chapter" id="nextChapterBtn" onclick="nextChapter()" aria-label="Next chapter">⏭</button>
+        </div>
+
+        <div class="player-secondary-controls">
+            <div class="speed-pills" id="speedPills">
+                <button type="button" class="speed-pill" data-rate="0.75" onclick="setSpeed(0.75)">0.75×</button>
+                <button type="button" class="speed-pill active" data-rate="1"    onclick="setSpeed(1)">1×</button>
+                <button type="button" class="speed-pill" data-rate="1.25" onclick="setSpeed(1.25)">1.25×</button>
+                <button type="button" class="speed-pill" data-rate="1.5"  onclick="setSpeed(1.5)">1.5×</button>
+                <button type="button" class="speed-pill" data-rate="2"    onclick="setSpeed(2)">2×</button>
+            </div>
+            <div class="sleep-wrap">
+                <button type="button" class="icon-btn sleep-btn" id="sleepBtn" onclick="openSleepMenu()" aria-label="Sleep timer">🌙</button>
+                <span id="sleepBadge" class="sleep-badge hidden"></span>
+                <div id="sleepMenu" class="sleep-menu hidden">
+                    <button type="button" onclick="startSleepTimer(15)">15 min</button>
+                    <button type="button" onclick="startSleepTimer(30)">30 min</button>
+                    <button type="button" onclick="startSleepTimer(45)">45 min</button>
+                    <button type="button" onclick="startSleepTimer(60)">60 min</button>
+                    <button type="button" onclick="startSleepTimer(0)">End of chapter</button>
+                    <button type="button" id="cancelSleepBtn" class="hidden" onclick="cancelSleepTimer()">Cancel timer</button>
+                </div>
+            </div>
+        </div>
+
+        <button type="button" class="chapter-drawer-toggle" onclick="toggleChapterDrawer()" aria-label="Chapter list">
+            ☰ Chapters
+        </button>
+    </div>
+
+    <audio id="mainAudio" class="hidden"></audio>
+
+    <%# Chapter list drawer inside player %>
+    <div id="chapterDrawer" class="chapter-drawer">
+        <ul id="playerChapterList" class="chapter-list chapter-list-player"></ul>
+    </div>
+</div>
+
