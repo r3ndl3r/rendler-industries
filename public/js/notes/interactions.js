@@ -358,10 +358,11 @@ let _noteContextMenuTimer = null;
 let _ribbonTextarea = null;
 
 /**
- * Resolves the handle orientation string ('nw', 'ne', 'sw', 'se') from class list.
+ * Resolves the handle orientation string from class list.
+ * Corners: 'nw', 'ne', 'sw', 'se'. Edges: 'n', 's', 'e', 'w'.
  */
 function resolveDirection(handle) {
-    const classes = ['nw', 'ne', 'sw', 'se'];
+    const classes = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'];
     for (const c of classes) if (handle.classList.contains(c)) return c;
     return 'se';
 }
@@ -499,6 +500,24 @@ function executeResizeMath(e) {
             newH = fixedBottom - snpT;
             newX = newW < minW ? fixedRight - minW : snpL;
             newY = newH < minH ? fixedBottom - minH : snpT;
+            break;
+        }
+        case 's':
+            newH = Math.round((ctx.startHeight + deltaY) / snap) * snap;
+            break;
+        case 'n': {
+            const snpT = Math.round((ctx.startTop + deltaY) / snap) * snap;
+            newH = fixedBottom - snpT;
+            newY = newH < minH ? fixedBottom - minH : snpT;
+            break;
+        }
+        case 'e':
+            newW = Math.round((ctx.startWidth + deltaX) / snap) * snap;
+            break;
+        case 'w': {
+            const snpL = Math.round((ctx.startLeft + deltaX) / snap) * snap;
+            newW = fixedRight - snpL;
+            newX = newW < minW ? fixedRight - minW : snpL;
             break;
         }
     }
