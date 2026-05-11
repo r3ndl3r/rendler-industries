@@ -693,7 +693,7 @@ async function initNotes() {
             }
 
             // --- 3c. Inline Text Copy Block ---
-            const inlineCopyTrigger = e.target.closest('.note-inline-copy');
+            const inlineCopyTrigger = e.target.closest('.note-inline-copy, .note-code-inline');
             if (inlineCopyTrigger) {
                 e.stopPropagation();
                 const text = inlineCopyTrigger.textContent || '';
