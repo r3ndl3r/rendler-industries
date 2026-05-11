@@ -216,6 +216,22 @@
     text-overflow: ellipsis;
 }
 
+.book-new-badge {
+    display: inline-block;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    padding: 1px 5px;
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    vertical-align: middle;
+    margin-left: 5px;
+    position: relative;
+    top: -1px;
+}
+
 .book-row-author {
     font-size: 0.78rem;
     color: rgba(255,255,255,0.5);
@@ -225,12 +241,19 @@
     text-overflow: ellipsis;
 }
 
+.book-row-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
 .book-row-progress {
+    flex: 1;
     height: 3px;
     background: rgba(255,255,255,0.1);
     border-radius: 2px;
     overflow: hidden;
-    margin-top: 4px;
 }
 
 .book-row-progress-fill {
@@ -1010,6 +1033,29 @@
 
 .hidden {
     display: none !important;
+}
+
+/* ─── Responsive: narrow screens ─────────────────────────────────────────── */
+
+@media (max-width: 639px) {
+    .audiobooks-container .header-bar {
+        flex-wrap: wrap;
+    }
+
+    .audiobooks-container .manage-actions {
+        display: contents;
+    }
+
+    .audiobooks-container .search-input {
+        margin-left: auto;
+        width: 150px;
+    }
+
+    .audiobooks-container #adminLink {
+        order: 1;
+        margin-left: auto;
+        margin-top: 6px;
+    }
 }
 
 /* ─── Responsive: wider screens ───────────────────────────────────────────── */
