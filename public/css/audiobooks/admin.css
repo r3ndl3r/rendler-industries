@@ -1,0 +1,276 @@
+/* /public/css/audiobooks/admin.css */
+
+/* ─── Page layout ───────────────────────────────────────────────────────────── */
+
+.app-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+    max-width: 1200px;
+}
+
+@media (max-width: 640px) {
+    .app-container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
+
+/* ─── Stats bar ─────────────────────────────────────────────────────────────── */
+
+.admin-stats-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 24px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.admin-stats-bar.show {
+    opacity: 1;
+}
+
+.admin-stat-chip {
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.75);
+    white-space: nowrap;
+}
+
+/* ─── Table column widths ────────────────────────────────────────────────────── */
+
+.col-ab-cover   { width: 56px; padding: 8px 6px !important; }
+.col-ab-book    { min-width: 180px; }
+.col-ab-series  { min-width: 130px; }
+.col-ab-status  { width: 140px; white-space: nowrap; }
+.col-ab-family  { min-width: 150px; }
+.col-ab-actions { width: 110px; white-space: nowrap; }
+
+/* ─── Cover thumbnail ────────────────────────────────────────────────────────── */
+
+.ab-thumb {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 6px;
+    display: block;
+}
+
+.ab-thumb-fallback {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+/* ─── Book title / author stacking ──────────────────────────────────────────── */
+
+.ab-book-title {
+    display: block;
+    font-weight: 600;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.ab-book-author {
+    display: block;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 2px;
+}
+
+/* ─── Status badges ──────────────────────────────────────────────────────────── */
+
+.ab-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-right: 4px;
+    letter-spacing: 0.02em;
+    vertical-align: middle;
+}
+
+.ab-badge-ok {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.ab-badge-warn {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+/* ─── Family progress chips ──────────────────────────────────────────────────── */
+
+.ab-user-prog {
+    display: inline-block;
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin: 2px 3px 2px 0;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+}
+
+.ab-user-prog-done {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #34d399;
+}
+
+/* ─── Action buttons ─────────────────────────────────────────────────────────── */
+
+.btn-icon-rescan {
+    background: #06b6d4;
+}
+
+.btn-icon-rescan:hover {
+    background: #0891b2;
+}
+
+.btn-icon-cover {
+    background: #8b5cf6;
+}
+
+.btn-icon-cover:hover {
+    background: #7c3aed;
+}
+
+/* ─── Edit modal form layout ─────────────────────────────────────────────────── */
+
+.admin-form-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.admin-form-grow {
+    flex: 1;
+}
+
+.admin-form-fixed {
+    width: 75px;
+    flex-shrink: 0;
+}
+
+/* ─── Mobile: card stacking ──────────────────────────────────────────────────── */
+
+@media (max-width: 639px) {
+    .app-container .header-bar {
+        flex-wrap: wrap;
+    }
+
+    .app-container .manage-actions {
+        display: contents;
+    }
+
+    .app-container .manage-actions .btn-secondary,
+    .app-container .manage-actions .btn-primary {
+        order: 1;
+        margin-top: 6px;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+        line-height: 1;
+        box-sizing: border-box;
+    }
+
+    .app-container .manage-actions .btn-primary {
+        margin-left: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .admin-stats-bar { gap: 6px; }
+    .admin-stat-chip { font-size: 0.75rem; padding: 4px 10px; }
+
+    /* Dissolve table chrome so rows become standalone cards */
+    #adminTableWrap .data-table,
+    #adminTableWrap .data-table tbody {
+        display: block;
+        background: transparent;
+        box-shadow: none;
+        border: none;
+    }
+
+    #adminTableWrap .data-table thead { display: none; }
+
+    #adminTableWrap .data-table tbody tr {
+        display: block;
+        background: #1e293b;
+        border-radius: 1rem;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+        border: 1px solid #334155;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        position: relative;
+    }
+
+    /* Cover thumbnail: hidden label, floated to top-left of card */
+    #adminTableWrap .data-table td.col-ab-cover {
+        display: block;
+        padding: 0 0 0.75rem 0 !important;
+        border: none !important;
+        background: transparent !important;
+        width: auto !important;
+    }
+
+    /* All labelled cells stack as label + value rows */
+    #adminTableWrap .data-table td[data-label] {
+        display: flex;
+        align-items: center;
+        padding: 0.3rem 0 !important;
+        border: none !important;
+        width: 100% !important;
+        background: transparent !important;
+        font-size: 0.88rem;
+        gap: 0.75rem;
+    }
+
+    #adminTableWrap .data-table td[data-label]::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        font-size: 0.65rem;
+        letter-spacing: 0.05em;
+        min-width: 58px;
+        flex-shrink: 0;
+    }
+
+    /* Book cell: stack title/author vertically within the value side */
+    #adminTableWrap .data-table td.col-ab-book {
+        align-items: flex-start;
+    }
+
+    /* Actions: anchored to top-right corner of the card */
+    #adminTableWrap .data-table td.col-ab-actions {
+        display: flex !important;
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: auto !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        gap: 6px;
+    }
+}
