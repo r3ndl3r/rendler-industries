@@ -1224,7 +1224,7 @@ function nextChapter() {
 function jumpToChapter(idx) {
     if (idx === PLAYER.chapter_idx) return;
     PLAYER.chapter_idx = idx;
-    _loadChapter(idx, true);
+    _loadChapter(idx, !PLAYER.audio.paused);
     _saveProgress(false);
     document.getElementById('chapterDrawer').classList.remove('show');
 }
@@ -1295,6 +1295,7 @@ function startSleepTimer(minutes) {
 
     PLAYER.sleep_timer = setTimeout(() => {
         if (PLAYER.audio) PLAYER.audio.pause();
+        _saveProgress(false);
         PLAYER.sleep_timer = null;
         cancelSleepTimer();
         showToast('Sleep timer ended. Paused.', 'info');
