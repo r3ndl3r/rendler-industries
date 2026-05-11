@@ -81,6 +81,11 @@ function _isCueMode(book) {
     return chapters.length > 0 && typeof chapters[0].start === 'number';
 }
 
+// Series names currently collapsed, persisted to localStorage.
+const COLLAPSED_SERIES = new Set(
+    JSON.parse(localStorage.getItem('ab_collapsed_series') || '[]')
+);
+
 // Background sync interval reference
 let _syncInterval = null;
 
@@ -94,10 +99,11 @@ document.addEventListener('DOMContentLoaded', () => {
     _initAudio();
     loadState(true);
 
-    // Request notification permission (Capacitor-aware for APK support)
-    _requestNotificationPermission();
-
     document.getElementById('librarySearch').addEventListener('input', renderLibrary);
+
+    // Notification permission must be requested inside a user gesture to satisfy browser policy.
+    // A one-shot pointerdown fires on the first tap/click anywhere on the page.
+    document.addEventListener('pointerdown', _requestNotificationPermission, { once: true });
 
     // Re-acquire wake lock when returning from background (browser releases it on visibility loss).
     document.addEventListener('visibilitychange', () => {
@@ -163,15 +169,79 @@ async function loadState(force = false) {
 // ─── Library rendering ────────────────────────────────────────────────────────
 
 /**
- * Renders the book list into #libraryGrid.
- * Applies the active filter chip and search query from #librarySearch.
+ * Returns a formatted series label for a book.
+ * Numbered entries (series_index > 0) include the book number; companion books
+ * that belong to the series but are not part of the main numbered sequence have
+ * a series_index of 0 and return only the series name.
+ * @param {Object} book - Book record from STATE.books.
+ * @returns {string}
+ */
+function _seriesLabel(book) {
+    if (!book.series) return '';
+    return book.series_index > 0
+        ? `${book.series} · Book ${book.series_index}`
+        : book.series;
+}
+
+/**
+ * Renders a single book row as an HTML string.
+ * @param {Object} book - Book record from STATE.books.
+ * @returns {string}
+ */
+function _renderBookRow(book) {
+    const prog   = book.progress || {};
+    const pct    = _progressPercent(book);
+    const status = _statusLabel(book);
+
+    const thumbHtml = book.cover_url
+        ? `<img src="${escapeHtml(book.cover_url)}" alt="" class="book-row-thumb-img" loading="lazy"
+               onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden');">
+           <div class="book-row-thumb-fallback hidden">🎧</div>`
+        : `<div class="book-row-thumb-fallback">🎧</div>`;
+
+    const progressBar = pct > 0
+        ? `<div class="book-row-progress"><div class="book-row-progress-fill" style="width:${pct}%"></div></div>`
+        : '';
+
+    const statusHtml = status
+        ? `<p class="book-row-status${prog.completed ? ' complete' : ''}">${escapeHtml(status)}</p>`
+        : '';
+
+    const chapIdx   = prog.completed ? 0 : (prog.chapter_idx || 0);
+    const slugJs    = escapeHtml(JSON.stringify(book.slug));
+    const seriesNum = book.series_index > 0
+        ? `<span class="book-row-series">Book ${book.series_index}</span>`
+        : '';
+
+    return `<div class="book-row" onclick="openPlayer(${slugJs}, ${chapIdx})" role="button" tabindex="0"
+                 onkeydown="if(event.key==='Enter')openPlayer(${slugJs}, ${chapIdx})">
+                <div class="book-row-cover">${thumbHtml}</div>
+                <div class="book-row-info">
+                    <p class="book-row-title">${escapeHtml(book.title || book.slug)}</p>
+                    ${seriesNum}
+                    <p class="book-row-author">${escapeHtml(book.author || '')}</p>
+                    ${progressBar}
+                    ${statusHtml}
+                </div>
+                <div class="book-row-actions">
+                    <button type="button" class="book-row-play-btn" aria-label="Play" tabindex="-1"
+                            onclick="event.stopPropagation(); openPlayer(${slugJs}, ${chapIdx}, true)">▶</button>
+                </div>
+            </div>`;
+}
+
+/**
+ * Renders the book list into #libraryGrid, grouped by series.
+ * Books with a series field are collected under a series header row, sorted by
+ * series_index. Standalone books follow. Series groups are ordered by the most
+ * recently played book within each group.
  * @returns {void}
  */
 function renderLibrary() {
     const grid  = document.getElementById('libraryGrid');
     const query = (document.getElementById('librarySearch').value || '').toLowerCase().trim();
 
-    // Sort by most recently played first; books with no progress go to the end alphabetically.
+    // Sort by most recently played first; alphabetical fallback.
     const sorted = [...STATE.books].sort((a, b) => {
         const ta = (a.progress && a.progress.updated_at) || '';
         const tb = (b.progress && b.progress.updated_at) || '';
@@ -184,7 +254,8 @@ function renderLibrary() {
     const books = sorted.filter(b => {
         if (query) {
             const hit = (b.title  || '').toLowerCase().includes(query) ||
-                        (b.author || '').toLowerCase().includes(query);
+                        (b.author || '').toLowerCase().includes(query) ||
+                        (b.series || '').toLowerCase().includes(query);
             if (!hit) return false;
         }
         const prog = b.progress || {};
@@ -211,42 +282,46 @@ function renderLibrary() {
         return;
     }
 
-    grid.innerHTML = books.map(book => {
-        const prog   = book.progress || {};
-        const pct    = _progressPercent(book);
-        const status = _statusLabel(book);
+    // Separate into series groups (Map preserves insertion order = most-recently-played first).
+    const seriesMap  = new Map();
+    const standalone = [];
 
-        const thumbHtml = book.cover_url
-            ? `<img src="${escapeHtml(book.cover_url)}" alt="" class="book-row-thumb-img" loading="lazy"
-                   onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden');">
-               <div class="book-row-thumb-fallback hidden">🎧</div>`
-            : `<div class="book-row-thumb-fallback">🎧</div>`;
+    for (const book of books) {
+        if (book.series) {
+            if (!seriesMap.has(book.series)) seriesMap.set(book.series, []);
+            seriesMap.get(book.series).push(book);
+        } else {
+            standalone.push(book);
+        }
+    }
 
-        const progressBar = pct > 0
-            ? `<div class="book-row-progress"><div class="book-row-progress-fill" style="width:${pct}%"></div></div>`
-            : '';
+    // Within each series, sort by series_index ascending.
+    for (const group of seriesMap.values()) {
+        group.sort((a, b) => (a.series_index || 0) - (b.series_index || 0));
+    }
 
-        const statusHtml = status
-            ? `<p class="book-row-status${prog.completed ? ' complete' : ''}">${escapeHtml(status)}</p>`
-            : '';
+    let html = '';
 
-        const chapIdx = prog.completed ? 0 : (prog.chapter_idx || 0);
-        const slug    = escapeHtml(book.slug);
+    for (const [seriesName, group] of seriesMap) {
+        const n         = group.length;
+        const collapsed = COLLAPSED_SERIES.has(seriesName);
+        const chevron   = collapsed ? '▸' : '▾';
+        const seriesJs  = escapeHtml(JSON.stringify(seriesName));
+        html += `<div class="series-group" data-series="${escapeHtml(seriesName)}">
+            <div class="series-header" onclick="toggleSeriesCollapse(${seriesJs})" role="button" tabindex="0"
+                 onkeydown="if(event.key==='Enter'||event.key===' ')toggleSeriesCollapse(${seriesJs})">
+                <span class="series-chevron">${chevron}</span>
+                <span class="series-name">${escapeHtml(seriesName)}</span>
+                <span class="series-count">${n} book${n !== 1 ? 's' : ''}</span>
+            </div>
+            <div class="series-books${collapsed ? ' hidden' : ''}">
+                ${group.map(_renderBookRow).join('')}
+            </div>
+        </div>`;
+    }
 
-        return `<div class="book-row" onclick="openPlayer('${slug}', ${chapIdx})" role="button" tabindex="0"
-                     onkeydown="if(event.key==='Enter')openPlayer('${slug}', ${chapIdx})">
-                    <div class="book-row-cover">${thumbHtml}</div>
-                    <div class="book-row-info">
-                        <p class="book-row-title">${escapeHtml(book.title || book.slug)}</p>
-                        <p class="book-row-author">${escapeHtml(book.author || '')}</p>
-                        ${progressBar}
-                        ${statusHtml}
-                    </div>
-                    <div class="book-row-actions">
-                        <button type="button" class="book-row-play-btn" aria-label="Play" tabindex="-1">▶</button>
-                    </div>
-                </div>`;
-    }).join('');
+    html += standalone.map(_renderBookRow).join('');
+    grid.innerHTML = html;
 }
 
 /**
@@ -257,6 +332,28 @@ function renderLibrary() {
 function setFilter(f) {
     STATE.filter = f;
     renderLibrary();
+}
+
+/**
+ * Toggles the collapsed state for a series group without a full re-render.
+ * State is persisted to localStorage so collapsed groups survive page reloads.
+ * @param {string} seriesName - The series name matching the data-series attribute.
+ * @returns {void}
+ */
+function toggleSeriesCollapse(seriesName) {
+    if (COLLAPSED_SERIES.has(seriesName)) {
+        COLLAPSED_SERIES.delete(seriesName);
+    } else {
+        COLLAPSED_SERIES.add(seriesName);
+    }
+    localStorage.setItem('ab_collapsed_series', JSON.stringify([...COLLAPSED_SERIES]));
+
+    const group = document.querySelector(`.series-group[data-series="${CSS.escape(seriesName)}"]`);
+    if (!group) return;
+    const collapsed = COLLAPSED_SERIES.has(seriesName);
+    group.querySelector('.series-books').classList.toggle('hidden', collapsed);
+    const chevron = group.querySelector('.series-chevron');
+    if (chevron) chevron.textContent = collapsed ? '▸' : '▾';
 }
 
 /**
@@ -338,8 +435,9 @@ function openDetail(slug) {
 
     document.getElementById('detailHeaderTitle').textContent = book.title || slug;
     document.getElementById('detailTitle').textContent       = book.title || slug;
-    document.getElementById('detailAuthor').textContent      = book.author    ? `by ${book.author}` : '';
-    document.getElementById('detailNarrator').textContent    = book.narrator  ? `Narrated by ${book.narrator}` : '';
+    document.getElementById('detailSeries').textContent     = _seriesLabel(book);
+    document.getElementById('detailAuthor').textContent     = book.author   ? `by ${book.author}` : '';
+    document.getElementById('detailNarrator').textContent   = book.narrator ? `Narrated by ${book.narrator}` : '';
     document.getElementById('detailDescription').textContent = book.description || '';
 
     const totalSec = _totalBookDuration(book);
@@ -356,10 +454,12 @@ function openDetail(slug) {
         fallbackEl.classList.remove('hidden');
     }
 
-    document.getElementById('editTitle').value       = book.title       || '';
-    document.getElementById('editAuthor').value      = book.author      || '';
-    document.getElementById('editNarrator').value    = book.narrator    || '';
-    document.getElementById('editDescription').value = book.description || '';
+    document.getElementById('editTitle').value       = book.title        || '';
+    document.getElementById('editAuthor').value      = book.author       || '';
+    document.getElementById('editNarrator').value    = book.narrator     || '';
+    document.getElementById('editDescription').value = book.description  || '';
+    document.getElementById('editSeries').value      = book.series       || '';
+    document.getElementById('editSeriesIndex').value = book.series_index || '';
 
     document.getElementById('detailPanel').classList.add('show');
 }
@@ -407,7 +507,10 @@ function _initAudio() {
     audio.addEventListener('pause',      _onPaused);
     audio.addEventListener('error',      _onAudioError);
     audio.addEventListener('canplay',    _onCanPlay, { once: false });
-    audio.addEventListener('waiting',    () => { document.getElementById('playPauseBtn').textContent = '⏳'; });
+    audio.addEventListener('waiting', () => {
+        document.getElementById('playPauseBtn').textContent = '⏳';
+        document.getElementById('playerPanel').classList.add('player-buffering');
+    });
     audio.addEventListener('stalled',    () => { console.warn('Playback stalled (buffering)'); });
 
     const Cap = window.Capacitor;
@@ -448,11 +551,12 @@ function _initAudio() {
  * Opens the full-screen player for a book at a specific chapter.
  * Starts playback from the user's saved position if opening the same
  * chapter they last left off on; otherwise starts from the beginning.
- * @param {string} slug       - Book directory slug.
- * @param {number} chapter_idx - Zero-based chapter index.
+ * @param {string}  slug        - Book directory slug.
+ * @param {number}  chapter_idx - Zero-based chapter index.
+ * @param {boolean} autoplay    - Whether to start playback immediately (default false).
  * @returns {void}
  */
-function openPlayer(slug, chapter_idx) {
+function openPlayer(slug, chapter_idx, autoplay = false) {
     const book = STATE.books.find(b => b.slug === slug);
     if (!book) return;
 
@@ -466,6 +570,7 @@ function openPlayer(slug, chapter_idx) {
 
     _updatePlayerHeader(book);
     _updateCoverUI(book, 'playerCover', 'playerCoverFallback');
+    document.getElementById('playerSeries').textContent = _seriesLabel(book);
     document.getElementById('playerAuthor').textContent = book.author ? `by ${book.author}` : '';
     document.getElementById('playPauseBtn').textContent = '▶';
 
@@ -474,7 +579,7 @@ function openPlayer(slug, chapter_idx) {
 
     document.getElementById('playerPanel').classList.add('show');
     _startSaveTimer();
-    _loadChapter(idx, true);
+    _loadChapter(idx, autoplay);
 }
 
 /**
@@ -501,7 +606,7 @@ function closePlayer() {
         navigator.mediaSession.playbackState = 'none';
     }
 
-    document.getElementById('playerPanel').classList.remove('show');
+    document.getElementById('playerPanel').classList.remove('show', 'player-buffering');
     document.getElementById('chapterDrawer').classList.remove('show');
 
     PLAYER.player_open  = false;
@@ -560,6 +665,10 @@ function _loadChapter(idx, autoplay = true) {
         // CUE mode: file already loaded — just seek to the chapter start offset.
         doSeekAndPlay();
     } else {
+        if (autoplay) {
+            document.getElementById('playerPanel').classList.add('player-buffering');
+            document.getElementById('playPauseBtn').textContent = '⏳';
+        }
         audio.src = url;
         audio.load();
         audio.playbackRate = PLAYER.speed;
@@ -944,6 +1053,7 @@ function _onChapterEnded() {
  */
 function _onPlaying() {
     document.getElementById('playPauseBtn').textContent = '⏸';
+    document.getElementById('playerPanel').classList.remove('player-buffering');
     
     const Cap = window.Capacitor;
     const msPlugin = Cap && Cap.Plugins && Cap.Plugins.MediaSession ? Cap.Plugins.MediaSession : null;
@@ -982,6 +1092,7 @@ function _onAudioError() {
     const audio = PLAYER.audio;
     // MediaError codes: 1=ABORTED, 2=NETWORK, 3=DECODE, 4=SRC_NOT_SUPPORTED
     const code = audio && audio.error ? audio.error.code : 0;
+    document.getElementById('playerPanel').classList.remove('player-buffering');
     if (code === 1) return; // User-initiated abort (e.g. src change) — not an error.
     showToast('Audio failed to load. Check file format.', 'error');
 }
@@ -1295,10 +1406,12 @@ async function saveMeta() {
     btn.textContent = '⌛ Saving…';
 
     const payload = {
-        title:       (document.getElementById('editTitle').value       || '').trim(),
-        author:      (document.getElementById('editAuthor').value      || '').trim(),
-        narrator:    (document.getElementById('editNarrator').value    || '').trim(),
-        description: (document.getElementById('editDescription').value || '').trim(),
+        title:        (document.getElementById('editTitle').value       || '').trim(),
+        author:       (document.getElementById('editAuthor').value      || '').trim(),
+        narrator:     (document.getElementById('editNarrator').value    || '').trim(),
+        description:  (document.getElementById('editDescription').value || '').trim(),
+        series:       (document.getElementById('editSeries').value      || '').trim(),
+        series_index: parseInt(document.getElementById('editSeriesIndex').value || '0', 10) || 0,
     };
 
     try {
