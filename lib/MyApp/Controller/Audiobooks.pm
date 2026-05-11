@@ -9,6 +9,7 @@ use Mojo::Util    qw(trim);
 use Mojo::IOLoop;
 use Mojo::Promise;
 use Fcntl qw(:flock);
+use Encode        qw(decode encode decode_utf8);
 use strict;
 use warnings;
 use utf8;
@@ -43,7 +44,22 @@ sub _safe_component {
     my ($value) = @_;
     return 0 unless defined $value && length $value;
     return 0 if $value =~ /\.\./;
-    return $value =~ /\A[A-Za-z0-9_(). ,#'\[\]&!-]+\z/ ? 1 : 0;
+    return 0 if $value =~ m{[/\\\x00]};
+    return 1;
+}
+
+# Infers series name and index from a book directory slug following the common
+# "Author - Series - N - Title" naming convention.
+# Returns an empty string and 0 when the pattern is not matched.
+# Parameters:
+#   slug : Book directory name string.
+# Returns:
+#   (series_name, series_index) — e.g. ('Harry Potter', 3)
+sub _parse_slug_series {
+    my ($slug) = @_;
+    my @parts = split / - /, $slug;
+    return ('', 0) unless @parts >= 4 && $parts[2] =~ /^\d+$/;
+    return ($parts[1], $parts[2] + 0);
 }
 
 # Resolves the book root directory for the application.
@@ -95,6 +111,8 @@ sub _format_book_entry {
         author         => escapeHtmlPerl($meta->{author}      // ''),
         narrator       => escapeHtmlPerl($meta->{narrator}    // ''),
         description    => escapeHtmlPerl($meta->{description} // ''),
+        series         => escapeHtmlPerl($meta->{series}       // ''),
+        series_index   => ($meta->{series_index}              // 0) + 0,
         cover_url      => ($meta->{cover} ? "/audiobooks/api/cover/$slug" : ''),
         chapters       => $chapters,
         total_chapters => scalar @$chapters,
@@ -171,7 +189,8 @@ sub _find_embedded_chapter_candidate {
     my ($dir) = @_;
     my $ext_re = join '|', @EMBEDDED_CH_EXTS;
     if (opendir(my $dh, $dir)) {
-        my ($name) = sort grep { /\.(?:$ext_re)$/i && -f $dir->child($_) } readdir($dh);
+        my ($name) = sort grep { /\.(?:$ext_re)$/i && -f $dir->child($_) }
+                         map  { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
         closedir($dh);
         return $dir->child($name)->to_string if $name;
     }
@@ -258,7 +277,8 @@ sub _scan_chapters {
     my @files;
 
     if (opendir(my $dh, $dir)) {
-        @files = sort grep { /\.(?:$ext_re)$/i && -f $dir->child($_) } readdir($dh);
+        @files = sort grep { /\.(?:$ext_re)$/i && -f $dir->child($_) }
+                      map  { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
         closedir($dh);
     }
 
@@ -273,12 +293,15 @@ sub _scan_chapters {
 
 # Runs ffprobe on a file via Mojo::IOLoop->subprocess and resolves a Promise
 # with an ArrayRef of chapter HashRefs in the same format as CUE chapters.
-# Returns an immediately-resolved empty-array promise if ffprobe fails.
+# Returns an immediately-resolved empty result if ffprobe fails.
 # Parameters:
 #   filepath   : Absolute path string to the audio file.
 #   audio_file : Basename of the audio file (stored in each chapter's 'file' key).
 # Returns:
-#   Mojo::Promise resolving to ArrayRef of { file, title, duration, start }.
+#   Mojo::Promise resolving to HashRef:
+#     chapters => ArrayRef of { file, title, duration, start }
+#     title    => String from embedded title/album tag, or ''
+#     author   => String from embedded artist/album_artist tag, or ''
 sub _run_ffprobe {
     my ($filepath, $audio_file) = @_;
 
@@ -289,32 +312,55 @@ sub _run_ffprobe {
             # Child: exec ffprobe without a shell to avoid injection risk.
             my $out = '';
             open(my $fh, '-|', 'ffprobe', '-v', 'quiet', '-print_format', 'json',
-                 '-show_chapters', $filepath) or return '';
+                 '-show_chapters', '-show_format', $filepath) or return '';
             $out .= $_ while <$fh>;
             close($fh);
             return $out;
         },
         sub {
             my (undef, $err, $json) = @_;
+            my $empty = { chapters => [], title => '', author => '', narrator => '', series => '', series_index => 0 };
             if ($err || !$json) {
-                $promise->resolve([]);
+                $promise->resolve($empty);
                 return;
             }
             my $data = eval { decode_json($json) };
-            if (!$data || ref $data->{chapters} ne 'ARRAY' || !@{ $data->{chapters} }) {
-                $promise->resolve([]);
+            if (!$data) {
+                $promise->resolve($empty);
                 return;
             }
-            my @chapters = map {
-                my $ch = $_;
-                {
-                    file     => $audio_file,
-                    title    => ($ch->{tags}{title} // 'Chapter ' . ($ch->{id} + 1)),
-                    duration => (($ch->{end_time}   // 0) - ($ch->{start_time} // 0)),
-                    start    => ($ch->{start_time}  // 0) + 0,
-                }
-            } @{ $data->{chapters} };
-            $promise->resolve(\@chapters);
+
+            my @chapters;
+            if (ref $data->{chapters} eq 'ARRAY' && @{ $data->{chapters} }) {
+                @chapters = map {
+                    my $ch = $_;
+                    {
+                        file     => $audio_file,
+                        title    => ($ch->{tags}{title} // 'Chapter ' . ($ch->{id} + 1)),
+                        duration => (($ch->{end_time}   // 0) - ($ch->{start_time} // 0)),
+                        start    => ($ch->{start_time}  // 0) + 0,
+                    }
+                } @{ $data->{chapters} };
+            }
+
+            my $tags         = (ref $data->{format}{tags} eq 'HASH') ? $data->{format}{tags} : {};
+            my $title        = $tags->{title}    || $tags->{album}        || '';
+            my $author       = $tags->{artist}   || $tags->{album_artist} || '';
+            my $narrator     = $tags->{composer} || $tags->{narrator}     || '';
+            my $series       = $tags->{grouping} || $tags->{GROUPING}     || '';
+            my $series_index = 0;
+            if ($series =~ m{^(.+?)/(\d+)$}) {
+                ($series, $series_index) = ($1, $2 + 0);
+            }
+
+            $promise->resolve({
+                chapters     => \@chapters,
+                title        => $title,
+                author       => $author,
+                narrator     => $narrator,
+                series       => $series,
+                series_index => $series_index,
+            });
         }
     );
 
@@ -354,6 +400,33 @@ sub _maybe_extract_cover {
     return $promise;
 }
 
+# Detects and repairs double-UTF-8-encoded filenames stored in a meta hashref.
+# When filenames containing multi-byte Unicode characters (e.g. U+A789 ꞉) were
+# read from the filesystem as raw bytes and then serialised via encode_json, the
+# bytes were misinterpreted as Latin-1 codepoints and re-encoded as UTF-8. This
+# reverses that: each character is encoded back to its Latin-1 byte value, then
+# the resulting byte sequence is decoded as UTF-8.
+# Parameters:
+#   meta : HashRef with a chapters array (mutated in place).
+#   dir  : Mojo::File pointing to the book directory, used for existence checks.
+# Returns:
+#   1 if any filename was repaired and meta.json should be rewritten, 0 otherwise.
+sub _repair_chapter_filenames {
+    my ($meta, $dir) = @_;
+    return 0 unless ref $meta->{chapters} eq 'ARRAY';
+    my $changed = 0;
+    for my $ch (@{ $meta->{chapters} }) {
+        next unless $ch->{file};
+        next if -f $dir->child($ch->{file});
+        my $fixed = eval { decode('UTF-8', encode('latin-1', $ch->{file})) };
+        if ($fixed && -f $dir->child($fixed)) {
+            $ch->{file} = $fixed;
+            $changed = 1;
+        }
+    }
+    return $changed;
+}
+
 # Builds a book entry for api_state, running ffprobe asynchronously when needed.
 # Resolution order:
 #   1. meta.json exists → immediate resolve (cover extraction if cover field is empty).
@@ -382,7 +455,51 @@ sub _build_book_entry_async {
         my $raw  = eval { $meta_file->slurp };
         my $meta = $raw ? eval { decode_json($raw) } : undef;
         if (ref $meta eq 'HASH') {
-            $meta_promise = Mojo::Promise->resolve($meta);
+            my $changed = _repair_chapter_filenames($meta, $dir);
+
+            # Backfill series from slug — pure string parse, no I/O required.
+            if (!$meta->{series}) {
+                my ($series, $idx) = _parse_slug_series($slug);
+                if ($series) {
+                    $meta->{series}       = $series;
+                    $meta->{series_index} = $idx;
+                    $changed = 1;
+                }
+            }
+
+            # Backfill author, title, narrator, and series from embedded tags when missing.
+            # Runs once and persists to meta.json so subsequent loads skip ffprobe.
+            if (!$meta->{author} || !$meta->{title} || !$meta->{narrator}) {
+                my $audio_path = _find_embedded_chapter_candidate($dir);
+                if ($audio_path) {
+                    my $audio_file = path($audio_path)->basename;
+                    $meta_promise = _run_ffprobe($audio_path, $audio_file)->then(sub {
+                        my $result = shift;
+                        my $dirty  = $changed;
+                        if (!$meta->{author} && $result->{author}) {
+                            $meta->{author}   = $result->{author};   $dirty = 1;
+                        }
+                        if (!$meta->{title} && $result->{title}) {
+                            $meta->{title}    = $result->{title};    $dirty = 1;
+                        }
+                        if (!$meta->{narrator} && $result->{narrator}) {
+                            $meta->{narrator} = $result->{narrator}; $dirty = 1;
+                        }
+                        if (!$meta->{series} && $result->{series}) {
+                            $meta->{series}       = $result->{series};
+                            $meta->{series_index} = $result->{series_index} || 0;
+                            $dirty = 1;
+                        }
+                        _write_meta_json($dir, $meta) if $dirty;
+                        return $meta;
+                    });
+                }
+            }
+
+            unless ($meta_promise) {
+                _write_meta_json($dir, $meta) if $changed;
+                $meta_promise = Mojo::Promise->resolve($meta);
+            }
         }
     }
 
@@ -393,13 +510,16 @@ sub _build_book_entry_async {
             my $t = $cue_meta->{title} || do {
                 (my $s = $slug) =~ s/[-_]/ /g; $s =~ s/\b(\w)/uc($1)/ge; $s
             };
+            my ($slug_series, $slug_idx) = _parse_slug_series($slug);
             my $meta = {
-                title       => $t,
-                author      => ($cue_meta->{author} // ''),
-                narrator    => '',
-                description => '',
-                cover       => _find_cover($dir),
-                chapters    => $cue_meta->{chapters},
+                title        => $t,
+                author       => ($cue_meta->{author} // ''),
+                narrator     => '',
+                description  => '',
+                series       => $slug_series,
+                series_index => $slug_idx,
+                cover        => _find_cover($dir),
+                chapters     => $cue_meta->{chapters},
             };
             _write_meta_json($dir, $meta);
             $meta_promise = Mojo::Promise->resolve($meta);
@@ -416,14 +536,18 @@ sub _build_book_entry_async {
             $title =~ s/\b(\w)/uc($1)/ge;
 
             $meta_promise = _run_ffprobe($audio_path, $audio_file)->then(sub {
-                my $chapters = shift;
+                my $result            = shift;
+                my $chapters          = $result->{chapters};
+                my ($slug_s, $slug_i) = _parse_slug_series($slug);
                 my $meta = {
-                    title       => $title,
-                    author      => '',
-                    narrator    => '',
-                    description => '',
-                    cover       => _find_cover($dir),
-                    chapters    => $chapters,
+                    title        => ($result->{title}        || $title),
+                    author       => ($result->{author}       || ''),
+                    narrator     => ($result->{narrator}     || ''),
+                    description  => '',
+                    series       => ($result->{series}       || $slug_s),
+                    series_index => ($result->{series_index} || $slug_i),
+                    cover        => _find_cover($dir),
+                    chapters     => $chapters,
                 };
                 _write_meta_json($dir, $meta) if @$chapters;
                 return $meta;
@@ -433,17 +557,20 @@ sub _build_book_entry_async {
 
     # Fallback: list audio filenames as chapters.
     unless ($meta_promise) {
-        my @chapters = _scan_chapters($dir);
-        my $title = $slug;
+        my @chapters          = _scan_chapters($dir);
+        my $title             = $slug;
         $title =~ s/[-_]/ /g;
         $title =~ s/\b(\w)/uc($1)/ge;
+        my ($slug_s, $slug_i) = _parse_slug_series($slug);
         $meta_promise = Mojo::Promise->resolve({
-            title       => $title,
-            author      => '',
-            narrator    => '',
-            description => '',
-            cover       => _find_cover($dir),
-            chapters    => \@chapters,
+            title        => $title,
+            author       => '',
+            narrator     => '',
+            description  => '',
+            series       => $slug_s,
+            series_index => $slug_i,
+            cover        => _find_cover($dir),
+            chapters     => \@chapters,
         });
     }
 
@@ -493,7 +620,8 @@ sub api_state {
     my @slugs;
 
     if (-d $root && opendir(my $dh, $root)) {
-        @slugs = sort grep { !/^\./ && -d $root->child($_) } readdir($dh);
+        @slugs = sort grep { !/^\./ && -d $root->child($_) }
+                      map  { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
         closedir($dh);
     }
 
@@ -676,12 +804,14 @@ sub api_save_meta {
         my $chapters  = (ref $json_body->{chapters} eq 'ARRAY') ? $json_body->{chapters} : ($existing->{chapters} // []);
 
         $meta = {
-            title       => trim($c->param('title')       // $json_body->{title}       // $existing->{title}       // $slug),
-            author      => trim($c->param('author')      // $json_body->{author}      // $existing->{author}      // ''),
-            narrator    => trim($c->param('narrator')    // $json_body->{narrator}    // $existing->{narrator}    // ''),
-            description => trim($c->param('description') // $json_body->{description} // $existing->{description} // ''),
-            cover       => ($existing->{cover} // ''),
-            chapters    => $chapters,
+            title        => trim($c->param('title')        // $json_body->{title}        // $existing->{title}        // $slug),
+            author       => trim($c->param('author')       // $json_body->{author}       // $existing->{author}       // ''),
+            narrator     => trim($c->param('narrator')     // $json_body->{narrator}     // $existing->{narrator}     // ''),
+            description  => trim($c->param('description')  // $json_body->{description}  // $existing->{description}  // ''),
+            series       => trim($c->param('series')       // $json_body->{series}       // $existing->{series}       // ''),
+            series_index => (($c->param('series_index') // $json_body->{series_index} // $existing->{series_index} // 0) + 0),
+            cover        => ($existing->{cover} // ''),
+            chapters     => $chapters,
         };
 
         truncate($fh, 0);
@@ -703,10 +833,10 @@ sub register_routes {
     my ($class, $r) = @_;
     $r->{family}->get('/audiobooks')->to('Audiobooks#index');
     $r->{family}->get('/audiobooks/api/state')->to('Audiobooks#api_state');
-    $r->{family}->get('/audiobooks/api/stream/:slug/#filename')->to('Audiobooks#api_stream', format => 0);
-    $r->{r}->get('/audiobooks/api/cover/:slug')->to('Audiobooks#api_cover');
+    $r->{family}->get('/audiobooks/api/stream/#slug/#filename')->to('Audiobooks#api_stream', format => 0);
+    $r->{r}->get('/audiobooks/api/cover/#slug')->to('Audiobooks#api_cover');
     $r->{family}->post('/audiobooks/api/progress')->to('Audiobooks#api_save_progress');
-    $r->{admin}->post('/audiobooks/api/meta/:slug')->to('Audiobooks#api_save_meta');
+    $r->{admin}->post('/audiobooks/api/meta/#slug')->to('Audiobooks#api_save_meta');
 }
 
 1;
