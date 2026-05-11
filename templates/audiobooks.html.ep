@@ -47,6 +47,7 @@
             </div>
             <div class="detail-meta">
                 <h2 id="detailTitle" class="detail-title"></h2>
+                <p id="detailSeries" class="detail-series"></p>
                 <p id="detailAuthor" class="detail-author"></p>
                 <p id="detailNarrator" class="detail-narrator"></p>
                 <p id="detailDuration" class="detail-duration"></p>
@@ -73,6 +74,16 @@
                 <label>Description</label>
                 <textarea id="editDescription" class="game-input no-emoji" rows="4"></textarea>
             </div>
+            <div class="form-group form-group-row">
+                <div class="form-group-grow">
+                    <label>Series</label>
+                    <input type="text" id="editSeries" class="game-input no-emoji" placeholder="e.g. Harry Potter">
+                </div>
+                <div class="form-group-fixed">
+                    <label>#</label>
+                    <input type="number" id="editSeriesIndex" class="game-input no-emoji" min="0" step="1" placeholder="0">
+                </div>
+            </div>
             <div class="modal-actions-center">
                 <button type="button" id="saveMetaBtn" class="btn-primary" onclick="saveMeta()">💾 Save</button>
             </div>
@@ -97,6 +108,7 @@
 
         <div class="player-chapter-name-row">
             <p id="playerChapterName" class="player-chapter-name"></p>
+            <p id="playerSeries" class="player-series"></p>
             <p id="playerAuthor" class="player-author"></p>
         </div>
 
