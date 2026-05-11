@@ -411,7 +411,8 @@ pre code {
 }
 
 .note-bullet-text {
-    display: inline;
+    flex: 1;
+    min-width: 0;
 }
 
 .note-bullet {
