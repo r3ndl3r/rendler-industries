@@ -89,7 +89,7 @@ const NoteParser = (() => {
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             .replace(/~~(.*?)~~/g, '<del>$1</del>')
-            .replace(/`(.*?)`/g, '<code>$1</code>');
+            .replace(/`(.*?)`/g, '<code class="note-code-inline" title="Click to copy">$1</code>');
     };
 
     /**
@@ -777,6 +777,7 @@ const NoteParser = (() => {
         let cursor = 0;
         let isLineStart = true;
         let inCheckboxRow = false;
+        let inBulletRow = false;
         let textBuffer = '';
 
         const flushBuffer = () => {
@@ -849,7 +850,8 @@ const NoteParser = (() => {
                 const bulletMatch = lineRemainder.match(/^([ \t]*)([*•-])\s+/);
                 if (bulletMatch) {
                     flushBuffer();
-                    output += `${window.escapeHtml(bulletMatch[1])}<span class="note-bullet">•</span> `;
+                    output += `<span class="note-bullet-row">${window.escapeHtml(bulletMatch[1])}<span class="note-bullet">•</span><span class="note-bullet-text">`;
+                    inBulletRow = true;
                     cursor += bulletMatch[0].length;
                     isLineStart = false;
                     continue;
@@ -986,6 +988,10 @@ const NoteParser = (() => {
                     output += '</span>';
                     inCheckboxRow = false;
                 }
+                if (inBulletRow) {
+                    output += '</span></span>';
+                    inBulletRow = false;
+                }
                 output += '<br>';
                 cursor++;
                 isLineStart = true;
@@ -999,6 +1005,7 @@ const NoteParser = (() => {
 
         flushBuffer();
         if (inCheckboxRow) output += '</span>';
+        if (inBulletRow) output += '</span></span>';
         return output;
     };
 
