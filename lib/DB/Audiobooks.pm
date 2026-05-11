@@ -102,4 +102,37 @@ sub DB::upsert_audiobook_progress {
     return 1;
 }
 
+# Returns all progress records for every family member, grouped by book slug.
+# Used by the admin panel to display per-user reading status across the library.
+# Parameters: none
+# Returns:
+#   HashRef: { book_slug => [ { user_id, username, chapter_idx, position_sec, completed }, ... ] }
+#   Users with no progress records for a given slug are absent from that slug's array.
+sub DB::get_all_users_audiobook_progress {
+    my ($self) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        "SELECT p.book_slug, p.user_id, u.username,
+                p.chapter_idx, p.position_sec, p.completed
+         FROM audiobook_progress p
+         JOIN users u ON u.id = p.user_id
+         WHERE u.is_family = 1
+         ORDER BY p.book_slug, u.username"
+    );
+    $sth->execute();
+
+    my %map;
+    while (my $row = $sth->fetchrow_hashref) {
+        push @{ $map{ $row->{book_slug} } }, {
+            user_id      => $row->{user_id}      + 0,
+            username     => $row->{username}     // '',
+            chapter_idx  => $row->{chapter_idx}  + 0,
+            position_sec => $row->{position_sec} + 0,
+            completed    => $row->{completed}    + 0,
+        };
+    }
+    return \%map;
+}
+
 1;
