@@ -5,7 +5,7 @@ package MyApp::Controller::Audiobooks;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::File    qw(path);
 use Mojo::JSON    qw(decode_json encode_json);
-use Mojo::Util    qw(trim);
+use Mojo::Util    qw(trim url_escape);
 use Mojo::IOLoop;
 use Mojo::Promise;
 use Fcntl qw(:flock);
@@ -113,7 +113,7 @@ sub _format_book_entry {
         description    => escapeHtmlPerl($meta->{description} // ''),
         series         => escapeHtmlPerl($meta->{series}       // ''),
         series_index   => ($meta->{series_index}              // 0) + 0,
-        cover_url      => ($meta->{cover} ? "/audiobooks/api/cover/$slug" : ''),
+        cover_url      => ($meta->{cover} ? '/audiobooks/api/cover/' . Mojo::Util::url_escape($slug) : ''),
         chapters       => $chapters,
         total_chapters => scalar @$chapters,
         progress       => $prog,
@@ -208,7 +208,8 @@ sub _parse_cue_file {
 
     my $cue_path;
     if (opendir(my $dh, $dir)) {
-        my ($name) = grep { /\.cue$/i } readdir($dh);
+        my ($name) = grep { /\.cue$/i }
+                     map  { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
         closedir($dh);
         return undef unless $name;
         $cue_path = $dir->child($name);
@@ -652,7 +653,11 @@ sub api_state {
 sub escapeHtmlPerl {
     my ($val) = @_;
     return '' unless defined $val;
-    $val =~ s/[<>&"']//g;
+    $val =~ s/&/&amp;/g;
+    $val =~ s/</&lt;/g;
+    $val =~ s/>/&gt;/g;
+    $val =~ s/"/&quot;/g;
+    $val =~ s/'/&#39;/g;
     return $val;
 }
 
