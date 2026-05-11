@@ -165,6 +165,9 @@ The system features a redundant, priority-weighted alert engine for real-time an
     *   **Task Lists:** Interactive `- [ ]` and `- [x]` toggles with immediate state persistence.
     *   **Rich Media:** Direct image pasting and multi-attachment stacks (Images and Files).
     *   **Internal Linking:** Web-of-thought architecture using `[note:ID]` tags for cross-referencing.
+    *   **Wikilinks & Backlinks:** `[[Note Title]]` syntax auto-links to any accessible note; a live backlinks sidebar shows all notes referencing the current one; cascade rename keeps all links consistent when a title changes.
+    *   **Callouts, Tables & Embeds:** Obsidian-style `> [!type]` callouts, Markdown tables with column alignment, `[embed:ID]` cross-canvas note embedding (depth-limited, async-prefetched), and `[date:YYYY-MM-DD]` display tags.
+    *   **Universal Autocomplete:** Inline dropdown triggered by `[[`, `[embed:`, `[tag:`, `[date:`, `[color:` and more — includes a calendar date-picker for date tags and fuzzy title matching for wikilinks.
 *   **Board Security:** Fine-grained ACL (Shared/Private) and optional **Session Passwords** for sensitive boards.
 
 <p align="center">
@@ -234,9 +237,25 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Gravity Engine:** Custom server-side logic handles chip placement and gravity.
 *   **Win Detection:** Automated scanning of Horizontal, Vertical, and Diagonal vectors for 4-in-a-row.
 
+### 🧊 Rubik's Cube Algorithm Library (`/rubiks`)
+*   **2D WCA Diagram:** Interactive SVG canvas renders cube state from a move sequence in real time.
+*   **Family Algorithm Library:** Shared collection of algorithms (OLL, PLL, F2L, etc.) with per-entry ownership; anyone can add, only the creator can edit or delete.
+*   **SVG Export:** Download the current cube diagram as a standalone `.svg` file.
+
 ### 🎭 Imposter & 🦘 Citizenship Test (`/imposter`, `/quiz`)
 *   **Imposter:** Party game with customizable word-lists and player reveal mechanics.
 *   **Citizenship Quiz:** Dual-mode study suite (Practice vs. 20-question Exam) with randomized question banks.
+
+### 🎧 Audiobooks (`/audiobooks`)
+*   **Filesystem-Driven Library:** Drop a folder into `assets/audiobooks/` and the app discovers it automatically — no database registration required.
+*   **Dual Playback Modes:** Multi-file (one MP3/FLAC per chapter) and single-file CUE mode (M4B/M4A with embedded chapter offsets) are detected and handled transparently.
+*   **Embedded Cover Art Extraction:** On first scan, `ffmpeg` extracts artwork from M4B/M4A files into `cover.jpg` via a non-blocking subprocess.
+*   **Full-Screen Audible-Style Player:** Chapter drawer, seek bar, 30-second rewind/forward, 5-speed playback (0.75× – 2×), and a countdown sleep timer (15/30/45/60 min or end of chapter).
+*   **Per-User Progress Persistence:** Playback position and chapter index auto-save every 5 seconds and on pause; resumes exactly where you left off across sessions.
+*   **OS Media Session Integration:** Lock-screen controls (play/pause/seek) and notification artwork via the Web Media Session API and the Capacitor native bridge.
+*   **Screen Wake Lock:** Keeps the display on during playback; automatically re-acquired when returning from background.
+*   **Next-Chapter Preload:** Background `Audio` element warms the HTTP cache for the upcoming chapter when within 60 seconds of the current chapter end.
+*   **Admin Metadata Editor:** Inline form for editing title, author, narrator, and description; changes write back to `meta.json`.
 
 ### 🏝 Specialized & Utility
 
