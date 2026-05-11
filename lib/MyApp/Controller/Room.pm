@@ -64,7 +64,7 @@ sub api_upload {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_child;
 
-    my $uploads = $c->every_param('files[]');
+    my $uploads = $c->req->uploads('files[]');
     return $c->render(json => { success => 0, error => 'No files uploaded' }) unless @$uploads;
 
     my $user_id = $c->current_user_id;
