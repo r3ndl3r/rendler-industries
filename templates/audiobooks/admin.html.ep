@@ -1,0 +1,78 @@
+<%# /templates/audiobooks/admin.html.ep %>
+
+% layout 'default', favicon => '⚙️';
+% title 'Audiobooks Admin';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/audiobooks/admin.css">
+    <script src="/js/audiobooks/admin.js"></script>
+% end
+
+<div class="app-container">
+    <div class="header-bar">
+        <h1>📚 <span>Library Admin</span></h1>
+        <div class="manage-actions">
+            <a href="/audiobooks" class="btn-secondary">← Library</a>
+            <button type="button" class="btn-primary" id="rescanAllBtn" onclick="rescanAll()">🔄 Re-scan All</button>
+        </div>
+    </div>
+
+    <div id="statsBar" class="admin-stats-bar hidden">
+        <span id="statTotal"     class="admin-stat-chip"></span>
+        <span id="statWithCover" class="admin-stat-chip"></span>
+        <span id="statWithMeta"  class="admin-stat-chip"></span>
+    </div>
+
+    <div id="adminTableWrap" class="table-responsive">
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse">📚</span>
+            <p class="loading-label">Loading library…</p>
+        </div>
+    </div>
+</div>
+
+<%# Edit book metadata modal %>
+<div id="editModal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>✏️ Edit Book</h3>
+            <span class="close-btn" onclick="closeEditModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editSlug">
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="editTitle" class="game-input no-emoji">
+            </div>
+            <div class="form-group">
+                <label>Author</label>
+                <input type="text" id="editAuthor" class="game-input no-emoji">
+            </div>
+            <div class="form-group">
+                <label>Narrator</label>
+                <input type="text" id="editNarrator" class="game-input no-emoji">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="editDescription" class="game-input no-emoji" rows="3"></textarea>
+            </div>
+            <div class="admin-form-row">
+                <div class="form-group admin-form-grow">
+                    <label>Series</label>
+                    <input type="text" id="editSeries" class="game-input no-emoji" placeholder="e.g. Harry Potter">
+                </div>
+                <div class="form-group admin-form-fixed">
+                    <label>#</label>
+                    <input type="number" id="editSeriesIndex" class="game-input no-emoji" min="0" step="1" placeholder="0">
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions modal-actions-center">
+            <button type="button" class="btn-primary" id="saveEditBtn" onclick="saveEdit()">💾 Save</button>
+        </div>
+    </div>
+</div>
+
+<%# Shared cover file input — data-slug is set before the picker is opened %>
+<input type="file" id="coverFileInput" class="hidden" accept="image/jpeg,image/png">
