@@ -1,0 +1,901 @@
+/* /public/css/audiobooks.css */
+
+/* ─── Library Container ───────────────────────────────────────────────────── */
+
+.audiobooks-container {
+    padding-bottom: 24px;
+}
+
+.search-input {
+    width: 140px;
+    font-size: 0.85rem;
+    padding: 6px 12px;
+}
+
+/* ─── Filter Bar ──────────────────────────────────────────────────────────── */
+
+.library-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-shrink: 0;
+}
+
+.library-filter-bar::-webkit-scrollbar { display: none; }
+
+.filter-chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: none;
+    color: rgba(255,255,255,0.55);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    min-height: 34px;
+}
+
+.filter-chip.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+}
+
+.filter-chip:active { opacity: 0.8; }
+
+.library-count {
+    margin-left: auto;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.35);
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* ─── Library List ────────────────────────────────────────────────────────── */
+
+.library-list {
+    display: flex;
+    flex-direction: column;
+    padding-top: 4px;
+}
+
+.library-empty {
+    color: rgba(255,255,255,0.4);
+    text-align: center;
+    padding: 60px 0;
+    font-size: 0.95rem;
+}
+
+/* ─── Book Row ────────────────────────────────────────────────────────────── */
+
+.book-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.055);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: 6px;
+    transition: background 0.12s;
+}
+
+.book-row:active { background: rgba(255,255,255,0.04); }
+
+@media (hover: hover) {
+    .book-row:hover { background: rgba(255,255,255,0.03); }
+}
+
+.book-row-cover {
+    flex-shrink: 0;
+    width: 68px;
+    height: 68px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #1e293b;
+}
+
+.book-row-thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.book-row-thumb-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: rgba(255,255,255,0.15);
+}
+
+.book-row-info {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.book-row-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.35;
+}
+
+.book-row-author {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.5);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.book-row-progress {
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.book-row-progress-fill {
+    height: 100%;
+    background: #f59e0b;
+    border-radius: 2px;
+}
+
+.book-row-status {
+    font-size: 0.73rem;
+    color: rgba(255,255,255,0.38);
+    margin: 0;
+}
+
+.book-row-status.complete { color: #10b981; }
+
+.book-row-actions {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.book-row-play-btn {
+    width: 46px;
+    height: 46px;
+    border: none;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    color: #f1f5f9;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s;
+    padding-left: 3px;
+}
+
+.book-row-play-btn:active { background: #3b82f6; }
+
+/* ─── Shared Panel Base ───────────────────────────────────────────────────── */
+
+.detail-panel,
+.player-panel {
+    position: fixed;
+    inset: 0;
+    top: var(--navbar-height, 45px); /* Push down below global navbar on desktop */
+    background: #050c1d;
+    z-index: 10100; /* Above navbar and side menu */
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+    overscroll-behavior: contain;
+}
+
+@media (max-width: 768px) {
+    .detail-panel,
+    .player-panel {
+        top: 0; /* Fill entire screen on mobile as top navbar is hidden */
+    }
+}
+
+.detail-panel.show,
+.player-panel.show {
+    transform: translateY(0);
+}
+
+/* ─── Detail Panel ────────────────────────────────────────────────────────── */
+
+.detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+    gap: 8px;
+}
+
+.detail-header-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    text-align: center;
+}
+
+.detail-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 16px 32px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.detail-cover-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.detail-cover-wrap {
+    flex-shrink: 0;
+    width: 110px;
+    height: 165px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #1e293b;
+}
+
+.detail-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.detail-cover-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: rgba(255,255,255,0.15);
+}
+
+.detail-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.detail-author,
+.detail-narrator,
+.detail-duration {
+    font-size: 0.83rem;
+    color: rgba(255,255,255,0.55);
+    margin: 0;
+}
+
+.detail-description {
+    font-size: 0.88rem;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.6;
+    margin: 0 0 20px;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.detail-actions {
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn-play-large {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s;
+}
+
+.btn-play-large:active {
+    background: #2563eb;
+}
+
+/* ─── Admin Edit Form ─────────────────────────────────────────────────────── */
+
+.admin-edit-form {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.admin-edit-heading {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 14px;
+}
+
+.admin-edit-form .form-group {
+    margin-bottom: 12px;
+}
+
+.admin-edit-form label {
+    display: block;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 4px;
+}
+
+/* ─── Chapter List (shared) ───────────────────────────────────────────────── */
+
+.chapters-heading {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 10px;
+}
+
+.chapter-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.chapter-empty {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.3);
+    padding: 12px 0;
+}
+
+.chapter-item {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.chapter-item.current {
+    background: rgba(59,130,246,0.15);
+}
+
+.chapter-item-btn {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 11px 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    gap: 10px;
+    color: #f1f5f9;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 48px;
+    border-radius: 8px;
+    transition: background 0.12s;
+}
+
+.chapter-item-btn:active {
+    background: rgba(255,255,255,0.06);
+}
+
+.ch-num {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.35);
+    min-width: 20px;
+    flex-shrink: 0;
+}
+
+.ch-title {
+    flex: 1;
+    font-size: 0.88rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ch-check {
+    color: #10b981;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.ch-dur {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.35);
+    flex-shrink: 0;
+}
+
+/* ─── Player Panel ────────────────────────────────────────────────────────── */
+
+.player-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+    gap: 12px;
+}
+
+.player-header-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    text-align: center;
+}
+
+.player-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 24px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.player-cover-wrap {
+    width: min(76vw, 300px);
+    max-height: 40vh;
+    aspect-ratio: 1;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #1e293b;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+    flex-shrink: 0;
+}
+
+.player-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.player-cover-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+    color: rgba(255,255,255,0.12);
+}
+
+.player-chapter-name-row {
+    width: 100%;
+    text-align: center;
+}
+
+.player-chapter-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.4;
+}
+
+.player-author {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.4);
+    margin: 4px 0 0;
+}
+
+/* ─── Seek Row ────────────────────────────────────────────────────────────── */
+
+.player-seek-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 10px;
+}
+
+.seek-time {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.45);
+    white-space: nowrap;
+    min-width: 38px;
+    flex-shrink: 0;
+}
+
+.seek-bar {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.15);
+    outline: none;
+    cursor: pointer;
+    accent-color: #3b82f6;
+}
+
+.seek-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.seek-bar::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+/* ─── Controls Row ────────────────────────────────────────────────────────── */
+
+.player-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+}
+
+.ctrl-btn {
+    border: none;
+    background: none;
+    color: #f1f5f9;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s, opacity 0.12s;
+    flex-shrink: 0;
+}
+
+.ctrl-btn:active {
+    background: rgba(255,255,255,0.1);
+}
+
+.ctrl-btn:disabled {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.ctrl-play {
+    width: 64px;
+    height: 64px;
+    font-size: 1.6rem;
+    background: #3b82f6;
+    border-radius: 50%;
+    box-shadow: 0 4px 16px rgba(59,130,246,0.45);
+}
+
+.ctrl-play:active {
+    background: #2563eb;
+}
+
+.ctrl-chapter {
+    width: 48px;
+    height: 48px;
+    font-size: 1.3rem;
+    color: rgba(255,255,255,0.75);
+}
+
+.ctrl-rewind {
+    width: 48px;
+    height: 48px;
+    flex-direction: column;
+    gap: 0;
+    color: rgba(255,255,255,0.75);
+    position: relative;
+}
+
+.rewind-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+    margin-bottom: 3px;
+}
+
+.rewind-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 1;
+    position: absolute;
+    bottom: 3px;
+}
+
+/* ─── Secondary Controls ──────────────────────────────────────────────────── */
+
+.player-secondary-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+}
+
+.speed-pills {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+}
+
+.speed-pills::-webkit-scrollbar {
+    display: none;
+}
+
+.speed-pill {
+    padding: 6px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: none;
+    color: rgba(255,255,255,0.6);
+    font-size: 0.78rem;
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    min-height: 36px;
+}
+
+.speed-pill.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+}
+
+.sleep-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.sleep-btn {
+    position: relative;
+}
+
+.sleep-badge {
+    position: absolute;
+    top: -4px;
+    right: -6px;
+    background: #3b82f6;
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 1px 5px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.sleep-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    background: #1e293b;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 150px;
+    z-index: 10;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.sleep-menu button {
+    padding: 10px 14px;
+    background: none;
+    border: none;
+    color: #f1f5f9;
+    text-align: left;
+    font-size: 0.88rem;
+    cursor: pointer;
+    border-radius: 6px;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 44px;
+    transition: background 0.1s;
+}
+
+.sleep-menu button:active {
+    background: rgba(255,255,255,0.08);
+}
+
+#cancelSleepBtn {
+    color: #ef4444;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin-top: 4px;
+}
+
+.chapter-drawer-toggle {
+    width: 100%;
+    padding: 11px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: rgba(255,255,255,0.65);
+    font-size: 0.88rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s;
+    min-height: 48px;
+}
+
+.chapter-drawer-toggle:active {
+    background: rgba(255,255,255,0.1);
+}
+
+/* ─── Chapter Drawer ──────────────────────────────────────────────────────── */
+
+.chapter-drawer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 65vh;
+    background: #0f172a;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px 16px 0 0;
+    overflow-y: auto;
+    padding: 16px 16px 32px;
+    -webkit-overflow-scrolling: touch;
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+}
+
+.chapter-drawer.show {
+    transform: translateY(0);
+}
+
+.chapter-list-player .chapter-item-btn {
+    padding: 12px 10px;
+}
+
+/* ─── Icon Button (close / collapse) ─────────────────────────────────────── */
+
+.icon-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: rgba(255,255,255,0.06);
+    border-radius: 50%;
+    color: rgba(255,255,255,0.7);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s;
+}
+
+.icon-btn:active {
+    background: rgba(255,255,255,0.14);
+}
+
+.player-edit-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+    background: none;
+    color: rgba(255,255,255,0.35);
+}
+
+/* ─── Utility ─────────────────────────────────────────────────────────────── */
+
+.hidden {
+    display: none !important;
+}
+
+/* ─── Responsive: wider screens ───────────────────────────────────────────── */
+
+@media (min-width: 640px) {
+    .search-input {
+        width: 180px;
+    }
+
+    .book-row-cover {
+        width: 80px;
+        height: 80px;
+    }
+
+    .detail-panel,
+    .player-panel {
+        max-width: 480px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%) translateY(100%);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -8px 40px rgba(0,0,0,0.6);
+    }
+
+    .detail-panel.show,
+    .player-panel.show {
+        transform: translateX(-50%) translateY(0);
+    }
+
+}
