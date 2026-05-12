@@ -4,8 +4,9 @@ package DB::Audiobooks;
 
 use strict;
 use warnings;
+use Mojo::JSON qw(encode_json decode_json);
 
-# Database library for per-user audiobook playback progress.
+# Database library for audiobook metadata and per-user playback progress.
 #
 # Features:
 #   - Stores and retrieves per-user position (chapter index + offset in seconds).
@@ -133,6 +134,149 @@ sub DB::get_all_users_audiobook_progress {
         };
     }
     return \%map;
+}
+
+# Returns all book metadata records as a hash keyed by slug.
+# Used by api_state and api_admin_state to pre-fetch all known books in one query,
+# avoiding per-book queries during the async promise fan-out.
+# Parameters: none
+# Returns:
+#   HashRef: { slug => { title, author, narrator, description, series, series_index,
+#                        cover, chapters, date_added }, ... }
+sub DB::get_all_audiobooks {
+    my ($self) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        "SELECT slug, title, author, narrator, description, series,
+                series_index, cover, chapters, date_added
+         FROM audiobooks"
+    );
+    $sth->execute();
+
+    my %map;
+    while (my $row = $sth->fetchrow_hashref) {
+        my $chapters = eval { decode_json($row->{chapters}) } // [];
+        $map{ $row->{slug} } = {
+            title        => $row->{title}         // '',
+            author       => $row->{author}        // '',
+            narrator     => $row->{narrator}      // '',
+            description  => $row->{description}   // '',
+            series       => $row->{series}        // '',
+            series_index => ($row->{series_index} // 0) + 0,
+            cover        => $row->{cover}         // '',
+            chapters     => $chapters,
+            date_added   => ($row->{date_added}   // 0) + 0,
+        };
+    }
+    return \%map;
+}
+
+# Returns the metadata record for a single book by slug.
+# Parameters:
+#   slug : Book directory slug.
+# Returns:
+#   HashRef with keys { title, author, narrator, description, series, series_index,
+#                       cover, chapters, date_added }, or undef if no record exists.
+sub DB::get_audiobook_meta {
+    my ($self, $slug) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        "SELECT title, author, narrator, description, series,
+                series_index, cover, chapters, date_added
+         FROM audiobooks WHERE slug = ?"
+    );
+    $sth->execute($slug);
+    my $row = $sth->fetchrow_hashref;
+    return undef unless $row;
+
+    my $chapters = eval { decode_json($row->{chapters}) } // [];
+    return {
+        title        => $row->{title}         // '',
+        author       => $row->{author}        // '',
+        narrator     => $row->{narrator}      // '',
+        description  => $row->{description}   // '',
+        series       => $row->{series}        // '',
+        series_index => ($row->{series_index} // 0) + 0,
+        cover        => $row->{cover}         // '',
+        chapters     => $chapters,
+        date_added   => ($row->{date_added}   // 0) + 0,
+    };
+}
+
+# Atomically creates or updates the metadata record for a book.
+# Parameters:
+#   slug : Book directory slug (unique key).
+#   meta : HashRef with keys title, author, narrator, description, series,
+#          series_index, cover, chapters (ArrayRef), date_added.
+# Returns:
+#   1 on success; propagates DBI exception on failure.
+sub DB::upsert_audiobook_meta {
+    my ($self, $slug, $meta) = @_;
+    $self->ensure_connection;
+
+    my $chapters_json = encode_json(
+        (ref $meta->{chapters} eq 'ARRAY') ? $meta->{chapters} : []
+    );
+
+    my $sth = $self->{dbh}->prepare(
+        "INSERT INTO audiobooks
+             (slug, title, author, narrator, description, series, series_index,
+              cover, chapters, date_added)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+             title        = VALUES(title),
+             author       = VALUES(author),
+             narrator     = VALUES(narrator),
+             description  = VALUES(description),
+             series       = VALUES(series),
+             series_index = VALUES(series_index),
+             cover        = VALUES(cover),
+             chapters     = VALUES(chapters),
+             date_added   = VALUES(date_added)"
+    );
+    $sth->execute(
+        $slug,
+        $meta->{title}        // '',
+        $meta->{author}       // '',
+        $meta->{narrator}     // '',
+        $meta->{description}  // '',
+        $meta->{series}       // '',
+        ($meta->{series_index} // 0) + 0,
+        $meta->{cover}        // '',
+        $chapters_json,
+        ($meta->{date_added}  // 0) + 0,
+    );
+    return 1;
+}
+
+# Deletes the metadata record for a single book by slug.
+# Called by api_admin_rescan to force re-discovery on next state fetch.
+# Parameters:
+#   slug : Book directory slug.
+# Returns:
+#   Number of rows deleted (0 or 1).
+sub DB::delete_audiobook_meta {
+    my ($self, $slug) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("DELETE FROM audiobooks WHERE slug = ?");
+    $sth->execute($slug);
+    return $sth->rows;
+}
+
+# Deletes all metadata records, forcing re-discovery for every book.
+# Called by api_admin_rescan when no slug is supplied.
+# Returns:
+#   Number of rows deleted.
+sub DB::delete_all_audiobook_meta {
+    my ($self) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("DELETE FROM audiobooks");
+    $sth->execute();
+    return $sth->rows;
 }
 
 1;
