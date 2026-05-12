@@ -53,5 +53,83 @@
             </div>
         </div>
     </div>
+    <script>
+        /**
+         * APK Auto-Update Prompt
+         *
+         * Called by the native Android UpdateBridge via evaluateJavascript() when the
+         * server reports a higher versionCode than the installed APK. Shows a themed
+         * confirmation modal. If the user confirms, delegates to window.AppUpdater
+         * which downloads the APK and posts a native Android progress notification.
+         * The notification becomes a tap-to-install action when the download completes.
+         *
+         * Only active inside the Capacitor native shell — guards on window.AppUpdater.
+         *
+         * @param {number} serverCode    - versionCode from /app-version.json.
+         * @param {string} serverName    - Human-readable version string (e.g. "1.5").
+         * @returns {void}
+         */
+        window.showUpdatePrompt = function(serverCode, serverName) {
+            if (!window.AppUpdater) return;
+
+            showConfirmModal({
+                title:       'Update Available',
+                icon:        '🔄',
+                message:     `Version <strong>${serverName}</strong> is ready to download.`,
+                subMessage:  'The update will download in the background. A notification will appear when it\'s ready to install.',
+                confirmText: 'Download Update',
+                cancelText:  'Not Now',
+                width:       'small',
+                onConfirm:   () => {
+                    try {
+                        // Android 8+ requires the user to have granted "Install unknown apps".
+                        if (window.AppUpdater.canInstall() !== 'true') {
+                            // Defer opening the new modal so the current one can close cleanly first
+                            setTimeout(() => {
+                                showConfirmModal({
+                                    title:       'Permission Required',
+                                    icon:        '⚙️',
+                                    message:     'To install updates, allow this app to install unknown apps in Settings.',
+                                    confirmText: 'Open Settings',
+                                    cancelText:  'Cancel',
+                                    width:       'small',
+                                    onConfirm:   () => window.AppUpdater.openInstallSettings()
+                                });
+                            }, 300);
+                            return;
+                        }
+                        window.AppUpdater.startUpdate();
+                        showToast('Downloading update… check your notification bar.', 'success');
+                    } catch (e) {
+                        console.error('Update button error:', e);
+                        showToast('Error starting update.', 'error');
+                    }
+                }
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.AppUpdater) return;
+            
+            setTimeout(() => {
+                fetch('/app-version.json', { cache: 'no-store' })
+                    .then(res => {
+                        if (!res.ok) throw new Error('Network response was not ok');
+                        return res.json();
+                    })
+                    .then(data => {
+                        const serverCode = parseInt(data.version_code, 10);
+                        const installedCode = parseInt(window.AppUpdater.getInstalledVersionCode(), 10);
+                        
+                        if (serverCode > installedCode) {
+                            window.showUpdatePrompt(serverCode, data.version_name);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('APK Update check failed:', err);
+                    });
+            }, 1500);
+        });
+    </script>
 </body>
 </html>
