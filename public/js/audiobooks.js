@@ -466,13 +466,6 @@ function openDetail(slug) {
         fallbackEl.classList.remove('hidden');
     }
 
-    document.getElementById('editTitle').value       = book.title        || '';
-    document.getElementById('editAuthor').value      = book.author       || '';
-    document.getElementById('editNarrator').value    = book.narrator     || '';
-    document.getElementById('editDescription').value = book.description  || '';
-    document.getElementById('editSeries').value      = book.series       || '';
-    document.getElementById('editSeriesIndex').value = book.series_index || '';
-
     document.getElementById('detailPanel').classList.add('show');
 }
 
@@ -486,20 +479,7 @@ function closeDetail() {
     PLAYER.detail_slug = null;
 }
 
-/**
- * Opens the detail panel for the currently playing book with the edit form
- * pre-expanded. Called from the player header edit button (admin only).
- * @returns {void}
- */
-function openPlayerEdit() {
-    if (!PLAYER.slug) return;
-    const slug = PLAYER.slug;
-    closePlayer();
-    openDetail(slug);
-    document.getElementById('adminEditForm').classList.remove('hidden');
-    const scroll = document.querySelector('#detailPanel .detail-scroll');
-    if (scroll) scroll.scrollTop = scroll.scrollHeight;
-}
+
 
 // ─── Player ───────────────────────────────────────────────────────────────────
 
@@ -584,9 +564,6 @@ function openPlayer(slug, chapter_idx, autoplay = false) {
     document.getElementById('playerSeries').textContent = _seriesLabel(book);
     document.getElementById('playerAuthor').textContent = book.author ? `by ${book.author}` : '';
     document.getElementById('playPauseBtn').textContent = '▶';
-
-    const editBtn = document.getElementById('playerEditBtn');
-    editBtn.classList.toggle('hidden', !STATE.is_admin);
 
     document.getElementById('playerPanel').classList.add('show');
     _startSaveTimer();
@@ -1401,42 +1378,6 @@ function _saveProgress(completed) {
         position_sec: pos,
         completed:   completed ? 1 : 0,
     }).catch(() => {});
-}
-
-// ─── Admin: save metadata ─────────────────────────────────────────────────────
-
-/**
- * Reads the admin edit form and persists updated book metadata via api_save_meta.
- * @returns {Promise<void>}
- */
-async function saveMeta() {
-    const slug = PLAYER.detail_slug;
-    if (!slug) return;
-
-    const btn = document.getElementById('saveMetaBtn');
-    btn.disabled = true;
-    btn.textContent = '⌛ Saving…';
-
-    const payload = {
-        title:        (document.getElementById('editTitle').value       || '').trim(),
-        author:       (document.getElementById('editAuthor').value      || '').trim(),
-        narrator:     (document.getElementById('editNarrator').value    || '').trim(),
-        description:  (document.getElementById('editDescription').value || '').trim(),
-        series:       (document.getElementById('editSeries').value      || '').trim(),
-        series_index: parseInt(document.getElementById('editSeriesIndex').value || '0', 10) || 0,
-    };
-
-    try {
-        const res = await apiPost(`/audiobooks/api/meta/${encodeURIComponent(slug)}`, payload);
-        if (res && res.success) {
-            showToast('Metadata saved.', 'success');
-            closeDetail();
-            await loadState(true);
-        }
-    } finally {
-        btn.disabled = false;
-        btn.textContent = '💾 Save';
-    }
 }
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
