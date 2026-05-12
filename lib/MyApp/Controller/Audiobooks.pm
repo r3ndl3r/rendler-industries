@@ -8,8 +8,7 @@ use Mojo::JSON    qw(decode_json encode_json);
 use Mojo::Util    qw(trim url_escape);
 use Mojo::IOLoop;
 use Mojo::Promise;
-use Fcntl qw(:flock);
-use Encode        qw(decode encode decode_utf8);
+use Encode        qw(decode_utf8);
 use strict;
 use warnings;
 use utf8;
@@ -20,10 +19,10 @@ use utf8;
 #   - Filesystem-driven book discovery from assets/audiobooks/<slug>/.
 #   - Per-user playback progress (chapter index + position) stored in MariaDB.
 #   - Range-aware audio streaming via Mojolicious reply->file (HTTP 206).
-#   - Admin-editable book metadata persisted as meta.json alongside audio files.
+#   - Admin-editable book metadata persisted in the audiobooks DB table.
 #   - Chapter extraction: CUE sheet, embedded MP4 atoms (via ffprobe), or filename scan.
 #   - ffprobe is called once per new book via Mojo::IOLoop->subprocess; result is
-#     cached to meta.json so subsequent loads are instant file reads.
+#     cached to DB so subsequent loads are instant.
 #
 # Integration Points:
 #   - Restricted to family members via $family router bridge.
@@ -72,25 +71,17 @@ sub _books_root {
     return $c->app->home->child('assets', 'audiobooks');
 }
 
-# Writes a metadata HashRef to meta.json inside the book directory.
-# Uses exclusive locking to prevent corruption during concurrent writes.
+# Resolves the local cover image directory (not SMB-mounted).
+# Covers are stored as <slug>.jpg or <slug>.png, separate from audio files.
 # Parameters:
-#   dir  : Mojo::File pointing to the book directory.
-#   meta : HashRef to serialise.
-# Returns: void
-sub _write_meta_json {
-    my ($dir, $meta) = @_;
-    my $meta_file = $dir->child('meta.json');
-    eval {
-        open(my $fh, '>', $meta_file->to_string) or die $!;
-        flock($fh, LOCK_EX) or die $!;
-        print $fh encode_json($meta);
-        close($fh);
-    };
-    if ($@) {
-        warn "Failed to write meta.json in $dir: $@";
-    }
+#   c : Mojolicious controller instance.
+# Returns:
+#   Mojo::File pointing to assets/audiobooks_covers/.
+sub _covers_root {
+    my ($c) = @_;
+    return $c->app->home->child('assets', 'audiobooks_covers');
 }
+
 
 # Constructs the book hashref pushed into the state response.
 # Parameters:
@@ -122,23 +113,15 @@ sub _format_book_entry {
     };
 }
 
-# Reads meta.json for a book, falling back to CUE parsing then directory scan.
-# This synchronous path is used by api_save_meta (which needs existing meta
-# before updating it). api_state uses the async _build_book_entry_async instead.
+# Generates metadata for a book from disk sources (CUE sheet or directory scan).
+# Used by api_save_meta as a fallback when no DB record exists for the book.
 # Parameters:
 #   dir  : Mojo::File pointing to the book directory.
 #   slug : String slug.
 # Returns:
 #   HashRef: { title, author, narrator, description, cover, chapters => [...] }
 sub _read_or_generate_meta {
-    my ($dir, $slug) = @_;
-
-    my $meta_file = $dir->child('meta.json');
-    if (-f $meta_file) {
-        my $raw  = eval { $meta_file->slurp };
-        my $meta = ($raw) ? eval { decode_json($raw) } : undef;
-        return $meta if ref $meta eq 'HASH';
-    }
+    my ($dir, $slug, $covers_root) = @_;
 
     my $cue_meta = _parse_cue_file($dir);
     if ($cue_meta) {
@@ -149,7 +132,7 @@ sub _read_or_generate_meta {
             author      => ($cue_meta->{author} // ''),
             narrator    => '',
             description => '',
-            cover       => _find_cover($dir),
+            cover       => _find_cover($covers_root, $slug),
             chapters    => \@ch,
         };
     }
@@ -164,21 +147,47 @@ sub _read_or_generate_meta {
         author      => '',
         narrator    => '',
         description => '',
-        cover       => _find_cover($dir),
+        cover       => _find_cover($covers_root, $slug),
         chapters    => \@chapters,
     };
 }
 
-# Returns the cover image filename ('cover.jpg', 'cover.png') if found, or empty string.
+# Returns the cover image filename ('cover.jpg', 'cover.png') if found in the local
+# covers directory, or empty string. Checks by slug name, not inside the book dir.
 # Parameters:
-#   dir : Mojo::File pointing to the book directory.
+#   covers_root : Mojo::File pointing to assets/audiobooks_covers/.
+#   slug        : Book directory slug.
 # Returns:
 #   String filename or ''.
 sub _find_cover {
-    my ($dir) = @_;
-    return 'cover.jpg' if -f $dir->child('cover.jpg');
-    return 'cover.png' if -f $dir->child('cover.png');
+    my ($covers_root, $slug) = @_;
+    return 'cover.jpg' if -f $covers_root->child("$slug.jpg");
+    return 'cover.png' if -f $covers_root->child("$slug.png");
     return '';
+}
+
+# Scans the book directory for any jpg/png image file and moves the first one found
+# to assets/audiobooks_covers/<slug>.jpg. Uses Mojo::File->move_to to handle
+# cross-filesystem moves (SMB → local disk) transparently.
+# Parameters:
+#   covers_root : Mojo::File pointing to assets/audiobooks_covers/.
+#   slug        : Book directory slug (used as the destination filename).
+#   dir         : Mojo::File pointing to the SMB book directory.
+# Returns:
+#   'cover.jpg' on success, '' if no image found or move failed.
+sub _claim_cover_from_dir {
+    my ($covers_root, $slug, $dir) = @_;
+    my $found;
+    if (opendir(my $dh, $dir)) {
+        ($found) = sort grep { /\.(jpe?g|png)$/i && -f $dir->child($_) }
+                        map  { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
+        closedir($dh);
+    }
+    return '' unless $found;
+
+    my $dest = $covers_root->child("$slug.jpg");
+    eval { $dir->child($found)->move_to($dest) };
+    return $@ ? '' : 'cover.jpg';
 }
 
 # Returns the path to the first M4B/M4A file in the directory, or undef.
@@ -294,6 +303,66 @@ sub _scan_chapters {
     } @files;
 }
 
+# Async counterpart to _scan_chapters that populates real durations via ffprobe.
+# All files are probed inside a single Mojo::IOLoop->subprocess so the event loop
+# is never blocked regardless of how many files the book contains.
+# The absence of a 'start' key in each chapter keeps the player in multi-file mode.
+# Parameters:
+#   dir : Mojo::File pointing to the book directory.
+# Returns:
+#   Mojo::Promise resolving to ArrayRef of { file, title, duration }.
+sub _scan_chapters_async {
+    my ($dir) = @_;
+
+    my $ext_re = join '|', @AUDIO_EXTS;
+    my @files;
+    if (opendir(my $dh, $dir)) {
+        @files = sort grep { /\.(?:$ext_re)$/i && -f $dir->child($_) }
+                      map  { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
+        closedir($dh);
+    }
+
+    return Mojo::Promise->resolve([]) unless @files;
+
+    my @paths   = map { $dir->child($_)->to_string } @files;
+    my $promise = Mojo::Promise->new;
+
+    Mojo::IOLoop->subprocess->run(
+        sub {
+            my @durations;
+            for my $path (@paths) {
+                my $out = '';
+                open(my $fh, '-|', 'ffprobe', '-v', 'quiet', '-print_format', 'json',
+                     '-show_format', $path) or do { push @durations, 0; next };
+                $out .= $_ while <$fh>;
+                close($fh);
+                my $data = eval { decode_json($out) } // {};
+                push @durations, ($data->{format}{duration} // 0) + 0;
+            }
+            return encode_json(\@durations);
+        },
+        sub {
+            my (undef, $err, $json) = @_;
+            my $durations = (!$err && $json) ? (eval { decode_json($json) } // []) : [];
+
+            my @chapters;
+            for my $i (0 .. $#files) {
+                my $fname = $files[$i];
+                (my $title = $fname) =~ s/\.[^.]+$//;
+                $title =~ s/^\d+[-_.\s]+//;
+                push @chapters, {
+                    file     => $fname,
+                    title    => $title,
+                    duration => ($durations->[$i] // 0) + 0,
+                };
+            }
+            $promise->resolve(\@chapters);
+        }
+    );
+
+    return $promise;
+}
+
 # Runs ffprobe on a file via Mojo::IOLoop->subprocess and resolves a Promise
 # with an ArrayRef of chapter HashRefs in the same format as CUE chapters.
 # Returns an immediately-resolved empty result if ffprobe fails.
@@ -322,7 +391,7 @@ sub _run_ffprobe {
         },
         sub {
             my (undef, $err, $json) = @_;
-            my $empty = { chapters => [], title => '', author => '', narrator => '', series => '', series_index => 0 };
+            my $empty = { chapters => [], title => '', author => '', narrator => '', series => '', series_index => 0, duration => 0 };
             if ($err || !$json) {
                 $promise->resolve($empty);
                 return;
@@ -363,6 +432,7 @@ sub _run_ffprobe {
                 narrator     => $narrator,
                 series       => $series,
                 series_index => $series_index,
+                duration     => ($data->{format}{duration} // 0) + 0,
             });
         }
     );
@@ -371,17 +441,20 @@ sub _run_ffprobe {
 }
 
 # Attempts to extract embedded cover art from an M4B/M4A file via ffmpeg.
-# Only called when no cover image exists on disk.
+# Writes to the local covers directory (not the SMB book directory).
+# Only called when no cover exists in the covers directory for this slug.
 # Parameters:
-#   dir : Mojo::File pointing to the book directory.
+#   covers_root : Mojo::File pointing to assets/audiobooks_covers/.
+#   slug        : Book directory slug (used as the output filename).
+#   dir         : Mojo::File pointing to the SMB book directory (audio source only).
 # Returns:
 #   Mojo::Promise resolving to 'cover.jpg' on success, '' on failure.
 sub _maybe_extract_cover {
-    my ($dir) = @_;
+    my ($covers_root, $slug, $dir) = @_;
     my $audio_path = _find_embedded_chapter_candidate($dir);
     return Mojo::Promise->resolve('') unless $audio_path;
 
-    my $cover_dest = $dir->child('cover.jpg')->to_string;
+    my $cover_dest = $covers_root->child("$slug.jpg")->to_string;
     my $promise    = Mojo::Promise->new;
 
     Mojo::IOLoop->subprocess->run(
@@ -403,43 +476,16 @@ sub _maybe_extract_cover {
     return $promise;
 }
 
-# Detects and repairs double-UTF-8-encoded filenames stored in a meta hashref.
-# When filenames containing multi-byte Unicode characters (e.g. U+A789 ꞉) were
-# read from the filesystem as raw bytes and then serialised via encode_json, the
-# bytes were misinterpreted as Latin-1 codepoints and re-encoded as UTF-8. This
-# reverses that: each character is encoded back to its Latin-1 byte value, then
-# the resulting byte sequence is decoded as UTF-8.
-# Parameters:
-#   meta : HashRef with a chapters array (mutated in place).
-#   dir  : Mojo::File pointing to the book directory, used for existence checks.
-# Returns:
-#   1 if any filename was repaired and meta.json should be rewritten, 0 otherwise.
-sub _repair_chapter_filenames {
-    my ($meta, $dir) = @_;
-    return 0 unless ref $meta->{chapters} eq 'ARRAY';
-    my $changed = 0;
-    for my $ch (@{ $meta->{chapters} }) {
-        next unless $ch->{file};
-        next if -f $dir->child($ch->{file});
-        my $fixed = eval { decode('UTF-8', encode('latin-1', $ch->{file})) };
-        if ($fixed && -f $dir->child($fixed)) {
-            $ch->{file} = $fixed;
-            $changed = 1;
-        }
-    }
-    return $changed;
-}
-
 # Builds a book entry for api_state, running ffprobe asynchronously when needed.
 # Resolution order:
-#   1. meta.json exists → immediate resolve (cover extraction if cover field is empty).
-#   2. CUE file found   → parse sync, write meta.json, cover extraction if needed.
-#   3. M4B/M4A found    → ffprobe subprocess, write meta.json, cover extraction if needed.
-#   4. Fallback         → scan directory filenames, cover extraction if needed.
+#   1. Any DB record exists → immediate resolve; ffprobe never runs again.
+#   2. CUE file found       → parse sync, cache to DB, cover extraction if needed.
+#   3. Single M4B/M4A      → ffprobe subprocess, cache to DB, cover extraction if needed.
+#   4. Multi-file audio     → async directory scan with ffprobe durations, cache to DB.
+#   5. Fallback             → async directory scan with ffprobe durations, cache to DB.
 #
 # After building meta via any path, if no cover is set, _maybe_extract_cover runs
-# once to pull embedded art from the audio file; the cover filename is written
-# into meta and meta.json is persisted to disk on success.
+# once to pull embedded art from the audio file; the cover filename is persisted to DB.
 #
 # Parameters:
 #   slug : Book directory slug.
@@ -448,65 +494,30 @@ sub _repair_chapter_filenames {
 # Returns:
 #   Mojo::Promise resolving to a book-entry HashRef.
 sub _build_book_entry_async {
-    my ($slug, $dir, $prog) = @_;
+    my ($slug, $dir, $prog, $db, $existing_meta, $covers_root) = @_;
 
     my $meta_promise;
 
-    # Fast path: meta.json already cached on disk.
-    my $meta_file = $dir->child('meta.json');
-    if (-f $meta_file) {
-        my $raw  = eval { $meta_file->slurp };
-        my $meta = $raw ? eval { decode_json($raw) } : undef;
-        if (ref $meta eq 'HASH') {
-            my $changed = _repair_chapter_filenames($meta, $dir);
+    # Fast path: any DB record means the book has already been probed.
+    # Trust stored metadata completely and never re-run ffprobe or any filesystem scan.
+    if (ref $existing_meta eq 'HASH') {
+        my $meta    = $existing_meta;
+        my $changed = 0;
 
-            # Backfill series from slug — pure string parse, no I/O required.
-            if (!$meta->{series}) {
-                my ($series, $idx) = _parse_slug_series($slug);
-                if ($series) {
-                    $meta->{series}       = $series;
-                    $meta->{series_index} = $idx;
-                    $changed = 1;
-                }
-            }
-
-            # Backfill author, title, narrator, and series from embedded tags when missing.
-            # Runs once and persists to meta.json so subsequent loads skip ffprobe.
-            if (!$meta->{author} || !$meta->{title} || !$meta->{narrator}) {
-                my $audio_path = _find_embedded_chapter_candidate($dir);
-                if ($audio_path) {
-                    my $audio_file = path($audio_path)->basename;
-                    $meta_promise = _run_ffprobe($audio_path, $audio_file)->then(sub {
-                        my $result = shift;
-                        my $dirty  = $changed;
-                        if (!$meta->{author} && $result->{author}) {
-                            $meta->{author}   = $result->{author};   $dirty = 1;
-                        }
-                        if (!$meta->{title} && $result->{title}) {
-                            $meta->{title}    = $result->{title};    $dirty = 1;
-                        }
-                        if (!$meta->{narrator} && $result->{narrator}) {
-                            $meta->{narrator} = $result->{narrator}; $dirty = 1;
-                        }
-                        if (!$meta->{series} && $result->{series}) {
-                            $meta->{series}       = $result->{series};
-                            $meta->{series_index} = $result->{series_index} || 0;
-                            $dirty = 1;
-                        }
-                        _write_meta_json($dir, $meta) if $dirty;
-                        return $meta;
-                    });
-                }
-            }
-
-            unless ($meta_promise) {
-                _write_meta_json($dir, $meta) if $changed;
-                $meta_promise = Mojo::Promise->resolve($meta);
+        if (!$meta->{series}) {
+            my ($series, $idx) = _parse_slug_series($slug);
+            if ($series) {
+                $meta->{series}       = $series;
+                $meta->{series_index} = $idx;
+                $changed = 1;
             }
         }
+
+        $db->upsert_audiobook_meta($slug, $meta) if $changed;
+        $meta_promise = Mojo::Promise->resolve($meta);
     }
 
-    # CUE sheet present: synchronous parse, then cache.
+    # CUE sheet present: synchronous parse, then cache to DB.
     unless ($meta_promise) {
         my $cue_meta = _parse_cue_file($dir);
         if ($cue_meta && @{ $cue_meta->{chapters} }) {
@@ -521,16 +532,19 @@ sub _build_book_entry_async {
                 description  => '',
                 series       => $slug_series,
                 series_index => $slug_idx,
-                cover        => _find_cover($dir),
+                cover        => _find_cover($covers_root, $slug),
                 chapters     => $cue_meta->{chapters},
                 date_added   => time(),
             };
-            _write_meta_json($dir, $meta);
+            $db->upsert_audiobook_meta($slug, $meta);
             $meta_promise = Mojo::Promise->resolve($meta);
         }
     }
 
-    # M4B/M4A with embedded chapters: run ffprobe in a subprocess.
+    # M4B/M4A present: behaviour differs by file count.
+    #   Multi-file: each audio file is one chapter — skip ffprobe and scan the directory.
+    #   Single-file: run ffprobe for embedded chapter atoms.  When none exist, synthesize
+    #     a single chapter spanning the whole file so the player is always functional.
     unless ($meta_promise) {
         my $audio_path = _find_embedded_chapter_candidate($dir);
         if ($audio_path) {
@@ -539,60 +553,110 @@ sub _build_book_entry_async {
             $title =~ s/[-_]/ /g;
             $title =~ s/\b(\w)/uc($1)/ge;
 
-            $meta_promise = _run_ffprobe($audio_path, $audio_file)->then(sub {
-                my $result            = shift;
-                my $chapters          = $result->{chapters};
-                my ($slug_s, $slug_i) = _parse_slug_series($slug);
-                my $meta = {
-                    title        => ($result->{title}        || $title),
-                    author       => ($result->{author}       || ''),
-                    narrator     => ($result->{narrator}     || ''),
-                    description  => '',
-                    series       => ($result->{series}       || $slug_s),
-                    series_index => ($result->{series_index} || $slug_i),
-                    cover        => _find_cover($dir),
-                    chapters     => $chapters,
-                    date_added   => time(),
-                };
-                _write_meta_json($dir, $meta) if @$chapters;
-                return $meta;
-            });
+            my $ext_re     = join '|', @AUDIO_EXTS;
+            my $audio_count = 0;
+            if (opendir(my $dh, $dir)) {
+                $audio_count = scalar grep { /\.(?:$ext_re)$/i && -f $dir->child($_) }
+                                       map { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
+                closedir($dh);
+            }
+
+            if ($audio_count > 1) {
+                $meta_promise = _scan_chapters_async($dir)->then(sub {
+                    my $chapters          = shift;
+                    my ($slug_s, $slug_i) = _parse_slug_series($slug);
+                    my $meta = {
+                        title        => $title,
+                        author       => '',
+                        narrator     => '',
+                        description  => '',
+                        series       => $slug_s,
+                        series_index => $slug_i,
+                        cover        => _find_cover($covers_root, $slug),
+                        chapters     => $chapters,
+                        date_added   => time(),
+                    };
+                    $db->upsert_audiobook_meta($slug, $meta) if @$chapters;
+                    return $meta;
+                });
+            } else {
+                $meta_promise = _run_ffprobe($audio_path, $audio_file)->then(sub {
+                    my $result            = shift;
+                    my $chapters          = $result->{chapters};
+                    my ($slug_s, $slug_i) = _parse_slug_series($slug);
+
+                    # No embedded chapter atoms: the whole file is one chapter.
+                    # Using the format duration lets the player show accurate progress.
+                    unless (@$chapters) {
+                        $chapters = [{
+                            file     => $audio_file,
+                            title    => ($result->{title} || $title),
+                            start    => 0,
+                            duration => $result->{duration} + 0,
+                        }];
+                    }
+
+                    my $meta = {
+                        title        => ($result->{title}        || $title),
+                        author       => ($result->{author}       || ''),
+                        narrator     => ($result->{narrator}     || ''),
+                        description  => '',
+                        series       => ($result->{series}       || $slug_s),
+                        series_index => ($result->{series_index} || $slug_i),
+                        cover        => _find_cover($covers_root, $slug),
+                        chapters     => $chapters,
+                        date_added   => time(),
+                    };
+                    $db->upsert_audiobook_meta($slug, $meta);
+                    return $meta;
+                });
+            }
         }
     }
 
-    # Fallback: list audio filenames as chapters.
+    # Fallback: scan directory audio files with real durations via ffprobe, then cache to DB.
     unless ($meta_promise) {
-        my @chapters          = _scan_chapters($dir);
-        my $title             = $slug;
+        my $title = $slug;
         $title =~ s/[-_]/ /g;
         $title =~ s/\b(\w)/uc($1)/ge;
         my ($slug_s, $slug_i) = _parse_slug_series($slug);
-        my $meta = {
-            title        => $title,
-            author       => '',
-            narrator     => '',
-            description  => '',
-            series       => $slug_s,
-            series_index => $slug_i,
-            cover        => _find_cover($dir),
-            chapters     => \@chapters,
-            date_added   => time(),
-        };
-        _write_meta_json($dir, $meta) if @chapters;
-        $meta_promise = Mojo::Promise->resolve($meta);
+
+        $meta_promise = _scan_chapters_async($dir)->then(sub {
+            my $chapters = shift;
+            my $meta = {
+                title        => $title,
+                author       => '',
+                narrator     => '',
+                description  => '',
+                series       => $slug_s,
+                series_index => $slug_i,
+                cover        => _find_cover($covers_root, $slug),
+                chapters     => $chapters,
+                date_added   => time(),
+            };
+            $db->upsert_audiobook_meta($slug, $meta) if @$chapters;
+            return $meta;
+        });
     }
 
     # Common tail: if no cover is set, attempt embedded art extraction once.
-    # On success the cover filename is written into meta and meta.json is persisted.
+    # On success the cover filename is persisted to DB.
     return $meta_promise->then(sub {
         my $meta = shift;
         return _format_book_entry($slug, $meta, $prog) if $meta->{cover};
 
-        return _maybe_extract_cover($dir)->then(sub {
+        my $claimed = _claim_cover_from_dir($covers_root, $slug, $dir);
+        if ($claimed) {
+            $meta->{cover} = $claimed;
+            $db->upsert_audiobook_meta($slug, $meta);
+            return _format_book_entry($slug, $meta, $prog);
+        }
+
+        return _maybe_extract_cover($covers_root, $slug, $dir)->then(sub {
             my $cover_name = shift;
             if ($cover_name) {
                 $meta->{cover} = $cover_name;
-                _write_meta_json($dir, $meta);
+                $db->upsert_audiobook_meta($slug, $meta);
             }
             return _format_book_entry($slug, $meta, $prog);
         });
@@ -621,10 +685,11 @@ sub api_state {
 
     $c->render_later;
 
-    my $user_id  = $c->current_user_id;
-    my $progress = $c->db->get_audiobook_progress_all($user_id);
-    my $is_admin = $c->is_admin ? 1 : 0;
-    my $root     = _books_root($c);
+    my $user_id   = $c->current_user_id;
+    my $progress  = $c->db->get_audiobook_progress_all($user_id);
+    my $books_map = $c->db->get_all_audiobooks();
+    my $is_admin  = $c->is_admin ? 1 : 0;
+    my $root      = _books_root($c);
     my @slugs;
 
     if (-d $root && opendir(my $dh, $root)) {
@@ -633,10 +698,12 @@ sub api_state {
         closedir($dh);
     }
 
+    my $db      = $c->db;
+    my $covers  = _covers_root($c);
     my @promises = map {
         my $slug = $_;
         _safe_component($slug)
-            ? _build_book_entry_async($slug, $root->child($slug), $progress->{$slug})
+            ? _build_book_entry_async($slug, $root->child($slug), $progress->{$slug}, $db, $books_map->{$slug}, $covers)
             : Mojo::Promise->resolve(undef);
     } @slugs;
 
@@ -727,15 +794,10 @@ sub api_cover {
         return $c->render(json => { error => 'Invalid path' }, status => 400);
     }
 
-    my $root = _books_root($c);
-    my $dir  = $root->child($slug);
-
-    for my $name (qw(cover.jpg cover.png)) {
-        my $cover = $dir->child($name);
+    my $covers = _covers_root($c);
+    for my $ext (qw(jpg png)) {
+        my $cover = $covers->child("$slug.$ext");
         if (-f $cover) {
-            unless (CORE::index($cover->to_string, $root->to_string) == 0) {
-                return $c->render(json => { error => 'Invalid path' }, status => 400);
-            }
             # Allow OS media controller to load artwork for notifications
             $c->res->headers->header('Access-Control-Allow-Origin' => '*');
             return $c->reply->file($cover->to_string);
@@ -778,7 +840,7 @@ sub api_save_progress {
     $c->render(json => { success => 1 });
 }
 
-# Saves edited book metadata to meta.json on disk.
+# Saves edited book metadata to the DB.
 # Route: POST /audiobooks/api/meta/:slug
 # Restricted to admin users.
 # Parameters: title, author, narrator, description; chapters array (JSON body)
@@ -800,39 +862,23 @@ sub api_save_meta {
         return $c->render(json => { error => 'Book not found' }, status => 404);
     }
 
-    my $meta_file = $dir->child('meta.json');
-    my $meta;
+    my $existing  = $c->db->get_audiobook_meta($slug) // _read_or_generate_meta($dir, $slug, _covers_root($c));
+    my $json_body = $c->req->json // {};
+    my $chapters  = (ref $json_body->{chapters} eq 'ARRAY') ? $json_body->{chapters} : ($existing->{chapters} // []);
 
-    eval {
-        open(my $fh, '+>>', $meta_file->to_string) or die $!;
-        flock($fh, LOCK_EX) or die $!;
-        seek($fh, 0, 0);
-
-        my $raw = do { local $/; <$fh> };
-        my $existing = $raw ? eval { decode_json($raw) } : _read_or_generate_meta($dir, $slug);
-        die "Invalid JSON in meta.json" if $raw && !$existing;
-
-        my $json_body = $c->req->json // {};
-        my $chapters  = (ref $json_body->{chapters} eq 'ARRAY') ? $json_body->{chapters} : ($existing->{chapters} // []);
-
-        $meta = {
-            title        => trim($c->param('title')        // $json_body->{title}        // $existing->{title}        // $slug),
-            author       => trim($c->param('author')       // $json_body->{author}       // $existing->{author}       // ''),
-            narrator     => trim($c->param('narrator')     // $json_body->{narrator}     // $existing->{narrator}     // ''),
-            description  => trim($c->param('description')  // $json_body->{description}  // $existing->{description}  // ''),
-            series       => trim($c->param('series')       // $json_body->{series}       // $existing->{series}       // ''),
-            series_index => (($c->param('series_index') // $json_body->{series_index} // $existing->{series_index} // 0) + 0),
-            cover        => ($existing->{cover} // ''),
-            chapters     => $chapters,
-            ($existing->{date_added} ? (date_added => $existing->{date_added}) : ()),
-        };
-
-        truncate($fh, 0);
-        seek($fh, 0, 0);
-        print $fh encode_json($meta);
-        close($fh);
+    my $meta = {
+        title        => trim($c->param('title')       // $json_body->{title}       // $existing->{title}       // $slug),
+        author       => trim($c->param('author')      // $json_body->{author}      // $existing->{author}      // ''),
+        narrator     => trim($c->param('narrator')    // $json_body->{narrator}    // $existing->{narrator}    // ''),
+        description  => trim($c->param('description') // $json_body->{description} // $existing->{description} // ''),
+        series       => trim($c->param('series')      // $json_body->{series}      // $existing->{series}      // ''),
+        series_index => (($c->param('series_index') // $json_body->{series_index} // $existing->{series_index} // 0) + 0),
+        cover        => ($existing->{cover} // ''),
+        chapters     => $chapters,
+        ($existing->{date_added} ? (date_added => $existing->{date_added}) : ()),
     };
 
+    eval { $c->db->upsert_audiobook_meta($slug, $meta) };
     if ($@) {
         $c->app->log->error("Failed to save metadata for $slug: $@");
         return $c->render(json => { success => 0, error => 'Failed to write metadata' }, status => 500);
@@ -853,8 +899,8 @@ sub admin_index {
 # Returns all books with admin-level flags for the admin panel.
 # Route: GET /audiobooks/admin/api/state
 # Each book entry includes:
-#   meta_cached    : 1 if meta.json exists on disk, 0 otherwise.
-#   has_cover_file : 1 if cover.jpg or cover.png exists, 0 otherwise.
+#   meta_cached    : 1 if a DB record existed before this request, 0 otherwise.
+#   has_cover_file : 1 if cover.jpg or cover.png exists on disk, 0 otherwise.
 # Returns:
 #   JSON: { books: [...], success: 1 }
 sub api_admin_state {
@@ -864,7 +910,8 @@ sub api_admin_state {
 
     $c->render_later;
 
-    my $root  = _books_root($c);
+    my $root      = _books_root($c);
+    my $books_map = $c->db->get_all_audiobooks();
     my @slugs;
 
     if (-d $root && opendir(my $dh, $root)) {
@@ -873,22 +920,22 @@ sub api_admin_state {
         closedir($dh);
     }
 
+    my $db     = $c->db;
+    my $covers = _covers_root($c);
     my @promises = map {
         my $slug = $_;
         _safe_component($slug)
-            ? _build_book_entry_async($slug, $root->child($slug), undef)
+            ? _build_book_entry_async($slug, $root->child($slug), undef, $db, $books_map->{$slug}, $covers)
             : Mojo::Promise->resolve(undef);
     } @slugs;
 
     Mojo::Promise->all(@promises)->then(sub {
-        my @books = grep { defined } map { $_->[0] } @_;
-        # Flags are read after all async work completes so they reflect final on-disk state.
+        my @books        = grep { defined } map { $_->[0] } @_;
         my $prog_by_slug = $c->db->get_all_users_audiobook_progress();
         for my $book (@books) {
-            my $dir = $root->child($book->{slug});
-            $book->{meta_cached}    = (-f $dir->child('meta.json')) ? 1 : 0;
-            $book->{has_cover_file} = (_find_cover($dir) ne '')     ? 1 : 0;
-            $book->{user_progress}  = $prog_by_slug->{ $book->{slug} } // [];
+            $book->{meta_cached}    = (defined $books_map->{ $book->{slug} }) ? 1 : 0;
+            $book->{has_cover_file} = ($book->{cover_url} ne '')               ? 1 : 0;
+            $book->{user_progress}  = $prog_by_slug->{ $book->{slug} }        // [];
         }
         $c->render(json => { books => \@books, success => 1 });
     })->catch(sub {
@@ -898,7 +945,7 @@ sub api_admin_state {
     });
 }
 
-# Deletes cached meta.json for one or all books, forcing metadata re-discovery
+# Removes the DB metadata record for one or all books, forcing re-discovery
 # on the next api_state or api_admin_state request.
 # Route: POST /audiobooks/admin/api/rescan
 # Parameters:
@@ -911,31 +958,14 @@ sub api_admin_rescan {
         unless $c->is_admin;
 
     my $slug  = trim($c->param('slug') // '');
-    my $root  = _books_root($c);
     my $count = 0;
 
     if ($slug) {
         return $c->render(json => { error => 'Invalid slug' }, status => 400)
             unless _safe_component($slug);
-        my $meta = $root->child($slug)->child('meta.json');
-        if (-f $meta) {
-            unlink $meta->to_string;
-            $count++;
-        }
+        $count = $c->db->delete_audiobook_meta($slug);
     } else {
-        if (-d $root && opendir(my $dh, $root)) {
-            my @dirs = grep { !/^\./ && -d $root->child($_) }
-                           map { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
-            closedir($dh);
-            for my $dir (@dirs) {
-                next unless _safe_component($dir);
-                my $meta = $root->child($dir)->child('meta.json');
-                if (-f $meta) {
-                    unlink $meta->to_string;
-                    $count++;
-                }
-            }
-        }
+        $count = $c->db->delete_all_audiobook_meta();
     }
 
     $c->render(json => { success => 1, rescanned => $count });
@@ -956,10 +986,9 @@ sub api_admin_upload_cover {
     return $c->render(json => { error => 'Invalid slug' }, status => 400)
         unless _safe_component($slug);
 
-    my $root = _books_root($c);
-    my $dir  = $root->child($slug);
+    my $covers = _covers_root($c);
     return $c->render(json => { error => 'Book not found' }, status => 404)
-        unless -d $dir;
+        unless $c->db->get_audiobook_meta($slug);
 
     my $upload = $c->req->upload('cover');
     return $c->render(json => { error => 'No file uploaded' }, status => 400)
@@ -983,29 +1012,31 @@ sub api_admin_upload_cover {
 
     # Remove any existing cover before saving the replacement.
     for my $old_ext (qw(jpg png)) {
-        my $old = $dir->child("cover.$old_ext");
+        my $old = $covers->child("$slug.$old_ext");
         unlink $old->to_string if -f $old;
     }
 
-    my $dest = $dir->child("cover.$ext");
+    my $dest = $covers->child("$slug.$ext");
     eval { $upload->move_to($dest->to_string) };
     if ($@) {
         $c->app->log->error("Cover upload failed for $slug: $@");
         return $c->render(json => { error => 'Failed to save image' }, status => 500);
     }
 
-    # Persist the cover field so async rebuilds do not re-run cover extraction
-    # and overwrite the uploaded image. A minimal stub is written when meta.json
-    # does not yet exist (e.g. after a rescan cleared it).
-    my $meta_file = $dir->child('meta.json');
-    my $raw       = (-f $meta_file) ? eval { $meta_file->slurp } : undef;
-    my $meta      = $raw            ? eval { decode_json($raw)  } : undef;
-    $meta = { title => $slug, author => '', narrator => '', description => '',
-              series => '', series_index => 0, chapters => [],
-              date_added => time() }
-        unless ref $meta eq 'HASH';
+    # Persist the cover field in DB so the player shows the new image immediately.
+    my $meta = $c->db->get_audiobook_meta($slug) // {
+        title        => $slug,
+        author       => '',
+        narrator     => '',
+        description  => '',
+        series       => '',
+        series_index => 0,
+        chapters     => [],
+        date_added   => time(),
+    };
     $meta->{cover} = "cover.$ext";
-    _write_meta_json($dir, $meta);
+    eval { $c->db->upsert_audiobook_meta($slug, $meta) };
+    $c->app->log->error("Failed to update cover in DB for $slug: $@") if $@;
 
     $c->render(json => {
         success   => 1,
