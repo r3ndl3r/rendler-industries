@@ -146,6 +146,7 @@ sub age {
     
     $c->render(
         json => {
+            success  => 1,
             andrea   => $andrea[0],
             andreas  => $andrea[1],
             nicky    => $nicky[0],
@@ -164,7 +165,7 @@ sub age {
 sub file_map_json {
     my $c = shift;
     my $files = $c->listFiles();
-    $c->render(json => $files);
+    $c->render(json => { success => 1, files => $files });
 }
 
 # Debug utility to display current working directory.

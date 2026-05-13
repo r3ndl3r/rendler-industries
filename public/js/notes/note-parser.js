@@ -93,6 +93,19 @@ const NoteParser = (() => {
     };
 
     /**
+     * Renders fenced code blocks without parsing note markup inside the block.
+     * @param {string} code - Raw multiline code content.
+     * @param {string} language - Optional fence language label.
+     * @returns {string} Sanitized code block HTML.
+     */
+    const renderCodeBlock = (code, language = '') => {
+        const lang = language.trim().toLowerCase().replace(/[^a-z0-9_+.#-]/g, '');
+        const langAttr = lang ? ` data-language="${window.escapeHtml(lang)}"` : '';
+        const label = lang ? `<span class="note-code-block-lang">${window.escapeHtml(lang)}</span>` : '';
+        return `<pre class="note-code-block" title="Click to copy"${langAttr}>${label}<code>${window.escapeHtml(code)}</code></pre>`;
+    };
+
+    /**
      * Resolves a [[Title]] wikilink against STATE.note_map.
      * Returns a note-link span if resolved, a dead-link span if not.
      * @param {string} title - Raw title string from [[...]].
@@ -793,6 +806,22 @@ const NoteParser = (() => {
             // 1. Structural Elements (Line Start Only)
             if (isLineStart) {
                 const lineRemainder = text.substring(cursor);
+
+                // a0) Fenced Code Block: ```lang ... ```
+                const codeFence = lineRemainder.match(/^```([A-Za-z0-9_+.#-]*)[ \t]*(?:\n|$)/);
+                if (codeFence) {
+                    const bodyStart = cursor + codeFence[0].length;
+                    const closeMatch = /(^|\n)```[ \t]*(\n|$)/.exec(text.substring(bodyStart));
+                    if (closeMatch) {
+                        flushBuffer();
+                        const codeEnd = bodyStart + closeMatch.index;
+                        const fenceEnd = bodyStart + closeMatch.index + closeMatch[0].length;
+                        output += renderCodeBlock(text.substring(bodyStart, codeEnd), codeFence[1] || '');
+                        cursor = fenceEnd;
+                        isLineStart = true;
+                        continue;
+                    }
+                }
                 
                 // a) Headings: # Title, ## Section
                 const hMatch = lineRemainder.match(/^([ \t]*)(#{1,3})\s+(.*?)(\n|$)/);

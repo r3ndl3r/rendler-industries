@@ -88,8 +88,7 @@ async function loadState(force = false) {
     }
 
     try {
-        const response = await fetch('/meals/api/state');
-        const data = await response.json();
+        const data = await apiGet('/meals/api/state');
         
         if (data && data.success) {
             STATE.plan = data.plan;
@@ -132,9 +131,8 @@ async function openManageVaultModal() {
     }
     
     try {
-        const response = await fetch('/meals/api/vault');
-        const data = await response.json();
-        if (data.meals) {
+        const data = await apiGet('/meals/api/vault');
+        if (data && data.meals) {
             renderVaultTable(data.meals);
         }
     } catch (err) {

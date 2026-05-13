@@ -64,12 +64,9 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
-        const response = await fetch('/admin/files/api/state', {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-        const data = await response.json();
+        const data = await apiGet('/admin/files/api/state');
         
-        if (data.success) {
+        if (data && data.success) {
             moduleState.files = data.files;
             moduleState.users = data.users;
             moduleState.isAdmin = data.is_admin;

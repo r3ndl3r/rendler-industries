@@ -87,8 +87,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
-        const response = await fetch('/todo/api/state');
-        const data = await response.json();
+        const data = await apiGet('/todo/api/state');
         
         if (data && data.success) {
             STATE.todos = data.todos;

@@ -114,10 +114,9 @@ async function loadState(force = false) {
     const params = new URLSearchParams(filters);
     
     try {
-        const response = await fetch(`/receipts/api/state?${params.toString()}`);
-        const data = await response.json();
+        const data = await apiGet(`/receipts/api/state?${params.toString()}`);
 
-        if (data.success) {
+        if (data && data.success) {
             STATE.receipts = data.receipts;
             STATE.stores = data.store_names;
             STATE.uploaders = data.uploaders;
@@ -160,10 +159,9 @@ async function loadMore() {
     const params = new URLSearchParams({ ...filters, offset: STATE.offset });
 
     try {
-        const response = await fetch(`/receipts/api/list?${params.toString()}`);
-        const data = await response.json();
+        const data = await apiGet(`/receipts/api/list?${params.toString()}`);
 
-        if (data.success && data.receipts) {
+        if (data && data.success && data.receipts) {
             STATE.receipts = [...STATE.receipts, ...data.receipts];
             renderReceipts(true, data.receipts);
             STATE.offset = STATE.receipts.length;

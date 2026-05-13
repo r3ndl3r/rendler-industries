@@ -96,9 +96,7 @@ window.toggleDeprecated = function() {
  */
 async function loadState() {
     try {
-        const response = await fetch('/admin/notifications/templates/api/state');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
+        const data = await apiGet('/admin/notifications/templates/api/state');
 
         if (data && data.success && Array.isArray(data.templates)) {
             state.templates = data.templates;

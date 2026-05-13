@@ -20,6 +20,9 @@ const STATE = {
     books:    [],
     is_admin: false,
     filter:   'all', // 'all' | 'not_started' | 'in_progress'
+    downloaded: {},   // { slug: ['file1.mp3', ...] } — populated from OfflineAudiobooks bridge
+    downloading: {},  // { slug: { total: N, done: M } } — active download progress
+    offline_mode: false,
 };
 
 const PLAYER = {
@@ -81,6 +84,49 @@ function _isCueMode(book) {
     return chapters.length > 0 && typeof chapters[0].start === 'number';
 }
 
+/**
+ * Returns the cover URL for a book, substituting a local on-device URL if the book is downloaded.
+ * @param {Object} book - Book record from STATE.books.
+ * @returns {string}
+ */
+function _getCoverUrl(book) {
+    if (!book || !book.cover_url) return '';
+    if (window.OfflineAudiobooks && STATE.downloaded[book.slug]) {
+        return `/audiobooks/api/localcover/${encodeURIComponent(book.slug)}`;
+    }
+    return book.cover_url;
+}
+
+/**
+ * Returns the best playable URL for a chapter.
+ * Downloaded Android books use the native loopback server so MP4/M4B range
+ * probing behaves like normal HTTP instead of WebView request interception.
+ * @param {string} slug     - Book slug.
+ * @param {string} filename - Audio filename.
+ * @returns {string} Playable audio URL.
+ */
+function _getAudioUrl(slug, filename) {
+    const streamUrl = `/audiobooks/api/stream/${encodeURIComponent(slug)}/${encodeURIComponent(filename)}`;
+    const lowerName = String(filename || '').toLowerCase();
+    const needsLoopbackServer = lowerName.endsWith('.m4a') || lowerName.endsWith('.m4b');
+    if (
+        needsLoopbackServer &&
+        window.OfflineAudiobooks &&
+        STATE.downloaded[slug] &&
+        typeof window.OfflineAudiobooks.getLocalServerPort === 'function'
+    ) {
+        try {
+            const port = Number(window.OfflineAudiobooks.getLocalServerPort());
+            if (port > 0) {
+                return `http://127.0.0.1:${port}/${encodeURIComponent(slug)}/${encodeURIComponent(filename)}`;
+            }
+        } catch (err) {
+            console.warn('Unable to resolve local audiobook server:', err.message);
+        }
+    }
+    return streamUrl;
+}
+
 // Series names currently expanded, persisted to localStorage.
 const EXPANDED_SERIES = new Set(
     JSON.parse(localStorage.getItem('ab_expanded_series') || '[]')
@@ -88,6 +134,7 @@ const EXPANDED_SERIES = new Set(
 
 // Background sync interval reference
 let _syncInterval = null;
+let _stallTimeout = null;
 
 // ─── Initialisation ───────────────────────────────────────────────────────────
 
@@ -152,11 +199,34 @@ async function loadState(force = false) {
         if (PLAYER.player_open || PLAYER.detail_open || inputFocused) return;
     }
 
+    // Suppress network calls when offline to avoid "Network error" toast spam.
+    const isOffline = typeof navigator.onLine !== 'undefined' && !navigator.onLine;
+    if (isOffline) {
+        if (force) _loadCachedState();
+        return;
+    }
+
     const res = await apiGet('/audiobooks/api/state');
-    if (!res || !res.success) return;
+    if (!res || !res.success) {
+        // API unreachable or timed out — try loading from cache (offline cold-start).
+        if (force) _loadCachedState();
+        return;
+    }
+
+    _flushPendingProgress();
 
     STATE.books    = Array.isArray(res.books) ? res.books : [];
     STATE.is_admin = res.is_admin ? true : false;
+    STATE.offline_mode = false;
+
+    // Cache state for offline cold-start fallback.
+    try {
+        localStorage.setItem('ab_state_cache', JSON.stringify({
+            books: STATE.books,
+            is_admin: STATE.is_admin,
+            cached_at: Date.now()
+        }));
+    } catch(e) {}
 
     document.getElementById('adminLink')?.classList.toggle('hidden', !STATE.is_admin);
 
@@ -165,7 +235,174 @@ async function loadState(force = false) {
         PLAYER.book = STATE.books.find(b => b.slug === PLAYER.slug) || null;
     }
 
+    loadOfflineState();
     renderLibrary();
+}
+
+/**
+ * Synchronises the client-side downloaded-books map from the Android bridge.
+ * No-op when running in a regular browser (bridge unavailable).
+ * @returns {void}
+ */
+function loadOfflineState() {
+    if (!window.OfflineAudiobooks) return;
+    try {
+        STATE.downloaded = JSON.parse(window.OfflineAudiobooks.getDownloadedBooks()) || {};
+    } catch(e) { STATE.downloaded = {}; }
+}
+
+let _dlPollInterval = null;
+
+/**
+ * Polls the Android bridge for download progress every 2 seconds.
+ * Automatically stops when no active downloads remain.
+ * @returns {void}
+ */
+function _startDownloadPoll() {
+    if (_dlPollInterval || !window.OfflineAudiobooks) return;
+    _dlPollInterval = setInterval(() => {
+        let anyActive = false;
+        for (const slug of Object.keys(STATE.downloading)) {
+            try {
+                const p = JSON.parse(window.OfflineAudiobooks.getDownloadProgress(slug));
+                if (p.total > 0 && p.done < p.total) {
+                    STATE.downloading[slug] = p;
+                    anyActive = true;
+                } else if (p.total === 0) {
+                    // Download finished or failed — check for errors.
+                    const err = window.OfflineAudiobooks.getLastError(slug);
+                    delete STATE.downloading[slug];
+                    loadOfflineState();
+                    if (err) {
+                        showToast(`Download failed: ${err}`, 'error');
+                    }
+                } else {
+                    delete STATE.downloading[slug];
+                    loadOfflineState();
+                }
+            } catch(e) { delete STATE.downloading[slug]; }
+        }
+        if (!anyActive) {
+            clearInterval(_dlPollInterval);
+            _dlPollInterval = null;
+        }
+        renderLibrary();
+    }, 2000);
+}
+
+/**
+ * Initiates an offline download for all chapter files in a book.
+ * Checks available storage space before starting. CUE-mode books
+ * deduplicate to the single underlying audio file automatically (bridge-side).
+ * @param {string} slug - Book directory slug.
+ * @returns {void}
+ */
+function downloadBook(slug) {
+    if (!window.OfflineAudiobooks) return;
+    const book = STATE.books.find(b => b.slug === slug);
+    if (!book) return;
+
+    // Rough space check — 200 MB minimum safety threshold.
+    try {
+        const avail = parseInt(window.OfflineAudiobooks.getAvailableSpace(), 10);
+        if (avail < 200 * 1024 * 1024) {
+            showToast('Not enough storage space to download this book.', 'error');
+            return;
+        }
+    } catch(e) {}
+
+    const chapters = Array.isArray(book.chapters) ? book.chapters : [];
+    // Deduplicate filenames (CUE-mode books share one file across chapters).
+    const uniqueFiles = [...new Set(chapters.map(c => c.file).filter(Boolean))];
+
+    STATE.downloading[slug] = { total: uniqueFiles.length, done: 0 };
+    const absCoverUrl = book.cover_url ? new URL(book.cover_url, 'https://rendler.org').href : '';
+    window.OfflineAudiobooks.downloadBook(slug, JSON.stringify(chapters), absCoverUrl);
+
+    _startDownloadPoll();
+    renderLibrary();
+}
+
+/**
+ * Cancels an in-progress download for a book.
+ * @param {string} slug - Book directory slug.
+ * @returns {void}
+ */
+function cancelDownload(slug) {
+    if (!window.OfflineAudiobooks) return;
+    window.OfflineAudiobooks.cancelDownload(slug);
+    delete STATE.downloading[slug];
+    renderLibrary();
+}
+
+/**
+ * Deletes all offline files for a book after user confirmation.
+ * @param {string} slug - Book directory slug.
+ * @returns {void}
+ */
+function deleteBookOffline(slug) {
+    if (!window.OfflineAudiobooks) return;
+    showConfirmModal({
+        title:       'Delete offline copy?',
+        icon:        '🗑',
+        message:     'This will remove all downloaded files for this book from your device.',
+        danger:      true,
+        confirmText: 'Delete',
+        onConfirm:   () => {
+            window.OfflineAudiobooks.deleteBook(slug);
+            delete STATE.downloaded[slug];
+            delete STATE.downloading[slug];
+            renderLibrary();
+        }
+    });
+}
+
+/**
+ * Loads the last successful state from localStorage when the API is unreachable.
+ * Filters the library to only show books that are downloaded locally, since
+ * streamed books are useless without network.
+ * @returns {void}
+ */
+function _loadCachedState() {
+    try {
+        const raw = localStorage.getItem('ab_state_cache');
+        if (raw) {
+            const cached = JSON.parse(raw);
+            STATE.books    = Array.isArray(cached.books) ? cached.books : [];
+            STATE.is_admin = false; // Disable admin features offline.
+        }
+        STATE.offline_mode = true;
+
+        // When running in the app without network-backed streaming, show only playable local books.
+        loadOfflineState();
+        if (window.OfflineAudiobooks) {
+            STATE.books = STATE.books.filter(b => !!STATE.downloaded[b.slug]);
+        }
+
+        document.getElementById('adminLink')?.classList.add('hidden');
+        renderLibrary();
+    } catch(e) {
+        console.error('Offline state load error:', e);
+        renderLibrary();
+    }
+}
+
+/**
+ * Flushes any progress data buffered in localStorage during an offline period.
+ * Called after a successful loadState() confirms the server is reachable.
+ * @returns {void}
+ */
+function _flushPendingProgress() {
+    const pending = localStorage.getItem('ab_pending_progress');
+    if (!pending) return;
+    try {
+        const payload = JSON.parse(pending);
+        apiPost('/audiobooks/api/progress', payload)
+            .then(res => { if (res) localStorage.removeItem('ab_pending_progress'); })
+            .catch(() => {});
+    } catch(e) {
+        localStorage.removeItem('ab_pending_progress');
+    }
 }
 
 // ─── Library rendering ────────────────────────────────────────────────────────
@@ -195,8 +432,9 @@ function _renderBookRow(book) {
     const pct    = _progressPercent(book);
     const status = _statusLabel(book);
 
-    const thumbHtml = book.cover_url
-        ? `<img src="${escapeHtml(book.cover_url)}" alt="" class="book-row-thumb-img" loading="lazy"
+    const coverSrc = _getCoverUrl(book);
+    const thumbHtml = coverSrc
+        ? `<img src="${escapeHtml(coverSrc)}" alt="" class="book-row-thumb-img" loading="lazy"
                onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden');">
            <div class="book-row-thumb-fallback hidden">🎧</div>`
         : `<div class="book-row-thumb-fallback">🎧</div>`;
@@ -209,9 +447,17 @@ function _renderBookRow(book) {
         ? `<p class="book-row-status${prog.completed ? ' complete' : ''}">${escapeHtml(status)}</p>`
         : '';
 
-    const progressWrap = (pct > 0 || statusHtml)
-        ? `<div class="book-row-progress-wrap">${progressBar}${statusHtml}</div>`
-        : '';
+    let extraProgress = '';
+    if (window.OfflineAudiobooks) {
+        const dlProgress    = STATE.downloading[book.slug];
+        const isDownloading = !!dlProgress && dlProgress.done < dlProgress.total;
+        if (isDownloading) {
+            const pctDl = dlProgress.total > 0 ? Math.round(dlProgress.done / dlProgress.total * 100) : 0;
+            const textDl = dlProgress.total === 100 ? `${dlProgress.done}%` : `${dlProgress.done} / ${dlProgress.total}`;
+            extraProgress = `<div class="book-row-progress dl-progress"><div class="book-row-progress-fill dl-fill" style="width:${pctDl}%"></div></div>
+                <p class="book-row-status">Saving… ${textDl}</p>`;
+        }
+    }
 
     const chapIdx   = prog.completed ? 0 : (prog.chapter_idx || 0);
     const slugJs    = escapeHtml(JSON.stringify(book.slug));
@@ -220,17 +466,42 @@ function _renderBookRow(book) {
         : '';
     const isNew    = book.date_added > 0 && (Date.now() / 1000 - book.date_added) < 7 * 86400;
     const newBadge = isNew ? '<span class="book-new-badge">NEW</span>' : '';
+    const offlineBadge = (window.OfflineAudiobooks && STATE.downloaded[book.slug])
+        ? '<span class="book-offline-badge">📥</span>' : '';
+
+    const progressWrap = (pct > 0 || statusHtml || extraProgress)
+        ? `<div class="book-row-progress-wrap">${progressBar}${statusHtml}${extraProgress}</div>`
+        : '';
+
+    let offlineBtn = '';
+    if (window.OfflineAudiobooks) {
+        const isDownloaded  = !!STATE.downloaded[book.slug];
+        const dlProgress    = STATE.downloading[book.slug];
+        const isDownloading = !!dlProgress && dlProgress.done < dlProgress.total;
+
+        if (isDownloading) {
+            offlineBtn = `<button type="button" class="book-row-dl-btn dl-active" aria-label="Cancel download"
+                                 onclick="event.stopPropagation(); cancelDownload(${slugJs})">⬇</button>`;
+        } else if (isDownloaded) {
+            offlineBtn = `<button type="button" class="book-row-dl-btn dl-delete" aria-label="Delete offline copy"
+                                 onclick="event.stopPropagation(); deleteBookOffline(${slugJs})">🗑</button>`;
+        } else {
+            offlineBtn = `<button type="button" class="book-row-dl-btn" aria-label="Save for offline"
+                                 onclick="event.stopPropagation(); downloadBook(${slugJs})">⬇</button>`;
+        }
+    }
 
     return `<div class="book-row" onclick="openPlayer(${slugJs}, ${chapIdx})" role="button" tabindex="0"
                  onkeydown="if(event.key==='Enter')openPlayer(${slugJs}, ${chapIdx})">
                 <div class="book-row-cover">${thumbHtml}</div>
                 <div class="book-row-info">
-                    <p class="book-row-title">${escapeHtml(book.title || book.slug)}${newBadge}</p>
+                    <p class="book-row-title">${escapeHtml(book.title || book.slug)}${newBadge}${offlineBadge}</p>
                     ${seriesNum}
                     <p class="book-row-author">${escapeHtml(book.author || '')}</p>
                     ${progressWrap}
                 </div>
                 <div class="book-row-actions">
+                    ${offlineBtn}
                     <button type="button" class="book-row-play-btn" aria-label="Play" tabindex="-1"
                             onclick="event.stopPropagation(); openPlayer(${slugJs}, ${chapIdx}, true)">▶</button>
                 </div>
@@ -283,9 +554,13 @@ function renderLibrary() {
     });
 
     if (!books.length) {
-        grid.innerHTML = query
-            ? '<p class="library-empty">No books match your search.</p>'
-            : '<p class="library-empty">No audiobooks found.</p>';
+        if (query) {
+            grid.innerHTML = '<p class="library-empty">No books match your search.</p>';
+        } else if (STATE.offline_mode && window.OfflineAudiobooks) {
+            grid.innerHTML = '<p class="library-empty">No downloaded audiobooks available offline.</p>';
+        } else {
+            grid.innerHTML = '<p class="library-empty">No audiobooks found.</p>';
+        }
         return;
     }
 
@@ -457,8 +732,9 @@ function openDetail(slug) {
 
     const coverEl       = document.getElementById('detailCover');
     const fallbackEl    = document.getElementById('detailCoverFallback');
-    if (book.cover_url) {
-        coverEl.src = book.cover_url;
+    const coverSrc      = _getCoverUrl(book);
+    if (coverSrc) {
+        coverEl.src = coverSrc;
         coverEl.classList.remove('hidden');
         fallbackEl.classList.add('hidden');
     } else {
@@ -501,6 +777,12 @@ function _initAudio() {
     audio.addEventListener('waiting', () => {
         document.getElementById('playPauseBtn').textContent = '⏳';
         document.getElementById('playerPanel').classList.add('player-buffering');
+        // If still buffering after 10 seconds, show a helpful message.
+        clearTimeout(_stallTimeout);
+        _stallTimeout = setTimeout(() => {
+            if (audio.paused || !document.getElementById('playerPanel').classList.contains('player-buffering')) return;
+            showToast('Waiting for connection…', 'error');
+        }, 10000);
     });
     audio.addEventListener('stalled',    () => { console.warn('Playback stalled (buffering)'); });
 
@@ -624,7 +906,7 @@ function _loadChapter(idx, autoplay = true) {
     const slug  = PLAYER.slug;
     const audio = PLAYER.audio;
     const cue   = _isCueMode(book);
-    const url   = `/audiobooks/api/stream/${encodeURIComponent(slug)}/${encodeURIComponent(ch.file)}`;
+    const url   = _getAudioUrl(slug, ch.file);
 
     // Determine seek target: CUE mode uses absolute file position; multi-file uses offset from 0.
     const prog   = book.progress || {};
@@ -722,7 +1004,7 @@ function _preloadNextChapter() {
     if (nextIdx >= chapters.length) return;
 
     const ch  = chapters[nextIdx];
-    const url = `/audiobooks/api/stream/${encodeURIComponent(PLAYER.slug)}/${encodeURIComponent(ch.file)}`;
+    const url = _getAudioUrl(PLAYER.slug, ch.file);
     if (PLAYER.preload_audio && PLAYER.preload_audio._preloadUrl === url) return;
 
     _clearPreload();
@@ -788,7 +1070,8 @@ function _updateMediaSessionMetadata() {
     
     // APK Support: Force production URL so Android can fetch artwork from outside the app
     const baseUrl = 'https://rendler.org';
-    const artworkUrl = book.cover_url ? new URL(book.cover_url, baseUrl).href : 'https://rendler.org/favicon.ico';
+    const coverSrc = _getCoverUrl(book);
+    const artworkUrl = coverSrc ? new URL(coverSrc, baseUrl).href : 'https://rendler.org/favicon.ico';
 
     const title = ch.title || book.title || 'Audiobook';
     const artist = book.author || 'Rendler Industries';
@@ -875,8 +1158,9 @@ function _updateCoverUI(book, imgId, fallbackId) {
     const fallback = document.getElementById(fallbackId);
     if (!img || !fallback) return;
 
-    if (book.cover_url) {
-        img.src = book.cover_url;
+    const coverSrc = _getCoverUrl(book);
+    if (coverSrc) {
+        img.src = coverSrc;
         img.classList.remove('hidden');
         fallback.classList.add('hidden');
     } else {
@@ -1040,6 +1324,7 @@ function _onChapterEnded() {
  * @returns {void}
  */
 function _onPlaying() {
+    clearTimeout(_stallTimeout);
     document.getElementById('playPauseBtn').textContent = '⏸';
     document.getElementById('playerPanel').classList.remove('player-buffering');
     
@@ -1073,15 +1358,19 @@ function _onPaused() {
 }
 
 /**
- * Handles audio loading errors with a user-visible toast.
+ * Handles audio loading errors with context-appropriate messages.
+ * MediaError codes: 1=ABORTED, 2=NETWORK, 3=DECODE, 4=SRC_NOT_SUPPORTED
  * @returns {void}
  */
 function _onAudioError() {
     const audio = PLAYER.audio;
-    // MediaError codes: 1=ABORTED, 2=NETWORK, 3=DECODE, 4=SRC_NOT_SUPPORTED
     const code = audio && audio.error ? audio.error.code : 0;
     document.getElementById('playerPanel').classList.remove('player-buffering');
-    if (code === 1) return; // User-initiated abort (e.g. src change) — not an error.
+    if (code === 1) return; // User-initiated abort (e.g. src change).
+    if (code === 2) {
+        showToast('Network error — check your connection.', 'error');
+        return;
+    }
     showToast('Audio failed to load. Check file format.', 'error');
 }
 
@@ -1365,19 +1654,32 @@ function _stopSaveTimer() {
 
 /**
  * Sends the current playback position to /api/progress.
- * Fire-and-forget — errors are non-fatal.
+ * On network failure, buffers the position to localStorage so it can be
+ * flushed on the next successful save or loadState() call.
  * @param {boolean} completed - Whether to mark the book as finished.
  * @returns {void}
  */
 function _saveProgress(completed) {
     if (!PLAYER.slug || !PLAYER.audio) return;
     const pos = isFinite(PLAYER.audio.currentTime) ? PLAYER.audio.currentTime : 0;
-    apiPost('/audiobooks/api/progress', {
+    const payload = {
         book_slug:   PLAYER.slug,
         chapter_idx: PLAYER.chapter_idx,
         position_sec: pos,
         completed:   completed ? 1 : 0,
-    }).catch(() => {});
+    };
+    apiPost('/audiobooks/api/progress', payload)
+        .then(res => {
+            if (res && res.success) {
+                localStorage.removeItem('ab_pending_progress');
+            } else {
+                localStorage.setItem('ab_pending_progress', JSON.stringify(payload));
+            }
+        })
+        .catch(() => {
+            // Buffer to localStorage so progress survives app kill while offline.
+            localStorage.setItem('ab_pending_progress', JSON.stringify(payload));
+        });
 }
 
 // ─── Utility ──────────────────────────────────────────────────────────────────

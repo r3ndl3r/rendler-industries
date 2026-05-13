@@ -96,8 +96,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && (STATE.events.length > 0 || STATE.users.length > 0)) return;
 
     try {
-        const response = await fetch('/calendar/api/state');
-        const data = await response.json();
+        const data = await apiGet('/calendar/api/state');
         
         if (data && data.success) {
             STATE.categories = data.categories || [];
@@ -161,8 +160,7 @@ async function loadEvents(force = false) {
     }
 
     try {
-        const response = await fetch(`/calendar/api/events?start=${start}&end=${end}`);
-        const data = await response.json();
+        const data = await apiGet(`/calendar/api/events?start=${start}&end=${end}`);
         
         if (data && data.success) {
             STATE.events = (data.events || []).map(e => ({
@@ -415,9 +413,7 @@ async function loadHistoryPage(append = false) {
     const url = `/calendar/api/events?limit=50&offset=${STATE.historyOffset}&search=${search}&category=${category}&sort=DESC`;
 
     try {
-        const response = await fetch(url);
-        if (gen !== historyGeneration) return;
-        const data = await response.json();
+        const data = await apiGet(url);
         if (gen !== historyGeneration) return;
 
         if (data && data.success) {

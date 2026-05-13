@@ -63,8 +63,7 @@ const SwearModule = {
      */
     loadState: async function() {
         try {
-            const response = await fetch('/swear/api/state');
-            const data = await response.json();
+            const data = await apiGet('/swear/api/state');
             
             if (data && data.success) {
                 STATE = data;

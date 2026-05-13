@@ -988,6 +988,7 @@ function showBoardInfo() {
                         <code class="guide-cs-code">*Italic*</code>       <span class="guide-cs-preview"><em>Italic</em></span>
                         <code class="guide-cs-code">~~Strike~~</code>     <span class="guide-cs-preview"><del>Strike</del></span>
                         <code class="guide-cs-code">\`code\`</code>        <span class="guide-cs-preview"><code class="guide-cs-inline">code</code></span>
+                        <code class="guide-cs-code">\`\`\`js</code>        <span class="guide-cs-preview">Code block</span>
                         <code class="guide-cs-code">- item</code>         <span class="guide-cs-preview">• Bullet</span>
                         <code class="guide-cs-code">1. item</code>        <span class="guide-cs-preview">1. Number</span>
                         <code class="guide-cs-code">- [ ] / [x]</code>   <span class="guide-cs-preview">☐ / ☑ Checklist</span>

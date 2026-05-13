@@ -94,8 +94,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.tasks.length > 0) return;
 
     try {
-        const res  = await fetch('/admin/maintenance/api/state');
-        const data = await res.json();
+        const data = await apiGet('/admin/maintenance/api/state');
         if (data && data.success) {
             STATE.tasks = data.tasks || [];
             renderTasks();

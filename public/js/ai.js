@@ -57,8 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadState() {
     try {
-        const response = await fetch('/ai/api/state');
-        const data = await response.json();
+        const data = await apiGet('/ai/api/state');
         
         if (data && data.success) {
             STATE.history = data.history;

@@ -65,8 +65,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.active_chores.length > 0) return;
 
     try {
-        const res = await fetch('/chores/api/state');
-        const data = await res.json();
+        const data = await apiGet('/chores/api/state');
         if (data && data.success) {
             STATE = { ...STATE, ...data };
             renderUI();
@@ -92,8 +91,7 @@ async function loadMySubmissions(force = false) {
     if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
-        const res = await fetch('/chores/api/my_submissions');
-        const data = await res.json();
+        const data = await apiGet('/chores/api/my_submissions');
         if (data && data.success) {
             STATE.my_submissions = data.submissions || [];
             renderMySubmissions();

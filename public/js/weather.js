@@ -90,7 +90,7 @@ async function loadState(force = false) {
     if (!force && (isModalOpen || isInputFocused)) return;
 
     try {
-        const res = await apiPost('/weather/api/state');
+        const res = await apiGet('/weather/api/state');
         if (res && res.success) {
             STATE.observations = res.observations || [];
             STATE.isAdmin = !!res.is_admin;

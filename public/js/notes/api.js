@@ -7,13 +7,98 @@
  */
 window.NoteAPI = {
     /**
+     * Determines whether a GET request carries the full notes state payload.
+     * @param {string} url - Target endpoint.
+     * @returns {boolean} True when the endpoint can hydrate the notes board.
+     */
+    isStateUrl(url) {
+        try {
+            return new URL(url, window.location.origin).pathname === '/notes/api/state';
+        } catch (_) {
+            return false;
+        }
+    },
+
+    /**
+     * Builds a stable local cache key for a notes state request.
+     * @param {string} url - Target endpoint.
+     * @returns {string} Cache key scoped to the requested board and layer.
+     */
+    stateCacheKey(url) {
+        const parsed = new URL(url, window.location.origin);
+        const canvasId = parsed.searchParams.get('canvas_id') || 'default';
+        const layerId = parsed.searchParams.get('layer_id') || 'default';
+        return `notes_state_cache:${canvasId}:${layerId}`;
+    },
+
+    /**
+     * Stores a successful notes state payload for offline hydration.
+     * @param {string} url - Target endpoint.
+     * @param {Object} data - Parsed state payload.
+     */
+    cacheState(url, data) {
+        if (!data || !data.success || data.is_locked || !Array.isArray(data.notes)) return;
+        try {
+            const payload = JSON.stringify({ timestamp: Date.now(), data });
+            const requestKey = this.stateCacheKey(url);
+            const resolvedKey = `notes_state_cache:${data.canvas_id || 'default'}:${data.viewport?.layer_id || 'default'}`;
+            localStorage.setItem(requestKey, payload);
+            localStorage.setItem(resolvedKey, payload);
+            localStorage.setItem('notes_state_cache:last', resolvedKey);
+        } catch (err) {
+            console.warn('Unable to cache notes state:', err);
+        }
+    },
+
+    /**
+     * Reads the most relevant cached notes state for offline hydration.
+     * @param {string} url - Target endpoint.
+     * @returns {Object|null} Cached state payload or null.
+     */
+    cachedState(url) {
+        try {
+            const keys = [this.stateCacheKey(url), localStorage.getItem('notes_state_cache:last')].filter(Boolean);
+            for (const key of keys) {
+                const cached = localStorage.getItem(key);
+                if (!cached) continue;
+                const parsed = JSON.parse(cached);
+                if (parsed && parsed.data && parsed.data.success) {
+                    parsed.data.offline_cached = true;
+                    return parsed.data;
+                }
+            }
+        } catch (err) {
+            console.warn('Unable to read cached notes state:', err);
+        }
+        return null;
+    },
+
+    /**
      * Standard GET Wrapper.
      * @param {string} url - Target endpoint.
-     * @param {Object} options - { signal: AbortSignal }
+     * @param {Object} options - { signal: AbortSignal, timeout: number, silent: boolean }
+     * @returns {Promise<Object|null>} Parsed response data.
      */
     async get(url, options = {}) {
+        const isStateRequest = this.isStateUrl(url);
+        const timeoutMs = options.timeout || (isStateRequest && !options.signal ? 3000 : 0);
+        let controller = null;
+        let timeoutId = null;
+        let timedOut = false;
+        let signal = options.signal;
+
+        if (timeoutMs && !signal) {
+            controller = new AbortController();
+            signal = controller.signal;
+            timeoutId = setTimeout(() => {
+                timedOut = true;
+                controller.abort();
+            }, timeoutMs);
+        }
+
         try {
-            const response = await fetch(url, { signal: options.signal });
+            const response = await fetch(url, { signal });
+            if (timeoutId) clearTimeout(timeoutId);
             
             // Session Guard: Centralized 403 handling
             if (response.status === 403) {
@@ -33,19 +118,26 @@ window.NoteAPI = {
 
             if (!response.ok) {
                 console.error(`NoteAPI Get: HTTP ${response.status} for ${url}`);
+                if (isStateRequest) return this.cachedState(url);
                 return null;
             }
 
             const data = await response.json();
+            if (isStateRequest) this.cacheState(url, data);
             if (data.error && !data.success) {
-                showToast(data.error, 'error');
+                if (!options.silent) showToast(data.error, 'error');
             }
             return data;
         } catch (err) {
+            if (timeoutId) clearTimeout(timeoutId);
             // Signal Management: Silence intentional context-switch abortions
-            if (err.name === 'AbortError') return null;
+            if (err.name === 'AbortError' && !timedOut) return null;
+            if (isStateRequest) {
+                const cached = this.cachedState(url);
+                if (cached) return cached;
+            }
             console.error('NoteAPI Get Error:', err);
-            showToast('Network request failed', 'error');
+            if (!options.silent) showToast('Network request failed', 'error');
             return null;
         }
     },

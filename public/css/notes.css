@@ -339,6 +339,56 @@ pre code {
     backdrop-filter: none !important;
 }
 
+.note-code-block {
+    position: relative;
+    white-space: pre-wrap;
+    word-break: normal;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.note-code-block:hover {
+    border-color: rgba(59, 130, 246, 0.45);
+}
+
+.note-code-block::after {
+    content: '📋';
+    position: absolute;
+    top: 0.55rem;
+    right: 0.7rem;
+    font-size: 0;
+    opacity: 0;
+    transition: opacity 0.15s, font-size 0.15s;
+    pointer-events: none;
+}
+
+.note-code-block:hover::after {
+    opacity: 1;
+    font-size: 0.9rem;
+}
+
+.note-code-block.copied {
+    border-color: #10b981;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5),
+                inset 0 0 12px rgba(16, 185, 129, 0.18);
+}
+
+.note-code-block code {
+    display: block;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.note-code-block-lang {
+    display: block;
+    margin-bottom: 0.65rem;
+    color: #7dd3fc;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
 /* Compact Asset Rendering: Embedded Images */
 .note-embedded-wrap {
     display: inline-block;

@@ -96,10 +96,9 @@ async function loadState(force = false) {
     STATE.isLoading = true;
 
     try {
-        const response = await fetch(`/admin/emojis/api/state?search=${encodeURIComponent(STATE.search)}`);
-        const data = await response.json();
+        const data = await apiGet(`/admin/emojis/api/state?search=${encodeURIComponent(STATE.search)}`);
 
-        if (data.success) {
+        if (data && data.success) {
             STATE.stats = data.stats;
             STATE.dictionary = data.dictionary;
             STATE.offset = STATE.dictionary.length;
@@ -148,10 +147,9 @@ async function loadMore() {
             limit: CONFIG.LIMIT,
             search: STATE.search
         });
-        const response = await fetch(`/admin/emojis/api/list?${params.toString()}`);
-        const data = await response.json();
+        const data = await apiGet(`/admin/emojis/api/list?${params.toString()}`);
 
-        if (data.success) {
+        if (data && data.success) {
             STATE.dictionary = [...STATE.dictionary, ...data.dictionary];
             renderDictionary(true, data.dictionary);
             STATE.offset = STATE.dictionary.length;

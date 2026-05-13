@@ -21,17 +21,21 @@
  * Data Management: upIndex
  * Fetches the master uptime state from the server.
  */
-function upIndex() {
-    $.getJSON( 'age', function() { })
-    .done(function(data) {
-        // Update DOM with exact server values
-        document.getElementById('andrea').innerHTML = data.andrea;
-        document.getElementById('nicky').innerHTML = data.nicky;
-        document.getElementById('andreas').innerHTML = data.andreas;
-        document.getElementById('nickys').innerHTML = data.nickys;
-        document.getElementById('server').innerHTML = data.server;
-        document.getElementById('servers').innerHTML = data.servers;
-    });
+async function upIndex() {
+    try {
+        const data = await apiGet('age');
+        if (data) {
+            // Update DOM with exact server values
+            document.getElementById('andrea').innerHTML = data.andrea;
+            document.getElementById('nicky').innerHTML = data.nicky;
+            document.getElementById('andreas').innerHTML = data.andreas;
+            document.getElementById('nickys').innerHTML = data.nickys;
+            document.getElementById('server').innerHTML = data.server;
+            document.getElementById('servers').innerHTML = data.servers;
+        }
+    } catch (err) {
+        console.error('upIndex failed:', err);
+    }
 }
 
 /**

@@ -44,9 +44,8 @@ async function loadState(force = false) {
     }
 
     try {
-        const res = await fetch('/imposter/api/state');
-        const data = await res.json();
-        if (data.success) {
+        const data = await apiGet('/imposter/api/state');
+        if (data && data.success) {
             STATE.game = data.game;
             STATE.lobby = data.lobby;
             STATE.lang = data.lang;

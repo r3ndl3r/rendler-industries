@@ -201,7 +201,7 @@ sub _find_embedded_chapter_candidate {
     my $ext_re = join '|', @EMBEDDED_CH_EXTS;
     if (opendir(my $dh, $dir)) {
         my ($name) = sort grep { /\.(?:$ext_re)$/i && -f $dir->child($_) }
-                         map  { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
+                          map  { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
         closedir($dh);
         return $dir->child($name)->to_string if $name;
     }
@@ -227,7 +227,7 @@ sub _parse_cue_file {
     }
     return undef unless $cue_path && -f $cue_path;
 
-    my $text = eval { $cue_path->slurp };
+    my $text = eval { $cue_path->slurp('UTF-8') };
     return undef unless $text;
 
     $text =~ s/\r\n/\n/g;
@@ -302,6 +302,7 @@ sub _scan_chapters {
         { file => $fname, title => $title, duration => 0 }
     } @files;
 }
+
 
 # Async counterpart to _scan_chapters that populates real durations via ffprobe.
 # All files are probed inside a single Mojo::IOLoop->subprocess so the event loop
@@ -643,6 +644,7 @@ sub _build_book_entry_async {
     # On success the cover filename is persisted to DB.
     return $meta_promise->then(sub {
         my $meta = shift;
+
         return _format_book_entry($slug, $meta, $prog) if $meta->{cover};
 
         my $claimed = _claim_cover_from_dir($covers_root, $slug, $dir);

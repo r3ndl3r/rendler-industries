@@ -51,10 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadState() {
     try {
-        const response = await fetch('/clipboard/api/state');
-        const data = await response.json();
+        const data = await apiGet('/clipboard/api/state');
         
-        if (data.success) {
+        if (data && data.success) {
             moduleState = data;
             renderList();
             updateNotificationOptions();

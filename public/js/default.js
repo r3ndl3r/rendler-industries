@@ -183,13 +183,14 @@ function setupGlobalModalClosing(modalClasses = ['modal-overlay', 'delete-modal-
 })();
 
 /**
- * Standard AJAX POST wrapper with integrated feedback.
+ * Standard AJAX POST wrapper with integrated feedback and network timeout.
  * 
  * @param {string} url - Target API endpoint.
  * @param {Object|FormData} data - Payload to transmit.
+ * @param {number} timeout - Request timeout in ms (default 30s for POST).
  * @returns {Promise<Object|null>} - Parsed JSON response or null on failure.
  */
-async function apiPost(url, data = {}) {
+async function apiPost(url, data = {}, timeout = 30000) {
     try {
         const options = {
             method: 'POST'
@@ -205,7 +206,12 @@ async function apiPost(url, data = {}) {
             options.body = new URLSearchParams(data);
         }
 
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        options.signal = controller.signal;
+
         const response = await fetch(url, options);
+        clearTimeout(id);
         
         const text = await response.text();
         let result;
@@ -226,20 +232,32 @@ async function apiPost(url, data = {}) {
         }
     } catch (err) {
         console.error('apiPost Error:', err);
-        showToast('Network error', 'error');
+        if (err.name === 'AbortError') {
+            showToast('Request timed out', 'error');
+        } else if (typeof navigator === 'undefined' || typeof navigator.onLine === 'undefined' || navigator.onLine) {
+            showToast('Network error', 'error');
+        }
         return null;
     }
 }
 
 /**
- * Standard AJAX GET wrapper.
+ * Standard AJAX GET wrapper with automatic state caching and network timeout.
  * 
  * @param {string} url - Target API endpoint.
+ * @param {number} timeout - Request timeout in ms (default 3s).
  * @returns {Promise<Object|null>} - Parsed JSON response or null on failure.
  */
-async function apiGet(url) {
+async function apiGet(url, timeout = 3000) {
+    const cacheKey = `api_cache:${url}`;
+
     try {
-        const response = await fetch(url);
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(id);
+
         const text = await response.text();
         let result;
         try {
@@ -248,10 +266,34 @@ async function apiGet(url) {
             console.error('JSON Parse Error:', text);
             throw new Error('Invalid JSON response');
         }
+
+        // Cache successful state responses
+        if (result && result.success) {
+            try {
+                localStorage.setItem(cacheKey, JSON.stringify({
+                    data: result,
+                    timestamp: Date.now()
+                }));
+            } catch (e) { /* Storage full */ }
+        }
+
         return result;
     } catch (err) {
-        console.error('apiGet Error:', err);
-        showToast('Network error', 'error');
+        console.warn(`apiGet failed for ${url}:`, err);
+
+        // Fallback to cache if available
+        try {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                console.info(`Using cached data for ${url} (from ${new Date(parsed.timestamp).toLocaleString()})`);
+                return parsed.data;
+            }
+        } catch (e) { }
+
+        if (err.name !== 'AbortError' && (typeof navigator === 'undefined' || typeof navigator.onLine === 'undefined' || navigator.onLine)) {
+            showToast('Network error', 'error');
+        }
         return null;
     }
 }
@@ -855,6 +897,83 @@ window.escapeHtml = function(text) {
     div.textContent = text;
     return div.innerHTML.replace(/"/g, '&quot;');
 };
+
+/**
+ * APK Auto-Update Prompt
+ *
+ * Shows a themed confirmation modal when the native Android bridge reports
+ * a newer APK version. The confirmed action delegates the download and install
+ * notification flow to the AppUpdater bridge.
+ *
+ * @param {number} serverCode - versionCode from /app-version.json.
+ * @param {string} serverName - Human-readable version string.
+ * @returns {void}
+ */
+window.showUpdatePrompt = function(serverCode, serverName) {
+    if (!window.AppUpdater) return;
+
+    showConfirmModal({
+        title:       'Update Available',
+        icon:        '🔄',
+        message:     `Version <strong>${serverName}</strong> is ready to download.`,
+        subMessage:  'The update will download in the background. A notification will appear when it\'s ready to install.',
+        confirmText: 'Download Update',
+        hideCancel:  true,
+        width:       'small',
+        onConfirm:   () => {
+            try {
+                if (window.AppUpdater.canInstall() !== 'true') {
+                    setTimeout(() => {
+                        showConfirmModal({
+                            title:       'Permission Required',
+                            icon:        '⚙️',
+                            message:     'To install updates, allow this app to install unknown apps in Settings.',
+                            confirmText: 'Open Settings',
+                            hideCancel:  true,
+                            width:       'small',
+                            onConfirm:   () => window.AppUpdater.openInstallSettings()
+                        });
+                    }, 300);
+                    return;
+                }
+                window.AppUpdater.startUpdate();
+                showToast('Downloading update… check your notification bar.', 'success');
+            } catch (e) {
+                console.error('Update button error:', e);
+                showToast('Error starting update.', 'error');
+            }
+        }
+    });
+};
+
+/**
+ * Checks the deployed APK manifest inside the native Android shell.
+ * @returns {void}
+ */
+function checkApkUpdate() {
+    if (!window.AppUpdater) return;
+
+    setTimeout(() => {
+        fetch('/app-version.json', { cache: 'no-store' })
+            .then(res => {
+                if (!res.ok) throw new Error('Network response was not ok');
+                return res.json();
+            })
+            .then(data => {
+                const serverCode = parseInt(data.version_code, 10);
+                const installedCode = parseInt(window.AppUpdater.getInstalledVersionCode(), 10);
+
+                if (serverCode > installedCode) {
+                    window.showUpdatePrompt(serverCode, data.version_name);
+                }
+            })
+            .catch(err => {
+                console.error('APK Update check failed:', err);
+            });
+    }, 1500);
+}
+
+document.addEventListener('DOMContentLoaded', checkApkUpdate);
 
 /**
  * FCM Push Notification Bootstrap

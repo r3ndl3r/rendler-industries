@@ -1061,3 +1061,42 @@
 }
 
 #editModal { z-index: 10200; }
+
+/* ─── Offline Download Controls ───────────────────────────────────────────── */
+
+.book-row-dl-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 1rem;
+    width: 2rem;
+    height: 2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    margin-right: 6px;
+}
+.book-row-dl-btn:hover { color: #3b82f6; border-color: #3b82f6; }
+@keyframes dl-glow {
+    0% { box-shadow: 0 0 5px rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.5); color: rgba(16, 185, 129, 0.7); }
+    50% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.8); border-color: rgba(16, 185, 129, 1); color: #10b981; }
+    100% { box-shadow: 0 0 5px rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.5); color: rgba(16, 185, 129, 0.7); }
+}
+.book-row-dl-btn.dl-active {
+    animation: dl-glow 1.5s ease-in-out infinite;
+}
+.book-row-dl-btn.dl-delete:hover { color: #ef4444; border-color: #ef4444; }
+
+.book-offline-badge {
+    font-size: 0.75rem;
+    margin-left: 0.35rem;
+    vertical-align: middle;
+}
+
+.dl-progress { margin-top: 2px; }
+.dl-fill { background: #3b82f6 !important; }

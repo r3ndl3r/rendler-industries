@@ -67,8 +67,7 @@ const MenuMgmt = {
         if (!force && (anyModalOpen || inputFocused) && STATE.links.length > 0) return;
 
         try {
-            const response = await fetch('/admin/menu/api/state');
-            const data = await response.json();
+            const data = await apiGet('/admin/menu/api/state');
 
             if (data && data.success) {
                 STATE.links  = data.links;
@@ -508,12 +507,9 @@ const MenuMgmt = {
 
         try {
             const response = await fetch('/admin/menu/api/reorder', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
-                },
-                body: JSON.stringify({ orders })
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ orders })
             });
             const result = await response.json();
 
@@ -521,12 +517,12 @@ const MenuMgmt = {
                 if (window.loadMenu) window.loadMenu();
                 await this.loadState(true);
             } else {
-                window.showToast(result.error || 'Reorder failed', 'error');
+                showToast(result?.error || 'Menu sequence update failed', 'error');
                 await this.loadState(true);
             }
         } catch (err) {
             console.error('handleReorder failed:', err);
-            window.showToast('Network error', 'error');
+            showToast('Menu sequence update failed', 'error');
             await this.loadState(true);
         }
     }

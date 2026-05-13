@@ -129,10 +129,9 @@ async function loadMenu() {
     if (!container) return;
 
     try {
-        const response = await fetch('/menu/api/menubar');
-        const data = await response.json();
+        const data = await apiGet('/menu/api/menubar');
         
-        if (!data.success) throw new Error(data.error || 'Failed to load menu');
+        if (!data || !data.success) throw new Error(data?.error || 'Failed to load menu');
 
         let html = '';
         const currentPath = data.current_path;

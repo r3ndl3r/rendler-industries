@@ -38,6 +38,7 @@ sub api_state {
     my $history = $c->db->get_global_point_history();
 
     $c->render(json => {
+        success   => 1,
         balances  => $balances,
         history   => $history,
         is_parent => $c->is_parent ? 1 : 0
@@ -94,7 +95,8 @@ sub api_add {
         $c->render(json => {
             success  => 1,
             balances => $balances,
-            history  => $history
+            history  => $history,
+            is_parent => $c->is_parent ? 1 : 0
         });
     } else {
         $c->render(json => { error => 'Database error' }, status => 500);

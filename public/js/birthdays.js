@@ -71,8 +71,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.birthdays.length > 0) return;
 
     try {
-        const response = await fetch('/birthdays/api/state');
-        const data = await response.json();
+        const data = await apiGet('/birthdays/api/state');
         
         if (data && data.success) {
             STATE.birthdays = data.birthdays;

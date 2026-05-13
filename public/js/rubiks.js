@@ -45,10 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadLibrary() {
     try {
-        const res = await fetch('/rubiks/api/state');
-        const data = await res.json();
-
-        if (data.success) {
+        const data = await apiGet('/rubiks/api/state');
+        if (data && data.success) {
             RUBIKS_STATE.algorithms = data.algorithms || [];
         }
         renderLibrary();

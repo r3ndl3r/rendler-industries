@@ -71,9 +71,8 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.weather) return;
 
     try {
-        const res  = await fetch('/brief/api/state');
-        const data = await res.json();
-        if (!data.success) return;
+        const data = await apiGet('/brief/api/state');
+        if (!data || !data.success) return;
         STATE = data;
         renderUI();
     } catch (err) {
