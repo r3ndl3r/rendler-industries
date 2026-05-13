@@ -249,9 +249,12 @@ The system features a redundant, priority-weighted alert engine for real-time an
 ### 🎧 Audiobooks (`/audiobooks`)
 *   **Filesystem-Driven Library:** Drop a folder into `assets/audiobooks/` and the app discovers it automatically — no database registration required.
 *   **Dual Playback Modes:** Multi-file (one MP3/FLAC per chapter) and single-file CUE mode (M4B/M4A with embedded chapter offsets) are detected and handled transparently.
+*   **Offline Download Support:** Native Android integration allows users to download entire books (including cover art) for offline listening.
+*   **Local Media Server:** A loopback `NanoHTTPD` server inside the Android shell ensures reliable range-request seeking for downloaded M4B/M4A files.
 *   **Embedded Cover Art Extraction:** On first scan, `ffmpeg` extracts artwork from M4B/M4A files into `cover.jpg` via a non-blocking subprocess.
 *   **Full-Screen Audible-Style Player:** Chapter drawer, seek bar, 30-second rewind/forward, 5-speed playback (0.75× – 2×), and a countdown sleep timer (15/30/45/60 min or end of chapter).
 *   **Per-User Progress Persistence:** Playback position and chapter index auto-save every 5 seconds and on pause; resumes exactly where you left off across sessions.
+*   **Resilient Progress:** Playback position is buffered to `localStorage` during offline sessions and automatically synchronized with the server upon reconnection.
 *   **OS Media Session Integration:** Lock-screen controls (play/pause/seek) and notification artwork via the Web Media Session API and the Capacitor native bridge.
 *   **Screen Wake Lock:** Keeps the display on during playback; automatically re-acquired when returning from background.
 *   **Next-Chapter Preload:** Background `Audio` element warms the HTTP cache for the upcoming chapter when within 60 seconds of the current chapter end.
