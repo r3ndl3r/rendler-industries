@@ -71,8 +71,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.items.length > 0) return;
 
     try {
-        const response = await fetch('/shopping/api/state');
-        const data = await response.json();
+        const data = await apiGet('/shopping/api/state');
         
         if (data && data.success) {
             STATE.items = data.items;

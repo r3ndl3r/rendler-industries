@@ -75,8 +75,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
-        const response = await fetch('/medication/api/state');
-        const data = await response.json();
+        const data = await apiGet('/medication/api/state');
 
         if (data && data.success) {
             STATE.logs = data.logs;

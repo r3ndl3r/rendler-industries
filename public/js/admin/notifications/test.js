@@ -38,15 +38,19 @@ document.addEventListener('DOMContentLoaded', () => {
  * Fetches approved family users from the API and renders the full form.
  * @returns {void}
  */
-function loadState() {
-    fetch('/admin/notifications/test/api/state')
-        .then(r => r.json())
-        .then(data => {
-            if (!data.success) { showToast('Failed to load users', 'error'); return; }
+async function loadState() {
+    try {
+        const data = await apiGet('/admin/notifications/test/api/state');
+        if (data && data.success) {
             STATE.users = data.users || [];
             renderForm();
-        })
-        .catch(() => showToast('Network error loading users', 'error'));
+        } else if (data && data.error) {
+            showToast(data.error, 'error');
+        }
+    } catch (err) {
+        console.error('loadState failed:', err);
+        showToast('Network error loading users', 'error');
+    }
 }
 
 /**

@@ -68,8 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadState() {
     try {
-        const response = await fetch('/admin/settings/api/state');
-        const data = await response.json();
+        const data = await apiGet('/admin/settings/api/state');
         
         if (data && data.success) {
             STATE.settings = data.settings;

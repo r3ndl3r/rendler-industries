@@ -52,10 +52,9 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.all_users.length > 0) return;
 
     try {
-        const response = await fetch('/room/api/state');
-        const data = await response.json();
+        const data = await apiGet('/room/api/state');
 
-        if (data.success) {
+        if (data && data.success) {
             STATE = { ...STATE, ...data };
             renderUI();
         }

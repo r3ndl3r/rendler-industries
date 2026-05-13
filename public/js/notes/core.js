@@ -707,6 +707,21 @@ async function initNotes() {
                 return;
             }
 
+            const codeBlockCopyTrigger = e.target.closest('.note-code-block');
+            if (codeBlockCopyTrigger) {
+                e.stopPropagation();
+                const code = codeBlockCopyTrigger.querySelector('code');
+                const text = code ? code.textContent : '';
+                navigator.clipboard.writeText(text)
+                    .then(() => {
+                        codeBlockCopyTrigger.classList.add('copied');
+                        setTimeout(() => codeBlockCopyTrigger.classList.remove('copied'), 600);
+                        showToast('Copied to clipboard', 'success');
+                    })
+                    .catch(() => showToast('Clipboard access denied', 'error'));
+                return;
+            }
+
             // --- 4. Interactive Todo Checkbox ---
             const checkTrigger = e.target.closest('.note-check-trigger');
             if (checkTrigger) {
@@ -1408,7 +1423,8 @@ window.setupHeartbeat = function setupHeartbeat() {
 
         try {
             const res = await NoteAPI.get(`/notes/api/heartbeat/${STATE.canvas_id}?layer_id=${STATE.activeLayerId}`, { 
-                signal: STATE.heartbeatController.signal 
+                signal: STATE.heartbeatController.signal,
+                silent: true
             });
             
             if (res && res.success) {

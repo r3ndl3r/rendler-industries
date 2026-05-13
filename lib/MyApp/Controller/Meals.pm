@@ -279,7 +279,7 @@ sub api_get_vault_data {
         return $c->render(json => { success => 0, error => "Database error" });
     }
 
-    $c->render(json => { meals => $meals });
+    $c->render(json => { success => 1, meals => $meals });
 }
 
 # Admin API: Direct registration of a meal into the global vault.

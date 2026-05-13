@@ -2,14 +2,14 @@
 
 /**
  * Points Management Controller Logic
- * 
+ *
  * Orchestrates administrative oversight of the global child point ledger.
  * Features:
  * - Real-time state synchronization via REST API.
  * - Pattern B (Dashboard) wallet visualization.
  * - Pattern A (Ledger) transaction auditing.
  * - Secure atomic point mutations.
- * 
+ *
  * Dependencies:
  * - default.js: for apiPost, escapeHtml, and modal closing logic.
  */
@@ -26,17 +26,17 @@ let STATE = {
  */
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
-    
+
     // Background Lifecycle: Synchronize ledger state every 5 seconds
     // Inhibition: Handled within loadState to prevent UI jumps during interaction
     setInterval(() => loadState(), 5000);
-    
+
     setupGlobalModalClosing(['modal-overlay'], [closeTransactionModal]);
 });
 
 /**
  * Synchronizes the local STATE object with the remote database.
- * 
+ *
  * @param {boolean} [force=false] - If true, bypasses inhibition checks.
  * @returns {Promise<void>}
  */
@@ -49,25 +49,18 @@ async function loadState(force = false) {
     }
 
     try {
-        const response = await fetch('/points/api/state', {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
+        const data = await apiGet('/points/api/state');
 
-        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-        
-        const data = await response.json();
-        
-        if (data.error) {
+        if (data && data.success) {
+            STATE = data;
+            renderUI();
+
+            // Use class-based visibility to maintain structural integrity
+            document.getElementById('points-loading').classList.add('hidden');
+            document.getElementById('points-content').classList.remove('hidden');
+        } else if (data && data.error) {
             showToast(data.error, 'error');
-            return;
         }
-
-        STATE = data;
-        renderUI();
-        
-        // Visibility Standard: Purge direct .style manipulation
-        document.getElementById('points-loading').classList.add('hidden');
-        document.getElementById('points-content').classList.remove('hidden');
     } catch (err) {
         console.error('Points: Failed to load state:', err);
         showToast('Ledger synchronization failed', 'error');
@@ -77,7 +70,7 @@ async function loadState(force = false) {
 /**
  * Master UI rendering engine.
  * Dispatches updates to specific layout components.
- * 
+ *
  * @returns {void}
  */
 function renderUI() {
@@ -87,7 +80,7 @@ function renderUI() {
 
 /**
  * Renders Pattern B (Dashboard) child wallet cards.
- * 
+ *
  * @returns {void}
  */
 function renderWallets() {
@@ -102,14 +95,14 @@ function renderWallets() {
     STATE.balances.forEach(child => {
         const div = document.createElement('div');
         div.className = 'wallet-card';
-        
+
         const userIcon = window.getUserIcon(child.username);
         // Security: XSS Prevention via escapeHtml
         const escapedName = escapeHtml(child.username);
         const displayName = userIcon ? `${userIcon} ${escapedName}` : escapedName;
-        
+
         const balanceClass = parseInt(child.current_points) >= 0 ? 'amount-positive' : 'amount-negative';
-        
+
         div.innerHTML = `
             <div class="wallet-username">${displayName}</div>
             <div class="wallet-balance ${balanceClass}">💰 ${parseInt(child.current_points).toLocaleString()}</div>
@@ -130,7 +123,7 @@ function renderWallets() {
 
 /**
  * Renders Pattern A (Ledger) transaction auditing table.
- * 
+ *
  * @returns {void}
  */
 function renderHistory() {
@@ -144,12 +137,12 @@ function renderHistory() {
 
     STATE.history.forEach(tx => {
         const tr = document.createElement('tr');
-        
+
         // Temporal Logic: Utilize SQL formatter from default.js
         const dateStr = window.format_datetime(tx.created_at);
         const amountClass = parseInt(tx.amount) > 0 ? 'amount-positive' : 'amount-negative';
         const formattedAmount = parseInt(tx.amount) > 0 ? `+${tx.amount}` : tx.amount;
-        
+
         const userIcon = window.getUserIcon(tx.username);
         const escapedName = escapeHtml(tx.username);
         const displayName = userIcon ? `${userIcon} ${escapedName}` : escapedName;
@@ -157,7 +150,7 @@ function renderHistory() {
         const adjusterIcon = window.getUserIcon(tx.adjusted_by_name);
         const escapedAdjuster = escapeHtml(tx.adjusted_by_name || 'System');
         const displayAdjuster = adjusterIcon ? `${adjusterIcon} ${escapedAdjuster}` : escapedAdjuster;
-        
+
         tr.innerHTML = `
             <td data-label="User"><strong>${displayName}</strong></td>
             <td data-label="Time">${dateStr}</td>
@@ -171,7 +164,7 @@ function renderHistory() {
 
 /**
  * Prepares and displays the transaction entry modal.
- * 
+ *
  * @param {number} userId - Target child identifier.
  * @param {string} username - Target child name.
  * @param {string} type - 'reward' | 'deduct'
@@ -180,13 +173,13 @@ function renderHistory() {
 function openTransactionModal(userId, username, type) {
     document.getElementById('targetUserId').value = userId;
     document.getElementById('transactionType').value = type;
-    
+
     const title = document.getElementById('modalTitle');
     title.innerHTML = `🪙 ${type.toUpperCase()} for ${escapeHtml(username)}`;
-    
+
     document.getElementById('transactionAmount').value = (type === 'reward' ? '1' : '');
     document.getElementById('transactionReason').value = '';
-    
+
     const btn = document.getElementById('saveTransactionBtn');
     if (type === 'reward') {
         btn.className = 'btn-success';
@@ -195,7 +188,7 @@ function openTransactionModal(userId, username, type) {
         btn.className = 'btn-danger';
         btn.innerHTML = `💾 DEDUCT`;
     }
-    
+
     document.getElementById('transactionModal').classList.add('show');
     document.body.classList.add('modal-open');
     setTimeout(() => document.getElementById('transactionAmount').focus(), 100);
@@ -203,7 +196,7 @@ function openTransactionModal(userId, username, type) {
 
 /**
  * Dismisses the transaction entry modal and cleans up the UI state.
- * 
+ *
  * @returns {void}
  */
 function closeTransactionModal() {
@@ -213,21 +206,21 @@ function closeTransactionModal() {
 
 /**
  * Submits the transaction to the server and refreshes the local state.
- * 
+ *
  * @param {Event} event - DOM Submit Event.
  * @returns {Promise<void>}
  */
 async function submitTransaction(event) {
     event.preventDefault();
-    
+
     const btn = document.getElementById('saveTransactionBtn');
     const originalHtml = btn.innerHTML;
-    
+
     const userId = document.getElementById('targetUserId').value;
     const type = document.getElementById('transactionType').value;
     let amount = parseInt(document.getElementById('transactionAmount').value, 10);
     const reason = document.getElementById('transactionReason').value.trim();
-    
+
     if (isNaN(amount) || amount <= 0) {
         showToast('Please enter a valid positive amount.', 'error');
         return;
@@ -236,7 +229,7 @@ async function submitTransaction(event) {
         showToast('Please provide a reason.', 'error');
         return;
     }
-    
+
     // Normalize direction based on action type
     if (type === 'deduct') amount = -Math.abs(amount);
 

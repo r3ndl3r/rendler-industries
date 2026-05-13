@@ -79,8 +79,7 @@ async function loadState(force = false) {
     }
 
     try {
-        const response = await fetch('/go/api/state');
-        const data = await response.json();
+        const data = await apiGet('/go/api/state');
         
         if (data && data.success) {
             STATE.items = data.items;

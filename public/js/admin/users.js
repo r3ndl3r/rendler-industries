@@ -133,8 +133,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.users.length > 0) return;
 
     try {
-        const response = await fetch('/admin/users/api/state');
-        const data = await response.json();
+        const data = await apiGet('/admin/users/api/state');
 
         if (data && data.success) {
             STATE.users = data.users;

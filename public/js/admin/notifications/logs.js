@@ -93,10 +93,9 @@ async function loadState() {
     const params = new URLSearchParams(filters);
 
     try {
-        const response = await fetch(`/admin/notifications/logs/api/state?${params.toString()}`);
-        const data = await response.json();
+        const data = await apiGet(`/admin/notifications/logs/api/state?${params.toString()}`);
 
-        if (data.success) {
+        if (data && data.success) {
             STATE.logs = data.logs;
             STATE.users = data.users;
             renderLedger();

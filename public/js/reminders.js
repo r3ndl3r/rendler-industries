@@ -75,8 +75,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.reminders.length > 0) return;
 
     try {
-        const response = await fetch('/reminders/api/state');
-        const data = await response.json();
+        const data = await apiGet('/reminders/api/state');
         
         if (data && data.success) {
             STATE.reminders = data.reminders;

@@ -65,8 +65,8 @@ document.addEventListener('DOMContentLoaded', function () {
             tree.innerHTML = '<li><span class="loading-text">Scanning project structure...</span></li>';
 
             try {
-                const response = await fetch('/system/api/file_map');
-                const files = await response.json();
+                const data = await apiGet('/system/api/file_map');
+                const files = data && Array.isArray(data.files) ? data.files : [];
                 
                 // Sort: directories first, then filenames case-insensitively
                 const sorted = files.filter(f => f !== 'MyApp.pm').sort((a, b) => {

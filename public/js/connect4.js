@@ -167,9 +167,8 @@ const Connect4App = {
     pollLobby: async function() {
         if (STATE.isInteracting || STATE.view !== 'lobby') return;
         try {
-            const response = await fetch('/connect4/api/lobby');
-            const data = await response.json();
-            if (data.success) {
+            const data = await apiGet('/connect4/api/lobby');
+            if (data && data.success) {
                 this.renderLobby(data.open_games, data.user_games);
             }
         } catch (e) {
@@ -255,10 +254,10 @@ const Connect4App = {
         if (!force && (STATE.isInteracting || STATE.view !== 'game')) return true;
 
         try {
-            const response = await fetch(`/connect4/api/game/${STATE.activeGameId}`);
-            const data = await response.json();
+            const data = await apiGet(`/connect4/api/game/${STATE.activeGameId}`);
             
-            if (data.error) return false;
+            if (data && data.error) return false;
+            if (!data) return false;
             
             const gameData = data.game;
             const oldBoard = JSON.stringify(STATE.board);

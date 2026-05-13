@@ -173,7 +173,7 @@ sub api_reorder {
 sub register_routes {
     my ($class, $r) = @_;
     $r->{auth}->get('/weather')->to('weather#index');
-    $r->{auth}->post('/weather/api/state')->to('weather#api_state');
+    $r->{auth}->any(['GET', 'POST'], '/weather/api/state')->to('weather#api_state');
     $r->{admin}->post('/weather/api/geocode')->to('weather#api_geocode');
     $r->{admin}->post('/weather/api/add')->to('weather#api_add');
     $r->{admin}->post('/weather/api/update/:id')->to('weather#api_update');
