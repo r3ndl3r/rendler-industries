@@ -8,11 +8,12 @@ Welcome to the Rendler Industries development framework. This guide is designed 
 
 ## 🏛 1. Core Architecture: The 100% SPA Pattern
 
-All modules in this dashboard are designed as **Single Page Applications (SPA)**. To ensure a fast, "app-like" feel, we follow a specific loading pattern:
+All modules in this dashboard are designed as **Single Page Applications (SPA)**. To ensure a fast, "app-like" feel and full functionality during network outages, we follow an **Offline-First** loading pattern:
 
-1.  **Skeleton First**: The server renders a static HTML template (the "Skeleton") with no data loops. It shows a loading pulse while the client prepares.
-2.  **API Handshake**: The JavaScript client makes a single fetch to `/module/api/state`.
-3.  **Hydration**: The JS then renders the UI dynamically from that JSON state.
+1.  **Skeleton First**: The server renders a static HTML template (the "Skeleton") with no data loops.
+2.  **Service Worker Cache**: Core assets (CSS, JS, Icons) and the skeleton itself are cached by `sw.js` for instant, offline cold-starts.
+3.  **API Handshake**: The JavaScript client makes a single fetch to `/module/api/state` using the standardized `apiGet` wrapper.
+4.  **Hydration & Resilience**: The JS renders the UI dynamically. If the network is unreachable, `apiGet` automatically hydrates from the last successful `localStorage` state.
 
 **Tip:** Use a global `STATE` object in your JS to store the data. When a user adds or deletes an item, update this object and re-render the UI locally for instant feedback.
 
@@ -23,11 +24,12 @@ All modules in this dashboard are designed as **Single Page Applications (SPA)**
 To create a new application (e.g., "Tasks"), follow these steps:
 
 1.  **Database**: Define your table in `assets/schema.sql` and run it in MariaDB.
-2.  **Routing**: Register your routes in `lib/MyApp.pm`. Use the `/api/` prefix for data-only endpoints.
-3.  **Controller**: Create `lib/MyApp/Controller/Tasks.pm`. Implement an `index` action for the page and an `api_state` action for the data.
-4.  **Frontend**: 
+2.  **Controller**: Create `lib/MyApp/Controller/Tasks.pm`.
+    - Implement `register_routes` to define endpoints (e.g., `/tasks`, `/tasks/api/state`).
+    - Implement an `index` action for the page and an `api_state` action for the data.
+3.  **Frontend**: 
     - Create `templates/tasks.html.ep` (The static skeleton).
-    - Create `public/js/tasks.js` (The logic to fetch state and render).
+    - Create `public/js/tasks.js` (The logic to fetch state via `apiGet` and render).
     - Create `public/css/tasks.css` (Module-specific styles).
 
 ---
@@ -72,7 +74,8 @@ Choose the reference pattern that matches your data complexity. Copy structure f
 Don't reinvent the wheel. Use these pre-built "Power Tools" for rapid development:
 
 ### Frontend (JavaScript - `public/js/default.js`)
-*   **AJAX**: `apiPost(url, data)` handles JSON POSTs with built-in CSRF and error handling.
+*   **Data (GET)**: `apiGet(url, timeout)` handles state synchronization with automatic 3s timeout and `localStorage` caching for offline resilience.
+*   **Data (POST)**: `apiPost(url, data)` handles JSON POSTs with integrated CSRF protection and automatic 30s timeout.
 *   **Modals**: `showConfirmModal({ title, message, onConfirm })` is the primary tool for terminal actions.
 *   **UI**: `showToast('Saved!', 'success')` for notifications.
 
@@ -132,6 +135,8 @@ The framework handles command parsing, DB user lookup, and reply delivery automa
 
 ## 💡 8. Pro-Tips & Common Pitfalls
 
+*   **API Standards**: Every successful AJAX response MUST include a `success: 1` flag. This is required for the `apiGet` and `apiPost` wrappers to validate the response and trigger success feedback.
+*   **Offline Progress**: State updates (like playback positions or task toggles) performed while offline MUST be buffered to `localStorage` and flushed to the server upon reconnection.
 *   **Visibility Toggling**: Never use `el.style.display = 'block'`. The global `.hidden` class uses `!important`, meaning inline styles will fail to override it. Always use `.classList.remove('hidden')`.
 *   **Header Spacing**: The space between the header and your content is managed by `default.css`. Do not add `margin-top` to your first content element; it will be stripped to maintain a uniform gap.
 *   **Checkbox Logic**: Browser `FormData` ignores unchecked boxes. In your JS, always explicitly set the value (`0` or `1`) before sending to the API.
