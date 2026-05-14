@@ -265,16 +265,28 @@ function _startDownloadPoll() {
         for (const slug of Object.keys(STATE.downloading)) {
             try {
                 const p = JSON.parse(window.OfflineAudiobooks.getDownloadProgress(slug));
-                if (p.total > 0 && p.done < p.total) {
-                    STATE.downloading[slug] = p;
-                    anyActive = true;
+                if (p.total > 0) {
+                    const current = STATE.downloading[slug] || { total: 100, done: 0 };
+                    const nextTotal = Number(p.total) || 100;
+                    const nextDone = Math.min(nextTotal, Math.max(Number(current.done) || 0, Number(p.done) || 0));
+                    STATE.downloading[slug] = { total: nextTotal, done: nextDone };
+
+                    if (nextDone < nextTotal) {
+                        anyActive = true;
+                    } else {
+                        delete STATE.downloading[slug];
+                        loadOfflineState();
+                        if (!STATE.downloaded[slug]) {
+                            const err = window.OfflineAudiobooks.getLastError(slug);
+                            if (err) showToast(`Download failed: ${err}`, 'error');
+                        }
+                    }
                 } else if (p.total === 0) {
-                    // Download finished or failed — check for errors.
-                    const err = window.OfflineAudiobooks.getLastError(slug);
                     delete STATE.downloading[slug];
                     loadOfflineState();
-                    if (err) {
-                        showToast(`Download failed: ${err}`, 'error');
+                    if (!STATE.downloaded[slug]) {
+                        const err = window.OfflineAudiobooks.getLastError(slug);
+                        if (err) showToast(`Download failed: ${err}`, 'error');
                     }
                 } else {
                     delete STATE.downloading[slug];
@@ -301,6 +313,8 @@ function downloadBook(slug) {
     if (!window.OfflineAudiobooks) return;
     const book = STATE.books.find(b => b.slug === slug);
     if (!book) return;
+    if (STATE.downloaded[slug]) return;
+    if (STATE.downloading[slug] && STATE.downloading[slug].done < STATE.downloading[slug].total) return;
 
     // Rough space check — 200 MB minimum safety threshold.
     try {
@@ -314,8 +328,12 @@ function downloadBook(slug) {
     const chapters = Array.isArray(book.chapters) ? book.chapters : [];
     // Deduplicate filenames (CUE-mode books share one file across chapters).
     const uniqueFiles = [...new Set(chapters.map(c => c.file).filter(Boolean))];
+    if (uniqueFiles.length === 0) {
+        showToast('No downloadable audio files found for this book.', 'error');
+        return;
+    }
 
-    STATE.downloading[slug] = { total: uniqueFiles.length, done: 0 };
+    STATE.downloading[slug] = { total: 100, done: 0 };
     const absCoverUrl = book.cover_url ? new URL(book.cover_url, 'https://rendler.org').href : '';
     window.OfflineAudiobooks.downloadBook(slug, JSON.stringify(chapters), absCoverUrl);
 
@@ -352,6 +370,43 @@ function deleteBookOffline(slug) {
             window.OfflineAudiobooks.deleteBook(slug);
             delete STATE.downloaded[slug];
             delete STATE.downloading[slug];
+            renderLibrary();
+        }
+    });
+}
+
+/**
+ * Deletes saved playback progress for a book and removes it from the active
+ * In Progress listing.
+ * @param {string} slug - Book directory slug.
+ * @returns {void}
+ */
+function deleteBookProgress(slug) {
+    const book = STATE.books.find(b => b.slug === slug);
+    if (!book || !book.progress) return;
+
+    showConfirmModal({
+        title:       'Remove progress?',
+        icon:        '🧹',
+        message:     'This will remove your saved position for this book.',
+        danger:      true,
+        confirmText: 'Remove',
+        hideCancel:  true,
+        onConfirm:   async () => {
+            const res = await apiPost('/audiobooks/api/progress/delete', { book_slug: slug });
+            if (!res) return;
+            try {
+                const pending = JSON.parse(localStorage.getItem('ab_pending_progress') || 'null');
+                if (pending && pending.book_slug === slug) localStorage.removeItem('ab_pending_progress');
+            } catch(e) {}
+            book.progress = {};
+            if (PLAYER.slug === slug) {
+                PLAYER.chapter_idx = 0;
+                PLAYER.book = book;
+                if (PLAYER.audio && isFinite(PLAYER.audio.duration)) {
+                    PLAYER.audio.currentTime = 0;
+                }
+            }
             renderLibrary();
         }
     });
@@ -464,10 +519,14 @@ function _renderBookRow(book) {
     const seriesNum = book.series_index > 0
         ? `<span class="book-row-series">Book ${book.series_index}</span>`
         : '';
-    const isNew    = book.date_added > 0 && (Date.now() / 1000 - book.date_added) < 7 * 86400;
+    const isNew    = STATE.filter !== 'in_progress' && book.date_added > 0 && (Date.now() / 1000 - book.date_added) < 48 * 3600;
     const newBadge = isNew ? '<span class="book-new-badge">NEW</span>' : '';
     const offlineBadge = (window.OfflineAudiobooks && STATE.downloaded[book.slug])
         ? '<span class="book-offline-badge">📥</span>' : '';
+    const clearProgressBtn = STATE.filter === 'in_progress'
+        ? `<button type="button" class="book-row-clear-progress" aria-label="Remove progress" title="Remove progress"
+                   onclick="event.stopPropagation(); deleteBookProgress(${slugJs})">🧹</button>`
+        : '';
 
     const progressWrap = (pct > 0 || statusHtml || extraProgress)
         ? `<div class="book-row-progress-wrap">${progressBar}${statusHtml}${extraProgress}</div>`
@@ -495,7 +554,7 @@ function _renderBookRow(book) {
                  onkeydown="if(event.key==='Enter')openPlayer(${slugJs}, ${chapIdx})">
                 <div class="book-row-cover">${thumbHtml}</div>
                 <div class="book-row-info">
-                    <p class="book-row-title">${escapeHtml(book.title || book.slug)}${newBadge}${offlineBadge}</p>
+                    <p class="book-row-title">${escapeHtml(book.title || book.slug)}${clearProgressBtn}${newBadge}${offlineBadge}</p>
                     ${seriesNum}
                     <p class="book-row-author">${escapeHtml(book.author || '')}</p>
                     ${progressWrap}
