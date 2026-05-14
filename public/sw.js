@@ -1,6 +1,6 @@
 // /public/sw.js
 
-const CACHE_NAME = 'rendler-offline-v12';
+const CACHE_NAME = 'rendler-offline-v22';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 
 const CORE_ASSETS = [
@@ -140,13 +140,26 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    const isStatic = url.pathname.startsWith('/css/') || 
-                     url.pathname.startsWith('/js/') || 
+    const isAppCode = url.pathname.startsWith('/css/') || url.pathname.startsWith('/js/');
+    const isStatic = isAppCode ||
                      url.pathname.startsWith('/fonts/') || 
                      event.request.destination === 'image' ||
                      url.pathname.endsWith('.ico');
 
     if (isStatic) {
+        if (isAppCode) {
+            event.respondWith(
+                fetch(event.request, { cache: 'no-cache' }).then(response => {
+                    if (cacheableResponse(response, event.request)) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    }
+                    return response;
+                }).catch(() => caches.match(event.request, { ignoreSearch: true, ignoreVary: true }))
+            );
+            return;
+        }
+
         event.respondWith(
             caches.match(event.request, { ignoreSearch: true, ignoreVary: true }).then(cached => {
                 const fetchPromise = fetch(event.request).then(response => {
