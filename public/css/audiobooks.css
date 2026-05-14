@@ -150,6 +150,29 @@
     transition: background 0.12s;
 }
 
+.book-row-clear-progress {
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: transparent;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    padding: 0;
+    vertical-align: middle;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.book-row-clear-progress:hover,
+.book-row-clear-progress:focus-visible {
+    transform: translateY(-1px);
+    outline: none;
+}
+
 .book-row:active { background: rgba(255,255,255,0.04); }
 
 @media (hover: hover) {
