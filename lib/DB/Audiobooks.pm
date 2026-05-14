@@ -103,6 +103,23 @@ sub DB::upsert_audiobook_progress {
     return 1;
 }
 
+# Deletes a user's saved progress for a book.
+# Parameters:
+#   user_id   : Integer ID of the current user.
+#   book_slug : String identifier for the book directory.
+# Returns:
+#   Number of rows deleted (0 or 1).
+sub DB::delete_audiobook_progress {
+    my ($self, $user_id, $book_slug) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        "DELETE FROM audiobook_progress WHERE user_id = ? AND book_slug = ?"
+    );
+    $sth->execute($user_id, $book_slug);
+    return $sth->rows;
+}
+
 # Returns all progress records for every family member, grouped by book slug.
 # Used by the admin panel to display per-user reading status across the library.
 # Parameters: none
