@@ -916,7 +916,7 @@ window.showUpdatePrompt = function(serverCode, serverName) {
         title:       'Update Available',
         icon:        '🔄',
         message:     `Version <strong>${serverName}</strong> is ready to download.`,
-        subMessage:  'The update will download in the background. A notification will appear when it\'s ready to install.',
+        subMessage:  'The update will download in the background, then Android will open the installer when it is ready.',
         confirmText: 'Download Update',
         hideCancel:  true,
         width:       'small',
@@ -937,7 +937,7 @@ window.showUpdatePrompt = function(serverCode, serverName) {
                     return;
                 }
                 window.AppUpdater.startUpdate();
-                showToast('Downloading update… check your notification bar.', 'success');
+                showToast('Downloading update… installer will open when ready.', 'success');
             } catch (e) {
                 console.error('Update button error:', e);
                 showToast('Error starting update.', 'error');
@@ -974,6 +974,110 @@ function checkApkUpdate() {
 }
 
 document.addEventListener('DOMContentLoaded', checkApkUpdate);
+
+/**
+ * Capacitor Native App Lifecycle Bootstrap
+ *
+ * Runs only inside the Capacitor native shell. Coordinates Android back-button
+ * behavior with global overlays and refreshes the APK update check when the app
+ * returns from native settings or installer screens.
+ *
+ * @returns {void}
+ */
+(function initNativeAppLifecycle() {
+    if (!window.Capacitor || !window.Capacitor.isNativePlatform()) return;
+
+    const { App } = window.Capacitor.Plugins;
+    if (!App) return;
+
+    /**
+     * Closes the currently open global overlay or side navigation.
+     *
+     * @returns {boolean} True when a visible UI layer was dismissed.
+     */
+    function closeActiveOverlay() {
+        const confirmModal = document.getElementById('globalConfirmActionModal');
+        if (confirmModal && confirmModal.classList.contains('show') && !confirmModal.classList.contains('persistent')) {
+            if (typeof window.closeConfirmModal === 'function') window.closeConfirmModal();
+            else confirmModal.classList.remove('show');
+            return true;
+        }
+
+        const restartModal = document.getElementById('restart-modal');
+        if (restartModal && restartModal.classList.contains('show')) {
+            if (typeof window.closeRestartModal === 'function') window.closeRestartModal();
+            else restartModal.classList.remove('show');
+            return true;
+        }
+
+        const visibleModals = Array.from(document.querySelectorAll([
+            '.modal-overlay.show:not(.persistent)',
+            '.modal-overlay.active:not(.persistent)',
+            '.delete-modal-overlay.show:not(.persistent)',
+            '.delete-modal-overlay.active:not(.persistent)',
+            '.weather-detail-overlay.show:not(.persistent)',
+            '.weather-detail-overlay.active:not(.persistent)',
+            '.game-overlay.active:not(.persistent)',
+            '.custom-modal-overlay:not(.hidden):not(.persistent)'
+        ].join(', ')));
+
+        const visibleModal = visibleModals.pop();
+        if (visibleModal) {
+            const closeControl = visibleModal.querySelector('[data-close="modal"], .close-modal, .close-btn, .delete-modal-close, .custom-modal-close');
+            if (closeControl) {
+                closeControl.click();
+                return true;
+            }
+
+            visibleModal.classList.remove('show');
+            visibleModal.classList.remove('active');
+            if (visibleModal.classList.contains('custom-modal-overlay')) visibleModal.classList.add('hidden');
+            if (!document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active, .weather-detail-overlay.show, .weather-detail-overlay.active, .game-overlay.active, .custom-modal-overlay:not(.hidden)')) {
+                document.body.classList.remove('modal-open');
+            }
+            return true;
+        }
+
+        const menu = document.getElementById('sideMenu');
+        if (menu && menu.classList.contains('open')) {
+            const overlay = document.getElementById('menuOverlay');
+            menu.classList.remove('open');
+            if (overlay) overlay.classList.remove('open');
+            document.querySelectorAll('.menu-btn').forEach(btn => { btn.innerHTML = '☰'; });
+            return true;
+        }
+
+        return false;
+    }
+
+    App.addListener('resume', function() {
+        if (window.AppUpdater && typeof checkApkUpdate === 'function') {
+            setTimeout(checkApkUpdate, 500);
+        }
+    });
+
+    window.__nativeBackPressed = function(canGoBack, nativeApp) {
+        if (closeActiveOverlay()) return true;
+        if (typeof window.handleNativeBack === 'function' && window.handleNativeBack()) return true;
+
+        if (canGoBack) {
+            window.history.back();
+            return true;
+        }
+
+        if (nativeApp) {
+            if (typeof nativeApp.minimizeApp === 'function') nativeApp.minimizeApp();
+            else nativeApp.exitApp();
+            return true;
+        }
+
+        return false;
+    };
+
+    App.addListener('backButton', function(event) {
+        window.__nativeBackPressed(event.canGoBack, App);
+    });
+}());
 
 /**
  * FCM Push Notification Bootstrap
