@@ -7,6 +7,16 @@
  */
 window.NoteAPI = {
     /**
+     * Determines whether the browser currently reports an offline transport state.
+     * @returns {boolean} True when network requests should fail quietly.
+     */
+    isOffline() {
+        return typeof navigator !== 'undefined'
+            && typeof navigator.onLine === 'boolean'
+            && !navigator.onLine;
+    },
+
+    /**
      * Determines whether a GET request carries the full notes state payload.
      * @param {string} url - Target endpoint.
      * @returns {boolean} True when the endpoint can hydrate the notes board.
@@ -137,7 +147,7 @@ window.NoteAPI = {
                 if (cached) return cached;
             }
             console.error('NoteAPI Get Error:', err);
-            if (!options.silent) showToast('Network request failed', 'error');
+            if (!options.silent && !this.isOffline()) showToast('Network request failed', 'error');
             return null;
         }
     },
@@ -146,7 +156,7 @@ window.NoteAPI = {
      * Standard POST Wrapper (Supports JSON, Form-encoded, and FormData).
      * @param {string} url - Target endpoint.
      * @param {Object|FormData} params - Payload.
-     * @param {Object} options - { signal: AbortSignal }
+     * @param {Object} options - { signal: AbortSignal, keepalive: boolean, silent: boolean }
      */
     async post(url, params, options = {}) {
         const isFormData = params instanceof FormData;
@@ -204,13 +214,13 @@ window.NoteAPI = {
 
             const data = await response.json();
             if (data.error && !data.success) {
-                showToast(data.error, 'error');
+                if (!options.silent) showToast(data.error, 'error');
             }
             return data;
         } catch (err) {
             if (err.name === 'AbortError') return null;
             console.error('NoteAPI Post Error:', err);
-            showToast('Network request failed', 'error');
+            if (!options.silent && !options.keepalive && !this.isOffline()) showToast('Network request failed', 'error');
             return null;
         }
     },
@@ -240,7 +250,7 @@ window.NoteAPI = {
         } catch (err) {
             if (err.name === 'AbortError') return null;
             console.error('NoteAPI Blob Error:', err);
-            showToast('Media fetch failed', 'error');
+            if (!options.silent && !this.isOffline()) showToast('Media fetch failed', 'error');
             return null;
         }
     },
@@ -429,7 +439,7 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
                 };
 
                 try {
-                    const res = await NoteAPI.post('/notes/api/geometry', latestParams);
+                    const res = await NoteAPI.post('/notes/api/geometry', latestParams, { silent: type === 'silent' });
                     if (res && res.success) {
                         if (res.notes && typeof window.mergeNoteState === 'function') {
                             window.mergeNoteState(res.notes, id);
@@ -488,7 +498,7 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
     };
 
     try {
-        const res = await NoteAPI.post('/notes/api/geometry', params);
+        const res = await NoteAPI.post('/notes/api/geometry', params, { silent: type === 'silent' });
         if (res && res.success) {
             if (res.notes && typeof window.mergeNoteState === 'function') {
                 window.mergeNoteState(res.notes);
