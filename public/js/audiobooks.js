@@ -38,6 +38,7 @@ const PLAYER = {
     speed:           1.0,
     seeking:         false,   // true while user drags seek bar
     loaded_url:      null,    // audio.src that is currently loaded
+    paused_at:       null,    // timestamp used for smart rewind on long pauses
     detail_slug:     null,    // slug currently shown in detail panel
     player_open:     false,
     detail_open:     false,
@@ -182,6 +183,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     _syncInterval = setInterval(() => loadState(false), 60_000);
 });
+
+/**
+ * Handles native Android back navigation for audiobook-specific panels.
+ * @returns {boolean} True when the back action was consumed locally.
+ */
+window.handleNativeBack = function() {
+    const drawer = document.getElementById('chapterDrawer');
+    if (drawer && drawer.classList.contains('show')) {
+        drawer.classList.remove('show');
+        return true;
+    }
+
+    const sleepMenu = document.getElementById('sleepMenu');
+    if (sleepMenu && !sleepMenu.classList.contains('hidden')) {
+        sleepMenu.classList.add('hidden');
+        return true;
+    }
+
+    const playerPanel = document.getElementById('playerPanel');
+    if (playerPanel && playerPanel.classList.contains('show')) {
+        closePlayer();
+        return true;
+    }
+
+    const detailPanel = document.getElementById('detailPanel');
+    if (detailPanel && detailPanel.classList.contains('show')) {
+        closeDetail();
+        return true;
+    }
+
+    return false;
+};
 
 // ─── State loading ────────────────────────────────────────────────────────────
 
@@ -1405,6 +1438,10 @@ function _onPlaying() {
  */
 function _onPaused() {
     document.getElementById('playPauseBtn').textContent = '▶';
+    if (PLAYER.player_open && PLAYER.loaded_url) {
+        PLAYER.paused_at = Date.now();
+        _persistPauseState();
+    }
     
     const Cap = window.Capacitor;
     const msPlugin = Cap && Cap.Plugins && Cap.Plugins.MediaSession ? Cap.Plugins.MediaSession : null;
@@ -1414,6 +1451,51 @@ function _onPaused() {
         navigator.mediaSession.playbackState = 'paused';
     }
     _releaseWakeLock();
+}
+
+/**
+ * Stores pause metadata so smart rewind can survive app backgrounding/reload.
+ * @returns {void}
+ */
+function _persistPauseState() {
+    if (!PLAYER.slug || !PLAYER.loaded_url) return;
+    localStorage.setItem('ab_paused_at', String(PLAYER.paused_at || Date.now()));
+    localStorage.setItem('ab_pause_slug', PLAYER.slug);
+    localStorage.setItem('ab_pause_chapter', String(PLAYER.chapter_idx));
+}
+
+/**
+ * Clears locally persisted smart rewind metadata.
+ * @returns {void}
+ */
+function _clearPauseState() {
+    localStorage.removeItem('ab_paused_at');
+    localStorage.removeItem('ab_pause_slug');
+    localStorage.removeItem('ab_pause_chapter');
+}
+
+/**
+ * Rewinds slightly when resuming after a long pause.
+ * @returns {void}
+ */
+function _applySmartRewindIfNeeded() {
+    const audio = PLAYER.audio;
+    if (!audio || !PLAYER.loaded_url) return;
+
+    const pausedAt = parseInt(localStorage.getItem('ab_paused_at') || PLAYER.paused_at || '0', 10);
+    const pauseSlug = localStorage.getItem('ab_pause_slug');
+    const pauseChapter = parseInt(localStorage.getItem('ab_pause_chapter') || '-1', 10);
+
+    _clearPauseState();
+    PLAYER.paused_at = null;
+
+    if (!pausedAt) return;
+    if (pauseSlug && pauseSlug !== PLAYER.slug) return;
+    if (pauseChapter >= 0 && pauseChapter !== PLAYER.chapter_idx) return;
+
+    const pausedMs = Date.now() - pausedAt;
+    if (pausedMs < 5 * 60 * 1000) return;
+    audio.currentTime = Math.max(0, audio.currentTime - 10);
 }
 
 /**
@@ -1502,6 +1584,7 @@ function togglePlay() {
     if (!audio) return;
     if (audio.paused) {
         _updateMediaSessionMetadata(); // Set metadata before playing for OS promotion
+        _applySmartRewindIfNeeded();
         audio.play().catch(err => showToast('Playback failed: ' + err.message, 'error'));
     } else {
         audio.pause();
