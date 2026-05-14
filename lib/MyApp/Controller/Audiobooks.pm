@@ -842,6 +842,33 @@ sub api_save_progress {
     $c->render(json => { success => 1 });
 }
 
+# Deletes playback progress for the current user.
+# Route: POST /audiobooks/api/progress/delete
+# Parameters: book_slug
+# Returns: JSON { success: 1 }
+sub api_delete_progress {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_family;
+
+    my $user_id   = $c->current_user_id;
+    my $book_slug = trim($c->param('book_slug') // '');
+
+    unless (length($book_slug) && _safe_component($book_slug)) {
+        return $c->render(json => { success => 0, error => 'Invalid book' }, status => 400);
+    }
+
+    eval {
+        $c->db->delete_audiobook_progress($user_id, $book_slug);
+    };
+    if ($@) {
+        $c->app->log->error("Failed to delete progress for user $user_id, book $book_slug: $@");
+        return $c->render(json => { success => 0, error => 'Database error' }, status => 500);
+    }
+
+    $c->render(json => { success => 1 });
+}
+
 # Saves edited book metadata to the DB.
 # Route: POST /audiobooks/api/meta/:slug
 # Restricted to admin users.
@@ -1054,6 +1081,7 @@ sub register_routes {
     $r->{family}->get('/audiobooks/api/stream/#slug/#filename')->to('Audiobooks#api_stream', format => 0);
     $r->{r}->get('/audiobooks/api/cover/#slug')->to('Audiobooks#api_cover');
     $r->{family}->post('/audiobooks/api/progress')->to('Audiobooks#api_save_progress');
+    $r->{family}->post('/audiobooks/api/progress/delete')->to('Audiobooks#api_delete_progress');
     $r->{admin}->post('/audiobooks/api/meta/#slug')->to('Audiobooks#api_save_meta');
     $r->{admin}->get('/audiobooks/admin')->to('Audiobooks#admin_index');
     $r->{admin}->get('/audiobooks/admin/api/state')->to('Audiobooks#api_admin_state');
