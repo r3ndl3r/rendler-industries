@@ -1476,7 +1476,7 @@ async function processSyncQueue() {
     try {
         for (const item of items) {
             // Migration: NoteAPI handles CSRF and error management internally
-            const res = await NoteAPI.post('/notes/api/viewport', item.params, { keepalive: true });
+            const res = await NoteAPI.post('/notes/api/viewport', item.params, { keepalive: true, silent: true });
             if (!res) failedItems.push(item);
         }
         
@@ -1589,7 +1589,7 @@ async function saveViewportImmediate() {
     });
 
     // Persistence Layer: Centralized transport handles CSRF and lifecycle signals
-    const res = await NoteAPI.post('/notes/api/viewport', params, { keepalive: true });
+    const res = await NoteAPI.post('/notes/api/viewport', params, { keepalive: true, silent: true });
     if (!res) {
         // Failure Recovery: If the direct commit fails, queue it for background retry
         STATE.syncQueue.push({ params: params.toString(), token: csrfToken, ts: Date.now() });
@@ -3508,4 +3508,3 @@ window.initRibbon = function() {
         if (!ribbon.contains(e.target)) closeAllDropdowns();
     }, true);
 };
-
