@@ -23,6 +23,139 @@ CREATE TABLE `app_secrets` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `key_name` (`key_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `audiobook_progress` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int(10) unsigned NOT NULL,
+  `book_slug` varchar(255) NOT NULL,
+  `chapter_idx` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `position_sec` float NOT NULL DEFAULT 0,
+  `completed` tinyint(1) NOT NULL DEFAULT 0,
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user_book` (`user_id`,`book_slug`),
+  KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE `audiobooks` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `slug` varchar(255) NOT NULL,
+  `title` varchar(500) NOT NULL DEFAULT '',
+  `author` varchar(255) NOT NULL DEFAULT '',
+  `narrator` varchar(255) NOT NULL DEFAULT '',
+  `description` text NOT NULL DEFAULT '',
+  `series` varchar(255) NOT NULL DEFAULT '',
+  `series_index` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `cover` varchar(100) NOT NULL DEFAULT '',
+  `chapters` longtext NOT NULL DEFAULT '[]',
+  `date_added` int(10) unsigned NOT NULL DEFAULT 0,
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE `automator_audit` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) DEFAULT NULL,
+  `action` varchar(50) NOT NULL,
+  `target_type` varchar(50) NOT NULL,
+  `target_id` int(11) DEFAULT NULL,
+  `details` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE `automator_history` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `playbook_id` int(11) DEFAULT NULL,
+  `status` enum('running','success','failed','aborted','timed_out') DEFAULT 'running',
+  `mode` enum('run','check') DEFAULT 'run',
+  `pgid` int(11) DEFAULT NULL,
+  `output` longtext DEFAULT NULL,
+  `json_result` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`json_result`)),
+  `applied_vars` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`applied_vars`)),
+  `triggered_by` int(11) DEFAULT NULL,
+  `started_at` timestamp NULL DEFAULT current_timestamp(),
+  `finished_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `status` (`status`),
+  KEY `playbook_id` (`playbook_id`),
+  KEY `started_at` (`started_at`),
+  CONSTRAINT `automator_history_ibfk_1` FOREIGN KEY (`playbook_id`) REFERENCES `automator_playbooks` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE `automator_inventories` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `category` varchar(100) DEFAULT 'General',
+  `hosts` text NOT NULL,
+  `ssh_key_path` varchar(255) DEFAULT NULL,
+  `user_id` int(11) NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE `automator_notifications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `playbook_id` int(11) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `notify_on` enum('always','failure','success') DEFAULT 'failure',
+  `channel` enum('discord','email','fcm','pushover','gotify') DEFAULT 'discord',
+  `endpoint` text DEFAULT NULL,
+  `retry_count` int(11) DEFAULT 0,
+  `last_error` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `playbook_id` (`playbook_id`),
+  CONSTRAINT `automator_notifications_ibfk_1` FOREIGN KEY (`playbook_id`) REFERENCES `automator_playbooks` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE `automator_playbooks` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `category` varchar(100) DEFAULT 'General',
+  `description` text DEFAULT NULL,
+  `content` longtext NOT NULL,
+  `inventory_id` int(11) DEFAULT NULL,
+  `dynamic_vars` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`dynamic_vars`)),
+  `tags` varchar(255) DEFAULT NULL,
+  `skip_tags` varchar(255) DEFAULT NULL,
+  `limit_hosts` varchar(255) DEFAULT NULL,
+  `success_chain_id` int(11) DEFAULT NULL,
+  `vault_password_secret_id` int(11) DEFAULT NULL,
+  `log_retention_days` int(11) DEFAULT 30,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `user_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `deleted_at` (`deleted_at`),
+  KEY `inventory_id` (`inventory_id`),
+  KEY `success_chain_id` (`success_chain_id`),
+  CONSTRAINT `automator_playbooks_ibfk_1` FOREIGN KEY (`inventory_id`) REFERENCES `automator_inventories` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `automator_playbooks_ibfk_2` FOREIGN KEY (`success_chain_id`) REFERENCES `automator_playbooks` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE `automator_schedules` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `playbook_id` int(11) DEFAULT NULL,
+  `cron_expression` varchar(100) DEFAULT NULL,
+  `schedule_type` enum('daily','hourly') DEFAULT NULL,
+  `interval_hours` int(11) DEFAULT NULL,
+  `daily_time` time DEFAULT NULL,
+  `timezone` varchar(64) DEFAULT 'UTC',
+  `next_run` timestamp NULL DEFAULT NULL,
+  `last_run_at` timestamp NULL DEFAULT NULL,
+  `last_history_id` int(11) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_playbook` (`playbook_id`),
+  CONSTRAINT `automator_schedules_ibfk_1` FOREIGN KEY (`playbook_id`) REFERENCES `automator_playbooks` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE `automator_secrets` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `category` varchar(100) DEFAULT 'General',
+  `value_encrypted` blob NOT NULL,
+  `iv` varbinary(12) NOT NULL,
+  `tag` varbinary(16) NOT NULL,
+  `salt` varbinary(32) NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `user_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 CREATE TABLE `birthdays` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
@@ -360,6 +493,19 @@ CREATE TABLE `note_blobs` (
   KEY `idx_blobs_note` (`note_id`,`id`),
   CONSTRAINT `fk_blobs_note` FOREIGN KEY (`note_id`) REFERENCES `notes` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `note_links` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `source_note_id` int(11) NOT NULL,
+  `target_note_id` int(11) NOT NULL,
+  `link_text` varchar(255) NOT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_link` (`source_note_id`,`target_note_id`),
+  KEY `idx_target` (`target_note_id`),
+  KEY `idx_source` (`source_note_id`),
+  CONSTRAINT `note_links_ibfk_1` FOREIGN KEY (`source_note_id`) REFERENCES `notes` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `note_links_ibfk_2` FOREIGN KEY (`target_note_id`) REFERENCES `notes` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 CREATE TABLE `notes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
