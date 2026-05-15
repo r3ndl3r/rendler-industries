@@ -74,7 +74,10 @@ sub restart {
     }
 }
 
-# Automatically reminds users of chores pending for > 60 minutes.
+# Internal helper to handle automated chore reminders for pending tasks.
+# Parameters:
+#   - now : DateTime object representing the current execution minute.
+# Returns: None
 sub run_chore_reminders {
     my ($c, $now) = @_;
     
@@ -108,7 +111,46 @@ sub run_chore_reminders {
     }
 }
 
+# Internal helper to handle automated playbook scheduling.
+# Parameters:
+#   - now : DateTime object representing the current execution minute.
+# Returns:
+#   Stats HashRef { started }
+sub run_automator_maintenance {
+    my ($c, $now) = @_;
+    return if $c->db->automator_active_run_count >= int($c->app->config->{automator}{max_concurrent_runs} || 10);
+
+    require MyApp::Controller::Automator;
+    my $due = $c->db->get_due_automator_schedules(10);
+    my $started = 0;
+    for my $schedule (@$due) {
+        last if $c->db->automator_active_run_count >= int($c->app->config->{automator}{max_concurrent_runs} || 10);
+        my $payload = eval { MyApp::Controller::Automator::_load_run_payload($c->db, $schedule->{playbook_id}) };
+        if ($@) {
+            $c->app->log->error("Automator schedule $schedule->{id} could not load playbook: $@");
+            next;
+        }
+        my $history_id = $c->db->create_automator_history($schedule->{playbook_id}, 'run', {}, undef);
+        $c->db->mark_automator_schedule_dispatched($schedule, $history_id);
+        MyApp::Controller::Automator::_spawn_run($c->app, $history_id, 'run', {}, $payload);
+        $started++;
+    }
+    return { started => $started };
+}
+
+# Internal helper for Automator health: prunes stale 'running' records if processes are gone.
+# Parameters: None
+# Returns: None
+sub run_automator_heartbeat {
+    my ($c) = @_;
+    $c->db->automator_heartbeat();
+}
+
 # Internal helper to handle meal planner automation (Lock-in at 2PM, Reminders at 8AM/12PM).
+# Parameters:
+#   - now : DateTime object representing the current execution minute.
+# Returns:
+#   Stats HashRef { checked_time, actions }
 sub run_meals_maintenance {
     my ($c, $now) = @_;
     my $hour = $now->hour;
@@ -278,6 +320,10 @@ sub run_weather_maintenance {
 }
 
 # Internal helper to handle daily room cleaning reminders.
+# Parameters:
+#   - now : DateTime object representing the current execution minute.
+# Returns:
+#   Stats HashRef { checked_time, reminders_sent }
 sub run_room_reminders {
     my ($c, $now) = @_;
     
@@ -705,10 +751,11 @@ sub run_emoji_maintenance_p {
     return $promise;
 }
 
-# Maintenance: Daily normalization of whiteboard z-indices.
+# Internal helper for daily normalization of whiteboard z-indices.
 # Only performs work at 3:00 AM to avoid disrupting active users.
 # Parameters:
-#   $now : DateTime object (passed by the maintenance loop)
+#   - now : DateTime object representing the current execution minute.
+# Returns: None
 sub run_notes_znorm_maintenance {
     my ($self, $now) = @_;
     return unless $now && $now->hour == 3 && $now->minute == 0;
@@ -718,16 +765,18 @@ sub run_notes_znorm_maintenance {
     }
 }
 
-# Collaborative Locking Recovery: Prunes abandoned note locks.
+# Internal helper for collaborative locking recovery: prunes abandoned note locks.
+# Parameters: None
+# Returns: None
 sub run_notes_lock_maintenance {
     my ($self) = @_;
     $self->db->clear_expired_note_locks(5); # 5 minute threshold
 }
 
-# Processes all pending items in the notifications_queue.
-# Each item is retried up to 3 times. On discord exhaustion, an email fallback
-# is enqueued if the user has an email address. If all channels are exhausted,
-# a best-effort direct email alert is sent to all admin users.
+# Internal helper to process all pending items in the notifications queue.
+# Each item is retried up to 3 times with automated channel fallbacks.
+# Parameters: None
+# Returns: None
 sub run_notification_queue {
     my ($c) = @_;
 
@@ -943,10 +992,10 @@ sub _alert_admins_delivery_failed {
     }
 }
 
-# Dispatches the daily brief notification to all family users at 08:00.
+# Internal helper to dispatch the daily brief notification to family users at 08:00.
 # Parameters:
-#   $now : DateTime object (localised to app timezone)
-# Returns: void
+#   - now : DateTime object representing the current execution minute.
+# Returns: None
 sub run_brief_notification {
     my ($c, $now) = @_;
     return unless $now->hour == 8 && $now->minute == 0;
@@ -963,8 +1012,9 @@ sub run_brief_notification {
     }
 }
 
-# Removes expired UNO sessions: finished games (>1h), abandoned lobbies (>2h),
-# and stale active games (>4h).
+# Internal helper to remove expired UNO sessions: finished games (>1h), abandoned lobbies (>2h), and stale active games (>4h).
+# Parameters: None
+# Returns: None
 sub cleanup_stale_uno_sessions {
     my ($self) = @_;
     $self->db->cleanup_stale_uno_sessions();
