@@ -132,6 +132,65 @@ sub register {
         );
     });
 
+    # Specialized: Fuel Log Analysis
+    # Parameters: Two unordered image blobs and their MIME types.
+    # Returns: Promise (JSON payload with extracted fuel log fields and image roles).
+    $app->helper(gemini_analyze_fuel => sub {
+        my ($c, $image1, $mime1, $image2, $mime2) = @_;
+
+        my $today = $c->now->strftime('%Y-%m-%d');
+        my $system = "You extract vehicle fuel log data from two images. Current system date: $today. "
+                   . "The images may be in any order. First classify each image as odometer, petrol_pump, fuel_receipt, or unknown. "
+                   . "Extract odometer, litres, price_per_litre, total_amount, station_name, and date. "
+                   . "Return only valid JSON. Use null for uncertain values and do not guess. "
+                   . "Set needs_review true when required numeric values are missing, confidence is low, images are duplicated, or litres multiplied by price_per_litre does not approximately match total_amount.";
+
+        my $prompt = q{
+Return only valid JSON using this exact shape:
+{
+  "odometer": null,
+  "litres": null,
+  "price_per_litre": null,
+  "total_amount": null,
+  "station_name": null,
+  "date": null,
+  "image_roles": {
+    "image_1": "unknown",
+    "image_2": "unknown"
+  },
+  "confidence": {
+    "odometer": 0,
+    "litres": 0,
+    "price_per_litre": 0,
+    "total_amount": 0,
+    "station_name": 0,
+    "date": 0
+  },
+  "needs_review": true,
+  "review_reasons": []
+}
+Image 1 follows, then image 2.
+};
+
+        my $contents = [{
+            role => 'user',
+            parts => [
+                { text => $prompt },
+                { inlineData => { mimeType => $mime1, data => b64_encode($image1, '') } },
+                { text => "Image 2 follows." },
+                { inlineData => { mimeType => $mime2, data => b64_encode($image2, '') } }
+            ]
+        }];
+
+        return $c->gemini_prompt(
+            contents        => $contents,
+            system          => $system,
+            response_format => 'application/json',
+            temp            => 0.1,
+            timeout         => 60
+        );
+    });
+
     # Specialized: Single Emoji Generation (Sync-friendly wrapper)
     # Note: Returns a promise, but optimized for background speed
     $app->helper(gemini_generate_emoji => sub {
