@@ -150,25 +150,12 @@ The system features a redundant, priority-weighted alert engine for real-time an
 </p>
 
 ### 📓 Collaborative Whiteboard & Sticky Notes (`/notes`)
-*   **Infinite Interactive Canvas:** High-fidelity orchestration with 60 FPS panning (Mouse) and 10% step zooming (CTRL + Mouse).
-*   **Collaborative Session Locking:** 
-    *   **Atomic Exclusivity:** Prevents edit collisions by acquiring session-based locks during inline editing.
-    *   **Visual Attribution:** Real-time grayscale filtering and user-attribution overlays for externally locked notes.
-    *   **Stale-Lock Recovery:** Automated 5-minute background pruning and administrative overrides for stranded locks.
-*   **Multi-Layer Perspective:** 
-    *   **Isolation Layers:** Each board contains 99 independent "Levels" for logical content segregation.
-    *   **Deep Cloning:** Replicate notes across layers or move entire content blocks between levels.
-*   **Navigation & Radar:** 
-    *   **Radar Minimap:** Scaling overview for rapid spatial orientation across the 5,000px canvas.
-    *   **Jump Logic:** Global search across all accessible canvases with automatic board and layer switching.
-*   **Integrated Markdown & Media:** 
-    *   **Task Lists:** Interactive `- [ ]` and `- [x]` toggles with immediate state persistence.
-    *   **Rich Media:** Direct image pasting and multi-attachment stacks (Images and Files).
-    *   **Internal Linking:** Web-of-thought architecture using `[note:ID]` tags for cross-referencing.
-    *   **Wikilinks & Backlinks:** `[[Note Title]]` syntax auto-links to any accessible note; a live backlinks sidebar shows all notes referencing the current one; cascade rename keeps all links consistent when a title changes.
-    *   **Callouts, Tables & Embeds:** Obsidian-style `> [!type]` callouts, Markdown tables with column alignment, `[embed:ID]` cross-canvas note embedding (depth-limited, async-prefetched), and `[date:YYYY-MM-DD]` display tags.
-    *   **Universal Autocomplete:** Inline dropdown triggered by `[[`, `[embed:`, `[tag:`, `[date:`, `[color:` and more — includes a calendar date-picker for date tags and fuzzy title matching for wikilinks.
-*   **Board Security:** Fine-grained ACL (Shared/Private) and optional **Session Passwords** for sensitive boards.
+*   **Infinite Canvas:** Create boards of sticky notes that can be panned, zoomed, searched, and organized visually.
+*   **Shared Editing:** Prevents family members from overwriting each other while still showing who is working on what.
+*   **Board Levels:** Split large boards into separate layers for planning, projects, lists, or private sections.
+*   **Fast Navigation:** Use the minimap and jump search to move quickly across large boards.
+*   **Rich Notes:** Supports checklists, images, file attachments, links between notes, tables, callouts, date tags, and embedded notes.
+*   **Access Control:** Boards can be shared, private, or protected with a password.
 
 <p align="center">
   <img src="public/images/screenshots/sticky_notes_canvas.png" height="130" />
@@ -192,29 +179,37 @@ The system features a redundant, priority-weighted alert engine for real-time an
 </p>
 
 ### 🧾 Receipt Archiving & OCR Pipeline (`/receipts`)
-*   **Automated Parsing:** Uses an advanced **ImageMagick + Tesseract OCR** pipeline.
-*   **Image Pre-processing:** Automated grayscale conversion, sharpening, and 40% threshold deskewing.
-*   **Heuristic Extraction:** Custom Perl Regex engine parses store names, dates, and currency totals from raw text.
+*   **Receipt Capture:** Upload receipt photos to keep household spending records in one searchable place.
+*   **Automatic Details:** The app helps read store names, dates, totals, and item details where possible.
+*   **Review & Correction:** Edit scanned details at any time so the ledger stays accurate.
 
 <p align="center">
   <img src="public/images/screenshots/receipt_ledger.png" height="130" />
   <img src="public/images/screenshots/receipt_detail.png" height="130" />
 </p>
 
+### ⛽ Fuel Usage Logger (`/fuel`)
+*   **Quick Fuel Stop Logging:** Upload a photo of the odometer and a photo of the pump or receipt; the app works out which photo is which.
+*   **Automatic Data Entry:** Reads the odometer, litres, price per litre, total cost, date, and station name where possible.
+*   **Review Before Saving:** If a photo is blurry or something looks uncertain, the log opens for quick correction instead of saving bad information.
+*   **Multiple Vehicles:** Track fuel use separately for each car in the household.
+*   **Running Costs:** See weekly, monthly, and yearly fuel spend, monthly litres, average fuel price, L/100km, and cost per kilometre once enough fill-ups have been recorded.
+*   **Photo History:** Keeps the original uploaded photos with each fuel log so entries can be checked later.
+
 ### 🤬 The Swear Jar Ledger (`/swear`)
-*   **Polymorphic Ledger:** Unified tracking of fines, payments, and expenditures with real-time synchronization.
-*   **Shame Leaderboard:** Real-time net-debt calculation (Fines vs. Payments) to ensure family accountability.
-*   **Smart Reconciliation:** Automated debt settlement logic (FIFO) upon jar deposits.
-*   **AI Context Integration:** Financial data is fed into the Gemini AI snapshot for behavioral analysis.
+*   **Family Accountability:** Tracks swear jar fines, payments, and spending in one shared ledger.
+*   **Live Balances:** Shows who owes what after payments and jar expenses are recorded.
+*   **Leaderboard View:** Keeps totals visible so everyone understands their current standing.
+*   **Easy Updates:** Add fines, payments, and purchases as they happen.
 
 <p align="center">
   *Screenshots coming soon...*
 </p>
 
 ### 📁 Secure File Vault (`/files`)
-*   **BLOB Storage:** Secure database-backed storage for arbitrary binaries with download tracking.
-*   **Permission Control:** Granular access management (Admin-only vs. Specific User whitelists).
-*   **Lightweight Metadata:** Fast browsing via optimized queries that exclude heavy binary content during list operations.
+*   **Private File Storage:** Upload and organize important household files in a secure vault.
+*   **Permission Control:** Choose whether files are admin-only or shared with specific users.
+*   **Download Tracking:** See when files have been accessed or downloaded.
 
 <p align="center">
   <img src="public/images/screenshots/file_manager.png" height="130" />
@@ -230,35 +225,34 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Deck Logic:** Automatic reshuffling of the discard pile when the draw pile is exhausted.
 
 ### ♟️ Digital Chess (`/chess/lobby`)
-*   **State Persistence:** Uses **FEN (Forsyth-Edwards Notation)** strings to maintain board states across sessions.
-*   **Advanced Features:** Move polling, standard algebraic notation tracking, and draw negotiations.
+*   **Saved Games:** Continue games across sessions without losing the board state.
+*   **Advanced Features:** Move history, live turn updates, and draw negotiations.
 
 ### 🔴 Connect 4 (`/connect4/lobby`)
-*   **Gravity Engine:** Custom server-side logic handles chip placement and gravity.
-*   **Win Detection:** Automated scanning of Horizontal, Vertical, and Diagonal vectors for 4-in-a-row.
+*   **Classic Gameplay:** Drop chips into the board and race to connect four.
+*   **Automatic Win Detection:** The game detects horizontal, vertical, and diagonal wins.
 
 ### 🧊 Rubik's Cube Algorithm Library (`/rubiks`)
-*   **2D WCA Diagram:** Interactive SVG canvas renders cube state from a move sequence in real time.
+*   **Interactive Cube Diagram:** Visualize cube states from move sequences in real time.
 *   **Family Algorithm Library:** Shared collection of algorithms (OLL, PLL, F2L, etc.) with per-entry ownership; anyone can add, only the creator can edit or delete.
-*   **SVG Export:** Download the current cube diagram as a standalone `.svg` file.
+*   **Diagram Export:** Download the current cube diagram for study or sharing.
 
 ### 🎭 Imposter & 🦘 Citizenship Test (`/imposter`, `/quiz`)
 *   **Imposter:** Party game with customizable word-lists and player reveal mechanics.
 *   **Citizenship Quiz:** Dual-mode study suite (Practice vs. 20-question Exam) with randomized question banks.
 
 ### 🎧 Audiobooks (`/audiobooks`)
-*   **Filesystem-Driven Library:** Drop a folder into `assets/audiobooks/` and the app discovers it automatically — no database registration required.
-*   **Dual Playback Modes:** Multi-file (one MP3/FLAC per chapter) and single-file CUE mode (M4B/M4A with embedded chapter offsets) are detected and handled transparently.
-*   **Offline Download Support:** Native Android integration allows users to download entire books (including cover art) for offline listening.
-*   **Local Media Server:** A loopback `NanoHTTPD` server inside the Android shell ensures reliable range-request seeking for downloaded M4B/M4A files.
-*   **Embedded Cover Art Extraction:** On first scan, `ffmpeg` extracts artwork from M4B/M4A files into `cover.jpg` via a non-blocking subprocess.
+*   **Automatic Library Discovery:** Add audiobook folders and the app makes them available in the library.
+*   **Flexible Playback:** Supports books split by chapter as well as single-file audiobooks with chapters.
+*   **Offline Download Support:** Download entire books, including cover art, for offline listening in the Android app.
+*   **Cover Art:** Displays embedded or extracted artwork where available.
 *   **Full-Screen Audible-Style Player:** Chapter drawer, seek bar, 30-second rewind/forward, 5-speed playback (0.75× – 2×), and a countdown sleep timer (15/30/45/60 min or end of chapter).
-*   **Per-User Progress Persistence:** Playback position and chapter index auto-save every 5 seconds and on pause; resumes exactly where you left off across sessions.
-*   **Resilient Progress:** Playback position is buffered to `localStorage` during offline sessions and automatically synchronized with the server upon reconnection.
-*   **OS Media Session Integration:** Lock-screen controls (play/pause/seek) and notification artwork via the Web Media Session API and the Capacitor native bridge.
-*   **Screen Wake Lock:** Keeps the display on during playback; automatically re-acquired when returning from background.
-*   **Next-Chapter Preload:** Background `Audio` element warms the HTTP cache for the upcoming chapter when within 60 seconds of the current chapter end.
-*   **Admin Metadata Editor:** Inline form for editing title, author, narrator, and description; changes write back to `meta.json`.
+*   **Per-User Progress:** Each listener resumes exactly where they left off, even across devices.
+*   **Offline-Friendly Progress:** Listening progress is saved during offline sessions and synced again when connection returns.
+*   **Lock-Screen Controls:** Play, pause, and seek from supported phone controls.
+*   **Screen Wake Lock:** Keeps the display awake while listening.
+*   **Smooth Chapter Changes:** Prepares the next chapter near the end of the current one.
+*   **Admin Metadata Editor:** Edit title, author, narrator, and description from the admin screen.
 
 ### 🏝 Specialized & Utility
 
@@ -284,7 +278,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 </p>
 
 ### 🎂 Birthday Tracker (`/birthdays`)
-*   **Cyclical Sort:** Specialized SQL engine that ranks birthdays by nearest upcoming date, regardless of the current year.
+*   **Upcoming Birthday Order:** Always shows the next birthdays first, even when the list crosses into a new year.
 
 ### 🔗 Go Links & 📋 Clipboard (`/go`, `/clipboard`)
 *   **Go Links:** Internal URL shortener with visit analytics.
