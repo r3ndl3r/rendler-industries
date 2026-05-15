@@ -1,6 +1,6 @@
 // /public/sw.js
 
-const CACHE_NAME = 'rendler-offline-v25';
+const CACHE_NAME = 'rendler-offline-v27';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 
 const CORE_ASSETS = [
@@ -8,11 +8,13 @@ const CORE_ASSETS = [
     '/quick',
     '/brief',
     '/audiobooks',
+    '/fuel',
     '/css/default.css',
     '/css/audiobooks.css',
     '/css/brief.css',
     '/css/calendar.css',
     '/css/emoji-picker.css',
+    '/css/fuel.css',
     '/css/menubar.css',
     '/css/quick.css',
     '/css/index.css',
@@ -20,6 +22,7 @@ const CORE_ASSETS = [
     '/js/toast.js',
     '/js/default.js',
     '/js/emoji-picker.js',
+    '/js/fuel.js',
     '/js/menubar.js',
     '/js/audiobooks.js',
     '/js/brief.js',
