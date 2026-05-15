@@ -37,12 +37,19 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 ## 👑 Administrative & Orchestration
 
-### 👥 User & Role Control (`/users`)
+### 🧑‍🔧 Ansible Automator (`/admin/automator`)
+*   **Infrastructure Orchestration:** Native integration with **Ansible** for home lab automation and server maintenance.
+*   **Encrypted Vault:** Secure storage for sensitive deployment secrets and SSH keys, protected by a master module password and **AES-GCM** encryption.
+*   **Real-time Console:** Live execution monitoring via WebSockets, featuring process-group abort support and persistent log history.
+*   **Success Chaining:** Complex workflow orchestration allowing playbooks to trigger sequential tasks upon successful completion.
+*   **Scheduled Maintenance:** Rule-based scheduling (Daily/Hourly) with automated multi-channel reporting for headless execution.
+
+### 👥 User & Role Control (`/admin/users`)
 *   **Approval Workflow:** Registrations are sequestered in a `pending` state. Admins receive alerts and can approve accounts with a single click, triggering an **automated welcome email**.
 *   **Role Management:** Real-time toggling of `Admin` and `Family` flags.
 *   **Profile Audit:** Manage user Discord IDs, email addresses, and perform secure password resets.
 
-### 🧭 Dynamic Menu Management (`/menu`)
+### 🧭 Dynamic Menu Management (`/admin/menu`)
 *   **Hierarchical Structure:** Database-driven menu supporting parent/child nesting and separators.
 *   **Live Reordering:** Drag-and-drop interface for managing link priority (`sort_order`).
 *   **Visibility Logic:** Links are dynamically filtered based on the current user's permission level.
@@ -52,10 +59,14 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Multi-Channel Integration:** Automated distribution via **Discord, Email, Pushover, and Gotify**.
 *   **Audit Logging:** Comprehensive tracking of all dispatch attempts for accountability.
 
-### ⚙️ Global Settings (`/settings`)
+### ⚙️ Global Settings (`/admin/settings`)
 *   **System Variables:** Centralized management of application constants, such as **Timer Reset Hours** and **Quiet Hour** configurations.
 
-### 🗿 Emoji AI Dictionary (`/emojis`)
+### 🛠 Maintenance Manager (`/admin/maintenance`)
+*   **Background Task Control:** Real-time dashboard for monitoring and manually triggering scheduled system maintenance tasks (Weather sync, Reminder checks, Emoji processing).
+*   **Interval Tuning:** Adjust execution frequency for internal system hooks without restarting the application.
+
+### 🗿 Emoji AI Dictionary (`/admin/emojis`)
 *   **Admin Sandbox:** Interactive interface for managing the AI-learned emoji dictionary (`ai_emoji_dictionary`).
 *   **Queue Monitoring:** Tracks the depth of emoji processing across whitelisted modules.
 *   **AI Training:** Sandbox for testing and seeding new emoji mappings to ensure semantic accuracy.
@@ -206,7 +217,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
   *Screenshots coming soon...*
 </p>
 
-### 📁 Secure File Vault (`/files`)
+### 📁 Secure File Vault (`/admin/files`)
 *   **Private File Storage:** Upload and organize important household files in a secure vault.
 *   **Permission Control:** Choose whether files are admin-only or shared with specific users.
 *   **Download Tracking:** See when files have been accessed or downloaded.
