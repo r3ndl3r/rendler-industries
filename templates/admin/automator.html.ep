@@ -1,0 +1,305 @@
+<%# /templates/admin/automator.html.ep %>
+
+% layout 'default', hide_navbar_title => 1, favicon => '🧑‍🔧';
+% title 'Automator';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/admin/automator.css">
+    <script src="/js/vendor/ace/ace.js"></script>
+    <script src="/js/vendor/ace/mode-yaml.js"></script>
+    <script src="/js/vendor/ace/theme-tomorrow_night_blue.js"></script>
+    <script src="/js/admin/automator.js"></script>
+% end
+
+<div class="automator-shell app-container">
+    <div class="header-bar automator-header">
+        <h1>🧑‍🔧 <span>Automator</span></h1>
+        <div class="manage-actions">
+            <button type="button" class="action-btn" data-automator-action="open-playbook">＋ Playbook</button>
+            <button type="button" class="action-btn" data-automator-action="open-inventory-manage">▤ Inventories</button>
+            <button type="button" class="action-btn" data-automator-action="open-secret">🔐 Secret</button>
+            <button type="button" class="action-btn action-btn-muted" data-automator-action="lock-vault">⏻ Lock</button>
+        </div>
+    </div>
+
+    <section id="vaultGate" class="vault-gate">
+        <div class="vault-panel">
+            <div class="vault-icon">🔐</div>
+            <h2 id="vaultTitle">Vault Locked</h2>
+            <p id="vaultMessage">Enter the Automator master password to unlock orchestration controls.</p>
+            <form id="vaultForm">
+                <input type="password" id="vaultPassword" class="game-input no-emoji" autocomplete="current-password" placeholder="Master password">
+                <button type="submit" id="vaultSubmitBtn" class="btn-primary">Unlock</button>
+            </form>
+        </div>
+    </section>
+
+    <section id="automatorApp" class="automator-app hidden">
+        <div class="automator-status-bar">
+            <div class="status-tile">
+                <span class="status-label">Active Runs</span>
+                <span class="status-value" id="activeRunsCount">0 / 10</span>
+            </div>
+            <div class="status-tile">
+                <span class="status-label">Playbooks</span>
+                <span class="status-value" id="playbookCount">0</span>
+            </div>
+            <div class="status-actions">
+                <button type="button" class="btn-danger-outline" data-automator-action="global-abort">🛑 Global Kill Switch</button>
+            </div>
+        </div>
+
+        <div class="ledger-filters">
+            <div class="filter-group">
+                <input type="text" id="filterSearch" placeholder="Search playbooks, content..." class="game-input">
+            </div>
+            <div class="filter-group">
+                <select id="filterCategory" class="game-input">
+                    <option value="">All Categories</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <select id="filterInventory" class="game-input">
+                    <option value="">All Inventories</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <select id="filterStatus" class="game-input">
+                    <option value="">All Statuses</option>
+                    <option value="success">Success</option>
+                    <option value="failed">Failed</option>
+                    <option value="running">Running</option>
+                    <option value="aborted">Aborted</option>
+                    <option value="timed_out">Timed Out</option>
+                </select>
+            </div>
+            <button type="button" id="resetFilters" class="btn-icon-reset" title="Reset Filters">↻</button>
+        </div>
+
+        <div class="automator-grid">
+            <main class="playbook-ledger" id="playbookLedger">
+                <div class="component-loading">
+                    <div class="loading-scan-line"></div>
+                    <span class="loading-icon-pulse">🧑‍🔧</span>
+                    <p class="loading-label">Synchronizing Playbooks...</p>
+                </div>
+            </main>
+
+            <aside class="automator-side-panel">
+                <div class="history-panel">
+                    <div class="panel-heading">
+                        <h2 id="historyPanelTitle">History</h2>
+                        <div class="panel-actions">
+                            <button type="button" id="historyClearBtn" class="btn-secondary compact hidden" data-automator-action="clear-task-history">All</button>
+                            <button type="button" class="btn-secondary compact" data-automator-action="load-history">More</button>
+                        </div>
+                    </div>
+                    <div id="historyList" class="history-list"></div>
+                </div>
+            </aside>
+        </div>
+    </section>
+</div>
+
+<div id="playbookModal" class="modal-overlay">
+    <div class="modal-content automator-modal-wide">
+        <div class="modal-header">
+            <h3 id="playbookModalTitle">Edit Playbook</h3>
+            <span class="close-btn" data-automator-action="close-playbook">&times;</span>
+        </div>
+        <form id="playbookForm">
+            <input type="hidden" name="id" id="playbookId">
+            <div class="automator-form-grid">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="name" id="playbookName" class="game-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <input type="text" name="category" id="playbookCategory" class="game-input" value="General">
+                </div>
+                <div class="form-group">
+                    <label>Inventory</label>
+                    <select name="inventory_id" id="playbookInventory" class="game-input no-emoji"></select>
+                </div>
+                <div class="form-group">
+                    <label>Vault Secret</label>
+                    <select name="vault_password_secret_id" id="playbookVaultSecret" class="game-input no-emoji"></select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" name="description" id="playbookDescription" class="game-input">
+            </div>
+            <div class="automator-form-grid">
+                <div class="form-group">
+                    <label>Tags</label>
+                    <input type="text" name="tags" id="playbookTags" class="game-input">
+                </div>
+                <div class="form-group">
+                    <label>Skip Tags</label>
+                    <input type="text" name="skip_tags" id="playbookSkipTags" class="game-input">
+                </div>
+                <div class="form-group">
+                    <label>Limit Hosts</label>
+                    <input type="text" name="limit_hosts" id="playbookLimitHosts" class="game-input no-emoji">
+                </div>
+                <div class="form-group">
+                    <label>Chain</label>
+                    <select name="success_chain_id" id="playbookChain" class="game-input no-emoji"></select>
+                </div>
+                <div class="form-group">
+                    <label>Schedule</label>
+                    <select name="schedule_type" id="playbookScheduleType" class="game-input no-emoji">
+                        <option value="none">Manual</option>
+                        <option value="daily">Daily</option>
+                        <option value="hourly">Hourly</option>
+                    </select>
+                </div>
+                <div class="form-group schedule-daily-field hidden">
+                    <label>Daily Time</label>
+                    <input type="time" name="schedule_daily_time" id="playbookScheduleDailyTime" class="game-input no-emoji" value="00:00">
+                </div>
+                <div class="form-group schedule-hourly-field hidden">
+                    <label>Every Hours</label>
+                    <input type="number" name="schedule_interval_hours" id="playbookScheduleIntervalHours" class="game-input no-emoji" min="1" max="168" value="1">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Dynamic Vars JSON</label>
+                <textarea name="dynamic_vars" id="playbookDynamicVars" class="game-input automator-json-editor no-emoji">{}</textarea>
+            </div>
+
+            <div class="notif-section">
+                <div class="section-heading">
+                    <label>Notifications (Scheduled Runs Only)</label>
+                    <button type="button" class="btn-secondary compact" data-automator-action="add-notif-row">＋ Add</button>
+                </div>
+                <div id="notifRowContainer" class="notif-rows"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Playbook YAML</label>
+                <textarea name="content" id="playbookContent" class="game-input automator-code-source no-emoji" spellcheck="false">---
+- hosts: all
+  gather_facts: false
+  tasks:
+    - debug:
+        msg: Automator ready
+</textarea>
+                <div id="playbookContentAce" class="automator-ace-editor"></div>
+            </div>
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" class="btn-primary">💾 Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="inventoryModal" class="modal-overlay">
+    <div class="modal-content automator-modal-wide">
+        <div class="modal-header">
+            <h3>Inventory</h3>
+            <span class="close-btn" data-automator-action="close-inventory">&times;</span>
+        </div>
+        <form id="inventoryForm">
+            <input type="hidden" name="id" id="inventoryId">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" name="name" id="inventoryName" class="game-input" required>
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <input type="text" name="category" id="inventoryCategory" class="game-input" value="General">
+            </div>
+            <div class="form-group">
+                <label>SSH Key Path</label>
+                <input type="text" name="ssh_key_path" id="inventorySshKeyPath" class="game-input no-emoji">
+            </div>
+            <div class="form-group">
+                <label>Hosts</label>
+                <textarea name="hosts" id="inventoryHosts" class="game-input automator-code-source no-emoji" spellcheck="false">[all]
+localhost ansible_connection=local
+</textarea>
+                <div id="inventoryHostsAce" class="automator-ace-editor automator-ace-editor-small"></div>
+            </div>
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" class="btn-primary">💾 Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="secretModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Secret</h3>
+            <span class="close-btn" data-automator-action="close-secret">&times;</span>
+        </div>
+        <form id="secretForm">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" name="name" id="secretName" class="game-input no-emoji" required>
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <input type="text" name="category" id="secretCategory" class="game-input no-emoji" value="General">
+            </div>
+            <div class="form-group">
+                <label>Value</label>
+                <input type="password" name="value" id="secretValue" class="game-input no-emoji" autocomplete="new-password" required>
+            </div>
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" class="btn-primary">🔐 Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="runModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="runModalTitle">Run Playbook</h3>
+            <span class="close-btn" data-automator-action="close-run">&times;</span>
+        </div>
+        <form id="runForm">
+            <input type="hidden" id="runPlaybookId" name="playbook_id">
+            <input type="hidden" id="runMode" name="mode" value="run">
+            <div id="runVarsContainer" class="run-vars"></div>
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" class="btn-primary">▶ Start</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="inventoryManageModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Manage Inventories</h3>
+            <span class="close-btn" data-automator-action="close-inventory-manage">&times;</span>
+        </div>
+        <div class="modal-panel-actions">
+            <button type="button" class="btn-primary compact" data-automator-action="open-inventory">＋ New Inventory</button>
+        </div>
+        <div id="inventoryList" class="inventory-list inventory-manage-list"></div>
+    </div>
+</div>
+
+<div id="consoleModal" class="modal-overlay console-overlay">
+    <div class="console-panel">
+        <div class="console-toolbar">
+            <div class="console-status-group">
+                <span id="consoleIndicator" class="console-indicator"></span>
+                <strong id="consoleTitle">Run Console</strong>
+                <span id="consoleStatus" class="console-status">running</span>
+            </div>
+            <div class="console-actions">
+                <label class="console-toggle"><input type="checkbox" id="consoleScrollLock"> Lock</label>
+                <button type="button" id="consoleAbortBtn" class="btn-danger-outline compact" data-automator-action="abort-console">Abort</button>
+                <button type="button" class="btn-secondary compact" data-automator-action="close-console">Close</button>
+            </div>
+        </div>
+        <pre id="consoleOutput" class="console-output"></pre>
+    </div>
+</div>
