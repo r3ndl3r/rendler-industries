@@ -352,6 +352,52 @@ CREATE TABLE `files` (
   KEY `idx_filename` (`filename`),
   KEY `idx_uploaded_by` (`uploaded_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `fuel_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `vehicle_id` int(11) NOT NULL,
+  `image1_filename` varchar(255) NOT NULL,
+  `image1_original_filename` varchar(255) NOT NULL,
+  `image1_mime_type` varchar(100) NOT NULL,
+  `image1_file_size` int(11) NOT NULL,
+  `image1_file_data` longblob NOT NULL,
+  `image2_filename` varchar(255) NOT NULL,
+  `image2_original_filename` varchar(255) NOT NULL,
+  `image2_mime_type` varchar(100) NOT NULL,
+  `image2_file_size` int(11) NOT NULL,
+  `image2_file_data` longblob NOT NULL,
+  `uploaded_by` varchar(50) NOT NULL,
+  `uploaded_at` timestamp NULL DEFAULT current_timestamp(),
+  `log_date` date DEFAULT NULL,
+  `odometer` int(11) DEFAULT NULL,
+  `litres` decimal(10,2) DEFAULT NULL,
+  `price_per_litre` decimal(10,3) DEFAULT NULL,
+  `total_amount` decimal(10,2) DEFAULT NULL,
+  `station_name` varchar(255) DEFAULT NULL,
+  `fill_type` enum('full','partial') DEFAULT 'full',
+  `description` text DEFAULT NULL,
+  `ai_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`ai_json`)),
+  `ai_status` enum('pending','complete','needs_review','failed') DEFAULT 'pending',
+  `needs_review` tinyint(1) DEFAULT 1,
+  `review_reasons` longtext DEFAULT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `log_date` (`log_date`),
+  KEY `uploaded_by` (`uploaded_by`),
+  KEY `fk_fuel_vehicle` (`vehicle_id`),
+  KEY `idx_fuel_logs_ai_status` (`ai_status`),
+  CONSTRAINT `fk_fuel_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `fuel_vehicles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `fuel_vehicles` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `make` varchar(100) DEFAULT NULL,
+  `model` varchar(100) DEFAULT NULL,
+  `year` int(11) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_fuel_vehicles_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `gateway_owner` (
   `id` tinyint(4) NOT NULL DEFAULT 1,
   `pid` int(11) NOT NULL,
