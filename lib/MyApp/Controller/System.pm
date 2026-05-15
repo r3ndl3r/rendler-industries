@@ -120,19 +120,19 @@ sub run_automator_maintenance {
     my ($c, $now) = @_;
     return if $c->db->automator_active_run_count >= int($c->app->config->{automator}{max_concurrent_runs} || 10);
 
-    require MyApp::Controller::Automator;
+    require MyApp::Controller::Admin::Automator;
     my $due = $c->db->get_due_automator_schedules(10);
     my $started = 0;
     for my $schedule (@$due) {
         last if $c->db->automator_active_run_count >= int($c->app->config->{automator}{max_concurrent_runs} || 10);
-        my $payload = eval { MyApp::Controller::Automator::_load_run_payload($c->db, $schedule->{playbook_id}) };
+        my $payload = eval { MyApp::Controller::Admin::Automator::_load_run_payload($c->db, $schedule->{playbook_id}) };
         if ($@) {
             $c->app->log->error("Automator schedule $schedule->{id} could not load playbook: $@");
             next;
         }
         my $history_id = $c->db->create_automator_history($schedule->{playbook_id}, 'run', {}, undef);
         $c->db->mark_automator_schedule_dispatched($schedule, $history_id);
-        MyApp::Controller::Automator::_spawn_run($c->app, $history_id, 'run', {}, $payload);
+        MyApp::Controller::Admin::Automator::_spawn_run($c->app, $history_id, 'run', {}, $payload);
         $started++;
     }
     return { started => $started };
