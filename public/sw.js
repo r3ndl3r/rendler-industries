@@ -1,6 +1,6 @@
 // /public/sw.js
 
-const CACHE_NAME = 'rendler-offline-v28';
+const CACHE_NAME = 'rendler-offline-v53';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 
 const CORE_ASSETS = [
@@ -117,8 +117,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    if (shouldBypass(event.request, url)) return;
-
     if (event.request.mode === 'navigate') {
         event.respondWith(
             fetchWithTimeout(event.request, 4000).then(response => {
@@ -130,9 +128,11 @@ self.addEventListener('fetch', (event) => {
             }).catch(() => {
                 const matchOpts = { ignoreSearch: true, ignoreVary: true };
                 const path = event.request.url.replace(/\/$/, "");
+                const requestFallback = url.pathname === '/login'
+                    ? Promise.resolve(null)
+                    : caches.match(path, matchOpts).then(c => c || caches.match(event.request, matchOpts));
 
-                return caches.match(path, matchOpts)
-                    .then(c => c || caches.match(event.request, matchOpts))
+                return requestFallback
                     .then(c => c || caches.match('/quick', matchOpts))
                     .then(c => c || caches.match('/brief', matchOpts))
                     .then(c => c || caches.match('/audiobooks', matchOpts))
@@ -142,6 +142,8 @@ self.addEventListener('fetch', (event) => {
         );
         return;
     }
+
+    if (shouldBypass(event.request, url)) return;
 
     const isAppCode = url.pathname.startsWith('/css/') || url.pathname.startsWith('/js/');
     const isStatic = isAppCode ||
