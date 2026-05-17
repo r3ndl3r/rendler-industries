@@ -431,7 +431,7 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
                     y: parseInt(el.style.top),
                     width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
                     height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
-                    z_index: el.style.zIndex,
+                    z_index: window.getNoteZIndex?.(note) || el.style.zIndex,
                     layer_id: note.layer_id || 1,
                     is_collapsed: note.is_collapsed,
                     is_options_expanded: note.is_options_expanded ?? 0,
@@ -490,7 +490,7 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
         y: parseInt(el.style.top),
         width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
         height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
-        z_index: el.style.zIndex,
+        z_index: window.getNoteZIndex?.(note) || el.style.zIndex,
         layer_id: note.layer_id || 1,
         is_collapsed: note.is_collapsed,
         is_options_expanded: note.is_options_expanded ?? 0,
@@ -563,7 +563,7 @@ async function syncBatchNotePositions(ids) {
             id: id,
             x:        !isNaN(parsedX) ? parsedX : (note.x       ?? 0),
             y:        !isNaN(parsedY) ? parsedY : (note.y       ?? 0),
-            z_index:  !isNaN(parsedZ) ? parsedZ : (note.z_index ?? 1),
+            z_index:  window.getNoteZIndex?.(note) || (!isNaN(parsedZ) ? parsedZ : (note.z_index ?? 1)),
             layer_id: note.layer_id ?? 1
         });
     });
@@ -766,7 +766,7 @@ async function copyNoteToLevel(id, newLevelId) {
             width: note.width,
             height: note.height,
             color: note.color,
-            z_index: note.z_index,
+            z_index: window.getNoteZIndex?.(note) || note.z_index,
             is_collapsed: note.is_collapsed
         });
 
