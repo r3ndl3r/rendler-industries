@@ -117,7 +117,7 @@ const NoteParser = (() => {
             n => n.title && n.title.toLowerCase() === lower
         );
 
-        const safeTitle = window.escapeHtml(title);
+        const safeTitle = window.escapeHtml(match && typeof window.displayNoteTitle === 'function' ? window.displayNoteTitle(match) : title);
 
         if (!match) {
             return `<span class="note-ref note-ref-dead" title="Unresolved link: ${safeTitle}">${safeTitle}</span>`;
@@ -237,7 +237,7 @@ const NoteParser = (() => {
                 id = match.id;
             }
             const target    = STATE.note_map[id];
-            const safeTitle = target ? window.escapeHtml(target.title || target) : `Note #${id}`;
+            const safeTitle = target ? window.escapeHtml(typeof window.displayNoteTitle === 'function' ? window.displayNoteTitle(target) : (target.title || target)) : `Note #${id}`;
             const color     = (target && typeof window.normalizeColorHex === 'function')
                 ? window.normalizeColorHex(target.color) : '';
             const style     = color ? ` style="color: ${color}"` : '';
@@ -255,7 +255,7 @@ const NoteParser = (() => {
                     id = match.id;
                 }
                 const target    = STATE.note_map[id];
-                const safeTitle = target ? window.escapeHtml(target.title || target) : `Note #${id}`;
+                const safeTitle = target ? window.escapeHtml(typeof window.displayNoteTitle === 'function' ? window.displayNoteTitle(target) : (target.title || target)) : `Note #${id}`;
                 const color     = (target && typeof window.normalizeColorHex === 'function')
                     ? window.normalizeColorHex(target.color) : '';
                 const style     = color ? ` style="color: ${color}"` : '';
@@ -829,7 +829,8 @@ const NoteParser = (() => {
                     flushBuffer();
                     const level = hMatch[2].length;
                     const content = hMatch[3];
-                    output += `${window.escapeHtml(hMatch[1])}<h${level + 2} class="note-h${level}">${renderInline(content)}</h${level + 2}>`;
+                    const indent = hMatch[1] ? `<span class="note-indent">${window.escapeHtml(hMatch[1])}</span>` : '';
+                    output += `${indent}<h${level + 2} class="note-h${level}">${renderInline(content)}</h${level + 2}>`;
                     cursor += hMatch[0].length;
                     isLineStart = true;
                     continue;
@@ -839,7 +840,8 @@ const NoteParser = (() => {
                 const hrMatch = lineRemainder.match(/^([ \t]*)---(\s*)(\n|$)/);
                 if (hrMatch) {
                     flushBuffer();
-                    output += '<hr class="note-hr">';
+                    const indent = hrMatch[1] ? `<span class="note-indent">${window.escapeHtml(hrMatch[1])}</span>` : '';
+                    output += `${indent}<hr class="note-hr">`;
                     cursor += hrMatch[0].length;
                     isLineStart = true;
                     continue;
@@ -857,7 +859,8 @@ const NoteParser = (() => {
 
                     let lineIndex = lineOffset;
                     for (let i = 0; i < cursor; i++) if (text[i] === '\n') lineIndex++;
-                    output += `${window.escapeHtml(prefix)}<span class="checkbox-row-inline note-check-trigger ${checkedClass}" data-note-id="${noteId}" data-index="${lineIndex}"><span class="cb ${checkedClass}"></span>`;
+                    const indent = prefix ? `<span class="note-indent">${window.escapeHtml(prefix)}</span>` : '';
+                    output += `${indent}<span class="checkbox-row-inline note-check-trigger ${checkedClass}" data-note-id="${noteId}" data-index="${lineIndex}"><span class="cb ${checkedClass}"></span>`;
 
                     inCheckboxRow = true;
                     isLineStart = false;
@@ -869,7 +872,8 @@ const NoteParser = (() => {
                 const numMatch = lineRemainder.match(/^([ \t]*)(\d+)\.\s+/);
                 if (numMatch) {
                     flushBuffer();
-                    output += `${window.escapeHtml(numMatch[1])}<span class="note-number">${numMatch[2]}.</span> `;
+                    const indent = numMatch[1] ? `<span class="note-indent">${window.escapeHtml(numMatch[1])}</span>` : '';
+                    output += `${indent}<span class="note-number">${numMatch[2]}.</span> `;
                     cursor += numMatch[0].length;
                     isLineStart = false;
                     continue;
@@ -879,7 +883,8 @@ const NoteParser = (() => {
                 const bulletMatch = lineRemainder.match(/^([ \t]*)([*•-])\s+/);
                 if (bulletMatch) {
                     flushBuffer();
-                    output += `<span class="note-bullet-row">${window.escapeHtml(bulletMatch[1])}<span class="note-bullet">•</span><span class="note-bullet-text">`;
+                    const indent = bulletMatch[1] ? `<span class="note-indent">${window.escapeHtml(bulletMatch[1])}</span>` : '';
+                    output += `<span class="note-bullet-row">${indent}<span class="note-bullet">•</span><span class="note-bullet-text">`;
                     inBulletRow = true;
                     cursor += bulletMatch[0].length;
                     isLineStart = false;
