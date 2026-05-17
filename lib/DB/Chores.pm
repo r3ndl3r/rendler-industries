@@ -42,7 +42,7 @@ sub DB::get_active_chores {
     return \@chores;
 }
 
-# Processes an atomic claim on a chore to prevent double-dipping.
+# Processes an atomic claim on a chore to prevent double-dipping and enforce targeting.
 # Parameters:
 #   $self     : DB Instance
 #   $chore_id    : Target Chore ID
@@ -59,9 +59,9 @@ sub DB::claim_chore {
          SET status = 'completed', 
              completed_by = ?, 
              completed_at = ? 
-         WHERE id = ? AND status = 'active'"
+         WHERE id = ? AND status = 'active' AND (assigned_to IS NULL OR assigned_to = ?)"
     );
-    my $rows_affected = $sth->execute($user_id, $completed_at, $chore_id);
+    my $rows_affected = $sth->execute($user_id, $completed_at, $chore_id, $user_id);
     
     # 0 = failed to claim (someone else got it first, or it doesn't exist)
     return $rows_affected == 1 ? 1 : 0;
