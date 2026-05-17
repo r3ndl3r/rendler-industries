@@ -5,6 +5,11 @@ package MyApp::Controller::Notes;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 
+sub _is_fence_note_title {
+    my ($title) = @_;
+    return defined $title && $title =~ /\AFENCE:/;
+}
+
 # Controller for the /notes Whiteboard module.
 #
 # Features:
@@ -151,6 +156,7 @@ sub api_save {
         is_collapsed        => int($c->param('is_collapsed') // 0),
         is_options_expanded => int($c->param('is_options_expanded') // 0)
     };
+    $params->{z_index} = 1 if _is_fence_note_title($params->{title});
 
     my $sid = $c->param('session_id');
     unless (defined $sid && length $sid) {
@@ -230,6 +236,7 @@ sub api_save_geometry {
     # signals save_note_geometry to preserve the existing DB value rather than
     # overwriting it with NULL on geometry-only calls (collapse, drag, resize).
     $params->{color} = $c->param('color') if defined $c->param('color');
+    $params->{z_index} = 1 if _is_fence_note_title($c->db->get_note_title($id));
 
     # Resolve canvas context for lock check BEFORE write
     my $canvas_id = $c->db->get_canvas_for_note_id($id, $user_id);
@@ -290,6 +297,11 @@ sub api_batch_geometry {
 
     if (scalar @$updates > 100) {
         return $c->render(json => { success => 0, error => 'Batch size exceeds limit (100)' }, status => 400);
+    }
+
+    for my $upd (@$updates) {
+        next unless ref($upd) eq 'HASH' && defined $upd->{id};
+        $upd->{z_index} = 1 if _is_fence_note_title($c->db->get_note_title($upd->{id}));
     }
 
     my $result = $c->db->update_batch_geometry($updates, $user_id, $sid);
@@ -494,13 +506,14 @@ sub api_upload {
     }
 
     if (!$note_id && $upload) {
+        my $title = $c->param('title') // $upload->filename;
         $note_id = $c->db->save_note({
             user_id      => $user_id,
             canvas_id    => $cid,
             session_id   => $sid,
             layer_id     => $c->param('layer_id') // 1,
             type         => $type,
-            title        => $c->param('title') // $upload->filename,
+            title        => $title,
             content      => $c->param('content') // '',
             filename     => $upload->filename,
             x            => $c->param('x') // 0,
@@ -508,7 +521,7 @@ sub api_upload {
             width        => 400,
             height       => 400,
             color        => '#ffffff',
-            z_index             => $c->param('z_index') // 1,
+            z_index             => _is_fence_note_title($title) ? 1 : ($c->param('z_index') // 1),
             is_collapsed        => 0,
             is_options_expanded => int($c->param('is_options_expanded') // 0)
         });
