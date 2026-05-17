@@ -102,6 +102,19 @@ CREATE TABLE `automator_notifications` (
   KEY `playbook_id` (`playbook_id`),
   CONSTRAINT `automator_notifications_ibfk_1` FOREIGN KEY (`playbook_id`) REFERENCES `automator_playbooks` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE `automator_playbook_secrets` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `playbook_id` int(11) NOT NULL,
+  `secret_id` int(11) NOT NULL,
+  `alias` varchar(100) NOT NULL,
+  `usage_type` enum('file','env','ssh_key','vault_password') NOT NULL DEFAULT 'file',
+  `sort_order` int(11) DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_playbook_alias` (`playbook_id`,`alias`),
+  KEY `secret_id` (`secret_id`),
+  CONSTRAINT `automator_playbook_secrets_ibfk_1` FOREIGN KEY (`playbook_id`) REFERENCES `automator_playbooks` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `automator_playbook_secrets_ibfk_2` FOREIGN KEY (`secret_id`) REFERENCES `automator_secrets` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 CREATE TABLE `automator_playbooks` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
@@ -114,7 +127,7 @@ CREATE TABLE `automator_playbooks` (
   `skip_tags` varchar(255) DEFAULT NULL,
   `limit_hosts` varchar(255) DEFAULT NULL,
   `success_chain_id` int(11) DEFAULT NULL,
-  `vault_password_secret_id` int(11) DEFAULT NULL,
+  `playbook_secret_id` int(11) DEFAULT NULL,
   `log_retention_days` int(11) DEFAULT 30,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
