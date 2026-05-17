@@ -617,7 +617,7 @@ function toggleStickyMove(e, id) {
 
     // --- 1. Focus Management (Z-Index Promotion) ---
     // Optimization: Skip re-scanning all notes. Use cached STATE.maxZ.
-    if (note.z_index < STATE.maxZ) {
+    if (!window.isFenceNote?.(note) && note.z_index < STATE.maxZ) {
         const newZ = ++STATE.maxZ;
         note.z_index = newZ;
         el.style.zIndex = newZ;
@@ -630,7 +630,7 @@ function toggleStickyMove(e, id) {
     STATE.pickedWidth  = el.offsetWidth;
     STATE.pickedHeight = el.offsetHeight;
     STATE.lastPickTime = Date.now();
-    STATE.originalPos  = { x: note.x, y: note.y, z: el.style.zIndex };
+    STATE.originalPos  = { x: note.x, y: note.y, z: window.getNoteZIndex?.(note) || el.style.zIndex };
     
     // --- 2. Bulk Operation Baseline ---
     // If the picked note is part of a selection, we capture the relative baseline
@@ -643,14 +643,19 @@ function toggleStickyMove(e, id) {
         STATE.selectedNoteIds.forEach(sid => {
             const snote = STATE.notes.find(n => n.id == sid);
             if (snote) {
-                STATE.groupBaseline.set(sid, { x: snote.x, y: snote.y, z: snote.z_index });
+                STATE.groupBaseline.set(sid, { x: snote.x, y: snote.y, z: window.getNoteZIndex?.(snote) || snote.z_index });
                 const selEl = document.getElementById(`note-${sid}`);
                 if (selEl) {
                     selEl.classList.add('in-flight', 'note-picked');
                     // Per-member Z-Promotion: each note gets its own unique foreground Z
-                    const memberZ = ++STATE.maxZ;
-                    snote.z_index = memberZ;
-                    selEl.style.zIndex = memberZ;
+                    if (!window.isFenceNote?.(snote)) {
+                        const memberZ = ++STATE.maxZ;
+                        snote.z_index = memberZ;
+                        selEl.style.zIndex = memberZ;
+                    } else {
+                        snote.z_index = 1;
+                        selEl.style.zIndex = 1;
+                    }
                 }
             }
         });
@@ -1013,6 +1018,9 @@ function handleGlobalClick(e) {
  */
 function handleGlobalKeydown(e) {
     if (STATE.isInitializing) return;
+    const key = e.key.toLowerCase();
+    const commandKey = e.ctrlKey || e.metaKey;
+
     if (e.key === 'Escape') {
         const hasSelection = STATE.selectedNoteIds && STATE.selectedNoteIds.size > 0;
         
@@ -1106,9 +1114,9 @@ function handleGlobalKeydown(e) {
 
     // Ctrl + F: Board-wide Search Interception
     // Overrides browser default search which often fails on oversized absolute canvas elements.
-    if (e.ctrlKey && e.key === 'f') {
+    if (commandKey && key === 'f') {
         e.preventDefault();
-        if (typeof openSearchModal === 'function') openSearchModal();
+        if (typeof window.openSearchModal === 'function') window.openSearchModal();
         return;
     }
 
@@ -2063,7 +2071,7 @@ async function saveNoteInline(id, stayInEditMode = false) {
         y: note.y,
         width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
         height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
-        z_index: el.style.zIndex,
+        z_index: window.getNoteZIndex?.(note) || el.style.zIndex,
         is_collapsed: note.is_collapsed,
         is_options_expanded: note.is_options_expanded ?? 0
     };
@@ -2269,7 +2277,7 @@ function updateNoteAccent(input, id) {
                 y:            el.style.top  ? parseInt(el.style.top)  : note.y,
                 width:        note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
                 height:       note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
-                z_index:      el.style.zIndex,
+                z_index:      window.getNoteZIndex?.(note) || el.style.zIndex,
                 layer_id:     note.layer_id || STATE.activeLayerId,
                 is_collapsed: note.is_collapsed,
                 is_options_expanded: note.is_options_expanded ?? 0,
@@ -2342,7 +2350,7 @@ async function toggleCollapse(id) {
             y:            note.y,
             width:        note.width,
             height:       note.height,
-            z_index:      note.z_index,
+            z_index:      window.getNoteZIndex?.(note) || note.z_index,
             layer_id:     note.layer_id || 1,
             is_options_expanded: note.is_options_expanded ?? 0,
             color:        colorInput ? colorInput.value : note.color
