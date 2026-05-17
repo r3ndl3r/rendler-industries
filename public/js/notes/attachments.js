@@ -403,6 +403,15 @@ function initDropZones() {
             
             // 5. Atomic Hydration: Queue remaining files into the draft immediately
             if (DRAFT_NOTE) {
+                if (!primary.data) {
+                    DRAFT_NOTE.pendingFiles.push({
+                        type: 'file',
+                        data: null,
+                        file: primary.file,
+                        filename: primary.file.name
+                    });
+                }
+
                 remaining.forEach(res => {
                     DRAFT_NOTE.pendingFiles.push({
                         type: res.data ? 'image' : 'file',
