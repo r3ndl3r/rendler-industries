@@ -145,6 +145,39 @@ sub api_save_playbook {
     my $chain = $c->param('success_chain_id') || undef;
     return $c->render(json => { success => 0, error => 'Success chain cycle detected' }, status => 409)
         if $id && $chain && $c->db->automator_chain_has_cycle($id, $chain);
+    if (my $inventory_id = $c->param('inventory_id')) {
+        my $inventory = $c->db->get_automator_inventory($inventory_id);
+        return $c->render(json => { success => 0, error => 'Inventory not found' }, status => 404)
+            unless _owned_record($c, $inventory);
+    }
+    if ($chain) {
+        my $chain_playbook = $c->db->get_automator_playbook($chain);
+        return $c->render(json => { success => 0, error => 'Success chain playbook not found' }, status => 404)
+            unless _owned_record($c, $chain_playbook);
+    }
+    my $secrets_json = $c->param('secrets') || '[]';
+    my $secrets = [];
+    eval { $secrets = decode_json($secrets_json); 1 } or
+        return $c->render(json => { success => 0, error => 'Secrets must be valid JSON' }, status => 400);
+    return $c->render(json => { success => 0, error => 'Secrets must be an array' }, status => 400)
+        unless ref($secrets) eq 'ARRAY';
+    my %allowed_usage = map { $_ => 1 } qw(file env ssh_key vault_password);
+    my %seen_alias;
+    my %single_use;
+    for my $secret (@$secrets) {
+        return $c->render(json => { success => 0, error => 'Secret not found' }, status => 404)
+            unless ref($secret) eq 'HASH' && _owned_secret($c, $secret->{secret_id});
+        return $c->render(json => { success => 0, error => 'Invalid secret alias' }, status => 400)
+            unless defined $secret->{alias} && $secret->{alias} =~ /\A[A-Za-z_][A-Za-z0-9_]*\z/;
+        return $c->render(json => { success => 0, error => 'Duplicate secret alias' }, status => 400)
+            if $seen_alias{lc $secret->{alias}}++;
+        return $c->render(json => { success => 0, error => 'Invalid secret usage' }, status => 400)
+            unless $allowed_usage{$secret->{usage_type} || ''};
+        return $c->render(json => { success => 0, error => 'Only one SSH key secret is allowed' }, status => 400)
+            if $secret->{usage_type} eq 'ssh_key' && $single_use{ssh_key}++;
+        return $c->render(json => { success => 0, error => 'Only one vault password secret is allowed' }, status => 400)
+            if $secret->{usage_type} eq 'vault_password' && $single_use{vault_password}++;
+    }
 
     my $saved_id = $c->db->save_automator_playbook({
         id                       => $id,
@@ -156,12 +189,14 @@ sub api_save_playbook {
         dynamic_vars             => $dynamic_vars,
         tags                     => $c->param('tags') || undef,
         skip_tags                => $c->param('skip_tags') || undef,
-        limit_hosts              => $c->param('limit_hosts') || undef,
-        success_chain_id         => $chain,
-        vault_password_secret_id => $c->param('vault_password_secret_id') || undef,
-        log_retention_days       => int($c->param('log_retention_days') || 30),
+        limit_hosts        => $c->param('limit_hosts') || undef,
+        success_chain_id   => $chain,
+        playbook_secret_id => $c->param('playbook_secret_id') || undef,
+        log_retention_days => int($c->param('log_retention_days') || 30),
         user_id                  => $c->current_user_id,
     });
+    eval { $c->db->save_automator_playbook_secrets($saved_id, $secrets); 1 } or
+        return $c->render(json => { success => 0, error => "$@" }, status => 400);
 
     my $notif_json = $c->param('notifications') || '[]';
     my $notifications = [];
@@ -209,9 +244,13 @@ sub api_delete_inventory {
 sub api_save_secret {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
+    my $id = $c->param('id') || undef;
+    return $c->render(json => { success => 0, error => 'Secret not found' }, status => 404)
+        if $id && !_owned_secret($c, $id);
     my $secret;
     eval {
         $secret = $c->db->save_automator_secret(
+            $id,
             $c->param('name') // '',
             $c->param('category') || 'General',
             $c->param('value') // '',
@@ -221,6 +260,17 @@ sub api_save_secret {
     return $c->render(json => { success => 0, error => "$@" }, status => 400) if $@;
     $c->db->automator_log_audit($c->current_user_id, 'edit_secret', 'secret', $secret->{id}, { name => $secret->{name} });
     $c->render(json => { success => 1, secret => $secret, state => $c->db->get_automator_state(_state_filters($c)) });
+}
+
+sub api_delete_secret {
+    my $c = shift;
+    return _locked($c) unless _api_allowed($c);
+    my $id = $c->stash('id');
+    return $c->render(json => { success => 0, error => 'Secret not found' }, status => 404)
+        unless _owned_secret($c, $id);
+    $c->db->delete_automator_secret($id, $c->current_user_id);
+    $c->db->automator_log_audit($c->current_user_id, 'delete_secret', 'secret', $id, {});
+    $c->render(json => { success => 1, state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
 sub api_run {
@@ -341,7 +391,7 @@ sub _spawn_run {
     $subprocess->run(
         sub {
             my $subprocess = shift;
-            return _run_automator_job($home, $staging_root, $ansible_bin, $history_id, $mode, $vars, $payload, $subprocess);
+            return _run_automator_job($app, $home, $staging_root, $ansible_bin, $history_id, $mode, $vars, $payload, $subprocess);
         },
         sub {
             my ($subprocess, $err, $result) = @_;
@@ -402,6 +452,7 @@ sub _trigger_automated_notifications {
 
     my $c = $app->build_controller;
     my $user_icon = $c->getUserIcon($h->{triggered_by_name} || 'system');
+    my $caller_id = 0;
     my $message = "$emoji **Scheduled Task Completed**\n\n"
                 . "**Playbook:** $h->{playbook_name}\n"
                 . "**Status:** $status"
@@ -417,20 +468,20 @@ sub _trigger_automated_notifications {
 
         if ($n->{channel} eq 'discord') {
             my $user = $db->get_user_by_id($n->{user_id});
-            $c->send_discord_dm($user->{discord_id}, $message, $n->{user_id}, "automator_$history_id") if $user && $user->{discord_id};
+            $c->send_discord_dm($user->{discord_id}, $message, $n->{user_id}, $caller_id) if $user && $user->{discord_id};
         }
         elsif ($n->{channel} eq 'email') {
             my $user = $db->get_user_by_id($n->{user_id});
-            $c->send_email_via_gmail($user->{email}, $subject, $message, $n->{user_id}, "automator_$history_id") if $user && $user->{email};
+            $c->send_email_via_gmail($user->{email}, $subject, $message, $n->{user_id}, $caller_id) if $user && $user->{email};
         }
         elsif ($n->{channel} eq 'pushover') {
-            $c->push_pushover($message, $n->{user_id}, "automator_$history_id");
+            $c->push_pushover($message, $n->{user_id}, $caller_id);
         }
         elsif ($n->{channel} eq 'fcm') {
-            $c->push_fcm($n->{user_id}, $subject, $message, "/admin/automator", "automator_$history_id");
+            $c->push_fcm($n->{user_id}, $subject, $message, "/admin/automator", $caller_id);
         }
         elsif ($n->{channel} eq 'gotify') {
-            $c->push_gotify($message, $subject, 5, $n->{user_id}, "automator_$history_id");
+            $c->push_gotify($message, $subject, 5, $n->{user_id}, $caller_id);
         }
     }
 }
@@ -465,7 +516,7 @@ sub _maybe_trigger_chain {
 }
 
 sub _run_automator_job {
-    my ($home, $staging_root, $ansible_bin, $history_id, $mode, $vars, $payload, $subprocess) = @_;
+    my ($app, $home, $staging_root, $ansible_bin, $history_id, $mode, $vars, $payload, $subprocess) = @_;
     setsid();
     $subprocess->progress({ type => 'pgid', history_id => $history_id, pgid => $$ });
 
@@ -474,9 +525,11 @@ sub _run_automator_job {
     my $status = 'failed';
     eval {
         _prepare_staging($home, $payload, $vars, $staging_root, $staging);
-        my $cmd = _build_command($payload, $mode, $staging, $ansible_bin);
+        my $worker_key = _automator_worker_key($app);
+        my $cmd = _build_command($payload, $mode, $staging, $ansible_bin, $worker_key);
         my %env = (
             %ENV,
+            %{ $payload->{secret_env} || {} },
             ANSIBLE_STDOUT_CALLBACK    => 'default',
             ANSIBLE_CALLBACKS_ENABLED  => 'json_to_file',
             ANSIBLE_CALLBACK_PLUGINS   => "$staging/callback_plugins",
@@ -515,6 +568,7 @@ sub _run_automator_job {
 
 sub _prepare_staging {
     my ($home, $payload, $vars, $staging_root, $staging) = @_;
+    $vars ||= {};
     my $avail = _staging_available_kb($staging_root);
     die "Insufficient staging space for Automator" if defined $avail && $avail < 10_240;
     make_path($staging, { mode => 0700 });
@@ -522,12 +576,44 @@ sub _prepare_staging {
 
     my $playbook = $payload->{playbook} || die "Playbook not found";
     _write_private("$staging/playbook.yml", $playbook->{content});
-    _write_private("$staging/vars.json", encode_json($vars || {}));
 
     my $inventory = $payload->{inventory};
     if ($inventory) {
         _write_private("$staging/inventory.ini", $inventory->{hosts});
     }
+
+    my %secret_files;
+    my %secret_env;
+    for my $entry (@{ $payload->{secrets} || [] }) {
+        my $alias = $entry->{alias};
+        my $usage = $entry->{usage_type} || 'file';
+        my $value = $entry->{value};
+        next unless defined $alias && defined $value;
+        if ($usage eq 'env') {
+            $secret_env{"AUTOMATOR_SECRET_" . uc($alias)} = $value;
+            next;
+        }
+        my $path = $usage eq 'ssh_key' ? "$staging/ssh_key" :
+                   $usage eq 'vault_password' ? "$staging/vault.pass" :
+                   "$staging/secrets/$alias";
+        make_path("$staging/secrets", { mode => 0700 }) if $usage eq 'file';
+        
+        my $out_value = $value;
+        if ($usage eq 'ssh_key' || $usage eq 'vault_password') {
+            $out_value =~ s/^\s+//; # Remove leading
+            $out_value =~ s/\s+$//; # Remove trailing
+            $out_value =~ s/\r//g;  # Remove DOS
+            $out_value .= "\n";     # Ensure terminator
+        }
+        _write_private($path, $out_value);
+        $secret_files{$alias} = $path;
+        $vars->{automator_secret_file} = $path if !defined $vars->{automator_secret_file} && $usage eq 'file';
+        substr($value, 0) = "\x00" x length($value);
+    }
+    $vars->{automator_secret_files} = \%secret_files if %secret_files;
+    $payload->{secret_env} = \%secret_env if %secret_env;
+
+    _write_private("$staging/vars.json", encode_json($vars || {}));
 
     if (defined $payload->{vault_password}) {
         my $pass = $payload->{vault_password};
@@ -562,11 +648,20 @@ sub _terminate_ansible_group {
 }
 
 sub _build_command {
-    my ($payload, $mode, $staging, $ansible_bin) = @_;
+    my ($payload, $mode, $staging, $ansible_bin, $worker_key) = @_;
     my $playbook = $payload->{playbook} || die "Playbook not found";
     my @cmd = ($ansible_bin, "$staging/playbook.yml", '--extra-vars', "\@$staging/vars.json");
+
+    if (-f "$staging/ssh_key") {
+        push @cmd, '--private-key', "$staging/ssh_key";
+    } elsif ($worker_key && -f $worker_key) {
+        push @cmd, '--private-key', $worker_key;
+    } else {
+        die "Automator worker key not found at $worker_key";
+    }
+
     push @cmd, '--inventory', "$staging/inventory.ini" if -f "$staging/inventory.ini";
-    push @cmd, '--vault-password-file', "$staging/vault.pass" if $playbook->{vault_password_secret_id};
+    push @cmd, '--vault-password-file', "$staging/vault.pass" if -f "$staging/vault.pass";
     push @cmd, '--tags', $playbook->{tags} if $playbook->{tags};
     push @cmd, '--skip-tags', $playbook->{skip_tags} if $playbook->{skip_tags};
     push @cmd, '--limit', $playbook->{limit_hosts} if $playbook->{limit_hosts};
@@ -578,13 +673,22 @@ sub _load_run_payload {
     my ($db, $playbook_id) = @_;
     my $playbook = $db->get_automator_playbook($playbook_id) || die "Playbook not found";
     my $inventory = $playbook->{inventory_id} ? $db->get_automator_inventory($playbook->{inventory_id}) : undef;
-    my $vault_password;
-    $vault_password = $db->get_automator_secret_plaintext($playbook->{vault_password_secret_id})
-        if $playbook->{vault_password_secret_id};
+    my $secrets = $db->list_automator_playbook_secrets($playbook_id);
+    if (!@$secrets && $playbook->{playbook_secret_id}) {
+        push @$secrets, {
+            secret_id   => $playbook->{playbook_secret_id},
+            alias       => 'default',
+            usage_type  => 'file',
+            secret_name => 'Legacy Playbook Secret',
+        };
+    }
+    for my $secret (@$secrets) {
+        $secret->{value} = $db->get_automator_secret_plaintext($secret->{secret_id});
+    }
     return {
-        playbook       => $playbook,
-        inventory      => $inventory,
-        vault_password => $vault_password,
+        playbook  => $playbook,
+        inventory => $inventory,
+        secrets   => $secrets,
     };
 }
 
@@ -597,6 +701,13 @@ sub _automator_staging_root {
     my ($app) = @_;
     my $config = _automator_config($app);
     return $config->{staging_root} || $ENV{AUTOMATOR_STAGING_ROOT} || '/dev/shm';
+}
+
+sub _automator_worker_key {
+    my ($app) = @_;
+    my $config = _automator_config($app);
+    # Fallback to the standard path we just set up
+    return $config->{worker_key} || $ENV{AUTOMATOR_WORKER_KEY} || "$ENV{HOME}/.ssh/ansible_worker";
 }
 
 sub _automator_ansible_bin {
@@ -717,6 +828,17 @@ sub _owned_history {
     return 0;
 }
 
+sub _owned_secret {
+    my ($c, $id) = @_;
+    return 0 unless defined $id && $id =~ /\A\d+\z/;
+    my ($owner_id) = $c->db->{dbh}->selectrow_array(
+        "SELECT user_id FROM automator_secrets WHERE id = ?",
+        undef,
+        $id
+    );
+    return defined $owner_id && int($owner_id) == int($c->current_user_id);
+}
+
 sub _max_runs {
     my ($c) = @_;
     return int($c->app->config->{automator}{max_concurrent_runs} || 10);
@@ -749,6 +871,7 @@ sub register_routes {
     $r->post('/admin/automator/api/playbook/save')->to('admin-automator#api_save_playbook');
     $r->post('/admin/automator/api/playbook/delete/:id')->to('admin-automator#api_delete_playbook');
     $r->post('/admin/automator/api/secret/save')->to('admin-automator#api_save_secret');
+    $r->post('/admin/automator/api/secret/delete/:id')->to('admin-automator#api_delete_secret');
     $r->post('/admin/automator/api/vault/setup')->to('admin-automator#api_vault_setup');
     $r->post('/admin/automator/api/vault/unlock')->to('admin-automator#api_vault_unlock');
     $r->post('/admin/automator/api/vault/lock')->to('admin-automator#api_vault_lock');
