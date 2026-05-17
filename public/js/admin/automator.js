@@ -16,6 +16,7 @@
 const AUTOMATOR_CONFIG = {
     SYNC_INTERVAL_MS: 15000,
     DEBOUNCE_MS: 300,
+    EXPANDED_CATEGORIES_KEY: 'automator.expandedCategories.v1',
     WS_MAX_RETRIES: 10
 };
 
@@ -110,12 +111,18 @@ function handleAutomatorAction(event) {
     else if (action === 'open-inventory') openInventoryModal(id || null);
     else if (action === 'open-inventory-manage') openInventoryManageModal();
     else if (action === 'open-secret') openSecretModal();
+    else if (action === 'new-secret') resetSecretForm();
+    else if (action === 'edit-secret') editSecret(id);
+    else if (action === 'delete-secret') deleteSecret(id || Number(document.getElementById('secretId')?.value || 0));
     else if (action === 'lock-vault') lockVault();
     else if (action === 'global-abort') globalAbort();
     else if (action === 'load-history') loadHistoryPage();
     else if (action === 'view-task-history') viewTaskHistory(id);
     else if (action === 'clear-task-history') clearTaskHistory();
+    else if (action === 'toggle-category') toggleCategory(trigger.dataset.category || '');
     else if (action === 'close-playbook') closePlaybookModal();
+    else if (action === 'open-secret-help') showModal('secretHelpModal');
+    else if (action === 'close-secret-help') hideModal('secretHelpModal');
     else if (action === 'close-inventory') closeInventoryModal();
     else if (action === 'close-inventory-manage') closeInventoryManageModal();
     else if (action === 'close-secret') closeSecretModal();
@@ -129,6 +136,8 @@ function handleAutomatorAction(event) {
     else if (action === 'delete-inventory') deleteInventory(id);
     else if (action === 'open-console') openConsole(id);
     else if (action === 'abort-run') abortRun(id);
+    else if (action === 'add-secret-row') addSecretRow();
+    else if (action === 'remove-secret-row') trigger.closest('.secret-row')?.remove();
     else if (action === 'add-notif-row') addNotifRow();
     else if (action === 'remove-notif-row') trigger.closest('.notif-row')?.remove();
     else if (action === 'toggle-notif-channel') trigger.classList.toggle('active');
@@ -314,6 +323,7 @@ function renderAll() {
     renderFilters();
     renderPlaybooks();
     renderInventories();
+    renderSecrets();
     renderHistory();
     populateFormSelects();
 }
@@ -361,10 +371,12 @@ function renderPlaybooks() {
         return acc;
     }, {});
 
-    ledger.innerHTML = Object.keys(groups).sort().map(category => `
-        <section class="playbook-category">
-            <header class="category-header">
-                <span>▣ ${escapeHtml(category)}</span>
+    ledger.innerHTML = Object.keys(groups).sort().map(category => {
+        const collapsed = isCategoryCollapsed(category);
+        return `
+        <section class="playbook-category${collapsed ? ' is-collapsed' : ''}">
+            <header class="category-header" data-automator-action="toggle-category" data-category="${automatorEscapeAttr(category)}">
+                <span>${collapsed ? '▸' : '▾'} ${escapeHtml(category)}</span>
                 <span>${groups[category].length}</span>
             </header>
             <div class="table-responsive">
@@ -382,7 +394,8 @@ function renderPlaybooks() {
                 </table>
             </div>
         </section>
-    `).join('');
+    `;
+    }).join('');
 }
 
 /**
@@ -394,18 +407,21 @@ function renderPlaybooks() {
 function renderPlaybookRow(p) {
     return `
         <tr>
-            <td data-label="Playbook">
+            <td class="title-cell" data-label="Playbook">
                 <div class="playbook-main">
                     <h3>${escapeHtml(p.name)}</h3>
                     <p>${escapeHtml(p.description || 'No description')}</p>
                 </div>
             </td>
-            <td data-label="Configuration">
+            <td class="config-cell" data-label="Configuration">
                 <div class="playbook-meta">
                     <span>Inv: ${escapeHtml(p.inventory_name || 'None')}</span>
                     ${scheduleLabel(p) ? `<span>Sch: ${escapeHtml(scheduleLabel(p))}</span>` : ''}
+                    <span>Secrets: ${p.secrets?.length ? escapeHtml(p.secrets.map(s => s.alias).join(', ')) : 'None'}</span>
                     ${p.next_run ? `<span>Next: ${formatDateTime(p.next_run)}</span>` : ''}
+                    ${lastRunSummary(p)}
                     ${p.tags ? `<span>Tags: ${escapeHtml(p.tags)}</span>` : ''}
+                    ${p.notifications?.length ? '<span title="Notifications active">📢</span>' : ''}
                 </div>
             </td>
             <td class="actions-cell" data-label="Actions">
@@ -419,6 +435,71 @@ function renderPlaybookRow(p) {
             </td>
         </tr>
     `;
+}
+
+/**
+ * Builds a clickable last-run summary for a playbook.
+ *
+ * @param {Object} playbook - Playbook row.
+ * @returns {string} HTML.
+ */
+function lastRunSummary(playbook) {
+    if (!playbook.last_history_id) return '<span>Never</span>';
+    const status = playbook.last_status || 'unknown';
+    const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+    return `
+        <button type="button" class="playbook-meta-action" data-automator-action="open-console" data-id="${playbook.last_history_id}" title="Open last run log">
+            ${statusIcon(status)} ${escapeHtml(statusLabel)} ${formatDateTime(playbook.last_started_at)}
+        </button>
+    `;
+}
+
+/**
+ * Checks whether mobile category collapse behavior should apply.
+ *
+ * @returns {boolean} True on mobile viewports.
+ */
+function isMobileAutomatorView() {
+    return window.matchMedia('(max-width: 768px)').matches;
+}
+
+/**
+ * Reads persisted mobile expanded categories.
+ *
+ * @returns {Set<string>} Expanded category names.
+ */
+function getExpandedCategories() {
+    try {
+        return new Set(JSON.parse(localStorage.getItem(AUTOMATOR_CONFIG.EXPANDED_CATEGORIES_KEY) || '[]'));
+    } catch (err) {
+        return new Set();
+    }
+}
+
+/**
+ * Determines whether a category should be collapsed.
+ *
+ * @param {string} category - Category name.
+ * @returns {boolean} True when collapsed.
+ */
+function isCategoryCollapsed(category) {
+    if (!isMobileAutomatorView()) return false;
+    return !getExpandedCategories().has(category);
+}
+
+/**
+ * Toggles a mobile category and persists expanded categories.
+ *
+ * @param {string} category - Category name.
+ * @returns {void}
+ */
+function toggleCategory(category) {
+    if (!category || !isMobileAutomatorView()) return;
+    const expanded = getExpandedCategories();
+    if (expanded.has(category)) expanded.delete(category);
+    else expanded.add(category);
+    localStorage.setItem(AUTOMATOR_CONFIG.EXPANDED_CATEGORIES_KEY, JSON.stringify([...expanded]));
+    renderPlaybooks();
 }
 
 /**
@@ -546,10 +627,6 @@ function populateFormSelects() {
         { value: '', label: 'No inventory' },
         ...STATE.inventories.map(i => ({ value: String(i.id), label: i.name }))
     ]);
-    fillSelect('playbookVaultSecret', [
-        { value: '', label: 'No vault secret' },
-        ...STATE.secrets.map(s => ({ value: String(s.id), label: s.name }))
-    ]);
     fillSelect('playbookChain', [
         { value: '', label: 'No chain' },
         ...STATE.playbooks.map(p => ({ value: String(p.id), label: p.name }))
@@ -571,7 +648,6 @@ function openPlaybookModal(id = null) {
     setValue('playbookCategory', p?.category || 'General');
     setValue('playbookDescription', p?.description || '');
     setValue('playbookInventory', p?.inventory_id || '');
-    setValue('playbookVaultSecret', p?.vault_password_secret_id || '');
     setValue('playbookTags', p?.tags || '');
     setValue('playbookSkipTags', p?.skip_tags || '');
     setValue('playbookLimitHosts', p?.limit_hosts || '');
@@ -593,6 +669,13 @@ function openPlaybookModal(id = null) {
             return acc;
         }, {});
         Object.values(grouped).forEach(g => addNotifRow(g));
+    }
+    const secretContainer = document.getElementById('secretRowContainer');
+    if (secretContainer) {
+        secretContainer.innerHTML = '';
+        const secretRows = p?.secrets?.length ? p.secrets :
+            (p?.playbook_secret_id ? [{ secret_id: p.playbook_secret_id, alias: 'default', usage_type: 'file' }] : []);
+        secretRows.forEach(s => addSecretRow(s));
     }
 
     renderScheduleFields();
@@ -618,6 +701,36 @@ function renderScheduleFields() {
  */
 function closePlaybookModal() {
     hideModal('playbookModal');
+}
+
+/**
+ * Adds a playbook secret attachment row.
+ *
+ * @param {Object|null} data - Existing secret attachment.
+ * @returns {void}
+ */
+function addSecretRow(data = null) {
+    const container = document.getElementById('secretRowContainer');
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'secret-row';
+    const options = (STATE.secrets || []).map(s => {
+        const selected = data && String(data.secret_id) === String(s.id) ? 'selected' : '';
+        return `<option value="${s.id}" ${selected}>${escapeHtml(s.name)}</option>`;
+    }).join('');
+    row.innerHTML = `
+        <select class="game-input secret-id">${options}</select>
+        <input class="game-input secret-alias no-emoji" value="${automatorEscapeAttr(data?.alias || '')}" placeholder="alias e.g. api_key">
+        <select class="game-input secret-usage no-emoji">
+            <option value="file" ${data?.usage_type === 'file' ? 'selected' : ''}>File</option>
+            <option value="env" ${data?.usage_type === 'env' ? 'selected' : ''}>Env Var</option>
+            <option value="ssh_key" ${data?.usage_type === 'ssh_key' ? 'selected' : ''}>SSH Key</option>
+            <option value="vault_password" ${data?.usage_type === 'vault_password' ? 'selected' : ''}>Vault Password</option>
+        </select>
+        <button type="button" class="btn-icon-delete" data-automator-action="remove-secret-row" title="Remove Secret">🗑️</button>
+    `;
+    container.appendChild(row);
 }
 
 /**
@@ -684,8 +797,28 @@ async function savePlaybook(event) {
     }
 
     const formData = new FormData(form);
+    const secrets = [];
+    const aliases = new Set();
+    for (const row of document.querySelectorAll('.secret-row')) {
+        const secret_id = row.querySelector('.secret-id')?.value;
+        const alias = (row.querySelector('.secret-alias')?.value || '').trim();
+        const usage_type = row.querySelector('.secret-usage')?.value || 'file';
+        if (!secret_id && !alias) continue;
+        if (!secret_id || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(alias)) {
+            showToast('Secret aliases must start with a letter/underscore and contain only letters, numbers, and underscores.', 'error');
+            return;
+        }
+        if (aliases.has(alias.toLowerCase())) {
+            showToast('Secret aliases must be unique.', 'error');
+            return;
+        }
+        aliases.add(alias.toLowerCase());
+        secrets.push({ secret_id, alias, usage_type });
+    }
+    formData.append('secrets', JSON.stringify(secrets));
+
     const notifs = [];
-    document.querySelectorAll('.notif-row').forEach(row => {
+    document.querySelectorAll('#notifRowContainer .notif-row').forEach(row => {
         const user_id = row.querySelector('.notif-user').value;
         const notify_on = row.querySelector('.notif-on').value;
         row.querySelectorAll('.notif-channel-toggle.active').forEach(toggle => {
@@ -788,14 +921,27 @@ async function saveInventory(event) {
 }
 
 /**
- * Opens the write-only secret editor.
+ * Opens the secret manager.
  *
  * @returns {void}
  */
 function openSecretModal() {
-    document.getElementById('secretForm')?.reset();
-    setValue('secretCategory', 'General');
+    renderSecrets();
+    resetSecretForm();
     showModal('secretModal');
+}
+
+/**
+ * Resets the secret edit form for a new secret.
+ *
+ * @returns {void}
+ */
+function resetSecretForm() {
+    document.getElementById('secretForm')?.reset();
+    setValue('secretId', '');
+    setValue('secretCategory', 'General');
+    document.getElementById('secretValue')?.setAttribute('placeholder', '');
+    document.getElementById('secretDeleteBtn')?.classList.add('hidden');
 }
 
 /**
@@ -805,6 +951,76 @@ function openSecretModal() {
  */
 function closeSecretModal() {
     hideModal('secretModal');
+}
+
+/**
+ * Renders stored secrets in the secret manager.
+ *
+ * @returns {void}
+ */
+function renderSecrets() {
+    const list = document.getElementById('secretManageList');
+    if (!list) return;
+    if (!STATE.secrets.length) {
+        list.innerHTML = `<div class="automator-empty compact-empty">No secrets saved.</div>`;
+        return;
+    }
+    list.innerHTML = STATE.secrets.map(secret => `
+        <article class="inventory-tile">
+            <div class="inventory-body">
+                <div class="inventory-top">
+                    <span class="inventory-category-tag">${escapeHtml(secret.category || 'General')}</span>
+                    <strong>${escapeHtml(secret.name)}</strong>
+                </div>
+                <div class="inventory-sub">Write-only value • created ${formatDateTime(secret.created_at)}</div>
+            </div>
+            <div class="inventory-actions">
+                <button type="button" class="btn-icon-edit" data-automator-action="edit-secret" data-id="${secret.id}" title="Edit">✏️</button>
+                <button type="button" class="btn-icon-delete" data-automator-action="delete-secret" data-id="${secret.id}" title="Delete">🗑️</button>
+            </div>
+        </article>
+    `).join('');
+}
+
+/**
+ * Loads an existing secret's editable metadata into the form.
+ *
+ * @param {number} id - Secret ID.
+ * @returns {void}
+ */
+function editSecret(id) {
+    const secret = STATE.secrets.find(row => Number(row.id) === Number(id));
+    if (!secret) return;
+    setValue('secretId', secret.id);
+    setValue('secretName', secret.name || '');
+    setValue('secretCategory', secret.category || 'General');
+    setValue('secretValue', '');
+    document.getElementById('secretValue')?.setAttribute('placeholder', 'Enter a new value to replace the existing secret');
+    document.getElementById('secretDeleteBtn')?.classList.remove('hidden');
+}
+
+/**
+ * Deletes a stored secret.
+ *
+ * @param {number} id - Secret ID.
+ * @returns {void}
+ */
+function deleteSecret(id) {
+    if (!id) return;
+    const secret = STATE.secrets.find(row => Number(row.id) === Number(id));
+    showConfirmModal({
+        title: 'Delete Secret',
+        message: `Delete ${secret ? secret.name : `#${id}`}? Playbook attachments using it will be removed.`,
+        confirmText: 'DELETE',
+        danger: true,
+        hideCancel: true,
+        onConfirm: async () => {
+            await apiPost(`/admin/automator/api/secret/delete/${id}`, {});
+            resetSecretForm();
+            await refreshState(true);
+            renderSecrets();
+        }
+    });
 }
 
 /**
@@ -818,8 +1034,9 @@ async function saveSecret(event) {
     event.preventDefault();
     const result = await apiPost('/admin/automator/api/secret/save', new FormData(event.target), 15000);
     if (!result) return;
-    closeSecretModal();
     await refreshState(true);
+    renderSecrets();
+    resetSecretForm();
 }
 
 /**
@@ -971,11 +1188,15 @@ async function loadHistoryPage(reset = false) {
  */
 function openConsole(historyId) {
     currentConsoleHistoryId = historyId;
-    const h = STATE.history.find(row => Number(row.id) === Number(historyId));
+    let h = STATE.history.find(row => Number(row.id) === Number(historyId));
+    if (!h) {
+        const playbook = STATE.playbooks.find(row => Number(row.last_history_id) === Number(historyId));
+        if (playbook) h = { id: historyId, playbook_name: playbook.name, status: playbook.last_status, output: '' };
+    }
     setText('consoleTitle', h ? `#${h.id} ${h.playbook_name || 'Run'}` : `#${historyId}`);
-    updateConsoleStatusUI(h?.status || 'running');
+    updateConsoleStatusUI(h?.status || 'unknown');
     setText('consoleOutput', h?.output || '');
-    document.getElementById('consoleAbortBtn')?.classList.toggle('hidden', h && h.status !== 'running');
+    document.getElementById('consoleAbortBtn')?.classList.toggle('hidden', h?.status !== 'running');
     showModal('consoleModal');
     connectWS(historyId);
 }
@@ -987,7 +1208,19 @@ function openConsole(historyId) {
  * @returns {void}
  */
 function updateConsoleStatusUI(status) {
-    setText('consoleStatus', status);
+    const statusEl = document.getElementById('consoleStatus');
+    if (statusEl) {
+        if (status === 'running') {
+            statusEl.innerHTML = 'Running <span class="console-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span><span>.</span><span>.</span><span>.</span><span>.</span></span>';
+        } else {
+            statusEl.textContent = {
+                success: 'Success 🎉',
+                failed: 'Failed ⛔',
+                aborted: 'Aborted 🛑',
+                timed_out: 'Timed Out ⏱️'
+            }[status] || status;
+        }
+    }
     const indicator = document.getElementById('consoleIndicator');
     if (!indicator) return;
     indicator.className = 'console-indicator';
