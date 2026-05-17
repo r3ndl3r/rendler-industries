@@ -18,7 +18,7 @@
             <button type="button" class="action-btn" data-automator-action="open-playbook">＋ Playbook</button>
             <button type="button" class="action-btn" data-automator-action="open-inventory-manage">▤ Inventories</button>
             <button type="button" class="action-btn" data-automator-action="open-secret">🔐 Secret</button>
-            <button type="button" class="action-btn action-btn-muted" data-automator-action="lock-vault">⏻ Lock</button>
+            <button type="button" class="action-btn action-btn-muted" data-automator-action="lock-vault">🔒 Lock</button>
         </div>
     </div>
 
@@ -122,10 +122,6 @@
                     <label>Inventory</label>
                     <select name="inventory_id" id="playbookInventory" class="game-input no-emoji"></select>
                 </div>
-                <div class="form-group">
-                    <label>Vault Secret</label>
-                    <select name="vault_password_secret_id" id="playbookVaultSecret" class="game-input no-emoji"></select>
-                </div>
             </div>
             <div class="form-group">
                 <label>Description</label>
@@ -172,6 +168,17 @@
 
             <div class="notif-section">
                 <div class="section-heading">
+                    <label>Playbook Secrets</label>
+                    <div class="section-actions">
+                        <button type="button" class="btn-secondary compact" data-automator-action="open-secret-help" title="Secret usage help">ℹ️</button>
+                        <button type="button" class="btn-secondary compact" data-automator-action="add-secret-row">＋ Add</button>
+                    </div>
+                </div>
+                <div id="secretRowContainer" class="notif-rows"></div>
+            </div>
+
+            <div class="notif-section">
+                <div class="section-heading">
                     <label>Notifications (Scheduled Runs Only)</label>
                     <button type="button" class="btn-secondary compact" data-automator-action="add-notif-row">＋ Add</button>
                 </div>
@@ -193,6 +200,30 @@
                 <button type="submit" class="btn-primary">💾 Save</button>
             </div>
         </form>
+    </div>
+</div>
+
+<div id="secretHelpModal" class="modal-overlay">
+    <div class="modal-content automator-modal-wide">
+        <div class="modal-header">
+            <h3>Playbook Secrets Help</h3>
+            <span class="close-btn" data-automator-action="close-secret-help">&times;</span>
+        </div>
+        <div class="automator-help">
+            <p>Attach one or more stored secrets to a playbook. Each secret needs an alias, which is the name your YAML uses during the run.</p>
+            <ul>
+                <li><strong>File:</strong> writes the secret to a temporary private file. Use <code>automator_secret_files.alias</code>.</li>
+                <li><strong>Env Var:</strong> exposes <code>AUTOMATOR_SECRET_ALIAS</code> to Ansible.</li>
+                <li><strong>SSH Key:</strong> uses the secret as the Ansible private key for this run.</li>
+                <li><strong>Vault Password:</strong> uses the secret as <code>--vault-password-file</code>.</li>
+            </ul>
+            <pre><code>- debug:
+    msg: "{{ lookup('file', automator_secret_files.api_key) }}"
+
+- debug:
+    msg: "{{ lookup('env', 'AUTOMATOR_SECRET_API_PASSWORD') }}"</code></pre>
+            <p>Aliases must start with a letter or underscore and may contain only letters, numbers, and underscores. Staged files are removed after the run finishes.</p>
+        </div>
     </div>
 </div>
 
@@ -231,12 +262,21 @@ localhost ansible_connection=local
 </div>
 
 <div id="secretModal" class="modal-overlay">
-    <div class="modal-content">
+    <div class="modal-content automator-modal-wide">
         <div class="modal-header">
-            <h3>Secret</h3>
+            <h3>Secret Manager</h3>
             <span class="close-btn" data-automator-action="close-secret">&times;</span>
         </div>
+        <div class="automator-manager-layout">
+            <div class="automator-manager-list">
+                <div class="section-heading">
+                    <label>Stored Secrets</label>
+                    <button type="button" class="btn-secondary compact" data-automator-action="new-secret">＋ New</button>
+                </div>
+                <div id="secretManageList" class="inventory-list inventory-manage-list"></div>
+            </div>
         <form id="secretForm">
+            <input type="hidden" name="id" id="secretId">
             <div class="form-group">
                 <label>Name</label>
                 <input type="text" name="name" id="secretName" class="game-input no-emoji" required>
@@ -247,12 +287,14 @@ localhost ansible_connection=local
             </div>
             <div class="form-group">
                 <label>Value</label>
-                <input type="password" name="value" id="secretValue" class="game-input no-emoji" autocomplete="new-password" required>
+                <textarea name="value" id="secretValue" class="game-input no-emoji" autocomplete="new-password" required></textarea>
             </div>
             <div class="modal-actions modal-actions-center">
                 <button type="submit" class="btn-primary">🔐 Save</button>
+                <button type="button" id="secretDeleteBtn" class="btn-danger-outline hidden" data-automator-action="delete-secret">Delete</button>
             </div>
         </form>
+        </div>
     </div>
 </div>
 
