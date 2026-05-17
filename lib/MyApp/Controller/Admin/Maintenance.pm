@@ -21,6 +21,14 @@ sub index {
     $c->render('admin/maintenance');
 }
 
+# Mobile Auth Callback
+# Route: GET /admin/auth/callback
+# Behavior: Renders a success page for the app to intercept during the Cloudflare login flow.
+sub mobile_auth_callback {
+    my $c = shift;
+    $c->render('admin/auth_callback');
+}
+
 # Returns all maintenance task configs for the admin UI.
 # Route: GET /admin/maintenance/api/state
 # Returns: JSON { success, tasks[] }
@@ -191,6 +199,7 @@ sub api_run {
 sub register_routes {
     my ($class, $r) = @_;
     $r->{admin}->get( '/admin/maintenance'            )->to('admin-maintenance#index'     );
+    $r->{admin}->get( '/admin/auth/callback'          )->to('admin-maintenance#mobile_auth_callback');
     $r->{admin}->get( '/admin/maintenance/api/state'  )->to('admin-maintenance#api_state' );
     $r->{admin}->post('/admin/maintenance/api/update' )->to('admin-maintenance#api_update');
     $r->{admin}->post('/admin/maintenance/api/edit'   )->to('admin-maintenance#api_edit'  );
