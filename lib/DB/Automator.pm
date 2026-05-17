@@ -81,14 +81,23 @@ sub DB::list_automator_playbooks {
     $filters ||= {};
     my $sql = q{
         SELECT p.*, i.name AS inventory_name, c.name AS success_chain_name,
-               vs.name AS vault_password_secret_name,
+               sks.name AS secret_name,
                s.id AS schedule_id, s.schedule_type, s.interval_hours, s.daily_time,
-               s.next_run, s.last_run_at, s.last_history_id, s.is_active AS schedule_active
+               s.next_run, s.last_run_at, s.last_history_id AS schedule_last_history_id, s.is_active AS schedule_active,
+               lh.id AS last_history_id, lh.status AS last_status, lh.mode AS last_mode,
+               lh.started_at AS last_started_at, lh.finished_at AS last_finished_at
           FROM automator_playbooks p
           LEFT JOIN automator_inventories i ON i.id = p.inventory_id
           LEFT JOIN automator_playbooks c ON c.id = p.success_chain_id
-          LEFT JOIN automator_secrets vs ON vs.id = p.vault_password_secret_id
+          LEFT JOIN automator_secrets sks ON sks.id = p.playbook_secret_id
           LEFT JOIN automator_schedules s ON s.playbook_id = p.id
+          LEFT JOIN automator_history lh ON lh.id = (
+              SELECT h2.id
+                FROM automator_history h2
+               WHERE h2.playbook_id = p.id
+               ORDER BY h2.started_at DESC
+               LIMIT 1
+          )
          WHERE p.deleted_at IS NULL
     };
     my @params;
@@ -131,6 +140,7 @@ sub DB::list_automator_playbooks {
     for my $row (@$rows) {
         $row->{dynamic_vars} = $self->_json_decode($row->{dynamic_vars}, {});
         $row->{notifications} = $notif_map{$row->{id}} || [];
+        $row->{secrets} = $self->list_automator_playbook_secrets($row->{id});
     }
     return $rows;
 }
@@ -252,8 +262,51 @@ sub DB::get_automator_playbook {
     if ($row) {
         $row->{dynamic_vars} = $self->_json_decode($row->{dynamic_vars}, {});
         $row->{notifications} = $self->list_automator_playbook_notifications($id);
+        $row->{secrets} = $self->list_automator_playbook_secrets($id);
     }
     return $row;
+}
+
+sub DB::list_automator_playbook_secrets {
+    my ($self, $playbook_id) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare(q{
+        SELECT ps.*, s.name AS secret_name, s.category AS secret_category
+          FROM automator_playbook_secrets ps
+          JOIN automator_secrets s ON s.id = ps.secret_id
+         WHERE ps.playbook_id = ?
+         ORDER BY ps.sort_order ASC, ps.id ASC
+    });
+    $sth->execute($playbook_id);
+    return $sth->fetchall_arrayref({});
+}
+
+sub DB::save_automator_playbook_secrets {
+    my ($self, $playbook_id, $secrets) = @_;
+    $self->ensure_connection;
+    $secrets ||= [];
+    die "Secrets must be an array" unless ref($secrets) eq 'ARRAY';
+    my %allowed_usage = map { $_ => 1 } qw(file env ssh_key vault_password);
+    my %seen_alias;
+    my %single_use;
+    for my $s (@$secrets) {
+        die "Invalid secret row" unless ref($s) eq 'HASH';
+        die "Invalid secret" unless defined $s->{secret_id} && $s->{secret_id} =~ /\A\d+\z/;
+        die "Invalid secret alias" unless defined $s->{alias} && $s->{alias} =~ /\A[A-Za-z_][A-Za-z0-9_]*\z/;
+        die "Duplicate secret alias" if $seen_alias{lc $s->{alias}}++;
+        die "Invalid secret usage" unless $allowed_usage{$s->{usage_type} || ''};
+        die "Only one SSH key secret is allowed" if $s->{usage_type} eq 'ssh_key' && $single_use{ssh_key}++;
+        die "Only one vault password secret is allowed" if $s->{usage_type} eq 'vault_password' && $single_use{vault_password}++;
+    }
+    $self->{dbh}->do("DELETE FROM automator_playbook_secrets WHERE playbook_id = ?", undef, $playbook_id);
+    my $sort = 0;
+    for my $s (@$secrets) {
+        $self->{dbh}->do(q{
+            INSERT INTO automator_playbook_secrets (playbook_id, secret_id, alias, usage_type, sort_order)
+            VALUES (?, ?, ?, ?, ?)
+        }, undef, $playbook_id, $s->{secret_id}, $s->{alias}, $s->{usage_type}, $sort++);
+    }
+    return 1;
 }
 
 sub DB::list_automator_playbook_notifications {
@@ -400,19 +453,19 @@ sub DB::save_automator_playbook {
         $self->{dbh}->do(q{
             UPDATE automator_playbooks
                SET name=?, category=?, description=?, content=?, inventory_id=?, dynamic_vars=?,
-                   tags=?, skip_tags=?, limit_hosts=?, success_chain_id=?, vault_password_secret_id=?, log_retention_days=?
+                   tags=?, skip_tags=?, limit_hosts=?, success_chain_id=?, playbook_secret_id=?, log_retention_days=?
              WHERE id=? AND deleted_at IS NULL
         }, undef, @$data{qw(name category description content inventory_id)}, $vars,
-           @$data{qw(tags skip_tags limit_hosts success_chain_id vault_password_secret_id log_retention_days id)});
+           @$data{qw(tags skip_tags limit_hosts success_chain_id playbook_secret_id log_retention_days id)});
         return $data->{id};
     }
     $self->{dbh}->do(q{
         INSERT INTO automator_playbooks
             (name, category, description, content, inventory_id, dynamic_vars, tags, skip_tags,
-             limit_hosts, success_chain_id, vault_password_secret_id, log_retention_days, user_id)
+             limit_hosts, success_chain_id, playbook_secret_id, log_retention_days, user_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     }, undef, @$data{qw(name category description content inventory_id)}, $vars,
-       @$data{qw(tags skip_tags limit_hosts success_chain_id vault_password_secret_id log_retention_days user_id)});
+       @$data{qw(tags skip_tags limit_hosts success_chain_id playbook_secret_id log_retention_days user_id)});
     return $self->{dbh}->last_insert_id(undef, undef, 'automator_playbooks', 'id');
 }
 
@@ -441,14 +494,32 @@ sub DB::soft_delete_automator_playbook {
 }
 
 sub DB::save_automator_secret {
-    my ($self, $name, $category, $plaintext, $user_id) = @_;
+    my ($self, $id, $name, $category, $plaintext, $user_id) = @_;
     die "Secret name and value are required" unless length($name // '') && length($plaintext // '');
     $self->ensure_connection;
     my ($ciphertext, $iv, $tag, $salt) = $self->_automator_encrypt_secret($plaintext);
+    if ($id) {
+        my $sth = $self->{dbh}->prepare(q{
+            UPDATE automator_secrets
+               SET name = ?, category = ?, value_encrypted = ?, iv = ?, tag = ?, salt = ?
+             WHERE id = ? AND user_id = ?
+        });
+        $sth->bind_param(1, $name);
+        $sth->bind_param(2, $category || 'General');
+        $sth->bind_param(3, $ciphertext, SQL_BLOB);
+        $sth->bind_param(4, $iv, SQL_BINARY);
+        $sth->bind_param(5, $tag, SQL_BINARY);
+        $sth->bind_param(6, $salt, SQL_BINARY);
+        $sth->bind_param(7, $id);
+        $sth->bind_param(8, $user_id);
+        $sth->execute;
+        return { id => $id, name => $name, category => $category || 'General' };
+    }
     my $sth = $self->{dbh}->prepare(q{
         INSERT INTO automator_secrets (name, category, value_encrypted, iv, tag, salt, user_id)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
+            id = LAST_INSERT_ID(id),
             category = VALUES(category),
             value_encrypted = VALUES(value_encrypted),
             iv = VALUES(iv),
@@ -464,8 +535,14 @@ sub DB::save_automator_secret {
     $sth->bind_param(6, $salt, SQL_BINARY);
     $sth->bind_param(7, $user_id);
     $sth->execute;
-    my ($id) = $self->{dbh}->selectrow_array("SELECT id FROM automator_secrets WHERE name = ?", undef, $name);
-    return { id => $id, name => $name, category => $category || 'General' };
+    my $saved_id = $self->{dbh}->last_insert_id(undef, undef, 'automator_secrets', 'id');
+    return { id => $saved_id, name => $name, category => $category || 'General' };
+}
+
+sub DB::delete_automator_secret {
+    my ($self, $id, $user_id) = @_;
+    $self->ensure_connection;
+    return $self->{dbh}->do("DELETE FROM automator_secrets WHERE id = ? AND user_id = ?", undef, $id, $user_id);
 }
 
 sub DB::get_automator_secret_plaintext {
