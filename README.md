@@ -19,6 +19,7 @@ A hyper-integrated, full-stack home laboratory and family management ecosystem. 
 *   **Security:** 
     *   Tiered RBAC (Guest → User → Family → Admin).
     *   Manual admin approval workflow for new registrations.
+    *   Native Android admin access bridges Cloudflare Access challenges through a browser handoff and `/admin/auth/callback` deep-link return.
 
 ### **📡 The Multi-Channel Notification Hub**
 The system features a redundant, priority-weighted alert engine for real-time and scheduled notifications:
@@ -39,7 +40,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 ### 🧑‍🔧 Ansible Automator (`/admin/automator`)
 *   **Infrastructure Orchestration:** Native integration with **Ansible** for home lab automation and server maintenance.
-*   **Encrypted Vault:** Secure storage for sensitive deployment secrets and SSH keys, protected by a master module password and **AES-GCM** encryption.
+*   **Secret Manager:** Secure **AES-GCM** storage for deployment secrets, with per-playbook aliases exposed as private files, environment variables, SSH keys, or Ansible Vault passwords.
 *   **Real-time Console:** Live execution monitoring via WebSockets, featuring process-group abort support and persistent log history.
 *   **Success Chaining:** Complex workflow orchestration allowing playbooks to trigger sequential tasks upon successful completion.
 *   **Scheduled Maintenance:** Rule-based scheduling (Daily/Hourly) with automated multi-channel reporting for headless execution.
