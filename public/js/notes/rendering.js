@@ -3,6 +3,40 @@
 // Persistence Layer for Error Reporting: Prevents console spam during heartbeat cycles
 window._renderErrors = new Set();
 
+/**
+ * Checks whether a note is a fence note pinned behind normal notes.
+ *
+ * @param {Object|null|undefined} note - Note record to inspect.
+ * @returns {boolean} True when the note title uses the FENCE: prefix.
+ */
+function isFenceNote(note) {
+    return !!(note && typeof note.title === 'string' && note.title.startsWith('FENCE:'));
+}
+
+/**
+ * Resolves the rendered z-index for a note.
+ *
+ * @param {Object|null|undefined} note - Note record to inspect.
+ * @returns {number} Pinned fence z-index or the note z-index fallback.
+ */
+function getNoteZIndex(note) {
+    return isFenceNote(note) ? 1 : (note?.z_index || 1);
+}
+
+/**
+ * Returns the user-facing note title, hiding the fence control prefix.
+ *
+ * @param {Object|null|undefined} note - Note record to inspect.
+ * @returns {string} Display title.
+ */
+function displayNoteTitle(note) {
+    const title = note?.title || 'Untitled Note';
+    return isFenceNote(note) ? (title.replace(/^FENCE:\s*/, '') || 'Untitled Note') : title;
+}
+
+window.isFenceNote = isFenceNote;
+window.getNoteZIndex = getNoteZIndex;
+window.displayNoteTitle = displayNoteTitle;
 
 /**
  * Renders all sticky notes and updates the UI state.
@@ -59,7 +93,9 @@ function renderUI() {
                 if (curY != note.y) existing.style.top = `${note.y}px`;
                 if (note.width  && curW != note.width)  existing.style.width  = `${note.width}px`;
                 if (note.height && curH != note.height) existing.style.height = `${note.height}px`;
-                if (curZ != note.z_index) existing.style.zIndex = note.z_index || 1;
+                const zIndex = getNoteZIndex(note);
+                existing.classList.toggle('is-fence-note', isFenceNote(note));
+                if (curZ != zIndex) existing.style.zIndex = zIndex;
 
                 // --- Bulk Selection Persistence ---
                 // Re-apply visual selection markers lost during surgical reconciliation.
@@ -182,13 +218,14 @@ function renderUI() {
                 if (textSection) {
                     textSection.classList.toggle('is-dashboard', isDashboard);
                     if (titleSlot) {
+                        const displayTitle = displayNoteTitle(note);
                         const newTitleHtml = (isDashboard && typeof NoteParser !== 'undefined')
-                            ? (NoteParser.renderHeader(note.title) || window.escapeHtml(note.title || 'Untitled Note'))
-                            : window.escapeHtml(note.title || 'Untitled Note');
+                            ? (NoteParser.renderHeader(displayTitle) || window.escapeHtml(displayTitle))
+                            : window.escapeHtml(displayTitle);
 
                         // Use a composite render-signature key to ensure stability during heartbeats 
                         // while correctly detecting transitions between Plain and Dashboard modes.
-                        const titleValue = note.title || '';
+                        const titleValue = `${note.title || ''}::${displayTitle}`;
                         const renderMode = (isDashboard && typeof NoteParser !== 'undefined') ? 'dashboard' : 'plain';
                         const titleKey   = `${renderMode}::${titleValue}`;
 
@@ -300,8 +337,9 @@ function updateLevelDisplay() {
 function createNoteElement(note, canEdit = true) {
     const isExternallyLocked = note.locked_by_session_id && note.locked_by_session_id !== STATE.sessionId;
     const isDashboard = typeof NoteParser !== 'undefined' && NoteParser.isDashboard(note.content || '');
+    const displayTitle = displayNoteTitle(note);
     const div = document.createElement('div');
-    div.className = `sticky-note ${note.is_collapsed ? 'collapsed' : ''} ${canEdit ? 'can-edit' : ''} ${isExternallyLocked ? 'is-externally-locked' : ''} ${isDashboard ? 'is-dashboard-note' : ''}`;
+    div.className = `sticky-note ${note.is_collapsed ? 'collapsed' : ''} ${canEdit ? 'can-edit' : ''} ${isExternallyLocked ? 'is-externally-locked' : ''} ${isDashboard ? 'is-dashboard-note' : ''} ${isFenceNote(note) ? 'is-fence-note' : ''}`;
     div.id = `note-${note.id}`;
     div.dataset.id = note.id;
     // Atomic Context: Capture content baseline for reconciliation
@@ -316,12 +354,12 @@ function createNoteElement(note, canEdit = true) {
     div.style.top = `${note.y}px`;
     if (note.width)  div.style.width = `${note.width}px`;
     if (note.height) div.style.height = `${note.height}px`;
-    div.style.zIndex = note.z_index || 1;
+    div.style.zIndex = getNoteZIndex(note);
 
     const contentHtml = generateNoteContentHtml(note, canEdit, isDashboard);
     const titleHtml   = isDashboard && typeof NoteParser !== 'undefined' 
-        ? (NoteParser.renderHeader(note.title) || window.escapeHtml(note.title || 'Untitled Note'))
-        : window.escapeHtml(note.title || 'Untitled Note');
+        ? (NoteParser.renderHeader(displayTitle) || window.escapeHtml(displayTitle))
+        : window.escapeHtml(displayTitle);
 
     
     div.innerHTML = `
@@ -331,7 +369,7 @@ function createNoteElement(note, canEdit = true) {
                    data-action="update-accent" title="Change Note Color" ${canEdit ? '' : 'disabled'}>
             
             <div class="note-drag-handle-container" title="Click anywhere in the title bar to Pick and Place (Sticky Move)">
-                <div class="note-title-slot" data-rendered-title="${(isDashboard && typeof NoteParser !== 'undefined') ? 'dashboard' : 'plain'}::${window.escapeHtml(note.title || '')}">
+                <div class="note-title-slot" data-rendered-title="${(isDashboard && typeof NoteParser !== 'undefined') ? 'dashboard' : 'plain'}::${window.escapeHtml(`${note.title || ''}::${displayTitle}`)}">
                     ${titleHtml}
                 </div>
                 <input type="text" class="inline-title-input" value="${window.escapeHtml(note.title || '')}" 
@@ -557,7 +595,7 @@ window.formatBytes = function(bytes, decimals = 1) {
  * @returns {string} - HTML string for the sidebar inner content.
  */
 function renderBacklinksSidebar(note, backlinks) {
-    const safeTitle = window.escapeHtml(note.title || 'Untitled');
+    const safeTitle = window.escapeHtml(displayNoteTitle(note) || 'Untitled');
     const count = backlinks.length;
 
     const cards = backlinks.map(bl => {
