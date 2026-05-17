@@ -1,0 +1,25 @@
+<%# /templates/admin/auth_callback.html.ep %>
+% layout 'default';
+% title 'Authenticated';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/auth.css">
+% end
+
+<div class="app-container auth-callback-page">
+    <div class="header-bar">
+        <h1>Authenticated</h1>
+        <div class="manage-actions">
+            <a href="/admin/automator" class="btn btn-primary">Return to Dashboard</a>
+        </div>
+    </div>
+
+    <div class="glass-card text-center auth-callback-card">
+        <div class="success-icon">✅</div>
+        <p class="auth-callback-message">Your session has been verified by Cloudflare Zero Trust.</p>
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <p class="auth-callback-returning">Returning to app...</p>
+        </div>
+    </div>
+</div>
