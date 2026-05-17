@@ -632,7 +632,7 @@ async function initNotes() {
                 
                 // --- 2. Focus Management (Z-Index) ---
                 // Logic: Promote to foreground only if not already top-level and not clicking a trigger
-                if (!isTrigger && note && note.z_index < STATE.maxZ) {
+                if (!isTrigger && note && !window.isFenceNote?.(note) && note.z_index < STATE.maxZ) {
                     const newZ = ++STATE.maxZ;
                     note.z_index = newZ;
                     noteEl.style.zIndex = newZ;
@@ -1130,7 +1130,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             STATE.share_list    = data.share_list || [];
             
             // Interaction Optimization: Calculate global Z-index baseline once per hydration
-            STATE.maxZ = STATE.notes.reduce((max, n) => Math.max(max, n.z_index || 1), 1);
+            STATE.maxZ = STATE.notes.reduce((max, n) => window.isFenceNote?.(n) ? max : Math.max(max, n.z_index || 1), 1);
             
             // Sync Branding Pill
             const canvasObj = STATE.canvases.find(c => c.id == STATE.canvas_id);
