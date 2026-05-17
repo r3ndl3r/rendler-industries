@@ -1,6 +1,7 @@
 /* /public/css/auth.css */
 
-.auth-wrapper {
+.auth-wrapper,
+.auth-page {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -141,4 +142,44 @@ input[type="submit"]:hover {
 .success-actions {
     display: flex;
     justify-content: center;
+}
+
+.auth-callback-page {
+    padding: 24px;
+}
+
+.auth-callback-card {
+    border-radius: 20px;
+    margin: 100px auto;
+    max-width: 400px;
+    padding: 40px;
+}
+
+.auth-callback-message {
+    color: #94a3b8;
+    line-height: 1.6;
+}
+
+.spinner-container {
+    margin-top: 30px;
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+    border: 4px solid rgba(59, 130, 246, 0.1);
+    border-left-color: #3b82f6;
+    border-radius: 50%;
+    height: 40px;
+    margin: 0 auto;
+    width: 40px;
+}
+
+.auth-callback-returning {
+    color: #3b82f6;
+    font-size: 14px;
+    margin-top: 15px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
