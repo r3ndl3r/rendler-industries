@@ -8,7 +8,7 @@
     <script src="/js/auth.js"></script>
 % end
 
-<div class="auth-wrapper">
+<div class="app-container auth-page">
     <div class="auth-container">
         <h1 class="auth-header">Login</h1>
         
@@ -25,7 +25,7 @@
 
         <%# Login Form %>
         <form method="POST" action="/login">
-            <input type="hidden" name="redirect" value="<%= param('redirect') || '/' %>">
+            <input type="hidden" name="redirect" value="<%= param('redirect') || '/quick' %>">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" required autofocus>
