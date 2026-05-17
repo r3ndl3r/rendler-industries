@@ -1548,7 +1548,7 @@ sub DB::purge_deleted_notes {
     return $self->{dbh}->do($sql);
 }
 
-# Compresses z_index values for all notes to a dense range (1..N) per layer.
+# Compresses z_index values while keeping FENCE: notes pinned to z-index 1.
 # Features:
 #   - Uses MariaDB window functions (10.2+) for rank calculation
 #   - Atomic update via single statement JOIN
@@ -1561,17 +1561,25 @@ sub DB::normalize_note_z_indices {
 
     my $sql = q{
         UPDATE notes n
-        INNER JOIN (
+        LEFT JOIN (
             SELECT id,
                    ROW_NUMBER() OVER (
                        PARTITION BY canvas_id, layer_id
                        ORDER BY z_index ASC, id ASC
-                   ) AS new_z
+                   ) + 1 AS new_z
             FROM notes
             WHERE is_deleted = 0
+              AND title NOT LIKE BINARY 'FENCE:%'
         ) ranked ON n.id = ranked.id
-        SET n.z_index = ranked.new_z
-        WHERE n.z_index != ranked.new_z;
+        SET n.z_index = CASE
+            WHEN n.title LIKE BINARY 'FENCE:%' THEN 1
+            ELSE ranked.new_z
+        END
+        WHERE n.is_deleted = 0
+          AND (
+              (n.title LIKE BINARY 'FENCE:%' AND n.z_index != 1)
+              OR (n.title NOT LIKE BINARY 'FENCE:%' AND n.z_index != ranked.new_z)
+          );
     };
 
     my $rows = $self->{dbh}->do($sql);
