@@ -72,7 +72,7 @@ async function executeCreateNote() {
         y: note.y,
         width: note.width,
         height: note.height,
-        z_index: note.z_index,
+        z_index: window.getNoteZIndex?.(note) || note.z_index,
         is_collapsed: note.is_collapsed
     } : {
         x: DRAFT_NOTE.x !== null ? DRAFT_NOTE.x : (Math.round(canvasCX / 10) * 10 - 140),
