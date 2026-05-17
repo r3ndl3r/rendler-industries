@@ -22,6 +22,7 @@ use Mojo::Util qw(trim);
 #   Rendered HTML template 'login'
 sub login_form {
     my $c = shift;
+    return $c->redirect_to('/quick') if $c->is_logged_in;
     $c->render('auth/login', msg => $c->param('msg'));
 }
 
@@ -64,10 +65,10 @@ sub login {
         $c->app->log->info("User $username logged in (session rotated) from IP " . $c->tx->remote_address);
         
         # Determine destination: prioritizes the 'redirect' parameter for deep linking
-        my $redirect = $c->param('redirect') || '/';
+        my $redirect = $c->param('redirect') || '/quick';
         
         # Security: Prevent Open Redirect attacks by enforcing local relative paths
-        $redirect = '/' unless $redirect =~ m{^/};
+        $redirect = '/quick' unless $redirect =~ m{^/};
         
         return $c->redirect_to($redirect);
     } elsif ($auth_result == 2) {
