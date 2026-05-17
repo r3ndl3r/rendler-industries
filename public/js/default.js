@@ -212,6 +212,14 @@ async function apiPost(url, data = {}, timeout = 30000) {
 
         const response = await fetch(url, options);
         clearTimeout(id);
+
+        // Intercept Cloudflare Access 403s before parsing; Access may return HTML.
+        if (response.status === 403 && window.Capacitor && window.Capacitor.isNativePlatform()) {
+            if (typeof window.handleMobileAdminAuth === 'function') {
+                window.handleMobileAdminAuth(url);
+                return null;
+            }
+        }
         
         const text = await response.text();
         let result;
@@ -257,6 +265,14 @@ async function apiGet(url, timeout = 3000) {
 
         const response = await fetch(url, { signal: controller.signal });
         clearTimeout(id);
+
+        // Intercept Cloudflare Access 403s on native mobile
+        if (response.status === 403 && window.Capacitor && window.Capacitor.isNativePlatform()) {
+            if (typeof window.handleMobileAdminAuth === 'function') {
+                window.handleMobileAdminAuth(url);
+                return null;
+            }
+        }
 
         const text = await response.text();
         let result;
@@ -1129,6 +1145,160 @@ document.addEventListener('DOMContentLoaded', checkApkUpdate);
         const url = action.notification.data && action.notification.data.url;
         if (url) window.location.href = url;
     });
+}());
+
+/**
+ * --- Mobile Zero Trust Bridge ---
+ *
+ * Provides a handshake between the Capacitor WebView and Cloudflare Access.
+ * Since email-based OTP login often fails inside a restricted WebView,
+ * we intercept 403s and bridge them to a Chrome Custom Tab.
+ */
+(function initMobileAuth() {
+    if (!window.Capacitor || !window.Capacitor.isNativePlatform()) return;
+
+    const { App, Browser } = window.Capacitor.Plugins;
+    if (!App || !Browser) return;
+
+    const pendingKey = 'mobile_admin_auth_target';
+
+    /**
+     * Checks whether a hostname belongs to the current app host.
+     *
+     * @param {string} hostname - Hostname to compare against the current page.
+     * @returns {boolean} True when the host matches after stripping www.
+     */
+    function isSameAppHost(hostname) {
+        const current = window.location.hostname.replace(/^www\./, '');
+        const incoming = hostname.replace(/^www\./, '');
+        return incoming === current;
+    }
+
+    /**
+     * Extracts a same-host admin path from an absolute or relative URL.
+     *
+     * @param {string} rawUrl - URL received from fetch handling or deep-link events.
+     * @returns {string|null} Admin path with query/hash, or null when invalid.
+     */
+    function adminPathFromUrl(rawUrl) {
+        try {
+            const parsed = new URL(rawUrl, window.location.origin);
+            if (!isSameAppHost(parsed.hostname)) return null;
+            if (!parsed.pathname.startsWith('/admin/')) return null;
+            return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Extracts the original admin target from a Cloudflare Access login URL.
+     *
+     * @param {string} rawUrl - URL received from browser/deep-link callbacks.
+     * @returns {string|null} Redirect admin path, or null when not an Access login URL.
+     */
+    function cloudflareAccessLoginTargetFromUrl(rawUrl) {
+        try {
+            const parsed = new URL(rawUrl, window.location.origin);
+            const redirectPath = parsed.searchParams.get('redirect_url');
+            if (parsed.hostname !== 'rendler.cloudflareaccess.com') return null;
+            if (parsed.pathname !== '/cdn-cgi/access/login/rendler.org') return null;
+            if (!redirectPath || !redirectPath.startsWith('/admin/')) return null;
+            return redirectPath;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Checks whether a URL is Cloudflare's same-host authorization completion path.
+     *
+     * @param {string} rawUrl - URL received from browser/deep-link callbacks.
+     * @returns {boolean} True when the URL is the Access authorized endpoint.
+     */
+    function isCloudflareAccessAuthorizedUrl(rawUrl) {
+        try {
+            const parsed = new URL(rawUrl, window.location.origin);
+            return isSameAppHost(parsed.hostname) && parsed.pathname === '/cdn-cgi/access/authorized';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /**
+     * Checks whether a URL is the native admin auth callback page.
+     *
+     * @param {string} rawUrl - URL received from browser/deep-link callbacks.
+     * @returns {boolean} True when the URL points to /admin/auth/callback.
+     */
+    function isAdminCallback(rawUrl) {
+        try {
+            return new URL(rawUrl, window.location.origin).pathname === '/admin/auth/callback';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /**
+     * Closes the system browser and routes the WebView back to the pending admin target.
+     *
+     * @param {string} rawUrl - URL that returned from the external auth flow.
+     * @returns {void}
+     */
+    function returnToAdmin(rawUrl) {
+        if (Browser.close) Browser.close().catch(() => {});
+
+        if (isCloudflareAccessAuthorizedUrl(rawUrl)) {
+            window.location.replace(rawUrl);
+            return;
+        }
+
+        const incomingPath = adminPathFromUrl(rawUrl) || cloudflareAccessLoginTargetFromUrl(rawUrl);
+        const pendingPath = sessionStorage.getItem(pendingKey);
+        const targetPath = incomingPath && !isAdminCallback(rawUrl)
+            ? incomingPath
+            : (pendingPath || '/admin/automator');
+
+        sessionStorage.removeItem(pendingKey);
+        window.location.replace(targetPath);
+    }
+
+    // Listen for deep links returning from Cloudflare system browser login.
+    // The AndroidManifest.xml intent-filter catches rendler.org links.
+    App.addListener('appUrlOpen', function(data) {
+        if (adminPathFromUrl(data.url) || cloudflareAccessLoginTargetFromUrl(data.url) || isCloudflareAccessAuthorizedUrl(data.url)) returnToAdmin(data.url);
+    });
+
+    if (App.getLaunchUrl) {
+        App.getLaunchUrl().then(data => {
+            if (data && data.url && (adminPathFromUrl(data.url) || cloudflareAccessLoginTargetFromUrl(data.url) || isCloudflareAccessAuthorizedUrl(data.url))) {
+                returnToAdmin(data.url);
+            }
+        }).catch(() => {});
+    }
+
+    // Global helper to bridge to system browser for admin sessions.
+    window.handleMobileAdminAuth = async function(targetUrl) {
+        // Resolve absolute URL for Cloudflare redirect reliability
+        const fullUrl = new URL(targetUrl, window.location.origin).toString();
+        const targetPath = adminPathFromUrl(fullUrl) || '/admin/automator';
+        sessionStorage.setItem(pendingKey, targetPath);
+
+        // Use the themed modal system to explain the transition
+        showConfirmModal({
+            title: "Admin Access Required",
+            icon: "🔒",
+            message: "This section requires an email-verified session. Open secure login in browser?",
+            confirmText: "Open Login",
+            onConfirm: async () => {
+                await Browser.open({
+                    url: fullUrl,
+                    toolbarColor: '#050c1d',
+                    presentationStyle: 'popover'
+                });
+            }
+        });
+    };
 }());
 
 /**
