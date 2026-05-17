@@ -104,6 +104,17 @@ sub api_add {
     my $points      = int($c->param('points') || 0);
     my $assigned_to = $c->param('assigned_to');
 
+    if (defined $assigned_to && $assigned_to ne '') {
+        return $c->render(json => { success => 0, error => 'Invalid child assignment' })
+            unless $assigned_to =~ /^\d+$/;
+
+        my $target = $c->db->get_user_by_id($assigned_to);
+        return $c->render(json => { success => 0, error => 'Chores can only be assigned to approved children' })
+            unless $target && $target->{is_child} && !$target->{is_admin} && $target->{status} eq 'approved';
+    } else {
+        $assigned_to = undef;
+    }
+
     return $c->render(json => { success => 0, error => 'Title is required' }) unless $title;
 
     my $new_id;
