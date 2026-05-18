@@ -80,6 +80,7 @@ sub api_upload {
 
     my $fill_type = ($c->param('fill_type') // 'full') eq 'partial' ? 'partial' : 'full';
     my $description = trim($c->param('description') // '');
+    my $discount = _non_negative_decimal($c->param('discount_per_litre')) // 0;
     my $log_date = $c->param('log_date') || $c->now->strftime('%Y-%m-%d');
     $log_date = $c->now->strftime('%Y-%m-%d') unless $log_date =~ /^\d{4}-\d{2}-\d{2}$/;
 
@@ -91,6 +92,7 @@ sub api_upload {
             log_date => $log_date,
             fill_type => $fill_type,
             description => $description || undef,
+            discount_per_litre => $discount,
             %$prepared1,
             %$prepared2
         });
@@ -354,6 +356,8 @@ sub _normalize_ai_payload {
     my $litres = _positive_decimal($ai->{litres});
     my $price = _positive_decimal($ai->{price_per_litre});
     my $total = _positive_decimal($ai->{total_amount});
+    my $discount = _non_negative_decimal($ai->{discount_per_litre});
+    $discount = _non_negative_decimal($log->{discount_per_litre}) // 0 unless defined $discount;
     my $date = ($ai->{date} && $ai->{date} =~ /^\d{4}-\d{2}-\d{2}$/) ? $ai->{date} : ($log->{log_date} || $c->now->strftime('%Y-%m-%d'));
 
     push @reasons, 'missing odometer' unless defined $odometer;
@@ -362,7 +366,7 @@ sub _normalize_ai_payload {
     push @reasons, 'missing total amount' unless defined $total;
 
     if (defined $litres && defined $price && defined $total) {
-        my $expected = $litres * $price;
+        my $expected = $litres * ($price - ($discount / 100));
         push @reasons, 'litres and unit price do not match total' if abs($expected - $total) > 1.00;
     }
 
@@ -380,6 +384,7 @@ sub _normalize_ai_payload {
         odometer => $odometer,
         litres => $litres,
         price_per_litre => $price,
+        discount_per_litre => $discount,
         total_amount => $total,
         station_name => trim($ai->{station_name} // '') || undef,
         fill_type => (($log->{fill_type} // 'full') eq 'partial') ? 'partial' : 'full',
@@ -405,10 +410,12 @@ sub _extract_manual_payload {
     my $odometer = _positive_int($c->param('odometer'));
     my $litres = _positive_decimal($c->param('litres'));
     my $price = _positive_decimal($c->param('price_per_litre'));
+    my $discount = _non_negative_decimal($c->param('discount_per_litre'));
     my $total = _positive_decimal($c->param('total_amount'));
     push @reasons, 'odometer is required' unless defined $odometer;
     push @reasons, 'litres is required' unless defined $litres;
     push @reasons, 'price per litre is required' unless defined $price;
+    push @reasons, 'discount is invalid' unless defined $discount;
     push @reasons, 'total amount is required' unless defined $total;
 
     my $fill_type = ($c->param('fill_type') // 'full') eq 'partial' ? 'partial' : 'full';
@@ -421,6 +428,7 @@ sub _extract_manual_payload {
         odometer => $odometer,
         litres => $litres,
         price_per_litre => $price,
+        discount_per_litre => $discount,
         total_amount => $total,
         station_name => $station,
         fill_type => $fill_type,
@@ -443,6 +451,7 @@ sub _mark_ai_failure {
         odometer => $log->{odometer},
         litres => $log->{litres},
         price_per_litre => $log->{price_per_litre},
+        discount_per_litre => $log->{discount_per_litre} // 0,
         total_amount => $log->{total_amount},
         station_name => $log->{station_name},
         fill_type => $log->{fill_type},
@@ -481,6 +490,13 @@ sub _positive_decimal {
     my ($value) = @_;
     return undef unless defined $value && $value =~ /^\d+(?:\.\d+)?$/;
     return $value > 0 ? sprintf('%.3f', $value) + 0 : undef;
+}
+
+# Returns a zero-or-positive decimal or undef.
+sub _non_negative_decimal {
+    my ($value) = @_;
+    return undef unless defined $value && $value =~ /^\d+(?:\.\d+)?$/;
+    return $value >= 0 ? sprintf('%.3f', $value) + 0 : undef;
 }
 
 sub register_routes {
