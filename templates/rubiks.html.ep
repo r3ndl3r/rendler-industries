@@ -1,7 +1,7 @@
 <%# /templates/rubiks.html.ep %>
 
-% layout 'default';
-% title '🧊 Rubik\'s Generator';
+% layout 'default', hide_navbar_title => 1, favicon => '🧊';
+% title 'Rubik\'s Generator';
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/rubiks.css">
