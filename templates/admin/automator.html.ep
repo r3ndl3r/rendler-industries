@@ -346,15 +346,15 @@ localhost ansible_connection=local
         </div>
         <div id="consoleStatusView" class="console-status-view">
             <div class="console-run-summary">
-                <div>
+                <div class="console-run-line">
                     <span class="label-caps">Current Play</span>
                     <strong id="consoleCurrentPlay">Waiting for events...</strong>
-                </div>
-                <div>
+                    <span class="console-run-separator">-</span>
                     <span class="label-caps">Hosts Active</span>
                     <strong id="consoleHostsActive">0 / 0</strong>
+                    <span class="console-run-separator">-</span>
+                    <div class="console-counts" id="consoleCounts"></div>
                 </div>
-                <div class="console-counts" id="consoleCounts"></div>
             </div>
             <div id="consoleHostList" class="console-host-list"></div>
         </div>
