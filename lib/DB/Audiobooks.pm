@@ -84,22 +84,25 @@ sub DB::get_audiobook_book_progress {
 #   chapter_idx : Zero-based chapter index (SMALLINT).
 #   position_sec: Playback offset in seconds (FLOAT).
 #   completed   : 1 if the book is finished, 0 otherwise.
+#   client_updated_ms : Client-side save timestamp in epoch milliseconds.
 # Returns:
 #   1 on success; propagates DBI exception on failure.
 sub DB::upsert_audiobook_progress {
-    my ($self, $user_id, $book_slug, $chapter_idx, $position_sec, $completed) = @_;
+    my ($self, $user_id, $book_slug, $chapter_idx, $position_sec, $completed, $client_updated_ms) = @_;
     $self->ensure_connection;
+    $client_updated_ms ||= 0;
 
     my $sth = $self->{dbh}->prepare(
         "INSERT INTO audiobook_progress
-             (user_id, book_slug, chapter_idx, position_sec, completed)
-         VALUES (?, ?, ?, ?, ?)
+             (user_id, book_slug, chapter_idx, position_sec, completed, client_updated_ms)
+         VALUES (?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
-             chapter_idx  = VALUES(chapter_idx),
-             position_sec = VALUES(position_sec),
-             completed    = VALUES(completed)"
+             chapter_idx  = IF(VALUES(client_updated_ms) >= client_updated_ms, VALUES(chapter_idx), chapter_idx),
+             position_sec = IF(VALUES(client_updated_ms) >= client_updated_ms, VALUES(position_sec), position_sec),
+             completed    = IF(VALUES(client_updated_ms) >= client_updated_ms, VALUES(completed), completed),
+             client_updated_ms = GREATEST(client_updated_ms, VALUES(client_updated_ms))"
     );
-    $sth->execute($user_id, $book_slug, $chapter_idx, $position_sec, $completed);
+    $sth->execute($user_id, $book_slug, $chapter_idx, $position_sec, $completed, $client_updated_ms);
     return 1;
 }
 
