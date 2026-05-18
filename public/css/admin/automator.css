@@ -659,10 +659,106 @@
     gap: 8px;
 }
 
+.console-actions .active {
+    border-color: rgba(59, 130, 246, 0.75);
+    color: #dbeafe;
+}
+
 .console-toggle {
     color: #94a3b8;
     font-size: 0.82rem;
 }
+
+.console-status-view {
+    flex: 1;
+    overflow: auto;
+    padding: 16px;
+    display: grid;
+    align-content: start;
+    gap: 14px;
+}
+
+.console-run-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    background: rgba(15, 23, 42, 0.74);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.console-run-summary strong {
+    display: block;
+    color: #e0f2fe;
+    margin-top: 4px;
+}
+
+.console-counts {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.console-count {
+    background: rgba(30, 41, 59, 0.82);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 999px;
+    color: #bfdbfe;
+    font-size: 0.8rem;
+    padding: 4px 9px;
+}
+
+.console-host-list {
+    display: grid;
+    gap: 10px;
+}
+
+.console-host-row {
+    display: grid;
+    grid-template-columns: minmax(90px, 0.4fr) minmax(84px, auto) minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.74);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-left: 4px solid #64748b;
+    border-radius: 9px;
+    padding: 11px 13px;
+}
+
+.console-host-row strong {
+    color: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.console-host-icon {
+    flex: 0 0 auto;
+    font-size: 0.9rem;
+}
+
+.console-host-row span {
+    color: #bfdbfe;
+}
+
+.console-host-row small {
+    color: #94a3b8;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.console-host-row.status-ok { border-left-color: #10b981; }
+.console-host-row.status-complete { border-left-color: #10b981; }
+.console-host-row.status-running { border-left-color: #3b82f6; }
+.console-host-row.status-skipped { border-left-color: #64748b; }
+.console-host-row.status-failed,
+.console-host-row.status-unreachable { border-left-color: #ef4444; }
 
 .console-output {
     flex: 1;
@@ -674,6 +770,11 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     font-size: 0.86rem;
     line-height: 1.5;
+}
+
+.console-output.hidden,
+.console-status-view.hidden {
+    display: none;
 }
 
 .modal-panel-actions {
