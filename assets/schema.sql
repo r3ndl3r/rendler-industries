@@ -1,3 +1,4 @@
+-- /assets/schema.sql
 CREATE TABLE `ai_conversations` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
@@ -30,6 +31,7 @@ CREATE TABLE `audiobook_progress` (
   `chapter_idx` smallint(5) unsigned NOT NULL DEFAULT 0,
   `position_sec` float NOT NULL DEFAULT 0,
   `completed` tinyint(1) NOT NULL DEFAULT 0,
+  `client_updated_ms` bigint(20) unsigned NOT NULL DEFAULT 0,
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_user_book` (`user_id`,`book_slug`),
