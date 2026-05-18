@@ -337,10 +337,26 @@ localhost ansible_connection=local
                 <span id="consoleStatus" class="console-status">running</span>
             </div>
             <div class="console-actions">
+                <button type="button" class="btn-secondary compact active" data-automator-action="show-console-status">Status</button>
+                <button type="button" class="btn-secondary compact" data-automator-action="show-console-log">Raw Log</button>
                 <label class="console-toggle"><input type="checkbox" id="consoleScrollLock"> Lock</label>
                 <button type="button" id="consoleAbortBtn" class="btn-danger-outline compact" data-automator-action="abort-console">Abort</button>
                 <button type="button" class="btn-secondary compact" data-automator-action="close-console">Close</button>
             </div>
+        </div>
+        <div id="consoleStatusView" class="console-status-view">
+            <div class="console-run-summary">
+                <div>
+                    <span class="label-caps">Current Play</span>
+                    <strong id="consoleCurrentPlay">Waiting for events...</strong>
+                </div>
+                <div>
+                    <span class="label-caps">Hosts Active</span>
+                    <strong id="consoleHostsActive">0 / 0</strong>
+                </div>
+                <div class="console-counts" id="consoleCounts"></div>
+            </div>
+            <div id="consoleHostList" class="console-host-list"></div>
         </div>
         <pre id="consoleOutput" class="console-output"></pre>
     </div>
