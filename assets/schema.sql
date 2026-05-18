@@ -384,6 +384,7 @@ CREATE TABLE `fuel_logs` (
   `odometer` int(11) DEFAULT NULL,
   `litres` decimal(10,2) DEFAULT NULL,
   `price_per_litre` decimal(10,3) DEFAULT NULL,
+  `discount_per_litre` decimal(5,2) DEFAULT 0.00,
   `total_amount` decimal(10,2) DEFAULT NULL,
   `station_name` varchar(255) DEFAULT NULL,
   `fill_type` enum('full','partial') DEFAULT 'full',
