@@ -98,7 +98,7 @@ sub api_edit {
         return $c->render(json => { success => 0, error => 'Database error' });
     }
 
-    $c->render(json => { success => 1 });
+    $c->render(json => { success => 1, message => 'Task updated' });
 }
 
 # Creates a new maintenance task record.
@@ -132,7 +132,7 @@ sub api_add {
         return $c->render(json => { success => 0, error => $err });
     }
 
-    $c->render(json => { success => 1 });
+    $c->render(json => { success => 1, message => 'Task added' });
 }
 
 # Deletes a maintenance task by name.
@@ -153,7 +153,7 @@ sub api_delete {
         return $c->render(json => { success => 0, error => 'Database error' });
     }
 
-    $c->render(json => { success => 1 });
+    $c->render(json => { success => 1, message => 'Task deleted' });
 }
 
 # Fires a single task immediately by looking up its function_name from the DB.
