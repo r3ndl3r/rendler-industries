@@ -195,6 +195,8 @@ function renderLogs() {
         const vehicle = vehicleLabel(log);
         const status = log.ai_status || 'pending';
         const canEdit = (log.uploaded_by === STATE.currentUser || STATE.isAdmin);
+        const discount = Number(log.discount_per_litre || 0);
+        const discountText = discount > 0 ? ` (-${discount.toFixed(discount % 1 === 0 ? 0 : 1)}c/L)` : '';
         return `
             <tr id="fuel-row-${log.id}">
                 <td data-label="Images">
@@ -211,7 +213,7 @@ function renderLogs() {
                 <td data-label="Odometer">${log.odometer ? `${Number(log.odometer).toLocaleString()} km` : '-'}</td>
                 <td data-label="Fuel">
                     <span class="fuel-amount">$${formatMoney(log.total_amount)}</span>
-                    <br><span class="fuel-muted">${formatOptional(log.litres, ' L')} @ $${Number(log.price_per_litre || 0).toFixed(3)}</span>
+                    <br><span class="fuel-muted">${formatOptional(log.litres, ' L')} @ $${Number(log.price_per_litre || 0).toFixed(3)}${discountText}</span>
                 </td>
                 <td data-label="Economy">
                     ${log.litres_per_100km ? `${Number(log.litres_per_100km).toFixed(2)} L/100km` : '-'}
@@ -415,6 +417,7 @@ function openUploadModal() {
         removeFuelUploadPhoto('image2');
         const date = document.getElementById('uploadDate');
         if (date && typeof getLocalISOString === 'function') date.value = getLocalISOString().slice(0, 10);
+        setValue('uploadDiscount', 0);
     }
     if (modal) modal.classList.add('show');
     document.body.classList.add('modal-open');
@@ -488,6 +491,7 @@ function openEditModal(id) {
     setValue('editOdometer', log.odometer || '');
     setValue('editLitres', log.litres || '');
     setValue('editPrice', log.price_per_litre || '');
+    setValue('editDiscount', log.discount_per_litre || 0);
     setValue('editTotal', log.total_amount || '');
     setValue('editStation', log.station_name || '');
     setValue('editDescription', log.description || '');
