@@ -119,7 +119,7 @@ sub api_save_inventory {
         user_id      => $c->current_user_id,
     });
     $c->db->automator_log_audit($c->current_user_id, 'edit_inventory', 'inventory', $id, { name => $c->param('name') });
-    $c->render(json => { success => 1, state => $c->db->get_automator_state(_state_filters($c)) });
+    $c->render(json => { success => 1, message => 'Inventory saved', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
 sub api_save_playbook {
@@ -214,7 +214,7 @@ sub api_save_playbook {
     };
     return $c->render(json => { success => 0, error => "$@" }, status => 400) if $@;
     $c->db->automator_log_audit($c->current_user_id, 'edit_playbook', 'playbook', $saved_id, { name => $c->param('name') });
-    $c->render(json => { success => 1, state => $c->db->get_automator_state(_state_filters($c)) });
+    $c->render(json => { success => 1, message => 'Playbook saved', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
 sub api_delete_playbook {
@@ -226,7 +226,7 @@ sub api_delete_playbook {
         unless _owned_record($c, $playbook);
     $c->db->soft_delete_automator_playbook($id);
     $c->db->automator_log_audit($c->current_user_id, 'delete_playbook', 'playbook', $id, {});
-    $c->render(json => { success => 1, state => $c->db->get_automator_state(_state_filters($c)) });
+    $c->render(json => { success => 1, message => 'Playbook deleted', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
 sub api_delete_inventory {
@@ -238,7 +238,7 @@ sub api_delete_inventory {
         unless _owned_record($c, $inventory);
     $c->db->delete_automator_inventory($id);
     $c->db->automator_log_audit($c->current_user_id, 'delete_inventory', 'inventory', $id, {});
-    $c->render(json => { success => 1, state => $c->db->get_automator_state(_state_filters($c)) });
+    $c->render(json => { success => 1, message => 'Inventory deleted', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
 sub api_save_secret {
@@ -259,7 +259,7 @@ sub api_save_secret {
     };
     return $c->render(json => { success => 0, error => "$@" }, status => 400) if $@;
     $c->db->automator_log_audit($c->current_user_id, 'edit_secret', 'secret', $secret->{id}, { name => $secret->{name} });
-    $c->render(json => { success => 1, secret => $secret, state => $c->db->get_automator_state(_state_filters($c)) });
+    $c->render(json => { success => 1, message => 'Secret saved', secret => $secret, state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
 sub api_delete_secret {
@@ -270,7 +270,7 @@ sub api_delete_secret {
         unless _owned_secret($c, $id);
     $c->db->delete_automator_secret($id, $c->current_user_id);
     $c->db->automator_log_audit($c->current_user_id, 'delete_secret', 'secret', $id, {});
-    $c->render(json => { success => 1, state => $c->db->get_automator_state(_state_filters($c)) });
+    $c->render(json => { success => 1, message => 'Secret deleted', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
 sub api_run {
@@ -296,7 +296,7 @@ sub api_run {
         return $c->render(json => { success => 0, error => "$@" }, status => 500);
     };
     _spawn_run($c->app, $history_id, $mode, $vars, $payload);
-    $c->render(json => { success => 1, history_id => $history_id, state => $c->db->get_automator_state(_state_filters($c)) });
+    $c->render(json => { success => 1, message => 'Run started', history_id => $history_id, state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
 sub api_abort {
@@ -312,7 +312,7 @@ sub api_abort {
     $c->db->abort_automator_history($id);
     _broadcast($id, "\n[Automator] Abort requested.\n");
     $c->db->automator_log_audit($c->current_user_id, 'abort_run', 'history', $id, {});
-    $c->render(json => { success => 1, state => $c->db->get_automator_state(_state_filters($c)) });
+    $c->render(json => { success => 1, message => 'Run abort requested', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
 sub api_abort_all {
@@ -325,7 +325,7 @@ sub api_abort_all {
         _broadcast($h->{id}, "\n[Automator] Global abort requested.\n");
     }
     $c->db->automator_log_audit($c->current_user_id, 'abort_run', 'history', undef, { count => scalar @$active });
-    $c->render(json => { success => 1, state => $c->db->get_automator_state(_state_filters($c)) });
+    $c->render(json => { success => 1, message => 'Global abort requested', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
 sub ws {
