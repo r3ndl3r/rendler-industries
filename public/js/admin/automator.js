@@ -39,6 +39,7 @@ let historyPage = 1;
 let historyPlaybookId = null;
 let historyPlaybookName = '';
 let ACE_EDITORS = {};
+let CONSOLE_EVENTS = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     bindAutomatorEvents();
@@ -135,6 +136,8 @@ function handleAutomatorAction(event) {
     else if (action === 'delete-playbook') deletePlaybook(id);
     else if (action === 'delete-inventory') deleteInventory(id);
     else if (action === 'open-console') openConsole(id);
+    else if (action === 'show-console-status') setConsoleView('status');
+    else if (action === 'show-console-log') setConsoleView('log');
     else if (action === 'abort-run') abortRun(id);
     else if (action === 'add-secret-row') addSecretRow();
     else if (action === 'remove-secret-row') trigger.closest('.secret-row')?.remove();
@@ -417,7 +420,7 @@ function renderPlaybookRow(p) {
                 <div class="playbook-meta">
                     <span>Inv: ${escapeHtml(p.inventory_name || 'None')}</span>
                     ${scheduleLabel(p) ? `<span>Sch: ${escapeHtml(scheduleLabel(p))}</span>` : ''}
-                    <span>Secrets: ${p.secrets?.length ? escapeHtml(p.secrets.map(s => s.alias).join(', ')) : 'None'}</span>
+                    ${p.secrets?.length ? `<span>Secrets: ${escapeHtml(p.secrets.map(s => s.alias).join(', '))}</span>` : ''}
                     ${p.next_run ? `<span>Next: ${formatDateTime(p.next_run)}</span>` : ''}
                     ${lastRunSummary(p)}
                     ${p.tags ? `<span>Tags: ${escapeHtml(p.tags)}</span>` : ''}
@@ -1188,6 +1191,7 @@ async function loadHistoryPage(reset = false) {
  */
 function openConsole(historyId) {
     currentConsoleHistoryId = historyId;
+    resetConsoleEvents();
     let h = STATE.history.find(row => Number(row.id) === Number(historyId));
     if (!h) {
         const playbook = STATE.playbooks.find(row => Number(row.last_history_id) === Number(historyId));
@@ -1195,10 +1199,191 @@ function openConsole(historyId) {
     }
     setText('consoleTitle', h ? `#${h.id} ${h.playbook_name || 'Run'}` : `#${historyId}`);
     updateConsoleStatusUI(h?.status || 'unknown');
-    setText('consoleOutput', h?.output || '');
+    setText('consoleOutput', filterConsoleRawOutput(h?.output || ''));
+    replayConsoleEvents(h?.output || '');
+    setConsoleView('status');
     document.getElementById('consoleAbortBtn')?.classList.toggle('hidden', h?.status !== 'running');
     showModal('consoleModal');
     connectWS(historyId);
+}
+
+/**
+ * Resets structured console event state.
+ *
+ * @returns {void}
+ */
+function resetConsoleEvents() {
+    CONSOLE_EVENTS = {
+        currentPlay: 'Waiting for events...',
+        hosts: {},
+        counts: { ok: 0, changed: 0, failed: 0, unreachable: 0, skipped: 0 }
+    };
+    renderConsoleStatusView();
+}
+
+/**
+ * Switches between structured status and raw log console views.
+ *
+ * @param {string} view - "status" or "log".
+ * @returns {void}
+ */
+function setConsoleView(view) {
+    const showLog = view === 'log';
+    document.getElementById('consoleStatusView')?.classList.toggle('hidden', showLog);
+    document.getElementById('consoleOutput')?.classList.toggle('hidden', !showLog);
+    document.querySelectorAll('[data-automator-action="show-console-status"]').forEach(btn => btn.classList.toggle('active', !showLog));
+    document.querySelectorAll('[data-automator-action="show-console-log"]').forEach(btn => btn.classList.toggle('active', showLog));
+}
+
+/**
+ * Replays structured Automator events from existing raw output.
+ *
+ * @param {string} output - Historical console text.
+ * @returns {void}
+ */
+function replayConsoleEvents(output) {
+    if (!output) return;
+    output.split('\n').forEach(line => processConsoleEventLine(line));
+}
+
+/**
+ * Removes structured event lines from human-facing raw console output.
+ *
+ * @param {string} output - Mixed console output.
+ * @returns {string} Human-readable console output.
+ */
+function filterConsoleRawOutput(output) {
+    return String(output || '').replace(/^.*@@AUTOMATOR_EVENT@@.*(?:\n|$)/gm, '');
+}
+
+/**
+ * Processes one raw line for structured Automator event payloads.
+ *
+ * @param {string} line - Console output line.
+ * @returns {boolean} True when the line was a structured event.
+ */
+function processConsoleEventLine(line) {
+    const prefix = '@@AUTOMATOR_EVENT@@';
+    const idx = line.indexOf(prefix);
+    if (idx < 0) return false;
+    try {
+        updateConsoleEventState(JSON.parse(line.slice(idx + prefix.length)));
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
+/**
+ * Applies one structured Ansible event to the console status view.
+ *
+ * @param {Object} event - Callback event payload.
+ * @returns {void}
+ */
+function updateConsoleEventState(event) {
+    if (!CONSOLE_EVENTS) resetConsoleEvents();
+    if (event.type === 'play_start') {
+        CONSOLE_EVENTS.currentPlay = event.play || 'Play';
+        (event.hosts || []).forEach(host => {
+            if (!CONSOLE_EVENTS.hosts[host]) CONSOLE_EVENTS.hosts[host] = { status: 'pending', task: 'Queued' };
+        });
+    } else if (event.type === 'task_start') {
+        CONSOLE_EVENTS.currentPlay = event.play || CONSOLE_EVENTS.currentPlay;
+    } else if (event.type === 'host_task_start') {
+        const host = event.host || 'localhost';
+        CONSOLE_EVENTS.hosts[host] = {
+            status: 'running',
+            task: event.task || 'Task',
+            changed: false,
+            ignored: false
+        };
+    } else if (event.type === 'task_result') {
+        const host = event.host || 'localhost';
+        const status = event.status || 'ok';
+        CONSOLE_EVENTS.hosts[host] = {
+            status,
+            task: event.task || 'Task',
+            changed: Boolean(event.changed),
+            ignored: Boolean(event.ignore_errors)
+        };
+        if (status === 'ok' && event.changed) CONSOLE_EVENTS.counts.changed += 1;
+        else if (CONSOLE_EVENTS.counts[status] !== undefined) CONSOLE_EVENTS.counts[status] += 1;
+    } else if (event.type === 'run_complete') {
+        (event.hosts || Object.keys(CONSOLE_EVENTS.hosts)).forEach(host => {
+            const summary = event.summary?.[host] || {};
+            const failed = Number(summary.failures || 0) > 0 || Number(summary.unreachable || 0) > 0;
+            CONSOLE_EVENTS.hosts[host] = {
+                ...(CONSOLE_EVENTS.hosts[host] || {}),
+                status: failed ? 'failed' : 'complete',
+                task: failed ? 'Finished with issues' : 'Complete'
+            };
+        });
+    }
+    renderConsoleStatusView();
+}
+
+/**
+ * Renders structured console status state.
+ *
+ * @returns {void}
+ */
+function renderConsoleStatusView() {
+    if (!CONSOLE_EVENTS) return;
+    setText('consoleCurrentPlay', CONSOLE_EVENTS.currentPlay);
+    const hostRows = Object.values(CONSOLE_EVENTS.hosts);
+    const activeCount = hostRows.filter(row => ['pending', 'running'].includes(row.status || 'pending')).length;
+    setText('consoleHostsActive', `${activeCount} / ${hostRows.length}`);
+    const counts = document.getElementById('consoleCounts');
+    if (counts) {
+        counts.innerHTML = Object.entries(CONSOLE_EVENTS.counts)
+            .filter(([, count]) => count > 0)
+            .map(([key, count]) => `<span class="console-count console-count-${escapeHtml(key)}">${escapeHtml(key)}: ${count}</span>`)
+            .join('') || '<span class="console-count">Waiting...</span>';
+    }
+    const list = document.getElementById('consoleHostList');
+    if (!list) return;
+    const hosts = Object.keys(CONSOLE_EVENTS.hosts).sort();
+    list.innerHTML = hosts.length ? hosts.map(host => {
+        const row = CONSOLE_EVENTS.hosts[host];
+        const status = row.status || 'pending';
+        return `
+            <article class="console-host-row status-${escapeHtml(status)}">
+                <strong><span class="console-host-icon" aria-hidden="true">${escapeHtml(statusIconForHost(status, row.changed))}</span>${escapeHtml(host)}</strong>
+                <span>${escapeHtml(statusLabel(status, row.changed))}</span>
+                <small>${escapeHtml(row.task || 'Queued')}</small>
+            </article>
+        `;
+    }).join('') : '<div class="automator-empty compact-empty">Waiting for Ansible events...</div>';
+}
+
+/**
+ * Maps host run state to a quick visual marker.
+ *
+ * @param {string} status - Host status.
+ * @param {boolean} changed - Whether the last task changed.
+ * @returns {string} Status icon.
+ */
+function statusIconForHost(status, changed) {
+    if (status === 'pending') return '⚪';
+    if (status === 'running') return '🔵';
+    if (status === 'failed' || status === 'unreachable') return '🔴';
+    if (status === 'skipped') return '⚪';
+    if (status === 'complete' || status === 'ok' || changed) return '🟢';
+    return '⚪';
+}
+
+/**
+ * Builds compact host status label.
+ *
+ * @param {string} status - Result status.
+ * @param {boolean} changed - Whether result changed.
+ * @returns {string} Label.
+ */
+function statusLabel(status, changed) {
+    if (status === 'complete') return 'Complete';
+    if (status === 'ok' && changed) return 'Changed';
+    if (status === 'skipped') return 'Not required';
+    return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 /**
@@ -1256,10 +1441,12 @@ function connectWS(historyId) {
             updateConsoleStatusUI(status);
             if (status !== 'running') {
                 document.getElementById('consoleAbortBtn')?.classList.add('hidden');
+                finalizeConsoleEvents(status);
             }
             return;
         }
-        consoleEl.textContent += msg;
+        msg.split('\n').forEach(line => processConsoleEventLine(line));
+        consoleEl.textContent += filterConsoleRawOutput(msg);
         if (!document.getElementById('consoleScrollLock')?.checked) {
             consoleEl.scrollTop = consoleEl.scrollHeight;
         }
@@ -1275,6 +1462,23 @@ function connectWS(historyId) {
         setTimeout(() => connectWS(historyId), delay);
     };
     ws.onopen = () => { wsRetries = 0; };
+}
+
+/**
+ * Marks the structured status panel complete when the backend run is finished.
+ *
+ * @param {string} finalStatus - Backend run status.
+ * @returns {void}
+ */
+function finalizeConsoleEvents(finalStatus) {
+    if (!CONSOLE_EVENTS) return;
+    Object.values(CONSOLE_EVENTS.hosts).forEach(row => {
+        if (!['failed', 'unreachable', 'complete'].includes(row.status || 'pending')) {
+            row.status = finalStatus === 'success' ? 'complete' : 'failed';
+            row.task = finalStatus === 'success' ? 'Complete' : `Finished: ${finalStatus}`;
+        }
+    });
+    renderConsoleStatusView();
 }
 
 /**
