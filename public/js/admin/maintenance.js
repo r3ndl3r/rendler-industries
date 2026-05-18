@@ -123,13 +123,10 @@ async function runTask(name) {
     try {
         const res = await apiPost('/admin/maintenance/api/run', { name });
         if (res && res.success) {
-            showToast(res.message || 'Task ran', 'success');
             const lastRunEl = card.querySelector('.task-last-run');
             if (lastRunEl) lastRunEl.textContent = '🕐 Just now';
             const task = STATE.tasks.find(t => t.name === name);
             if (task) task.last_run_epoch = Math.floor(Date.now() / 1000);
-        } else if (res) {
-            showToast(res.error || 'Run failed', 'error');
         }
     } finally {
         btn.disabled = false;
@@ -245,11 +242,8 @@ async function saveTaskModal() {
     try {
         const res = await apiPost(endpoint, payload);
         if (res && res.success) {
-            showToast(mode === 'add' ? 'Task added' : 'Task updated', 'success');
             closeTaskModal();
             await loadState(true);
-        } else if (res) {
-            showToast(res.error || 'Save failed', 'error');
         }
     } finally {
         btn.disabled = false;
@@ -276,10 +270,7 @@ function confirmDeleteTask(name) {
         onConfirm:   async () => {
             const res = await apiPost('/admin/maintenance/api/delete', { name });
             if (res && res.success) {
-                showToast('Task deleted', 'success');
                 await loadState(true);
-            } else if (res) {
-                showToast(res.error || 'Delete failed', 'error');
             }
         }
     });
