@@ -30,8 +30,8 @@ sub DB::store_fuel_log {
             vehicle_id,
             image1_filename, image1_original_filename, image1_mime_type, image1_file_size, image1_file_data,
             image2_filename, image2_original_filename, image2_mime_type, image2_file_size, image2_file_data,
-            uploaded_by, log_date, fill_type, description, ai_status, needs_review
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 1)"
+            uploaded_by, log_date, fill_type, description, discount_per_litre, ai_status, needs_review
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 1)"
     );
 
     $sth->bind_param(1,  $data->{vehicle_id});
@@ -49,6 +49,7 @@ sub DB::store_fuel_log {
     $sth->bind_param(13, $data->{log_date});
     $sth->bind_param(14, $data->{fill_type});
     $sth->bind_param(15, $data->{description});
+    $sth->bind_param(16, $data->{discount_per_litre} // 0);
     $sth->execute();
 
     return $self->{dbh}->last_insert_id(undef, undef, 'fuel_logs', 'id');
@@ -74,7 +75,7 @@ sub DB::get_all_fuel_logs {
                l.image1_filename, l.image1_original_filename, l.image1_mime_type, l.image1_file_size,
                l.image2_filename, l.image2_original_filename, l.image2_mime_type, l.image2_file_size,
                l.uploaded_by, l.uploaded_at, l.log_date, DATE_FORMAT(l.log_date, '%d-%m-%Y') AS formatted_date,
-               l.odometer, l.litres, l.price_per_litre, l.total_amount, l.station_name, l.fill_type,
+               l.odometer, l.litres, l.price_per_litre, l.discount_per_litre, l.total_amount, l.station_name, l.fill_type,
                l.description, l.ai_json, l.ai_status, l.needs_review, l.review_reasons
                FROM fuel_logs l
                JOIN fuel_vehicles v ON v.id = l.vehicle_id
@@ -206,14 +207,14 @@ sub DB::update_fuel_log_data {
     my $sth = $self->{dbh}->prepare(
         "UPDATE fuel_logs
          SET vehicle_id = ?, log_date = ?, odometer = ?, litres = ?, price_per_litre = ?,
-             total_amount = ?, station_name = ?, fill_type = ?, description = ?,
+             discount_per_litre = ?, total_amount = ?, station_name = ?, fill_type = ?, description = ?,
              ai_json = ?, ai_status = ?, needs_review = ?, review_reasons = ?
          WHERE id = ? AND deleted_at IS NULL"
     );
 
     return $sth->execute(
         $data->{vehicle_id}, $data->{log_date}, $data->{odometer}, $data->{litres},
-        $data->{price_per_litre}, $data->{total_amount}, $data->{station_name},
+        $data->{price_per_litre}, $data->{discount_per_litre} // 0, $data->{total_amount}, $data->{station_name},
         $data->{fill_type}, $data->{description}, $data->{ai_json}, $data->{ai_status},
         $data->{needs_review}, $data->{review_reasons}, $id
     );
