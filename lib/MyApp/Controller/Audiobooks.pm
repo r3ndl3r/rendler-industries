@@ -811,7 +811,7 @@ sub api_cover {
 
 # Saves playback progress for the current user.
 # Route: POST /audiobooks/api/progress
-# Parameters: book_slug, chapter_idx, position_sec, completed (0|1)
+# Parameters: book_slug, chapter_idx, position_sec, completed (0|1), client_updated_ms
 # Returns: JSON { success: 1 }
 sub api_save_progress {
     my $c = shift;
@@ -823,6 +823,7 @@ sub api_save_progress {
     my $chapter_idx = int($c->param('chapter_idx') // 0);
     my $position    = ($c->param('position_sec') // 0) + 0;
     my $completed   = ($c->param('completed')    // 0) ? 1 : 0;
+    my $client_ms   = int($c->param('client_updated_ms') // 0);
 
     unless (length($book_slug) && _safe_component($book_slug)) {
         return $c->render(json => { success => 0, error => 'Invalid book' }, status => 400);
@@ -830,9 +831,10 @@ sub api_save_progress {
 
     $chapter_idx = 0 if $chapter_idx < 0;
     $position    = 0 if $position    < 0;
+    $client_ms   = int($c->now->epoch * 1000) if $client_ms <= 0;
 
     eval {
-        $c->db->upsert_audiobook_progress($user_id, $book_slug, $chapter_idx, $position, $completed);
+        $c->db->upsert_audiobook_progress($user_id, $book_slug, $chapter_idx, $position, $completed, $client_ms);
     };
     if ($@) {
         $c->app->log->error("Failed to save progress for user $user_id, book $book_slug: $@");
