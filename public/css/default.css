@@ -1,5 +1,9 @@
 /* /public/css/default.css */
 
+html {
+    font-size: 90%;
+}
+
 :root {
     --bg-color: #050c1d;
     --text-color: #e5e7eb;
