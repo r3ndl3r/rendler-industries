@@ -249,6 +249,7 @@ async function loadState(force = false) {
     _flushPendingProgress();
 
     STATE.books    = Array.isArray(res.books) ? res.books : [];
+    _applyPendingProgressToState();
     STATE.is_admin = res.is_admin ? true : false;
     STATE.offline_mode = false;
 
@@ -459,6 +460,7 @@ function _loadCachedState() {
             STATE.books    = Array.isArray(cached.books) ? cached.books : [];
             STATE.is_admin = false; // Disable admin features offline.
         }
+        _applyPendingProgressToState();
         STATE.offline_mode = true;
 
         // When running in the app without network-backed streaming, show only playable local books.
@@ -476,6 +478,61 @@ function _loadCachedState() {
 }
 
 /**
+ * Applies any pending progress in localStorage to the memory STATE.books so the
+ * local UI and player reflect the latest offline position rather than being
+ * overwritten by stale database states on startup or sync.
+ * @returns {void}
+ */
+function _applyPendingProgressToState() {
+    try {
+        const pendingRaw = localStorage.getItem('ab_pending_progress');
+        if (pendingRaw) {
+            const pending = JSON.parse(pendingRaw);
+            if (pending && pending.book_slug) {
+                const book = STATE.books.find(b => b.slug === pending.book_slug);
+                if (book) {
+                    book.progress = book.progress || {};
+                    book.progress.chapter_idx  = pending.chapter_idx;
+                    book.progress.position_sec = pending.position_sec;
+                    book.progress.completed    = pending.completed;
+
+                    // Synchronize PLAYER object if the same book is already open
+                    if (PLAYER.slug === pending.book_slug) {
+                        PLAYER.book = book;
+                    }
+                }
+            }
+        }
+    } catch(e) {
+        console.error('Error applying pending progress to state:', e);
+    }
+}
+
+function _pendingProgressMatches(current, payload) {
+    if (!current) return false;
+    try {
+        const curPayload = JSON.parse(current);
+        return curPayload.book_slug === payload.book_slug &&
+            curPayload.chapter_idx === payload.chapter_idx &&
+            Math.abs(curPayload.position_sec - payload.position_sec) < 1.0 &&
+            (curPayload.client_updated_ms || 0) === (payload.client_updated_ms || 0);
+    } catch(e) {
+        return false;
+    }
+}
+
+function _pendingProgressIsNotNewerThan(current, payload) {
+    if (!current) return false;
+    try {
+        const curPayload = JSON.parse(current);
+        return curPayload.book_slug === payload.book_slug &&
+            (curPayload.client_updated_ms || 0) <= (payload.client_updated_ms || 0);
+    } catch(e) {
+        return false;
+    }
+}
+
+/**
  * Flushes any progress data buffered in localStorage during an offline period.
  * Called after a successful loadState() confirms the server is reachable.
  * @returns {void}
@@ -485,8 +542,21 @@ function _flushPendingProgress() {
     if (!pending) return;
     try {
         const payload = JSON.parse(pending);
+        if (!payload.client_updated_ms) {
+            payload.client_updated_ms = Date.now();
+            localStorage.setItem('ab_pending_progress', JSON.stringify(payload));
+        }
         apiPost('/audiobooks/api/progress', payload)
-            .then(res => { if (res) localStorage.removeItem('ab_pending_progress'); })
+            .then(res => {
+                if (res) {
+                    // Safe-deletion: only remove if the local pending state has not
+                    // been updated with newer playback progress during the async request
+                    const current = localStorage.getItem('ab_pending_progress');
+                    if (_pendingProgressMatches(current, payload)) {
+                        localStorage.removeItem('ab_pending_progress');
+                    }
+                }
+            })
             .catch(() => {});
     } catch(e) {
         localStorage.removeItem('ab_pending_progress');
@@ -1809,11 +1879,15 @@ function _saveProgress(completed) {
         chapter_idx: PLAYER.chapter_idx,
         position_sec: pos,
         completed:   completed ? 1 : 0,
+        client_updated_ms: Date.now(),
     };
     apiPost('/audiobooks/api/progress', payload)
         .then(res => {
             if (res && res.success) {
-                localStorage.removeItem('ab_pending_progress');
+                const current = localStorage.getItem('ab_pending_progress');
+                if (_pendingProgressIsNotNewerThan(current, payload)) {
+                    localStorage.removeItem('ab_pending_progress');
+                }
             } else {
                 localStorage.setItem('ab_pending_progress', JSON.stringify(payload));
             }
