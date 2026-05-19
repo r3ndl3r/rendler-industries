@@ -200,13 +200,11 @@ sub _dispatch_consolidated_feedback {
         $msg .= "\n";
     }
 
-    if ($has_failures) {
-        $msg .= "⚠️ Some items failed check. Please correct and re-upload photos!";
-    } else {
-        $msg .= "🎉 Everything looks great! Clean streak continued!";
-    }
+    $msg =~ s/\n+$//;
 
-    $c->notify_templated($target_user_id, 'room_feedback', { 
+    my $template_key = $has_failures ? 'room_feedback_failed' : 'room_feedback_success';
+
+    $c->notify_templated($target_user_id, $template_key, { 
         date     => $display_date, 
         feedback => $msg 
     }, $c->current_user_id);
