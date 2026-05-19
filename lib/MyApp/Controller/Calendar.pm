@@ -2,8 +2,8 @@
 
 package MyApp::Controller::Calendar;
 use Mojo::Base 'Mojolicious::Controller';
+use DateTime;
 use Mojo::Util qw(trim);
-use Time::Piece;
 use utf8;
 
 # Controller for the Family Calendar.
@@ -58,7 +58,7 @@ sub api_state {
 #   category : Exact category match applied at SQL level
 #   limit    : Max base rows per page (default 0 = no limit; enforced max 500)
 #   offset   : Pagination offset (default 0)
-#   sort     : ASC or DESC (default ASC; history mode uses DESC)
+#   sort     : ASC, DESC, or NEAR (default ASC; history mode uses DESC)
 sub api_events {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
@@ -72,7 +72,7 @@ sub api_events {
     my $sort     = uc($c->param('sort')  // 'ASC');
 
     $limit  = 500 if $limit > 500;
-    $sort   = 'ASC' unless $sort eq 'DESC';
+    $sort   = 'ASC' unless $sort eq 'DESC' || $sort eq 'NEAR';
     $offset = 0    if $offset < 0;
 
     my ($events, $has_more) = $c->db->get_calendar_events(
@@ -84,6 +84,9 @@ sub api_events {
     );
 
     my %resp = (success => 1, events => $events);
+    if ($sort eq 'NEAR') {
+        $resp{server_now} = $c->now->strftime('%F %T');
+    }
     if ($limit > 0) {
         $resp{has_more} = $has_more ? 1 : 0;
         $resp{offset}   = $offset;
