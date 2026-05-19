@@ -123,8 +123,136 @@
     background: #f9f9f9;
     border-radius: 5px;
     display: flex;
+    justify-content: space-between;
     align-items: center;
     gap: 8px;
+}
+
+.filter-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-right {
+    display: flex;
+    align-items: center;
+}
+
+.calendar-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.calendar-search-icon {
+    position: absolute;
+    left: 8px;
+    font-size: 0.9em;
+    color: #666666;
+    pointer-events: none;
+}
+
+.calendar-search-input {
+    padding: 5px 8px 5px 26px;
+    border: 1px solid #dddddd;
+    border-radius: 5px;
+    background: #ffffff;
+    font-size: 0.85em;
+    color: #222222;
+    width: 200px;
+    transition: all 0.2s ease-in-out;
+}
+
+.calendar-search-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.2);
+    outline: none;
+    width: 250px;
+}
+
+.calendar-search-results {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 350px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: rgba(30, 41, 59, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    margin-top: 5px;
+    color: #ffffff;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.calendar-search-results.hidden {
+    display: none !important;
+}
+
+.search-result-item {
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    text-align: left;
+}
+
+.search-result-item:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.search-result-title {
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #ffffff;
+}
+
+.search-result-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background-color: #3b82f6;
+}
+
+.search-result-meta {
+    font-size: 0.8em;
+    color: #94a3b8;
+    margin-top: 2px;
+    padding-left: 14px;
+}
+
+.search-result-tags {
+    padding-left: 14px;
+    margin-top: 2px;
+}
+
+.search-result-category {
+    display: inline-block;
+    font-size: 0.7em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: rgba(59, 130, 246, 0.15);
+    border: 1px solid #3b82f6;
+    color: #ffffff;
+}
+
+.search-no-results {
+    padding: 12px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85em;
 }
 
 .filter-section label {
@@ -810,15 +938,52 @@
         padding: 6px;
         margin-bottom: 5px;
         font-size: 0.8em;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+    }
+
+    .filter-left {
+        display: flex;
+        align-items: center;
+        flex: 1 1 45%;
+        min-width: 0;
+    }
+
+    .filter-right {
+        display: flex;
+        align-items: center;
+        flex: 1 1 50%;
+        min-width: 0;
+    }
+
+    .calendar-search-wrapper {
+        width: 100%;
+    }
+
+    .calendar-search-input {
+        width: 100%;
+    }
+
+    .calendar-search-input:focus {
+        width: 100%;
+    }
+
+    .calendar-search-results {
+        width: 100%;
+        left: 0;
+        right: auto;
     }
     
     .filter-section label {
-        font-size: 0.75em;
+        display: none;
     }
     
     .filter-section select {
         font-size: 0.75em;
         padding: 4px 6px;
+        width: 100%;
     }
     
     /* Allow horizontal scroll if calendar grid gets too squeezed */
