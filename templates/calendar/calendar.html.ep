@@ -31,10 +31,19 @@
 
     <%# Calendar Filters %>
     <div class="filter-section">
-        <label>Filter by Category:</label>
-        <select id="categoryFilter" class="category-dropdown">
-            <option value="">All Categories</option>
-        </select>
+        <div class="filter-left">
+            <label>Filter by Category:</label>
+            <select id="categoryFilter" class="category-dropdown">
+                <option value="">All Categories</option>
+            </select>
+        </div>
+        <div class="filter-right">
+            <div class="calendar-search-wrapper">
+                <span class="calendar-search-icon">🔍</span>
+                <input type="search" id="calendarSearchInput" placeholder="Search events..." class="calendar-search-input" autocomplete="off" aria-label="Search events">
+                <div id="calendarSearchResults" class="calendar-search-results hidden"></div>
+            </div>
+        </div>
     </div>
 
     <%# Main Calendar Grid %>
