@@ -27,7 +27,9 @@
 const CONFIG = {
     SYNC_INTERVAL_MS: 300000,        // Background server sync (5 min)
     COUNTDOWN_TICK_MS: 60000,       // Relative time update frequency (1 min)
-    SCROLL_DELAY_MS: 100            // UI timing for vertical alignment
+    SCROLL_DELAY_MS: 100,           // UI timing for vertical alignment
+    SEARCH_DEBOUNCE_MS: 250,        // Search input debounce
+    SEARCH_RESULT_LIMIT: 15         // Max autocomplete results shown
 };
 
 let STATE = {
@@ -39,6 +41,7 @@ let STATE = {
     currentUserId: null,            // ID of currently logged-in user
     currentDate: new Date(),        // Active temporal pointer
     currentView: 'month',           // Current display mode (month|week|day)
+    searchResults: [],              // Search matches from all-time queries
 
     // History modal pagination — completely separate from calendar view state
     historyEvents: [],              // Accumulated event rows across all loaded history pages
@@ -53,6 +56,8 @@ let STATE = {
 let historyObserver = null;
 let filterDebounceTimer  = null;
 let historyGeneration    = 0;
+let searchGeneration     = 0;
+let searchDebounceTimer  = null;
 
 /**
  * Bootstraps the module state and establishes background lifecycles.
@@ -843,6 +848,7 @@ function setupEventListeners() {
     const today = document.getElementById('todayBtn');
     const add = document.getElementById('addEventBtn');
     const filter = document.getElementById('categoryFilter');
+    const search = document.getElementById('calendarSearchInput');
     
     if (prev) prev.onclick = navigatePrevious;
     if (next) next.onclick = navigateNext;
@@ -850,6 +856,33 @@ function setupEventListeners() {
     if (add) add.onclick = () => openAddEventModal();
     if (filter) filter.onchange = () => { applyFilters(); renderUI(); };
     
+    if (search) {
+        search.oninput = () => {
+            searchGeneration++;
+            clearTimeout(searchDebounceTimer);
+            if (search.value.trim()) {
+                searchDebounceTimer = setTimeout(updateSearchResults, CONFIG.SEARCH_DEBOUNCE_MS);
+            } else {
+                updateSearchResults();
+            }
+            applyFilters();
+            renderUI();
+        };
+        search.onfocus = () => {
+            updateSearchResults();
+        };
+    }
+
+    document.addEventListener('click', (e) => {
+        const wrapper = document.querySelector('.calendar-search-wrapper');
+        const resultsEl = document.getElementById('calendarSearchResults');
+        if (resultsEl && wrapper && !wrapper.contains(e.target)) {
+            searchGeneration++;
+            clearTimeout(searchDebounceTimer);
+            resultsEl.classList.add('hidden');
+        }
+    });
+
     document.querySelectorAll('.view-btn').forEach(btn => {
         btn.onclick = () => {
             STATE.currentView = btn.dataset.view;
@@ -1235,7 +1268,8 @@ function openEditModalById(id) {
  */
 function openEditModalByUid(uid) {
     const event = STATE.events.find(e => e.uid == uid)
-                || STATE.historyEvents.find(e => e.uid == uid);
+                || STATE.historyEvents.find(e => e.uid == uid)
+                || (STATE.searchResults || []).find(e => e.uid == uid);
     if (!event) return;
 
     document.getElementById('eventId').value = event.is_recurring_instance
@@ -1412,8 +1446,12 @@ function confirmDeleteEvent(id, title) {
  */
 function showEventDetails(uid) {
     const event = STATE.events.find(e => e.uid == uid)
-                || STATE.historyEvents.find(e => e.uid == uid);
+                || STATE.historyEvents.find(e => e.uid == uid)
+                || (STATE.searchResults || []).find(e => e.uid == uid);
     if (!event) return;
+
+    const resultsEl = document.getElementById('calendarSearchResults');
+    if (resultsEl) resultsEl.classList.add('hidden');
 
     const content = document.getElementById('eventDetailsContent');
     const dateStr = formatDateTimeFriendly(event.start_date, event.all_day);
@@ -1502,7 +1540,109 @@ function updateViewButtons() {
  */
 function applyFilters() {
     const cat = document.getElementById('categoryFilter').value;
-    STATE.filteredEvents = cat ? STATE.events.filter(e => e.category === cat) : STATE.events;
+    const queryEl = document.getElementById('calendarSearchInput');
+    const query = queryEl ? queryEl.value.toLowerCase().trim() : '';
+
+    let filtered = STATE.events;
+
+    if (cat) {
+        filtered = filtered.filter(e => e.category === cat);
+    }
+
+    if (query) {
+        filtered = filtered.filter(e => {
+            const titleMatch = (e.title || '').toLowerCase().includes(query);
+            const descMatch = (e.description || '').toLowerCase().includes(query);
+            const categoryMatch = (e.category || '').toLowerCase().includes(query);
+            const attendeesMatch = e.attendee_names ? e.attendee_names.toLowerCase().includes(query) : false;
+            const creatorMatch = (e.creator_name || '').toLowerCase().includes(query);
+            return titleMatch || descMatch || categoryMatch || attendeesMatch || creatorMatch;
+        });
+    }
+
+    STATE.filteredEvents = filtered;
+}
+
+/**
+ * Filters the active state events for popover search results dropdown.
+ *
+ * @returns {void}
+ */
+async function updateSearchResults() {
+    const queryEl = document.getElementById('calendarSearchInput');
+    const resultsEl = document.getElementById('calendarSearchResults');
+    if (!queryEl || !resultsEl) return;
+
+    const query = queryEl.value.toLowerCase().trim();
+    const gen = ++searchGeneration;
+
+    if (!query) {
+        STATE.searchResults = [];
+        resultsEl.innerHTML = '';
+        resultsEl.classList.add('hidden');
+        return;
+    }
+
+    try {
+        const url = `/calendar/api/events?search=${encodeURIComponent(query)}&limit=100&sort=NEAR`;
+        const data = await apiGet(url, 5000);
+        if (gen !== searchGeneration) return;
+
+        if (data && data.success) {
+            const matches = (data.events || []).map(e => ({
+                ...e,
+                uid: e.is_recurring_instance
+                    ? `r${e.recurrence_source_id}_${(e.instance_date || '').replace(/-/g, '')}`
+                    : String(e.id)
+            }));
+
+            // Sort expanded matches against the server-provided "now" reference.
+            const nowMs = data.server_now
+                ? new Date(data.server_now.replace(' ', 'T')).getTime()
+                : NaN;
+            if (Number.isFinite(nowMs)) {
+                matches.sort((a, b) => {
+                    const timeA = new Date(a.start_date.replace(' ', 'T')).getTime();
+                    const timeB = new Date(b.start_date.replace(' ', 'T')).getTime();
+                    return Math.abs(timeA - nowMs) - Math.abs(timeB - nowMs);
+                });
+            }
+
+            STATE.searchResults = matches;
+
+            const displayMatches = matches.slice(0, CONFIG.SEARCH_RESULT_LIMIT);
+
+            if (displayMatches.length === 0) {
+                resultsEl.innerHTML = '<div class="search-no-results">No events found</div>';
+            } else {
+                resultsEl.innerHTML = displayMatches.map(e => {
+                    const timeDisplay = e.all_day ? 'All Day' : `${formatTime(e.start_date)} - ${formatTime(e.end_date)}`;
+                    const dateDisplay = formatDateWithOrdinal(e.start_date.split(' ')[0]);
+                    const catBadge = e.category ? `<span class="search-result-category">${escapeHtml(e.category)}</span>` : '';
+
+                    return `
+                        <div class="search-result-item" onclick="showEventDetails('${e.uid}')">
+                            <div class="search-result-title">
+                                <span class="search-result-dot"></span>
+                                ${e.is_private ? '🔒 ' : ''}<strong>${escapeHtml(e.title)}</strong>
+                            </div>
+                            <div class="search-result-meta">
+                                <span>📅 ${dateDisplay} (${timeDisplay})</span>
+                            </div>
+                            <div class="search-result-tags">
+                                ${catBadge}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            if (document.activeElement === queryEl) {
+                resultsEl.classList.remove('hidden');
+            }
+        }
+    } catch (err) {
+        console.error("All-time query failed:", err);
+    }
 }
 
 /**
@@ -1722,4 +1862,3 @@ window.loadEvents         = loadEvents;
 window.openHistoryModal   = openHistoryModal;
 window.closeHistoryModal  = closeHistoryModal;
 window.filterHistory      = filterHistory;
-
