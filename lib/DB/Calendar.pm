@@ -4,6 +4,7 @@ package DB::Calendar;
 
 use strict;
 use warnings;
+use DateTime;
 use Mojo::Util qw(trim);
 use Time::Piece;
 use Mojo::JSON qw(decode_json encode_json);
@@ -131,7 +132,7 @@ sub _expand_recurring {
 #                  category => exact category match
 #                  limit    => max rows (0 = no limit); fetch limit+1 to detect has_more
 #                  offset   => SQL OFFSET (default 0)
-#                  sort     => 'ASC' or 'DESC' (default 'ASC')
+#                  sort     => 'ASC', 'DESC', or 'NEAR' (default 'ASC')
 # Returns:
 #   Two-element list: (\@result, $has_more)
 sub DB::get_calendar_events {
@@ -143,7 +144,8 @@ sub DB::get_calendar_events {
     my $category = $opts->{category} // '';
     my $limit    = int($opts->{limit}  // 0);
     my $offset   = int($opts->{offset} // 0);
-    my $sort     = (uc($opts->{sort} // '') eq 'DESC') ? 'DESC' : 'ASC';
+    my $sort     = uc($opts->{sort} // '');
+    $sort = 'ASC' unless $sort eq 'DESC' || $sort eq 'NEAR';
 
     my $sql = qq{
         SELECT
@@ -209,7 +211,24 @@ sub DB::get_calendar_events {
         push @params, $like, $like;
     }
 
-    $sql .= " ORDER BY e.start_date $sort, e.all_day DESC, e.title ASC";
+    if ($sort eq 'NEAR') {
+        $sql .= qq{
+            ORDER BY
+                CASE
+                    WHEN e.recurrence_rule IS NOT NULL
+                     AND e.start_date <= NOW()
+                     AND (e.recurrence_end_date IS NULL OR e.recurrence_end_date >= CURDATE()) THEN 0
+                    WHEN e.start_date <= NOW() AND e.end_date >= NOW() THEN 0
+                    WHEN e.start_date > NOW() THEN TIMESTAMPDIFF(SECOND, NOW(), e.start_date)
+                    ELSE TIMESTAMPDIFF(SECOND, e.end_date, NOW())
+                END ASC,
+                e.start_date ASC,
+                e.all_day DESC,
+                e.title ASC
+        };
+    } else {
+        $sql .= " ORDER BY e.start_date $sort, e.all_day DESC, e.title ASC";
+    }
 
     if ($limit > 0) {
         # Fetch one extra row to detect whether more pages exist beyond this window.
@@ -230,9 +249,11 @@ sub DB::get_calendar_events {
     my $all_users = $self->get_all_users();
     my %user_map  = map { $_->{id} => $_->{username} } @$all_users;
 
-    my $exp_start   = $start_date || '1970-01-01';
-    my $exp_end     = $end_date   || '9999-12-31';
-    my $recur_limit = 365;
+    my $near_time   = DateTime->now(time_zone => $self->{timezone});
+    my $near_search = $sort eq 'NEAR' && !$start_date && !$end_date;
+    my $exp_start   = $start_date || ($near_search ? $near_time->clone->subtract(days => 365)->ymd : '1970-01-01');
+    my $exp_end     = $end_date   || ($near_search ? $near_time->clone->add(days => 365)->ymd : '9999-12-31');
+    my $recur_limit = $near_search ? 730 : 365;
 
     my @result;
     for my $event (@$rows) {
