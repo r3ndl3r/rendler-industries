@@ -324,13 +324,21 @@ use constant MANIFEST => {
         default_subject => "Room Review Needed",
         default_body    => "🧹 **New Room Submission** 🧹\n\n**[user]** has uploaded photos for today's room check.\n\nReview: [sys_url /room]"
     },
-    'room_feedback' => {
-        desc    => "Consolidated feedback report sent to child after admin review.",
+    'room_feedback_success' => {
+        desc    => "Consolidated feedback report sent to child when all uploaded room items are approved.",
         tags    => "date, feedback",
         url     => '/room',
-        sample  => { date => "15-04-2026", feedback => "✅ **Bed**: Passed\n❌ **Desk**: Failed\n> Feedback: Clear off the papers." },
-        default_subject => "Room Feedback: [date]",
-        default_body    => "🧹 **Room Feedback for [date]** 🧹\n\n[feedback]\n\nView: [sys_url /room]"
+        sample  => { date => "15-05-2026", feedback => "✅ **Bed**: Passed\n✅ **Desk**: Passed" },
+        default_subject => "Room Check Passed: [date]",
+        default_body    => "🧹 **Room Feedback for [date]** 🧹\n\n[feedback]\n\n🎉 Everything looks great! Clean streak continued!\n\nView: [sys_url /room]"
+    },
+    'room_feedback_failed' => {
+        desc    => "Consolidated feedback report sent to child when one or more uploaded room items fail review.",
+        tags    => "date, feedback",
+        url     => '/room',
+        sample  => { date => "15-05-2026", feedback => "✅ **Bed**: Passed\n❌ **Desk**: Failed\n> Feedback: Clear off the papers." },
+        default_subject => "Room Check Failed: [date]",
+        default_body    => "🧹 **Room Feedback for [date]** 🧹\n\n[feedback]\n\n⚠️ Some items failed check. Please correct and re-upload photos!\n\nView: [sys_url /room]"
     },
 
     # --- GENERAL ---
