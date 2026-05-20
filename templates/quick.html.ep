@@ -5,79 +5,55 @@
 
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/quick.css">
+    <% if (is_logged_in()) { %>
+        <script src="/js/vendor/sortable.min.js"></script>
+        <script src="/js/quick.js"></script>
+    <% } %>
 % end
 
 <div class="quick-container app-container">
     <div class="header-bar">
         <h1>⚡ <span>Quick Access</span></h1>
+        <% if (is_logged_in()) { %>
+            <button id="quick-edit-toggle" class="quick-edit-btn" type="button">
+                <span class="edit-text">✏️</span>
+                <span class="done-text hidden">Done</span>
+            </button>
+        <% } %>
     </div>
 
-    <%
-        # Recursively collect all leaf links (url != '#', not separator) from a subtree.
-        # Returns an arrayref of hashrefs in depth-first order.
-        my $collect_leaves;
-        $collect_leaves = sub {
-            my ($items, $default_icon) = @_;
-            my @out;
-            for my $item (@$items) {
-                next if $item->{is_separator};
-                if ($item->{url} && $item->{url} ne '#') {
-                    push @out, { %$item, _default_icon => $default_icon };
-                }
-                push @out, @{$collect_leaves->($item->{children} || [], $default_icon)};
-            }
-            return \@out;
-        };
-    %>
-
-    <div class="tile-grid">
-        <%# Regular/Family Tiles %>
+    <div id="quick-tiles" class="tile-grid">
+        <% for my $leaf (@$tiles) { %>
         <%
-            my @regular_items = grep { $_->{permission_level} ne 'admin' } @$menu_tree;
-            my $regular_leaves = $collect_leaves->(\@regular_items, '🔗');
+            my $label = $leaf->{label} // '';
+            my ($parsed_icon, $name) = $label =~ /^(\X+?)\s+(.*)$/u;
+            my $icon = $leaf->{icon} || $parsed_icon || $leaf->{_default_icon} || '🔗';
+            $name //= $label;
+            $name =~ s/^(Admin|Manage):\s*//i if (($leaf->{permission_level} // '') eq 'admin');
+            my $classes = 'tile quick-tile-card';
+            $classes .= ' admin' if (($leaf->{permission_level} // '') eq 'admin');
+            $classes .= ' danger' if (($leaf->{action} // '') eq 'restart');
+            $classes .= ' logout' if (($leaf->{action} // '') eq 'logout');
         %>
-        <% for my $leaf (@$regular_leaves) { %>
-            <%
-                my ($icon, $name) = $leaf->{label} =~ /^(\X+?)\s+(.*)$/u;
-                if (!$name) { $name = $leaf->{label}; $icon = $leaf->{icon} || $leaf->{_default_icon}; }
-            %>
-            <a href="<%= $leaf->{url} %>" class="tile">
-                <div class="icon"><%= $icon %></div>
-                <div class="label"><%= $name %></div>
-            </a>
-        <% } %>
-
-        <%# Administration Section (Admin) %>
-        <% if (is_admin()) { %>
-            <div class="separator" data-label="ADMINISTRATION"></div>
-            <%
-                my @admin_items = grep { $_->{permission_level} eq 'admin' } @$menu_tree;
-                my $admin_leaves = $collect_leaves->(\@admin_items, '⚙️');
-            %>
-            <% for my $leaf (@$admin_leaves) { %>
-                <%
-                    my ($icon, $name) = $leaf->{label} =~ /^(\X+?)\s+(.*)$/u;
-                    if (!$name) { $name = $leaf->{label}; $icon = $leaf->{icon} || $leaf->{_default_icon}; }
-                    $name =~ s/^(Admin|Manage):\s*//i;
-                %>
-                <a href="<%= $leaf->{url} %>" class="tile admin">
-                    <div class="icon"><%= $icon %></div>
-                    <div class="label"><%= $name %></div>
-                </a>
-            <% } %>
-
-            <%# Special Admin Buttons %>
-            <button class="tile admin danger" onclick="startRestartSequence(event)">
+            <% if (($leaf->{action} // '') eq 'restart') { %>
+            <button type="button" class="<%= $classes %>" data-id="<%= $leaf->{quick_id} %>" onclick="startRestartSequence(event)">
                 <div class="icon">⚠️</div>
                 <div class="label">Restart</div>
             </button>
-        <% } %>
-
-        <% if (is_logged_in()) { %>
-            <a href="/logout" class="tile logout">
+            <% } elsif (($leaf->{action} // '') eq 'logout') { %>
+            <a href="/logout" class="<%= $classes %>" data-id="<%= $leaf->{quick_id} %>">
                 <div class="icon">🚪</div>
                 <div class="label">Logout</div>
             </a>
+            <% } else { %>
+            <a href="<%= $leaf->{url} %>" class="<%= $classes %>" data-id="<%= $leaf->{quick_id} %>" target="<%= $leaf->{target} || '_self' %>">
+                <div class="icon"><%= $icon %></div>
+                <div class="label"><%= $name %></div>
+                <% if ($leaf->{is_new}) { %>
+                    <span class="quick-new-badge">NEW</span>
+                <% } %>
+            </a>
+            <% } %>
         <% } %>
     </div>
 </div>
