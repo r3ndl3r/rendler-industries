@@ -405,7 +405,8 @@ function downloadBook(slug) {
 
     STATE.downloading[slug] = { total: 100, done: 0 };
     const absCoverUrl = book.cover_url ? new URL(book.cover_url, 'https://rendler.org').href : '';
-    window.OfflineAudiobooks.downloadBook(slug, JSON.stringify(chapters), absCoverUrl);
+    const title = book.title || slug;
+    window.OfflineAudiobooks.downloadBook(slug, JSON.stringify(chapters), absCoverUrl, title);
 
     _startDownloadPoll();
     renderLibrary();
@@ -530,7 +531,9 @@ function _applyPendingProgressToState() {
                     book.progress = book.progress || {};
                     book.progress.chapter_idx  = pending.chapter_idx;
                     book.progress.position_sec = pending.position_sec;
-                    book.progress.completed    = pending.completed;
+                    if (pending.completed !== undefined) {
+                        book.progress.completed = pending.completed;
+                    }
 
                     // Synchronize PLAYER object if the same book is already open
                     if (PLAYER.slug === pending.book_slug) {
@@ -569,6 +572,49 @@ function _pendingProgressIsNotNewerThan(current, payload) {
 }
 
 /**
+ * Saves audiobook progress without global toast noise.
+ *
+ * API STANDARDIZATION EXCEPTION:
+ * Do not replace this with apiPost(). apiPost() is the shared user-facing POST
+ * helper and intentionally emits toast notifications on failures/timeouts. This
+ * endpoint is called by background audiobook playback/offline sync; surfacing
+ * transient offline save failures as global toasts is noisy and misleading.
+ *
+ * Direct fetch() is used here only for /audiobooks/api/progress. The global fetch
+ * hook in default.js still injects CSRF headers, so this keeps request security
+ * while keeping the no-toast behavior local to audiobooks instead of adding an
+ * app-specific silent mode to the shared apiPost() helper used by other modules.
+ *
+ * @param {Object} payload - Progress payload for /audiobooks/api/progress.
+ * @returns {Promise<Object|null>} - Parsed JSON response or null on failure.
+ */
+async function _postProgressQuietly(payload) {
+    try {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 30000);
+        const response = await fetch('/audiobooks/api/progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(payload),
+            signal: controller.signal,
+        });
+        clearTimeout(id);
+
+        if (response.status === 403 && window.Capacitor && window.Capacitor.isNativePlatform()) {
+            if (typeof window.handleMobileAdminAuth === 'function') {
+                window.handleMobileAdminAuth('/audiobooks/api/progress');
+            }
+            return null;
+        }
+
+        return await response.json();
+    } catch (err) {
+        console.warn('Quiet audiobook progress save failed:', err);
+        return null;
+    }
+}
+
+/**
  * Flushes any progress data buffered in localStorage during an offline period.
  * Called after a successful loadState() confirms the server is reachable.
  * @returns {void}
@@ -582,11 +628,9 @@ function _flushPendingProgress() {
             payload.client_updated_ms = Date.now();
             localStorage.setItem('ab_pending_progress', JSON.stringify(payload));
         }
-        apiPost('/audiobooks/api/progress', payload)
+        _postProgressQuietly(payload)
             .then(res => {
-                if (res) {
-                    // Safe-deletion: only remove if the local pending state has not
-                    // been updated with newer playback progress during the async request
+                if (res && res.success && res.applied) {
                     const current = localStorage.getItem('ab_pending_progress');
                     if (_pendingProgressMatches(current, payload)) {
                         localStorage.removeItem('ab_pending_progress');
@@ -653,7 +697,7 @@ function _renderBookRow(book) {
         }
     }
 
-    const chapIdx   = prog.completed ? 0 : (prog.chapter_idx || 0);
+    const chapIdx   = prog.chapter_idx || 0;
     const slugJs    = escapeHtml(JSON.stringify(book.slug));
     const seriesNum = book.series_index > 0
         ? `<span class="book-row-series">Book ${book.series_index}</span>`
@@ -873,7 +917,7 @@ function updateAudiobookSearchResults() {
             const status    = _statusLabel(book);
             const statusCls = prog.completed ? ' complete' : '';
             const slugJs    = escapeHtml(JSON.stringify(book.slug));
-            const chapIdx   = prog.completed ? 0 : (prog.chapter_idx || 0);
+            const chapIdx   = prog.chapter_idx || 0;
             const metaParts = [];
             if (book.author) metaParts.push(escapeHtml(book.author));
             if (book.series) metaParts.push(escapeHtml(book.series));
@@ -1063,10 +1107,12 @@ function _initAudio() {
     audio.addEventListener('waiting', () => {
         document.getElementById('playPauseBtn').textContent = '⏳';
         document.getElementById('playerPanel').classList.add('player-buffering');
-        // If still buffering after 10 seconds, show a helpful message.
+        // If still buffering after 10 seconds, show a helpful message, but not when offline
+        // (audio may continue playing from buffer) or when already in offline_mode.
         clearTimeout(_stallTimeout);
         _stallTimeout = setTimeout(() => {
             if (audio.paused || !document.getElementById('playerPanel').classList.contains('player-buffering')) return;
+            if (STATE.offline_mode || audio.readyState >= 3) return; // Buffered enough to keep playing.
             showToast('Waiting for connection…', 'error');
         }, 10000);
     });
@@ -1196,13 +1242,14 @@ function _loadChapter(idx, autoplay = true) {
 
     // Determine seek target: CUE mode uses absolute file position; multi-file uses offset from 0.
     const prog   = book.progress || {};
+    const savedChapterIdx = Number(prog.chapter_idx) || 0;
     let seekTo;
     if (cue) {
         const chStart = ch.start || 0;
-        seekTo = (!prog.completed && prog.chapter_idx === idx && prog.position_sec > chStart)
+        seekTo = (savedChapterIdx === idx && prog.position_sec > chStart)
             ? prog.position_sec : chStart;
     } else {
-        seekTo = (!prog.completed && prog.chapter_idx === idx && prog.position_sec > 0)
+        seekTo = (savedChapterIdx === idx && prog.position_sec > 0)
             ? prog.position_sec : 0;
     }
 
@@ -1703,6 +1750,9 @@ function _onAudioError() {
     document.getElementById('playerPanel').classList.remove('player-buffering');
     if (code === 1) return; // User-initiated abort (e.g. src change).
     if (code === 2) {
+        // Network error: suppress toast when offline or when audio is still buffered
+        // (the browser may fire this while buffered content continues playing).
+        if (STATE.offline_mode || !audio.paused) return;
         showToast('Network error — check your connection.', 'error');
         return;
     }
@@ -2005,9 +2055,9 @@ function _saveProgress(completed) {
         completed:   completed ? 1 : 0,
         client_updated_ms: Date.now(),
     };
-    apiPost('/audiobooks/api/progress', payload)
+    _postProgressQuietly(payload)
         .then(res => {
-            if (res && res.success) {
+            if (res && res.success && res.applied) {
                 const current = localStorage.getItem('ab_pending_progress');
                 if (_pendingProgressIsNotNewerThan(current, payload)) {
                     localStorage.removeItem('ab_pending_progress');
