@@ -4,6 +4,7 @@ package DB::User::Settings;
 
 use strict;
 use warnings;
+use Mojo::JSON qw(decode_json encode_json);
 
 use constant MAX_NOTIFICATION_CHANNELS => 3;
 
@@ -126,6 +127,34 @@ sub DB::update_user_profile {
         "UPDATE users SET email = ?, discord_id = ?, emoji = ? WHERE id = ?"
     );
     $sth->execute($email, $discord_id || undef, $emoji || undef, $user_id);
+}
+
+# Returns the persisted quick tile order for a user.
+sub DB::get_quick_sort_order {
+    my ($self, $user_id) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        "SELECT quick_sort_order FROM users WHERE id = ?"
+    );
+    $sth->execute($user_id);
+    my $row = $sth->fetchrow_hashref;
+    return [] unless $row && $row->{quick_sort_order};
+
+    my $decoded = eval { decode_json($row->{quick_sort_order}) };
+    return ref $decoded eq 'ARRAY' ? $decoded : [];
+}
+
+# Persists the quick tile order for a user.
+sub DB::set_quick_sort_order {
+    my ($self, $user_id, $order) = @_;
+    $self->ensure_connection;
+
+    my $json = encode_json($order || []);
+    my $sth = $self->{dbh}->prepare(
+        "UPDATE users SET quick_sort_order = ? WHERE id = ?"
+    );
+    $sth->execute($json, $user_id);
 }
 
 # Verifies a plain-text password against the stored bcrypt hash for a user.
