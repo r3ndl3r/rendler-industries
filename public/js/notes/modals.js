@@ -605,23 +605,107 @@ function openMoveModal(e, id, opts = {}) {
         item.className = 'canvas-item';
         item.onclick = () => {
             closeMoveModal();
-            window.showConfirmModal({
-                title:       `Target Level on "${canvas.name}"`,
-                icon:        '📚',
-                message:     'Which level should the notes land on?',
-                input:       { type: 'number', min: 1, max: 99, value: 1, placeholder: 'Level Number...' },
-                noEmoji:     true,
-                confirmText: operation === 'move' ? 'Move' : 'Copy',
-                onConfirm: async (val) => {
-                    const level = parseInt(val);
-                    if (isNaN(level) || level < 1 || level > 99) { showToast('Invalid level', 'error'); return; }
-                    if (operation === 'move') {
-                        if (typeof moveNotesToCanvas === 'function') moveNotesToCanvas(ids, canvas.id, level);
-                    } else {
-                        if (typeof bulkCopyToCanvas === 'function') bulkCopyToCanvas(ids, canvas.id, level);
-                    }
+            const cleanupModal = () => {
+                const modalContent = document.getElementById('globalConfirmModalContent');
+                const injection = modalContent?.querySelector('.level-navigator-injection');
+                if (injection) injection.remove();
+            };
+
+            const targetLevelStats = {};
+            Object.values(STATE.note_map || {}).forEach(note => {
+                if (note.canvas_id == canvas.id) {
+                    const lid = parseInt(note.layer_id || 1);
+                    targetLevelStats[lid] = (targetLevelStats[lid] || 0) + 1;
                 }
             });
+
+            const targetLevels = Array.from(new Set([1, ...Object.keys(targetLevelStats).map(id => parseInt(id))]))
+                .filter(level => level >= 1 && level <= 99)
+                .sort((a, b) => a - b);
+
+            const submitLevel = async (rawValue) => {
+                const level = parseInt(rawValue);
+                if (isNaN(level) || level < 1 || level > 99) { showToast('Invalid level', 'error'); return; }
+                cleanupModal();
+                if (operation === 'move') {
+                    if (typeof moveNotesToCanvas === 'function') await moveNotesToCanvas(ids, canvas.id, level);
+                } else {
+                    if (typeof bulkCopyToCanvas === 'function') await bulkCopyToCanvas(ids, canvas.id, level);
+                }
+                window.closeConfirmModal();
+            };
+
+            window.showConfirmModal({
+                title:       `Target Level on ${canvas.name}`,
+                icon:        '📚',
+                message:     'Which level should the notes land on?',
+                width:       'small',
+                hideCancel:  true,
+                noEmoji:     true,
+                autoFocus:   true,
+                onCancel:    cleanupModal
+            });
+
+            const promptContainer = document.getElementById('globalConfirmPromptContainer');
+            const actionsContainer = document.getElementById('globalConfirmModalActions');
+
+            if (promptContainer && actionsContainer && typeof window.renderRowInput === 'function') {
+                actionsContainer.classList.add('hidden');
+
+                const row = window.renderRowInput(promptContainer, {
+                    id: `${operation}-canvas-level-input`,
+                    type: 'number',
+                    placeholder: 'Level #...',
+                    value: 1,
+                    buttonText: operation === 'move' ? 'Move' : 'Copy',
+                    buttonIcon: operation === 'move' ? '✂️' : '📋',
+                    noEmoji: true
+                });
+
+                if (row?.input) {
+                    row.input.min = 1;
+                    row.input.max = 99;
+                    row.input.onkeydown = (ev) => {
+                        if (ev.key === 'Enter') {
+                            ev.preventDefault();
+                            submitLevel(row.input.value);
+                        }
+                    };
+                }
+
+                if (row?.button) row.button.onclick = () => submitLevel(row.input.value);
+            }
+
+            if (targetLevels.length > 0) {
+                const modalContent = document.getElementById('globalConfirmModalContent');
+                if (modalContent) {
+                    const injection = document.createElement('div');
+                    injection.className = 'level-navigator-injection';
+
+                    let listHtml = '<div class="level-list-container">';
+                    targetLevels.forEach(levelId => {
+                        const count = targetLevelStats[levelId] || 0;
+                        listHtml += `
+                            <div class="level-item" data-level="${levelId}">
+                                <div class="level-icon-stack">${count > 0 ? '📚' : '📄'}</div>
+                                <div class="level-info-main">
+                                    <span class="level-title-row">Level ${levelId}</span>
+                                    <span class="level-meta-row">${count > 0 ? `${count} ${count === 1 ? 'note' : 'notes'} on this layer` : 'No notes yet'}</span>
+                                </div>
+                                <div class="level-jump-arrow">❯</div>
+                            </div>
+                        `;
+                    });
+                    listHtml += '</div>';
+
+                    injection.innerHTML = `<hr class="modal-divider-short">${listHtml}`;
+                    injection.addEventListener('click', (ev) => {
+                        const levelItem = ev.target.closest('.level-item[data-level]');
+                        if (levelItem) submitLevel(levelItem.dataset.level);
+                    });
+                    modalContent.appendChild(injection);
+                }
+            }
         };
         item.innerHTML = `
             <div class="canvas-info">
@@ -970,6 +1054,7 @@ function showBoardInfo() {
                         <li><strong>Ctrl+F</strong> — Open board search</li>
                         <li><strong>Ctrl+E</strong> — Toggle edit mode on hovered note / exit if already editing</li>
                         <li><strong>Ctrl+S</strong> — Save active note (incremental while editing)</li>
+                        <li><strong>Ctrl+Z</strong> — Fit hovered note height to rendered content</li>
                         <li><strong>Ctrl+Enter</strong> — Save and exit edit mode</li>
                         <li><strong>Escape</strong> — Discard changes &amp; exit / cancel move / close modals</li>
                     </ul>
