@@ -871,6 +871,15 @@ function setupEventListeners() {
         search.onfocus = () => {
             updateSearchResults();
         };
+        search.onkeydown = (e) => {
+            if (e.key === 'Escape') {
+                searchGeneration++;
+                clearTimeout(searchDebounceTimer);
+                const resultsEl = document.getElementById('calendarSearchResults');
+                if (resultsEl) resultsEl.classList.add('hidden');
+                search.blur();
+            }
+        };
     }
 
     document.addEventListener('click', (e) => {
@@ -1613,15 +1622,18 @@ async function updateSearchResults() {
             const displayMatches = matches.slice(0, CONFIG.SEARCH_RESULT_LIMIT);
 
             if (displayMatches.length === 0) {
-                resultsEl.innerHTML = '<div class="search-no-results">No events found</div>';
+                resultsEl.innerHTML = '<div class="search-no-results" role="status">No events found</div>';
             } else {
                 resultsEl.innerHTML = displayMatches.map(e => {
                     const timeDisplay = e.all_day ? 'All Day' : `${formatTime(e.start_date)} - ${formatTime(e.end_date)}`;
                     const dateDisplay = formatDateWithOrdinal(e.start_date.split(' ')[0]);
                     const catBadge = e.category ? `<span class="search-result-category">${escapeHtml(e.category)}</span>` : '';
+                    const uidJs = escapeHtml(JSON.stringify(e.uid));
 
                     return `
-                        <div class="search-result-item" onclick="showEventDetails('${e.uid}')">
+                        <div class="search-result-item" role="option" tabindex="0"
+                            onclick="showEventDetails(${uidJs})"
+                            onkeydown="if(event.key==='Enter')showEventDetails(${uidJs}); if(event.key==='Escape'){this.parentElement.classList.add('hidden'); this.parentElement.previousElementSibling?.focus()}">
                             <div class="search-result-title">
                                 <span class="search-result-dot"></span>
                                 ${e.is_private ? '🔒 ' : ''}<strong>${escapeHtml(e.title)}</strong>
