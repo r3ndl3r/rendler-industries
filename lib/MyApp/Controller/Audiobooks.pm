@@ -95,6 +95,7 @@ sub _format_book_entry {
     $prog //= { chapter_idx => 0, position_sec => 0, completed => 0 };
 
     my $chapters = (ref $meta->{chapters} eq 'ARRAY') ? $meta->{chapters} : [];
+    return undef unless @$chapters;
 
     my $str = sub { my $v = shift; (defined $v && !ref $v) ? $v : '' };
     return {
@@ -833,7 +834,7 @@ sub api_save_progress {
     $position    = 0 if $position    < 0;
     $client_ms   = int($c->now->epoch * 1000) if $client_ms <= 0;
 
-    eval {
+    my $applied = eval {
         $c->db->upsert_audiobook_progress($user_id, $book_slug, $chapter_idx, $position, $completed, $client_ms);
     };
     if ($@) {
@@ -841,7 +842,7 @@ sub api_save_progress {
         return $c->render(json => { success => 0, error => 'Database error' }, status => 500);
     }
 
-    $c->render(json => { success => 1 });
+    $c->render(json => { success => 1, applied => $applied ? 1 : 0 });
 }
 
 # Deletes playback progress for the current user.
