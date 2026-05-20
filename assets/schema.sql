@@ -1,4 +1,3 @@
--- /assets/schema.sql
 CREATE TABLE `ai_conversations` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
@@ -534,6 +533,7 @@ CREATE TABLE `menu_links` (
   `icon` varchar(50) DEFAULT '',
   `parent_id` int(11) DEFAULT NULL,
   `sort_order` int(11) DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
   `permission_level` enum('guest','user','family','admin','child','parent') DEFAULT 'user',
   `css_class` varchar(50) DEFAULT '',
   `target` varchar(20) DEFAULT '_self',
@@ -947,6 +947,7 @@ CREATE TABLE `users` (
   `status` varchar(20) NOT NULL DEFAULT 'pending',
   `is_child` tinyint(1) DEFAULT 0,
   `emoji` varchar(10) DEFAULT '?',
+  `quick_sort_order` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`quick_sort_order`)),
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email` (`email`)
