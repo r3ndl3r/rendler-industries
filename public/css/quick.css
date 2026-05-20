@@ -6,6 +6,7 @@
 }
 
 .header-bar {
+    position: relative;
     justify-content: center !important;
 }
 
@@ -14,9 +15,47 @@
     font-size: 2.2rem;
 }
 
+.quick-edit-btn {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #e2e8f0;
+    font: inherit;
+    font-size: 1.35rem;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.quick-edit-btn[data-editing="true"] {
+    padding: 9px 18px;
+    border: 1px solid #3b82f6;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.35);
+    color: #fff;
+    font-size: 0.9rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.quick-edit-btn:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
 @media (max-width: 768px) {
     .header-bar h1 {
         font-size: 1.6rem;
+    }
+    .quick-edit-btn {
+        font-size: 1.2rem;
+    }
+    .quick-edit-btn[data-editing="true"] {
+        padding: 7px 14px;
+        font-size: 0.8rem;
     }
 }
 
@@ -29,6 +68,7 @@
 
 /* Base Tile Style (Glassmorphism) */
 .tile {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -45,6 +85,20 @@
     cursor: pointer;
     min-height: 120px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.quick-new-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    pointer-events: none;
 }
 
 .tile:hover {
@@ -107,27 +161,23 @@
     color: white;
 }
 
-/* Separator for Admin section */
-.separator {
-    grid-column: 1 / -1;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    margin: 40px 0 20px;
-    position: relative;
+.sort-mode .quick-tile-card {
+    border-style: dashed;
+    cursor: grab;
 }
 
-.separator::after {
-    content: attr(data-label);
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #050c1d;
-    padding: 0 15px;
-    color: rgba(255, 255, 255, 0.3);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 2px;
+.sort-mode .quick-tile-card:hover {
+    transform: none;
+}
+
+.quick-tile-card.sortable-ghost {
+    opacity: 0.35;
+    border-color: #3b82f6 !important;
+}
+
+.quick-tile-card.sortable-chosen {
+    cursor: grabbing;
+    box-shadow: 0 12px 28px rgba(59, 130, 246, 0.28);
 }
 
 /* Mobile Responsiveness: 3 Column Layout */
@@ -148,8 +198,5 @@
     .label {
         font-size: 0.75rem;
         line-height: 1.2;
-    }
-    .separator {
-        margin: 30px 0 15px;
     }
 }
