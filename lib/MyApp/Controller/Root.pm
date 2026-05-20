@@ -5,6 +5,7 @@ use Mojo::Base 'Mojolicious::Controller';
 use Cwd qw(abs_path getcwd);
 use Mojo::File 'path';
 use HTML::Entities qw(encode_entities decode_entities);
+use Time::Piece;
 use Mojo::Util qw(trim);
 
 # Controller for core application logic and utility pages.
@@ -183,13 +184,140 @@ sub sus { shift->render('sus') }
 # Renders the Quick Access dashboard with dynamic tiles from DB
 sub quick { 
     my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
     
     # Retrieve the menu tree (already filtered by current user permissions)
     my $menu_tree = $c->menu();
+    my $tiles = _merge_quick_tiles($c, _quick_tiles($c, $menu_tree));
     
-    $c->render('quick', menu_tree => $menu_tree);
+    $c->render('quick', tiles => $tiles);
 }
 
+sub quick_save_order {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $body = $c->req->json || {};
+    my $order = $body->{order};
+    return $c->render(json => { success => 0, error => 'Invalid payload' }, status => 400)
+        unless ref $order eq 'ARRAY';
+
+    my %valid = map { $_->{quick_id} => 1 } @{ _quick_tiles($c, $c->menu()) };
+    my %seen;
+    my @filtered;
+    for my $id (@$order) {
+        next unless defined $id && !ref $id;
+        next if length($id) > 80;
+        next unless $valid{$id};
+        next if $seen{$id}++;
+        push @filtered, $id;
+    }
+
+    $c->db->set_quick_sort_order($c->current_user_id, \@filtered);
+    return $c->render(json => { success => 1, order => \@filtered });
+}
+
+sub _quick_tiles {
+    my ($c, $menu_tree) = @_;
+    my @tiles;
+    _collect_quick_tiles($menu_tree || [], [], \@tiles);
+
+    push @tiles, {
+        quick_id       => 'action:restart',
+        quick_group_id => 'action',
+        action         => 'restart',
+        label          => 'Restart',
+        icon           => '⚠️',
+        permission_level => 'admin',
+    } if $c->is_admin;
+
+    push @tiles, {
+        quick_id       => 'action:logout',
+        quick_group_id => 'action',
+        action         => 'logout',
+        label          => 'Logout',
+        icon           => '🚪',
+        url            => '/logout',
+    } if $c->is_logged_in;
+
+    return \@tiles;
+}
+
+sub _collect_quick_tiles {
+    my ($items, $path, $out) = @_;
+    for my $item (@$items) {
+        next if $item->{is_separator};
+        my @child_path = (@$path, $item->{id});
+        if ($item->{url} && $item->{url} ne '#') {
+            my $permission = $item->{permission_level} // 'user';
+            push @$out, {
+                %$item,
+                quick_id       => 'menu:' . $item->{id},
+                quick_group_id => @$path ? join('/', @$path) : 'root',
+                _default_icon  => $permission eq 'admin' ? '⚙️' : '🔗',
+            };
+        }
+        _collect_quick_tiles($item->{children} || [], \@child_path, $out);
+    }
+}
+
+sub _merge_quick_tiles {
+    my ($c, $tiles) = @_;
+    my @saved_order = $c->is_logged_in ? @{ $c->db->get_quick_sort_order($c->current_user_id) } : ();
+
+    unless (@saved_order) {
+        _mark_quick_tile_new($_) for @$tiles;
+        return $tiles;
+    }
+
+    my %by_id = map { $_->{quick_id} => $_ } @$tiles;
+    my @merged;
+    my %seen;
+
+    for my $id (@saved_order) {
+        next if $seen{$id}++;
+        next unless my $tile = $by_id{$id};
+        _mark_quick_tile_new($tile);
+        push @merged, $tile;
+    }
+
+    for my $tile (@$tiles) {
+        next if $seen{$tile->{quick_id}};
+        _mark_quick_tile_new($tile);
+        if (($tile->{quick_id} // '') =~ /^menu:/) {
+            _insert_quick_tile_in_group(\@merged, $tile);
+        } else {
+            push @merged, $tile;
+        }
+        $seen{$tile->{quick_id}} = 1;
+    }
+
+    return \@merged;
+}
+
+sub _insert_quick_tile_in_group {
+    my ($tiles, $tile) = @_;
+    my $group = $tile->{quick_group_id} // '';
+    for (my $i = $#$tiles; $i >= 0; $i--) {
+        next unless ($tiles->[$i]{quick_group_id} // '') eq $group;
+        splice @$tiles, $i + 1, 0, $tile;
+        return;
+    }
+    push @$tiles, $tile;
+}
+
+sub _mark_quick_tile_new {
+    my ($tile) = @_;
+    $tile->{is_new} = _is_recent_quick_tile($tile->{created_at}) ? 1 : 0;
+}
+
+sub _is_recent_quick_tile {
+    my ($created_at) = @_;
+    return 0 unless $created_at;
+    my $tp = eval { Time::Piece->strptime($created_at, "%Y-%m-%d %H:%M:%S") };
+    return 0 unless $tp;
+    return (time - $tp->epoch) < (48 * 60 * 60);
+}
 
 # Renders the Contact page.
 # Route: GET /contact
@@ -372,6 +500,7 @@ sub register_routes {
     $r->{r}->get('/api/user_icons')->to('root#api_user_icons');
     $r->{r}->get('/system/api/file_map')->to('root#file_map_json');
     $r->{r}->get('/quick')->to('root#quick');
+    $r->{auth}->patch('/api/quick/order')->to('root#quick_save_order');
     $r->{auth}->get('/clipboard')->to('root#copy_get');
     $r->{auth}->get('/copy')->to('root#copy_get');
     $r->{auth}->get('/clipboard/api/state')->to('root#copy_api_state');
