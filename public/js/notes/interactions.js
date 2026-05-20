@@ -1017,9 +1017,27 @@ function handleGlobalClick(e) {
  * @returns {void}
  */
 function handleGlobalKeydown(e) {
-    if (STATE.isInitializing) return;
     const key = e.key.toLowerCase();
     const commandKey = e.ctrlKey || e.metaKey;
+
+    // Ctrl + E: Toggle Edit Mode for the hovered or active note.
+    // Intercept before initialization guard so Firefox does not steal focus.
+    if (e.ctrlKey && key === 'e') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (STATE.isInitializing) return;
+
+        const targetId = STATE.isEditingNote || STATE.hoveredNoteId;
+        if (targetId) {
+            const btn = document.querySelector(`#note-${targetId} .btn-icon-edit`);
+            if (btn && typeof toggleInlineEdit === 'function') {
+                toggleInlineEdit(btn, targetId);
+            }
+        }
+        return;
+    }
+
+    if (STATE.isInitializing) return;
 
     if (e.key === 'Escape') {
         const hasSelection = STATE.selectedNoteIds && STATE.selectedNoteIds.size > 0;
@@ -1085,29 +1103,29 @@ function handleGlobalKeydown(e) {
         }
     }
     
+    // Ctrl + Z: Fit the hovered saved note to its rendered content.
+    if (e.ctrlKey && key === 'z') {
+        const isEntry = e.target.closest('input, textarea, [contenteditable="true"]');
+        if (isEntry) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (typeof fitHoveredNoteToContent === 'function') fitHoveredNoteToContent();
+        return;
+    }
+
     // Ctrl + S: Board-wide Save Interception
     // Prevents the annoying browser "Save Page" dialog from appearing while on the whiteboard.
-    if (e.ctrlKey && e.key === 's') {
+    if (e.ctrlKey && key === 's') {
         e.preventDefault();
-        
+
         // If a note is currently being edited, trigger a save for it even if focus is lost
         if (STATE.isEditingNote) {
             const activeNote = document.querySelector('.sticky-note.is-editing');
             if (activeNote) {
                 const id = activeNote.dataset.id;
                 if (id) saveNoteInline(id, true);
-            }
-        }
-    }
-
-    // Ctrl + E: Toggle Edit Mode for the hovered or active note
-    if (e.ctrlKey && e.key === 'e') {
-        e.preventDefault();
-        const targetId = STATE.isEditingNote || STATE.hoveredNoteId;
-        if (targetId) {
-            const btn = document.querySelector(`#note-${targetId} .btn-icon-edit`);
-            if (btn && typeof toggleInlineEdit === 'function') {
-                toggleInlineEdit(btn, targetId);
             }
         }
     }
@@ -2031,6 +2049,123 @@ function handleCanvasDoubleClick(e) {
  * @param {number|string} id - The note ID.
  * @returns {Promise<void>}
  */
+function measureSavedNoteHeight(el) {
+    if (!el || !el.parentNode) return null;
+
+    const clone = el.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.classList.remove('is-editing', 'pending', 'dragging', 'resizing');
+    clone.style.position = 'absolute';
+    clone.style.left = '-100000px';
+    clone.style.top = '0';
+    clone.style.visibility = 'hidden';
+    clone.style.pointerEvents = 'none';
+    clone.style.transform = 'none';
+    clone.style.width = `${el.offsetWidth}px`;
+    clone.style.height = 'auto';
+    clone.style.zIndex = '-1';
+
+    el.parentNode.appendChild(clone);
+    const measured = Math.ceil(clone.scrollHeight) + 6;
+    const minHeight = parseFloat(getComputedStyle(el).minHeight) || 0;
+    clone.remove();
+
+    return Math.max(measured, minHeight);
+}
+
+async function fitHoveredNoteToContent() {
+    const id = STATE.hoveredNoteId;
+    if (!id) {
+        if (typeof showToast === 'function') showToast('Hover a note first, then press Ctrl+Z', 'info');
+        return;
+    }
+
+    const el = document.getElementById(`note-${id}`);
+    const note = STATE.notes.find(n => n.id == id);
+    if (!el || !note) return;
+
+    if (el.classList.contains('is-editing')) {
+        if (typeof showToast === 'function') showToast('Exit edit mode before fitting note height', 'info');
+        return;
+    }
+
+    if (note.is_collapsed) {
+        if (typeof showToast === 'function') showToast('Expand the note before fitting height', 'info');
+        return;
+    }
+
+    if (typeof showToast === 'function') showToast('Ctrl+Z: fitting hovered note...', 'info');
+
+    const fittedHeight = measureSavedNoteHeight(el);
+    if (!fittedHeight) return;
+
+    el.style.height = `${fittedHeight}px`;
+    try {
+        const res = typeof syncNotePosition === 'function'
+            ? await syncNotePosition(id)
+            : { success: 0, error: 'Geometry sync unavailable' };
+
+        if (res && res.success) {
+            if (typeof showToast === 'function') showToast('Note height fitted to content', 'success');
+        } else if (typeof showToast === 'function') {
+            showToast(res?.error || 'Could not save fitted height', 'error');
+        }
+    } catch (err) {
+        console.error('[fitHoveredNoteToContent] Failed:', err);
+        if (typeof showToast === 'function') showToast('Could not save fitted height', 'error');
+    }
+}
+
+async function moveNotesToCanvasCenter(ids) {
+    if (!ids || ids.length === 0) return;
+
+    const noteEls = ids
+        .map(id => document.getElementById(`note-${id}`))
+        .filter(Boolean);
+    if (noteEls.length === 0) return;
+
+    const canvasCenterX = STATE.canvasSize / 2;
+    const canvasCenterY = STATE.canvasSize / 2;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    noteEls.forEach(el => {
+        const x = parseFloat(el.style.left) || 0;
+        const y = parseFloat(el.style.top) || 0;
+        const w = el.offsetWidth || 0;
+        const h = el.offsetHeight || 0;
+
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + w);
+        maxY = Math.max(maxY, y + h);
+    });
+
+    const deltaX = canvasCenterX - ((minX + maxX) / 2);
+    const deltaY = canvasCenterY - ((minY + maxY) / 2);
+
+    noteEls.forEach(el => {
+        const nextX = Math.round((parseFloat(el.style.left) || 0) + deltaX);
+        const nextY = Math.round((parseFloat(el.style.top)  || 0) + deltaY);
+        el.style.left = `${nextX}px`;
+        el.style.top  = `${nextY}px`;
+    });
+
+    const label = noteEls.length > 1 ? `${noteEls.length} notes` : 'Note';
+    if (typeof showToast === 'function') showToast(`Moving ${label.toLowerCase()} to center...`, 'info');
+
+    const res = noteEls.length > 1 && typeof syncBatchNotePositions === 'function'
+        ? await syncBatchNotePositions(ids)
+        : await syncNotePosition(ids[0]);
+
+    if (res && res.success) {
+        if (typeof showToast === 'function') showToast(`${label} moved to center`, 'success');
+    }
+}
+
 async function saveNoteInline(id, stayInEditMode = false) {
     const el   = document.getElementById(`note-${id}`);
     const note = STATE.notes.find(n => n.id == id);
@@ -2496,24 +2631,10 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
                 ribbon.classList.add('show');
             }
 
-            // UI Logic: Dynamic height adaptation for text entry
-            // Optimization: Skip auto-expansion for Dashboard notelets to prevent layout jumps 
-            // when editing long URL lists. Let the textarea handle internal scrolling instead.
-            const isDashboard = el.classList.contains('is-dashboard-note');
-            
-            const adaptNoteHeight = () => {
-                if (isDashboard) return; // Maintain stable footprint for dashboards
-                if (textarea.scrollHeight > textarea.clientHeight) {
-                    const diff = textarea.scrollHeight - textarea.clientHeight;
-                    el.style.height = `${el.offsetHeight + diff}px`;
-                }
-            };
-            
-            textarea.removeEventListener('input', textarea._adaptNoteHeight);
-            textarea._adaptNoteHeight = adaptNoteHeight;
-            textarea.addEventListener('input', textarea._adaptNoteHeight);
-            
-            setTimeout(adaptNoteHeight, 10);
+            if (textarea._adaptNoteHeight) {
+                textarea.removeEventListener('input', textarea._adaptNoteHeight);
+                textarea._adaptNoteHeight = null;
+            }
         }
     } else {
         // Mode Termination: Atomic Persistence
@@ -3175,23 +3296,112 @@ function showNoteContextMenu(e, noteId) {
     const label   = ids.length > 1 ? `${ids.length} notes` : 'note';
 
     const promptLevel = (operation) => {
+        const cleanupModal = () => {
+            const modalContent = document.getElementById('globalConfirmModalContent');
+            const injection = modalContent?.querySelector('.level-navigator-injection');
+            if (injection) injection.remove();
+        };
+
+        const levelStats = {};
+        (STATE.notes || []).forEach(n => {
+            const lid = parseInt(n.layer_id);
+            levelStats[lid] = (levelStats[lid] || 0) + 1;
+        });
+
+        const discoverySet = new Set(Object.keys(levelStats).map(id => parseInt(id)));
+        Object.keys(STATE.layer_map || {}).forEach(id => {
+            const lid = parseInt(id);
+            if (STATE.layer_map[id]) discoverySet.add(lid);
+        });
+
+        const targetLevels = Array.from(discoverySet)
+            .filter(id => id >= 1 && id <= 99)
+            .sort((a, b) => a - b);
+
+        const submitLevel = async (rawValue) => {
+            const level = parseInt(rawValue);
+            if (isNaN(level) || level < 1 || level > 99) { showToast('Invalid level', 'error'); return; }
+            cleanupModal();
+            if (operation === 'move') {
+                await moveNotesToLevel(ids, level);
+            } else {
+                await bulkCopyToLevel(ids, level);
+            }
+            window.closeConfirmModal();
+        };
+
         window.showConfirmModal({
             title:   operation === 'move' ? `Move ${label} to Level` : `Copy ${label} to Level`,
             icon:    operation === 'move' ? '✂️' : '📋',
             message: 'Select a target level (1-99):',
-            input:   { type: 'number', min: 1, max: 99, value: STATE.activeLayerId, placeholder: 'Level Number...' },
+            width: 'small',
+            hideCancel: true,
             noEmoji: true,
-            confirmText: operation === 'move' ? 'Move' : 'Clone',
-            onConfirm: async (val) => {
-                const level = parseInt(val);
-                if (isNaN(level) || level < 1 || level > 99) { showToast('Invalid level', 'error'); return; }
-                if (operation === 'move') {
-                    await moveNotesToLevel(ids, level);
-                } else {
-                    await bulkCopyToLevel(ids, level);
-                }
-            }
+            autoFocus: true,
+            onCancel: cleanupModal
         });
+
+        const promptContainer = document.getElementById('globalConfirmPromptContainer');
+        const actionsContainer = document.getElementById('globalConfirmModalActions');
+
+        if (promptContainer && actionsContainer && typeof window.renderRowInput === 'function') {
+            actionsContainer.classList.add('hidden');
+
+            const row = window.renderRowInput(promptContainer, {
+                id: `${operation}-level-input`,
+                type: 'number',
+                placeholder: 'Level #...',
+                value: STATE.activeLayerId,
+                buttonText: operation === 'move' ? 'Move' : 'Copy',
+                buttonIcon: operation === 'move' ? '✂️' : '📋',
+                noEmoji: true
+            });
+
+            if (row?.input) {
+                row.input.min = 1;
+                row.input.max = 99;
+                row.input.onkeydown = (ev) => {
+                    if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        submitLevel(row.input.value);
+                    }
+                };
+            }
+
+            if (row?.button) row.button.onclick = () => submitLevel(row.input.value);
+        }
+
+        if (targetLevels.length > 0) {
+            const modalContent = document.getElementById('globalConfirmModalContent');
+            if (modalContent) {
+                const injection = document.createElement('div');
+                injection.className = 'level-navigator-injection';
+
+                let listHtml = '<div class="level-list-container">';
+                targetLevels.forEach(levelId => {
+                    const alias = STATE.layer_map?.[levelId];
+                    const count = levelStats[levelId] || 0;
+                    listHtml += `
+                        <div class="level-item" data-level="${levelId}">
+                            <div class="level-icon-stack">${count > 0 ? '📚' : '📄'}</div>
+                            <div class="level-info-main">
+                                <span class="level-title-row">Level ${levelId} ${alias ? `— ${window.escapeHtml(alias)}` : ''}</span>
+                                <span class="level-meta-row">${count > 0 ? `${count} ${count === 1 ? 'note' : 'notes'} on this layer` : 'No notes yet'}</span>
+                            </div>
+                            <div class="level-jump-arrow">❯</div>
+                        </div>
+                    `;
+                });
+                listHtml += '</div>';
+
+                injection.innerHTML = `<hr class="modal-divider-short">${listHtml}`;
+                injection.addEventListener('click', (ev) => {
+                    const item = ev.target.closest('.level-item[data-level]');
+                    if (item) submitLevel(item.dataset.level);
+                });
+                modalContent.appendChild(injection);
+            }
+        }
     };
 
     const menu = document.createElement('div');
@@ -3214,6 +3424,11 @@ function showNoteContextMenu(e, noteId) {
             <span class="item-icon">✂️</span>
             <span>Move ${label} to Canvas...</span>
         </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="move-center">
+            <span class="item-icon">🎯</span>
+            <span>Move ${label} to Center</span>
+        </div>
     `;
 
     menu.addEventListener('click', (ev) => {
@@ -3224,6 +3439,7 @@ function showNoteContextMenu(e, noteId) {
         else if (action === 'copy-canvas') openMoveModal(null, ids[0], { ids, operation: 'copy' });
         else if (action === 'move-level')  promptLevel('move');
         else if (action === 'move-canvas') openMoveModal(null, ids[0], { ids, operation: 'move' });
+        else if (action === 'move-center') moveNotesToCanvasCenter(ids);
     });
 
     document.body.appendChild(menu);
