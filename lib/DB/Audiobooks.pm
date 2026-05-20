@@ -86,24 +86,48 @@ sub DB::get_audiobook_book_progress {
 #   completed   : 1 if the book is finished, 0 otherwise.
 #   client_updated_ms : Client-side save timestamp in epoch milliseconds.
 # Returns:
-#   1 on success; propagates DBI exception on failure.
+#   1 if this payload was applied, 0 if an existing newer payload won.
 sub DB::upsert_audiobook_progress {
     my ($self, $user_id, $book_slug, $chapter_idx, $position_sec, $completed, $client_updated_ms) = @_;
     $self->ensure_connection;
     $client_updated_ms ||= 0;
 
-    my $sth = $self->{dbh}->prepare(
-        "INSERT INTO audiobook_progress
-             (user_id, book_slug, chapter_idx, position_sec, completed, client_updated_ms)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE
-             chapter_idx  = IF(VALUES(client_updated_ms) >= client_updated_ms, VALUES(chapter_idx), chapter_idx),
-             position_sec = IF(VALUES(client_updated_ms) >= client_updated_ms, VALUES(position_sec), position_sec),
-             completed    = IF(VALUES(client_updated_ms) >= client_updated_ms, VALUES(completed), completed),
-             client_updated_ms = GREATEST(client_updated_ms, VALUES(client_updated_ms))"
-    );
-    $sth->execute($user_id, $book_slug, $chapter_idx, $position_sec, $completed, $client_updated_ms);
-    return 1;
+    my $dbh = $self->{dbh};
+    my $applied = 0;
+
+    eval {
+        $dbh->begin_work;
+
+        my $cur = $dbh->selectrow_array(
+            "SELECT client_updated_ms
+             FROM audiobook_progress
+             WHERE user_id = ? AND book_slug = ?
+             FOR UPDATE",
+            undef, $user_id, $book_slug
+        );
+        $applied = (!defined $cur || $client_updated_ms >= $cur) ? 1 : 0;
+
+        my $sth = $dbh->prepare(
+            "INSERT INTO audiobook_progress
+                 (user_id, book_slug, chapter_idx, position_sec, completed, client_updated_ms)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                 chapter_idx  = IF(VALUES(client_updated_ms) >= client_updated_ms, VALUES(chapter_idx), chapter_idx),
+                 position_sec = IF(VALUES(client_updated_ms) >= client_updated_ms, VALUES(position_sec), position_sec),
+                 completed    = IF(VALUES(client_updated_ms) >= client_updated_ms, VALUES(completed), completed),
+                 client_updated_ms = GREATEST(client_updated_ms, VALUES(client_updated_ms))"
+        );
+        $sth->execute($user_id, $book_slug, $chapter_idx, $position_sec, $completed, $client_updated_ms);
+
+        $dbh->commit;
+    };
+    if ($@) {
+        my $err = $@;
+        eval { $dbh->rollback };
+        die $err;
+    }
+
+    return $applied;
 }
 
 # Deletes a user's saved progress for a book.
