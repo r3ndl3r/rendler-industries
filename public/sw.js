@@ -1,6 +1,6 @@
 // /public/sw.js
 
-const CACHE_NAME = 'rendler-offline-v67';
+const CACHE_NAME = 'rendler-offline-v71';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 
 const CORE_ASSETS = [
@@ -24,6 +24,8 @@ const CORE_ASSETS = [
     '/js/emoji-picker.js',
     '/js/fuel.js',
     '/js/menubar.js',
+    '/js/quick.js',
+    '/js/vendor/sortable.min.js',
     '/js/audiobooks.js',
     '/js/brief.js',
     '/js/index.js',
