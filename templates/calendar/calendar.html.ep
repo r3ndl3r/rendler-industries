@@ -41,7 +41,7 @@
             <div class="calendar-search-wrapper">
                 <span class="calendar-search-icon">🔍</span>
                 <input type="search" id="calendarSearchInput" placeholder="Search events..." class="calendar-search-input" autocomplete="off" aria-label="Search events">
-                <div id="calendarSearchResults" class="calendar-search-results hidden"></div>
+                <div id="calendarSearchResults" class="calendar-search-results hidden" role="listbox"></div>
             </div>
         </div>
     </div>
