@@ -424,13 +424,15 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
 
                 // Re-capture fresh DOM coordinates at the moment the timer fires
                 const latestColorInput = el.querySelector('.inline-color-input');
+                const latestWidth = parseInt(el.style.width, 10);
+                const latestHeight = parseInt(el.style.height, 10);
                 const latestParams = {
                     id: id,
                     canvas_id: STATE.canvas_id,
                     x: parseInt(el.style.left),
                     y: parseInt(el.style.top),
-                    width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
-                    height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
+                    width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : (!isNaN(latestWidth)  ? latestWidth  : el.offsetWidth),
+                    height: note.is_collapsed ? (note.height || el.offsetHeight) : (!isNaN(latestHeight) ? latestHeight : el.offsetHeight),
                     z_index: window.getNoteZIndex?.(note) || el.style.zIndex,
                     layer_id: note.layer_id || 1,
                     is_collapsed: note.is_collapsed,
@@ -483,13 +485,15 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
     if (typeof window.addActiveSync === 'function') window.addActiveSync(sid);
 
     const colorInput = el.querySelector('.inline-color-input');
+    const parsedWidth = parseInt(el.style.width, 10);
+    const parsedHeight = parseInt(el.style.height, 10);
     const params = {
         id: id,
         canvas_id: STATE.canvas_id,
         x: parseInt(el.style.left),
         y: parseInt(el.style.top),
-        width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : el.offsetWidth,
-        height: note.is_collapsed ? (note.height || el.offsetHeight) : el.offsetHeight,
+        width:  note.is_collapsed ? (note.width  || el.offsetWidth)  : (!isNaN(parsedWidth)  ? parsedWidth  : el.offsetWidth),
+        height: note.is_collapsed ? (note.height || el.offsetHeight) : (!isNaN(parsedHeight) ? parsedHeight : el.offsetHeight),
         z_index: window.getNoteZIndex?.(note) || el.style.zIndex,
         layer_id: note.layer_id || 1,
         is_collapsed: note.is_collapsed,
