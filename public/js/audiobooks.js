@@ -46,6 +46,13 @@ const PLAYER = {
     preload_audio:   null,    // background Audio element buffering the next chapter
 };
 
+const CONFIG = {
+    SEARCH_DEBOUNCE_MS: 250,
+    SEARCH_RESULT_LIMIT: 10,
+};
+
+let searchDebounceTimer = null;
+
 /**
  * Acquires a screen wake lock to keep the device awake during playback.
  * @returns {Promise<void>}
@@ -147,7 +154,28 @@ document.addEventListener('DOMContentLoaded', () => {
     _initAudio();
     loadState(true);
 
-    document.getElementById('librarySearch').addEventListener('input', renderLibrary);
+    const searchInput = document.getElementById('librarySearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchDebounceTimer);
+            const query = searchInput.value.toLowerCase().trim();
+            if (query) {
+                searchDebounceTimer = setTimeout(updateAudiobookSearchResults, CONFIG.SEARCH_DEBOUNCE_MS);
+            } else {
+                updateAudiobookSearchResults();
+            }
+            renderLibrary();
+        });
+        searchInput.addEventListener('focus', () => {
+            updateAudiobookSearchResults();
+        });
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeSearchResults();
+                searchInput.blur();
+            }
+        });
+    }
 
     // Notification permission must be requested inside a user gesture to satisfy browser policy.
     // A one-shot pointerdown fires on the first tap/click anywhere on the page.
@@ -162,6 +190,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global click-away handler for popups
     window.addEventListener('click', (e) => {
+        // Close search dropdown if clicking outside
+        const searchWrapper = document.querySelector('.audiobook-search-wrapper');
+        const searchResults = document.getElementById('audiobookSearchResults');
+        if (searchResults && searchWrapper && !searchWrapper.contains(e.target)) {
+            clearTimeout(searchDebounceTimer);
+            searchResults.classList.add('hidden');
+        }
+
         // Close chapter drawer if clicking outside
         const drawer = document.getElementById('chapterDrawer');
         const toggle = document.querySelector('.chapter-drawer-toggle');
@@ -695,7 +731,9 @@ function renderLibrary() {
         if (query) {
             const hit = (b.title  || '').toLowerCase().includes(query) ||
                         (b.author || '').toLowerCase().includes(query) ||
-                        (b.series || '').toLowerCase().includes(query);
+                        (b.series || '').toLowerCase().includes(query) ||
+                        (b.narrator || '').toLowerCase().includes(query) ||
+                        (b.description || '').toLowerCase().includes(query);
             if (!hit) return false;
         }
         const prog = b.progress || {};
@@ -776,6 +814,92 @@ function renderLibrary() {
 function setFilter(f) {
     STATE.filter = f;
     renderLibrary();
+}
+
+/**
+ * Hides the search results dropdown and clears the debounce timer.
+ * @returns {void}
+ */
+function closeSearchResults() {
+    clearTimeout(searchDebounceTimer);
+    const resultsEl = document.getElementById('audiobookSearchResults');
+    if (resultsEl) resultsEl.classList.add('hidden');
+}
+
+/**
+ * Renders the search results dropdown for the library search input.
+ * Shows up to CONFIG.SEARCH_RESULT_LIMIT matching books with cover thumbnails.
+ * @returns {void}
+ */
+function updateAudiobookSearchResults() {
+    const input     = document.getElementById('librarySearch');
+    const resultsEl = document.getElementById('audiobookSearchResults');
+    if (!input || !resultsEl) return;
+
+    const query = input.value.toLowerCase().trim();
+
+    if (!query) {
+        resultsEl.innerHTML = '';
+        resultsEl.classList.add('hidden');
+        return;
+    }
+
+    const sorted = [...STATE.books].sort((a, b) => {
+        const ta = (a.progress && a.progress.updated_at) || '';
+        const tb = (b.progress && b.progress.updated_at) || '';
+        if (ta && tb) return tb.localeCompare(ta);
+        if (ta) return -1;
+        if (tb) return 1;
+        return (a.title || a.slug).localeCompare(b.title || b.slug);
+    });
+
+    const matches = sorted.filter(b => {
+        const hit = (b.title  || '').toLowerCase().includes(query) ||
+                    (b.author || '').toLowerCase().includes(query) ||
+                    (b.series || '').toLowerCase().includes(query) ||
+                    (b.narrator || '').toLowerCase().includes(query) ||
+                    (b.description || '').toLowerCase().includes(query);
+        return hit;
+    });
+
+    const display = matches.slice(0, CONFIG.SEARCH_RESULT_LIMIT);
+
+    if (display.length === 0) {
+        resultsEl.innerHTML = '<div class="audiobook-search-no-results" role="status">No books found</div>';
+    } else {
+        resultsEl.innerHTML = display.map(book => {
+            const coverSrc  = _getCoverUrl(book);
+            const prog      = book.progress || {};
+            const status    = _statusLabel(book);
+            const statusCls = prog.completed ? ' complete' : '';
+            const slugJs    = escapeHtml(JSON.stringify(book.slug));
+            const chapIdx   = prog.completed ? 0 : (prog.chapter_idx || 0);
+            const metaParts = [];
+            if (book.author) metaParts.push(escapeHtml(book.author));
+            if (book.series) metaParts.push(escapeHtml(book.series));
+            const metaHtml = metaParts.length ? `<div class="audiobook-search-meta">${metaParts.join(' · ')}</div>` : '';
+            const statusHtml = status ? `<div class="audiobook-search-status${statusCls}">${escapeHtml(status)}</div>` : '';
+
+            const coverHtml = coverSrc
+                ? `<div class="audiobook-search-cover"><img src="${escapeHtml(coverSrc)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'audiobook-search-cover-fallback\\'>🎧</div>'"></div>`
+                : `<div class="audiobook-search-cover"><div class="audiobook-search-cover-fallback">🎧</div></div>`;
+
+            return `<div class="audiobook-search-item" role="option" tabindex="0"
+                onclick="closeSearchResults(); openPlayer(${slugJs}, ${chapIdx})"
+                onkeydown="if(event.key==='Enter'){closeSearchResults(); openPlayer(${slugJs}, ${chapIdx})}">
+                ${coverHtml}
+                <div class="audiobook-search-text">
+                    <div class="audiobook-search-title">${escapeHtml(book.title || book.slug)}</div>
+                    ${metaHtml}
+                    ${statusHtml}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    if (document.activeElement === input) {
+        resultsEl.classList.remove('hidden');
+    }
 }
 
 /**
