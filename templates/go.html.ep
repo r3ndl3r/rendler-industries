@@ -1,6 +1,6 @@
 <%# /templates/go.html.ep %>
 
-% layout 'default', hide_navbar_title => 1, favicon => '🔗';
+% layout 'default', navbar_title => '🔗 Go Links', favicon => '🔗';
 % title 'Go Links';
 
 % content_for 'head' => begin
