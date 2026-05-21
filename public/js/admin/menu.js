@@ -170,6 +170,11 @@ const MenuMgmt = {
                         ${link.is_active ? 'Active' : 'Hidden'}
                     </span>
                 </td>
+                <td data-label="Navbar">
+                    <span class="status-pill ${link.hide_navbar_title ? 'inactive' : 'active'}">
+                        ${link.hide_navbar_title ? 'Hidden' : 'Visible'}
+                    </span>
+                </td>
                 <td class="actions-cell">
                     <div class="action-buttons">
                         <button type="button" class="btn-icon-edit" onclick="MenuMgmt.openEditModal(${link.id})" title="Edit">&#9999;&#65039;</button>
@@ -349,6 +354,7 @@ const MenuMgmt = {
         document.getElementById('linkActive').checked = true;
         document.getElementById('linkSeparator').checked = false;
         document.getElementById('linkIsParent').checked = false;
+        document.getElementById('linkHideNavbarTitle').checked = false;
         document.getElementById('linkUrl').disabled = false;
 
         // Reset dropdown to full list (no exclusions for add mode)
@@ -386,6 +392,7 @@ const MenuMgmt = {
         const isParent = link.url === '#';
         document.getElementById('linkIsParent').checked = isParent;
         document.getElementById('linkUrl').disabled = isParent;
+        document.getElementById('linkHideNavbarTitle').checked = link.hide_navbar_title == 1;
 
         // Rebuild the dropdown excluding the current item and its descendants
         this.renderParentDropdown(link.id);
@@ -431,6 +438,7 @@ const MenuMgmt = {
             // Ensure checkbox values are correctly represented
             formData.set('is_active', document.getElementById('linkActive').checked ? 1 : 0);
             formData.set('is_separator', document.getElementById('linkSeparator').checked ? 1 : 0);
+            formData.set('hide_navbar_title', document.getElementById('linkHideNavbarTitle').checked ? 1 : 0);
 
             // Disabled fields are excluded from FormData — re-inject url when locked to '#'
             if (document.getElementById('linkIsParent').checked) {
