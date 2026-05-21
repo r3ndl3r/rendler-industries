@@ -566,6 +566,27 @@ pre code {
     border-style: solid;
 }
 
+/* Bookmarks Tag */
+.note-bookmarks-empty {
+    font-style: italic;
+    color: rgba(148, 163, 184, 0.7);
+    font-size: 0.85em;
+}
+
+.note-bookmarks-list {
+    margin: 0.25em 0;
+    padding-left: 1.2em;
+    list-style: disc;
+}
+
+.note-bookmarks-list li {
+    margin: 0.15em 0;
+}
+
+.note-bookmarks-titled > div {
+    margin: 0.15em 0;
+}
+
 .note-badge {
     display: inline-block;
     padding: 0.15rem 0.5rem;
