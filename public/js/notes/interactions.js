@@ -5,6 +5,7 @@
 (function () {
     let _dropdown = null;
     let _triggerStart = -1;
+    let _consumeAfter = 0;
 
     let _insertTemplate = (title) => `[[${title}]]`;
 
@@ -57,6 +58,7 @@
     function removeDropdown() {
         if (_dropdown) { _dropdown.remove(); _dropdown = null; }
         _triggerStart = -1;
+        _consumeAfter = 0;
         _insertTemplate = (title) => `[[${title}]]`;
     }
 
@@ -64,8 +66,8 @@
         const val    = textarea.value;
         const cursor = textarea.selectionStart;
         const before = val.substring(0, _triggerStart);
-        const after  = val.substring(cursor);
         const result = _insertTemplate(title);
+        const after  = val.substring(cursor + _consumeAfter);
         const text   = typeof result === 'object' ? result.text : result;
         const newCursor = _triggerStart + (typeof result === 'object' ? result.cursor : text.length);
         textarea.value = `${before}${text}${after}`;
@@ -220,6 +222,29 @@
         const COLORS = ['yellow', 'blue', 'pink', 'orange', 'violet', 'indigo', 'slate', 'green', 'red', 'accent', 'info', 'success', 'danger', 'warning'];
         const SIZES  = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
 
+        const BOOKMARK_FLAGS = [
+            'copy', 'sort=id', 'sort=title', 'sort=x', 'sort=y', 'sort=created',
+            'type=text', 'type=image', 'type=file',
+            'list', 'compact', 'title'
+        ];
+
+        function getBookmarkFlagMatches(query) {
+            const parts = query.split(':');
+            const lastPart = parts[parts.length - 1].toLowerCase();
+            const usedKeys = new Set();
+            for (const part of parts) {
+                if (part.includes('=')) usedKeys.add(part.split('=')[0].toLowerCase());
+                else usedKeys.add(part.toLowerCase());
+            }
+            return BOOKMARK_FLAGS
+                .filter(f => {
+                    const key = f.includes('=') ? f.split('=')[0].toLowerCase() : f.toLowerCase();
+                    return f.toLowerCase().includes(lastPart) && !usedKeys.has(key);
+                })
+                .slice(0, 8)
+                .map(f => ({ id: null, title: f, canvas_name: null }));
+        }
+
         const staticTriggers = [
             { prefix: '[color:',  options: COLORS, template: (t) => `[color:${t}][/color]`,   cursorOffset: 8 },
             { prefix: '[colour:', options: COLORS, template: (t) => `[colour:${t}][/colour]`, cursorOffset: 9 },
@@ -267,12 +292,12 @@
         }
 
         const bracketTriggers = [
-            { prefix: '[copy:',  template: (t) => `[copy:${t}]`,  matcher: getSortedMatches },
-            { prefix: '[img:',   template: (t) => `[img:${t}]`,   matcher: getBlobMatches   },
-            { prefix: '[image:', template: (t) => `[image:${t}]`, matcher: getBlobMatches   },
-            { prefix: '[file:',  template: (t) => `[file:${t}]`,  matcher: getBlobMatches   },
-            { prefix: '[embed:', template: (t) => `[embed:${t}]`, matcher: getSortedMatches },
-            { prefix: '[tag:',   template: (t) => `[tag:${t}]`,   matcher: getTagMatches    },
+            { prefix: '[copy:',       template: (t) => `[copy:${t}]`,       matcher: getSortedMatches       },
+            { prefix: '[img:',        template: (t) => `[img:${t}]`,        matcher: getBlobMatches          },
+            { prefix: '[image:',      template: (t) => `[image:${t}]`,      matcher: getBlobMatches          },
+            { prefix: '[file:',       template: (t) => `[file:${t}]`,       matcher: getBlobMatches          },
+            { prefix: '[embed:',      template: (t) => `[embed:${t}]`,      matcher: getSortedMatches        },
+            { prefix: '[tag:',        template: (t) => `[tag:${t}]`,        matcher: getTagMatches           },
         ];
         for (const { prefix, template, matcher } of bracketTriggers) {
             const idx = before.lastIndexOf(prefix);
@@ -284,6 +309,26 @@
                     _triggerStart = idx;
                     return;
                 }
+            }
+        }
+
+        // [bookmarks: — special handling: preserves existing flags, avoids double ]
+        const bmIdx = before.lastIndexOf('[bookmarks:');
+        if (bmIdx !== -1) {
+            const bmBetween = before.substring(bmIdx + '[bookmarks:'.length);
+            if (!bmBetween.includes(']') && !bmBetween.includes('\n')) {
+                const matches = getBookmarkFlagMatches(bmBetween);
+                buildDropdown(matches, textarea, (flag) => {
+                    const lastColon = bmBetween.lastIndexOf(':');
+                    const existing  = lastColon !== -1 ? bmBetween.substring(0, lastColon) : '';
+                    const newContent = existing ? `${existing}:${flag}` : flag;
+                    const afterCursor = val.substring(cursor);
+                    const hasClose = afterCursor.startsWith(']');
+                    _consumeAfter = hasClose ? 1 : 0;
+                    return { text: `[bookmarks:${newContent}]`, cursor: `[bookmarks:${newContent}]`.length };
+                });
+                _triggerStart = bmIdx;
+                return;
             }
         }
 
