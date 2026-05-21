@@ -277,3 +277,151 @@ window.toggleMenu = toggleMenu;
 window.toggleSubmenu = toggleSubmenu;
 window.startRestartSequence = startRestartSequence;
 window.closeRestartModal = closeRestartModal;
+
+/**
+ * Quick Search: Toggle between emoji and input
+ */
+function toggleMenuSearch() {
+    const header = document.querySelector('.menu-header');
+    const wrapper = document.querySelector('.menu-search-wrapper');
+    const input = document.getElementById('menuSearchInput');
+    if (!header || !wrapper || !input) return;
+
+    header.classList.add('search-active');
+    wrapper.classList.remove('hidden');
+    input.focus();
+}
+
+/**
+ * Quick Search: Hide input, restore emoji
+ */
+function hideMenuSearch() {
+    const header = document.querySelector('.menu-header');
+    const wrapper = document.querySelector('.menu-search-wrapper');
+    const input = document.getElementById('menuSearchInput');
+    const results = document.getElementById('menuSearchResults');
+    if (!header || !wrapper || !input) return;
+
+    header.classList.remove('search-active');
+    wrapper.classList.add('hidden');
+    input.value = '';
+    if (results) {
+        results.innerHTML = '';
+        results.classList.add('hidden');
+    }
+    restoreMenuVisibility();
+}
+
+/**
+ * Quick Search: Filter visible menu links by query
+ */
+function filterMenuSearch(query) {
+    const results = document.getElementById('menuSearchResults');
+    if (!results) return;
+
+    const q = query.toLowerCase().trim();
+    if (!q) {
+        results.innerHTML = '';
+        results.classList.add('hidden');
+        restoreMenuVisibility();
+        return;
+    }
+
+    const menuContent = document.getElementById('menuContent');
+    if (!menuContent) return;
+
+    const links = menuContent.querySelectorAll('a:not(.submenu-toggle)');
+    const matches = [];
+
+    links.forEach(link => {
+        const text = link.textContent.trim().toLowerCase();
+        if (text.includes(q)) {
+            matches.push({ label: link.textContent.trim(), url: link.href, target: link.target });
+        }
+    });
+
+    if (matches.length === 0) {
+        results.innerHTML = '<div class="menu-search-no-results">No matches found</div>';
+    } else {
+        results.innerHTML = matches.map(m => {
+            const target = m.target && m.target !== '_self' ? m.target : '_self';
+            return `<div class="menu-search-result-item" role="option" tabindex="0"
+                data-url="${escapeHtmlForMenuSearch(m.url)}"
+                data-target="${escapeHtmlForMenuSearch(target)}">
+                ${escapeHtmlForMenuSearch(m.label)}
+            </div>`;
+        }).join('');
+    }
+
+    results.classList.remove('hidden');
+    hideMenuItemsDuringSearch();
+}
+
+/**
+ * Quick Search: Hide menu items while results dropdown is visible
+ */
+function hideMenuItemsDuringSearch() {
+    const menuContent = document.getElementById('menuContent');
+    if (menuContent) menuContent.style.opacity = '0.3';
+}
+
+/**
+ * Quick Search: Restore menu items visibility
+ */
+function restoreMenuVisibility() {
+    const menuContent = document.getElementById('menuContent');
+    if (menuContent) menuContent.style.opacity = '';
+}
+
+/**
+ * Quick Search: Simple HTML escape for result labels
+ */
+function escapeHtmlForMenuSearch(str) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
+/**
+ * Quick Search: Initialize event listeners
+ */
+function initMenuSearch() {
+    const input = document.getElementById('menuSearchInput');
+    if (!input) return;
+
+    const results = document.getElementById('menuSearchResults');
+
+    input.oninput = () => {
+        filterMenuSearch(input.value);
+    };
+
+    input.onkeydown = (e) => {
+        if (e.key === 'Escape') {
+            hideMenuSearch();
+        }
+    };
+
+    input.onblur = () => {
+        setTimeout(() => {
+            const wrapper = document.querySelector('.menu-search-wrapper');
+            if (results && wrapper && !wrapper.contains(document.activeElement)) {
+                hideMenuSearch();
+            }
+        }, 150);
+    };
+
+    // Event delegation: fires before input blur, avoiding the race condition
+    if (results) {
+        results.onmousedown = (e) => {
+            const item = e.target.closest('.menu-search-result-item');
+            if (item && item.dataset.url) {
+                if (item.dataset.target === '_blank') window.open(item.dataset.url);
+                else window.location.href = item.dataset.url;
+            }
+        };
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initMenuSearch);
+
+window.toggleMenuSearch = toggleMenuSearch;
