@@ -1,6 +1,6 @@
 <%# /templates/timers/manage.html.ep %>
 
-% layout 'default', hide_navbar_title => 1, favicon => '🕒';
+% layout 'default', navbar_title => '🕒 Manage Timers', favicon => '🕒';
 % title 'Manage Timers';
 
 % content_for 'head' => begin
