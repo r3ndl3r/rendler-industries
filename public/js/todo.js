@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const taskInput = document.getElementById('taskInput');
     if (taskInput) {
-        taskInput.focus();
+        if (!window.matchMedia('(max-width: 768px)').matches) taskInput.focus();
 
         taskInput.oninput = function() {
             this.style.height = 'auto';
