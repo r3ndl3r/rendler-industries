@@ -1,6 +1,6 @@
 <%# /templates/rubiks.html.ep %>
 
-% layout 'default', hide_navbar_title => 1, favicon => '🧊';
+% layout 'default', navbar_title => '🧊 Rubik\'s', favicon => '🧊';
 % title 'Rubik\'s Generator';
 
 % content_for 'head' => begin
@@ -12,7 +12,8 @@
     <div class="header-bar">
         <h1>🧊 <span>Rubik's Moves Generator</span></h1>
         <div class="manage-actions">
-            <button class="btn-icon-reset" onclick="resetCube()">🔄 Reset</button>
+            <a class="btn-secondary" href="/rubiks/solve">⏱️ Stopwatch</a>
+            <button class="btn-secondary" onclick="resetCube()">🔄 Reset</button>
         </div>
     </div>
 
