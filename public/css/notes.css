@@ -2814,13 +2814,7 @@ pre code {
     cursor: pointer;
     font-size: 1rem;
     padding: 2px;
-    opacity: 0.35;
-    transition: opacity 0.2s;
     line-height: 1;
-}
-
-.search-result-copy-btn:hover {
-    opacity: 1;
 }
 
 /* Empty State Styling */
