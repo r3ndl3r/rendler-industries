@@ -40,7 +40,7 @@ let STATE = {
 document.addEventListener('DOMContentLoaded', () => {
     // UI: Focus entry field for rapid input
     const itemInput = document.querySelector('input[name="item_name"]');
-    if (itemInput) itemInput.focus();
+    if (itemInput && !window.matchMedia('(max-width: 768px)').matches) itemInput.focus();
 
     // Initial fetch of the shopping roster
     loadState();
