@@ -62,7 +62,8 @@ sub api_add {
         permission_level => $c->param('permission_level') // 'user',
         css_class        => $c->param('css_class') // '',
         target           => $c->param('target') // '_self',
-        is_active        => $c->param('is_active') // 1
+        is_active        => $c->param('is_active') // 1,
+        hide_navbar_title => $c->param('hide_navbar_title') // 0
     };
 
     eval {
@@ -99,7 +100,8 @@ sub api_update {
         permission_level => $c->param('permission_level'),
         css_class        => $c->param('css_class'),
         target           => $c->param('target'),
-        is_active        => $c->param('is_active')
+        is_active        => $c->param('is_active'),
+        hide_navbar_title => $c->param('hide_navbar_title')
     };
 
     eval {
