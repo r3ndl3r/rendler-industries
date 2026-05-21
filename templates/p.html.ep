@@ -1,6 +1,6 @@
 <%# /templates/p.html.ep %>
 
-% layout 'default', hide_navbar_title => 1, favicon => '📞';
+% layout 'default', navbar_title => '📞 Phone', favicon => '📞';
 % title 'Phone Numbers';
 
 % content_for 'head' => begin
