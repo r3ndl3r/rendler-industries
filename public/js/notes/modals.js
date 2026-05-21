@@ -1090,6 +1090,8 @@ function showBoardInfo() {
                         <code class="guide-cs-code">[spoiler:Title]...[/spoiler]</code>   <span class="guide-cs-preview">Accordion</span>
                         <code class="guide-cs-code">[table:]...[/table]</code>            <span class="guide-cs-preview">Table</span>
                         <code class="guide-cs-code">&gt; [!note] Title</code>             <span class="guide-cs-preview">Callout</span>
+                        <code class="guide-cs-code">[bookmarks]</code>                     <span class="guide-cs-preview">Links to all notes on this level</span>
+                        <code class="guide-cs-code">[bookmarks:copy]</code>                <span class="guide-cs-preview">Copy links for all notes on this level</span>
                     </div>
                     <p class="board-guide-subheading board-guide-subheading--spaced">Callout types</p>
                     <div class="guide-cheatsheet">
@@ -1163,6 +1165,8 @@ function showBoardInfo() {
                         <li><strong>[image:Title or ID]</strong> — Embed an image note inline (cross-canvas)</li>
                         <li><strong>[img:Title or ID]</strong> — Shorthand for [image:]</li>
                         <li><strong>[file:Title or ID]</strong> — Inline file download link (cross-canvas)</li>
+                        <li><strong>[bookmarks]</strong> — Jump links to every other note on the current level</li>
+                        <li><strong>[bookmarks:copy]</strong> — Copy-to-clipboard links instead of jump links</li>
                     </ul>
                 </div>
                 <div>
@@ -1172,6 +1176,7 @@ function showBoardInfo() {
                         <code class="guide-cs-code">[embed:</code>                     <span class="guide-cs-preview">Embed — all notes</span>
                         <code class="guide-cs-code">[copy:</code>                      <span class="guide-cs-preview">Copy — all notes</span>
                         <code class="guide-cs-code">[note:</code>                      <span class="guide-cs-preview">Jump link — all notes</span>
+                        <code class="guide-cs-code">[bookmarks:</code>                 <span class="guide-cs-preview">Links to all notes on this level</span>
                         <code class="guide-cs-code">[image: / [file:</code>            <span class="guide-cs-preview">Blob/attachment notes only</span>
                         <code class="guide-cs-code">[tag:</code>                       <span class="guide-cs-preview">Existing tag labels</span>
                         <code class="guide-cs-code">[tag:Label|</code>                 <span class="guide-cs-preview">Tag colour picker</span>
@@ -1190,16 +1195,43 @@ function showBoardInfo() {
         </div>
 
         <div class="guide-tab-panel" data-panel="bookmarks">
-            <p class="board-guide-subheading">What is a bookmark note?</p>
-            <ul class="board-guide-list">
-                <li>Write every line as <strong>Label | URL</strong> and the note becomes a visual bookmark tile list</li>
-                <li>Add a leading emoji to use it as the icon — e.g. <strong>🏠 Home | https://…</strong></li>
-            </ul>
-            <p class="board-guide-subheading">Optional extras</p>
-            <ul class="board-guide-list">
-                <li><strong>Label | URL | iconURL</strong> — Use a custom icon image</li>
-                <li>Add <strong>[emoji]:1</strong> anywhere in the note to force emoji icons on every tile</li>
-            </ul>
+            <div class="guide-tab-cols">
+                <div>
+                    <p class="board-guide-subheading">What is a bookmark note?</p>
+                    <ul class="board-guide-list">
+                        <li>Write every line as <strong>Label | URL</strong> and the note becomes a visual bookmark tile list</li>
+                        <li>Add a leading emoji to use it as the icon — e.g. <strong>🏠 Home | https://…</strong></li>
+                    </ul>
+                    <p class="board-guide-subheading">Optional extras</p>
+                    <ul class="board-guide-list">
+                        <li><strong>Label | URL | iconURL</strong> — Use a custom icon image</li>
+                        <li>Add <strong>[emoji]:1</strong> anywhere in the note to force emoji icons on every tile</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="board-guide-subheading">[bookmarks] tag</p>
+                    <ul class="board-guide-list">
+                        <li>Generates links to every other note on the <strong>current level</strong> — updates automatically as notes are added or removed</li>
+                        <li>Autocomplete with <kbd class="guide-kbd">[bookmarks:</kbd> — flags are suggested and already-used flags are excluded</li>
+                        <li>Stack multiple flags with colons: <strong>[bookmarks:copy:sort=y:list]</strong></li>
+                    </ul>
+                    <p class="board-guide-subheading board-guide-subheading--spaced">[bookmarks] flags</p>
+                    <div class="guide-cheatsheet">
+                        <code class="guide-cs-code">copy</code>              <span class="guide-cs-preview">Copy-to-clipboard links (default: jump links)</span>
+                        <code class="guide-cs-code">sort=id</code>           <span class="guide-cs-preview">Sort by note ID (default)</span>
+                        <code class="guide-cs-code">sort=title</code>        <span class="guide-cs-preview">Sort alphabetically by title</span>
+                        <code class="guide-cs-code">sort=x</code>            <span class="guide-cs-preview">Sort by horizontal position</span>
+                        <code class="guide-cs-code">sort=y</code>            <span class="guide-cs-preview">Sort by vertical position (top → bottom)</span>
+                        <code class="guide-cs-code">sort=created</code>      <span class="guide-cs-preview">Sort by creation date</span>
+                        <code class="guide-cs-code">type=text</code>         <span class="guide-cs-preview">Show only text notes</span>
+                        <code class="guide-cs-code">type=image</code>        <span class="guide-cs-preview">Show only image notes</span>
+                        <code class="guide-cs-code">type=file</code>         <span class="guide-cs-preview">Show only file notes</span>
+                        <code class="guide-cs-code">list</code>              <span class="guide-cs-preview">Render as a bulleted list</span>
+                        <code class="guide-cs-code">compact</code>           <span class="guide-cs-preview">Render comma-separated on one line</span>
+                        <code class="guide-cs-code">title</code>             <span class="guide-cs-preview">Render each link on its own line</span>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
 
