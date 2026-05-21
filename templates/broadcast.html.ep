@@ -1,6 +1,6 @@
 <%# /templates/broadcast.html.ep %>
 
-% layout 'default', hide_navbar_title => 1, favicon => '📢';
+% layout 'default', navbar_title => '📢 Broadcast', favicon => '📢';
 % title 'System Broadcast';
 
 % content_for 'head' => begin
