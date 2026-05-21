@@ -33,6 +33,12 @@
 <div class="side-menu" id="sideMenu">
     <div class="menu-header">
         <img src="/files/serve/53" alt="Home" class="menu-home-icon">
+        <span class="menu-search-toggle" onclick="toggleMenuSearch()" title="Search">🔍</span>
+        <div class="menu-search-wrapper hidden">
+            <%# autocomplete="new-password" suppresses Firefox credential autofill; "off" is ignored by Firefox on fields it deems login-adjacent %>
+            <input type="search" id="menuSearchInput" class="menu-search-input" placeholder="Search..." autocomplete="new-password" aria-label="Search menu">
+            <div id="menuSearchResults" class="menu-search-results hidden" role="listbox"></div>
+        </div>
     </div>
     <div id="menuContent" class="menu-content">
         <div class="component-loading">
