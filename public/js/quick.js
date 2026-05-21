@@ -8,6 +8,128 @@ document.addEventListener('DOMContentLoaded', () => {
     let sortable = null;
     let isEditing = false;
 
+    // Mobile scroll handle and drag-scroll state
+    let scrollHandle = null;
+    let isDraggingHandle = false;
+    let handleStartY = 0;
+    let handleStartScroll = 0;
+    let autoScrollRAF = null;
+    let autoScrollDirection = 0;
+    let isDraggingTile = false;
+    let draggedTile = null;
+    const AUTO_SCROLL_SPEED = 12;
+    const AUTO_SCROLL_THRESHOLD = 80;
+
+    function isMobileView() {
+        return window.innerWidth <= 768;
+    }
+
+    function createScrollHandle() {
+        if (scrollHandle || !isMobileView()) return;
+        scrollHandle = document.createElement('div');
+        scrollHandle.className = 'quick-scroll-handle';
+        scrollHandle.setAttribute('aria-label', 'Scroll handle');
+        document.body.appendChild(scrollHandle);
+        scrollHandle.addEventListener('pointerdown', onHandlePointerDown);
+    }
+
+    function removeScrollHandle() {
+        if (scrollHandle) {
+            scrollHandle.removeEventListener('pointerdown', onHandlePointerDown);
+            scrollHandle.remove();
+            scrollHandle = null;
+        }
+    }
+
+    function onHandlePointerDown(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        isDraggingHandle = true;
+        handleStartY = e.clientY;
+        handleStartScroll = window.scrollY;
+        scrollHandle.setPointerCapture(e.pointerId);
+        scrollHandle.addEventListener('pointermove', onHandlePointerMove);
+        scrollHandle.addEventListener('pointerup', onHandlePointerUp);
+        scrollHandle.addEventListener('pointercancel', onHandlePointerUp);
+    }
+
+    function onHandlePointerMove(e) {
+        if (!isDraggingHandle) return;
+        const deltaY = e.clientY - handleStartY;
+        window.scrollTo(0, handleStartScroll + deltaY);
+    }
+
+    function onHandlePointerUp(e) {
+        isDraggingHandle = false;
+        scrollHandle.releasePointerCapture(e.pointerId);
+        scrollHandle.removeEventListener('pointermove', onHandlePointerMove);
+        scrollHandle.removeEventListener('pointerup', onHandlePointerUp);
+        scrollHandle.removeEventListener('pointercancel', onHandlePointerUp);
+    }
+
+    function startAutoScroll() {
+        if (autoScrollRAF) return;
+        function tick() {
+            if (autoScrollDirection !== 0) {
+                window.scrollBy(0, autoScrollDirection * AUTO_SCROLL_SPEED);
+            }
+            autoScrollRAF = requestAnimationFrame(tick);
+        }
+        autoScrollRAF = requestAnimationFrame(tick);
+    }
+
+    function stopAutoScroll() {
+        if (autoScrollRAF) {
+            cancelAnimationFrame(autoScrollRAF);
+            autoScrollRAF = null;
+        }
+        autoScrollDirection = 0;
+        if (scrollHandle) {
+            scrollHandle.classList.remove('scrolling-up', 'scrolling-down');
+        }
+    }
+
+    function checkAutoScroll() {
+        if (!isDraggingTile) {
+            stopAutoScroll();
+            return;
+        }
+        const dragEl = draggedTile;
+        if (!dragEl || !dragEl.getBoundingClientRect) {
+            stopAutoScroll();
+            return;
+        }
+        const rect = dragEl.getBoundingClientRect();
+        const viewportH = window.innerHeight;
+        if (rect.bottom > viewportH - AUTO_SCROLL_THRESHOLD) {
+            if (autoScrollDirection !== 1) {
+                autoScrollDirection = 1;
+                if (scrollHandle) {
+                    scrollHandle.classList.add('scrolling-down');
+                    scrollHandle.classList.remove('scrolling-up');
+                }
+                startAutoScroll();
+            }
+        } else if (rect.top < AUTO_SCROLL_THRESHOLD) {
+            if (autoScrollDirection !== -1) {
+                autoScrollDirection = -1;
+                if (scrollHandle) {
+                    scrollHandle.classList.add('scrolling-up');
+                    scrollHandle.classList.remove('scrolling-down');
+                }
+                startAutoScroll();
+            }
+        } else {
+            stopAutoScroll();
+        }
+    }
+
+    function autoScrollLoop() {
+        if (!isEditing || !sortable) return;
+        checkAutoScroll();
+        requestAnimationFrame(autoScrollLoop);
+    }
+
     tilesContainer.addEventListener('click', (event) => {
         if (!isEditing) return;
         event.preventDefault();
@@ -42,10 +164,29 @@ document.addEventListener('DOMContentLoaded', () => {
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
             dragClass: 'sortable-drag',
+            scroll: false,
+            onStart: (evt) => {
+                isDraggingTile = true;
+                draggedTile = evt.item;
+            },
+            onEnd: () => {
+                isDraggingTile = false;
+                draggedTile = null;
+                stopAutoScroll();
+            },
         });
+
+        if (isMobileView()) {
+            createScrollHandle();
+            requestAnimationFrame(autoScrollLoop);
+        }
     }
 
     function exitSortMode() {
+        stopAutoScroll();
+        isDraggingTile = false;
+        draggedTile = null;
+        removeScrollHandle();
         isEditing = false;
         toggleBtn.dataset.editing = 'false';
         toggleBtn.querySelector('.edit-text').classList.remove('hidden');
