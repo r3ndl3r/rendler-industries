@@ -71,6 +71,24 @@ sub startup {
         });
     }
 
+    # Global Hook: Auto-set navbar title visibility from menu_links DB based on current URL.
+    # The menu_links.hide_navbar_title value is the only source of truth for hiding
+    # the navbar title; template-level hide_navbar_title stash values are ignored.
+    $self->hook(before_render => sub {
+        my ($c, $args) = @_;
+        $c->stash(menu_hide_navbar_title => 0);
+
+        my $path = $c->req->url->path->to_string;
+        return unless $path && $path ne '/';
+
+        eval {
+            my $row = $c->db->get_menu_link_by_url($path);
+            if ($row && $row->{hide_navbar_title}) {
+                $c->stash(menu_hide_navbar_title => 1);
+            }
+        };
+    });
+
     # Global Hook: CSRF Enforcement
     # Protects all state-changing requests (POST, PUT, DELETE, PATCH)
     $self->hook(before_dispatch => sub {
