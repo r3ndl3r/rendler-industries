@@ -3,7 +3,7 @@
 <div class="navbar">   
     <div class="navbar-brand">
         <button class="menu-btn" onclick="toggleMenu()">☰</button>
-        <% unless (stash('hide_navbar_title')) { %>
+        <% unless (stash('menu_hide_navbar_title')) { %>
             <div class="navbar-title">
                 <%= stash('navbar_title') // title %>
             </div>
@@ -21,7 +21,7 @@
     <a href="<%= is_logged_in() ? '/quick' : '/' %>" class="bottom-nav-home" title="Home">
         <img src="/files/serve/53" alt="Home">
     </a>
-    <% unless (stash('hide_navbar_title')) { %>
+    <% unless (stash('menu_hide_navbar_title')) { %>
         <div class="bottom-nav-title">
             <%= stash('navbar_title') // title %>
         </div>
