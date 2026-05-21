@@ -243,6 +243,9 @@ const NoteParser = (() => {
             const style     = color ? ` style="color: ${color}"` : '';
             return `<span class="note-ref note-link-trigger" data-target-id="${id}" title="Jump to Note: ${safeTitle}"${style}>${safeTitle}</span>`;
         },
+        'bookmarks': (pos, noteId) => {
+            return renderBookmarks(pos, noteId);
+        },
         'copy': (pos, noteId, rawContent, depth = 0, startLine = 0) => {
             if (pos.value !== '') {
                 let id = parseInt(pos.value, 10);
@@ -1042,6 +1045,133 @@ const NoteParser = (() => {
         if (inBulletRow) output += '</span></span>';
         return output;
     };
+
+    /**
+     * [bookmarks] tag renderer.
+     * Syntax: [bookmarks] or [bookmarks:flag1:flag2:param=value]
+     */
+    const renderBookmarks = (pos, noteId) => {
+        const raw = pos.value || '';
+        const flags = parseBookmarkFlags(raw);
+        flags.noteId = noteId;
+
+        const currentLevel = STATE.activeLayerId;
+        const allNotes = STATE.notes || [];
+        let notes = allNotes.filter(n => n.layer_id == currentLevel);
+
+        if (flags.noteId) {
+            notes = notes.filter(n => n.id != flags.noteId);
+        }
+
+        if (flags.type) {
+            notes = notes.filter(n => (n.type || 'text') === flags.type);
+        }
+
+        if (flags.color) {
+            notes = notes.filter(n => {
+                if (!n.color) return false;
+                const normalized = (typeof window.normalizeColorHex === 'function')
+                    ? window.normalizeColorHex(n.color).toLowerCase()
+                    : n.color.toLowerCase();
+                return normalized === flags.color.toLowerCase();
+            });
+        }
+
+        if (flags.tag) {
+            const tagRe = new RegExp('\\[tag:' + escapeRegex(flags.tag) + '(?:\\||\\])', 'g');
+            notes = notes.filter(n => tagRe.test(n.content || ''));
+        }
+
+        notes = sortBookmarkNotes(notes, flags.sort);
+
+        if (notes.length === 0) {
+            return '<span class="note-bookmarks-empty">(no notes on this level)</span>';
+        }
+
+        const linkType = flags.linkType || 'note';
+        const links = notes.map(n => {
+            const safeTitle = window.escapeHtml(
+                typeof window.displayNoteTitle === 'function'
+                    ? window.displayNoteTitle(n)
+                    : (n.title || `Note #${n.id}`)
+            );
+            const color = (typeof window.normalizeColorHex === 'function')
+                ? window.normalizeColorHex(n.color) : '';
+            const style = color ? ` style="color: ${color}"` : '';
+
+            if (linkType === 'copy') {
+                return `<span class="note-ref note-copy-trigger" data-target-id="${n.id}" title="Copy to clipboard: ${safeTitle}"${style}>📋 ${safeTitle}</span>`;
+            }
+
+            return `<span class="note-ref note-link-trigger" data-target-id="${n.id}" title="Jump to Note: ${safeTitle}"${style}>${safeTitle}</span>`;
+        });
+
+        const display = flags.display || 'bare';
+        if (display === 'list') {
+            return '<ul class="note-bookmarks-list">' + links.map(l => `<li>${l}</li>`).join('') + '</ul>';
+        }
+        if (display === 'compact') {
+            return links.join(', ');
+        }
+        if (display === 'title') {
+            return '<div class="note-bookmarks-titled">' + links.map(l => `<div>${l}</div>`).join('') + '</div>';
+        }
+
+        return links.join('<br>');
+    };
+
+    const parseBookmarkFlags = (raw) => {
+        if (!raw) return {};
+        const parts = raw.split(':');
+        const flags = {};
+        for (const part of parts) {
+            const eqIdx = part.indexOf('=');
+            if (eqIdx !== -1) {
+                const key = part.substring(0, eqIdx).toLowerCase();
+                const val = part.substring(eqIdx + 1);
+                if (key === 'sort') flags.sort = val;
+                else if (key === 'type') flags.type = val;
+                else if (key === 'color') flags.color = val;
+                else if (key === 'tag') flags.tag = val;
+            } else {
+                const lower = part.toLowerCase();
+                if (lower === 'copy') flags.linkType = 'copy';
+                else if (lower === 'list') flags.display = 'list';
+                else if (lower === 'compact') flags.display = 'compact';
+                else if (lower === 'title') flags.display = 'title';
+            }
+        }
+        return flags;
+    };
+
+    const sortBookmarkNotes = (notes, sortBy) => {
+        const sorted = [...notes];
+        switch (sortBy) {
+            case 'title':
+                sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+                break;
+            case 'x':
+                sorted.sort((a, b) => (a.x || 0) - (b.x || 0));
+                break;
+            case 'y':
+                sorted.sort((a, b) => (a.y || 0) - (b.y || 0));
+                break;
+            case 'created':
+                sorted.sort((a, b) => {
+                    const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+                    const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+                    return da - db;
+                });
+                break;
+            case 'id':
+            default:
+                sorted.sort((a, b) => a.id - b.id);
+                break;
+        }
+        return sorted;
+    };
+
+    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     return {
         isDashboard: isDashboardFormat,
