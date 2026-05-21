@@ -1,6 +1,6 @@
 <%# /templates/clipboard.html.ep %>
 
-% layout 'default', hide_navbar_title => 1, favicon => '📋';
+% layout 'default', navbar_title => '📋 Clipboard', favicon => '📋';
 % title 'Clipboard';
 
 % content_for 'head' => begin
