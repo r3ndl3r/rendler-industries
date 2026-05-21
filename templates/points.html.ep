@@ -1,6 +1,6 @@
 <%# /templates/points.html.ep %>
 
-% layout 'default', hide_navbar_title => 1, favicon => '🪙';
+% layout 'default', navbar_title => '🪙 Points', favicon => '🪙';
 % title 'Points';
 
 % content_for 'head' => begin
