@@ -6,6 +6,11 @@
  * protection, session management, and silent abort handling.
  */
 window.NoteAPI = {
+    STATE_CACHE_PREFIX: 'notes_state_cache:',
+    STATE_CACHE_LAST_KEY: 'notes_state_cache:last',
+    STATE_CACHE_MAX_ENTRIES: 5,
+    STATE_CACHE_MAX_AGE_MS: 86400000 * 7,
+
     /**
      * Determines whether the browser currently reports an offline transport state.
      * @returns {boolean} True when network requests should fail quietly.
@@ -38,7 +43,136 @@ window.NoteAPI = {
         const parsed = new URL(url, window.location.origin);
         const canvasId = parsed.searchParams.get('canvas_id') || 'default';
         const layerId = parsed.searchParams.get('layer_id') || 'default';
-        return `notes_state_cache:${canvasId}:${layerId}`;
+        return `${this.STATE_CACHE_PREFIX}${canvasId}:${layerId}`;
+    },
+
+    /**
+     * Collects notes-state localStorage cache entries with approximate byte sizes.
+     * @returns {Array<{key:string,timestamp:number,bytes:number,corrupt:boolean}>}
+     */
+    stateCacheEntries() {
+        const entries = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!key || !key.startsWith(this.STATE_CACHE_PREFIX) || key === this.STATE_CACHE_LAST_KEY) continue;
+
+            const raw = localStorage.getItem(key) || '';
+            let timestamp = 0;
+            let corrupt = false;
+            try {
+                timestamp = JSON.parse(raw)?.timestamp || 0;
+            } catch (_) {
+                corrupt = true;
+            }
+            entries.push({ key, timestamp, bytes: key.length + raw.length, corrupt });
+        }
+        return entries;
+    },
+
+    /**
+     * Prunes notes state caches by age and count, returning diagnostics.
+     * Keeps the current key when supplied, then pops oldest non-current entries.
+     * @param {Object} options - { maxEntries, maxAgeMs, keepKey, force }
+     * @returns {{removed:number, removedBytes:number, beforeCount:number, beforeBytes:number, afterCount:number, afterBytes:number}}
+     */
+    pruneStateCache(options = {}) {
+        const maxEntries = options.maxEntries ?? this.STATE_CACHE_MAX_ENTRIES;
+        const maxAgeMs = options.maxAgeMs ?? this.STATE_CACHE_MAX_AGE_MS;
+        const keepKey = options.keepKey || null;
+        const now = Date.now();
+        const before = this.stateCacheEntries();
+        const removed = [];
+
+        const removeEntry = (entry) => {
+            if (!entry || entry.key === keepKey) return false;
+            localStorage.removeItem(entry.key);
+            removed.push(entry);
+            return true;
+        };
+
+        before
+            .filter(entry => entry.key !== keepKey)
+            .filter(entry => options.force || entry.corrupt || !entry.timestamp || (now - entry.timestamp > maxAgeMs))
+            .forEach(removeEntry);
+
+        const remaining = this.stateCacheEntries()
+            .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        while (remaining.length > maxEntries) {
+            const entry = remaining.shift();
+            if (entry.key === keepKey) {
+                remaining.push(entry);
+                if (remaining.every(item => item.key === keepKey)) break;
+                continue;
+            }
+            removeEntry(entry);
+        }
+
+        const after = this.stateCacheEntries();
+        return {
+            removed: before.length - after.length,
+            removedBytes: removed.reduce((sum, entry) => sum + entry.bytes, 0),
+            beforeCount: before.length,
+            beforeBytes: before.reduce((sum, entry) => sum + entry.bytes, 0),
+            afterCount: after.length,
+            afterBytes: after.reduce((sum, entry) => sum + entry.bytes, 0)
+        };
+    },
+
+    /**
+     * Provides broad localStorage diagnostics for investigating quota pressure.
+     * @returns {Array<{prefix:string,count:number,bytes:number}>}
+     */
+    localStorageDiagnostics() {
+        const buckets = {};
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            const value = localStorage.getItem(key) || '';
+            const prefix = key?.split(':')[0]?.split('_u')[0] || '(unknown)';
+            if (!buckets[prefix]) buckets[prefix] = { prefix, count: 0, bytes: 0 };
+            buckets[prefix].count++;
+            buckets[prefix].bytes += (key?.length || 0) + value.length;
+        }
+        return Object.values(buckets).sort((a, b) => b.bytes - a.bytes);
+    },
+
+    /**
+     * Attempts to write a state cache payload, popping oldest non-current entries
+     * if localStorage quota is exhausted.
+     * @param {string[]} keys - Cache keys to write.
+     * @param {string} payload - Serialized payload.
+     * @param {string} currentKey - Entry that should be preserved where possible.
+     * @returns {{success:boolean,popped:number,poppedBytes:number,error?:any}}
+     */
+    writeStateCacheWithQuotaRecovery(keys, payload, currentKey) {
+        let popped = 0;
+        let poppedBytes = 0;
+
+        while (true) {
+            try {
+                keys.forEach(key => localStorage.setItem(key, payload));
+                localStorage.setItem(this.STATE_CACHE_LAST_KEY, currentKey);
+                return { success: true, popped, poppedBytes };
+            } catch (err) {
+                const candidates = this.stateCacheEntries()
+                    .filter(entry => entry.key !== currentKey)
+                    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+                const victim = candidates[0];
+                if (!victim) {
+                    return { success: false, popped, poppedBytes, error: err };
+                }
+
+                localStorage.removeItem(victim.key);
+                popped++;
+                poppedBytes += victim.bytes;
+                console.warn('Notes state cache quota pressure: popped oldest entry', {
+                    key: victim.key,
+                    bytes: victim.bytes,
+                    popped,
+                    poppedBytes
+                });
+            }
+        }
     },
 
     /**
@@ -48,15 +182,24 @@ window.NoteAPI = {
      */
     cacheState(url, data) {
         if (!data || !data.success || data.is_locked || !Array.isArray(data.notes)) return;
-        try {
-            const payload = JSON.stringify({ timestamp: Date.now(), data });
-            const requestKey = this.stateCacheKey(url);
-            const resolvedKey = `notes_state_cache:${data.canvas_id || 'default'}:${data.viewport?.layer_id || 'default'}`;
-            localStorage.setItem(requestKey, payload);
-            localStorage.setItem(resolvedKey, payload);
-            localStorage.setItem('notes_state_cache:last', resolvedKey);
-        } catch (err) {
-            console.warn('Unable to cache notes state:', err);
+        const payload = JSON.stringify({ timestamp: Date.now(), data });
+        const requestKey = this.stateCacheKey(url);
+        const resolvedKey = `${this.STATE_CACHE_PREFIX}${data.canvas_id || 'default'}:${data.viewport?.layer_id || 'default'}`;
+        const keys = Array.from(new Set([requestKey, resolvedKey]));
+
+        const pruned = this.pruneStateCache({ keepKey: resolvedKey });
+        const result = this.writeStateCacheWithQuotaRecovery(keys, payload, resolvedKey);
+
+        if (!result.success) {
+            console.warn('Unable to cache notes state after quota recovery:', {
+                error: result.error,
+                pruned,
+                popped: result.popped,
+                poppedBytes: result.poppedBytes,
+                storage: this.localStorageDiagnostics()
+            });
+        } else if (pruned.removed > 0 || result.popped > 0) {
+            console.warn('Notes state cache maintained:', { pruned, quotaRecovery: result });
         }
     },
 
@@ -67,7 +210,7 @@ window.NoteAPI = {
      */
     cachedState(url) {
         try {
-            const keys = [this.stateCacheKey(url), localStorage.getItem('notes_state_cache:last')].filter(Boolean);
+            const keys = [this.stateCacheKey(url), localStorage.getItem(this.STATE_CACHE_LAST_KEY)].filter(Boolean);
             for (const key of keys) {
                 const cached = localStorage.getItem(key);
                 if (!cached) continue;
