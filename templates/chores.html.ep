@@ -1,6 +1,6 @@
 <%# /templates/chores.html.ep %>
 
-% layout 'default', hide_navbar_title => 1, favicon => '🧹';
+% layout 'default', navbar_title => '🧹 Chores', favicon => '🧹';
 % title 'Chores Board';
 
 % content_for 'head' => begin
