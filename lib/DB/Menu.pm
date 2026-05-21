@@ -114,8 +114,8 @@ sub DB::add_menu_link {
     $self->ensure_connection;
 
     my $sql = "INSERT INTO menu_links 
-               (label, is_separator, url, icon, parent_id, sort_order, permission_level, css_class, target, is_active) 
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+               (label, is_separator, url, icon, parent_id, sort_order, permission_level, css_class, target, is_active, hide_navbar_title)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
     my $sth = $self->{dbh}->prepare($sql);
     $sth->execute(
@@ -128,7 +128,8 @@ sub DB::add_menu_link {
         $data->{permission_level} // 'user',
         $data->{css_class} // '',
         $data->{target} // '_self',
-        $data->{is_active} // 1
+        $data->{is_active} // 1,
+        $data->{hide_navbar_title} // 0
     );
 
     return $self->{dbh}->last_insert_id();
@@ -146,7 +147,7 @@ sub DB::update_menu_link {
     my $sql = "UPDATE menu_links SET 
                label = ?, is_separator = ?, url = ?, icon = ?, parent_id = ?, 
                sort_order = COALESCE(?, sort_order), permission_level = ?, css_class = ?, 
-               target = ?, is_active = ? 
+               target = ?, is_active = ?, hide_navbar_title = ?
                WHERE id = ?";
                
     my $sth = $self->{dbh}->prepare($sql);
@@ -161,6 +162,7 @@ sub DB::update_menu_link {
         $data->{css_class},
         $data->{target},
         $data->{is_active},
+        $data->{hide_navbar_title},
         $id
     );
 }
@@ -186,6 +188,20 @@ sub DB::update_menu_order {
     $self->ensure_connection;
 
     $self->{dbh}->do("UPDATE menu_links SET sort_order = ? WHERE id = ?", undef, $order, $id);
+}
+
+# Retrieves a menu link by its URL.
+# Parameters:
+#   - url: Target URL string
+# Returns: HashRef of link attributes or undef
+sub DB::get_menu_link_by_url {
+    my ($self, $url) = @_;
+    $self->ensure_connection;
+
+    return $self->{dbh}->selectrow_hashref(
+        "SELECT * FROM menu_links WHERE url = ? AND is_active = 1 AND url != '#' LIMIT 1",
+        undef, $url
+    );
 }
 
 1;
