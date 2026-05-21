@@ -14,6 +14,7 @@ A hyper-integrated, full-stack home laboratory and family management ecosystem. 
 ### **The Core Engine**
 *   **Framework:** [Mojolicious](https://mojolicious.org/) - Utilizing Non-blocking I/O, WebSockets, and a modular Controller-Model-Plugin architecture.
 *   **Web Server:** `Hypnotoad` - Enabling zero-downtime hot-reloads and multi-process worker management.
+*   **Quick Search:** Real-time fuzzy filtering of dashboard modules and navigation links.
 *   **Database:** **MariaDB 10.x** - Relational storage with strict foreign keys and polymorphic ledger tables.
 *   **Native Orchestration:** Background maintenance loops handling temporal state tracking, idempotency, and proactive system-wide synchronization.
 *   **Security:** 
