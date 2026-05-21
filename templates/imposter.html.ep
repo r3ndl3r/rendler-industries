@@ -1,6 +1,6 @@
 <%# /templates/imposter.html.ep %>
 
-% layout 'default', hide_navbar_title => 1, favicon => '🕵️';
+% layout 'default', navbar_title => '🕵️ Imposter', favicon => '🕵️';
 % title 'Imposter';
 
 % content_for 'head' => begin
