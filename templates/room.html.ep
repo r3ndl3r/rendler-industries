@@ -1,6 +1,6 @@
 <%# /templates/room.html.ep %>
 
-% layout 'default', hide_navbar_title => 1, favicon => '🏠';
+% layout 'default', navbar_title => '🏠 Room Clean', favicon => '🏠';
 % title 'Room Cleaning Tracker';
 
 % content_for 'head' => begin
