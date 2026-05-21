@@ -538,6 +538,7 @@ CREATE TABLE `menu_links` (
   `css_class` varchar(50) DEFAULT '',
   `target` varchar(20) DEFAULT '_self',
   `is_active` tinyint(1) DEFAULT 1,
+  `hide_navbar_title` tinyint(1) DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `parent_id` (`parent_id`),
   CONSTRAINT `menu_links_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `menu_links` (`id`) ON DELETE CASCADE
@@ -774,6 +775,18 @@ CREATE TABLE `rubiks_algorithms` (
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `rubiks_solves` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `cube_type` enum('3x3','4x4') NOT NULL,
+  `duration_ms` int(10) unsigned NOT NULL,
+  `started_at` datetime(3) NOT NULL,
+  `solved_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_rubiks_solves_user_cube_time` (`user_id`,`cube_type`,`solved_at`),
+  CONSTRAINT `fk_rubiks_solves_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `shopping_list` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
