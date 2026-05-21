@@ -1,5 +1,5 @@
 <%# /templates/admin/maintenance.html.ep %>
-% layout 'default', hide_navbar_title => 1, favicon => '⌚';
+% layout 'default', navbar_title => '⌚ Maintenance', favicon => '⌚';
 % title 'Maintenance Tasks';
 % content_for 'head' => begin
     <link rel="stylesheet" href="/css/admin/maintenance.css">
