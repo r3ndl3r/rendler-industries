@@ -1,6 +1,6 @@
 <%# /templates/swear.html.ep %>
 
-% layout 'default', hide_navbar_title => 1, favicon => '🤬';
+% layout 'default', navbar_title => '🤬 Swear Jar', favicon => '🤬';
 <% title 'Swear Jar'; %>
 
 % content_for 'head' => begin
