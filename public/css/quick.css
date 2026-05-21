@@ -161,29 +161,128 @@
     color: white;
 }
 
+@keyframes tile-pulse-glow {
+    0%, 100% {
+        border-color: rgba(59, 130, 246, 0.3);
+        box-shadow: 0 0 8px rgba(59, 130, 246, 0.15), 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    50% {
+        border-color: rgba(59, 130, 246, 0.7);
+        box-shadow: 0 0 18px rgba(59, 130, 246, 0.3), 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+}
+
 .sort-mode .quick-tile-card {
     border-style: dashed;
     cursor: grab;
+    animation: tile-pulse-glow 2.5s ease-in-out infinite;
 }
 
 .sort-mode .quick-tile-card:hover {
     transform: none;
+    animation-play-state: paused;
 }
 
 .quick-tile-card.sortable-ghost {
     opacity: 0.35;
     border-color: #3b82f6 !important;
+    animation: none;
 }
 
 .quick-tile-card.sortable-chosen {
     cursor: grabbing;
     box-shadow: 0 12px 28px rgba(59, 130, 246, 0.28);
+    animation: none;
 }
 
-/* Mobile Responsiveness: 3 Column Layout */
+@media (max-width: 768px) {
+    .tile-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 14px;
+    }
+    .tile {
+        padding: 15px 8px;
+        min-height: 100px;
+        border-radius: 12px;
+    }
+    .icon {
+        font-size: 2rem;
+        margin-bottom: 8px;
+    }
+    .label {
+        font-size: 0.75rem;
+        line-height: 1.2;
+    }
+
+    /* Floating Virtual Scroll Handle — Sort Mode Only */
+    .quick-scroll-handle {
+        position: fixed;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 28px;
+        height: 80px;
+        background: rgba(59, 130, 246, 0.25);
+        border: 1px solid rgba(59, 130, 246, 0.5);
+        border-radius: 14px;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 9000;
+        cursor: grab;
+        touch-action: none;
+        opacity: 0;
+        transition: opacity 0.2s ease, background 0.15s ease;
+        pointer-events: none;
+    }
+
+    .sort-mode .quick-scroll-handle {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .quick-scroll-handle:active {
+        cursor: grabbing;
+        background: rgba(59, 130, 246, 0.45);
+    }
+
+    .quick-scroll-handle::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 4px;
+        height: 24px;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 2px;
+    }
+
+    /* Drag-scroll auto-scroll active indicator */
+    .quick-scroll-handle.scrolling-up::after {
+        background: rgba(59, 130, 246, 0.9);
+        animation: scroll-indicator-up 0.6s ease-in-out infinite;
+    }
+
+    .quick-scroll-handle.scrolling-down::after {
+        background: rgba(59, 130, 246, 0.9);
+        animation: scroll-indicator-down 0.6s ease-in-out infinite;
+    }
+
+    @keyframes scroll-indicator-up {
+        0%, 100% { transform: translate(-50%, -50%); }
+        50% { transform: translate(-50%, calc(-50% - 6px)); }
+    }
+
+    @keyframes scroll-indicator-down {
+        0%, 100% { transform: translate(-50%, -50%); }
+        50% { transform: translate(-50%, calc(-50% + 6px)); }
+    }
+}
+
+/* 600px breakpoint: tighter 3-column grid */
 @media (max-width: 600px) {
     .tile-grid {
-        grid-template-columns: repeat(3, 1fr); /* 3 items per row */
+        grid-template-columns: repeat(3, 1fr);
         gap: 12px;
     }
     .tile {
