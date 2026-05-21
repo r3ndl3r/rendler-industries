@@ -1,6 +1,6 @@
-<%# /templates/menu.html.ep %>
+<%# /templates/admin/menu.html.ep %>
 
-% layout 'default', hide_navbar_title => 1, favicon => '☰';
+% layout 'default', navbar_title => '☰ Menu', favicon => '☰';
 % title 'Menu';
 
 % content_for 'head' => begin
@@ -11,7 +11,7 @@
 
 <div class="manage-container app-container">
     <div class="header-bar">
-        <h1>⫶☰ <span>Manage Menu</span></h1>
+        <h1>⫶☰ <span>Menu Management</span></h1>
         <div class="manage-actions">
             <button id="addLinkBtn" class="btn-primary" onclick="MenuMgmt.openAddModal()">➕ Add</button>
         </div>
@@ -27,12 +27,13 @@
                     <th class="col-parent">Parent</th>
                     <th class="col-perm">Permission</th>
                     <th class="col-status">Status</th>
+                    <th class="col-navbar">Navbar</th>
                     <th class="col-actions">Actions</th>
                 </tr>
             </thead>
             <tbody id="menuTableBody">
                 <tr class="component-loading-row">
-                    <td colspan="7">
+                    <td colspan="8">
                         <div class="component-loading">
                             <div class="loading-scan-line"></div>
                             <span class="loading-icon-pulse">🔗</span>
@@ -123,6 +124,13 @@
                     <label>
                         <input type="checkbox" id="linkActive" name="is_active" value="1" checked>
                         Visible in Menu
+                    </label>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="linkHideNavbarTitle" name="hide_navbar_title" value="1">
+                        Hide Navbar Title
                     </label>
                 </div>
             </div>
