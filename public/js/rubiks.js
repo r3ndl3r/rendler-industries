@@ -20,7 +20,13 @@ const RUBIKS_CONFIG = {
 let RUBIKS_STATE = {
     sequence: '',
     cubeSize: 3,
-    algorithms: []
+    algorithms: [],
+    solves: [],
+    timerCubeType: '3x3',
+    statsCubeFilter: 'all',
+    timerRunning: false,
+    timerStartedAt: 0,
+    timerInterval: null
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -48,11 +54,14 @@ async function loadLibrary() {
         const data = await apiGet('/rubiks/api/state');
         if (data && data.success) {
             RUBIKS_STATE.algorithms = data.algorithms || [];
+            RUBIKS_STATE.solves = data.solves || [];
         }
         renderLibrary();
+        renderSolveDashboard();
     } catch (err) {
         console.error('Failed to load library:', err);
         renderLibrary();
+        renderSolveDashboard();
     }
 }
 
@@ -201,27 +210,26 @@ async function handleSaveAlgorithm(e) {
  * @returns {Promise<void>}
  */
 async function deleteAlgorithm(id) {
-    const confirmed = await showConfirmModal({
+    showConfirmModal({
         title: 'Delete Algorithm',
         message: 'Are you sure you want to remove this algorithm from the family library?',
         confirmText: 'Delete',
         confirmIcon: '🗑️',
-        danger: true
-    });
-
-    if (confirmed) {
-        try {
-            const res = await apiPost(`/rubiks/api/delete/${id}`);
-            if (res && res.success) {
-                loadLibrary();
-            } else {
-                showToast(res?.error || 'Delete failed. Please try again.', 'error');
+        danger: true,
+        onConfirm: async () => {
+            try {
+                const res = await apiPost(`/rubiks/api/delete/${id}`);
+                if (res && res.success) {
+                    loadLibrary();
+                } else {
+                    showToast(res?.error || 'Delete failed. Please try again.', 'error');
+                }
+            } catch (err) {
+                console.error("Rubiks: Delete Error:", err);
+                showToast('Delete failed. Please try again.', 'error');
             }
-        } catch (err) {
-            console.error("Rubiks: Delete Error:", err);
-            showToast('Delete failed. Please try again.', 'error');
         }
-    }
+    });
 }
 
 /**
@@ -450,6 +458,473 @@ function downloadSVG() {
     a.href = url; a.download = `rubiks_alg_${Date.now()}.svg`; a.click(); URL.revokeObjectURL(url);
 }
 
+/**
+ * Selects the cube type used by the stopwatch.
+ * @param {string} cubeType - Either "3x3" or "4x4".
+ * @returns {void}
+ */
+function setTimerCubeType(cubeType) {
+    if (!['3x3', '4x4'].includes(cubeType) || RUBIKS_STATE.timerRunning) return;
+    RUBIKS_STATE.timerCubeType = cubeType;
+    document.querySelectorAll('[data-timer-cube]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.timerCube === cubeType);
+    });
+}
+
+/**
+ * Starts a new solve timer.
+ * @returns {void}
+ */
+function startSolveTimer() {
+    if (RUBIKS_STATE.timerRunning) return;
+
+    RUBIKS_STATE.timerRunning = true;
+    RUBIKS_STATE.timerStartedAt = performance.now();
+    document.getElementById('timerStartBtn').disabled = true;
+
+    const overlay = document.getElementById('solve-overlay');
+    if (overlay) overlay.classList.add('active');
+
+    document.addEventListener('keydown', handleSolveOverlayInput);
+    document.addEventListener('mousedown', handleSolveOverlayInput);
+    document.addEventListener('touchstart', handleSolveOverlayInput, { passive: true });
+
+    RUBIKS_STATE.timerInterval = setInterval(updateTimerDisplay, 31);
+    updateTimerDisplay();
+}
+
+/**
+ * Stops the active timer and persists the solve.
+ * @returns {Promise<void>}
+ */
+async function stopSolveTimer() {
+    if (!RUBIKS_STATE.timerRunning) return;
+
+    const overlay = document.getElementById('solve-overlay');
+    if (overlay) overlay.classList.remove('active');
+
+    document.removeEventListener('keydown', handleSolveOverlayInput);
+    document.removeEventListener('mousedown', handleSolveOverlayInput);
+    document.removeEventListener('touchstart', handleSolveOverlayInput);
+
+    const duration = Math.round(performance.now() - RUBIKS_STATE.timerStartedAt);
+    clearInterval(RUBIKS_STATE.timerInterval);
+    RUBIKS_STATE.timerInterval = null;
+    RUBIKS_STATE.timerRunning = false;
+
+    document.getElementById('timerStartBtn').disabled = false;
+    setTimerDisplay(duration);
+
+    try {
+        const res = await apiPost('/rubiks/api/solves/save', {
+            cube_type: RUBIKS_STATE.timerCubeType,
+            duration_ms: duration
+        });
+        if (res && res.success) {
+            RUBIKS_STATE.solves = res.solves || [];
+            renderSolveDashboard(duration, RUBIKS_STATE.timerCubeType);
+        } else {
+            showToast(res?.error || 'Solve save failed. Please try again.', 'error');
+        }
+    } catch (err) {
+        console.error('Rubiks solve save failed:', err);
+        showToast('Solve save failed. Please try again.', 'error');
+    }
+}
+
+/**
+ * Stops the solve timer when any input is detected on the overlay.
+ * Prevents default for keyboard and mouse events to avoid triggering
+ * other handlers. Touch events are passive so this does not prevent default.
+ * @param {KeyboardEvent|MouseEvent|TouchEvent} e
+ * @returns {void}
+ */
+function handleSolveOverlayInput(e) {
+    if (!RUBIKS_STATE.timerRunning) return;
+    if (e.type === 'keydown' || e.type === 'mousedown') {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    stopSolveTimer();
+}
+
+/**
+ * Refreshes the live stopwatch display.
+ * @returns {void}
+ */
+function updateTimerDisplay() {
+    if (!RUBIKS_STATE.timerRunning) return;
+    setTimerDisplay(Math.round(performance.now() - RUBIKS_STATE.timerStartedAt));
+}
+
+/**
+ * Writes a formatted duration to the stopwatch display.
+ * @param {number} ms - Duration in milliseconds.
+ * @returns {void}
+ */
+function setTimerDisplay(ms) {
+    const el = document.getElementById('solve-timer-display');
+    if (el) el.textContent = formatSolveTime(ms);
+    const overlayEl = document.getElementById('solve-timer-overlay-display');
+    if (overlayEl) overlayEl.textContent = formatSolveTime(ms);
+}
+
+/**
+ * Sets the cube filter used by statistics and history.
+ * @param {string} filter - "all", "3x3", or "4x4".
+ * @returns {void}
+ */
+function setStatsCubeFilter(filter) {
+    RUBIKS_STATE.statsCubeFilter = ['3x3', '4x4'].includes(filter) ? filter : 'all';
+    renderSolveDashboard();
+}
+
+/**
+ * Deletes a solve from the current user's history.
+ * @param {number} id - Solve ID.
+ * @returns {Promise<void>}
+ */
+async function deleteSolve(id) {
+    showConfirmModal({
+        title: 'Delete Solve',
+        message: 'Remove this recorded solve from your personal history?',
+        confirmText: 'Delete',
+        confirmIcon: '🗑️',
+        danger: true,
+        onConfirm: async () => {
+            try {
+                const res = await apiPost(`/rubiks/api/solves/delete/${id}`);
+                if (res && res.success) {
+                    RUBIKS_STATE.solves = res.solves || [];
+                    renderSolveDashboard();
+                }
+            } catch (err) {
+                console.error('Rubiks solve delete failed:', err);
+                showToast('Delete failed. Please try again.', 'error');
+            }
+        }
+    });
+}
+
+/**
+ * Reassigns a solve's cube type (3x3 ↔ 4x4) via a confirmation dialog.
+ * The confirmation dialog has no cancel button — only a confirm action.
+ * @param {number} id - Solve ID.
+ * @param {string} currentType - Current cube type ("3x3" or "4x4").
+ * @returns {void}
+ */
+function reassignSolveCubeType(id, currentType) {
+    const targetType = currentType === '3x3' ? '4x4' : '3x3';
+
+    showConfirmModal({
+        title: 'Change Cube Type',
+        message: `Change this solve from ${currentType} to ${targetType}?`,
+        icon: '🔄',
+        confirmText: `Change to ${targetType}`,
+        confirmIcon: '🔄',
+        hideCancel: true,
+        onConfirm: async () => {
+            try {
+                const res = await apiPost(`/rubiks/api/solves/reassign/${id}`);
+                if (res && res.success) {
+                    RUBIKS_STATE.solves = res.solves || [];
+                    renderSolveDashboard();
+                } else {
+                    showToast(res?.error || 'Reassign failed. Please try again.', 'error');
+                }
+            } catch (err) {
+                console.error('Rubiks solve reassign failed:', err);
+                showToast('Reassign failed. Please try again.', 'error');
+            }
+        }
+    });
+}
+
+/**
+ * Renders all stopwatch analytics and history.
+ * @param {number|null} latestDuration - Latest solve duration in ms.
+ * @param {string|null} latestCube - Latest solve cube type.
+ * @returns {void}
+ */
+function renderSolveDashboard(latestDuration = null, latestCube = null) {
+    const solves = filteredSolves();
+    const chronological = solves.slice().reverse();
+    const stats = computeSolveStats(chronological);
+
+    renderStatsGrid(stats);
+    renderSolveHistory(solves);
+    renderSessionSummary(stats, latestDuration, latestCube);
+    renderLineChart('solve-trend-chart', chronological.slice(-30).map((s, i) => ({
+        label: `#${chronological.length - Math.min(30, chronological.length) + i + 1}`,
+        value: s.duration_ms
+    })), 'Solve time');
+    renderLineChart('average-trend-chart', rollingAverageSeries(chronological, 5), 'Ao5');
+
+    const count = document.getElementById('solve-count');
+    if (count) count.textContent = `${RUBIKS_STATE.solves.length} solve${RUBIKS_STATE.solves.length === 1 ? '' : 's'}`;
+
+}
+
+/**
+ * Returns solve records matching the active statistics filter.
+ * @returns {Array<Object>}
+ */
+function filteredSolves() {
+    if (RUBIKS_STATE.statsCubeFilter === 'all') return RUBIKS_STATE.solves.slice();
+    return RUBIKS_STATE.solves.filter(s => s.cube_type === RUBIKS_STATE.statsCubeFilter);
+}
+
+/**
+ * Computes detailed solve statistics for chronological solves.
+ * @param {Array<Object>} solves - Oldest to newest solve records.
+ * @returns {Object}
+ */
+function computeSolveStats(solves) {
+    const durations = solves.map(s => Number(s.duration_ms)).filter(ms => ms > 0);
+    const sorted = durations.slice().sort((a, b) => a - b);
+    const total = durations.reduce((sum, ms) => sum + ms, 0);
+    const avg = durations.length ? total / durations.length : 0;
+    const variance = durations.length ? durations.reduce((sum, ms) => sum + Math.pow(ms - avg, 2), 0) / durations.length : 0;
+    const last = durations[durations.length - 1] || 0;
+    const previous = durations[durations.length - 2] || 0;
+
+    return {
+        count: durations.length,
+        best: sorted[0] || 0,
+        worst: sorted[sorted.length - 1] || 0,
+        average: avg,
+        median: median(sorted),
+        stddev: Math.sqrt(variance),
+        latest: last,
+        delta: previous ? last - previous : 0,
+        ao5: averageOfLast(durations, 5),
+        ao12: averageOfLast(durations, 12),
+        ao50: averageOfLast(durations, 50),
+        today: countSince(solves, 1),
+        week: countSince(solves, 7),
+        month: countSince(solves, 30)
+    };
+}
+
+/**
+ * Renders statistics cards.
+ * @param {Object} stats - Computed statistics object.
+ * @returns {void}
+ */
+function renderStatsGrid(stats) {
+    const grid = document.getElementById('stats-grid');
+    if (!grid) return;
+
+    const cards = [
+        ['Solves', stats.count, 'Total in filter'],
+        ['Best', formatStatTime(stats.best), 'Fastest solve'],
+        ['Average', formatStatTime(stats.average), 'Mean solve time'],
+        ['Median', formatStatTime(stats.median), 'Middle solve'],
+        ['Ao5', formatStatTime(stats.ao5), 'Average of last 5'],
+        ['Ao12', formatStatTime(stats.ao12), 'Average of last 12'],
+        ['Ao50', formatStatTime(stats.ao50), 'Average of last 50'],
+        ['Worst', formatStatTime(stats.worst), 'Slowest solve'],
+        ['Std Dev', formatStatTime(stats.stddev), 'Consistency spread'],
+        ['Today', stats.today, 'Solves today'],
+        ['7 Days', stats.week, 'Recent volume'],
+        ['30 Days', stats.month, 'Monthly volume']
+    ];
+
+    grid.innerHTML = cards.map(([label, value, hint]) => `
+        <div class="stat-tile">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(String(value))}</strong>
+            <small>${escapeHtml(hint)}</small>
+        </div>
+    `).join('');
+}
+
+/**
+ * Renders the latest solve/session summary.
+ * @param {Object} stats - Computed statistics object.
+ * @param {number|null} latestDuration - Latest duration in ms.
+ * @param {string|null} latestCube - Latest cube type.
+ * @returns {void}
+ */
+function renderSessionSummary(stats, latestDuration, latestCube) {
+    const el = document.getElementById('latest-session-summary');
+    if (!el) return;
+
+    if (!stats.count) {
+        el.innerHTML = '<p>Record a solve to unlock session stats, averages, streaks, and trend graphs.</p>';
+        return;
+    }
+
+    const latest = latestDuration || stats.latest;
+    const trend = stats.delta < 0 ? `${formatSolveTime(Math.abs(stats.delta))} faster than previous` :
+        stats.delta > 0 ? `${formatSolveTime(stats.delta)} slower than previous` : 'No previous solve delta yet';
+    el.innerHTML = `
+        <div class="summary-main">
+            <span>Latest ${escapeHtml(latestCube || RUBIKS_STATE.statsCubeFilter)}</span>
+            <strong>${formatSolveTime(latest)}</strong>
+        </div>
+        <div class="summary-details">
+            <span>${escapeHtml(trend)}</span>
+            <span>Best: ${formatStatTime(stats.best)}</span>
+            <span>Ao5: ${formatStatTime(stats.ao5)}</span>
+        </div>
+    `;
+}
+
+/**
+ * Renders solve history with delete controls.
+ * @param {Array<Object>} solves - Newest-first solve records.
+ * @returns {void}
+ */
+function renderSolveHistory(solves) {
+    const history = document.getElementById('solve-history');
+    if (!history) return;
+
+    if (solves.length === 0) {
+        history.innerHTML = '<p class="empty-hint">No solves recorded for this filter yet.</p>';
+        return;
+    }
+
+    history.innerHTML = solves.slice(0, 60).map((solve, idx) => `
+        <div class="solve-row">
+            <div>
+                <span class="badge-small">${escapeHtml(solve.cube_type)}</span>
+                <strong>${formatSolveTime(solve.duration_ms)}</strong>
+                <small>${formatDateTime(solve.solved_at)}</small>
+            </div>
+            <div class="solve-row-actions">
+                <span>#${solves.length - idx}</span>
+                <button type="button" class="btn-icon-edit" onclick="reassignSolveCubeType(${solve.id}, '${escapeHtml(solve.cube_type)}')" title="Change cube type">🔄</button>
+                <button type="button" class="btn-icon-delete" onclick="deleteSolve(${solve.id})" title="Delete Solve">🗑️</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+/**
+ * Renders a compact SVG line chart.
+ * @param {string} id - Chart container element ID.
+ * @param {Array<{label:string,value:number}>} points - Chart points.
+ * @param {string} title - Accessible chart title.
+ * @returns {void}
+ */
+function renderLineChart(id, points, title) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    const valid = points.filter(p => Number(p.value) > 0);
+    if (valid.length < 2) {
+        el.innerHTML = '<p class="empty-hint">More solves needed for this graph.</p>';
+        return;
+    }
+
+    const width = 680, height = 220, pad = 28;
+    const values = valid.map(p => p.value);
+    const min = Math.min(...values), max = Math.max(...values);
+    const range = Math.max(max - min, 1);
+    const xStep = (width - pad * 2) / Math.max(valid.length - 1, 1);
+    const coords = valid.map((p, i) => {
+        const x = pad + (i * xStep);
+        const y = height - pad - (((p.value - min) / range) * (height - pad * 2));
+        return { x, y, value: p.value, label: p.label };
+    });
+    const path = coords.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+    const circles = coords.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4"><title>${escapeHtml(p.label)}: ${formatSolveTime(p.value)}</title></circle>`).join('');
+
+    el.innerHTML = `
+        <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)}">
+            <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height - pad}" class="chart-axis"></line>
+            <line x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}" class="chart-axis"></line>
+            <text x="${pad}" y="18" class="chart-label">${formatSolveTime(max)}</text>
+            <text x="${pad}" y="${height - 6}" class="chart-label">${formatSolveTime(min)}</text>
+            <path d="${path}" class="chart-line"></path>
+            <g class="chart-points">${circles}</g>
+        </svg>
+    `;
+}
+
+/**
+ * Builds a rolling average chart series.
+ * @param {Array<Object>} solves - Oldest to newest solve records.
+ * @param {number} size - Window size.
+ * @returns {Array<{label:string,value:number}>}
+ */
+function rollingAverageSeries(solves, size) {
+    const durations = solves.map(s => Number(s.duration_ms)).filter(ms => ms > 0);
+    return durations.map((_, i) => {
+        if (i + 1 < size) return null;
+        const window = durations.slice(i + 1 - size, i + 1);
+        return { label: `#${i + 1}`, value: window.reduce((a, b) => a + b, 0) / size };
+    }).filter(Boolean).slice(-30);
+}
+
+/**
+ * Average of the last N durations.
+ * @param {Array<number>} durations - Oldest to newest durations.
+ * @param {number} size - Number of solves.
+ * @returns {number}
+ */
+function averageOfLast(durations, size) {
+    if (durations.length < size) return 0;
+    const last = durations.slice(-size);
+    return last.reduce((sum, ms) => sum + ms, 0) / last.length;
+}
+
+/**
+ * Median for a sorted duration array.
+ * @param {Array<number>} sorted - Ascending durations.
+ * @returns {number}
+ */
+function median(sorted) {
+    if (!sorted.length) return 0;
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Counts solves since N days ago.
+ * @param {Array<Object>} solves - Solve records.
+ * @param {number} days - Lookback in days.
+ * @returns {number}
+ */
+function countSince(solves, days) {
+    const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
+    return solves.filter(s => new Date(s.solved_at).getTime() >= cutoff).length;
+}
+
+/**
+ * Formats a solve duration.
+ * @param {number} ms - Duration in milliseconds.
+ * @returns {string}
+ */
+function formatSolveTime(ms) {
+    ms = Math.max(0, Math.round(Number(ms) || 0));
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    const millis = ms % 1000;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+}
+
+/**
+ * Formats a stat time or dash for missing values.
+ * @param {number} ms - Duration in milliseconds.
+ * @returns {string}
+ */
+function formatStatTime(ms) {
+    return ms > 0 ? formatSolveTime(ms) : '—';
+}
+
+/**
+ * Formats a database datetime for display.
+ * @param {string} value - SQL datetime string.
+ * @returns {string}
+ */
+function formatDateTime(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value || '';
+    return date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 window.searchLibrary = () => renderLibrary();
 window.generateDiagram = generateDiagram;
 window.resetCube = resetCube;
@@ -462,3 +937,9 @@ window.loadAlgorithm = loadAlgorithm;
 window.editAlgorithm = editAlgorithm;
 window.deleteAlgorithm = deleteAlgorithm;
 window.setGridScale = setGridScale;
+window.setTimerCubeType = setTimerCubeType;
+window.startSolveTimer = startSolveTimer;
+window.stopSolveTimer = stopSolveTimer;
+window.setStatsCubeFilter = setStatsCubeFilter;
+window.deleteSolve = deleteSolve;
+window.reassignSolveCubeType = reassignSolveCubeType;
