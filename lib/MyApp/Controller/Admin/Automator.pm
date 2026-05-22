@@ -852,6 +852,19 @@ sub _broadcast {
     }
 }
 
+sub api_report {
+    my $c = shift;
+    return _locked($c) unless _api_allowed($c);
+    my $history_id = $c->stash('history_id');
+    my $h = $c->db->get_automator_history($history_id);
+    return $c->render(json => { success => 0, error => 'Run not found' }, status => 404) unless $h;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless _owned_history($c, $h);
+    $h->{json_result} = $c->db->_json_decode($h->{json_result}, undef);
+    $h->{applied_vars} = $c->db->_json_decode($h->{applied_vars}, {});
+    $c->render(json => { success => 1, history => $h });
+}
+
 sub register_routes {
     my ($class, $bridges) = @_;
     $bridges->{r}->get('/automator')->to(cb => sub {
@@ -876,6 +889,7 @@ sub register_routes {
     $r->post('/admin/automator/api/vault/unlock')->to('admin-automator#api_vault_unlock');
     $r->post('/admin/automator/api/vault/lock')->to('admin-automator#api_vault_lock');
     $r->websocket('/admin/automator/ws/:history_id')->to('admin-automator#ws');
+    $r->get('/admin/automator/api/report/:history_id')->to('admin-automator#api_report');
 }
 
 1;
