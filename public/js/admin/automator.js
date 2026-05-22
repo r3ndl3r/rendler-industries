@@ -35,6 +35,7 @@ let STATE = {
 let ws = null;
 let wsRetries = 0;
 let currentConsoleHistoryId = null;
+let currentConsoleTerminal = false;
 let historyPage = 1;
 let historyPlaybookId = null;
 let historyPlaybookName = '';
@@ -136,8 +137,8 @@ function handleAutomatorAction(event) {
     else if (action === 'delete-playbook') deletePlaybook(id);
     else if (action === 'delete-inventory') deleteInventory(id);
     else if (action === 'open-console') openConsole(id);
-    else if (action === 'show-console-status') setConsoleView('status');
     else if (action === 'show-console-log') setConsoleView('log');
+    else if (action === 'show-console-report') setConsoleView('report');
     else if (action === 'abort-run') abortRun(id);
     else if (action === 'add-secret-row') addSecretRow();
     else if (action === 'remove-secret-row') trigger.closest('.secret-row')?.remove();
@@ -1197,11 +1198,14 @@ function openConsole(historyId) {
         const playbook = STATE.playbooks.find(row => Number(row.last_history_id) === Number(historyId));
         if (playbook) h = { id: historyId, playbook_name: playbook.name, status: playbook.last_status, output: '' };
     }
+    currentConsoleTerminal = isTerminalRunStatus(h?.status || 'unknown');
     setText('consoleTitle', h ? `#${h.id} ${h.playbook_name || 'Run'}` : `#${historyId}`);
     updateConsoleStatusUI(h?.status || 'unknown');
     setText('consoleOutput', filterConsoleRawOutput(h?.output || ''));
     replayConsoleEvents(h?.output || '');
-    setConsoleView('status');
+    const reportView = document.getElementById('consoleReportView');
+    if (reportView) { reportView.innerHTML = ''; delete reportView.dataset.loaded; }
+    setConsoleView(currentConsoleTerminal ? 'report' : 'status');
     document.getElementById('consoleAbortBtn')?.classList.toggle('hidden', h?.status !== 'running');
     showModal('consoleModal');
     connectWS(historyId);
@@ -1228,11 +1232,20 @@ function resetConsoleEvents() {
  * @returns {void}
  */
 function setConsoleView(view) {
+    if (currentConsoleTerminal && view === 'status') view = 'report';
+    const showStatus = view === 'status' && !currentConsoleTerminal;
     const showLog = view === 'log';
-    document.getElementById('consoleStatusView')?.classList.toggle('hidden', showLog);
+    const showReport = view === 'report';
+    document.getElementById('consoleStatusView')?.classList.toggle('hidden', !showStatus);
     document.getElementById('consoleOutput')?.classList.toggle('hidden', !showLog);
-    document.querySelectorAll('[data-automator-action="show-console-status"]').forEach(btn => btn.classList.toggle('active', !showLog));
-    document.querySelectorAll('[data-automator-action="show-console-log"]').forEach(btn => btn.classList.toggle('active', showLog));
+    document.getElementById('consoleReportView')?.classList.toggle('hidden', !showReport);
+    const viewToggleBtn = document.getElementById('consoleViewToggleBtn');
+    if (viewToggleBtn) {
+        viewToggleBtn.classList.toggle('active', showLog);
+        viewToggleBtn.dataset.automatorAction = showLog ? 'show-console-report' : 'show-console-log';
+        viewToggleBtn.textContent = showLog ? 'Report' : 'Raw Log';
+    }
+    if (showReport) showConsoleReport();
 }
 
 /**
@@ -1254,6 +1267,16 @@ function replayConsoleEvents(output) {
  */
 function filterConsoleRawOutput(output) {
     return String(output || '').replace(/^.*@@AUTOMATOR_EVENT@@.*(?:\n|$)/gm, '');
+}
+
+/**
+ * Determines whether a backend run status is terminal.
+ *
+ * @param {string} status - Backend run status.
+ * @returns {boolean} True once no live status panel is needed.
+ */
+function isTerminalRunStatus(status) {
+    return ['success', 'failed', 'aborted', 'timed_out'].includes(status);
 }
 
 /**
@@ -1436,20 +1459,32 @@ function connectWS(historyId) {
     ws.onmessage = (event) => {
         if (!consoleEl) return;
         const msg = event.data;
-        if (msg.startsWith('###STATUS:') && msg.endsWith('###')) {
-            const status = msg.replace('###STATUS:', '').replace('###', '');
+        let handledStatus = false;
+        msg.split('\n').forEach(line => {
+            const statusMatch = line.trim().match(/^###STATUS:(.+?)###$/);
+            if (!statusMatch) return;
+            handledStatus = true;
+            const status = statusMatch[1];
             updateConsoleStatusUI(status);
             if (status !== 'running') {
                 document.getElementById('consoleAbortBtn')?.classList.add('hidden');
                 finalizeConsoleEvents(status);
             }
+        });
+        if (handledStatus) {
+            const nonStatusOutput = msg
+                .split('\n')
+                .filter(line => !/^###STATUS:.+?###$/.test(line.trim()))
+                .join('\n');
+            if (!nonStatusOutput.trim()) return;
+            nonStatusOutput.split('\n').forEach(line => processConsoleEventLine(line));
+            consoleEl.textContent += filterConsoleRawOutput(nonStatusOutput);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
             return;
         }
         msg.split('\n').forEach(line => processConsoleEventLine(line));
         consoleEl.textContent += filterConsoleRawOutput(msg);
-        if (!document.getElementById('consoleScrollLock')?.checked) {
-            consoleEl.scrollTop = consoleEl.scrollHeight;
-        }
+        consoleEl.scrollTop = consoleEl.scrollHeight;
     };
     ws.onclose = (event) => {
         if (event.code === 1008) {
@@ -1472,6 +1507,7 @@ function connectWS(historyId) {
  */
 function finalizeConsoleEvents(finalStatus) {
     if (!CONSOLE_EVENTS) return;
+    currentConsoleTerminal = isTerminalRunStatus(finalStatus);
     Object.values(CONSOLE_EVENTS.hosts).forEach(row => {
         if (!['failed', 'unreachable', 'complete'].includes(row.status || 'pending')) {
             row.status = finalStatus === 'success' ? 'complete' : 'failed';
@@ -1479,6 +1515,7 @@ function finalizeConsoleEvents(finalStatus) {
         }
     });
     renderConsoleStatusView();
+    setConsoleView('report');
 }
 
 /**
@@ -1642,4 +1679,426 @@ function formatDateTime(value) {
  */
 function automatorEscapeAttr(value) {
     return escapeHtml(value).replace(/`/g, '&#96;');
+}
+
+/**
+ * Parses raw Ansible output into structured task output sections.
+ *
+ * @param {string} output - Raw Ansible stdout.
+ * @returns {Array<Object>} Array of { task, hosts: [{ host, status, msg }] }.
+ */
+function parseRawTaskOutputs(output) {
+    if (!output) return [];
+    const tasks = [];
+    const lines = output.split('\n');
+    let currentTask = null;
+    let currentHost = null;
+    let currentItem = null;
+    let msgLines = [];
+    let inJsonBlock = false;
+    let braceDepth = 0;
+
+    function flushMsg() {
+        if (currentTask && currentHost && msgLines.length) {
+            const entry = { host: currentHost, status: 'ok', msg: msgLines.join('\n') };
+            if (currentItem) entry.item = currentItem;
+            currentTask.hosts.push(entry);
+        }
+        msgLines = [];
+        currentHost = null;
+        currentItem = null;
+    }
+
+    function flushTask() {
+        if (currentTask && currentTask.hosts.length) {
+            tasks.push(currentTask);
+        }
+        currentTask = null;
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        // TASK header
+        const taskMatch = line.match(/^TASK \[(.+?)\] \*+$/);
+        if (taskMatch) {
+            flushMsg();
+            flushTask();
+            currentTask = { task: taskMatch[1], hosts: [] };
+            inJsonBlock = false;
+            braceDepth = 0;
+            continue;
+        }
+
+        // Host result line: ok: [host] or ok: [host] => (item=...) => {
+        const hostMatch = line.match(/^(ok|changed|failed|skipping|fatal): \[([^\]]+)\]/);
+        if (hostMatch && currentTask) {
+            flushMsg();
+            currentHost = hostMatch[2];
+            const status = hostMatch[1] === 'fatal' ? 'failed' : hostMatch[1];
+            const itemMatch = line.match(/\(item=(.+?)\)/);
+            if (itemMatch) currentItem = itemMatch[1];
+            currentTask.hosts.push({ host: currentHost, status, msg: '' });
+            if (line.includes('{')) {
+                inJsonBlock = true;
+                braceDepth = (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+            }
+            continue;
+        }
+
+        // JSON block content
+        if (inJsonBlock && currentHost) {
+            braceDepth += (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+
+            // Extract msg array content
+            const msgArrayMatch = line.match(/"msg":\s*\[/);
+            if (msgArrayMatch) {
+                msgLines = [];
+                // Check if array closes on same line
+                if (line.includes(']')) {
+                    const inline = line.match(/"msg":\s*\[(.*?)\]/);
+                    if (inline) {
+                        const items = inline[1].split(/",\s*"/).map(s => s.replace(/^"|"$|"/g, '').trim());
+                        msgLines = items.filter(Boolean);
+                    }
+                    inJsonBlock = braceDepth <= 0;
+                    if (inJsonBlock === false) {
+                        const lastHost = currentTask.hosts[currentTask.hosts.length - 1];
+                        if (lastHost && lastHost.host === currentHost) {
+                            lastHost.msg = msgLines.join('\n');
+                            if (currentItem) lastHost.item = currentItem;
+                        }
+                        msgLines = [];
+                        currentHost = null;
+                        currentItem = null;
+                    }
+                } else {
+                    // Multi-line array — collect lines
+                    let inArray = true;
+                    i++;
+                    while (i < lines.length && inArray) {
+                        const innerLine = lines[i];
+                        if (innerLine.trim() === ']' || innerLine.trim().endsWith('],') || innerLine.trim().endsWith(']')) {
+                            inArray = false;
+                            braceDepth -= 1;
+                            inJsonBlock = braceDepth <= 0;
+                            const lastHost = currentTask.hosts[currentTask.hosts.length - 1];
+                            if (lastHost && lastHost.host === currentHost) {
+                                lastHost.msg = msgLines.join('\n');
+                                if (currentItem) lastHost.item = currentItem;
+                            }
+                            msgLines = [];
+                            currentHost = null;
+                            currentItem = null;
+                        } else {
+                            const clean = innerLine.replace(/^[\s"]+|[\s",]+$/g, '').replace(/^\\n|\\n$/g, '');
+                            if (clean) msgLines.push(clean);
+                        }
+                        i++;
+                    }
+                    continue;
+                }
+            } else if (braceDepth <= 0) {
+                inJsonBlock = false;
+            }
+            continue;
+        }
+
+        // PLAY RECAP — end of useful output
+        if (/^PLAY RECAP \*+$/.test(line)) {
+            flushMsg();
+            flushTask();
+            break;
+        }
+    }
+
+    flushMsg();
+    flushTask();
+    return tasks;
+}
+
+/**
+ * Renders a msg string as structured key-value lines or plain text.
+ *
+ * @param {string} msg - Message content.
+ * @returns {string} HTML.
+ */
+function renderMsgContent(msg) {
+    if (!msg) return '<span class="report-msg-empty">No output</span>';
+    const lines = String(msg).replace(/\\n/g, '\n').split('\n').filter(l => l.trim() && l.trim() !== '--------------------------------------------------');
+    if (!lines.length) return '<span class="report-msg-empty">No output</span>';
+
+    // Fix parsing artifact: "LABELvalue" → "LABEL: value" (first loop item often loses colons)
+    const fixedLines = lines.map(l => {
+        if (l.includes(':')) return l;
+        return l.trimStart().replace(/^([A-Z][A-Z\s]*[A-Z])([A-Za-z0-9@])/g, '$1: $2');
+    });
+
+    // Check if lines contain structured KEY: VALUE headers.
+    const kvLines = fixedLines.filter(l => /^[A-Z][A-Z0-9\s()/_-]*:\s*\S/.test(l.trim()));
+    if (kvLines.length >= 2 || kvLines.length > fixedLines.length * 0.4) {
+        return fixedLines.map(line => {
+            const kvMatch = line.trim().match(/^([A-Z][A-Z0-9\s()/_-]*?):\s*(.*)/);
+            if (kvMatch) {
+                return `<div class="report-kv-line"><span class="report-kv-key">${escapeHtml(kvMatch[1])}</span><span class="report-kv-val">${escapeHtml(kvMatch[2])}</span></div>`;
+            }
+            return `<div class="report-text-line">${escapeHtml(line.trim())}</div>`;
+        }).join('');
+    }
+
+    // Fallback: pre-formatted text
+    return `<pre class="report-pre">${escapeHtml(fixedLines.join('\n'))}</pre>`;
+}
+
+/**
+ * Renders task output sections for the report view.
+ *
+ * @param {Array<Object>} tasks - Parsed task outputs.
+ * @param {Object} jsonResult - Structured json_result from DB.
+ * @param {string} hostStatusHtml - Host status section to insert after detailed audit output.
+ * @returns {string} HTML.
+ */
+function renderTaskOutputs(tasks, jsonResult, hostStatusHtml = '') {
+    if (!tasks || !tasks.length) {
+        return `<div class="report-empty">No task output available. Check the Raw Log tab for full output.</div>${hostStatusHtml}`;
+    }
+
+    let insertedHostStatus = false;
+    const html = tasks.map(section => {
+        const hostCount = section.hosts.length;
+        const hostCards = section.hosts.map(h => {
+            const statusClass = h.status === 'failed' ? 'report-host-failed' :
+                               h.status === 'changed' ? 'report-host-changed' : 'report-host-ok';
+            const hostLabel = h.item ? `${escapeHtml(h.host)} <span class="report-host-item">(${escapeHtml(h.item)})</span>` : escapeHtml(h.host);
+            return `
+                <div class="report-host-card ${statusClass}">
+                    <div class="report-host-header">
+                        <span class="report-host-name">${hostLabel}</span>
+                        <span class="report-host-status">${escapeHtml(h.status)}</span>
+                    </div>
+                    <div class="report-host-msg">${renderMsgContent(h.msg)}</div>
+                </div>
+            `;
+        }).join('');
+
+        const sectionHtml = `
+            <details class="report-task-section" open>
+                <summary class="report-task-header">
+                    <span class="report-task-name">${escapeHtml(section.task)}</span>
+                    <span class="report-task-count">${hostCount} ${hostCount === 1 ? 'host' : 'hosts'}</span>
+                </summary>
+                <div class="report-task-body">${hostCards}</div>
+            </details>
+        `;
+        if (!insertedHostStatus && /detailed audit log/i.test(section.task || '')) {
+            insertedHostStatus = true;
+            return sectionHtml + hostStatusHtml;
+        }
+        return sectionHtml;
+    }).join('');
+
+    return insertedHostStatus ? html : html + hostStatusHtml;
+}
+
+/**
+ * Renders the full report view (modal or page).
+ *
+ * @param {Object} data - { history, json_result }.
+ * @returns {string} HTML.
+ */
+function renderReportView(data) {
+    const h = data.history;
+    const jsonResult = h.json_result || {};
+    const stats = jsonResult.stats || {};
+    const failures = jsonResult.failures || [];
+    const taskOutputs = jsonResult.task_outputs || [];
+
+    // Calculate duration
+    let duration = '';
+    if (h.started_at && h.finished_at) {
+        const start = new Date(h.started_at.replace(' ', 'T'));
+        const end = new Date(h.finished_at.replace(' ', 'T'));
+        const diff = Math.round((end - start) / 1000);
+        const mins = Math.floor(diff / 60);
+        const secs = diff % 60;
+        duration = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+    }
+
+    // Calculate totals
+    let totalHosts = Object.keys(stats).length;
+    let totalOk = 0, totalChanged = 0, totalFailed = 0;
+    for (const hostStats of Object.values(stats)) {
+        totalOk += (hostStats.ok || 0) - (hostStats.changed || 0);
+        totalChanged += hostStats.changed || 0;
+        totalFailed += (hostStats.failures || 0) + (hostStats.unreachable || 0);
+    }
+
+    // Parse task outputs: raw parser handles looped items correctly,
+    // structured task_outputs only captures final aggregated result for loops
+    let tasks = parseRawTaskOutputs(h.output || '');
+    if (!tasks.length && taskOutputs.length) {
+        const taskMap = {};
+        for (const to of taskOutputs) {
+            if (!taskMap[to.task]) taskMap[to.task] = { task: to.task, hosts: [] };
+            taskMap[to.task].hosts.push({
+                host: to.host,
+                status: to.status,
+                msg: Array.isArray(to.msg) ? to.msg.join('\n') : to.msg,
+                item: to.item,
+            });
+        }
+        tasks = Object.values(taskMap);
+    }
+
+    // Move tasks with actual output content to the top
+    tasks.sort((a, b) => {
+        const contentLen = (t) => t.hosts.reduce((sum, h) => sum + (h.msg ? h.msg.length : 0), 0);
+        return contentLen(b) - contentLen(a);
+    });
+
+    const statusBadge = h.status === 'success' ? 'report-badge-success' :
+                       h.status === 'failed' ? 'report-badge-failed' :
+                       h.status === 'aborted' ? 'report-badge-aborted' : 'report-badge-other';
+
+    // Host status table rows
+    const hostRows = Object.entries(stats).sort().map(([host, s]) => {
+        const hostFailed = (s.failures || 0) + (s.unreachable || 0) > 0;
+        const statusIcon = hostFailed ? '🔴' : (s.changed > 0 ? '🟡' : '🟢');
+        const statusLabel = hostFailed ? 'Failed' : (s.changed > 0 ? 'Changed' : 'OK');
+        return `
+            <tr>
+                <td>${escapeHtml(host)}</td>
+                <td>${s.ok || 0}</td>
+                <td>${s.changed || 0}</td>
+                <td>${s.failures || 0}</td>
+                <td>${s.unreachable || 0}</td>
+                <td>${s.skipped || 0}</td>
+                <td>${statusIcon} ${escapeHtml(statusLabel)}</td>
+            </tr>
+        `;
+    }).join('');
+    const hostStatusSection = `
+        <div class="report-host-table-section">
+            <h3 class="report-section-title">Host Status</h3>
+            <div class="table-responsive">
+                <table class="data-table report-host-table">
+                    <thead>
+                        <tr>
+                            <th>Host</th>
+                            <th>OK</th>
+                            <th>Changed</th>
+                            <th>Failed</th>
+                            <th>Unreachable</th>
+                            <th>Skipped</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>${hostRows}</tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    // Failure detail cards
+    const failureCards = failures.length ? failures.map(f => `
+        <div class="report-failure-card">
+            <div class="report-failure-header">
+                <span class="report-failure-host">${escapeHtml(f.host)}</span>
+                <span class="report-failure-task">${escapeHtml(f.task)}</span>
+            </div>
+            <div class="report-failure-msg">${escapeHtml(f.message || 'Unknown error')}</div>
+        </div>
+    `).join('') : '';
+
+    return `
+        <div class="report-container">
+            <div class="report-header">
+                <div class="report-header-main">
+                    <h2 class="report-playbook-name">${escapeHtml(h.playbook_name || 'Deleted Playbook')}</h2>
+                    <div class="report-meta">
+                        <span class="report-badge ${statusBadge}">${escapeHtml(h.status)}</span>
+                        <span>Run #${h.id}</span>
+                        ${h.triggered_by_name ? `<span>by ${escapeHtml(h.triggered_by_name)}</span>` : ''}
+                        <span>${escapeHtml(h.mode || 'run')}</span>
+                    </div>
+                </div>
+                <div class="report-header-side">
+                    <span class="report-time">${escapeHtml(h.started_at || '')}</span>
+                    <span class="report-duration">${escapeHtml(duration)}</span>
+                </div>
+            </div>
+
+            <div class="report-summary-cards">
+                <div class="report-card">
+                    <span class="report-card-label">Hosts</span>
+                    <span class="report-card-value">${totalHosts}</span>
+                </div>
+                <div class="report-card report-card-ok">
+                    <span class="report-card-label">OK</span>
+                    <span class="report-card-value">${totalOk}</span>
+                </div>
+                <div class="report-card report-card-changed">
+                    <span class="report-card-label">Changed</span>
+                    <span class="report-card-value">${totalChanged}</span>
+                </div>
+                <div class="report-card report-card-failed">
+                    <span class="report-card-label">Failed</span>
+                    <span class="report-card-value">${totalFailed}</span>
+                </div>
+            </div>
+
+            ${failureCards ? `
+            <div class="report-failures">
+                <h3 class="report-section-title">⚠ Failures (${failures.length})</h3>
+                ${failureCards}
+            </div>
+            ` : ''}
+
+            <div class="report-task-outputs">
+                <h3 class="report-section-title">Task Output</h3>
+                ${renderTaskOutputs(tasks, jsonResult, hostStatusSection)}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Renders the report view inside the console modal.
+ * Uses history data from STATE or fetches via API if not available locally.
+ *
+ * @returns {void}
+ */
+async function showConsoleReport() {
+    const statusView = document.getElementById('consoleStatusView');
+    const rawOutput = document.getElementById('consoleOutput');
+    const reportView = document.getElementById('consoleReportView');
+    if (!reportView) return;
+
+    statusView?.classList.add('hidden');
+    rawOutput?.classList.add('hidden');
+    reportView.classList.remove('hidden');
+
+    if (!reportView.dataset.loaded && currentConsoleHistoryId) {
+        let h = STATE.history.find(row => Number(row.id) === Number(currentConsoleHistoryId));
+        if (!h || (!h.json_result && !h.output)) {
+            try {
+                const data = await apiGet(`/admin/automator/api/report/${currentConsoleHistoryId}`, 6000);
+                if (data && data.success && data.history) {
+                    h = data.history;
+                    const idx = STATE.history.findIndex(row => Number(row.id) === Number(h.id));
+                    if (idx >= 0) STATE.history[idx] = h;
+                    else STATE.history.unshift(h);
+                }
+            } catch (err) {
+                h = null;
+            }
+        }
+
+        if (h && (h.json_result || h.output)) {
+            reportView.innerHTML = renderReportView({ history: h });
+            reportView.dataset.loaded = '1';
+        } else {
+            reportView.innerHTML = '<div class="report-empty">Report data not yet available. Wait for the run to finish.</div>';
+        }
+    }
 }
