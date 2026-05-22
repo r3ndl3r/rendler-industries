@@ -86,6 +86,22 @@ sub DB::get_rubiks_solves {
     );
 }
 
+# Returns the absolute top 5 fastest solves across all users for a specific cube type.
+sub DB::get_top_rubiks_solves {
+    my ($self, $cube_type) = @_;
+    $self->ensure_connection;
+
+    return $self->{dbh}->selectall_arrayref(
+        'SELECT s.duration_ms, s.solved_at, u.username, UNIX_TIMESTAMP(s.solved_at) as unix_time
+         FROM rubiks_solves s
+         JOIN users u ON s.user_id = u.id
+         WHERE s.cube_type = ?
+         ORDER BY s.duration_ms ASC
+         LIMIT 5',
+        { Slice => {} }, $cube_type
+    );
+}
+
 # Reassigns the cube type of one timed solve owned by the current user.
 # Swaps 3x3 to 4x4 or 4x4 to 3x3 automatically.
 sub DB::reassign_rubiks_solve_cube_type {
