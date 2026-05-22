@@ -235,14 +235,11 @@ sub DB::list_automator_categories {
     my ($self, $filters) = @_;
     $filters ||= {};
     my $sql = q{
-        SELECT category FROM automator_playbooks WHERE deleted_at IS NULL
+        SELECT DISTINCT COALESCE(NULLIF(category, ''), 'General') AS category
+          FROM automator_playbooks
+         WHERE deleted_at IS NULL
     };
     my @params;
-    if ($filters->{user_id}) {
-        $sql .= " AND user_id = ?";
-        push @params, $filters->{user_id};
-    }
-    $sql .= " UNION SELECT category FROM automator_inventories WHERE 1=1";
     if ($filters->{user_id}) {
         $sql .= " AND user_id = ?";
         push @params, $filters->{user_id};
@@ -250,7 +247,7 @@ sub DB::list_automator_categories {
     $sql .= " ORDER BY category ASC";
     my $sth = $self->{dbh}->prepare($sql);
     $sth->execute(@params);
-    return [ map { $_->[0] || 'General' } @{$sth->fetchall_arrayref} ];
+    return [ map { $_->[0] } @{$sth->fetchall_arrayref} ];
 }
 
 sub DB::get_automator_playbook {
