@@ -1,0 +1,173 @@
+<%# /templates/rubiks/solver.html.ep %>
+
+% layout 'default', navbar_title => '📸 Rubik\'s AI Solver', favicon => '🧊';
+% title 'Rubik\'s AI Solver';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/rubiks.css">
+    <script src="/js/rubiks.js"></script>
+    <%# min2phase.js - A lightweight Kociemba solver library %>
+    <script src="https://cdn.jsdelivr.net/npm/min2phase.js@1.0.1/dist/min2phase.min.js"></script>
+% end
+
+<div class="rubiks-container app-container">
+    <div class="header-bar">
+        <h1>📸 <span>Rubik's AI Solver</span></h1>
+        <div class="manage-actions">
+            <a class="btn-secondary" href="/rubiks">🧊 Generator</a>
+            <button type="button" class="btn-primary" onclick="openUploadModal()">📤 Analyze Cube</button>
+        </div>
+    </div>
+
+    <div class="solver-layout">
+        <div id="solution-card" class="glass-card result-card" style="display: none;">
+            <div class="section-heading">
+                <div>
+                    <span class="eyebrow">Gemini AI Analysis</span>
+                    <h2>✅ Optimal Solution</h2>
+                </div>
+            </div>
+            <div class="solution-display">
+                <div id="solve-sequence" class="timer-display solution-text"></div>
+                <div class="solution-meta">
+                    <span id="move-count" class="badge">0 moves</span>
+                    <p>💡 Hold cube with <strong>White Up</strong> and <strong>Green Front</strong> before starting.</p>
+                </div>
+            </div>
+
+            <%# Graphical Move Diagram %>
+            <div id="cube-diagram-container" class="diagram-canvas mt-4" style="background: white;">
+                <div class="empty-state">
+                    <p>Calculating diagram...</p>
+                </div>
+            </div>
+            <div class="diagram-actions justify-center mt-2">
+                 <button class="btn-icon" title="Download SVG" onclick="downloadSVG()">💾 Download SVG</button>
+            </div>
+
+            <div class="action-grid mt-4">
+                <button class="btn-secondary" onclick="loadSolutionToGenerator()">🛠️ Open in Generator</button>
+                <button class="btn-secondary" onclick="resetSolverUI()">🔄 Clear</button>
+            </div>
+        </div>
+
+        <div id="state-editor-card" class="glass-card result-card" style="display: none;">
+            <div class="section-heading">
+                <div>
+                    <span class="eyebrow">Review Extracted Stickers</span>
+                    <h2>🧩 Complete Cube State</h2>
+                </div>
+            </div>
+            <p id="state-editor-notes" class="input-hint">Tap any sticker to cycle its face/color. Unknown stickers are marked with ?.</p>
+            <div id="state-editor-grid" class="state-editor-grid"></div>
+            <div class="state-editor-legend">
+                <span><b class="state-swatch state-U"></b> U White</span>
+                <span><b class="state-swatch state-R"></b> R Red</span>
+                <span><b class="state-swatch state-F"></b> F Green</span>
+                <span><b class="state-swatch state-D"></b> D Yellow</span>
+                <span><b class="state-swatch state-L"></b> L Orange</span>
+                <span><b class="state-swatch state-B"></b> B Blue</span>
+            </div>
+            <div class="action-grid mt-4">
+                <button type="button" class="btn-primary" onclick="solveReviewedState()">✅ Solve Reviewed State</button>
+                <button type="button" class="btn-secondary" onclick="resetSolverUI()">🔄 Clear</button>
+            </div>
+        </div>
+
+        <div class="glass-card solver-info-card">
+            <div class="section-heading">
+                <div>
+                    <span class="eyebrow">How it works</span>
+                    <h2>🧠 Rigorous AI Solving</h2>
+                </div>
+            </div>
+            <div class="guide-steps">
+                <div class="guide-step">
+                    <div class="step-num">1</div>
+                    <div class="step-body">
+                        <strong>Two-Photo Capture</strong>
+                        <p>We use Gemini AI to analyze two photos showing all 6 faces (54 stickers) of your cube.</p>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="step-num">2</div>
+                    <div class="step-body">
+                        <strong>Partial State Mapping</strong>
+                        <p>Gemini fills what it can see and marks unclear stickers for manual review.</p>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="step-num">3</div>
+                    <div class="step-body">
+                        <strong>Local Computation</strong>
+                        <p>The solution is calculated locally in your browser for maximum precision and speed.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%# Dual-Photo Upload Modal %>
+<div id="uploadModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📤 Analyze Cube State</h3>
+            <span class="close-btn" onclick="closeUploadModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="uploadForm" onsubmit="handleSolverUpload(event)">
+                <div class="form-group mb-4">
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Cube Size</label>
+                    <div class="dimension-toggle flex gap-2">
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" name="dimension" value="auto" checked class="hidden peer" onchange="RUBIKS_STATE.solverDimension = 'auto'">
+                            <div class="p-2 text-center border border-slate-700 rounded-lg peer-checked:bg-blue-600 peer-checked:border-blue-500 transition-all">Auto</div>
+                        </label>
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" name="dimension" value="3" class="hidden peer" onchange="RUBIKS_STATE.solverDimension = 3">
+                            <div class="p-2 text-center border border-slate-700 rounded-lg peer-checked:bg-blue-600 peer-checked:border-blue-500 transition-all">3x3</div>
+                        </label>
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" name="dimension" value="4" class="hidden peer" onchange="RUBIKS_STATE.solverDimension = 4">
+                            <div class="p-2 text-center border border-slate-700 rounded-lg peer-checked:bg-blue-600 peer-checked:border-blue-500 transition-all">4x4</div>
+                        </label>
+                    </div>
+                </div>
+
+                <p class="mb-4 text-sm text-slate-400">Capture two angled shots to see all stickers.</p>
+                
+                <div class="dual-upload-grid">
+                    <div class="upload-slot" id="slot-image1" onclick="openSolverFilePicker('image1')">
+                        <input type="file" id="image1" name="image1" accept="image/*" capture="environment" class="solver-file-input" onchange="renderSolverPreview('image1')">
+                        <img id="preview-image1" class="solver-preview-img" alt="Photo 1 preview" hidden>
+                        <div class="upload-placeholder">
+                            <span>📸 Photo 1</span>
+                            <small>Camera only · Front / Top / Right</small>
+                        </div>
+                        <div class="upload-actions">
+                            <button type="button" class="btn-tiny" onclick="event.stopPropagation(); openSolverFilePicker('image1')">📷 Take Photo</button>
+                        </div>
+                    </div>
+
+                    <div class="upload-slot" id="slot-image2" onclick="openSolverFilePicker('image2')">
+                        <input type="file" id="image2" name="image2" accept="image/*" capture="environment" class="solver-file-input" onchange="renderSolverPreview('image2')">
+                        <img id="preview-image2" class="solver-preview-img" alt="Photo 2 preview" hidden>
+                        <div class="upload-placeholder">
+                            <span>📸 Photo 2</span>
+                            <small>Camera only · Back / Bottom / Left</small>
+                        </div>
+                        <div class="upload-actions">
+                            <button type="button" class="btn-tiny" onclick="event.stopPropagation(); openSolverFilePicker('image2')">📷 Take Photo</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions modal-actions-center mt-6">
+                    <button type="button" class="btn-secondary" onclick="closeUploadModal()">Cancel</button>
+                    <button type="submit" id="uploadSubmitBtn" class="btn-primary" disabled>🚀 Calculate Solution</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
