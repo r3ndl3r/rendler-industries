@@ -43,8 +43,16 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Infrastructure Orchestration:** Native integration with **Ansible** for home lab automation and server maintenance.
 *   **Secret Manager:** Secure **AES-GCM** storage for deployment secrets, with per-playbook aliases exposed as private files, environment variables, SSH keys, or Ansible Vault passwords.
 *   **Real-time Console:** Live execution monitoring via WebSockets, featuring process-group abort support and persistent log history.
+*   **Structured Run Reports:** Completed runs render standardized playbook audit output with summary cards, detailed task logs, and per-host status tables.
 *   **Success Chaining:** Complex workflow orchestration allowing playbooks to trigger sequential tasks upon successful completion.
 *   **Scheduled Maintenance:** Rule-based scheduling (Daily/Hourly) with automated multi-channel reporting for headless execution.
+
+<p align="center">
+  <img src="public/images/screenshots/automator_dashboard.png" height="130" />
+  <img src="public/images/screenshots/automator_playbook_run.png" height="130" />
+  <img src="public/images/screenshots/automator_playbook_log.png" height="130" />
+  <img src="public/images/screenshots/automator_playbook_report.png" height="130" />
+</p>
 
 ### 👥 User & Role Control (`/admin/users`)
 *   **Approval Workflow:** Registrations are sequestered in a `pending` state. Admins receive alerts and can approve accounts with a single click, triggering an **automated welcome email**.
@@ -171,6 +179,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 *   **Access Control:** Boards can be shared, private, or protected with a password.
 
 <p align="center">
+  <img src="public/images/screenshots/sticky_notes_main.png" height="130" />
   <img src="public/images/screenshots/sticky_notes_canvas.png" height="130" />
   <img src="public/images/screenshots/sticky_notes_boards.png" height="130" />
   <img src="public/images/screenshots/sticky_notes_settings.png" height="130" />
