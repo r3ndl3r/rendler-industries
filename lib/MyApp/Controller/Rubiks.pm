@@ -2,7 +2,8 @@
 
 package MyApp::Controller::Rubiks;
 use Mojo::Base 'Mojolicious::Controller';
-use Mojo::Util qw(trim);
+use Mojo::Util qw(trim b64_encode);
+use Mojo::JSON qw(encode_json);
 
 # Controller for the Rubik's Moves Generator and Algorithm Library.
 #
@@ -17,14 +18,18 @@ sub register_routes {
     my $family = $bridges->{family};
 
     $family->get('/rubiks')->to('rubiks#index');
-    $family->get('/rubiks/solve')->to('rubiks#solve');
+    $family->get('/rubiks/stopwatch')->to('rubiks#stopwatch');
+    $family->get('/rubiks/solve')->to('rubiks#solve_redirect');
+    $family->get('/rubiks/solver')->to('rubiks#solver');
     $family->get('/rubiks/api/state')->to('rubiks#api_state');
     $family->post('/rubiks/api/save')->to('rubiks#api_save');
     $family->post('/rubiks/api/delete/:id')->to('rubiks#api_delete');
     $family->get('/rubiks/api/solves')->to('rubiks#api_solves');
+    $family->get('/rubiks/api/solves/top/:cube_type')->to('rubiks#api_top_solves');
     $family->post('/rubiks/api/solves/save')->to('rubiks#api_save_solve');
     $family->post('/rubiks/api/solves/delete/:id')->to('rubiks#api_delete_solve');
     $family->post('/rubiks/api/solves/reassign/:id')->to('rubiks#api_reassign_solve');
+    $family->post('/rubiks/api/solver/upload')->to('rubiks#api_upload_solver');
 }
 
 # Renders the primary interface.
@@ -36,11 +41,26 @@ sub index {
 }
 
 # Renders the personal stopwatch and statistics interface.
-# Route: GET /rubiks/solve
-sub solve {
+# Route: GET /rubiks/stopwatch
+sub stopwatch {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
-    $c->render('rubiks/solve');
+    $c->render('rubiks/stopwatch');
+}
+
+# Redirects the old stopwatch URL to the canonical route.
+# Route: GET /rubiks/solve
+sub solve_redirect {
+    my $c = shift;
+    return $c->redirect_to('/rubiks/stopwatch');
+}
+
+# Renders the AI Solver interface.
+# Route: GET /rubiks/solver
+sub solver {
+    my $c = shift;
+    return $c->redirect_to('/login') unless $c->is_logged_in;
+    $c->render('rubiks/solver');
 }
 
 # API Endpoint: Returns the current state (saved algorithms).
@@ -135,6 +155,19 @@ sub api_solves {
     $c->render(json => { success => 1, solves => $solves });
 }
 
+# API Endpoint: Returns the global top 5 fastest solves for a cube type.
+# Route: GET /rubiks/api/solves/top/:cube_type
+sub api_top_solves {
+    my $c = shift;
+    my $cube_type = $c->param('cube_type') || '3x3';
+
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_logged_in;
+
+    my $top = $c->db->get_top_rubiks_solves($cube_type);
+    $c->render(json => { success => 1, top => $top });
+}
+
 # API Endpoint: Records a timed solve for the current user.
 # Route: POST /rubiks/api/solves/save
 sub api_save_solve {
@@ -211,6 +244,107 @@ sub api_reassign_solve {
 
     my $solves = $c->db->get_rubiks_solves($c->current_user_id);
     $c->render(json => { success => 1, message => 'Cube type updated', solves => $solves });
+}
+
+# API Endpoint: Processes two images of a Rubik's cube and extracts the state via Gemini AI.
+# Route: POST /rubiks/api/solver/upload
+sub api_upload_solver {
+    my $c = shift;
+
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_logged_in;
+
+    my $img1 = $c->req->upload('image1');
+    my $img2 = $c->req->upload('image2');
+
+    unless ($img1 && $img2) {
+        return $c->render(json => { success => 0, error => 'Both images are required' });
+    }
+
+    my $data1 = $img1->asset->slurp;
+    my $data2 = $img2->asset->slurp;
+
+    # Gemini Vision Prompt for lossy color mapping
+    my $requested_dim = $c->param('dimension') || 'auto';
+    my $dim = $requested_dim =~ /^[34]$/ ? int($requested_dim) : 'auto';
+    my $sticker_goal = $dim eq 'auto'
+        ? '54 characters for a 3x3 cube or 96 characters for a 4x4 cube'
+        : ($dim * $dim * 6) . " characters for a ${dim}x${dim} cube";
+    my $order_goal = $dim eq 'auto'
+        ? 'For 3x3 use 9 chars per face. For 4x4 use 16 chars per face.'
+        : 'Order: ' . ($dim * $dim) . ' chars for U, then ' . ($dim * $dim) . ' for R, F, D, L, B.';
+    my $system_instructions = "You are a lossy computer vision extractor for Rubik's cubes.
+Analyze the two provided photos. Photo 1 shows Front (F), Top (U), and Right (R). Photo 2 shows Back (B), Down (D), and Left (L).
+First determine whether the photographed cube is 3x3 or 4x4. Then map stickers to a single Kociemba string: $sticker_goal. Return every sticker you can identify.
+Faces: U (Top), R (Right), F (Front), D (Down), L (Left), B (Back).
+$order_goal
+Use '?' for any sticker that is missing, hidden, blurry, uncertain, or not confidently mapped.
+Do not reject the entire image because some stickers are unclear. Preserve all visible/certain sticker data.
+
+Only return an 'error' if there is no Rubik's cube data visible at all.
+Otherwise return a JSON object with:
+- dimension: 3 or 4
+- state_string: the lossy state string containing only U,R,F,D,L,B,?
+- notes: short human-readable notes about missing or uncertain areas
+
+Return ONLY a JSON object with either the 'state_string' field OR the 'error' field.";
+
+    my @user_parts = (
+        { text => "Map stickers from these two photos to a lossy cube state string. Detect dimension 3 or 4. Use '?' for unknown stickers." },
+        { inlineData => { mimeType => $img1->headers->content_type // 'image/jpeg', data => b64_encode($data1, '') } },
+        { inlineData => { mimeType => $img2->headers->content_type // 'image/jpeg', data => b64_encode($data2, '') } }
+    );
+
+    $c->render_later;
+
+    $c->gemini_prompt(
+        contents => [{ role => 'user', parts => \@user_parts }],
+        system   => $system_instructions,
+        timeout  => 60,
+        response_format => 'application/json'
+    )->then(sub {
+        my $data = shift;
+
+        if ($data && $data->{candidates} && @{$data->{candidates}}) {
+            my $json_text = $data->{candidates}[0]{content}{parts}[0]{text} // '';
+            # Strip markdown code blocks if present
+            $json_text =~ s/```json\n?//g;
+            $json_text =~ s/\n?```//g;
+
+            eval {
+                my $parsed = Mojo::JSON::decode_json(trim($json_text));
+                if ($parsed && $parsed->{error}) {
+                    $c->render(json => { success => 0, error => $parsed->{error} });
+                } elsif ($parsed && $parsed->{state_string}) {
+                    my $state = uc($parsed->{state_string});
+                    $state =~ s/[^URFDLB?]/?/g;
+                    my $detected_dim = ($parsed->{dimension} // '') =~ /^[34]$/ ? int($parsed->{dimension}) : undef;
+                    $detected_dim ||= length($state) > 70 ? 4 : 3;
+                    my $stickers = $detected_dim * $detected_dim * 6;
+                    $state = substr($state . ('?' x $stickers), 0, $stickers);
+                    my $missing = ($state =~ tr/?/?/);
+                    $c->render(json => {
+                        success => 1,
+                        dimension => $detected_dim,
+                        state_string => $state,
+                        missing_count => $missing,
+                        notes => $parsed->{notes} // ''
+                    });
+                } else {
+                    die "Invalid state string format";
+                }
+            };
+            if ($@) {
+                $c->render(json => { success => 0, error => "AI returned invalid format. Try clearer photos." });
+            }
+        } else {
+            $c->render(json => { success => 0, error => "AI service returned no analysis." });
+        }
+    })->catch(sub {
+        my $err = shift;
+        $c->app->log->error("Rubiks Solver AI error: $err");
+        $c->render(json => { success => 0, error => "AI processing timed out or failed." });
+    });
 }
 
 1;
