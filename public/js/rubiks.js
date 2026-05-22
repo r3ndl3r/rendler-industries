@@ -26,8 +26,97 @@ let RUBIKS_STATE = {
     statsCubeFilter: 'all',
     timerRunning: false,
     timerStartedAt: 0,
-    timerInterval: null
+    timerInterval: null,
+    solverPreviews: { image1: null, image2: null },
+    initialSolverState: null,
+    reviewedSolverState: '',
+    solverDimension: 'auto'
 };
+
+/**
+ * Lightweight Rubik's Cube state manager for NxN color simulation.
+ */
+class RubiksCube {
+    constructor(stateString, dimension = 3) {
+        this.dim = dimension;
+        this.state = (stateString || this.getSolvedString()).split('');
+    }
+
+    getSolvedString() {
+        const stickersPerFace = this.dim * this.dim;
+        return 'U'.repeat(stickersPerFace) + 'R'.repeat(stickersPerFace) + 'F'.repeat(stickersPerFace) +
+               'D'.repeat(stickersPerFace) + 'L'.repeat(stickersPerFace) + 'B'.repeat(stickersPerFace);
+    }
+
+    getFaceOffset(faceName) {
+        const idx = { U: 0, R: 1, F: 2, D: 3, L: 4, B: 5 }[faceName];
+        return idx * this.dim * this.dim;
+    }
+
+    move(m) {
+        if (this.dim !== 3) return; // Rotation simulation currently limited to 3x3 for performance
+        const count = m.count || 1;
+        const face = m.face.toUpperCase();
+        for (let i = 0; i < count; i++) {
+            this.rotate(face, m.prime);
+        }
+    }
+
+    rotate(face, prime) {
+        const dim = this.dim;
+        const stickers = dim * dim;
+        const s = this.state;
+        const f = {
+            U: 0, R: stickers, F: stickers * 2, D: stickers * 3, L: stickers * 4, B: stickers * 5
+        };
+
+        const rotateFace = (idx) => {
+            const temp = s.slice(idx, idx + stickers);
+            if (!prime) {
+                s[idx] = temp[6]; s[idx+1] = temp[3]; s[idx+2] = temp[0];
+                s[idx+3] = temp[7]; s[idx+4] = temp[4]; s[idx+5] = temp[1];
+                s[idx+6] = temp[8]; s[idx+7] = temp[5]; s[idx+8] = temp[2];
+            } else {
+                s[idx] = temp[2]; s[idx+1] = temp[5]; s[idx+2] = temp[8];
+                s[idx+3] = temp[1]; s[idx+4] = temp[4]; s[idx+5] = temp[7];
+                s[idx+6] = temp[0]; s[idx+7] = temp[3]; s[idx+8] = temp[6];
+            }
+        };
+
+        const cycle = (arr) => {
+            if (!prime) {
+                const temp = [s[arr[3][0]], s[arr[3][1]], s[arr[3][2]]];
+                for (let i = 3; i > 0; i--) {
+                    s[arr[i][0]] = s[arr[i-1][0]]; s[arr[i][1]] = s[arr[i-1][1]]; s[arr[i][2]] = s[arr[i-1][2]];
+                }
+                s[arr[0][0]] = temp[0]; s[arr[0][1]] = temp[1]; s[arr[0][2]] = temp[2];
+            } else {
+                const temp = [s[arr[0][0]], s[arr[0][1]], s[arr[0][2]]];
+                for (let i = 0; i < 3; i++) {
+                    s[arr[i][0]] = s[arr[i+1][0]]; s[arr[i][1]] = s[arr[i+1][1]]; s[arr[i][2]] = s[arr[i+1][2]];
+                }
+                s[arr[3][0]] = temp[0]; s[arr[3][1]] = temp[1]; s[arr[3][2]] = temp[2];
+            }
+        };
+
+        switch(face) {
+            case 'U': rotateFace(f.U); cycle([[f.F,0,1,2], [f.L,0,1,2], [f.B,0,1,2], [f.R,0,1,2]]); break;
+            case 'D': rotateFace(f.D); cycle([[f.F,6,7,8], [f.R,6,7,8], [f.B,6,7,8], [f.L,6,7,8]]); break;
+            case 'L': rotateFace(f.L); cycle([[f.F,0,3,6], [f.U,0,3,6], [f.B,8,5,2], [f.D,0,3,6]]); break;
+            case 'R': rotateFace(f.R); cycle([[f.F,2,5,8], [f.D,2,5,8], [f.B,6,3,0], [f.U,2,5,8]]); break;
+            case 'F': rotateFace(f.F); cycle([[f.U,6,7,8], [f.R,0,3,6], [f.D,2,1,0], [f.L,8,5,2]]); break;
+            case 'B': rotateFace(f.B); cycle([[f.U,0,1,2], [f.L,0,3,6], [f.D,8,7,6], [f.R,8,5,2]]); break;
+        }
+    }
+
+    getFaceColors(faceName) {
+        const start = this.getFaceOffset(faceName);
+        const count = this.dim * this.dim;
+        return this.state.slice(start, start + count).map(c => {
+            return { U: '#ffffff', D: '#ffff00', L: '#ff8000', R: '#ff0000', F: '#00ff00', B: '#0000ff' }[c] || '#cccccc';
+        });
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('moveSequence');
@@ -36,6 +125,14 @@ document.addEventListener('DOMContentLoaded', () => {
             RUBIKS_STATE.sequence = e.target.value;
             generateDiagram();
         });
+
+        const importedSequence = sessionStorage.getItem('rubiks_imported_sequence');
+        if (importedSequence) {
+            input.value = importedSequence;
+            RUBIKS_STATE.sequence = importedSequence;
+            sessionStorage.removeItem('rubiks_imported_sequence');
+            generateDiagram();
+        }
     }
 
     loadLibrary();
@@ -327,12 +424,24 @@ function parseNotation(str) {
  * @param {{face: string, wide: boolean, prime: boolean, count: number, layer: number, raw: string}} move
  * @returns {string} SVG markup string.
  */
-function renderMoveSVG(move) {
+function renderMoveSVG(move, colors) {
     const size = RUBIKS_STATE.cubeSize;
     const padding = 8;
     const boxSize = RUBIKS_CONFIG.gridSize;
     const totalSize = size * boxSize + (padding * 2);
     let svg = `<svg width="${totalSize}" height="${totalSize}" viewBox="0 0 ${totalSize} ${totalSize}" xmlns="http://www.w3.org/2000/svg">`;
+
+    // Render colored stickers behind the grid if colors are provided
+    if (colors && colors.length === size * size) {
+        for (let i = 0; i < colors.length; i++) {
+            const col = i % size;
+            const row = Math.floor(i / size);
+            const x = padding + (col * boxSize);
+            const y = padding + (row * boxSize);
+            svg += `<rect x="${x}" y="${y}" width="${boxSize}" height="${boxSize}" fill="${colors[i]}" stroke="none" />`;
+        }
+    }
+
     svg += `<g class="cube-grid">`;
     for (let i = 0; i <= size; i++) {
         const pos = padding + (i * boxSize);
@@ -469,6 +578,7 @@ function setTimerCubeType(cubeType) {
     document.querySelectorAll('[data-timer-cube]').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.timerCube === cubeType);
     });
+    renderSolveDashboard();
 }
 
 /**
@@ -494,7 +604,7 @@ function startSolveTimer() {
 }
 
 /**
- * Stops the active timer and persists the solve.
+ * Stops the active timer and asks whether to save the solve.
  * @returns {Promise<void>}
  */
 async function stopSolveTimer() {
@@ -508,6 +618,7 @@ async function stopSolveTimer() {
     document.removeEventListener('touchstart', handleSolveOverlayInput);
 
     const duration = Math.round(performance.now() - RUBIKS_STATE.timerStartedAt);
+    const cubeType = RUBIKS_STATE.timerCubeType;
     clearInterval(RUBIKS_STATE.timerInterval);
     RUBIKS_STATE.timerInterval = null;
     RUBIKS_STATE.timerRunning = false;
@@ -515,14 +626,33 @@ async function stopSolveTimer() {
     document.getElementById('timerStartBtn').disabled = false;
     setTimerDisplay(duration);
 
+    showConfirmModal({
+        title: 'Save Solve?',
+        icon: '⏱️',
+        message: `Save ${formatSolveTime(duration)} as a ${cubeType} solve?`,
+        confirmText: 'Save Time',
+        confirmIcon: '💾',
+        cancelText: 'Discard',
+        success: true,
+        onConfirm: () => saveSolveTime(duration, cubeType)
+    });
+}
+
+/**
+ * Persists a confirmed solve time.
+ * @param {number} duration - Solve duration in milliseconds.
+ * @param {string} cubeType - Cube type for the solve.
+ * @returns {Promise<void>}
+ */
+async function saveSolveTime(duration, cubeType) {
     try {
         const res = await apiPost('/rubiks/api/solves/save', {
-            cube_type: RUBIKS_STATE.timerCubeType,
+            cube_type: cubeType,
             duration_ms: duration
         });
         if (res && res.success) {
             RUBIKS_STATE.solves = res.solves || [];
-            renderSolveDashboard(duration, RUBIKS_STATE.timerCubeType);
+            renderSolveDashboard(duration, cubeType);
         } else {
             showToast(res?.error || 'Solve save failed. Please try again.', 'error');
         }
@@ -648,21 +778,31 @@ function reassignSolveCubeType(id, currentType) {
  */
 function renderSolveDashboard(latestDuration = null, latestCube = null) {
     const solves = filteredSolves();
+    const historySolves = timerCubeSolves();
     const chronological = solves.slice().reverse();
     const stats = computeSolveStats(chronological);
 
     renderStatsGrid(stats);
-    renderSolveHistory(solves);
+    renderSolveHistory(historySolves);
     renderSessionSummary(stats, latestDuration, latestCube);
     renderLineChart('solve-trend-chart', chronological.slice(-30).map((s, i) => ({
         label: `#${chronological.length - Math.min(30, chronological.length) + i + 1}`,
         value: s.duration_ms
     })), 'Solve time');
     renderLineChart('average-trend-chart', rollingAverageSeries(chronological, 5), 'Ao5');
+    loadLeaderboard();
 
     const count = document.getElementById('solve-count');
-    if (count) count.textContent = `${RUBIKS_STATE.solves.length} solve${RUBIKS_STATE.solves.length === 1 ? '' : 's'}`;
+    if (count) count.textContent = `${historySolves.length} ${RUBIKS_STATE.timerCubeType} solve${historySolves.length === 1 ? '' : 's'}`;
 
+}
+
+/**
+ * Returns solve records matching the active timer cube selection.
+ * @returns {Array<Object>}
+ */
+function timerCubeSolves() {
+    return RUBIKS_STATE.solves.filter(s => s.cube_type === RUBIKS_STATE.timerCubeType);
 }
 
 /**
@@ -781,11 +921,11 @@ function renderSolveHistory(solves) {
     if (!history) return;
 
     if (solves.length === 0) {
-        history.innerHTML = '<p class="empty-hint">No solves recorded for this filter yet.</p>';
+        history.innerHTML = `<p class="empty-hint">No ${RUBIKS_STATE.timerCubeType} solves recorded yet.</p>`;
         return;
     }
 
-    history.innerHTML = solves.slice(0, 60).map((solve, idx) => `
+    history.innerHTML = solves.slice(0, 5).map((solve, idx) => `
         <div class="solve-row">
             <div>
                 <span class="badge-small">${escapeHtml(solve.cube_type)}</span>
@@ -799,6 +939,71 @@ function renderSolveHistory(solves) {
             </div>
         </div>
     `).join('');
+}
+
+/**
+ * Fetches and renders the global top 5 leaderboard.
+ */
+async function loadLeaderboard() {
+    const container = document.getElementById('leaderboard-container');
+    const caption = document.getElementById('leaderboard-caption');
+    if (!container) return;
+
+    if (caption) caption.textContent = `Top 5 Absolute Bests (${RUBIKS_STATE.timerCubeType})`;
+
+    try {
+        const res = await apiGet(`/rubiks/api/solves/top/${RUBIKS_STATE.timerCubeType}`);
+        if (res && res.success) {
+            renderLeaderboard(res.top);
+        }
+    } catch (err) {
+        console.error('Rubiks: Failed to load leaderboard', err);
+        container.innerHTML = '<div class="empty-state">Leaderboard unavailable</div>';
+    }
+}
+
+/**
+ * Builds the HTML table for the global leaderboard.
+ * @param {Array<Object>} top - List of top 5 solve records.
+ */
+function renderLeaderboard(top) {
+    const container = document.getElementById('leaderboard-container');
+    if (!container) return;
+
+    if (!top || top.length === 0) {
+        container.innerHTML = '<div class="empty-state">No global records yet</div>';
+        return;
+    }
+
+    const medals = ['🥇', '🥈', '🥉', '4', '5'];
+    
+    let html = `
+        <table class="leaderboard-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>User</th>
+                    <th>Time</th>
+                    <th class="text-right">When</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    html += top.map((s, i) => `
+        <tr>
+            <td class="rank-cell">${medals[i]}</td>
+            <td class="user-cell">
+                <span class="user-icon">${window.getUserIcon ? window.getUserIcon(s.username) : '👤'}</span>
+                <span class="username">${s.username}</span>
+            </td>
+            <td class="time-cell font-mono">${formatSolveTime(s.duration_ms)}</td>
+            <td class="when-cell text-right text-xs text-slate-500">${window.getTimeSince ? window.getTimeSince(s.unix_time) : ''}</td>
+        </tr>
+    `).join('');
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
 }
 
 /**
@@ -925,6 +1130,357 @@ function formatDateTime(value) {
     return date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+/**
+ * Opens the Rubik's solver upload modal.
+ */
+function openUploadModal() {
+    const modal = document.getElementById('uploadModal');
+    if (modal) modal.classList.add('show');
+    document.body.classList.add('modal-open');
+    resetUploadForm();
+}
+
+/**
+ * Closes the Rubik's solver upload modal.
+ */
+function closeUploadModal() {
+    const modal = document.getElementById('uploadModal');
+    if (modal) modal.classList.remove('show');
+    document.body.classList.remove('modal-open');
+}
+
+/**
+ * Resets the upload form and previews.
+ */
+function resetUploadForm() {
+    const form = document.getElementById('uploadForm');
+    if (form) form.reset();
+    RUBIKS_STATE.solverDimension = 'auto';
+    ['image1', 'image2'].forEach(id => {
+        RUBIKS_STATE.solverPreviews[id] = null;
+        const input = document.getElementById(id);
+        const preview = document.getElementById(`preview-${id}`);
+        const placeholder = document.querySelector(`#slot-${id} .upload-placeholder`);
+        if (input) input.value = '';
+        if (preview) {
+            preview.removeAttribute('src');
+            preview.hidden = true;
+        }
+        if (placeholder) placeholder.hidden = false;
+    });
+    const btn = document.getElementById('uploadSubmitBtn');
+    if (btn) btn.disabled = true;
+}
+
+/**
+ * Opens the camera capture flow for a solver image.
+ */
+function openSolverFilePicker(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.click();
+}
+
+/**
+ * Renders a local preview of the uploaded cube photo.
+ */
+function renderSolverPreview(inputId) {
+    const input = document.getElementById(inputId);
+    const preview = document.getElementById(`preview-${inputId}`);
+    const placeholder = document.querySelector(`#slot-${inputId} .upload-placeholder`);
+    if (!input || !input.files || !input.files[0] || !preview) return;
+
+    const file = input.files[0];
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        RUBIKS_STATE.solverPreviews[inputId] = reader.result;
+        preview.src = reader.result;
+        preview.hidden = false;
+        if (placeholder) placeholder.hidden = true;
+    };
+    reader.onerror = () => {
+        showToast('Could not render photo preview. Try choosing the image again.', 'warning');
+    };
+    reader.readAsDataURL(file);
+
+    const btn = document.getElementById('uploadSubmitBtn');
+    if (btn) {
+        btn.disabled = !(document.getElementById('image1').files.length && document.getElementById('image2').files.length);
+    }
+}
+
+/**
+ * Handles the dual-photo upload and AI analysis.
+ */
+async function handleSolverUpload(e) {
+    e.preventDefault();
+    const form = e.target;
+
+    if (typeof showLoadingOverlay === 'function') {
+        showLoadingOverlay('Analyzing Cube State...', 'Gemini AI is parsing stickers from your photos.');
+    }
+
+    try {
+        const res = await apiPost('/rubiks/api/solver/upload', new FormData(form), 60000);
+        if (res && res.success && res.state_string) {
+            closeUploadModal();
+            const detectedDimension = Number(res.dimension || RUBIKS_STATE.solverDimension || 3);
+            RUBIKS_STATE.solverDimension = [3, 4].includes(detectedDimension) ? detectedDimension : 3;
+            if (RUBIKS_STATE.solverDimension === 3) {
+                if ((res.missing_count || 0) > 0 || res.state_string.includes('?')) {
+                    showManualStateEditor(res.state_string, res.notes);
+                    showToast(`Captured partial state. Fill ${res.missing_count || 0} unknown sticker${(res.missing_count || 0) === 1 ? '' : 's'}.`, 'info');
+                } else {
+                    computeLocalSolution(res.state_string);
+                }
+            } else {
+                if ((res.missing_count || 0) > 0 || res.state_string.includes('?')) {
+                    showManualStateEditor(res.state_string, res.notes || '4x4 state extracted. Fill unknown stickers to review the captured state.');
+                    showToast(`4x4 partial state captured. Fill ${res.missing_count || 0} unknown sticker${(res.missing_count || 0) === 1 ? '' : 's'}.`, 'info');
+                } else {
+                    showToast('4x4 State Extracted! Rigorous 4x4 algorithmic solving is under development.', 'info');
+                    display4x4State(res.state_string);
+                }
+            }
+        } else {
+            showToast(res?.error || 'Vision analysis failed. Ensure photos are clear.', 'error');
+        }
+    } catch (err) {
+        console.error('Rubiks solver upload failed:', err);
+        showToast('Server error during analysis.', 'error');
+    } finally {
+        if (typeof hideLoadingOverlay === 'function') hideLoadingOverlay();
+    }
+}
+
+/**
+ * Runs the local Kociemba solver library on the state string returned by Gemini.
+ */
+async function computeLocalSolution(stateString) {
+    const display = document.getElementById('solve-sequence');
+    const card = document.getElementById('solution-card');
+    const count = document.getElementById('move-count');
+
+    if (!display || !card || !count) return;
+
+    try {
+        const solver = getRubiksSolver();
+        if (!solver) {
+            showManualStateEditor(
+                stateString,
+                'Captured state is saved below, but the solver library is not ready. Review the stickers and press Solve Reviewed State again.'
+            );
+            showToast('Solver library is still loading. Your captured state is still available below.', 'warning');
+            return;
+        }
+
+        const solution = await solver(stateString);
+
+        if (!solution || String(solution).includes('Error')) {
+            showToast('Invalid cube state detected. Please try clearer photos.', 'warning');
+            showManualStateEditor(stateString, 'The solver rejected this state. Review the extracted stickers and correct any mistakes.');
+            return;
+        }
+
+        display.textContent = String(solution);
+        count.textContent = `${String(solution).trim().split(/\s+/).length} moves`;
+        card.style.display = 'block';
+        const editor = document.getElementById('state-editor-card');
+        if (editor) editor.style.display = 'none';
+        showToast('Solution found!', 'success');
+
+        RUBIKS_STATE.sequence = String(solution);
+        RUBIKS_STATE.initialSolverState = stateString;
+
+        // Trigger the graphical SVG diagram generation with state simulation
+        if (typeof generateDiagram === 'function') {
+            generateStatefulDiagram(stateString, String(solution));
+        }
+    } catch (err) {
+        console.error('Local solve failed:', err);
+        showManualStateEditor(stateString, 'The solver failed while using this state. Review the stickers and try again.');
+        showToast('Mathematical solve failed. The captured state is still available below.', 'error');
+    }
+}
+
+/**
+ * Returns the available Rubik's solver function, accounting for common min2phase globals.
+ */
+function getRubiksSolver() {
+    if (window.Search && typeof window.Search.solution === 'function') {
+        return (state) => window.Search.solution(state);
+    }
+    if (window.min2phase && typeof window.min2phase.solve === 'function') {
+        return (state) => window.min2phase.solve(state);
+    }
+    if (window.min2phase && typeof window.min2phase.Search === 'function') {
+        return (state) => {
+            const search = new window.min2phase.Search();
+            return search.solution(state, 21, 100000000, 0, 0);
+        };
+    }
+    return null;
+}
+
+/**
+ * Shows an editable sticker grid for partial or rejected cube states.
+ */
+function showManualStateEditor(stateString, notes = '') {
+    const card = document.getElementById('state-editor-card');
+    const solutionCard = document.getElementById('solution-card');
+    const notesEl = document.getElementById('state-editor-notes');
+    if (!card) return;
+
+    RUBIKS_STATE.reviewedSolverState = normalizeSolverState(stateString);
+    if (solutionCard) solutionCard.style.display = 'none';
+    if (notesEl) {
+        notesEl.textContent = notes || 'Tap any sticker to cycle its face/color. Unknown stickers are marked with ?.';
+    }
+    renderStateEditor();
+    card.style.display = 'block';
+}
+
+/**
+ * Normalizes a lossy Kociemba state string for the manual editor.
+ */
+function normalizeSolverState(stateString) {
+    const needed = RUBIKS_STATE.solverDimension * RUBIKS_STATE.solverDimension * 6;
+    const clean = String(stateString || '').toUpperCase().replace(/[^URFDLB?]/g, '?');
+    return (clean + '?'.repeat(needed)).slice(0, needed);
+}
+
+/**
+ * Renders the editable cube state grid.
+ */
+function renderStateEditor() {
+    const grid = document.getElementById('state-editor-grid');
+    if (!grid) return;
+
+    const dim = RUBIKS_STATE.solverDimension;
+    const faceSize = dim * dim;
+    const faces = ['U', 'R', 'F', 'D', 'L', 'B'];
+
+    grid.innerHTML = faces.map((face, faceIndex) => {
+        const cells = Array.from({ length: faceSize }, (_, offset) => {
+            const index = faceIndex * faceSize + offset;
+            const value = RUBIKS_STATE.reviewedSolverState[index] || '?';
+            const className = value === '?' ? 'state-unknown' : `state-${value}`;
+            return `<button type="button" class="state-cell ${className}" onclick="cycleSolverSticker(${index})">${value}</button>`;
+        }).join('');
+        return `
+            <div class="state-face">
+                <div class="state-face-label">${face}</div>
+                <div class="state-face-grid" style="grid-template-columns: repeat(${dim}, 1fr);">${cells}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Cycles one sticker through unknown and face values.
+ */
+function cycleSolverSticker(index) {
+    const choices = ['?', 'U', 'R', 'F', 'D', 'L', 'B'];
+    const state = RUBIKS_STATE.reviewedSolverState.split('');
+    const current = state[index] || '?';
+    state[index] = choices[(choices.indexOf(current) + 1) % choices.length];
+    RUBIKS_STATE.reviewedSolverState = state.join('');
+    renderStateEditor();
+}
+
+/**
+ * Attempts to solve the manually reviewed state.
+ */
+function solveReviewedState() {
+    const state = RUBIKS_STATE.reviewedSolverState;
+    const missing = (state.match(/\?/g) || []).length;
+    if (missing > 0) {
+        showToast(`Fill ${missing} unknown sticker${missing === 1 ? '' : 's'} before solving.`, 'warning');
+        return;
+    }
+    const invalidFace = ['U', 'R', 'F', 'D', 'L', 'B'].find(face => (state.match(new RegExp(face, 'g')) || []).length !== 9);
+    if (RUBIKS_STATE.solverDimension === 3 && invalidFace) {
+        showToast('A 3x3 cube needs exactly 9 stickers for each face/color.', 'warning');
+        return;
+    }
+    computeLocalSolution(state);
+}
+
+/**
+ * Generates move SVGs where each move shows the actual resulting colors.
+ */
+function generateStatefulDiagram(initialState, sequence) {
+    const container = document.getElementById('cube-diagram-container');
+    if (!container) return;
+
+    const moves = parseNotation(sequence);
+    const cube = new RubiksCube(initialState);
+
+    const gallery = document.createElement('div');
+    gallery.className = 'diagram-gallery';
+
+    moves.forEach((move) => {
+        cube.move(move);
+        // For the solver, we show the Front face colors
+        const colors = cube.getFaceColors('F');
+
+        const moveCard = document.createElement('div');
+        moveCard.className = 'move-card';
+        moveCard.innerHTML = renderMoveSVG(move, colors);
+
+        if (moves.length > 1) {
+            const label = document.createElement('div');
+            label.className = 'move-label';
+            label.textContent = move.raw;
+            moveCard.appendChild(label);
+        }
+        gallery.appendChild(moveCard);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(gallery);
+}
+
+/**
+ * Transfers the found solution to the main generator page.
+ */
+function loadSolutionToGenerator() {
+    sessionStorage.setItem('rubiks_imported_sequence', RUBIKS_STATE.sequence);
+    window.location.href = '/rubiks';
+}
+
+/**
+ * Hides the solution card and resets state.
+ */
+function resetSolverUI() {
+    const card = document.getElementById('solution-card');
+    const editor = document.getElementById('state-editor-card');
+    if (card) card.style.display = 'none';
+    if (editor) editor.style.display = 'none';
+    RUBIKS_STATE.reviewedSolverState = '';
+}
+
+/**
+ * Displays the static 4x4 state if algorithmic solve is not available.
+ */
+function display4x4State(stateString) {
+    const container = document.getElementById('cube-diagram-container');
+    const card = document.getElementById('solution-card');
+    const display = document.getElementById('solve-sequence');
+
+    if (!container || !card || !display) return;
+
+    display.textContent = "4x4 STATE EXTRACTED";
+    card.style.display = 'block';
+
+    RUBIKS_STATE.cubeSize = 4;
+    const cube = new RubiksCube(stateString, 4);
+    const colors = cube.getFaceColors('F');
+
+    container.innerHTML = `<div class="diagram-gallery"><div class="move-card">${renderMoveSVG({ face: 'F', count: 0 }, colors)}</div></div>`;
+}
+
 window.searchLibrary = () => renderLibrary();
 window.generateDiagram = generateDiagram;
 window.resetCube = resetCube;
@@ -943,3 +1499,13 @@ window.stopSolveTimer = stopSolveTimer;
 window.setStatsCubeFilter = setStatsCubeFilter;
 window.deleteSolve = deleteSolve;
 window.reassignSolveCubeType = reassignSolveCubeType;
+window.openUploadModal = openUploadModal;
+window.closeUploadModal = closeUploadModal;
+window.openSolverFilePicker = openSolverFilePicker;
+window.renderSolverPreview = renderSolverPreview;
+window.handleSolverUpload = handleSolverUpload;
+window.loadSolutionToGenerator = loadSolutionToGenerator;
+window.resetSolverUI = resetSolverUI;
+window.display4x4State = display4x4State;
+window.cycleSolverSticker = cycleSolverSticker;
+window.solveReviewedState = solveReviewedState;
