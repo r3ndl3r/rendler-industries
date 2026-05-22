@@ -19,6 +19,7 @@ class CallbackModule(CallbackBase):
         super(CallbackModule, self).__init__()
         self.failures = []
         self.current_play = ''
+        self.task_outputs = []
 
     def _emit_event(self, payload):
         payload['type'] = payload.get('type', 'event')
@@ -67,6 +68,7 @@ class CallbackModule(CallbackBase):
 
     def v2_runner_on_ok(self, result):
         self._runner_event(result, 'ok')
+        self._capture_task_output(result, 'ok')
 
     def v2_runner_on_skipped(self, result):
         self._runner_event(result, 'skipped')
@@ -113,5 +115,29 @@ class CallbackModule(CallbackBase):
         with open(export_path, 'w', encoding='utf-8') as handle:
             json.dump({
                 'stats': summary,
-                'failures': self.failures
+                'failures': self.failures,
+                'task_outputs': self.task_outputs,
             }, handle)
+
+    def _capture_task_output(self, result, status):
+        host = result._host.get_name()
+        task = result._task.get_name()
+        res = result._result
+        item = res.get('item')
+        msg = res.get('msg') or res.get('stdout') or res.get('stdout_lines')
+        if msg is None:
+            return
+        if isinstance(msg, list):
+            msg = [str(m) for m in msg]
+        else:
+            msg = str(msg)
+        entry = {
+            'host': host,
+            'task': task,
+            'status': status,
+            'changed': bool(res.get('changed')),
+            'msg': msg,
+        }
+        if item is not None:
+            entry['item'] = str(item)
+        self.task_outputs.append(entry)
