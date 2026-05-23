@@ -1092,6 +1092,7 @@ function showBoardInfo() {
                         <code class="guide-cs-code">&gt; [!note] Title</code>             <span class="guide-cs-preview">Callout</span>
                         <code class="guide-cs-code">[bookmarks]</code>                     <span class="guide-cs-preview">Links to all notes on this level</span>
                         <code class="guide-cs-code">[bookmarks:copy]</code>                <span class="guide-cs-preview">Copy links for all notes on this level</span>
+                        <code class="guide-cs-code">[bookmarks:copylink]</code>            <span class="guide-cs-preview">Copy links with jump shortcuts</span>
                     </div>
                     <p class="board-guide-subheading board-guide-subheading--spaced">Callout types</p>
                     <div class="guide-cheatsheet">
@@ -1167,6 +1168,7 @@ function showBoardInfo() {
                         <li><strong>[file:Title or ID]</strong> — Inline file download link (cross-canvas)</li>
                         <li><strong>[bookmarks]</strong> — Jump links to every other note on the current level</li>
                         <li><strong>[bookmarks:copy]</strong> — Copy-to-clipboard links instead of jump links</li>
+                        <li><strong>[bookmarks:copylink]</strong> — Copy-to-clipboard links with a jump shortcut</li>
                     </ul>
                 </div>
                 <div>
@@ -1213,11 +1215,12 @@ function showBoardInfo() {
                     <ul class="board-guide-list">
                         <li>Generates links to every other note on the <strong>current level</strong> — updates automatically as notes are added or removed</li>
                         <li>Autocomplete with <kbd class="guide-kbd">[bookmarks:</kbd> — flags are suggested and already-used flags are excluded</li>
-                        <li>Stack multiple flags with colons: <strong>[bookmarks:copy:sort=y:list]</strong></li>
+                        <li>Stack multiple flags with colons: <strong>[bookmarks:copylink:filter=dev:sort=y:list]</strong></li>
                     </ul>
                     <p class="board-guide-subheading board-guide-subheading--spaced">[bookmarks] flags</p>
                     <div class="guide-cheatsheet">
                         <code class="guide-cs-code">copy</code>              <span class="guide-cs-preview">Copy-to-clipboard links (default: jump links)</span>
+                        <code class="guide-cs-code">copylink</code>          <span class="guide-cs-preview">Copy links with a jump shortcut</span>
                         <code class="guide-cs-code">sort=id</code>           <span class="guide-cs-preview">Sort by note ID (default)</span>
                         <code class="guide-cs-code">sort=title</code>        <span class="guide-cs-preview">Sort alphabetically by title</span>
                         <code class="guide-cs-code">sort=x</code>            <span class="guide-cs-preview">Sort by horizontal position</span>
@@ -1226,6 +1229,8 @@ function showBoardInfo() {
                         <code class="guide-cs-code">type=text</code>         <span class="guide-cs-preview">Show only text notes</span>
                         <code class="guide-cs-code">type=image</code>        <span class="guide-cs-preview">Show only image notes</span>
                         <code class="guide-cs-code">type=file</code>         <span class="guide-cs-preview">Show only file notes</span>
+                        <code class="guide-cs-code">filter=text</code>       <span class="guide-cs-preview">Show notes with matching title text</span>
+                        <code class="guide-cs-code">tag=Name</code>          <span class="guide-cs-preview">Show notes tagged <code class="guide-cs-inline">[tag:Name]</code></span>
                         <code class="guide-cs-code">list</code>              <span class="guide-cs-preview">Render as a bulleted list</span>
                         <code class="guide-cs-code">compact</code>           <span class="guide-cs-preview">Render comma-separated on one line</span>
                         <code class="guide-cs-code">title</code>             <span class="guide-cs-preview">Render each link on its own line</span>
@@ -1511,7 +1516,6 @@ function renderSearchResults(results, isGlobal) {
             </div>
             <div class="search-result-action">
                 ${note.type === 'text' && note.content ? `<button class="search-result-copy-btn global-icon" onclick="copySearchResultContent(event, ${note.id})" title="Copy content">📋</button>` : ''}
-                <span class="global-icon">▶️</span>
             </div>
         </div>
     `).join('');
