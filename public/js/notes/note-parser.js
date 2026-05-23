@@ -1078,8 +1078,13 @@ const NoteParser = (() => {
         }
 
         if (flags.tag) {
-            const tagRe = new RegExp('\\[tag:' + escapeRegex(flags.tag) + '(?:\\||\\])', 'g');
+            const tagRe = new RegExp('\\[tag:' + escapeRegex(flags.tag) + '(?:\\||\\])');
             notes = notes.filter(n => tagRe.test(n.content || ''));
+        }
+
+        if (flags.filter) {
+            const filter = flags.filter.toLowerCase();
+            notes = notes.filter(n => (n.title || '').toLowerCase().includes(filter));
         }
 
         notes = sortBookmarkNotes(notes, flags.sort);
@@ -1101,6 +1106,9 @@ const NoteParser = (() => {
 
             if (linkType === 'copy') {
                 return `<span class="note-ref note-copy-trigger" data-target-id="${n.id}" title="Copy to clipboard: ${safeTitle}"${style}>📋 ${safeTitle}</span>`;
+            }
+            if (linkType === 'copylink') {
+                return `<span class="note-ref note-copy-trigger" data-target-id="${n.id}" title="Copy to clipboard: ${safeTitle}"${style}>📋 ${safeTitle}</span> <span class="note-ref note-link-trigger" data-target-id="${n.id}" title="Jump to Note: ${safeTitle}" aria-label="Jump to Note: ${safeTitle}"${style}></span>`;
             }
 
             return `<span class="note-ref note-link-trigger" data-target-id="${n.id}" title="Jump to Note: ${safeTitle}"${style}>${safeTitle}</span>`;
@@ -1133,9 +1141,11 @@ const NoteParser = (() => {
                 else if (key === 'type') flags.type = val;
                 else if (key === 'color') flags.color = val;
                 else if (key === 'tag') flags.tag = val;
+                else if (key === 'filter') flags.filter = val;
             } else {
                 const lower = part.toLowerCase();
                 if (lower === 'copy') flags.linkType = 'copy';
+                else if (lower === 'copylink') flags.linkType = 'copylink';
                 else if (lower === 'list') flags.display = 'list';
                 else if (lower === 'compact') flags.display = 'compact';
                 else if (lower === 'title') flags.display = 'title';
