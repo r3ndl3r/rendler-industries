@@ -799,6 +799,24 @@ sub DB::promote_note_to_binary {
     return $sth->execute($type, $filename, $note_id);
 }
 
+# Returns lock metadata for a note when the user can edit its canvas.
+sub DB::get_note_lock_for_edit {
+    my ($self, $note_id, $user_id) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        "SELECT n.locked_by_session_id, n.locked_at
+         FROM notes n
+         JOIN canvases c ON n.canvas_id = c.id
+         WHERE n.id = ?
+         AND (c.user_id = ? OR c.id IN (
+             SELECT canvas_id FROM canvas_shares WHERE user_id = ? AND can_edit = 1
+         ))"
+    );
+    $sth->execute($note_id, $user_id, $user_id);
+    return $sth->fetchrow_hashref();
+}
+
 # Retrieves binary content for a specific note, respecting privacy.
 # Parameters:
 #   note_id : Parent note identifier.
@@ -852,6 +870,24 @@ sub DB::get_blob_by_id {
     }
 
     return $blob;
+}
+
+# Resolves a blob's canvas only when the user has read access to it.
+sub DB::get_accessible_canvas_for_blob {
+    my ($self, $blob_id, $user_id) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        "SELECT n.canvas_id
+         FROM note_blobs nb
+         JOIN notes n ON nb.note_id = n.id
+         JOIN canvases c ON n.canvas_id = c.id
+         WHERE nb.id = ?
+         AND (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))"
+    );
+    $sth->execute($blob_id, $user_id, $user_id);
+    my ($canvas_id) = $sth->fetchrow_array();
+    return $canvas_id;
 }
 
 # Retrieves viewport state for a canvas, respecting sharing visibility.
@@ -1600,6 +1636,51 @@ sub DB::get_note_title {
     return $title;
 }
 
+# Retrieves the current layer_id for a note, enforcing canvas visibility.
+sub DB::get_note_layer {
+    my ($self, $note_id, $user_id) = @_;
+    $self->ensure_connection;
+    my ($layer_id) = $self->{dbh}->selectrow_array(
+        "SELECT n.layer_id
+         FROM notes n
+         JOIN canvases c ON n.canvas_id = c.id
+         WHERE n.id = ?
+         AND (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))",
+        undef, $note_id, $user_id, $user_id
+    );
+    return $layer_id;
+}
+
+# Retrieves note content by ID, enforcing canvas visibility.
+sub DB::get_note_content {
+    my ($self, $note_id, $user_id) = @_;
+    $self->ensure_connection;
+    my ($content) = $self->{dbh}->selectrow_array(
+        "SELECT n.content
+         FROM notes n
+         JOIN canvases c ON n.canvas_id = c.id
+         WHERE n.id = ?
+         AND (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))",
+        undef, $note_id, $user_id, $user_id
+    );
+    return $content;
+}
+
+# Retrieves both canvas_id and layer_id for a note, enforcing canvas visibility.
+sub DB::get_note_canvas_and_layer {
+    my ($self, $note_id, $user_id) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare(
+        "SELECT n.canvas_id, n.layer_id
+         FROM notes n
+         JOIN canvases c ON n.canvas_id = c.id
+         WHERE n.id = ?
+         AND (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))"
+    );
+    $sth->execute($note_id, $user_id, $user_id);
+    return $sth->fetchrow_array();
+}
+
 # Parses [[Title]] wikilinks from note content and synchronises the note_links table.
 # Resolves titles against non-password-protected canvases the user can access.
 # Unresolvable titles are skipped silently (render as dead links on the client).
@@ -1630,16 +1711,19 @@ sub DB::sync_note_links {
             SELECT n.id, n.title
             FROM notes n
             JOIN canvases c ON n.canvas_id = c.id
-            WHERE n.title = ?
+            WHERE LOWER(n.title) = LOWER(?)
             AND n.is_deleted = 0
             AND c.password_hash IS NULL
             AND (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
-            ORDER BY c.sort_order ASC, n.id ASC
+            ORDER BY
+                CASE WHEN BINARY n.title = BINARY ? THEN 0 ELSE 1 END,
+                c.sort_order ASC,
+                n.id ASC
             LIMIT 1
         ";
         my $sth_r = $self->{dbh}->prepare($resolve_sql);
         for my $title (@titles) {
-            $sth_r->execute($title, $user_id, $user_id);
+            $sth_r->execute($title, $user_id, $user_id, $title);
             my $row = $sth_r->fetchrow_hashref();
             if ($row && $row->{id} != $source_note_id) {
                 $resolved{$title} = { id => $row->{id}, canonical => $row->{title} };
@@ -1676,11 +1760,211 @@ sub DB::sync_note_links {
 
     # Delete stale links
     my $sth_del = $self->{dbh}->prepare(
-        "DELETE FROM note_links WHERE source_note_id = ? AND target_note_id = ?"
+        "DELETE FROM note_links
+         WHERE source_note_id = ? AND target_note_id = ? AND link_text != ?"
     );
     for my $tid (keys %existing) {
-        $sth_del->execute($source_note_id, $tid)
+        $sth_del->execute($source_note_id, $tid, '[bookmarks]')
             unless exists $desired{$tid};
+    }
+}
+
+# Parses navigational [bookmarks] tags from note content and synchronises the note_links table.
+# Resolution is against all non-deleted notes on the same canvas and layer.
+sub DB::sync_bookmark_links {
+    my ($self, $source_note_id, $content, $user_id) = @_;
+    $self->ensure_connection;
+
+    return unless defined $source_note_id && defined $content;
+
+    my @bookmark_tags = ($content =~ /\[bookmarks(\:[^\]]*)?\]/g);
+
+    my $sth_src = $self->{dbh}->prepare(
+        "SELECT n.canvas_id, n.layer_id
+         FROM notes n
+         JOIN canvases c ON n.canvas_id = c.id
+         WHERE n.id = ?
+         AND (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))"
+    );
+    $sth_src->execute($source_note_id, $user_id, $user_id);
+    my $src = $sth_src->fetchrow_hashref();
+    return unless $src && $src->{canvas_id};
+    my $canvas_id = $src->{canvas_id};
+    my $layer_id  = $src->{layer_id} // 1;
+
+    unless (@bookmark_tags) {
+        $self->{dbh}->do(
+            "DELETE FROM note_links WHERE source_note_id = ? AND link_text = ?",
+            undef, $source_note_id, '[bookmarks]'
+        );
+        return;
+    }
+
+    my %palette_color = (
+        yellow  => 'f59e0b',
+        blue    => '3b82f6',
+        pink    => 'ec4899',
+        orange  => 'f97316',
+        violet  => '8b5cf6',
+        indigo  => '6366f1',
+        slate   => '64748b',
+        green   => '22c55e',
+        red     => 'ef4444',
+        accent  => '8b5cf6',
+        info    => '0ea5e9',
+        success => '10b981',
+        danger  => 'ef4444',
+        warning => 'f59e0b',
+    );
+
+    my @tag_flags;
+    TAG:
+    for my $bookmark_tag (@bookmark_tags) {
+        my %flags;
+        if (length($bookmark_tag // '')) {
+            my $raw = substr($bookmark_tag, 1);
+            for my $flag (split(/:/, $raw)) {
+                next unless length $flag;
+                if ($flag =~ /^([a-z]+)=(.*)$/i) {
+                    $flags{lc $1} = $2;
+                } else {
+                    $flags{lc $flag} = 1;
+                }
+            }
+        }
+        next TAG if $flags{copy} && !$flags{copylink};
+        push @tag_flags, \%flags;
+    }
+
+    unless (@tag_flags) {
+        $self->{dbh}->do(
+            "DELETE FROM note_links WHERE source_note_id = ? AND link_text = ?",
+            undef, $source_note_id, '[bookmarks]'
+        );
+        return;
+    }
+
+    my %desired;
+    for my $flags (@tag_flags) {
+        my $where = "n.canvas_id = ? AND n.layer_id = ? AND n.is_deleted = 0 AND n.id != ?";
+        my @params = ($canvas_id, $layer_id, $source_note_id);
+
+        if (exists $flags->{type} && length $flags->{type}) {
+            $where .= " AND n.type = ?";
+            push @params, $flags->{type};
+        }
+
+        if (exists $flags->{color} && length $flags->{color}) {
+            (my $color_val = $flags->{color}) =~ s/^#//;
+            $color_val = lc($color_val);
+            $where .= " AND LOWER(REPLACE(CASE
+                WHEN LOWER(n.color) IN ('yellow','blue','pink','orange','violet','indigo','slate','green','red','accent','info','success','danger','warning')
+                THEN CASE LOWER(n.color)
+                    WHEN 'yellow' THEN '#f59e0b'
+                    WHEN 'blue' THEN '#3b82f6'
+                    WHEN 'pink' THEN '#ec4899'
+                    WHEN 'orange' THEN '#f97316'
+                    WHEN 'violet' THEN '#8b5cf6'
+                    WHEN 'indigo' THEN '#6366f1'
+                    WHEN 'slate' THEN '#64748b'
+                    WHEN 'green' THEN '#22c55e'
+                    WHEN 'red' THEN '#ef4444'
+                    WHEN 'accent' THEN '#8b5cf6'
+                    WHEN 'info' THEN '#0ea5e9'
+                    WHEN 'success' THEN '#10b981'
+                    WHEN 'danger' THEN '#ef4444'
+                    WHEN 'warning' THEN '#f59e0b'
+                END
+                ELSE n.color
+            END, '#', '')) = ?";
+            push @params, $palette_color{$color_val} // $color_val;
+        }
+
+        if (exists $flags->{tag} && length $flags->{tag}) {
+            my $escaped_tag = $flags->{tag};
+            $escaped_tag =~ s/([%_\\])/\\$1/g;
+            $where .= " AND (n.content LIKE BINARY ? ESCAPE '\\\\' OR n.content LIKE BINARY ? ESCAPE '\\\\')";
+            push @params, "%[tag:${escaped_tag}|%", "%[tag:${escaped_tag}]%";
+        }
+
+        if (exists $flags->{filter} && length $flags->{filter}) {
+            my $escaped_filter = lc $flags->{filter};
+            $escaped_filter =~ s/([%_\\])/\\$1/g;
+            $where .= " AND LOWER(n.title) LIKE ? ESCAPE '\\\\'";
+            push @params, "%${escaped_filter}%";
+        }
+
+        $where .= "
+            AND c.password_hash IS NULL
+            AND (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
+        ";
+        push @params, $user_id, $user_id;
+
+        my $sql = "
+            SELECT n.id
+            FROM notes n
+            JOIN canvases c ON n.canvas_id = c.id
+            WHERE $where
+        ";
+
+        my $sth_r = $self->{dbh}->prepare($sql);
+        $sth_r->execute(@params);
+        $desired{ $_->[0] } = 1 for @{ $sth_r->fetchall_arrayref() };
+    }
+
+    my $sth_all = $self->{dbh}->prepare(
+        "SELECT target_note_id, link_text FROM note_links WHERE source_note_id = ?"
+    );
+    $sth_all->execute($source_note_id);
+    my %existing_all = map { $_->[0] => $_->[1] } @{ $sth_all->fetchall_arrayref() };
+
+    my $sth_ex = $self->{dbh}->prepare(
+        "SELECT target_note_id FROM note_links
+         WHERE source_note_id = ? AND link_text = ?"
+    );
+    $sth_ex->execute($source_note_id, '[bookmarks]');
+    my %existing = map { $_->[0] => 1 } @{ $sth_ex->fetchall_arrayref() };
+
+    my $sth_ins = $self->{dbh}->prepare(
+        "INSERT IGNORE INTO note_links (source_note_id, target_note_id, link_text)
+         VALUES (?, ?, ?)"
+    );
+    for my $tid (keys %desired) {
+        unless (exists $existing_all{$tid}) {
+            $sth_ins->execute($source_note_id, $tid, '[bookmarks]');
+        }
+    }
+
+    my $sth_del = $self->{dbh}->prepare(
+        "DELETE FROM note_links WHERE source_note_id = ? AND target_note_id = ? AND link_text = ?"
+    );
+    for my $tid (keys %existing) {
+        unless (exists $desired{$tid}) {
+            $sth_del->execute($source_note_id, $tid, '[bookmarks]');
+        }
+    }
+}
+
+# Re-syncs [bookmarks] links for all notes on a given canvas and layer.
+sub DB::reconcile_bookmark_links {
+    my ($self, $canvas_id, $layer_id, $user_id) = @_;
+    $self->ensure_connection;
+
+    return unless $canvas_id && defined $layer_id;
+
+    my $sql = "
+        SELECT id, content
+        FROM notes
+        WHERE canvas_id = ?
+          AND layer_id = ?
+          AND is_deleted = 0
+          AND content LIKE '%[bookmarks%'
+    ";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute($canvas_id, $layer_id);
+
+    while (my $row = $sth->fetchrow_hashref()) {
+        $self->sync_bookmark_links($row->{id}, $row->{content}, $user_id);
     }
 }
 
