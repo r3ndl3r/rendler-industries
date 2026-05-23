@@ -41,6 +41,8 @@ let UPLOAD_PREVIEW_URLS = {
     image2: null
 };
 
+const MANUAL_UPLOAD_FIELDS = ['uploadOdometer', 'uploadLitres', 'uploadPrice', 'uploadTotal', 'uploadStation'];
+
 /**
  * Bootstraps state loading, filters, uploads, and modal behavior.
  *
@@ -50,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadState(true);
     setupFilters();
     setupUploadInputs();
+    setupUploadMode();
     setupGlobalModalClosing(['modal-overlay'], [
         closeUploadModal,
         closeEditModal,
@@ -186,7 +189,7 @@ function renderLogs() {
     if (!tbody) return;
 
     if (STATE.logs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="fuel-empty-ledger">📭 No fuel logs found.</td></tr>';
+        tbody.innerHTML = '<tr class="fuel-empty-row"><td colspan="8" class="fuel-empty-ledger">📭 No fuel logs yet.</td></tr>';
         return;
     }
 
@@ -197,14 +200,17 @@ function renderLogs() {
         const canEdit = (log.uploaded_by === STATE.currentUser || STATE.isAdmin);
         const discount = Number(log.discount_per_litre || 0);
         const discountText = discount > 0 ? ` (-${discount.toFixed(discount % 1 === 0 ? 0 : 1)}c/L)` : '';
+        const imageHtml = hasFuelPhotos(log)
+            ? `
+                <div class="fuel-image-pair">
+                    <img src="/fuel/serve/${log.id}/1" class="fuel-thumb" alt="" onclick="openImageModal(${log.id}, 1)">
+                    <img src="/fuel/serve/${log.id}/2" class="fuel-thumb" alt="" onclick="openImageModal(${log.id}, 2)">
+                </div>
+            `
+            : '<span class="fuel-no-photos">No photos</span>';
         return `
             <tr id="fuel-row-${log.id}">
-                <td data-label="Images">
-                    <div class="fuel-image-pair">
-                        <img src="/fuel/serve/${log.id}/1" class="fuel-thumb" alt="" onclick="openImageModal(${log.id}, 1)">
-                        <img src="/fuel/serve/${log.id}/2" class="fuel-thumb" alt="" onclick="openImageModal(${log.id}, 2)">
-                    </div>
-                </td>
+                <td data-label="Images">${imageHtml}</td>
                 <td data-label="Vehicle">
                     <strong>${escapeHtml(vehicle)}</strong>
                     <br><span class="fuel-muted">${escapeHtml(station)}</span>
@@ -224,7 +230,7 @@ function renderLogs() {
                 </td>
                 <td class="col-actions" data-label="Actions">
                     <div class="action-buttons">
-                        <button type="button" class="btn-icon-ai" onclick="runFuelScan(${log.id})" title="Rescan">🔍</button>
+                        ${hasFuelPhotos(log) ? `<button type="button" class="btn-icon-ai" onclick="runFuelScan(${log.id})" title="Rescan">🔍</button>` : ''}
                         ${canEdit ? `
                             <button type="button" class="btn-icon-edit" onclick="openEditModal(${log.id})" title="Edit">✏️</button>
                             <button type="button" class="btn-icon-delete" onclick="confirmDeleteFuel(${log.id}, '${escapeHtml(vehicle)}')" title="Delete">🗑️</button>
@@ -288,6 +294,52 @@ function syncVehicleSelect(select, includeAll, sourceOverride = null) {
 function setupUploadInputs() {
     setupDropZone('dropZone1', 'image1', 'fileName1');
     setupDropZone('dropZone2', 'image2', 'fileName2');
+}
+
+/**
+ * Wires the upload modal mode switch.
+ *
+ * @returns {void}
+ */
+function setupUploadMode() {
+    const mode = document.getElementById('uploadMode');
+    if (!mode) return;
+    mode.addEventListener('change', () => setUploadMode(mode.value));
+    setUploadMode(mode.value || 'photos');
+}
+
+/**
+ * Toggles the upload modal between photo scanning and manual entry.
+ *
+ * @param {string} mode - Selected upload mode.
+ * @returns {void}
+ */
+function setUploadMode(mode) {
+    const manual = mode === 'manual';
+    const photoFields = document.getElementById('photoEntryFields');
+    const manualFields = document.getElementById('manualEntryFields');
+    const submit = document.getElementById('uploadSubmitBtn');
+    const date = document.getElementById('uploadDate');
+    const image1 = document.getElementById('image1');
+    const image2 = document.getElementById('image2');
+
+    if (photoFields) photoFields.classList.toggle('hidden', manual);
+    if (manualFields) manualFields.classList.toggle('hidden', !manual);
+    if (submit) submit.innerHTML = manual ? 'Save' : 'Upload & Scan';
+    if (date) date.required = manual;
+
+    [image1, image2].forEach(input => {
+        if (!input) return;
+        input.required = !manual;
+        input.disabled = manual;
+    });
+
+    MANUAL_UPLOAD_FIELDS.forEach(id => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.required = manual;
+        input.disabled = !manual;
+    });
 }
 
 /**
@@ -415,6 +467,7 @@ function openUploadModal() {
         form.reset();
         removeFuelUploadPhoto('image1');
         removeFuelUploadPhoto('image2');
+        setUploadMode('photos');
         const date = document.getElementById('uploadDate');
         if (date && typeof getLocalISOString === 'function') date.value = getLocalISOString().slice(0, 10);
         setValue('uploadDiscount', 0);
@@ -451,17 +504,22 @@ async function handleUpload(event) {
     const btn = document.getElementById('uploadSubmitBtn');
     if (!form || !btn) return;
 
+    const mode = document.getElementById('uploadMode')?.value === 'manual' ? 'manual' : 'photos';
     const original = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '⌛ Scanning...';
-    if (typeof showLoadingOverlay === 'function') showLoadingOverlay('Processing fuel log...', 'Uploading images and extracting values.');
+    btn.innerHTML = mode === 'manual' ? 'Saving...' : 'Scanning...';
+    if (typeof showLoadingOverlay === 'function') {
+        const detail = mode === 'manual' ? 'Saving manual fuel log.' : 'Uploading images and extracting values.';
+        showLoadingOverlay('Processing fuel log...', detail);
+    }
 
     try {
-        const result = await apiPost('/fuel/api/upload', new FormData(form), 90000);
+        const endpoint = mode === 'manual' ? '/fuel/api/manual' : '/fuel/api/upload';
+        const result = await apiPost(endpoint, new FormData(form), mode === 'manual' ? undefined : 90000);
         if (result && result.success) {
             closeUploadModal();
             await loadState(true);
-            if (result.log && result.log.id) openEditModal(result.log.id);
+            if (mode === 'photos' && result.log && result.log.id) openEditModal(result.log.id);
         }
     } finally {
         if (typeof hideLoadingOverlay === 'function') hideLoadingOverlay();
@@ -483,8 +541,19 @@ function openEditModal(id) {
     if (!log || !modal || !form) return;
 
     form.dataset.logId = log.id;
-    document.getElementById('editImage1').src = `/fuel/serve/${log.id}/1`;
-    document.getElementById('editImage2').src = `/fuel/serve/${log.id}/2`;
+    const editImage1 = document.getElementById('editImage1');
+    const editImage2 = document.getElementById('editImage2');
+    const noPhotos = document.getElementById('editNoPhotos');
+    const hasPhotos = hasFuelPhotos(log);
+    if (editImage1) {
+        editImage1.src = hasPhotos ? `/fuel/serve/${log.id}/1` : '';
+        editImage1.classList.toggle('hidden', !hasPhotos);
+    }
+    if (editImage2) {
+        editImage2.src = hasPhotos ? `/fuel/serve/${log.id}/2` : '';
+        editImage2.classList.toggle('hidden', !hasPhotos);
+    }
+    if (noPhotos) noPhotos.classList.toggle('hidden', hasPhotos);
     setValue('editVehicle', log.vehicle_id || '');
     setValue('editDate', log.log_date || '');
     setValue('editFillType', log.fill_type || 'full');
@@ -499,8 +568,8 @@ function openEditModal(id) {
 
     const scan = document.getElementById('btnScanAI');
     if (scan) {
-        scan.disabled = false;
-        scan.innerHTML = '🔍 Rescan';
+        scan.disabled = !hasPhotos;
+        scan.innerHTML = hasPhotos ? '🔍 Rescan' : 'No Photos To Scan';
         scan.onclick = () => runFuelScan(log.id, true);
     }
 
@@ -515,7 +584,11 @@ function openEditModal(id) {
  */
 function closeEditModal() {
     const modal = document.getElementById('editModal');
+    const editImage1 = document.getElementById('editImage1');
+    const editImage2 = document.getElementById('editImage2');
     if (modal) modal.classList.remove('show');
+    if (editImage1) editImage1.src = '';
+    if (editImage2) editImage2.src = '';
     document.body.classList.remove('modal-open');
 }
 
@@ -557,6 +630,9 @@ async function handleEditSubmit(event) {
  * @returns {Promise<void>}
  */
 async function runFuelScan(id, reopen = false) {
+    const log = STATE.logs.find(item => Number(item.id) === Number(id));
+    if (log && !hasFuelPhotos(log)) return;
+
     const btn = document.getElementById('btnScanAI');
     const original = btn ? btn.innerHTML : '';
     if (btn) {
@@ -612,6 +688,9 @@ function confirmDeleteFuel(id, label) {
  * @returns {void}
  */
 function openImageModal(id, image) {
+    const log = STATE.logs.find(item => Number(item.id) === Number(id));
+    if (log && !hasFuelPhotos(log)) return;
+
     const modal = document.getElementById('imageModal');
     const img = document.getElementById('modalImg');
     if (!modal || !img) return;
@@ -844,6 +923,16 @@ function vehicleLabel(item) {
 }
 
 /**
+ * Checks whether a fuel log has both stored source photos.
+ *
+ * @param {Object} log - Fuel log state object.
+ * @returns {boolean} Whether image thumbnails can be rendered.
+ */
+function hasFuelPhotos(log) {
+    return !!(log && log.image1_file_size && log.image2_file_size);
+}
+
+/**
  * Formats a status identifier for display.
  *
  * @param {string} status - Status identifier.
@@ -888,6 +977,7 @@ window.loadState = loadState;
 window.openUploadModal = openUploadModal;
 window.closeUploadModal = closeUploadModal;
 window.handleUpload = handleUpload;
+window.setUploadMode = setUploadMode;
 window.openFuelFileInput = openFuelFileInput;
 window.removeFuelUploadPhoto = removeFuelUploadPhoto;
 window.openEditModal = openEditModal;
