@@ -59,6 +59,11 @@
     animation: fadeIn 0.4s ease-out;
 }
 
+.forecast-grid.is-dragging {
+    cursor: grabbing;
+    user-select: none;
+}
+
 /* --- Carousel Navigation (Mobile Only) --- */
 .scroll-nav-btn {
     position: absolute;
