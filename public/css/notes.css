@@ -2358,6 +2358,199 @@ pre code {
     display: block;
 }
 
+.note-find-bar {
+    position: fixed;
+    top: 12px;
+    right: 14px;
+    z-index: 10020;
+    width: min(430px, calc(100vw - 28px));
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    background: rgba(22, 22, 24, 0.96);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(14px);
+}
+
+.note-find-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.note-find-row + .note-find-row {
+    margin-top: 6px;
+}
+
+.note-find-icon {
+    width: 20px;
+    text-align: center;
+    opacity: 0.85;
+}
+
+.note-find-input,
+.note-find-replace-input {
+    flex: 1;
+    min-width: 0;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 7px;
+    padding: 0 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font: inherit;
+    outline: none;
+}
+
+.note-find-input:focus,
+.note-find-replace-input:focus {
+    border-color: rgba(59, 130, 246, 0.72);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.note-find-count {
+    min-width: 44px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.78rem;
+    text-align: center;
+}
+
+.note-find-btn,
+.note-find-replace-btn {
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.note-find-btn {
+    width: 32px;
+    font-size: 1rem;
+}
+
+.note-find-replace-btn {
+    padding: 0 10px;
+    font-size: 0.82rem;
+}
+
+.note-find-btn:hover,
+.note-find-replace-btn:hover {
+    background: rgba(59, 130, 246, 0.22);
+    border-color: rgba(59, 130, 246, 0.55);
+    color: #fff;
+}
+
+.note-find-measure {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    box-sizing: border-box;
+    visibility: hidden;
+    pointer-events: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    font-family: var(--font-main);
+    font-size: 1.05em;
+    line-height: 1.65;
+    padding: 0.5em;
+}
+
+.note-find-highlight-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.note-find-highlight-content {
+    box-sizing: border-box;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    color: transparent;
+    font-family: var(--font-main);
+    font-size: 1.05em;
+    line-height: 1.65;
+    padding: 0.5em;
+    transform-origin: top left;
+}
+
+.note-find-highlight {
+    background: rgba(250, 204, 21, 0.36);
+    border-radius: 3px;
+    color: transparent;
+}
+
+.note-find-highlight.is-active {
+    background: rgba(59, 130, 246, 0.48);
+    box-shadow: 0 0 0 1px rgba(147, 197, 253, 0.85);
+}
+
+.note-content textarea {
+    position: relative;
+    z-index: 1;
+}
+
+.note-content textarea::selection {
+    background: rgba(14, 165, 233, 0.9);
+    color: #fff;
+}
+
+.note-content textarea.note-find-selection-pulse {
+    animation: noteFindSelectionPulse 0.9s ease-out;
+}
+
+@keyframes noteFindSelectionPulse {
+    0% {
+        box-shadow: inset 0 0 0 2px rgba(14, 165, 233, 0.9), 0 0 0 4px rgba(14, 165, 233, 0.18);
+    }
+    100% {
+        box-shadow: inset 0 0 0 0 rgba(14, 165, 233, 0), 0 0 0 0 rgba(14, 165, 233, 0);
+    }
+}
+
+@media (max-width: 640px) {
+    .note-find-bar {
+        top: 7px;
+        right: 7px;
+        width: calc(100vw - 14px);
+        padding: 7px;
+    }
+
+    .note-find-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 42px 32px 32px 32px;
+        gap: 5px;
+    }
+
+    .note-find-row + .note-find-row {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+    }
+
+    .note-find-icon {
+        display: none;
+    }
+
+    .note-find-input,
+    .note-find-replace-input,
+    .note-find-btn,
+    .note-find-replace-btn {
+        height: 31px;
+    }
+
+    .note-find-count {
+        min-width: 0;
+        font-size: 0.74rem;
+    }
+}
+
 .inline-color-input {
     display: none;
     width: 28px;
