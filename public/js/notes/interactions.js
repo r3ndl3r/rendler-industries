@@ -2212,6 +2212,13 @@ async function moveNotesToCanvasCenter(ids) {
     }
 }
 
+/**
+ * Persists the current content of an inline-edited note to the server.
+ * Handles UI state transitions and error feedback.
+ * @param {number|string} id - The note ID.
+ * @param {boolean} [stayInEditMode=false] - Whether to remain in edit mode after saving.
+ * @returns {Promise<void>}
+ */
 async function saveNoteInline(id, stayInEditMode = false) {
     const el   = document.getElementById(`note-${id}`);
     const note = STATE.notes.find(n => n.id == id);
@@ -2268,6 +2275,7 @@ async function saveNoteInline(id, stayInEditMode = false) {
                 
                 el.classList.remove('is-editing');
                 if (textarea) textarea.readOnly = true;
+                if (getNoteFind().noteId && String(getNoteFind().noteId) === String(id)) closeNoteFindBar(false);
                 
                 const btnIcon = el.querySelector('.btn-icon-edit');
                 if (btnIcon) {
@@ -2694,6 +2702,7 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
         }
     } else {
         // Mode Termination: Atomic Persistence
+        if (getNoteFind().noteId && String(getNoteFind().noteId) === String(id)) closeNoteFindBar(false);
         delete el.dataset.lockHeld;
         if (isAbort) {
             // UI State: Restore content from local state
@@ -2763,12 +2772,434 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
 }
 
 /**
+ * Find and Replace Interface for Inline Editor.
+ * Provides real-time highlighting and atomic replacement within active note textareas.
+ */
+
+/**
+ * Retrieves or initializes the Find/Replace state object within global STATE.
+ * @returns {Object} The Note Find state object.
+ */
+function getNoteFind() {
+    if (!STATE.noteFind) {
+        STATE.noteFind = {
+            noteId: null,
+            textarea: null,
+            bar: null,
+            findInput: null,
+            replaceInput: null,
+            countEl: null,
+            highlightLayer: null,
+            highlightContent: null,
+            onTextareaInput: null,
+            onTextareaScroll: null,
+            matches: [],
+            index: -1
+        };
+    }
+    return STATE.noteFind;
+}
+
+/**
+ * Closes the Find/Replace bar and cleans up UI layers and event listeners.
+ * @param {boolean} [focusTextarea=true] - Whether to return focus to the textarea.
+ * @returns {void}
+ */
+function closeNoteFindBar(focusTextarea = true) {
+    const textarea = getNoteFind().textarea;
+    if (getNoteFind().bar) getNoteFind().bar.remove();
+    if (textarea && getNoteFind().onTextareaInput) textarea.removeEventListener('input', getNoteFind().onTextareaInput);
+    if (textarea && getNoteFind().onTextareaScroll) textarea.removeEventListener('scroll', getNoteFind().onTextareaScroll);
+    if (getNoteFind().highlightLayer) getNoteFind().highlightLayer.remove();
+    getNoteFind().noteId = null;
+    getNoteFind().textarea = null;
+    getNoteFind().bar = null;
+    getNoteFind().findInput = null;
+    getNoteFind().replaceInput = null;
+    getNoteFind().countEl = null;
+    getNoteFind().highlightLayer = null;
+    getNoteFind().highlightContent = null;
+    getNoteFind().onTextareaInput = null;
+    getNoteFind().onTextareaScroll = null;
+    getNoteFind().matches = [];
+    getNoteFind().index = -1;
+    if (focusTextarea && textarea && !textarea.readOnly) textarea.focus({ preventScroll: true });
+}
+
+/**
+ * Updates the match counter display in the Find/Replace bar.
+ * @returns {void}
+ */
+function updateNoteFindCount() {
+    if (!getNoteFind().countEl) return;
+    getNoteFind().countEl.textContent = getNoteFind().matches.length
+        ? `${getNoteFind().index + 1} / ${getNoteFind().matches.length}`
+        : '0 / 0';
+}
+
+/**
+ * Scans the current textarea for all occurrences of the query.
+ * @param {string} query - The text to search for.
+ * @returns {Array<Object>} List of match objects containing start and end indices.
+ */
+function collectNoteFindMatches(query) {
+    const textarea = getNoteFind().textarea;
+    if (!textarea || !query) return [];
+
+    const haystack = textarea.value.toLowerCase();
+    const needle = query.toLowerCase();
+    const matches = [];
+    let pos = 0;
+
+    while ((pos = haystack.indexOf(needle, pos)) !== -1) {
+        matches.push({ start: pos, end: pos + query.length });
+        pos += Math.max(needle.length, 1);
+    }
+
+    return matches;
+}
+
+/**
+ * Escapes HTML special characters in a string for safe DOM injection.
+ * @param {string} value - The raw string to escape.
+ * @returns {string} The HTML-safe string.
+ */
+function escapeNoteFindHtml(value) {
+    return (window.escapeHtml ? window.escapeHtml(value) : String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;'));
+}
+
+/**
+ * Synchronizes the highlight layer scroll position with the textarea.
+ * @returns {void}
+ */
+function syncNoteFindHighlightScroll() {
+    if (getNoteFind().highlightLayer && getNoteFind().highlightContent && getNoteFind().textarea) {
+        getNoteFind().highlightContent.style.transform =
+            `translate(${-getNoteFind().textarea.scrollLeft}px, ${-getNoteFind().textarea.scrollTop}px)`;
+    }
+}
+
+/**
+ * Renders the search highlights as a background layer behind the textarea.
+ * @returns {void}
+ */
+function renderNoteFindHighlights() {
+    const textarea = getNoteFind().textarea;
+    const content = getNoteFind().highlightContent;
+    if (!textarea || !content) return;
+
+    if (!getNoteFind().matches.length) {
+        content.textContent = '';
+        return;
+    }
+
+    let html = '';
+    let cursor = 0;
+    getNoteFind().matches.forEach((match, idx) => {
+        html += escapeNoteFindHtml(textarea.value.substring(cursor, match.start));
+        const active = idx === getNoteFind().index ? ' is-active' : '';
+        html += `<mark class="note-find-highlight${active}">${escapeNoteFindHtml(textarea.value.substring(match.start, match.end))}</mark>`;
+        cursor = match.end;
+    });
+    html += escapeNoteFindHtml(textarea.value.substring(cursor));
+    content.innerHTML = html;
+    content.style.width = `${textarea.scrollWidth}px`;
+    content.style.minHeight = `${textarea.scrollHeight}px`;
+    syncNoteFindHighlightScroll();
+}
+
+/**
+ * Ensures the highlight layer exists and is correctly layered behind the target textarea.
+ * @param {HTMLTextAreaElement} textarea - The target textarea element.
+ * @returns {void}
+ */
+function ensureNoteFindHighlightLayer(textarea) {
+    const host = textarea?.parentElement;
+    if (!host) return;
+
+    if (!getNoteFind().highlightLayer || getNoteFind().highlightLayer.parentElement !== host) {
+        if (getNoteFind().highlightLayer) getNoteFind().highlightLayer.remove();
+
+        const layer = document.createElement('div');
+        layer.className = 'note-find-highlight-layer';
+        layer.innerHTML = '<div class="note-find-highlight-content"></div>';
+        host.insertBefore(layer, textarea);
+        getNoteFind().highlightLayer = layer;
+        getNoteFind().highlightContent = layer.firstElementChild;
+    }
+
+    if (!getNoteFind().onTextareaScroll) {
+        getNoteFind().onTextareaScroll = syncNoteFindHighlightScroll;
+        textarea.addEventListener('scroll', getNoteFind().onTextareaScroll);
+    }
+
+    if (!getNoteFind().onTextareaInput) {
+        getNoteFind().onTextareaInput = () => refreshNoteFindMatches(textarea.selectionStart);
+        textarea.addEventListener('input', getNoteFind().onTextareaInput);
+    }
+}
+
+/**
+ * Scrolls the textarea and the canvas to reveal a specific match.
+ * @param {HTMLTextAreaElement} textarea - The target textarea.
+ * @param {Object} match - The match object to reveal.
+ * @returns {void}
+ */
+function scrollNoteFindTextareaToMatch(textarea, match) {
+    const host = textarea?.parentElement;
+    if (!host || !match) return;
+
+    const measure = document.createElement('div');
+    const marker = document.createElement('span');
+    measure.className = 'note-find-measure';
+    marker.className = 'note-find-measure-marker';
+    marker.textContent = textarea.value.charAt(match.start) || '\u200b';
+    measure.textContent = textarea.value.substring(0, match.start);
+    measure.appendChild(marker);
+    host.appendChild(measure);
+
+    const targetTop = marker.offsetTop - (textarea.clientHeight * 0.35);
+    textarea.scrollTop = Math.max(0, targetTop);
+
+    const wrapper = STATE.wrapperEl || document.getElementById('canvas-wrapper');
+    if (wrapper) {
+        const scale = (typeof STATE !== 'undefined' && STATE.scale) || 1;
+        const textareaRect = textarea.getBoundingClientRect();
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const matchY = textareaRect.top + ((marker.offsetTop - textarea.scrollTop) * scale);
+        const targetY = wrapperRect.top + (wrapper.clientHeight * 0.42);
+        const deltaY = matchY - targetY;
+
+        if (Math.abs(deltaY) > 24) {
+            wrapper.scrollBy({ top: deltaY, behavior: 'auto' });
+        }
+    }
+
+    measure.remove();
+}
+
+/**
+ * Triggers a visual pulse animation on the textarea to indicate selection.
+ * @param {HTMLTextAreaElement} textarea - The target textarea.
+ * @returns {void}
+ */
+function pulseNoteFindSelection(textarea) {
+    textarea.classList.remove('note-find-selection-pulse');
+    void textarea.offsetWidth;
+    textarea.classList.add('note-find-selection-pulse');
+}
+
+/**
+ * Selects a match by index, updating UI and scrolling into view.
+ * @param {number} index - The index of the match to select.
+ * @param {boolean} [keepFindFocus=true] - Whether to maintain focus on the find input.
+ * @returns {void}
+ */
+function selectNoteFindMatch(index, keepFindFocus = true) {
+    const textarea = getNoteFind().textarea;
+    if (!textarea || !getNoteFind().matches.length) {
+        getNoteFind().index = -1;
+        updateNoteFindCount();
+        return;
+    }
+
+    getNoteFind().index = (index + getNoteFind().matches.length) % getNoteFind().matches.length;
+    const match = getNoteFind().matches[getNoteFind().index];
+    textarea.focus({ preventScroll: true });
+    textarea.setSelectionRange(match.start, match.end);
+    scrollNoteFindTextareaToMatch(textarea, match);
+    textarea.setSelectionRange(match.start, match.end);
+    pulseNoteFindSelection(textarea);
+    renderNoteFindHighlights();
+    if (keepFindFocus && getNoteFind().findInput) getNoteFind().findInput.focus({ preventScroll: true });
+    updateNoteFindCount();
+}
+
+/**
+ * Re-scans the text and updates the selection based on an optional anchor position.
+ * @param {number|null} [anchor=null] - Optional character index to start the search from.
+ * @param {boolean} [keepFindFocus=true] - Whether to maintain focus on the find input.
+ * @returns {void}
+ */
+function refreshNoteFindMatches(anchor = null, keepFindFocus = true) {
+    const query = getNoteFind().findInput ? getNoteFind().findInput.value : '';
+    getNoteFind().matches = collectNoteFindMatches(query);
+
+    if (!getNoteFind().matches.length) {
+        getNoteFind().index = -1;
+        updateNoteFindCount();
+        renderNoteFindHighlights();
+        return;
+    }
+
+    const startAt = anchor ?? getNoteFind().textarea.selectionStart ?? 0;
+    const nextIdx = getNoteFind().matches.findIndex(m => m.start >= startAt);
+    selectNoteFindMatch(nextIdx === -1 ? 0 : nextIdx, keepFindFocus);
+}
+
+/**
+ * Replaces the currently selected match with the replacement text.
+ * @returns {void}
+ */
+function replaceCurrentNoteFindMatch() {
+    if (!getNoteFind().textarea || !getNoteFind().matches.length || getNoteFind().index < 0) return;
+
+    const textarea = getNoteFind().textarea;
+    const match = getNoteFind().matches[getNoteFind().index];
+    const replacement = getNoteFind().replaceInput ? getNoteFind().replaceInput.value : '';
+    textarea.value = textarea.value.substring(0, match.start)
+        + replacement
+        + textarea.value.substring(match.end);
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    refreshNoteFindMatches(match.start + replacement.length, true);
+}
+
+/**
+ * Replaces all occurrences of the search query with replacement text.
+ * @returns {void}
+ */
+function replaceAllNoteFindMatches() {
+    const textarea = getNoteFind().textarea;
+    const query = getNoteFind().findInput ? getNoteFind().findInput.value : '';
+    if (!textarea || !query) return;
+
+    const replacement = getNoteFind().replaceInput ? getNoteFind().replaceInput.value : '';
+    const original = textarea.value;
+    const lowerOriginal = original.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    let cursor = 0;
+    let count = 0;
+    let output = '';
+    let pos;
+
+    while ((pos = lowerOriginal.indexOf(lowerQuery, cursor)) !== -1) {
+        output += original.substring(cursor, pos) + replacement;
+        cursor = pos + query.length;
+        count++;
+    }
+
+    if (!count) return;
+
+    textarea.value = output + original.substring(cursor);
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    refreshNoteFindMatches(0, true);
+    if (typeof showToast === 'function') showToast(`Replaced ${count} match${count === 1 ? '' : 'es'}`, 'success');
+}
+
+/**
+ * Initializes and displays the Find/Replace bar for a specific note.
+ * @param {number|string} id - The note ID.
+ * @param {HTMLTextAreaElement} textarea - The target textarea.
+ * @returns {void}
+ */
+function openNoteFindBar(id, textarea) {
+    if (!textarea || textarea.readOnly) return;
+
+    if (getNoteFind().bar && String(getNoteFind().noteId) !== String(id)) {
+        closeNoteFindBar(false);
+    }
+
+    getNoteFind().noteId = id;
+    getNoteFind().textarea = textarea;
+    ensureNoteFindHighlightLayer(textarea);
+
+    if (!getNoteFind().bar) {
+        const bar = document.createElement('div');
+        bar.className = 'note-find-bar';
+        bar.innerHTML = `
+            <div class="note-find-row">
+                <span class="note-find-icon">🔎</span>
+                <input type="text" class="note-find-input" placeholder="Find..." autocomplete="off">
+                <span class="note-find-count">0 / 0</span>
+                <button type="button" class="note-find-btn" data-action="note-find-next" title="Next match">↓</button>
+                <button type="button" class="note-find-btn" data-action="note-find-prev" title="Previous match">↑</button>
+                <button type="button" class="note-find-btn" data-action="note-find-close" title="Close">×</button>
+            </div>
+            <div class="note-find-row">
+                <span class="note-find-icon">↳</span>
+                <input type="text" class="note-find-replace-input" placeholder="Replace..." autocomplete="off">
+                <button type="button" class="note-find-replace-btn" data-action="note-find-replace">Replace</button>
+                <button type="button" class="note-find-replace-btn" data-action="note-find-replace-all" title="Replace all">All</button>
+            </div>
+        `;
+
+        getNoteFind().bar = bar;
+        getNoteFind().findInput = bar.querySelector('.note-find-input');
+        getNoteFind().replaceInput = bar.querySelector('.note-find-replace-input');
+        getNoteFind().countEl = bar.querySelector('.note-find-count');
+
+        bar.addEventListener('keydown', (ev) => {
+            ev.stopPropagation();
+            const key = ev.key.toLowerCase();
+            const commandKey = ev.ctrlKey || ev.metaKey;
+            if (key === 'escape') {
+                ev.preventDefault();
+                closeNoteFindBar(true);
+                return;
+            }
+            if (commandKey && key === 'f') {
+                ev.preventDefault();
+                getNoteFind().findInput?.focus({ preventScroll: true });
+                getNoteFind().findInput?.select();
+                return;
+            }
+            if (ev.key === 'Enter' && ev.target === getNoteFind().findInput) {
+                ev.preventDefault();
+                selectNoteFindMatch(getNoteFind().index + (ev.shiftKey ? -1 : 1), true);
+            } else if (ev.key === 'Enter' && ev.target === getNoteFind().replaceInput) {
+                ev.preventDefault();
+                replaceCurrentNoteFindMatch();
+            }
+        });
+
+        getNoteFind().findInput.addEventListener('input', () => refreshNoteFindMatches());
+        bar.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const action = ev.target.closest('[data-action]')?.dataset.action;
+            if (!action) return;
+            if (action === 'note-find-next') selectNoteFindMatch(getNoteFind().index + 1, true);
+            else if (action === 'note-find-prev') selectNoteFindMatch(getNoteFind().index - 1, true);
+            else if (action === 'note-find-replace') replaceCurrentNoteFindMatch();
+            else if (action === 'note-find-replace-all') replaceAllNoteFindMatches();
+            else if (action === 'note-find-close') closeNoteFindBar(true);
+        });
+
+        document.body.appendChild(bar);
+    }
+
+    const selected = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+    if (selected && !selected.includes('\n')) getNoteFind().findInput.value = selected;
+    getNoteFind().findInput.focus({ preventScroll: true });
+    getNoteFind().findInput.select();
+    refreshNoteFindMatches(textarea.selectionStart);
+}
+
+/**
  * Keyboard Interface for Inline Editor.
  * Facilitates rapid 'Ctrl+Enter' commits and 'Esc' aborts.
  * @param {KeyboardEvent} e - The keydown event.
  * @param {number|string} id - The note ID.
  */
 async function handleNoteKeydown(e, id) {
+    const key = e.key.toLowerCase();
+    const commandKey = e.ctrlKey || e.metaKey;
+
+    if (commandKey && key === 'f') {
+        const textarea = e.target.closest('textarea[data-action="note-keydown"]');
+        const el = document.getElementById(`note-${id}`);
+        if (textarea && el && el.classList.contains('is-editing') && !textarea.readOnly) {
+            e.preventDefault();
+            e.stopPropagation();
+            openNoteFindBar(id, textarea);
+            return;
+        }
+    }
+
     // Ctrl + Enter: Instant Save & Close
     if (e.ctrlKey && e.key === 'Enter') {
         const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
@@ -2796,6 +3227,13 @@ async function handleNoteKeydown(e, id) {
         }
     }
     else if (e.key === 'Escape') {
+        if (getNoteFind().noteId && String(getNoteFind().noteId) === String(id)) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeNoteFindBar(true);
+            return;
+        }
+
         const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
         if (btn && document.getElementById(`note-${id}`).classList.contains('is-editing')) {
             await toggleInlineEdit(btn, id, true);
