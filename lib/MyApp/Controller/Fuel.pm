@@ -126,6 +126,38 @@ sub api_upload {
     });
 }
 
+# Creates a complete manual fuel log without source images.
+# Route: POST /fuel/api/manual
+sub api_manual {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in && $c->is_family;
+
+    my ($data, $reasons) = _extract_manual_create_payload($c);
+    return $c->render(json => { success => 0, error => join(', ', @$reasons) }) if @$reasons;
+
+    my $id;
+    eval {
+        $id = $c->db->store_manual_fuel_log({
+            %$data,
+            uploaded_by => $c->session('user'),
+            review_reasons => encode_json([])
+        });
+    };
+
+    if ($@ || !$id) {
+        $c->app->log->error("Fuel manual entry failure: $@");
+        return $c->render(json => { success => 0, error => 'Manual entry could not be saved' });
+    }
+
+    my $log = $c->db->get_all_fuel_logs(1, 0, { id => $id }, $c->session('user'))->[0];
+    $c->render(json => {
+        success => 1,
+        log     => $log,
+        summary => $c->db->get_fuel_summary(),
+        message => 'Manual fuel log saved'
+    });
+}
+
 # Updates fuel log metadata from the review editor.
 # Route: POST /fuel/api/update/:id
 sub api_update {
@@ -205,6 +237,8 @@ sub api_ai_analyze {
     my $id = $c->stash('id');
     my $log = $c->db->get_fuel_log_by_id($id);
     return $c->render(json => { success => 0, error => 'Record not found' }) unless $log;
+    return $c->render(json => { success => 0, error => 'No photos available to scan' })
+        unless $log->{image1_file_data} && $log->{image2_file_data};
 
     $c->render_later;
     _analyze_and_update_log($c, $id)->then(sub {
@@ -440,6 +474,48 @@ sub _extract_manual_payload {
     }, \@reasons);
 }
 
+# Converts manual entry fields into database-safe values.
+sub _extract_manual_create_payload {
+    my ($c) = @_;
+
+    my @reasons;
+    my $vehicle_id = $c->param('vehicle_id');
+    push @reasons, 'vehicle is required' unless $vehicle_id && $vehicle_id =~ /^\d+$/;
+
+    my $log_date = $c->param('log_date');
+    push @reasons, 'date is required' unless defined $log_date && $log_date ne '';
+    push @reasons, 'date is invalid' if defined $log_date && $log_date ne '' && $log_date !~ /^\d{4}-\d{2}-\d{2}$/;
+
+    my $odometer = _positive_int($c->param('odometer'));
+    my $litres = _positive_decimal($c->param('litres'));
+    my $price = _positive_decimal($c->param('price_per_litre'));
+    my $discount = _non_negative_decimal($c->param('discount_per_litre'));
+    my $total = _positive_decimal($c->param('total_amount'));
+    my $station = trim($c->param('station_name') // '');
+    push @reasons, 'odometer is required' unless defined $odometer;
+    push @reasons, 'litres is required' unless defined $litres;
+    push @reasons, 'price per litre is required' unless defined $price;
+    push @reasons, 'discount is invalid' unless defined $discount;
+    push @reasons, 'total amount is required' unless defined $total;
+    push @reasons, 'station is required' unless $station;
+
+    my $fill_type = ($c->param('fill_type') // 'full') eq 'partial' ? 'partial' : 'full';
+    my $description = trim($c->param('description') // '') || undef;
+
+    return ({
+        vehicle_id => $vehicle_id,
+        log_date => $log_date,
+        odometer => $odometer,
+        litres => $litres,
+        price_per_litre => $price,
+        discount_per_litre => $discount,
+        total_amount => $total,
+        station_name => $station || undef,
+        fill_type => $fill_type,
+        description => $description
+    }, \@reasons);
+}
+
 # Marks a log as requiring manual review after extraction failure.
 sub _mark_ai_failure {
     my ($c, $id, $reasons) = @_;
@@ -504,6 +580,7 @@ sub register_routes {
     $r->{family}->get('/fuel')->to('fuel#index');
     $r->{family}->get('/fuel/api/state')->to('fuel#api_state');
     $r->{family}->post('/fuel/api/upload')->to('fuel#api_upload');
+    $r->{family}->post('/fuel/api/manual')->to('fuel#api_manual');
     $r->{family}->post('/fuel/api/update/:id')->to('fuel#api_update');
     $r->{family}->post('/fuel/api/delete/:id')->to('fuel#api_delete');
     $r->{family}->get('/fuel/serve/:id/:image')->to('fuel#serve');
