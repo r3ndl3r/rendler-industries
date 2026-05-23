@@ -111,11 +111,38 @@
     transform: scale(1.05);
 }
 
+.fuel-no-photos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    color: #94a3b8;
+    font-size: 0.82rem;
+}
+
 .fuel-upload-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
     margin-top: 16px;
+}
+
+.fuel-manual-fields {
+    margin-top: 16px;
+}
+
+.fuel-upload-modal .modal-content {
+    padding-bottom: 1.5rem;
+}
+
+.fuel-upload-modal .modal-body {
+    margin-bottom: 0;
+}
+
+.upload-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
 }
 
 .fuel-drop-area {
@@ -245,6 +272,14 @@
 .fuel-review-img {
     width: 100%;
     height: 220px;
+}
+
+.fuel-review-images .fuel-no-photos {
+    grid-column: 1 / -1;
+    min-height: 90px;
+    border: 1px dashed rgba(148, 163, 184, 0.35);
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.55);
 }
 
 .fuel-review-reasons {
@@ -395,5 +430,19 @@
         color: #94a3b8;
         font-size: 0.78rem;
         text-transform: uppercase;
+    }
+
+    .fuel-table .fuel-empty-row {
+        padding: 0;
+    }
+
+    .fuel-table .fuel-empty-ledger {
+        display: block;
+        padding: 24px !important;
+        line-height: 1.4;
+    }
+
+    .fuel-table .fuel-empty-ledger::before {
+        content: none;
     }
 }
