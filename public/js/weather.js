@@ -2,7 +2,7 @@
 
 /**
  * Weather Dashboard Controller
- * 
+ *
  * Manages the state-driven rendering of OpenWeatherMap One Call 3.0 data,
  * featuring a high-fidelity current observation card and a 7-day weekly forecast.
  * 
@@ -21,7 +21,10 @@ const CONFIG = {
     TEMP_COLD_THRESHOLD: 8,     // Celsius threshold for "Cold"
     TEMP_V_COLD_THRESHOLD: 0,   // Celsius threshold for "Sub-zero"
     RAIN_THRESHOLD: 0.1,        // mm threshold for "Rainy" visual state
-    GEO_DEBOUNCE_MS: 300        // Delay before triggering geocode search
+    GEO_DEBOUNCE_MS: 300,       // Delay before triggering geocode search
+    SCROLL_DRAG_THRESHOLD: 5,   // Minimum px to count as a drag
+    SCROLL_RESET_MS: 400,       // Delay before resetting scroll state
+    SCROLL_VELOCITY: 1.5        // Drag sensitivity multiplier
 };
 
 let STATE = {
@@ -359,6 +362,69 @@ function renderWeatherDashboard() {
         setTimeout(updateScrollState, 100);
         setTimeout(updateScrollState, 500); 
     }
+
+    document.querySelectorAll('.forecast-grid').forEach(setupForecastGridScroll);
+}
+
+/**
+ * Establishes mouse-drag and wheel-based horizontal scrolling for forecast grids.
+ *
+ * @param {HTMLElement} grid - The scrollable forecast container.
+ * @returns {void}
+ */
+function setupForecastGridScroll(grid) {
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+    let dragDistance = 0;
+    let recentlyScrolled = false;
+    let scrollTimer = null;
+
+    grid.addEventListener('click', (e) => {
+        if (recentlyScrolled) {
+            e.stopPropagation();
+        }
+    }, true);
+
+    grid.addEventListener('mousedown', (e) => {
+        isDown = true;
+        dragDistance = 0;
+        startX = e.pageX - grid.offsetLeft;
+        scrollLeft = grid.scrollLeft;
+        grid.classList.add('is-dragging');
+    });
+
+    grid.addEventListener('mouseleave', () => {
+        if (!isDown) return;
+        isDown = false;
+        grid.classList.remove('is-dragging');
+    });
+
+    grid.addEventListener('mouseup', () => {
+        if (!isDown) return;
+        isDown = false;
+        grid.classList.remove('is-dragging');
+        if (dragDistance > CONFIG.SCROLL_DRAG_THRESHOLD) {
+            recentlyScrolled = true;
+            clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(() => { recentlyScrolled = false; }, CONFIG.SCROLL_RESET_MS);
+        }
+    });
+
+    grid.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - grid.offsetLeft;
+        const walk = (x - startX) * CONFIG.SCROLL_VELOCITY;
+        grid.scrollLeft = scrollLeft - walk;
+        dragDistance = Math.abs(x - startX);
+    });
+
+    grid.addEventListener('wheel', (e) => {
+        if (grid.scrollWidth <= grid.clientWidth) return;
+        e.preventDefault();
+        grid.scrollLeft += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    }, { passive: false });
 }
 
 function renderForecastDays(daily = [], locationId, cityTz = APP_TZ) {
