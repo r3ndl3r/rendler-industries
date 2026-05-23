@@ -2326,7 +2326,6 @@ pre code {
 .note-title-slot {
     font-weight: 700;
     color: rgba(255, 255, 255, 0.85);
-    text-transform: uppercase;
     letter-spacing: 0.08em;
     white-space: nowrap;
     overflow: hidden;
@@ -2347,7 +2346,6 @@ pre code {
     font-family: 'Inter', sans-serif;
     font-size: 0.78rem;
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 0.08em;
     outline: none;
 }
@@ -2836,6 +2834,18 @@ pre code {
     font-size: 1rem;
     padding: 2px;
     line-height: 1;
+    opacity: 0.8;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.search-result-copy-btn:hover {
+    opacity: 1;
+    transform: scale(1.2);
+    text-shadow: 0 0 10px var(--note-accent, #3b82f6);
+}
+
+.search-result-copy-btn:active {
+    transform: scale(0.95);
 }
 
 /* Empty State Styling */
