@@ -165,6 +165,7 @@ sub api_save {
     $params->{session_id} = $sid;
 
     my $old_title = $params->{id} ? $c->db->get_note_title($params->{id}) : undef;
+    my $old_layer = $params->{id} ? $c->db->get_note_layer($params->{id}, $user_id) : undef;
 
     my $result_id = $c->db->save_note($params);
 
@@ -180,6 +181,15 @@ sub api_save {
 
     $c->db->sync_note_links($result_id, $params->{content}, $user_id)
         if defined $params->{content};
+
+    $c->db->sync_bookmark_links($result_id, $params->{content}, $user_id)
+        if defined $params->{content};
+
+    $c->db->reconcile_bookmark_links($canvas_id, $params->{layer_id}, $user_id);
+
+    if ($params->{id} && defined $old_layer && $old_layer != $params->{layer_id}) {
+        $c->db->reconcile_bookmark_links($canvas_id, $old_layer, $user_id);
+    }
 
     if ($params->{id} && defined $old_title && defined $params->{title}
             && $params->{title} ne '' && $old_title ne $params->{title}) {
@@ -249,8 +259,21 @@ sub api_save_geometry {
     unless (defined $sid && length $sid) {
         return $c->render(json => { success => 0, error => 'Missing or invalid session_id' }, status => 400);
     }
+    my $old_layer = $id ? $c->db->get_note_layer($id, $user_id) : undef;
+    my $new_layer = int($c->param('layer_id') // 1);
+
     $params->{session_id} = $sid;
     my ($result_id) = $c->db->save_note_geometry($params);
+
+    if (defined $result_id && $result_id > 0 && defined $old_layer && $old_layer != $new_layer) {
+        $c->db->reconcile_bookmark_links($canvas_id, $old_layer, $user_id);
+        $c->db->reconcile_bookmark_links($canvas_id, $new_layer, $user_id);
+    }
+
+    if (defined $result_id && $result_id > 0) {
+        my $content = $c->db->get_note_content($result_id, $user_id);
+        $c->db->sync_bookmark_links($result_id, $content, $user_id) if defined $content;
+    }
 
     if (defined $result_id && $result_id == -1) {
         return $c->render(json => { success => 0, error => 'Note is locked by another session' }, status => 403);
@@ -304,9 +327,22 @@ sub api_batch_geometry {
         $upd->{z_index} = 1 if _is_fence_note_title($c->db->get_note_title($upd->{id}));
     }
 
+    my %layers_per_canvas;
+    for my $upd (@$updates) {
+        next unless ref($upd) eq 'HASH' && defined $upd->{id};
+        my ($cid, $lid) = $c->db->get_note_canvas_and_layer($upd->{id}, $user_id);
+        $layers_per_canvas{$cid}{$lid} = 1 if $cid && defined $lid;
+        if (defined $upd->{layer_id}) {
+            my $new_lid = int($upd->{layer_id});
+            $layers_per_canvas{$canvas_id}{$new_lid} = 1 if $new_lid >= 1 && $new_lid <= 99;
+        }
+    }
+
     my $result = $c->db->update_batch_geometry($updates, $user_id, $sid);
 
     if ($result->{success}) {
+        $c->_reconcile_bookmark_map(\%layers_per_canvas, $user_id);
+
         $c->render(json => {
             success       => 1,
             last_mutation => $c->db->get_board_mutation_time($canvas_id)
@@ -334,6 +370,7 @@ sub api_delete {
         return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403);
     }
 
+    my ($del_canvas_id, $del_layer_id) = $c->db->get_note_canvas_and_layer($id, $user_id);
     my $ok = $c->db->delete_note($id, $user_id);
 
     if ($ok == -1) {
@@ -341,6 +378,10 @@ sub api_delete {
     }
     unless ($ok) {
         return $c->render(json => { success => 0, error => 'Permission Denied or Note Not Found' }, status => 403);
+    }
+
+    if ($del_canvas_id && defined $del_layer_id) {
+        $c->db->reconcile_bookmark_links($del_canvas_id, $del_layer_id, $user_id);
     }
 
     $c->refresh_canvas_lock($cid) if defined $cid;
@@ -396,6 +437,13 @@ sub api_batch_delete {
 
     if ($result->{success}) {
         $c->refresh_canvas_lock($canvas_id) if $canvas_id;
+
+        my %layers_per_canvas;
+        for my $note_id (@{$result->{deleted_ids} // []}) {
+            my ($cid, $lid) = $c->db->get_note_canvas_and_layer($note_id, $user_id);
+            $layers_per_canvas{$cid}{$lid} = 1 if $cid && defined $lid;
+        }
+        $c->_reconcile_bookmark_map(\%layers_per_canvas, $user_id);
         
         my $unlocked_ids = $c->_get_unlocked_ids;
         $c->render(json => {
@@ -526,9 +574,7 @@ sub api_upload {
             is_options_expanded => int($c->param('is_options_expanded') // 0)
         });
     } elsif ($note_id && $upload) {
-        my $lock = $c->db->{dbh}->selectrow_hashref(
-            "SELECT locked_by_session_id, locked_at FROM notes WHERE id = ?", undef, $note_id
-        );
+        my $lock = $c->db->get_note_lock_for_edit($note_id, $user_id);
         if ($lock && $lock->{locked_by_session_id}
             && $lock->{locked_by_session_id} ne $sid
             && $lock->{locked_at} gt DateTime->now->subtract(minutes => 5)->iso8601) {
@@ -670,10 +716,7 @@ sub serve_attachment_blob {
     my $blob = $c->db->get_blob_by_id($blob_id, $user_id, $unlocked_ids);
     unless ($blob) {
         if ($blob_id) {
-            # Note: Minimal DB call to resolve canvas for security check
-            my $sth = $c->db->{dbh}->prepare("SELECT n.canvas_id FROM note_blobs nb JOIN notes n ON nb.note_id = n.id WHERE nb.id = ?");
-            $sth->execute($blob_id);
-            my ($cid) = $sth->fetchrow_array();
+            my $cid = $c->db->get_accessible_canvas_for_blob($blob_id, $user_id);
             if ($cid && $c->is_canvas_locked($cid)) {
                 return $c->render(text => 'Canvas Locked', status => 403);
             }
@@ -923,7 +966,12 @@ sub api_restore {
     }
 
     if ($c->db->restore_note($id, $user_id, $canvas_id, $layer_id, $x, $y)) {
+        $c->db->reconcile_bookmark_links($canvas_id, $layer_id, $user_id);
         $c->refresh_canvas_lock($canvas_id) if defined $canvas_id;
+
+        my $content = $c->db->get_note_content($id, $user_id);
+        $c->db->sync_bookmark_links($id, $content, $user_id) if defined $content;
+
         $c->render(json => { success => 1 });
     } else {
         $c->render(json => { success => 0, error => 'Restoration Failed or Permission Denied' });
@@ -1015,6 +1063,10 @@ sub api_move_layer {
         unless $c->db->check_canvas_access($canvas_id, $user_id, 1);
 
     my $rows  = $c->db->move_layer_content($canvas_id, $from, $to);
+    if ($rows && $rows > 0) {
+        $c->db->reconcile_bookmark_links($canvas_id, $from, $user_id);
+        $c->db->reconcile_bookmark_links($canvas_id, $to, $user_id);
+    }
     my $count = int($rows) || 0;
 
     return $c->render(json => {
@@ -1044,7 +1096,18 @@ sub api_set_layer {
     return $c->render(json => { success => 0, error => 'Read-Only' }, status => 403)
         unless $c->db->check_canvas_access($canvas_id, $user_id, 1);
 
+    my %old_layers;
+    for my $nid (@$ids) {
+        my ($cid, $old_l) = $c->db->get_note_canvas_and_layer($nid, $user_id);
+        $old_layers{$old_l} = 1 if $cid && $cid == $canvas_id && defined $old_l;
+    }
+
     my $count = $c->db->set_notes_layer($ids, $canvas_id, $layer_id, $user_id);
+
+    for my $ol (keys %old_layers) {
+        $c->db->reconcile_bookmark_links($canvas_id, $ol, $user_id);
+    }
+    $c->db->reconcile_bookmark_links($canvas_id, $layer_id, $user_id);
 
     my $unlocked_ids = $c->_get_unlocked_ids;
     return $c->render(json => {
@@ -1076,6 +1139,8 @@ sub api_bulk_copy_level {
         unless $c->db->check_canvas_access($canvas_id, $user_id, 1);
 
     my $count = $c->db->clone_notes_to_layer($ids, $canvas_id, $layer_id, $user_id);
+
+    $c->db->reconcile_bookmark_links($canvas_id, $layer_id, $user_id);
 
     my $unlocked_ids = $c->_get_unlocked_ids;
     return $c->render(json => {
@@ -1112,6 +1177,8 @@ sub api_bulk_copy_canvas {
         $count++ if $new_id;
     }
 
+    $c->db->reconcile_bookmark_links($target_canvas_id, $target_layer_id, $user_id);
+
     return $c->render(json => { success => 1, count => $count });
 }
 
@@ -1132,7 +1199,23 @@ sub api_move_notes_canvas {
     my $ids = eval { Mojo::JSON::decode_json($ids_json) } // [];
     return $c->render(json => { success => 0, error => 'Invalid ids' }) unless ref $ids eq 'ARRAY' && @$ids;
 
+    my %source_layers;
+    for my $nid (@$ids) {
+        my ($cid, $lid) = $c->db->get_note_canvas_and_layer($nid, $user_id);
+        $source_layers{$cid}{$lid} = 1 if $cid && defined $lid;
+    }
+
     my $count = $c->db->move_notes_to_canvas($ids, $canvas_id, $target_canvas_id, $user_id, $target_layer_id);
+
+    if ($count > 0) {
+        $c->_reconcile_bookmark_map(\%source_layers, $user_id);
+        $c->db->reconcile_bookmark_links($target_canvas_id, $target_layer_id, $user_id);
+    }
+
+    for my $nid (@$ids) {
+        my $content = $c->db->get_note_content($nid, $user_id);
+        $c->db->sync_bookmark_links($nid, $content, $user_id) if defined $content;
+    }
 
     my $unlocked_ids = $c->_get_unlocked_ids;
     return $c->render(json => {
@@ -1453,6 +1536,17 @@ sub api_backlinks {
 
     my $backlinks = $c->db->get_note_backlinks($note_id, $user_id);
     $c->render(json => { success => 1, backlinks => $backlinks });
+}
+
+# Reconciles [bookmarks] links for a map of canvas_id => { layer_id => 1, ... }.
+sub _reconcile_bookmark_map {
+    my ($c, $map, $user_id) = @_;
+    return unless $map && ref $map eq 'HASH';
+    for my $cid (keys %$map) {
+        for my $lid (keys %{ $map->{$cid} }) {
+            $c->db->reconcile_bookmark_links($cid, $lid, $user_id);
+        }
+    }
 }
 
 # Returns a note's content for cross-canvas embedding.
