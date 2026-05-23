@@ -223,8 +223,9 @@
         const SIZES  = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
 
         const BOOKMARK_FLAGS = [
-            'copy', 'sort=id', 'sort=title', 'sort=x', 'sort=y', 'sort=created',
+            'copy', 'copylink', 'sort=id', 'sort=title', 'sort=x', 'sort=y', 'sort=created',
             'type=text', 'type=image', 'type=file',
+            'tag=', 'filter=',
             'list', 'compact', 'title'
         ];
 
@@ -2295,18 +2296,28 @@ async function saveNoteInline(id, stayInEditMode = false) {
             // Targeted DOM Update: Refresh viewer and title without board re-render
             const viewer = el.querySelector('.note-text-viewer');
             const slot   = el.querySelector('.note-title-slot');
+            const updatedNote = STATE.notes.find(n => n.id == id) || { ...note, title, content, color };
+            const displayTitle = (typeof window.displayNoteTitle === 'function')
+                ? window.displayNoteTitle(updatedNote)
+                : (title || 'Untitled Note');
             if (viewer) viewer.innerHTML = formatNoteContent(content, id);
             if (slot) {
                 const isDashboardNote = el.classList.contains('is-dashboard-note');
                 if (isDashboardNote && typeof NoteParser !== 'undefined') {
-                    slot.innerHTML = NoteParser.renderHeader(title) || window.escapeHtml(title || 'Untitled Note');
+                    slot.innerHTML = NoteParser.renderHeader(displayTitle) || window.escapeHtml(displayTitle);
                 } else {
-                    slot.textContent = title || 'Untitled Note';
+                    slot.textContent = displayTitle;
                 }
+                slot.dataset.renderedTitle = `${isDashboardNote && typeof NoteParser !== 'undefined' ? 'dashboard' : 'plain'}::${window.escapeHtml(`${updatedNote.title || ''}::${displayTitle}`)}`;
+            }
+            if (typeof window.isFenceNote === 'function') {
+                el.classList.toggle('is-fence-note', window.isFenceNote(updatedNote));
+            }
+            if (typeof window.getNoteZIndex === 'function') {
+                el.style.zIndex = window.getNoteZIndex(updatedNote);
             }
 
             // Per-Blob Rename: Fire individual rename calls for any changed attachment names
-            const updatedNote = STATE.notes.find(n => n.id == id);
             const blobMap     = {};
             if (updatedNote && updatedNote.attachments) {
                 updatedNote.attachments.forEach(a => { blobMap[a.blob_id] = a.filename; });
