@@ -1,6 +1,6 @@
 // /public/sw.js
 
-const CACHE_NAME = 'rendler-offline-v79';
+const CACHE_NAME = 'rendler-offline-v93';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 
 const CORE_ASSETS = [
