@@ -55,6 +55,30 @@ sub DB::store_fuel_log {
     return $self->{dbh}->last_insert_id(undef, undef, 'fuel_logs', 'id');
 }
 
+# Stores a manually entered fuel log without source images.
+# Returns: Integer identifier for the newly created fuel log.
+sub DB::store_manual_fuel_log {
+    my ($self, $data) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        "INSERT INTO fuel_logs (
+            vehicle_id, uploaded_by, log_date, odometer, litres, price_per_litre,
+            discount_per_litre, total_amount, station_name, fill_type, description,
+            ai_status, needs_review, review_reasons
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'complete', 0, ?)"
+    );
+
+    $sth->execute(
+        $data->{vehicle_id}, $data->{uploaded_by}, $data->{log_date}, $data->{odometer},
+        $data->{litres}, $data->{price_per_litre}, $data->{discount_per_litre} // 0,
+        $data->{total_amount}, $data->{station_name}, $data->{fill_type},
+        $data->{description}, $data->{review_reasons}
+    );
+
+    return $self->{dbh}->last_insert_id(undef, undef, 'fuel_logs', 'id');
+}
+
 # Retrieves a complete fuel log, including image BLOB data.
 # Returns: HashRef or undef.
 sub DB::get_fuel_log_by_id {
