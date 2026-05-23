@@ -1051,7 +1051,7 @@ function showBoardInfo() {
                 <div>
                     <p class="board-guide-subheading">Keyboard</p>
                     <ul class="board-guide-list">
-                        <li><strong>Ctrl+F</strong> — Open board search</li>
+                        <li><strong>Ctrl+F</strong> — Find/replace inside an edited note; otherwise open board search</li>
                         <li><strong>Ctrl+E</strong> — Toggle edit mode on hovered note / exit if already editing</li>
                         <li><strong>Ctrl+S</strong> — Save active note (incremental while editing)</li>
                         <li><strong>Ctrl+Z</strong> — Fit hovered note height to rendered content</li>
