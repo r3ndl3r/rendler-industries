@@ -1287,49 +1287,6 @@ a:hover {
 .debug-box { right: 10px; }
 .visit-box { left: 10px; }
 
-/* --- Global File Map / Tree --- */
-.file-map-container {
-    display: none;
-    margin-top: 20px;
-    border: 1px dashed #334155;
-    padding: 20px;
-    background: rgba(15, 23, 42, 0.8);
-    width: 100%;
-    max-width: 600px;
-    text-align: left;
-    box-sizing: border-box;
-    border-radius: 12px;
-}
-
-.file-tree, .file-tree ul {
-    list-style-type: none;
-    padding-left: 20px;
-    margin: 0;
-}
-
-.file-tree li {
-    margin: 4px 0;
-    line-height: 1.4;
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
-    font-size: 0.85rem;
-}
-
-.folder-name {
-    color: #f59e0b;
-    font-weight: bold;
-}
-
-.file-link {
-    color: #94a3b8;
-    text-decoration: none;
-    transition: color 0.2s;
-}
-
-.file-link:hover {
-    color: white;
-    text-decoration: underline;
-}
-
 /* --- Global Footer Styles --- */
 .platform-footer {
     color: #64748b;
