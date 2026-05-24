@@ -41,10 +41,13 @@
                 <div class="label">Restart</div>
             </button>
             <% } elsif (($leaf->{action} // '') eq 'logout') { %>
-            <a href="/logout" class="<%= $classes %>" data-id="<%= $leaf->{quick_id} %>">
-                <div class="icon">🚪</div>
-                <div class="label">Logout</div>
-            </a>
+            <form method="POST" action="/logout" class="quick-logout-form">
+                <input type="hidden" name="csrf_token" value="<%= csrf_token %>">
+                <button type="submit" class="<%= $classes %>" data-id="<%= $leaf->{quick_id} %>">
+                    <div class="icon">🚪</div>
+                    <div class="label">Logout</div>
+                </button>
+            </form>
             <% } else { %>
             <a href="<%= $leaf->{url} %>" class="<%= $classes %>" data-id="<%= $leaf->{quick_id} %>" target="<%= $leaf->{target} || '_self' %>">
                 <div class="icon"><%= $icon %></div>
