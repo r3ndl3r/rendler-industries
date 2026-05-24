@@ -442,6 +442,27 @@ CREATE TABLE `imposter_players` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `login_failures` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username_key` varchar(50) NOT NULL,
+  `attempted_at` timestamp NULL DEFAULT current_timestamp(),
+  `remote_ip` varchar(64) DEFAULT NULL,
+  `user_agent` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_login_failures_user_time` (`username_key`,`attempted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `login_lockouts` (
+  `username_key` varchar(50) NOT NULL,
+  `locked_until` timestamp NOT NULL,
+  `alerted_at` timestamp NULL DEFAULT NULL,
+  `fail_count` int(11) NOT NULL DEFAULT 0,
+  `remote_ip` varchar(64) DEFAULT NULL,
+  `user_agent` varchar(255) DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`username_key`),
+  KEY `idx_login_lockouts_locked_until` (`locked_until`),
+  KEY `idx_login_lockouts_alerted_at` (`alerted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `maintenance_tasks` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
