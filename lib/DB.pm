@@ -4,6 +4,7 @@ package DB;
 
 use strict;
 use warnings;
+use utf8;
 use DBI;
 use File::Basename;
 use File::Find;
@@ -53,8 +54,6 @@ sub new {
         # Remote connection
         $dsn = "DBI:MariaDB:database=$db_name;host=$db_host;port=$db_port";
     }
-    
-    print "DSN: $dsn\n" if $ENV{DEBUG};
     
     my $self = bless {
         dsn => $dsn,
