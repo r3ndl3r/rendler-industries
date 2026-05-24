@@ -66,6 +66,15 @@
     gap: 20px;
 }
 
+.quick-logout-form {
+    margin: 0;
+}
+
+.quick-logout-form .tile {
+    width: 100%;
+    font: inherit;
+}
+
 /* Base Tile Style (Glassmorphism) */
 .tile {
     position: relative;
