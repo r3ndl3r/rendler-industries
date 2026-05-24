@@ -99,61 +99,15 @@ div.main {
     height: 20px !important;
 }
 
-.file-map-container {
-    margin-top: 15px !important;
-    padding: 15px !important; /* Symmetrical horizontal padding for true centering */
-    max-width: 400px !important;
-    background: #0d0d0d !important;
-    border: 1px dashed #444 !important;
-    text-align: left !important;
-    border-radius: 8px !important;
+.github-footer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1;
 }
 
-.file-tree, .file-tree ul {
-    list-style-type: none;
-    padding-left: 5px !important; /* Keep left-alignment for the tree */
-    margin: 0;
-}
-
-.file-tree li {
-    margin: 2px 0 !important;
-    line-height: 1.4 !important;
-    font-family: 'Courier New', monospace !important;
-    font-size: 0.9rem !important;
-    text-align: left !important;
-}
-
-.git-link-container {
-    margin-top: 15px !important;
-    padding-top: 10px !important;
-    border-top: 1px solid #333 !important;
-    text-align: center !important;
-    width: 100% !important;
-    font-family: 'Courier New', monospace !important;
-    font-size: 0.9rem !important;
-    display: block !important;
-}
-
-.git-link-container a {
-    color: #60a5fa !important;
-    text-decoration: none;
-}
-
-.git-link-container a:hover {
-    color: white !important;
-    text-decoration: underline;
-}
-
-.folder-name {
-    color: #f0ad4e !important;
-}
-
-#listFilesLink {
-    color: #60a5fa !important;
-}
-
-#listFilesLink:hover {
-    color: white !important;
+.github-footer-link svg {
+    flex: 0 0 auto;
 }
 
 #time, #andrea, #nicky, #andreas, #nickys, #server, #servers, #clock-prefix {
