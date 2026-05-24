@@ -5,7 +5,6 @@ package MyApp::Plugin::Helpers;
 use utf8;
 use Mojo::Base 'Mojolicious::Plugin';
 use DB;
-use Path::Iterator::Rule;
 use DateTime;
 
 sub register {
@@ -118,28 +117,6 @@ sub register {
             my $c = shift;
             my $res = $c->param('r') // '';
             return $res =~ /^[a-zA-Z0-9_-]+$/ ? $res : 'default';
-        }
-    );
-    
-    # Helper: List all application source files
-    # Parameters: None
-    # Returns: ArrayRef of filenames sorted alphabetically
-    # Behavior: Scans public, templates, and lib directories for code files
-    $self->helper(
-        listFiles => sub {
-            my @locations = ('public', 'templates', 'lib');
-            my @all_files;
-            my $rule = Path::Iterator::Rule->new->not_dir->name(qr/(pm|pl|js|css|ep)$/);
-            
-            for my $location (@locations) {
-                push @all_files, $rule->all($location);
-            }
-            
-            (my $file = __FILE__) =~ s{.*/}{};
-            push @all_files, $file;
-            
-            my @sorted = sort { fc($a) cmp fc($b) } @all_files;
-            return \@sorted;
         }
     );
     
