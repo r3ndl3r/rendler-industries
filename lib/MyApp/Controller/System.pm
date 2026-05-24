@@ -805,6 +805,14 @@ sub run_notification_queue {
     }
 }
 
+# Internal helper to prune expired login failure and lockout records.
+# Parameters: None
+# Returns: None
+sub run_login_security_maintenance {
+    my ($c) = @_;
+    $c->db->prune_login_security();
+}
+
 # Attempts a Discord DM delivery for a single queue item.
 sub _queue_attempt_discord {
     my ($c, $item) = @_;
