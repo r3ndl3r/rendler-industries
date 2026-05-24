@@ -247,6 +247,23 @@ use constant MANIFEST => {
         default_body    => "Hello [user],\n\nYour account has been approved!\n\nLog in: [sys_url /login]\n\n- Rendler Industries®"
     },
 
+    # --- SECURITY (security_*) ---
+    'security_login_lockout' => {
+        desc    => "Sent to admins when repeated failed login attempts temporarily lock a username.",
+        tags    => "username, count, window, locked_minutes, ip, user_agent",
+        url     => '/admin/users',
+        sample  => {
+            username       => "alex",
+            count          => 5,
+            window         => "15 minutes",
+            locked_minutes => 15,
+            ip             => "203.0.113.10",
+            user_agent     => "Mozilla/5.0"
+        },
+        default_subject => "Login protection triggered for [username]",
+        default_body    => "Login protection was triggered for **[username]**.\n\nFailed attempts: [count] in [window]\nTemporary lock: [locked_minutes] minutes\nIP: [ip]\nUser agent: [user_agent]\n\n[sys_url /admin/users]"
+    },
+
     # --- CALENDAR (calendar_*) ---
     'calendar_reminder' => {
         desc    => "Upcoming event reminder.",
@@ -513,12 +530,12 @@ sub register {
         my $creds = $c->db->{dbh}->selectrow_hashref("SELECT * FROM gotify LIMIT 1");
         
         return 0 unless $creds;
-        my $url = "https://go.rendler.org/message?token=" . $creds->{token};
+        my $url = "https://go.rendler.org/message";
         my %params = (message => $message);
         $params{title} = $title if $title;
         $params{priority} = $priority if $priority;
         
-        $c->app->ua->post_p($url => form => \%params)->then(sub {
+        $c->app->ua->post_p($url => { 'X-Gotify-Key' => $creds->{token} } => form => \%params)->then(sub {
             my $tx = shift;
             if ($tx->result->is_success) {
                 $c->app->log->info("Gotify alert sent: " . ($title // 'No Title'));
