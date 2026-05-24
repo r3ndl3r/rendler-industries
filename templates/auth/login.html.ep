@@ -16,9 +16,8 @@
         % if (my $msg = param('msg')) {
             <div class="alert">
                 % if ($msg eq 'invalid') {
-                    Invalid username or password.
-                % } elsif ($msg eq 'pending') {
-                    Account pending approval.
+                    Invalid credentials or temporarily locked.<br>
+                    Try again later.
                 % }
             </div>
         % }
