@@ -3,7 +3,15 @@
 package MyApp::Controller::Auth;
 use Mojo::Base 'Mojolicious::Controller';
 
+use utf8;
 use Mojo::Util qw(trim);
+
+use constant {
+    LOGIN_FAILURE_THRESHOLD          => 5,
+    LOGIN_FAILURE_WINDOW_SECONDS     => 15 * 60,
+    LOGIN_LOCKOUT_SECONDS            => 15 * 60,
+    LOGIN_LOCKOUT_ALERT_COOLDOWN_SEC => 30 * 60,
+};
 
 # Controller for User Authentication and Session Management.
 # Features:
@@ -40,12 +48,20 @@ sub login {
     # Sanitize input parameters
     my $username = trim($c->param('username') // '');
     my $password = $c->param('password');
+    my $login_key = _login_username_key($username);
+
+    if ($login_key && $c->db->get_active_login_lockout($login_key)) {
+        $c->app->log->warn("Blocked login attempt for locked username $username from IP " . $c->tx->remote_address);
+        return $c->redirect_to('/login?msg=invalid');
+    }
 
     # Attempt authentication against database records
     # Returns: 1 (Success), 2 (Pending Approval), 0 (Failure)
     my $auth_result = $c->db->authenticate_user($username, $password);
 
     if ($auth_result == 1) {
+        $c->db->clear_login_failures($login_key);
+
         # Security: Force session rotation by expiring the old ID and generating a new one
         # 1. Clear current session data
         $c->session({});
@@ -74,12 +90,62 @@ sub login {
     } elsif ($auth_result == 2) {
         # Handle "Pending Approval" state
         $c->app->log->warn("Pending approval login attempt for user $username from IP " . $c->tx->remote_address);
-        return $c->redirect_to('/login?msg=pending');
+        _handle_login_failure($c, $username, $login_key);
+        return $c->redirect_to('/login?msg=invalid');
     } else {
         # Handle invalid credentials
         $c->app->log->warn("Failed login attempt for user $username from IP " . $c->tx->remote_address);
+        _handle_login_failure($c, $username, $login_key);
         return $c->redirect_to('/login?msg=invalid');
     }
+}
+
+sub _login_username_key {
+    my ($username) = @_;
+    $username = trim($username // '');
+    return lc $username;
+}
+
+sub _handle_login_failure {
+    my ($c, $username, $login_key) = @_;
+    return unless $login_key;
+
+    my $ip = $c->tx->remote_address;
+    my $ua = $c->req->headers->user_agent // '';
+
+    $c->db->record_login_failure($login_key, $ip, $ua);
+    my $count = $c->db->count_recent_login_failures($login_key, LOGIN_FAILURE_WINDOW_SECONDS);
+    return unless $count >= LOGIN_FAILURE_THRESHOLD;
+
+    $c->db->activate_login_lockout($login_key, LOGIN_LOCKOUT_SECONDS, $count, $ip, $ua);
+
+    return unless $c->db->should_send_login_lockout_alert($login_key, LOGIN_LOCKOUT_ALERT_COOLDOWN_SEC);
+    _notify_admins_login_lockout($c, $username, $count, $ip, $ua);
+    $c->db->mark_login_lockout_alerted($login_key);
+}
+
+sub _notify_admins_login_lockout {
+    my ($c, $username, $count, $ip, $ua) = @_;
+
+    my $admins = $c->db->get_admins();
+    my $window_label = _duration_label(LOGIN_FAILURE_WINDOW_SECONDS);
+    my $lockout_minutes = int(LOGIN_LOCKOUT_SECONDS / 60);
+    for my $admin (@$admins) {
+        $c->notify_templated($admin->{id}, 'security_login_lockout', {
+            username       => $username || '(blank)',
+            count          => $count,
+            window         => $window_label,
+            locked_minutes => $lockout_minutes,
+            ip             => $ip || 'unknown',
+            user_agent     => $ua || 'unknown',
+        }, 0);
+    }
+}
+
+sub _duration_label {
+    my ($seconds) = @_;
+    my $minutes = int($seconds / 60);
+    return $minutes == 1 ? '1 minute' : "$minutes minutes";
 }
 
 # Acts as a security gatekeeper for protected routes.
@@ -104,7 +170,7 @@ sub check_login {
 }
 
 # Terminates the user session.
-# Route: GET /logout
+# Route: POST /logout
 # Parameters: None
 # Returns:
 #   Redirects to '/'
@@ -204,7 +270,7 @@ sub register_routes {
     my ($class, $r) = @_;
     $r->{r}->get('/login')->to('auth#login_form');
     $r->{r}->post('/login')->to('auth#login');
-    $r->{r}->get('/logout')->to('auth#logout');
+    $r->{auth}->post('/logout')->to('auth#logout');
     $r->{r}->get('/register')->to('auth#register_form');
     $r->{r}->post('/register')->to('auth#register');
 }
