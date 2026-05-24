@@ -156,7 +156,7 @@ async function loadMenu() {
                     </button>
                 `;
             }
-            html += `<a href="/logout" class="text-red">🚪 Logout</a>`;
+            html += `<button type="button" class="menu-action text-red" onclick="submitLogout(event)">🚪 Logout</button>`;
         } else {
             // Public guest navigation view
             html += '<div class="menu-spacer"></div>';
@@ -264,6 +264,24 @@ document.addEventListener('click', function(event) {
     }
 });
 
+function submitLogout(event) {
+    event.preventDefault();
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/logout';
+
+    const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'csrf_token';
+    input.value = token;
+    form.appendChild(input);
+
+    document.body.appendChild(form);
+    form.submit();
+}
+
 /**
  * Initialization Block
  */
@@ -277,6 +295,7 @@ window.toggleMenu = toggleMenu;
 window.toggleSubmenu = toggleSubmenu;
 window.startRestartSequence = startRestartSequence;
 window.closeRestartModal = closeRestartModal;
+window.submitLogout = submitLogout;
 
 /**
  * Quick Search: Toggle between emoji and input
