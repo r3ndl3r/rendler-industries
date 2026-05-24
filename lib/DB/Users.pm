@@ -6,6 +6,7 @@ use strict;
 use warnings;
 use utf8;
 use Crypt::Eksblowfish::Bcrypt qw(bcrypt en_base64);
+use Crypt::URandom qw(urandom);
 
 # User Authentication and Role-Based Access Control Database Library.
 #
@@ -67,7 +68,7 @@ sub DB::create_user {
     
     # Generate secure salt and hash password (Bcrypt cost 10)
     eval {
-        my $salt = en_base64(join('', map chr(int(rand(256))), 1..16));
+        my $salt = en_base64(urandom(16));
         $hashed_password = bcrypt($password, '$2a$10$'.$salt);
     };
     
@@ -291,7 +292,7 @@ sub DB::update_user_password {
     
     # Generate new salt and hash for the new password
     eval {
-        my $salt = en_base64(join('', map chr(int(rand(256))), 1..16));
+        my $salt = en_base64(urandom(16));
         $hashed_password = bcrypt($password, '$2a$10$'.$salt);
     };
     
