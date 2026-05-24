@@ -167,7 +167,6 @@ sub _quick_tiles {
         action         => 'logout',
         label          => 'Logout',
         icon           => '🚪',
-        url            => '/logout',
     } if $c->is_logged_in;
 
     return \@tiles;
