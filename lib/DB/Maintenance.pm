@@ -346,6 +346,42 @@ sub DB::update_maintenance_task {
     return 1;
 }
 
+# Synchronizes built-in maintenance task contracts with the database.
+# Existing admin-controlled settings are preserved.
+# Parameters:
+#   $manifest : HashRef keyed by task name
+# Returns: 1
+sub DB::sync_maintenance_manifest {
+    my ($self, $manifest) = @_;
+    $self->ensure_connection;
+
+    foreach my $name (keys %$manifest) {
+        my $task = $manifest->{$name};
+        $self->{dbh}->do(
+            "INSERT INTO maintenance_tasks
+                (name, label, description, function_name, is_async, run_last, is_enabled, interval_minutes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                label         = VALUES(label),
+                description   = VALUES(description),
+                function_name = VALUES(function_name),
+                is_async      = VALUES(is_async),
+                run_last      = VALUES(run_last)",
+            undef,
+            $name,
+            $task->{label},
+            $task->{description} // '',
+            $task->{function_name},
+            $task->{is_async} ? 1 : 0,
+            $task->{run_last} ? 1 : 0,
+            $task->{is_enabled} ? 1 : 0,
+            $task->{interval_minutes}
+        );
+    }
+
+    return 1;
+}
+
 # Inserts a new maintenance task record.
 # Parameters:
 #   $name, $label, $description, $function_name, $is_async, $is_enabled, $interval_minutes
