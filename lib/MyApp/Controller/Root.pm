@@ -2,8 +2,6 @@
 
 package MyApp::Controller::Root;
 use Mojo::Base 'Mojolicious::Controller';
-use Cwd qw(abs_path getcwd);
-use Mojo::File 'path';
 use HTML::Entities qw(encode_entities decode_entities);
 use Time::Piece;
 use Mojo::Util qw(trim);
@@ -45,56 +43,6 @@ sub index {
 # Returns:
 #   Rendered HTML template 'noperm'
 sub no_permission { shift->render('noperm') }
-
-# Utility to view server-side source files via the browser.
-# Route: GET /source
-# Parameters:
-#   f : Relative path to the file (e.g., 'lib/MyApp.pm')
-# Returns:
-#   Raw text content of the file if allowed
-#   400/403/404 Error status codes otherwise
-# Security:
-#   - Enforces strict directory whitelisting (public, templates, lib, script)
-sub view_source {
-    my $c = shift;
-    
-    # Define project root
-    my $base_dir = abs_path(path($c->app->home)->child('.'));
-    my $file_param = $c->param('f');
-    
-    return $c->render(text => "Invalid file.", status => 400) unless $file_param;
-
-    # Resolve paths to absolute system paths
-    my $requested_path = path($base_dir, $file_param)->to_string;
-    my $real_path = abs_path($requested_path);
-    
-    return $c->render(text => "File not found.", status => 404) unless $real_path;
-
-    # Define allowed directories for security whitelist
-    my $public_dir       = abs_path(path($base_dir, 'public'));
-    my $templates_dir    = abs_path(path($base_dir, 'templates'));
-    my $lib_dir          = abs_path(path($base_dir, 'lib'));
-    my $script_path      = abs_path(path($base_dir, 'mojo.pl'));
-    
-    # Check if requested file resides within allowed directories
-    my $is_allowed = 0;
-    if ($real_path) {
-        $is_allowed =
-             ($real_path eq $script_path)
-          || ($real_path =~ m{^\Q$public_dir\E/})
-          || ($real_path =~ m{^\Q$templates_dir\E/})
-          || ($real_path =~ m{^\Q$lib_dir\E/});
-    }
-
-    # Serve file content if security check passes
-    if ($is_allowed && -f $real_path) {
-        my $text = path($real_path)->slurp;
-        $c->render(text => $text, format => 'txt');
-    }
-    else {
-        $c->render(text => "Access denied.", format => 'txt', status => 403);
-    }
-}
 
 # JSON API endpoint serving age data for dashboard widgets.
 # Route: GET /age
@@ -157,24 +105,6 @@ sub age {
         }
     );
 }
-
-# JSON API endpoint serving application source file list.
-# Route: GET /system/api/file_map
-# Parameters: None
-# Returns:
-#   JSON array of file paths
-sub file_map_json {
-    my $c = shift;
-    my $files = $c->listFiles();
-    $c->render(json => { success => 1, files => $files });
-}
-
-# Debug utility to display current working directory.
-# Route: GET /cwd
-# Returns: Plain text path
-sub cwd { shift->render(text => "CWD: " . getcwd()) }
-
-
 
 # Static Page Renders
 sub t_page { shift->render('t') }
@@ -486,8 +416,6 @@ sub register_routes {
     my ($class, $r) = @_;
     $r->{r}->get('/')->to('root#index');
     $r->{r}->get('/noperm')->to('root#no_permission');
-    $r->{r}->get('/source')->to('root#view_source');
-    $r->{r}->get('/cwd')->to('root#cwd');
     $r->{r}->get('/age')->to('root#age');
     $r->{r}->get('/contacts')->to('root#contact');
     $r->{r}->get('/contact')->to('root#contact');
@@ -498,7 +426,6 @@ sub register_routes {
     $r->{r}->get('/mobile')->to('root#p_page');
     $r->{r}->get('/this.is.totally.not.sus')->to('root#sus');
     $r->{r}->get('/api/user_icons')->to('root#api_user_icons');
-    $r->{r}->get('/system/api/file_map')->to('root#file_map_json');
     $r->{r}->get('/quick')->to('root#quick');
     $r->{auth}->patch('/api/quick/order')->to('root#quick_save_order');
     $r->{auth}->get('/clipboard')->to('root#copy_get');
