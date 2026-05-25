@@ -2022,6 +2022,21 @@ function startSleepTimer(minutes) {
 }
 
 /**
+ * Starts a sleep timer from the custom minutes input.
+ * @returns {void}
+ */
+function startCustomSleepTimer() {
+    const input = document.getElementById('customSleepMinutes');
+    const minutes = input ? parseInt(input.value, 10) : 0;
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 999) {
+        showToast('Enter custom minutes from 1 to 999.', 'error');
+        if (input) input.focus();
+        return;
+    }
+    startSleepTimer(minutes);
+}
+
+/**
  * Cancels the active sleep timer and hides all timer UI.
  * @returns {void}
  */
