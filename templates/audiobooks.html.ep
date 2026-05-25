@@ -39,6 +39,7 @@
     </div>
 </div>
 
+
 <%# ─── Book Detail Panel ──────────────────────────────────────────────────── %>
 <div id="detailPanel" class="detail-panel">
     <div class="detail-header">
@@ -117,6 +118,13 @@
                     <button type="button" onclick="startSleepTimer(30)">30 min</button>
                     <button type="button" onclick="startSleepTimer(45)">45 min</button>
                     <button type="button" onclick="startSleepTimer(60)">60 min</button>
+                    <div class="sleep-custom-row">
+                        <input type="number" id="customSleepMinutes" class="sleep-custom-input"
+                               min="1" max="999" step="1" inputmode="numeric" maxlength="3"
+                               aria-label="Custom sleep timer minutes" placeholder="Mins"
+                               onkeydown="if(event.key==='Enter')startCustomSleepTimer()">
+                        <button type="button" class="sleep-custom-set" onclick="startCustomSleepTimer()">Set</button>
+                    </div>
                     <button type="button" onclick="startSleepTimer(0)">End of chapter</button>
                     <button type="button" id="cancelSleepBtn" class="hidden" onclick="cancelSleepTimer()">Cancel timer</button>
                 </div>
@@ -135,4 +143,3 @@
         <ul id="playerChapterList" class="chapter-list chapter-list-player"></ul>
     </div>
 </div>
-
