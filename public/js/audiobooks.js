@@ -38,6 +38,7 @@ const PLAYER = {
     speed:           1.0,
     seeking:         false,   // true while user drags seek bar
     loaded_url:      null,    // audio.src that is currently loaded
+    pending_seek:    null,    // requested chapter seek waiting for audio.currentTime to settle
     paused_at:       null,    // timestamp used for smart rewind on long pauses
     detail_slug:     null,    // slug currently shown in detail panel
     player_open:     false,
@@ -89,7 +90,9 @@ function _releaseWakeLock() {
  */
 function _isCueMode(book) {
     const chapters = Array.isArray(book && book.chapters) ? book.chapters : [];
-    return chapters.length > 0 && typeof chapters[0].start === 'number';
+    if (!chapters.length || typeof chapters[0].start !== 'number') return false;
+    const firstFile = chapters[0].file || '';
+    return chapters.every(ch => (ch.file || '') === firstFile);
 }
 
 /**
@@ -989,7 +992,7 @@ function _progressPercent(book) {
         } else {
             const idx        = prog.chapter_idx || 0;
             const beforeCh   = chapters.slice(0, idx).reduce((a, c) => a + (c.duration || 0), 0);
-            consumed = beforeCh + (prog.position_sec || 0);
+            consumed = beforeCh + _normalizeChapterPosition(book, idx, prog.position_sec || 0);
         }
         return Math.min(100, Math.round((consumed / total) * 100));
     }
@@ -1025,7 +1028,7 @@ function _statusLabel(book) {
         remaining = Math.max(0, total - (prog.position_sec || 0));
     } else {
         const idx        = prog.chapter_idx || 0;
-        const pos        = prog.position_sec || 0;
+        const pos        = _normalizeChapterPosition(book, idx, prog.position_sec || 0);
         const curDur     = (chapters[idx] || {}).duration || 0;
         const remainInCh = Math.max(0, curDur - pos);
         const remainAfter = chapters.slice(idx + 1).reduce((a, c) => a + (c.duration || 0), 0);
@@ -1216,6 +1219,7 @@ function closePlayer() {
     PLAYER.book         = null;
     PLAYER.chapter_idx  = 0;
     PLAYER.loaded_url   = null;
+    PLAYER.pending_seek = null;
 }
 
 /**
@@ -1249,14 +1253,34 @@ function _loadChapter(idx, autoplay = true) {
         seekTo = (savedChapterIdx === idx && prog.position_sec > chStart)
             ? prog.position_sec : chStart;
     } else {
-        seekTo = (savedChapterIdx === idx && prog.position_sec > 0)
+        let savedPos = (savedChapterIdx === idx && prog.position_sec > 0)
             ? prog.position_sec : 0;
+        savedPos = _normalizeChapterPosition(book, idx, savedPos);
+        seekTo = savedPos;
     }
+    PLAYER.pending_seek = { chapter_idx: idx, position_sec: seekTo };
 
     const doSeekAndPlay = () => {
+        audio.removeEventListener('seeked', audio._pendingSeeked);
+        audio._pendingSeeked = () => {
+            if (
+                PLAYER.pending_seek &&
+                PLAYER.pending_seek.chapter_idx === idx &&
+                Math.abs(audio.currentTime - seekTo) <= 1.5
+            ) {
+                PLAYER.pending_seek = null;
+            }
+        };
+        audio.addEventListener('seeked', audio._pendingSeeked, { once: true });
+
         if (Math.abs(audio.currentTime - seekTo) > 0.5) {
             audio.currentTime = seekTo;
+        } else {
+            PLAYER.pending_seek = null;
         }
+        PLAYER.chapter_idx = idx;
+        _updateChapterUI(idx);
+
         if (autoplay) {
             audio.play().catch(err => {
                 console.warn('Autoplay blocked:', err.message);
@@ -1293,7 +1317,9 @@ function _loadChapter(idx, autoplay = true) {
             }
             if (STATE.is_admin) _persistChapterDuration(slug, book);
         };
-        audio.addEventListener('durationchange', onDuration, { once: true });
+        audio.removeEventListener('durationchange', audio._pendingDurationChange);
+        audio._pendingDurationChange = onDuration;
+        audio.addEventListener('durationchange', audio._pendingDurationChange, { once: true });
     }
 }
 
@@ -1551,29 +1577,50 @@ function _onTimeUpdate() {
     const pos      = audio.currentTime;
 
     if (cue && chapters.length && chapters[PLAYER.chapter_idx]) {
-        // Detect chapter boundary crossing: find which chapter we're currently in.
-        let newIdx = 0;
-        for (let i = chapters.length - 1; i >= 0; i--) {
-            if (pos >= (chapters[i].start || 0)) { newIdx = i; break; }
-        }
-        if (newIdx !== PLAYER.chapter_idx) {
-            // End-of-chapter sleep fires on CUE chapter boundaries, not file end.
-            if (PLAYER.sleep_end_of_ch) {
-                PLAYER.sleep_end_of_ch = false;
-                _hideSleepBadge();
-                audio.pause();
-                _saveProgress(false);
-                return;
+        const pendingIdx = PLAYER.pending_seek && chapters[PLAYER.pending_seek.chapter_idx]
+            ? PLAYER.pending_seek.chapter_idx
+            : null;
+        if (pendingIdx !== null) {
+            const pendingStart = chapters[pendingIdx].start || 0;
+            const pendingEnd = (pendingIdx + 1 < chapters.length)
+                ? (chapters[pendingIdx + 1].start || audio.duration)
+                : audio.duration;
+            const inPendingChapter = pos >= pendingStart - 0.5 && pos < pendingEnd + 0.5;
+
+            if (inPendingChapter) {
+                PLAYER.pending_seek = null;
             }
-            PLAYER.chapter_idx = newIdx;
-            _updateChapterUI(newIdx);
+            if (PLAYER.chapter_idx !== pendingIdx) {
+                PLAYER.chapter_idx = pendingIdx;
+                _updateChapterUI(pendingIdx);
+            }
+        }
+
+        if (pendingIdx === null) {
+            // Detect chapter boundary crossing: find which chapter we're currently in.
+            let newIdx = 0;
+            for (let i = chapters.length - 1; i >= 0; i--) {
+                if (pos >= (chapters[i].start || 0)) { newIdx = i; break; }
+            }
+            if (newIdx !== PLAYER.chapter_idx) {
+                // End-of-chapter sleep fires on CUE chapter boundaries, not file end.
+                if (PLAYER.sleep_end_of_ch) {
+                    PLAYER.sleep_end_of_ch = false;
+                    _hideSleepBadge();
+                    audio.pause();
+                    _saveProgress(false);
+                    return;
+                }
+                PLAYER.chapter_idx = newIdx;
+                _updateChapterUI(newIdx);
+            }
         }
 
         // Show elapsed/remaining relative to current chapter, not whole file.
         const chStart = chapters[PLAYER.chapter_idx].start || 0;
         const chDur   = chapters[PLAYER.chapter_idx].duration || 0;
-        const elapsed = pos - chStart;
-        const remain  = chDur > 0 ? chDur - elapsed : 0;
+        const elapsed = Math.max(0, pos - chStart);
+        const remain  = chDur > 0 ? Math.max(0, chDur - elapsed) : 0;
 
         document.getElementById('playerElapsed').textContent   = _formatTime(elapsed);
         document.getElementById('playerRemaining').textContent = `-${_formatTime(remain)}`;
@@ -2047,14 +2094,25 @@ function _stopSaveTimer() {
  */
 function _saveProgress(completed) {
     if (!PLAYER.slug || !PLAYER.audio) return;
-    const pos = isFinite(PLAYER.audio.currentTime) ? PLAYER.audio.currentTime : 0;
+    const pending = PLAYER.pending_seek;
+    const pos = pending
+        ? pending.position_sec
+        : (isFinite(PLAYER.audio.currentTime) ? PLAYER.audio.currentTime : 0);
+    const chapterIdx = pending ? pending.chapter_idx : PLAYER.chapter_idx;
     const payload = {
         book_slug:   PLAYER.slug,
-        chapter_idx: PLAYER.chapter_idx,
+        chapter_idx: chapterIdx,
         position_sec: pos,
         completed:   completed ? 1 : 0,
         client_updated_ms: Date.now(),
     };
+    if (PLAYER.book) {
+        PLAYER.book.progress = PLAYER.book.progress || {};
+        PLAYER.book.progress.chapter_idx  = chapterIdx;
+        PLAYER.book.progress.position_sec = pos;
+        PLAYER.book.progress.completed    = completed ? 1 : 0;
+        PLAYER.book.progress.updated_at   = _formatDbDate(new Date());
+    }
     _postProgressQuietly(payload)
         .then(res => {
             if (res && res.success && res.applied) {
@@ -2073,6 +2131,39 @@ function _saveProgress(completed) {
 }
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
+
+/**
+ * Formats a Date like MariaDB's '%Y-%m-%d %H:%i:%s' for local sorting.
+ * @param {Date} date - Date object.
+ * @returns {string}
+ */
+function _formatDbDate(date) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+           `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+/**
+ * Returns a per-file chapter offset, tolerating older multi-file progress rows
+ * that were saved as absolute book positions.
+ * @param {Object} book - Book record.
+ * @param {number} idx - Zero-based chapter index.
+ * @param {number} pos - Saved playback position.
+ * @returns {number}
+ */
+function _normalizeChapterPosition(book, idx, pos) {
+    const savedPos = Number(pos) || 0;
+    if (savedPos <= 0 || _isCueMode(book)) return savedPos;
+
+    const chapters = Array.isArray(book && book.chapters) ? book.chapters : [];
+    const ch = chapters[idx] || {};
+    const duration = ch.duration || 0;
+    if (duration <= 0 || savedPos <= duration + 5) return savedPos;
+
+    const chStart = typeof ch.start === 'number' ? ch.start : 0;
+    const relativePos = chStart > 0 && savedPos >= chStart ? savedPos - chStart : savedPos;
+    return relativePos <= duration + 5 ? Math.max(0, relativePos) : 0;
+}
 
 /**
  * Formats seconds into M:SS or H:MM:SS.
