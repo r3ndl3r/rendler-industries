@@ -22,6 +22,10 @@ use File::Path qw(remove_tree);
 #   - Concurrency checks and maintenance reconciliation for active runs.
 #   - Name-only secret responses so plaintext never returns to the browser.
 
+# Checks if a master password has been initialized for the orchestration vault.
+# Parameters: None
+# Returns:
+#   Boolean (1 if exists, 0 otherwise)
 sub DB::automator_master_exists {
     my ($self) = @_;
     $self->ensure_connection;
@@ -60,6 +64,11 @@ sub DB::automator_verify_master_password {
     return bcrypt($password, $hash) eq $hash ? 1 : 0;
 }
 
+# Fetches the comprehensive state for the Automator dashboard.
+# Parameters:
+#   filters : HashRef for playbooks, history, etc.
+# Returns:
+#   HashRef containing setup_required, playbooks, inventories, secrets, history, categories, and active_runs.
 sub DB::get_automator_state {
     my ($self, $filters) = @_;
     $self->ensure_connection;
@@ -145,6 +154,13 @@ sub DB::list_automator_playbooks {
     return $rows;
 }
 
+# Lists recent playbook execution history with optional filtering.
+# Parameters:
+#   filters : HashRef (status, search, playbook, user_id)
+#   limit   : Max rows to return (default 50, capped at 100)
+#   offset  : Pagination offset
+# Returns:
+#   ArrayRef of HashRefs containing history records.
 sub DB::list_automator_history {
     my ($self, $filters, $limit, $offset) = @_;
     $limit = int($limit || 50);
@@ -188,6 +204,54 @@ sub DB::list_automator_history {
     return $rows;
 }
 
+# Aggregates automator history output from the last 24 hours for one user.
+# Parameters:
+#   user_id : Owner/triggering user ID
+# Returns:
+#   ArrayRef of HashRefs containing id, playbook_name, status, started_at, and output.
+sub DB::get_automator_logs_24h {
+    my ($self, $user_id) = @_;
+    $self->ensure_connection;
+    my $sql = q{
+        SELECT h.id, p.name AS playbook_name, h.status, h.started_at, h.output
+          FROM automator_history h
+          LEFT JOIN automator_playbooks p ON p.id = h.playbook_id
+         WHERE h.started_at >= NOW() - INTERVAL 24 HOUR
+           AND h.output IS NOT NULL AND h.output != ''
+           AND (p.user_id = ? OR h.triggered_by = ?)
+         ORDER BY h.started_at ASC
+    };
+    return $self->{dbh}->selectall_arrayref($sql, { Slice => {} }, $user_id, $user_id);
+}
+
+# Retrieves the last 5 generated AI system reports from the audit log for one user.
+# Parameters:
+#   user_id : Owner user ID
+# Returns:
+#   ArrayRef of HashRefs containing id, details, and created_at.
+sub DB::list_recent_ai_reports {
+    my ($self, $user_id) = @_;
+    $self->ensure_connection;
+    my $sql = q{
+        SELECT id, details, created_at
+          FROM automator_audit
+         WHERE action = 'ai_report'
+           AND user_id = ?
+         ORDER BY created_at DESC
+         LIMIT 5
+    };
+    my $rows = $self->{dbh}->selectall_arrayref($sql, { Slice => {} }, $user_id);
+    for my $row (@$rows) {
+        $row->{details} = $self->_json_decode($row->{details}, {});
+    }
+    return $rows;
+}
+
+# Retrieves a single history record by ID.
+# Parameters:
+#   id : History record ID
+# Returns:
+#   HashRef of the history record.
 sub DB::get_automator_history {
     my ($self, $id) = @_;
     $self->ensure_connection;
