@@ -16,14 +16,20 @@ use Symbol qw(gensym);
 
 my %CLIENTS;
 
-# Controller for admin-only Ansible orchestration.
+# Controller for high-privilege Ansible orchestration and infrastructure management.
 #
 # Features:
 #   - Vault setup, unlock, lock, and inactivity enforcement.
 #   - State-driven API surface for playbooks, inventories, secrets, and history.
 #   - Background ansible-playbook execution with process-group abort support.
 #   - WebSocket log subscribers for active run output.
+# Integration Points:
+#   - Ansible CLI: Executes playbooks via system subprocess.
+#   - Database: Persists orchestration history and secrets.
+#   - Restricted to 'admin' bridge via router.
 
+# Renders the primary Automator dashboard interface.
+# Route: GET /admin/automator
 sub index {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
@@ -31,6 +37,8 @@ sub index {
     $c->render('admin/automator');
 }
 
+# Returns the consolidated state for the Automator dashboard.
+# Route: GET /admin/automator/api/state
 sub api_state {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
@@ -43,6 +51,11 @@ sub api_state {
     $c->render(json => $state);
 }
 
+# Lists execution history with support for pagination and filtering.
+# Route: GET /admin/automator/api/history
+# Parameters:
+#   page     : Current page number
+#   per_page : Items per page (default 50)
 sub api_history {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
@@ -54,6 +67,8 @@ sub api_history {
     $c->render(json => { success => 1, history => $rows, has_more => scalar(@$rows) == $per_page ? 1 : 0 });
 }
 
+# Checks the current unlock status of the Automator vault.
+# Route: GET /admin/automator/api/status
 sub api_vault_status {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
@@ -64,6 +79,10 @@ sub api_vault_status {
     });
 }
 
+# Initializes the master password for the orchestration vault.
+# Route: POST /admin/automator/api/vault/setup
+# Parameters:
+#   password : New master password (min 8 chars)
 sub api_vault_setup {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
@@ -79,6 +98,10 @@ sub api_vault_setup {
     $c->render(json => { success => 1, message => 'Vault initialized' });
 }
 
+# Verifies the master password and unlocks the orchestration session.
+# Route: POST /admin/automator/api/vault/unlock
+# Parameters:
+#   password : Master password
 sub api_vault_unlock {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
@@ -90,6 +113,8 @@ sub api_vault_unlock {
     $c->render(json => { success => 1, message => 'Vault unlocked' });
 }
 
+# Revokes the current orchestration session lock.
+# Route: POST /admin/automator/api/vault/lock
 sub api_vault_lock {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
@@ -98,6 +123,14 @@ sub api_vault_lock {
     $c->render(json => { success => 1, message => 'Vault locked' });
 }
 
+# Saves or updates an inventory configuration.
+# Route: POST /admin/automator/api/inventory/save
+# Parameters:
+#   id           : Existing inventory ID (optional)
+#   name         : Display name
+#   category     : Organizational category
+#   hosts        : Raw Ansible inventory content
+#   ssh_key_path : Custom SSH key path (optional)
 sub api_save_inventory {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
@@ -122,6 +155,15 @@ sub api_save_inventory {
     $c->render(json => { success => 1, message => 'Inventory saved', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
+# Saves or updates a playbook configuration.
+# Route: POST /admin/automator/api/playbook/save
+# Parameters:
+#   id                 : Existing playbook ID (optional)
+#   name               : Display name
+#   content            : Playbook YAML content
+#   inventory_id       : Target inventory
+#   dynamic_vars       : JSON string of required variables
+#   log_retention_days : History pruning window
 sub api_save_playbook {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
@@ -217,6 +259,10 @@ sub api_save_playbook {
     $c->render(json => { success => 1, message => 'Playbook saved', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
+# Permanently removes a playbook and its associated metadata.
+# Route: POST /admin/automator/api/playbook/delete/:id
+# Parameters:
+#   id : Target playbook ID
 sub api_delete_playbook {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
@@ -229,6 +275,10 @@ sub api_delete_playbook {
     $c->render(json => { success => 1, message => 'Playbook deleted', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
+# Permanently removes an inventory configuration.
+# Route: POST /admin/automator/api/inventory/delete/:id
+# Parameters:
+#   id : Target inventory ID
 sub api_delete_inventory {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
@@ -241,6 +291,13 @@ sub api_delete_inventory {
     $c->render(json => { success => 1, message => 'Inventory deleted', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
+# Saves or updates a managed secret.
+# Route: POST /admin/automator/api/secret/save
+# Parameters:
+#   id       : Existing secret ID (optional)
+#   name     : Secret alias
+#   category : Secret category
+#   value    : Plaintext value (encrypted before storage)
 sub api_save_secret {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
@@ -262,6 +319,10 @@ sub api_save_secret {
     $c->render(json => { success => 1, message => 'Secret saved', secret => $secret, state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
+# Permanently removes a managed secret.
+# Route: POST /admin/automator/api/secret/delete/:id
+# Parameters:
+#   id : Target secret ID
 sub api_delete_secret {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
@@ -273,6 +334,12 @@ sub api_delete_secret {
     $c->render(json => { success => 1, message => 'Secret deleted', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
+# Initiates a new playbook execution.
+# Route: POST /admin/automator/api/run
+# Parameters:
+#   playbook_id : ID of the playbook to execute
+#   mode        : 'run' or 'check'
+#   vars        : JSON string of variables to apply
 sub api_run {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
@@ -299,6 +366,10 @@ sub api_run {
     $c->render(json => { success => 1, message => 'Run started', history_id => $history_id, state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
+# Requests the immediate termination of a running playbook.
+# Route: POST /admin/automator/api/abort/:id
+# Parameters:
+#   id : History record ID to abort
 sub api_abort {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
@@ -315,6 +386,8 @@ sub api_abort {
     $c->render(json => { success => 1, message => 'Run abort requested', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
+# Requests a global abort for all currently running playbooks.
+# Route: POST /admin/automator/api/abort/all
 sub api_abort_all {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
@@ -839,6 +912,36 @@ sub _owned_secret {
     return defined $owner_id && int($owner_id) == int($c->current_user_id);
 }
 
+sub _sanitize_ai_report_run_ids {
+    my ($c, $report, $valid_ids) = @_;
+    return $report unless ref $report eq 'HASH';
+    my $issues = ref $report->{issues} eq 'ARRAY' ? $report->{issues} : [];
+    for my $issue (@$issues) {
+        next unless ref $issue eq 'HASH';
+        my $run_id = $issue->{run_id};
+        unless (defined $run_id && $run_id =~ /\A\d+\z/) {
+            delete $issue->{run_id};
+            next;
+        }
+        $run_id = int($run_id);
+        my $valid = $valid_ids ? $valid_ids->{$run_id} : do {
+            my $history = $c->db->get_automator_history($run_id);
+            $history && _owned_history($c, $history);
+        };
+        if ($valid) {
+            $issue->{run_id} = $run_id;
+        } else {
+            delete $issue->{run_id};
+        }
+    }
+    return $report;
+}
+
+sub _db_timestamp {
+    my ($dt) = @_;
+    return $dt->strftime('%Y-%m-%d %H:%M:%S');
+}
+
 sub _max_runs {
     my ($c) = @_;
     return int($c->app->config->{automator}{max_concurrent_runs} || 10);
@@ -852,6 +955,8 @@ sub _broadcast {
     }
 }
 
+# Retrieves a full history report including JSON results and applied variables.
+# Route: GET /admin/automator/api/report/:history_id
 sub api_report {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
@@ -863,6 +968,73 @@ sub api_report {
     $h->{json_result} = $c->db->_json_decode($h->{json_result}, undef);
     $h->{applied_vars} = $c->db->_json_decode($h->{applied_vars}, {});
     $c->render(json => { success => 1, history => $h });
+}
+
+# Aggregates 24h logs and uses AI to generate a structured system health report.
+# Route: POST /admin/automator/api/ai-report
+# Parameters: None
+# Returns: JSON object { success, content => { summary, issues, recommendations, final_summary } }
+sub api_ai_report {
+    my $c = shift;
+    return _locked($c) unless _api_allowed($c);
+
+    my $logs = $c->db->get_automator_logs_24h($c->current_user_id);
+    unless (@$logs) {
+        return $c->render(json => { success => 1, content => { summary => "No activity found.", issues => [], recommendations => [], final_summary => "Idle.", created_at => _db_timestamp($c->now) } });
+    }
+
+    my %valid_run_id = map { int($_->{id}) => 1 } @$logs;
+    my @entries;
+    for my $log (@$logs) {
+        my $marker = "=== AUTOMATOR_HISTORY_ID:$log->{id} PLAYBOOK:" . ($log->{playbook_name} // 'Run') . " STATUS:" . ($log->{status} // 'unknown') . " ===\n";
+        my $output = $log->{output} // '';
+        my $entry = $marker . $output . "\n\n";
+        push @entries, $entry;
+    }
+    my $raw_text = join('', @entries);
+
+    my $prompt = "Analyze every provided Ansible log block from the last 24 hours and report all distinct current or significant issues, not only the newest issue. For each issue, set run_id only to the exact AUTOMATOR_HISTORY_ID value from the marker immediately above that log block. Do not infer, decrement, transform, or extract run_id values from the log body. If unsure, omit run_id.
+    RETURN ONLY JSON:
+    {
+      \"summary\": \"Executive overview\",
+      \"issues\": [ {\"severity\": \"High|Medium|Low\", \"host\": \"hostname\", \"description\": \"Details\", \"run_id\": 123} ],
+      \"recommendations\": [ \"Fix step\" ],
+      \"final_summary\": \"Concluding assessment\"
+    }
+    
+    LOG DATA:
+    $raw_text";
+
+    $c->render_later;
+    $c->gemini_prompt(
+        contents => [{ role => 'user', parts => [{ text => $prompt }] }],
+        system   => "You are an expert DevOps analyst. Use the provided Run IDs to link issues back to specific logs.",
+        timeout  => 60
+    )->then(sub {
+        my $data = shift;
+        my $ai_text = $data->{candidates}[0]{content}{parts}[0]{text} // "{}";
+        $ai_text =~ s/^```json\s*//i; $ai_text =~ s/\s*```$//;
+        
+        my $report = eval { decode_json($ai_text) } || { summary => "Parse error.", issues => [], recommendations => [], final_summary => "Error." };
+        _sanitize_ai_report_run_ids($c, $report, \%valid_run_id);
+        $report->{created_at} = _db_timestamp($c->now);
+
+        eval { $c->db->automator_log_audit($c->current_user_id, 'ai_report', 'system', undef, $report); };
+        $c->render(json => { success => 1, content => $report });
+    })->catch(sub {
+        my $err = shift;
+        $c->render(json => { success => 0, error => "Analysis failed: $err" });
+    });
+}
+
+# Retrieves the last 5 AI system reports from the audit log.
+# Route: GET /admin/automator/api/ai-report/history
+sub api_ai_report_history {
+    my $c = shift;
+    return _locked($c) unless _api_allowed($c);
+    my $history = $c->db->list_recent_ai_reports($c->current_user_id);
+    _sanitize_ai_report_run_ids($c, $_->{details}) for @$history;
+    $c->render(json => { success => 1, history => $history });
 }
 
 sub register_routes {
@@ -890,6 +1062,8 @@ sub register_routes {
     $r->post('/admin/automator/api/vault/lock')->to('admin-automator#api_vault_lock');
     $r->websocket('/admin/automator/ws/:history_id')->to('admin-automator#ws');
     $r->get('/admin/automator/api/report/:history_id')->to('admin-automator#api_report');
+    $r->post('/admin/automator/api/ai-report')->to('admin-automator#api_ai_report');
+    $r->get('/admin/automator/api/ai-report/history')->to('admin-automator#api_ai_report_history');
 }
 
 1;
