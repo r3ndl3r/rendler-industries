@@ -575,6 +575,7 @@
 
 .console-overlay.show {
     display: flex;
+    z-index: 14000;
 }
 
 .console-panel {
@@ -837,6 +838,13 @@
     flex-wrap: wrap;
     gap: 8px;
     justify-content: flex-end;
+}
+
+#aiReportBtn {
+    width: auto;
+    min-width: max-content;
+    padding: 6px 10px;
+    white-space: nowrap;
 }
 
 .history-list,
@@ -1427,4 +1435,92 @@
     .report-kv-key {
         min-width: 120px;
     }
+}
+
+.ai-report-body {
+    padding: 20px;
+    color: #f8fafc;
+}
+
+.ai-report-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 20px 16px;
+}
+
+.ai-report-actions .modal-panel-actions {
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0;
+    padding: 0;
+}
+
+.ai-report-summary {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.ai-report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin: 16px 0 24px;
+}
+
+.ai-issue-card {
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.issue-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.ai-issue-card.severity-high { border-left: 4px solid #ef4444; }
+.ai-issue-card.severity-medium { border-left: 4px solid #f59e0b; }
+.ai-issue-card.severity-low { border-left: 4px solid #3b82f6; }
+
+.severity-badge {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(148, 163, 184, 0.1);
+}
+
+.ai-report-final {
+    margin-top: 24px;
+    padding: 16px;
+    background: rgba(59, 130, 246, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.report-timestamp {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.history-select {
+    background: #1e293b;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: #f8fafc;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.history-select option {
+    background: #1e293b;
+    color: #f8fafc;
 }
