@@ -17,8 +17,9 @@ sub register_routes {
     my ($class, $bridges) = @_;
     my $family = $bridges->{family};
 
-    $family->get('/rubiks')->to('rubiks#index');
-    $family->get('/rubiks/stopwatch')->to('rubiks#stopwatch');
+    $family->get('/rubiks')->to('rubiks#stopwatch');
+    $family->get('/rubiks/generator')->to('rubiks#index');
+    $family->get('/rubiks/stopwatch')->to('rubiks#stopwatch_redirect');
     $family->get('/rubiks/solve')->to('rubiks#solve_redirect');
     $family->get('/rubiks/solver')->to('rubiks#solver');
     $family->get('/rubiks/api/state')->to('rubiks#api_state');
@@ -32,8 +33,8 @@ sub register_routes {
     $family->post('/rubiks/api/solver/upload')->to('rubiks#api_upload_solver');
 }
 
-# Renders the primary interface.
-# Route: GET /rubiks
+# Renders the moves generator interface.
+# Route: GET /rubiks/generator
 sub index {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
@@ -41,18 +42,23 @@ sub index {
 }
 
 # Renders the personal stopwatch and statistics interface.
-# Route: GET /rubiks/stopwatch
+# Route: GET /rubiks
 sub stopwatch {
     my $c = shift;
     return $c->redirect_to('/login') unless $c->is_logged_in;
     $c->render('rubiks/stopwatch');
 }
 
-# Redirects the old stopwatch URL to the canonical route.
-# Route: GET /rubiks/solve
+# Redirects legacy stopwatch URLs to the canonical route.
+# Routes: GET /rubiks/stopwatch, GET /rubiks/solve
+sub stopwatch_redirect {
+    my $c = shift;
+    return $c->redirect_to('/rubiks');
+}
+
 sub solve_redirect {
     my $c = shift;
-    return $c->redirect_to('/rubiks/stopwatch');
+    return $c->redirect_to('/rubiks');
 }
 
 # Renders the AI Solver interface.
