@@ -123,6 +123,10 @@ function handleAutomatorAction(event) {
     else if (action === 'clear-task-history') clearTaskHistory();
     else if (action === 'toggle-category') toggleCategory(trigger.dataset.category || '');
     else if (action === 'close-playbook') closePlaybookModal();
+    else if (action === 'open-ai-report') openAiReportModal();
+    else if (action === 'generate-ai-report') generateAiReport();
+    else if (action === 'close-ai-report') hideModal('aiReportModal');
+    else if (action === 'view-ai-history') viewAiHistory(id);
     else if (action === 'open-secret-help') showModal('secretHelpModal');
     else if (action === 'close-secret-help') hideModal('secretHelpModal');
     else if (action === 'close-inventory') closeInventoryModal();
@@ -2101,4 +2105,225 @@ async function showConsoleReport() {
             reportView.innerHTML = '<div class="report-empty">Report data not yet available. Wait for the run to finish.</div>';
         }
     }
+}
+
+/**
+ * Opens the AI report modal without starting generation.
+ *
+ * @returns {void}
+ */
+function openAiReportModal() {
+    const content = document.getElementById('aiReportContent');
+    if (!content) return;
+
+    showModal('aiReportModal');
+    document.getElementById('aiReportFooter')?.classList.add('hidden');
+    content.innerHTML = `
+        <div class="report-empty">
+            Select a past report or click Generate to analyze the last 24 hours of activity.
+        </div>
+    `;
+    refreshAiReportHistory();
+}
+
+/**
+ * Refreshes the AI report history dropdown.
+ *
+ * @returns {void}
+ */
+function refreshAiReportHistory() {
+    const history = document.getElementById('aiReportHistory');
+    apiGet('/admin/automator/api/ai-report/history', 5000).then(res => {
+        if (res && res.success && res.history && res.history.length) {
+            window.AI_REPORT_HISTORY = res.history;
+            if (history) {
+                history.innerHTML = `
+                    <select class="history-select" onchange="handleAutomatorAction({target: this.options[this.selectedIndex]})">
+                        <option value="">(Past Reports)</option>
+                        ${res.history.map(h => `<option value="${h.id}" data-automator-action="view-ai-history" data-id="${h.id}">${formatAiRelativeDate(h.created_at)}</option>`).join('')}
+                    </select>
+                `;
+            }
+        } else if (history) {
+            history.innerHTML = '';
+        }
+    });
+}
+
+/**
+ * Triggers the AI analysis for the last 24 hours of logs.
+ *
+ * @returns {void}
+ */
+async function generateAiReport() {
+    const content = document.getElementById('aiReportContent');
+    if (!content) return;
+
+    showModal('aiReportModal');
+    document.getElementById('aiReportFooter')?.classList.add('hidden');
+    content.innerHTML = `
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <p class="loading-label">AI is analyzing 24h activity...</p>
+        </div>
+    `;
+
+    try {
+        const data = await apiPost('/admin/automator/api/ai-report', {}, 65000);
+        if (data && data.success) {
+            renderAiReport(data.content);
+            refreshAiReportHistory();
+        } else {
+            content.innerHTML = `<div class="report-empty">Error: ${data?.error || 'Unknown failure'}</div>`;
+        }
+    } catch (err) {
+        content.innerHTML = `<div class="report-empty">Service currently unavailable.</div>`;
+    }
+}
+
+/**
+ * Renders a specific AI report from history.
+ *
+ * @param {number} id - Audit record ID.
+ * @returns {void}
+ */
+function viewAiHistory(id) {
+    const report = (window.AI_REPORT_HISTORY || []).find(r => Number(r.id) === Number(id));
+    if (report && report.details) {
+        renderAiReport(report.details);
+    }
+}
+
+/**
+ * Renders the structured AI response into the report modal.
+ *
+ * @param {Object} report - The AI JSON payload.
+ * @returns {void}
+ */
+function renderAiReport(report) {
+    const content = document.getElementById('aiReportContent');
+    const footer = document.getElementById('aiReportFooter');
+    const ts = document.getElementById('aiReportTimestamp');
+    if (!content) return;
+
+    let issuesHtml = '';
+    if (report.issues && report.issues.length) {
+        issuesHtml = `
+            <h4>Detected Issues</h4>
+            <div class="ai-report-grid">
+                ${report.issues.map(issue => {
+                    const severity = normalizeAiSeverity(issue.severity);
+                    const runId = Number(issue.run_id);
+                    return `
+                    <div class="ai-issue-card severity-${severity}">
+                        <div class="issue-header">
+                            <span class="severity-badge">${escapeHtml(severity)}</span>
+                            <strong>${escapeHtml(issue.host || 'General')}</strong>
+                            ${Number.isFinite(runId) && runId > 0 ? `<button type="button" class="btn-secondary compact" data-automator-action="open-console" data-id="${runId}">View Log</button>` : ''}
+                        </div>
+                        <p>${escapeHtml(issue.description)}</p>
+                    </div>
+                `;
+                }).join('')}
+            </div>
+        `;
+    }
+
+    content.innerHTML = `
+        <div class="ai-report-summary">${escapeHtml(report.summary)}</div>
+        ${issuesHtml}
+        <div class="ai-report-recommendations">
+            <h4>Recommendations</h4>
+            <ul>${(report.recommendations || []).map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>
+        </div>
+        <div class="ai-report-final">${escapeHtml(report.final_summary)}</div>
+    `;
+
+    if (footer && ts && report.created_at) {
+        footer.classList.remove('hidden');
+        ts.textContent = `Generated: ${formatAiFullDate(report.created_at)} (${formatAiRelativeDate(report.created_at)})`;
+    }
+}
+
+/**
+ * Converts AI severity to the supported visual classes.
+ *
+ * @param {string} severity - AI-provided severity.
+ * @returns {string}
+ */
+function normalizeAiSeverity(severity) {
+    const normalized = String(severity || '').toLowerCase();
+    if (normalized === 'high' || normalized === 'medium') return normalized;
+    return 'low';
+}
+
+/**
+ * Returns the application timezone for AI report date formatting.
+ *
+ * @returns {string}
+ */
+function getAiReportTimeZone() {
+    return typeof APP_TZ !== 'undefined' && APP_TZ ? APP_TZ : 'UTC';
+}
+
+/**
+ * Parses an AI report timestamp from the app's SQL timestamp convention.
+ *
+ * @param {string} value - Timestamp from API or audit history.
+ * @returns {Date}
+ */
+function parseAiReportDate(value) {
+    if (!value) return new Date(NaN);
+    const sqlMatch = String(value).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
+    if (sqlMatch) {
+        return new Date(
+            Number(sqlMatch[1]),
+            Number(sqlMatch[2]) - 1,
+            Number(sqlMatch[3]),
+            Number(sqlMatch[4]),
+            Number(sqlMatch[5]),
+            Number(sqlMatch[6])
+        );
+    }
+    return new Date(value);
+}
+
+/**
+ * Formats an AI report timestamp for the modal footer.
+ *
+ * @param {string} value - Timestamp from API or audit history.
+ * @returns {string}
+ */
+function formatAiFullDate(value) {
+    const date = parseAiReportDate(value);
+    if (Number.isNaN(date.getTime())) return value || '';
+    return formatDateTime(value);
+}
+
+/**
+ * Formats an AI report timestamp as a relative label.
+ *
+ * @param {string} value - Timestamp from API or audit history.
+ * @returns {string}
+ */
+function formatAiRelativeDate(value) {
+    const date = parseAiReportDate(value);
+    if (Number.isNaN(date.getTime())) return value || '';
+    const formatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+    const diffSeconds = Math.round((date.getTime() - Date.now()) / 1000);
+    const units = [
+        ['year', 31536000],
+        ['month', 2592000],
+        ['week', 604800],
+        ['day', 86400],
+        ['hour', 3600],
+        ['minute', 60],
+        ['second', 1],
+    ];
+    for (const [unit, seconds] of units) {
+        if (Math.abs(diffSeconds) >= seconds || unit === 'second') {
+            return formatter.format(Math.round(diffSeconds / seconds), unit);
+        }
+    }
+    return 'now';
 }
