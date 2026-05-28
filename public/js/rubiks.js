@@ -597,7 +597,7 @@ function startSolveTimer() {
 
     document.addEventListener('keydown', handleSolveOverlayInput);
     document.addEventListener('mousedown', handleSolveOverlayInput);
-    document.addEventListener('touchstart', handleSolveOverlayInput, { passive: true });
+    document.addEventListener('touchstart', handleSolveOverlayInput, { passive: false });
 
     RUBIKS_STATE.timerInterval = setInterval(updateTimerDisplay, 31);
     updateTimerDisplay();
@@ -665,13 +665,13 @@ async function saveSolveTime(duration, cubeType) {
 /**
  * Stops the solve timer when any input is detected on the overlay.
  * Prevents default for keyboard and mouse events to avoid triggering
- * other handlers. Touch events are passive so this does not prevent default.
+ * other handlers or closing the save confirmation via a follow-up click.
  * @param {KeyboardEvent|MouseEvent|TouchEvent} e
  * @returns {void}
  */
 function handleSolveOverlayInput(e) {
     if (!RUBIKS_STATE.timerRunning) return;
-    if (e.type === 'keydown' || e.type === 'mousedown') {
+    if (e.type === 'keydown' || e.type === 'mousedown' || e.type === 'touchstart') {
         e.preventDefault();
         e.stopPropagation();
     }
@@ -1447,7 +1447,7 @@ function generateStatefulDiagram(initialState, sequence) {
  */
 function loadSolutionToGenerator() {
     sessionStorage.setItem('rubiks_imported_sequence', RUBIKS_STATE.sequence);
-    window.location.href = '/rubiks';
+    window.location.href = '/rubiks/generator';
 }
 
 /**
