@@ -90,6 +90,7 @@
                     <div class="panel-heading">
                         <h2 id="historyPanelTitle">History</h2>
                         <div class="panel-actions">
+                            <button type="button" id="aiReportBtn" class="btn-icon-ai compact" data-automator-action="open-ai-report" title="Open AI Report">✨ AI Report</button>
                             <button type="button" id="historyClearBtn" class="btn-secondary compact hidden" data-automator-action="clear-task-history">All</button>
                             <button type="button" class="btn-secondary compact" data-automator-action="load-history">More</button>
                         </div>
@@ -358,5 +359,28 @@ localhost ansible_connection=local
         </div>
         <pre id="consoleOutput" class="console-output"></pre>
         <div id="consoleReportView" class="console-report-view hidden"></div>
+    </div>
+</div>
+
+<div id="aiReportModal" class="modal-overlay">
+    <div class="modal-content automator-modal-wide">
+        <div class="modal-header">
+            <h3>24h AI System Report</h3>
+            <span class="close-btn" data-automator-action="close-ai-report">&times;</span>
+        </div>
+        <div class="ai-report-actions">
+            <div class="modal-panel-actions">
+                <div id="aiReportHistory" class="ai-report-history-select"></div>
+                <button type="button" class="btn-primary compact" data-automator-action="generate-ai-report">Generate</button>
+            </div>
+        </div>
+        <div id="aiReportContent" class="ai-report-body">
+            <div class="report-empty">
+                Select a past report or click Generate to analyze the last 24 hours of activity.
+            </div>
+        </div>
+        <div id="aiReportFooter" class="modal-footer hidden">
+             <span id="aiReportTimestamp" class="report-timestamp"></span>
+        </div>
     </div>
 </div>
