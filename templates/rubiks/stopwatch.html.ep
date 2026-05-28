@@ -9,10 +9,11 @@
 % end
 
 <div class="rubiks-container app-container">
-    <div class="header-bar stopwatch-header">
+    <div class="header-bar">
         <h1>⏱️ <span>Rubik's Stopwatch</span></h1>
         <div class="manage-actions">
-            <a class="btn-secondary" href="/rubiks">🧊 Generator</a>
+            <a class="btn-secondary" href="/rubiks/generator">🧊 Generator</a>
+            <a class="btn-secondary" href="/rubiks/solver">📸 AI Solver</a>
         </div>
     </div>
 
