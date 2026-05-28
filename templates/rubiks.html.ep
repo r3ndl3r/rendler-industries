@@ -13,7 +13,7 @@
         <h1>🧊 <span>Rubik's Moves Generator</span></h1>
         <div class="manage-actions">
             <a class="btn-secondary" href="/rubiks/solver">📸 AI Solver</a>
-            <a class="btn-secondary" href="/rubiks/stopwatch">⏱️ Stopwatch</a>
+            <a class="btn-secondary" href="/rubiks">⏱️ Stopwatch</a>
             <button class="btn-secondary" onclick="resetCube()">🔄 Reset</button>
         </div>
     </div>
