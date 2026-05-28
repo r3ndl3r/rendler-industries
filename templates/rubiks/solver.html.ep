@@ -14,7 +14,8 @@
     <div class="header-bar">
         <h1>📸 <span>Rubik's AI Solver</span></h1>
         <div class="manage-actions">
-            <a class="btn-secondary" href="/rubiks">🧊 Generator</a>
+            <a class="btn-secondary" href="/rubiks">⏱️ Stopwatch</a>
+            <a class="btn-secondary" href="/rubiks/generator">🧊 Generator</a>
             <button type="button" class="btn-primary" onclick="openUploadModal()">📤 Analyze Cube</button>
         </div>
     </div>
