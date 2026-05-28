@@ -634,36 +634,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
         justify-content: center !important;
         width: 100% !important;
     }
-    .header-bar.stopwatch-header {
-        flex-direction: row !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        gap: 12px !important;
-    }
-    .header-bar.stopwatch-header h1 {
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-        width: auto !important;
-        justify-content: flex-start !important;
-        gap: 8px !important;
-        line-height: 1.1 !important;
-        white-space: nowrap !important;
-    }
-    .header-bar.stopwatch-header h1 span {
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-    }
-    .header-bar.stopwatch-header .manage-actions {
-        flex: 0 0 auto !important;
-        justify-content: flex-end !important;
-        width: auto !important;
-        margin-left: auto !important;
-    }
-    .header-bar.stopwatch-header .manage-actions .btn-secondary {
-        padding: 0.55rem 0.75rem !important;
-        white-space: nowrap !important;
-    }
     .rubiks-container {
         padding: 0 !important;
         width: 100% !important;
