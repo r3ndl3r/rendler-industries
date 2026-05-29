@@ -601,10 +601,25 @@ sub register {
         my $project_id  = $c->app->config->{fcm_project_id};
         my $fcm_url     = "https://fcm.googleapis.com/v1/projects/$project_id/messages:send";
 
-        my $payload = { notification => { title => $title, body => $clean_body } };
-        $payload->{data} = { url => $tap_url } if $tap_url;
+        my $base_url = $c->app->config->{url} || '';
+        my $link = $tap_url || '/quick';
+        $link = "$base_url$link" if $base_url && $link =~ m{^/};
 
-        for my $token (@$tokens) {
+        for my $device (@$tokens) {
+            my $token    = ref $device eq 'HASH' ? $device->{token} : $device;
+            my $platform = ref $device eq 'HASH' ? ($device->{platform} || 'android_native') : 'android_native';
+            my $payload  = { notification => { title => $title, body => $clean_body } };
+            $payload->{data} = { url => ($tap_url || '/quick'), title => $title, body => $clean_body };
+            if ($platform eq 'pwa_web') {
+                $payload->{webpush} = {
+                    fcm_options => { link => $link },
+                    notification => {
+                        icon  => '/images/pwa/icon-192.png',
+                        badge => '/images/pwa/icon-192.png',
+                    },
+                };
+            }
+
             $c->app->ua->post_p(
                 $fcm_url,
                 { Authorization => "Bearer $access_token", 'Content-Type' => 'application/json' },
@@ -617,13 +632,15 @@ sub register {
                         user_id   => $user_id,
                         caller_id => $caller_id,
                         type      => 'fcm',
-                        recipient => 'Mobile Device',
+                        recipient => $platform eq 'pwa_web' ? 'PWA Web App' : 'Mobile Device',
                         subject   => $title,
                         message   => $clean_body,
                         status    => 'success'
                     );
                 } else {
-                    my $err_status = $tx->result->json->{error}{status} // '';
+                    my $err_json = $tx->result->json || {};
+                    my $err_data = ref $err_json->{error} eq 'HASH' ? $err_json->{error} : {};
+                    my $err_status = $err_data->{status} // '';
                     if ($tx->result->code == 404 || $err_status eq 'NOT_FOUND' || $err_status eq 'UNREGISTERED') {
                         $c->db->delete_fcm_token($token);
                         $c->app->log->info("push_fcm: removed stale token for user $user_id");
@@ -634,7 +651,7 @@ sub register {
                             user_id       => $user_id,
                             caller_id     => $caller_id,
                             type          => 'fcm',
-                            recipient     => 'Mobile Device',
+                            recipient     => $platform eq 'pwa_web' ? 'PWA Web App' : 'Mobile Device',
                             subject       => $title,
                             message       => $clean_body,
                             status        => 'failed',
@@ -649,7 +666,7 @@ sub register {
                     user_id       => $user_id,
                     caller_id     => $caller_id,
                     type          => 'fcm',
-                    recipient     => 'Mobile Device',
+                    recipient     => $platform eq 'pwa_web' ? 'PWA Web App' : 'Mobile Device',
                     subject       => $title,
                     message       => $clean_body,
                     status        => 'failed',
