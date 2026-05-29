@@ -18,20 +18,50 @@ use Mojo::Util qw(trim);
 
 use DateTime;
 
+# Returns public Firebase Web Messaging configuration for PWA push.
+# Route: GET /api/fcm/web-config
+# Returns: JSON object { success, enabled, config, vapid_key }
+sub api_fcm_web_config {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $web = $c->app->config->{firebase_web} || {};
+    my $enabled = ($web->{api_key} && $web->{project_id} && $web->{messaging_sender_id} && $web->{app_id} && $web->{vapid_key}) ? 1 : 0;
+
+    return $c->render(json => {
+        success   => 1,
+        enabled   => $enabled,
+        config    => {
+            apiKey            => $web->{api_key}             // '',
+            authDomain        => $web->{auth_domain}         // '',
+            projectId         => $web->{project_id}          // '',
+            storageBucket     => $web->{storage_bucket}      // '',
+            messagingSenderId => $web->{messaging_sender_id} // '',
+            appId             => $web->{app_id}              // '',
+        },
+        vapid_key => $web->{vapid_key} // '',
+    });
+}
+
 # Stores a device FCM token for the currently logged-in user.
 # Route: POST /api/fcm/register
 # Parameters:
-#   token : FCM registration token string from the Capacitor plugin.
+#   token    : FCM registration token string from the Capacitor plugin or Firebase Web SDK.
+#   platform : Optional platform marker. Defaults to android_native for old app builds.
 # Returns: JSON object { success }
 sub api_fcm_register {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
 
-    my $token = trim($c->param('token') // '');
+    my $token    = trim($c->param('token')    // '');
+    my $platform = trim($c->param('platform') // 'android_native');
     return $c->render(json => { success => 0, error => 'Token required' }) unless $token;
+    return $c->render(json => { success => 0, error => 'Invalid platform' })
+        unless $platform =~ /\A(?:android_native|pwa_web)\z/;
 
     my $user_id = $c->current_user_id;
-    eval { $c->db->save_fcm_token($user_id, $token) };
+    my $ua = substr($c->req->headers->user_agent // '', 0, 255);
+    eval { $c->db->save_fcm_token($user_id, $token, $platform, $ua) };
     if ($@) {
         $c->app->log->error("FCM token save failed for user $user_id: $@");
         return $c->render(json => { success => 0, error => 'Failed to save token' });
@@ -1031,6 +1061,7 @@ sub cleanup_stale_uno_sessions {
 
 sub register_routes {
     my ($class, $r) = @_;
+    $r->{auth}->get('/api/fcm/web-config')->to('system#api_fcm_web_config');
     $r->{auth}->post('/api/fcm/register')->to('system#api_fcm_register');
     $r->{admin}->get('/admin/restart')->to('system#restart');
 }
