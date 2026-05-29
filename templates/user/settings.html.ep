@@ -121,6 +121,11 @@
                             <span class="slider slider-fcm"></span>
                         </label>
                     </div>
+
+                    <div class="pwa-push-box" id="pwaPushBox">
+                        <div class="pref-desc" id="pwaPushStatus">Register this installed web app to receive push notifications.</div>
+                        <button type="button" class="btn-secondary" id="pwaPushBtn" onclick="enablePwaPush()">Enable PWA Notifications</button>
+                    </div>
                 </div>
             </div>
         </div>
