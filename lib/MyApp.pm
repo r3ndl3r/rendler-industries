@@ -34,6 +34,7 @@ sub startup {
 
     # Set maximum request size limit (1GB) to support large file uploads
     $self->max_request_size(1024 * 1024 * 1024);
+    $self->types->type(webmanifest => 'application/manifest+json');
 
     # Load configuration plugin
     my $config = $self->plugin('Config');
