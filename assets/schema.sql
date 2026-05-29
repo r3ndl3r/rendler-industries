@@ -344,9 +344,13 @@ CREATE TABLE `fcm_tokens` (
   `token` text NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `platform` varchar(32) NOT NULL DEFAULT 'android_native',
+  `user_agent` varchar(255) DEFAULT NULL,
+  `last_seen_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_token` (`token`(255)),
-  KEY `idx_user_id` (`user_id`)
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_fcm_tokens_user_platform` (`user_id`,`platform`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 CREATE TABLE `files` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
