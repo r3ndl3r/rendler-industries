@@ -1,6 +1,6 @@
 // /public/sw.js
 
-const CACHE_NAME = 'rendler-offline-v94';
+const CACHE_NAME = 'rendler-offline-v100';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 
 const CORE_ASSETS = [
@@ -113,6 +113,50 @@ self.addEventListener('activate', (event) => {
         caches.keys().then(keys => Promise.all(
             keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
         )).then(() => self.clients.claim())
+    );
+});
+
+self.addEventListener('push', (event) => {
+    const fallback = { title: 'Rendler Industries', body: 'New notification', url: '/quick' };
+    let payload = fallback;
+    if (event.data) {
+        try {
+            const raw = event.data.json();
+            payload = {
+                ...fallback,
+                ...(raw.data || {}),
+                ...(raw.notification || {}),
+                ...raw,
+            };
+        } catch (e) {
+            payload = { ...fallback, body: event.data.text() };
+        }
+    }
+
+    event.waitUntil(
+        self.registration.showNotification(payload.title || fallback.title, {
+            body: payload.body || fallback.body,
+            icon: '/images/pwa/icon-192.png',
+            badge: '/images/pwa/icon-192.png',
+            data: { url: payload.url || fallback.url },
+        })
+    );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const targetUrl = new URL(event.notification.data?.url || '/quick', self.location.origin).href;
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+            for (const client of clientList) {
+                if ('focus' in client) {
+                    client.navigate(targetUrl);
+                    return client.focus();
+                }
+            }
+            return clients.openWindow(targetUrl);
+        })
     );
 });
 
