@@ -1,6 +1,8 @@
 // /public/js/user/settings.js
 
 const STATE = { profile: null, prefs: null, has_fcm: false };
+const FIREBASE_APP_MODULE = '/js/vendor/firebase/firebase-app-10.12.4.js';
+const FIREBASE_MESSAGING_MODULE = '/js/vendor/firebase/firebase-messaging-10.12.4.js';
 
 /**
  * Fetches full settings state from the server and renders both cards.
@@ -91,9 +93,55 @@ function renderPrefs() {
         'Push notifications to the Rendler Industries app',
         'No registered device — install the app to enable'
     );
+    renderPwaPushSetup();
 
     document.getElementById('prefs-loading').style.display = 'none';
     document.getElementById('prefsBody').style.display     = 'block';
+}
+
+function pwaPushSupported() {
+    return window.isSecureContext &&
+        'serviceWorker' in navigator &&
+        'Notification' in window &&
+        'PushManager' in window;
+}
+
+function renderPwaPushSetup() {
+    const box = document.getElementById('pwaPushBox');
+    const btn = document.getElementById('pwaPushBtn');
+    const status = document.getElementById('pwaPushStatus');
+    if (!box || !btn || !status) return;
+
+    if (!pwaPushSupported()) {
+        btn.disabled = true;
+        status.textContent = 'PWA push is not supported in this browser session.';
+        return;
+    }
+
+    if (Notification.permission === 'denied') {
+        btn.disabled = true;
+        status.textContent = 'Notifications are blocked for this site. Enable them in browser settings to register this PWA.';
+        return;
+    }
+
+    btn.disabled = false;
+    status.textContent = STATE.has_fcm
+        ? 'This account already has push enabled. Use this button to register this PWA as another device.'
+        : 'Register this installed web app to receive push notifications.';
+}
+
+function withTimeout(promise, ms, message) {
+    let timer;
+    const timeout = new Promise(function(_, reject) {
+        timer = setTimeout(function() { reject(new Error(message)); }, ms);
+    });
+    return Promise.race([promise, timeout]).finally(function() {
+        clearTimeout(timer);
+    });
+}
+
+async function getPwaServiceWorkerRegistration() {
+    return navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
 }
 
 /**
@@ -218,6 +266,84 @@ async function togglePref(channel, checkbox) {
         }
     } finally {
         checkbox.disabled = false;
+    }
+}
+
+async function enablePwaPush() {
+    const btn = document.getElementById('pwaPushBtn');
+    const status = document.getElementById('pwaPushStatus');
+    const original = btn ? btn.textContent : '';
+
+    if (!pwaPushSupported()) {
+        showToast('PWA push is not supported in this browser session.', 'error');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Registering...';
+    }
+
+    window.__PWA_PUSH_REGISTERING = true;
+    try {
+        if (status) status.textContent = 'Loading PWA push configuration...';
+        const cfgRes = await withTimeout(fetch('/api/fcm/web-config'), 10000, 'Timed out loading PWA push configuration.');
+        const cfg = await cfgRes.json();
+        if (!cfg.success || !cfg.enabled) {
+            throw new Error('PWA push is not configured on this server yet.');
+        }
+
+        if (status) status.textContent = 'Waiting for notification permission...';
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            throw new Error('Notification permission was not granted.');
+        }
+
+        if (status) status.textContent = 'Registering service worker...';
+        const registration = await withTimeout(getPwaServiceWorkerRegistration(), 10000, 'Timed out registering the service worker.');
+        if (status) status.textContent = 'Loading Firebase Messaging...';
+        const appMod = await withTimeout(import(FIREBASE_APP_MODULE), 10000, 'Timed out loading Firebase app module.');
+        const messagingMod = await withTimeout(import(FIREBASE_MESSAGING_MODULE), 10000, 'Timed out loading Firebase messaging module.');
+        const app = appMod.getApps().find(existing => existing.name === 'rendler-pwa-push') ||
+            appMod.initializeApp(cfg.config, 'rendler-pwa-push');
+        const messaging = messagingMod.getMessaging(app);
+        if (status) status.textContent = 'Requesting browser push token...';
+        const token = await withTimeout(messagingMod.getToken(messaging, {
+            vapidKey: cfg.vapid_key,
+            serviceWorkerRegistration: registration,
+        }), 15000, 'Timed out requesting browser push token.');
+        if (!token) throw new Error('Firebase did not return a web push token.');
+
+        if (status) status.textContent = 'Saving browser push token...';
+        const body = new FormData();
+        body.append('token', token);
+        body.append('platform', 'pwa_web');
+        const registered = await apiPost('/api/fcm/register', body);
+        if (!registered || !registered.success) {
+            throw new Error((registered && registered.error) || 'Failed to register PWA token.');
+        }
+
+        if (!STATE.prefs.fcm) {
+            const pref = new FormData();
+            pref.append('channel', 'fcm');
+            pref.append('value', '1');
+            const prefResult = await apiPost('/user/settings/api/pref', pref);
+            if (prefResult && prefResult.success) STATE.prefs.fcm = 1;
+        }
+
+        STATE.has_fcm = true;
+        renderPrefs();
+        showToast('PWA notifications registered.', 'success');
+    } catch (e) {
+        console.error('PWA push registration failed:', e);
+        if (status) status.textContent = e.message || 'PWA push registration failed.';
+        showToast(e.message || 'PWA push registration failed.', 'error');
+    } finally {
+        window.__PWA_PUSH_REGISTERING = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = original;
+        }
     }
 }
 
