@@ -33,13 +33,15 @@ let STATE = {
     uploaders: [],
     summary: {},
     currentUser: '',
-    isAdmin: false
+    isAdmin: false,
+    refinedBlobs: { image1: null, image2: null }
 };
 
 let UPLOAD_PREVIEW_URLS = {
     image1: null,
     image2: null
 };
+let MODAL_IMAGE_URL = null;
 
 const MANUAL_UPLOAD_FIELDS = ['uploadOdometer', 'uploadLitres', 'uploadPrice', 'uploadTotal', 'uploadStation'];
 
@@ -391,9 +393,9 @@ function openFuelFileInput(inputId) {
  * Renders a thumbnail preview for one selected fuel photo.
  *
  * @param {string} inputId - File input id.
- * @returns {void}
+ * @returns {Promise<void>}
  */
-function renderFuelUploadPreview(inputId) {
+async function renderFuelUploadPreview(inputId) {
     const input = document.getElementById(inputId);
     const slot = document.getElementById(inputId === 'image1' ? 'previewSlot1' : 'previewSlot2');
     if (!input || !slot) return;
@@ -405,11 +407,28 @@ function renderFuelUploadPreview(inputId) {
 
     if (!input.files || input.files.length === 0) {
         slot.innerHTML = emptyFuelPreviewHtml(inputId);
+        STATE.refinedBlobs[inputId] = null;
         return;
     }
 
     const file = input.files[0];
-    const url = URL.createObjectURL(file);
+    let displayFile = file;
+    STATE.refinedBlobs[inputId] = null;
+
+    const low = file.name.toLowerCase();
+    if (low.endsWith('.heic') || low.endsWith('.heif')) {
+        if (typeof showToast === 'function') showToast('Processing modern image format...', 'info');
+        try {
+            const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 });
+            displayFile = Array.isArray(blob) ? blob[0] : blob;
+            STATE.refinedBlobs[inputId] = displayFile;
+        } catch (err) {
+            console.error("HEIC conversion failed", err);
+            if (typeof showToast === 'function') showToast('Conversion failed', 'error');
+        }
+    }
+
+    const url = URL.createObjectURL(displayFile);
     UPLOAD_PREVIEW_URLS[inputId] = url;
     const label = inputId === 'image1' ? 'Photo One' : 'Photo Two';
 
@@ -515,7 +534,18 @@ async function handleUpload(event) {
 
     try {
         const endpoint = mode === 'manual' ? '/fuel/api/manual' : '/fuel/api/upload';
-        const result = await apiPost(endpoint, new FormData(form), mode === 'manual' ? undefined : 90000);
+        const formData = new FormData(form);
+        
+        if (STATE.refinedBlobs.image1) {
+            formData.delete('image1');
+            formData.append('image1', STATE.refinedBlobs.image1, 'image1.jpg');
+        }
+        if (STATE.refinedBlobs.image2) {
+            formData.delete('image2');
+            formData.append('image2', STATE.refinedBlobs.image2, 'image2.jpg');
+        }
+
+        const result = await apiPost(endpoint, formData, mode === 'manual' ? undefined : 90000);
         if (result && result.success) {
             closeUploadModal();
             await loadState(true);
@@ -685,17 +715,38 @@ function confirmDeleteFuel(id, label) {
  *
  * @param {number} id - Fuel log identifier.
  * @param {number} image - Image slot number.
- * @returns {void}
+ * @returns {Promise<void>}
  */
-function openImageModal(id, image) {
+async function openImageModal(id, image) {
     const log = STATE.logs.find(item => Number(item.id) === Number(id));
     if (log && !hasFuelPhotos(log)) return;
 
     const modal = document.getElementById('imageModal');
     const img = document.getElementById('modalImg');
     if (!modal || !img) return;
-    img.src = `/fuel/serve/${id}/${image}`;
+
     modal.classList.add('show');
+    img.src = ''; // Clear previous
+
+    try {
+        const response = await fetch(`/fuel/serve/${id}/${image}`);
+        const blob = await response.blob();
+        let displayBlob = blob;
+
+        if (blob.type === 'image/heic' || blob.type === 'image/heif') {
+            if (typeof heic2any === 'function') {
+                const conv = await heic2any({ blob: blob, toType: 'image/jpeg', quality: 0.8 });
+                displayBlob = Array.isArray(conv) ? conv[0] : conv;
+            }
+        }
+
+        if (MODAL_IMAGE_URL) URL.revokeObjectURL(MODAL_IMAGE_URL);
+        MODAL_IMAGE_URL = URL.createObjectURL(displayBlob);
+        img.src = MODAL_IMAGE_URL;
+    } catch (err) {
+        console.error("Failed to load/convert image", err);
+        img.src = `/fuel/serve/${id}/${image}`; // Fallback to raw
+    }
 }
 
 /**
@@ -708,6 +759,10 @@ function closeImageModal() {
     const img = document.getElementById('modalImg');
     if (modal) modal.classList.remove('show');
     if (img) img.src = '';
+    if (MODAL_IMAGE_URL) {
+        URL.revokeObjectURL(MODAL_IMAGE_URL);
+        MODAL_IMAGE_URL = null;
+    }
 }
 
 /**
