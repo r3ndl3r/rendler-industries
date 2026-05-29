@@ -10,6 +10,12 @@
     <script>const APP_TZ = "<%= config 'timezone' %>";</script>
 
     <%= render_favicon %>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <meta name="theme-color" content="#050c1d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Rendler">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="csrf-token" content="<%= csrf_token %>">
 
     <%# Global Style Dependencies %>
@@ -27,6 +33,7 @@
     if ('serviceWorker' in navigator) {
         let swReloading = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (window.__PWA_PUSH_REGISTERING) return;
             if (swReloading) return;
             swReloading = true;
             window.location.reload();
