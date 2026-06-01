@@ -381,6 +381,9 @@ function createNoteElement(note, canEdit = true) {
                     <button class="btn-icon-edit" title="Edit Content" ${canEdit ? '' : 'disabled'}>
                         ✏️
                     </button>
+                    <button class="btn-icon-ai-format" title="Clone and AI Format" ${canEdit ? '' : 'disabled'}>
+                        ✨
+                    </button>
                     <button class="btn-icon-link" title="Copy Direct Link">
                         🔗
                     </button>
