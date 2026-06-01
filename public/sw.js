@@ -1,38 +1,9 @@
 // /public/sw.js
 
-const CACHE_NAME = 'rendler-offline-v100';
+const CACHE_NAME = 'rendler-offline-v104';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
-
-const CORE_ASSETS = [
-    '/',
-    '/quick',
-    '/brief',
-    '/audiobooks',
-    '/fuel',
-    '/css/default.css',
-    '/css/audiobooks.css',
-    '/css/brief.css',
-    '/css/calendar.css',
-    '/css/emoji-picker.css',
-    '/css/fuel.css',
-    '/css/menubar.css',
-    '/css/quick.css',
-    '/css/index.css',
-    '/js/jquery.js',
-    '/js/toast.js',
-    '/js/default.js',
-    '/js/emoji-picker.js',
-    '/js/fuel.js',
-    '/js/menubar.js',
-    '/js/quick.js',
-    '/js/vendor/sortable.min.js',
-    '/js/audiobooks.js',
-    '/js/brief.js',
-    '/js/index.js',
-    '/js/moment-lite.js',
-    '/js/age.js',
-    '/favicon.ico',
-];
+const OFFLINE_CACHE_PREFIX = 'rendler-offline-';
+const NAVIGATION_NETWORK_TIMEOUT_MS = 1500;
 
 const OFFLINE_HTML = `
 <!DOCTYPE html>
@@ -76,7 +47,6 @@ function shouldBypass(request, url) {
     if (url.pathname.startsWith('/auth/')) return true;
     if (url.pathname.startsWith('/audiobooks/api/cover/')) return false;
     if (url.pathname.startsWith('/files/serve/') && request.destination === 'image') return false;
-    if (url.pathname.includes('/api/')) return true;
     if (url.pathname.startsWith('/files/serve/')) return true;
     return false;
 }
@@ -96,23 +66,94 @@ function cacheableResponse(response, request) {
     return true;
 }
 
+function cacheResponse(request, response) {
+    if (!cacheableResponse(response, request)) return Promise.resolve(false);
+    return caches.open(CACHE_NAME)
+        .then(cache => cache.put(request, response.clone()))
+        .then(() => true)
+        .catch(() => false);
+}
+
+function matchInOfflineCaches(request, options = {}) {
+    return caches.open(CACHE_NAME).then(cache => cache.match(request, options));
+}
+
+function normalizePath(pathname) {
+    return pathname.replace(/\/$/, '') || '/';
+}
+
+function matchCachedNavigation(request, url) {
+    if (url.pathname === '/login') return Promise.resolve(null);
+
+    const matchOpts = { ignoreSearch: true, ignoreVary: true };
+    const normalized = normalizePath(url.pathname);
+
+    return matchInOfflineCaches(request, matchOpts)
+        .then(match => match || matchInOfflineCaches(normalized, matchOpts));
+}
+
+function navigationFallback(request, url) {
+    const matchOpts = { ignoreSearch: true, ignoreVary: true };
+
+    return matchCachedNavigation(request, url)
+        .then(c => c || matchInOfflineCaches('/quick', matchOpts))
+        .then(c => c || new Response(OFFLINE_HTML, { headers: { 'Content-Type': 'text/html' } }));
+}
+
+function fetchAndCache(request, options = {}) {
+    return fetch(request, options).then(response => {
+        return cacheResponse(request, response).then(() => response);
+    });
+}
+
+function fetchNavigation(request) {
+    return fetchWithTimeout(request, NAVIGATION_NETWORK_TIMEOUT_MS).then(response => {
+        return cacheResponse(request, response).then(() => response);
+    });
+}
+
+function apiGetResponse(event) {
+    const request = event.request;
+    const matchOpts = { ignoreSearch: false, ignoreVary: true };
+
+    return matchInOfflineCaches(request, matchOpts).then(cached => {
+        if (cached) {
+            event.waitUntil(fetchAndCache(request).catch(() => { }));
+            return cached;
+        }
+
+        return fetchAndCache(request)
+            .catch(() => matchInOfflineCaches(request, matchOpts));
+    });
+}
+
+function isApiGet(request, url) {
+    return request.method === 'GET' && (url.pathname.startsWith('/api/') || url.pathname.includes('/api/'));
+}
+
+function cacheStatusResponse() {
+    return caches.open(CACHE_NAME).then(cache => cache.keys()).then(keys => {
+        return new Response(JSON.stringify({
+            cacheName: CACHE_NAME,
+            urls: keys.map(r => new URL(r.url).pathname).sort(),
+        }, null, 2), {
+            headers: { 'Content-Type': 'application/json' },
+        });
+    });
+}
+
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => {
-            return Promise.allSettled(CORE_ASSETS.map(url => {
-                return fetch(url).then(res => {
-                    if (cacheableResponse(res)) return cache.put(url, res);
-                }).catch(() => {});
-            }));
-        }).then(() => self.skipWaiting())
-    );
+    event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then(keys => Promise.all(
-            keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-        )).then(() => self.clients.claim())
+        caches.keys()
+            .then(keys => Promise.all(
+                keys.filter(k => k.startsWith(OFFLINE_CACHE_PREFIX) && k !== CACHE_NAME)
+                    .map(k => caches.delete(k))
+            ))
+            .then(() => self.clients.claim())
     );
 });
 
@@ -163,27 +204,26 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
+    if (url.pathname === '/__sw_cache_status') {
+        event.respondWith(cacheStatusResponse());
+        return;
+    }
+
+    if (isApiGet(event.request, url)) {
+        event.respondWith(apiGetResponse(event));
+        return;
+    }
+
     if (event.request.mode === 'navigate') {
         event.respondWith(
-            fetchWithTimeout(event.request, 4000).then(response => {
-                if (cacheableResponse(response, event.request)) {
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+            matchCachedNavigation(event.request, url).then(cached => {
+                if (cached) {
+                    event.waitUntil(fetchNavigation(event.request).catch(() => { }));
+                    return cached;
                 }
-                return response;
-            }).catch(() => {
-                const matchOpts = { ignoreSearch: true, ignoreVary: true };
-                const path = event.request.url.replace(/\/$/, "");
-                const requestFallback = url.pathname === '/login'
-                    ? Promise.resolve(null)
-                    : caches.match(path, matchOpts).then(c => c || caches.match(event.request, matchOpts));
 
-                return requestFallback
-                    .then(c => c || caches.match('/quick', matchOpts))
-                    .then(c => c || caches.match('/brief', matchOpts))
-                    .then(c => c || caches.match('/audiobooks', matchOpts))
-                    .then(c => c || caches.match('/', matchOpts))
-                    .then(c => c || new Response(OFFLINE_HTML, { headers: { 'Content-Type': 'text/html' } }));
+                return fetchNavigation(event.request)
+                    .catch(() => navigationFallback(event.request, url));
             })
         );
         return;
@@ -193,33 +233,29 @@ self.addEventListener('fetch', (event) => {
 
     const isAppCode = url.pathname.startsWith('/css/') || url.pathname.startsWith('/js/');
     const isStatic = isAppCode ||
-                     url.pathname.startsWith('/fonts/') || 
-                     event.request.destination === 'image' ||
-                     url.pathname.endsWith('.ico');
+        url.pathname.startsWith('/fonts/') ||
+        event.request.destination === 'image' ||
+        url.pathname.endsWith('.ico');
 
     if (isStatic) {
         if (isAppCode) {
             event.respondWith(
-                fetch(event.request, { cache: 'no-cache' }).then(response => {
-                    if (cacheableResponse(response, event.request)) {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                matchInOfflineCaches(event.request, { ignoreSearch: true, ignoreVary: true }).then(cached => {
+                    if (cached) {
+                        event.waitUntil(fetchAndCache(event.request, { cache: 'no-cache' }).catch(() => { }));
+                        return cached;
                     }
-                    return response;
-                }).catch(() => caches.match(event.request, { ignoreSearch: true, ignoreVary: true }))
+
+                    return fetchAndCache(event.request, { cache: 'no-cache' })
+                        .catch(() => cached);
+                })
             );
             return;
         }
 
         event.respondWith(
-            caches.match(event.request, { ignoreSearch: true, ignoreVary: true }).then(cached => {
-                const fetchPromise = fetch(event.request).then(response => {
-                    if (cacheableResponse(response, event.request)) {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-                    }
-                    return response;
-                }).catch(() => cached);
+            matchInOfflineCaches(event.request, { ignoreSearch: true, ignoreVary: true }).then(cached => {
+                const fetchPromise = fetchAndCache(event.request).catch(() => cached);
                 return cached || fetchPromise;
             })
         );
@@ -227,12 +263,7 @@ self.addEventListener('fetch', (event) => {
     }
 
     event.respondWith(
-        fetch(event.request).then(response => {
-            if (cacheableResponse(response, event.request)) {
-                const clone = response.clone();
-                caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-            }
-            return response;
-        }).catch(() => caches.match(event.request, { ignoreSearch: true, ignoreVary: true }))
+        fetchAndCache(event.request)
+            .catch(() => matchInOfflineCaches(event.request, { ignoreSearch: true, ignoreVary: true }))
     );
 });
