@@ -1666,6 +1666,49 @@ sub DB::get_note_content {
     return $content;
 }
 
+# Retrieves editable note data for AI formatting, enforcing canvas edit access.
+sub DB::get_note_for_ai_format {
+    my ($self, $note_id, $user_id) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare(
+        "SELECT n.*
+         FROM notes n
+         JOIN canvases c ON n.canvas_id = c.id
+         WHERE n.id = ?
+         AND n.is_deleted = 0
+         AND (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
+         AND (
+            c.user_id = ?
+            OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ? AND can_edit = 1)
+         )"
+    );
+    $sth->execute($note_id, $user_id, $user_id, $user_id, $user_id);
+    return $sth->fetchrow_hashref();
+}
+
+# Replaces the cloned note title/content after AI formatting.
+sub DB::update_ai_formatted_note {
+    my ($self, $note_id, $user_id, $title, $content) = @_;
+    $self->ensure_connection;
+
+    my $note = $self->get_note_for_ai_format($note_id, $user_id);
+    return undef unless $note;
+
+    my ($max_z) = $self->{dbh}->selectrow_array(
+        "SELECT COALESCE(MAX(z_index), 1) FROM notes WHERE canvas_id = ? AND is_deleted = 0",
+        undef, $note->{canvas_id}
+    );
+
+    my $sth = $self->{dbh}->prepare(
+        "UPDATE notes
+         SET title = ?, content = ?, x = x + 24, y = y + 24, z_index = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?"
+    );
+    $sth->execute($title, $content, int($max_z || 1) + 1, $note_id);
+    $self->touch_canvas($note->{canvas_id});
+    return $note;
+}
+
 # Retrieves both canvas_id and layer_id for a note, enforcing canvas visibility.
 sub DB::get_note_canvas_and_layer {
     my ($self, $note_id, $user_id) = @_;
