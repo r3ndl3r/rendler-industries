@@ -1679,6 +1679,7 @@ function handleCanvasMouseDown(e) {
     // 1. Note Header Actions: Centralized delegation for all note-level buttons
     const hashBtn    = e.target.closest('.note-id-hash');
     const editBtn     = e.target.closest('.btn-icon-edit');
+    const aiFormatBtn = e.target.closest('.btn-icon-ai-format');
     const linkBtn     = e.target.closest('.btn-icon-link');
     const uploadBtn   = e.target.closest('.btn-icon-upload');
     const viewBtn     = e.target.closest('.btn-icon-view');
@@ -1723,6 +1724,9 @@ function handleCanvasMouseDown(e) {
                 }
                 if (editBtn && typeof toggleInlineEdit === 'function') {
                     toggleInlineEdit(editBtn, id); return;
+                }
+                if (aiFormatBtn && typeof aiFormatNote === 'function') {
+                    aiFormatNote(id, aiFormatBtn); return;
                 }
                 if (linkBtn && typeof copyNoteLink === 'function') {
                     copyNoteLink(id); return;
@@ -2209,6 +2213,108 @@ async function moveNotesToCanvasCenter(ids) {
 
     if (res && res.success) {
         if (typeof showToast === 'function') showToast(`${label} moved to center`, 'success');
+    }
+}
+
+/**
+ * Clones a note, asks the server to AI-format the clone, and hydrates the result.
+ * @param {number|string} id - Source note ID.
+ * @param {HTMLElement} button - Triggering button.
+ * @returns {Promise<void>}
+ */
+async function aiFormatNote(id, button) {
+    const note = STATE.notes.find(n => n.id == id);
+    if (!note || !button || button.disabled) return;
+
+    if (typeof window.showConfirmModal === 'function') {
+        window.showConfirmModal({
+            title: 'AI Format Clone',
+            icon: '✨',
+            message: 'Clone this note and ask AI to reformat the clone?',
+            subMessage: 'The original note will stay untouched. Add optional instructions below to steer the formatting.',
+            confirmText: 'Clone & Format',
+            confirmIcon: '✨',
+            cancelText: 'Cancel',
+            loadingText: 'Formatting...',
+            width: 'large',
+            autoFocus: true,
+            onConfirm: async () => {
+                const input = document.getElementById('ai-format-custom-prompt');
+                await runAiFormatNote(id, button, input?.value || '');
+            }
+        });
+
+        const promptContainer = document.getElementById('globalConfirmPromptContainer');
+        if (promptContainer) {
+            promptContainer.classList.remove('hidden');
+            promptContainer.innerHTML = `
+                <label class="modal-sub-label" for="ai-format-custom-prompt">Custom AI instructions</label>
+                <textarea id="ai-format-custom-prompt"
+                          class="create-modal-textarea no-emoji"
+                          rows="6"
+                          placeholder="Optional: e.g. keep both units in the exact same checklist format, make dates prominent, avoid tables unless the source is already tabular."></textarea>
+            `;
+            setTimeout(() => document.getElementById('ai-format-custom-prompt')?.focus(), 50);
+        }
+        return;
+    }
+
+    await runAiFormatNote(id, button, '');
+}
+
+/**
+ * Executes the AI formatting request after confirmation.
+ * @param {number|string} id - Source note ID.
+ * @param {HTMLElement} button - Triggering button.
+ * @param {string} customPrompt - User-provided AI instructions.
+ * @returns {Promise<void>}
+ */
+async function runAiFormatNote(id, button, customPrompt = '') {
+    const note = STATE.notes.find(n => n.id == id);
+    if (!note || !button || button.disabled) return;
+
+    button.disabled = true;
+    button.classList.add('pulse-glow');
+    const originalText = button.innerHTML;
+    button.innerHTML = '...';
+    if (typeof showToast === 'function') showToast('Cloning note for AI formatting...', 'info');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 65000);
+
+    try {
+        const res = await NoteAPI.post('/notes/api/notes/ai-format', {
+            id,
+            custom_prompt: customPrompt
+        }, {
+            signal: controller.signal,
+            silent: true
+        });
+        clearTimeout(timeoutId);
+
+        if (!res || !res.success) {
+            const cloneMsg = res?.clone_id ? ` Clone ${res.clone_id} was left intact.` : '';
+            if (typeof showToast === 'function') showToast(`${res?.error || 'AI format failed.'}${cloneMsg}`, 'error');
+            return;
+        }
+
+        if (res.notes && typeof window.mergeNoteState === 'function') {
+            window.mergeNoteState(res.notes, res.id);
+        } else if (res.notes) {
+            STATE.notes = res.notes;
+        }
+        if (res.note_map) STATE.note_map = res.note_map;
+        STATE.last_mutation = res.last_mutation;
+        if (typeof renderUI === 'function') renderUI();
+        if (typeof centerOnNote === 'function') await centerOnNote(res.id);
+        if (typeof showToast === 'function') showToast('AI formatted clone created', 'success');
+    } catch (_) {
+        if (typeof showToast === 'function') showToast('AI format timed out or failed', 'error');
+    } finally {
+        clearTimeout(timeoutId);
+        button.disabled = false;
+        button.classList.remove('pulse-glow');
+        button.innerHTML = originalText;
     }
 }
 
