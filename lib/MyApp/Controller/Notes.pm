@@ -3,6 +3,7 @@
 package MyApp::Controller::Notes;
 
 use Mojo::Base 'Mojolicious::Controller';
+use Mojo::JSON qw(decode_json);
 use Mojo::Util qw(trim);
 
 sub _is_fence_note_title {
@@ -884,6 +885,114 @@ sub api_copy_note {
         $c->render(json => { success => 0, error => 'Logic Error or Permission Denied' });
     }
 }
+
+# Clones a note, asks AI to reformat the clone, and returns refreshed board state.
+# Route: POST /notes/api/notes/ai-format
+sub api_ai_format_note {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+
+    my $user_id = $c->current_user_id();
+    my $note_id = $c->param('id');
+    return $c->render(json => { success => 0, error => 'Invalid note' }, status => 400)
+        unless defined $note_id && $note_id =~ /\A\d+\z/;
+
+    my $source = $c->db->get_note_for_ai_format($note_id, $user_id);
+    return $c->render(json => { success => 0, error => 'Permission Denied' }, status => 403) unless $source;
+    return $c->render(json => { success => 0, error => 'Canvas is locked' }, status => 403)
+        if $c->is_canvas_locked($source->{canvas_id});
+
+    my $clone_id = $c->db->copy_note($note_id, $source->{canvas_id}, $user_id, $source->{layer_id});
+    return $c->render(json => { success => 0, error => 'Could not clone note' }) unless $clone_id;
+
+    my $clone = $c->db->get_note_for_ai_format($clone_id, $user_id);
+    return $c->render(json => { success => 0, error => 'Could not load cloned note' }) unless $clone;
+
+    my $custom_prompt = trim($c->param('custom_prompt') // '');
+    $custom_prompt = substr($custom_prompt, 0, 4000) if length($custom_prompt) > 4000;
+
+    my $style_guide = <<'STYLE_GUIDE';
+Available Rendler note formatting. Use only these supported syntaxes:
+- Headings: # H1, ## H2, ### H3
+- Text: **Bold**, *Italic*, ~~Strikethrough~~, `Inline Code`
+- Code blocks: ```lang for multi-line blocks
+- Lists: - Bullet, * Bullet, 1. Numbered, - [ ] Task, - [x] Completed, [ ] Bare task
+- Horizontal rule: ---
+- Callouts: > [!note] Title, > [!tip] Title, > [!info] Title, > [!success] Title, > [!warning] Title, > [!danger] Title, > [!question] Title
+  > Body lines must also start with >
+- Dividers: [divider:Section Title]
+- Colors: [color:name|#hex]Text[/color] or [colour:name|#hex]Text[/colour]
+  Names: yellow, orange, red, pink, green, blue, indigo, violet, slate, accent, info, success, warning, danger
+- Sizes: [size:xs|sm|md|lg|xl|2xl]Text[/size]
+- Highlights: [bg:name|#hex]Text[/bg]
+- Tags: [tag:label|color] using the same named colors
+- Dates: [date:YYYY-MM-DD]
+- Progress: [progress:percent|label]
+- Spoilers: [spoiler:Title]Content[/spoiler] or [spoiler]Content[/spoiler]
+- Tables: [table:]
+  Name | Role
+  --- | ---
+  Data | Data
+  [/table]
+- Links: [link:https://url|label], [Visit](https://url), raw https://url
+- Iframes: [iframe:https://url|height]
+- Wikilinks: [[Note Title]], [note:Note Title], [note:123]
+- Embeds: [file:Name], [file:123], [image:Name|scale], [img:Name|scale]
+- Copy helpers: [copy:Name], [copy:123], [copy]Text to copy[/copy]
+- Bookmark lists: [bookmarks] or [bookmarks:list:sort=title:type=text:tag=label:filter=text]
+STYLE_GUIDE
+
+    my $custom_block = length($custom_prompt)
+        ? "\n\nMANDATORY USER CUSTOM INSTRUCTIONS:\n$custom_prompt\nApply these instructions exactly when they do not conflict with preserving factual content. If the user asks for checkboxes, tasks, assignments, assessments, deadlines, or to-do items, render every matching item with Rendler task syntax: - [ ] Item."
+        : '';
+
+    my $now_context = $c->now->strftime('%Y-%m-%d %H:%M:%S %Z');
+    my $date_context = "Current system date/time: $now_context. DATE YEAR RULES: If source content has dates without an explicit year, you MUST infer the year from the strongest surrounding context before emitting any [date:YYYY-MM-DD] tags. Strong context includes the note title, unit/semester labels, nearby headings, and current academic period. If the title contains a year such as '2026' or a semester marker such as '2026-1', that year applies to all yearless due dates in the note unless the source explicitly says otherwise. For example, in a note titled 'Swinburne Due Dates 2026-1', 'Due 3 Jun at 23:59' MUST become [date:2026-06-03]. Do NOT default to old/past years like 2021 or 2024. Do NOT invent a year that is not supported by title/content/current period context. Do NOT change years that are explicit in the source.";
+
+    my $prompt = "Reformat the provided note into a polished Rendler dashboard note. Preserve all factual content, dates, tasks, links, filenames, code, and meaning. Do not invent new facts. Use one consistent structure for comparable sections. Return ONLY valid JSON with keys title and content.\n\n$date_context$custom_block\n\n$style_guide\n\nOriginal title:\n$clone->{title}\n\nOriginal content:\n$clone->{content}";
+
+    $c->render_later;
+    $c->ai_prompt(
+        contents        => [{ role => 'user', parts => [{ text => $prompt }] }],
+        system          => 'You are a senior dashboard architect formatting notes for a personal Rendler dashboard. Return compact, valid JSON only.',
+        response_format => 'application/json',
+        max_tokens      => 8192,
+        timeout         => 60
+    )->then(sub {
+        my $data = shift;
+        my $ai_text = $data->{candidates}[0]{content}{parts}[0]{text} // '{}';
+        my $formatted = $c->ai_decode_json($ai_text) || {};
+        my $new_title = trim($formatted->{title} // $clone->{title} // 'Untitled Note');
+        my $content   = $formatted->{content};
+
+        unless (defined $content && !ref $content && length trim($content)) {
+            return $c->render(json => { success => 0, error => 'AI returned invalid note content', clone_id => int($clone_id) });
+        }
+
+        my $updated = $c->db->update_ai_formatted_note($clone_id, $user_id, $new_title, $content);
+        unless ($updated) {
+            return $c->render(json => { success => 0, error => 'Could not update cloned note', clone_id => int($clone_id) });
+        }
+
+        $c->db->sync_note_links($clone_id, $content, $user_id);
+        $c->db->sync_bookmark_links($clone_id, $content, $user_id);
+        $c->db->reconcile_bookmark_links($updated->{canvas_id}, $updated->{layer_id}, $user_id);
+
+        my $unlocked_ids = $c->_get_unlocked_ids;
+        $c->render(json => {
+            success       => 1,
+            id            => int($clone_id),
+            canvas_id     => int($updated->{canvas_id}),
+            layer_id      => int($updated->{layer_id} // 1),
+            notes         => $c->db->get_user_notes($user_id, $updated->{canvas_id}, $unlocked_ids),
+            note_map      => $c->db->get_all_accessible_note_metadata($user_id, $unlocked_ids),
+            last_mutation => $c->db->get_board_mutation_time($updated->{canvas_id})
+        });
+    })->catch(sub {
+        my $err = shift;
+        $c->render(json => { success => 0, error => "AI format failed: $err", clone_id => int($clone_id) });
+    });
+}
 # Renames a board record (Owner only).
 # Route: POST /notes/api/canvases/rename
 sub api_canvas_rename {
@@ -1591,6 +1700,7 @@ sub register_routes {
     $r->{auth}->post('/notes/api/canvases/share')->to('notes#api_canvas_share');
     $r->{auth}->get('/notes/api/users/search')->to('notes#api_user_search');
     $r->{auth}->post('/notes/api/notes/copy')->to('notes#api_copy_note');
+    $r->{auth}->post('/notes/api/notes/ai-format')->to('notes#api_ai_format_note');
     $r->{auth}->get('/notes/api/bin')->to('notes#api_bin');
     $r->{auth}->post('/notes/api/restore')->to('notes#api_restore');
     $r->{auth}->post('/notes/api/purge')->to('notes#api_purge');
