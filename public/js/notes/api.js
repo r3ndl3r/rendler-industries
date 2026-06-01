@@ -146,11 +146,20 @@ window.NoteAPI = {
     writeStateCacheWithQuotaRecovery(keys, payload, currentKey) {
         let popped = 0;
         let poppedBytes = 0;
+        const aliases = keys.filter(key => key !== currentKey);
+        const maxAttempts = this.stateCacheEntries().filter(entry => entry.key !== currentKey).length + 1;
 
-        while (true) {
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
             try {
-                keys.forEach(key => localStorage.setItem(key, payload));
+                localStorage.setItem(currentKey, payload);
                 localStorage.setItem(this.STATE_CACHE_LAST_KEY, currentKey);
+                aliases.forEach((key) => {
+                    try {
+                        localStorage.setItem(key, payload);
+                    } catch (_) {
+                        localStorage.removeItem(key);
+                    }
+                });
                 return { success: true, popped, poppedBytes };
             } catch (err) {
                 const candidates = this.stateCacheEntries()
@@ -173,6 +182,8 @@ window.NoteAPI = {
                 });
             }
         }
+
+        return { success: false, popped, poppedBytes, error: new Error('Notes state cache quota recovery exhausted') };
     },
 
     /**
