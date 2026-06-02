@@ -258,6 +258,17 @@ async function apiPost(url, data = {}, timeout = 30000) {
  */
 async function apiGet(url, timeout = 3000) {
     const cacheKey = `api_cache:${url}`;
+    const getCached = () => {
+        try {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                console.info(`Using cached data for ${url} (from ${new Date(parsed.timestamp).toLocaleString()})`);
+                return parsed.data;
+            }
+        } catch (e) { }
+        return null;
+    };
 
     try {
         const controller = new AbortController();
@@ -298,14 +309,8 @@ async function apiGet(url, timeout = 3000) {
         console.warn(`apiGet failed for ${url}:`, err);
 
         // Fallback to cache if available
-        try {
-            const cached = localStorage.getItem(cacheKey);
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                console.info(`Using cached data for ${url} (from ${new Date(parsed.timestamp).toLocaleString()})`);
-                return parsed.data;
-            }
-        } catch (e) { }
+        const cached = getCached();
+        if (cached) return cached;
 
         if (err.name !== 'AbortError' && (typeof navigator === 'undefined' || typeof navigator.onLine === 'undefined' || navigator.onLine)) {
             showToast('Network error', 'error');
