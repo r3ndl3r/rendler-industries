@@ -216,6 +216,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    if (url.pathname.startsWith('/audiobooks/api/stream/')) return;
+
     if (isApiGet(event.request, url)) {
         event.respondWith(apiGetResponse(event));
         return;
