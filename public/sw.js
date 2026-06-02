@@ -75,7 +75,20 @@ function cacheResponse(request, response) {
 }
 
 function matchInOfflineCaches(request, options = {}) {
-    return caches.open(CACHE_NAME).then(cache => cache.match(request, options));
+    return caches.keys().then(keys => {
+        const offlineKeys = keys.filter(k => k.startsWith(OFFLINE_CACHE_PREFIX));
+        const names = [
+            CACHE_NAME,
+            ...offlineKeys.filter(k => k !== CACHE_NAME).sort().reverse(),
+        ];
+
+        return names.reduce((promise, name) => {
+            return promise.then(match => {
+                if (match) return match;
+                return caches.open(name).then(cache => cache.match(request, options));
+            });
+        }, Promise.resolve(null));
+    });
 }
 
 function normalizePath(pathname) {
@@ -116,15 +129,9 @@ function apiGetResponse(event) {
     const request = event.request;
     const matchOpts = { ignoreSearch: false, ignoreVary: true };
 
-    return matchInOfflineCaches(request, matchOpts).then(cached => {
-        if (cached) {
-            event.waitUntil(fetchAndCache(request).catch(() => { }));
-            return cached;
-        }
-
-        return fetchAndCache(request)
-            .catch(() => matchInOfflineCaches(request, matchOpts));
-    });
+    return fetchWithTimeout(request, NAVIGATION_NETWORK_TIMEOUT_MS)
+        .then(response => cacheResponse(request, response).then(() => response))
+        .catch(() => matchInOfflineCaches(request, matchOpts));
 }
 
 function isApiGet(request, url) {
@@ -132,10 +139,17 @@ function isApiGet(request, url) {
 }
 
 function cacheStatusResponse() {
-    return caches.open(CACHE_NAME).then(cache => cache.keys()).then(keys => {
+    return caches.keys().then(keys => Promise.all(
+        keys.filter(k => k.startsWith(OFFLINE_CACHE_PREFIX)).sort().reverse().map(name => {
+            return caches.open(name).then(cache => cache.keys()).then(requests => ({
+                name,
+                urls: requests.map(r => new URL(r.url).pathname).sort(),
+            }));
+        })
+    )).then(cacheInfo => {
         return new Response(JSON.stringify({
             cacheName: CACHE_NAME,
-            urls: keys.map(r => new URL(r.url).pathname).sort(),
+            caches: cacheInfo,
         }, null, 2), {
             headers: { 'Content-Type': 'application/json' },
         });
@@ -147,14 +161,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys()
-            .then(keys => Promise.all(
-                keys.filter(k => k.startsWith(OFFLINE_CACHE_PREFIX) && k !== CACHE_NAME)
-                    .map(k => caches.delete(k))
-            ))
-            .then(() => self.clients.claim())
-    );
+    event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('push', (event) => {
