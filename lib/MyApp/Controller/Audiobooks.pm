@@ -242,7 +242,11 @@ sub _parse_cue_file {
         $line =~ s/^\s+|\s+$//g;
 
         if (!$audio_file && $line =~ /^FILE\s+"?([^"]+)"?\s+/i) {
-            $audio_file = $1;
+            my $extracted = $1;
+            $extracted =~ s{.*[/\\]}{};
+            if (_safe_component($extracted)) {
+                $audio_file = $extracted;
+            }
             next;
         }
         if ($line =~ /^TITLE\s+"?(.+?)"?\s*$/i) {
@@ -897,6 +901,20 @@ sub api_save_meta {
     my $existing  = $c->db->get_audiobook_meta($slug) // _read_or_generate_meta($dir, $slug, _covers_root($c));
     my $json_body = $c->req->json // {};
     my $chapters  = (ref $json_body->{chapters} eq 'ARRAY') ? $json_body->{chapters} : ($existing->{chapters} // []);
+    my @valid_chapters;
+    for my $ch (@$chapters) {
+        next unless ref $ch eq 'HASH';
+
+        my $file = (!ref $ch->{file} && defined $ch->{file}) ? $ch->{file} : '';
+        $file = '' unless $file eq '' || _safe_component($file);
+
+        push @valid_chapters, {
+            file     => $file,
+            title    => (!ref $ch->{title} && defined $ch->{title}) ? $ch->{title} : '',
+            duration => (!ref $ch->{duration} && defined $ch->{duration}) ? $ch->{duration} + 0 : 0,
+            start    => (!ref $ch->{start}    && defined $ch->{start})    ? $ch->{start}    + 0 : 0,
+        };
+    }
 
     my $meta = {
         title        => trim($c->param('title')       // $json_body->{title}       // $existing->{title}       // $slug),
@@ -906,7 +924,7 @@ sub api_save_meta {
         series       => trim($c->param('series')      // $json_body->{series}      // $existing->{series}      // ''),
         series_index => (($c->param('series_index') // $json_body->{series_index} // $existing->{series_index} // 0) + 0),
         cover        => ($existing->{cover} // ''),
-        chapters     => $chapters,
+        chapters     => \@valid_chapters,
         ($existing->{date_added} ? (date_added => $existing->{date_added}) : ()),
     };
 
@@ -992,7 +1010,7 @@ sub api_admin_rescan {
     my $slug  = trim($c->param('slug') // '');
     my $count = 0;
 
-    if ($slug) {
+    if (length $slug) {
         return $c->render(json => { error => 'Invalid slug' }, status => 400)
             unless _safe_component($slug);
         $count = $c->db->delete_audiobook_meta($slug);
