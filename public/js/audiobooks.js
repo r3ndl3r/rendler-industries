@@ -96,15 +96,12 @@ function _isCueMode(book) {
 }
 
 /**
- * Returns the cover URL for a book, substituting a local on-device URL if the book is downloaded.
+ * Returns the server cover URL for a book.
  * @param {Object} book - Book record from STATE.books.
  * @returns {string}
  */
 function _getCoverUrl(book) {
     if (!book || !book.cover_url) return '';
-    if (window.OfflineAudiobooks && STATE.downloaded[book.slug]) {
-        return `/audiobooks/api/localcover/${encodeURIComponent(book.slug)}`;
-    }
     return book.cover_url;
 }
 
@@ -392,7 +389,7 @@ function downloadBook(slug) {
     // Rough space check — 200 MB minimum safety threshold.
     try {
         const avail = parseInt(window.OfflineAudiobooks.getAvailableSpace(), 10);
-        if (avail < 200 * 1024 * 1024) {
+        if (Number.isNaN(avail) || avail < 200 * 1024 * 1024) {
             showToast('Not enough storage space to download this book.', 'error');
             return;
         }
@@ -468,7 +465,7 @@ function deleteBookProgress(slug) {
         hideCancel:  true,
         onConfirm:   async () => {
             const res = await apiPost('/audiobooks/api/progress/delete', { book_slug: slug });
-            if (!res) return;
+            if (!res || !res.success) return;
             try {
                 const pending = JSON.parse(localStorage.getItem('ab_pending_progress') || 'null');
                 if (pending && pending.book_slug === slug) localStorage.removeItem('ab_pending_progress');
