@@ -219,7 +219,10 @@ function populateDropdowns() {
     }
 
     // 2. Attendee Checkboxes
-    const recipients = STATE.users.map(u => ({ id: u.id, label: escapeHtml(u.username) }));
+    const recipients = STATE.users.map(u => ({
+        id: u.id,
+        label: `${window.getUserIcon ? window.getUserIcon(u.username) : '👤'} ${escapeHtml(u.username)}`
+    }));
     window.renderSelectorGrid('attendees-container', recipients, { name: 'attendees[]', prefix: 'attendee', type: 'day' });
 
 }
@@ -1696,7 +1699,9 @@ function renderAttendeePills(namesStr, useFullName = false) {
     if (!namesStr) return '';
     return namesStr.split(',').map((name, i) => {
         const n = name.trim();
-        const display = useFullName ? n : n.split(' ').map(part => part[0]).join('').substring(0, 2).toUpperCase();
+        const display = useFullName
+            ? `${window.getUserIcon ? window.getUserIcon(n) : '👤'} ${n}`
+            : n.split(' ').map(part => part[0]).join('').substring(0, 2).toUpperCase();
         return `<span class="attendee-pill attendee-color-${(i % 8) + 1}" title="${escapeHtml(n)}">${escapeHtml(display)}</span>`;
     }).join('');
 }
