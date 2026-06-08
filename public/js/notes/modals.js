@@ -1007,7 +1007,7 @@ function closeBinModal() {
 function copyViewContent() {
     const content = document.getElementById('note-view-content')?.textContent;
     if (content) {
-        navigator.clipboard.writeText(content);
+        navigator.clipboard.writeText(resolveNoteEmbeddedText(content));
         showToast('Content copied to clipboard', 'success');
     }
 }
@@ -1461,7 +1461,8 @@ async function filterSearch(queryText) {
     clearTimeout(SEARCH_DEBOUNCE_TIMER);
 
     if (query === '') {
-        renderSearchResults(STATE.notes, false);
+        const results = (STATE.notes || []).filter(n => !isFenceNote(n));
+        renderSearchResults(results, false);
         return;
     }
 
@@ -1471,11 +1472,12 @@ async function filterSearch(queryText) {
             renderSearchResults(data || [], true);
         } else {
             const q = query.toLowerCase();
-            const results = (STATE.notes || []).filter(n => 
-                (n.title && n.title.toLowerCase().includes(q)) || 
-                (n.content && n.content.toLowerCase().includes(q)) ||
-                (n.filename && n.filename.toLowerCase().includes(q))
-            );
+            const results = (STATE.notes || []).filter(n => {
+                if (isFenceNote(n)) return false;
+                return (n.title && n.title.toLowerCase().includes(q)) ||
+                       (n.content && n.content.toLowerCase().includes(q)) ||
+                       (n.filename && n.filename.toLowerCase().includes(q));
+            });
             renderSearchResults(results, false);
         }
     }, 250);
@@ -1525,7 +1527,7 @@ function copySearchResultContent(event, id) {
     event.stopPropagation();
     const note = (CURRENT_SEARCH_RESULTS || []).find(n => n.id == id);
     if (!note || !note.content) return;
-    navigator.clipboard.writeText(note.content).then(function() {
+    navigator.clipboard.writeText(resolveNoteEmbeddedText(note.content)).then(function() {
         showToast('Note copied to clipboard.', 'success');
     }).catch(function() {
         showToast('Failed to copy to clipboard.', 'error');
