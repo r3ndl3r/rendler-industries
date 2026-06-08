@@ -2280,7 +2280,7 @@ async function runAiFormatNote(id, button, customPrompt = '') {
     if (typeof showToast === 'function') showToast('Cloning note for AI formatting...', 'info');
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 65000);
+    const timeoutId = setTimeout(() => controller.abort(), 300000);
 
     try {
         const res = await NoteAPI.post('/notes/api/notes/ai-format', {
@@ -3375,6 +3375,40 @@ async function handleNoteLinkClick(id) {
     }
 }
 
+function resolveNoteEmbedTargetId(value) {
+    const targetId = parseInt(value, 10);
+    if (!isNaN(targetId)) return targetId;
+
+    const lower = String(value || '').toLowerCase();
+    const match = Object.values(STATE.note_map || {}).find(
+        n => n.title && n.title.toLowerCase() === lower
+    );
+    return match ? match.id : null;
+}
+
+function resolveNoteEmbeddedText(content, depth = 0, seen = new Set()) {
+    if (!content || !content.includes('[embed:')) return content || '';
+    if (depth > 2) return 'Embed depth limit reached';
+
+    return content.replace(/\[embed:([^\]]+)\]/g, (fullMatch, rawTarget) => {
+        const targetId = resolveNoteEmbedTargetId(rawTarget.trim());
+        if (targetId == null) return `${rawTarget.trim()} (unavailable)`;
+        if (seen.has(targetId)) return 'Embed depth limit reached';
+
+        const source = (STATE.notes || []).find(n => n.id == targetId)
+            || (STATE.embed_cache || {})[targetId];
+        if (!source) {
+            const meta = STATE.note_map[targetId];
+            const label = meta && meta.title ? meta.title : `Note #${targetId}`;
+            return `${label} (unavailable)`;
+        }
+
+        const nextSeen = new Set(seen);
+        nextSeen.add(targetId);
+        return resolveNoteEmbeddedText(source.content || '', depth + 1, nextSeen);
+    });
+}
+
 /**
  * Copies a referenced note's content to the system clipboard.
  * Uses the live note content from STATE.notes when the target is on the current canvas,
@@ -3391,9 +3425,14 @@ async function handleNoteCopyClick(id) {
         return;
     }
 
-    const text  = (liveNote && liveNote.content) ? liveNote.content
-                : (mapNote  && mapNote.title)     ? mapNote.title
-                : `Note #${id}`;
+    let text;
+    if (liveNote && liveNote.content) {
+        text = resolveNoteEmbeddedText(liveNote.content);
+    } else if (mapNote && mapNote.title) {
+        text = mapNote.title;
+    } else {
+        text = `Note #${id}`;
+    }
     const label = (liveNote && liveNote.title) || (mapNote && mapNote.title) || `Note #${id}`;
 
     try {
@@ -3529,7 +3568,7 @@ async function copyNoteToClipboard(id, targetBlobId = null) {
         return;
     }
 
-    let text = note.content || '';
+    let text = resolveNoteEmbeddedText(note.content || '');
     const attachments = note.attachments || [];
     
     // Multi-Item Detection: Determines if we should pivot from standard 'Rich Copy' to 'Granular Copy'
