@@ -87,6 +87,11 @@ sub api_upload {
             }
 
             my $mime_type = $upload->headers->content_type || 'application/octet-stream';
+            if ($mime_type !~ m{^image/}i) {
+                $c->app->log->warn("Skipping non-image upload: $original_filename ($mime_type)");
+                next;
+            }
+
             my $file_data = $upload->asset->slurp;
 
             unless (length($file_data)) {
