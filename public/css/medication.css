@@ -6,6 +6,34 @@
     min-height: 100vh;
 }
 
+.medication-container .manage-actions .btn-primary,
+.medication-container .manage-actions .action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .medication-container .header-bar {
+        gap: 1rem;
+    }
+
+    .medication-container .header-bar h1 {
+        flex: 1 1 auto;
+        min-width: 0;
+        white-space: nowrap;
+        font-size: clamp(1.2rem, 6vw, 1.6rem);
+        gap: 0.5rem;
+    }
+
+    .medication-container .header-bar .manage-actions {
+        flex-shrink: 0;
+        margin-left: 0.75rem;
+    }
+}
+
 .modal-actions {
     justify-content: center !important;
 }
@@ -141,6 +169,16 @@
     font-weight: 700;
 }
 
+.med-reminder-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    margin-right: 0.35rem;
+    font-size: 0.95rem;
+    filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.45));
+}
+
 .interval-update {
     font-size: 1rem;
     font-weight: 700;
@@ -162,6 +200,49 @@
     gap: 5px;
 }
 
+.med-log-reminders {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(15, 23, 42, 0.55);
+    border-radius: 0.75rem;
+    border: 1px solid rgba(144, 202, 249, 0.08);
+}
+
+.med-log-reminder-title {
+    margin-bottom: 0.5rem;
+    color: #90caf9;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.med-log-reminder-empty,
+.med-log-reminder-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.med-log-reminder-empty {
+    color: #94a3b8;
+    font-size: 0.8rem;
+}
+
+.med-log-reminder-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.med-log-reminder-item {
+    padding: 0.35rem 0;
+}
+
+.med-log-reminder-item.reminder-inactive {
+    opacity: 0.5;
+}
+
 .med-item-actions {
     display: flex;
     gap: 0.5rem;
@@ -170,6 +251,14 @@
 .med-item-actions button {
     width: 28px;
     height: 28px;
+}
+
+.med-item-actions .btn-icon-reminder {
+    background: #8b5cf6;
+}
+
+.med-item-actions .btn-icon-reminder:hover {
+    background: #7c3aed;
 }
 
 .modal-registry {
@@ -379,10 +468,10 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    background: #1e293b !important;
+    background: var(--color-surface) !important;
     padding: 0.5rem 1rem !important;
     border-radius: 0.5rem !important;
-    border: 1px solid #334155 !important;
+    border: 1px solid var(--color-border) !important;
     transition: all 0.2s !important;
     min-width: 90px !important;
     text-align: center !important;
@@ -415,4 +504,258 @@
 .recipient-checkbox:hover {
     border-color: rgba(59, 130, 246, 0.5) !important;
     background: rgba(30, 41, 59, 0.8) !important;
+}
+
+/* --- Medication Reminders Section --- */
+.reminder-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.reminder-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.reminder-header h2 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.reminder-member-group {
+    margin-bottom: 1.5rem;
+}
+
+.reminder-member-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #90caf9;
+}
+
+.reminder-member-name {
+    background: linear-gradient(135deg, #ffffff, #90caf9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.reminder-member-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.reminder-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    transition: all 0.2s;
+}
+
+.reminder-item:hover {
+    background: rgba(0, 0, 0, 0.3);
+    border-color: rgba(144, 202, 249, 0.15);
+}
+
+.reminder-item.reminder-inactive {
+    opacity: 0.5;
+}
+
+.reminder-item-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.reminder-time-label {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.reminder-days-label {
+    font-size: 0.75rem;
+    color: #60a5fa;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.reminder-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Toggle Switch */
+.reminder-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.reminder-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #334155;
+    border-radius: 24px;
+    transition: 0.3s;
+}
+
+.toggle-slider:before {
+    content: '';
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #94a3b8;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+.reminder-toggle-switch input:checked + .toggle-slider {
+    background-color: #10b981;
+}
+
+.reminder-toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+    background-color: #ffffff;
+}
+
+/* Reminder Count Grid */
+.reminder-count-grid {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
+.reminder-count-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 0.75rem;
+    border: 2px solid var(--color-border);
+    background: rgba(0, 0, 0, 0.2);
+    color: #94a3b8;
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reminder-count-btn:hover {
+    border-color: #3b82f6;
+    color: #fff;
+}
+
+.reminder-count-btn.active {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+}
+
+.reminder-times-container {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.reminder-time-group {
+    margin-bottom: 0.25rem;
+}
+
+.reminder-time-group label {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+/* --- Pending Confirmations Section --- */
+.pending-section {
+    margin: 1rem auto 0;
+    width: min(100%, 420px);
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.parent-tally-section {
+    margin-top: 2rem;
+    max-width: 920px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.pending-header {
+    margin-bottom: 1.5rem;
+}
+
+.pending-header h2 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.pending-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    transition: all 0.2s;
+}
+
+.pending-item.pending-overdue {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.pending-item-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.overdue-badge {
+    font-size: 0.75rem;
+    color: #ef4444;
+    font-weight: 700;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.pending-confirm-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
 }
