@@ -33,7 +33,7 @@
     <div class="filter-section">
         <div class="filter-left">
             <label>Filter by Category:</label>
-            <select id="categoryFilter" class="category-dropdown">
+            <select id="categoryFilter" class="category-dropdown no-emoji">
                 <option value="">All Categories</option>
             </select>
         </div>
@@ -71,142 +71,145 @@
 <%# Add/Edit Event Modal %>
 <div id="eventModal" class="modal-overlay">
     <div class="modal-content">
-        <span class="close" onclick="closeEventModal()">&times;</span>
-        <h2 id="modalTitle">Add Event</h2>
-        
+        <div class="modal-header">
+            <h3 id="modalTitle">Add Event</h3>
+            <span class="close-btn" onclick="closeEventModal()">&times;</span>
+        </div>
         <form id="eventForm" onsubmit="handleEventSubmit(event)">
             <input type="hidden" id="eventId" name="id">
-            
-            <div class="form-group">
-                <label for="eventTitle">Title *</label>
-                <input type="text" id="eventTitle" name="title" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="eventDescription">Description</label>
-                <textarea id="eventDescription" name="description" rows="3"></textarea>
-            </div>
-            
-            <div class="form-group checkbox-group">
-                <label>
-                    <input type="checkbox" id="eventAllDay" name="all_day"> 📍 All-day event
-                </label>
-            </div>
-
-            <div id="notificationGroup" class="hidden">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="eventTitle">Title *</label>
+                    <input type="text" id="eventTitle" name="title" class="game-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="eventDescription">Description</label>
+                    <textarea id="eventDescription" name="description" class="game-input" rows="3"></textarea>
+                </div>
+                
                 <div class="form-group checkbox-group">
                     <label>
-                        <input type="checkbox" id="sendNotifications" name="send_notifications" checked value="1"> 📢 Announce
+                        <input type="checkbox" id="eventAllDay" name="all_day" class="no-emoji"> 📍 All-day event
                     </label>
                 </div>
-            </div>
 
-            <div class="form-group checkbox-group">
-                <label>
-                    <input type="checkbox" id="eventIsPrivate" name="is_private"> 
-                    🔒 Private Event (Only you can see this)
-                </label>
-            </div>
+                <div id="notificationGroup" class="hidden">
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="sendNotifications" name="send_notifications" class="no-emoji" value="1"> 📢 Announce
+                        </label>
+                    </div>
+                </div>
 
-            <div class="form-group checkbox-group">
-                <label>
-                    <input type="checkbox" id="eventNotify" name="event_notify">
-                    🔔 Send reminder
-                </label>
-            </div>
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="eventIsPrivate" name="is_private" class="no-emoji"> 
+                        🔒 Private Event (Only you can see this)
+                    </label>
+                </div>
 
-            <div id="reminderPresetsGroup" class="form-group hidden">
-                <label>Remind me before event</label>
-                <div class="reminder-dropdowns">
-                    <select id="reminderDays">
-                        % for my $i (0..7) {
-                        <option value="<%= $i %>"><%= $i %> <%= $i == 1 ? 'day' : 'days' %></option>
-                        % }
-                    </select>
-                    <select id="reminderHours">
-                        % for my $i (0..23) {
-                        <option value="<%= $i %>"><%= $i %> <%= $i == 1 ? 'hour' : 'hours' %></option>
-                        % }
-                    </select>
-                    <select id="reminderMinutes">
-                        % for my $i (0..59) {
-                        <option value="<%= $i %>"><%= $i %> min</option>
-                        % }
-                    </select>
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="eventNotify" name="event_notify" class="no-emoji">
+                        🔔 Send reminder
+                    </label>
                 </div>
-                <input type="hidden" id="notificationMinutes" name="notification_minutes" value="0">
-            </div>
 
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="eventStartDate">Start Date *</label>
-                    <input type="date" id="eventStartDate" name="start_date" required>
+                <div id="reminderPresetsGroup" class="form-group hidden">
+                    <label>Remind me before event</label>
+                    <div class="reminder-dropdowns">
+                        <select id="reminderDays" class="game-input no-emoji">
+                            % for my $i (0..7) {
+                            <option value="<%= $i %>"><%= $i %> <%= $i == 1 ? 'day' : 'days' %></option>
+                            % }
+                        </select>
+                        <select id="reminderHours" class="game-input no-emoji">
+                            % for my $i (0..23) {
+                            <option value="<%= $i %>"><%= $i %> <%= $i == 1 ? 'hour' : 'hours' %></option>
+                            % }
+                        </select>
+                        <select id="reminderMinutes" class="game-input no-emoji">
+                            % for my $i (0..59) {
+                            <option value="<%= $i %>"><%= $i %> min</option>
+                            % }
+                        </select>
+                    </div>
+                    <input type="hidden" id="notificationMinutes" name="notification_minutes" value="0">
                 </div>
-                <div class="form-group" id="startTimeGroup">
-                    <label for="eventStartTime">Start Time</label>
-                    <input type="time" id="eventStartTime" name="start_time">
-                </div>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="eventEndDate">End Date *</label>
-                    <input type="date" id="eventEndDate" name="end_date" required>
-                </div>
-                <div class="form-group" id="endTimeGroup">
-                    <label for="eventEndTime">End Time</label>
-                    <input type="time" id="eventEndTime" name="end_time">
-                </div>
-            </div>
-            
-            <%# Recurrence %>
-            <div class="form-group">
-                <label for="recurrenceRule">Repeat</label>
-                <select id="recurrenceRule" name="recurrence_rule">
-                    <option value="">Does not repeat</option>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="biweekly">Bi-weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
-                </select>
-            </div>
-            <div id="recurrenceOptions" class="hidden">
+
+                
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="recurrenceInterval">Every</label>
-                        <div class="recurrence-interval-row">
-                            <input type="number" id="recurrenceInterval" name="recurrence_interval" value="1" min="1" max="99">
-                            <span id="recurrenceIntervalLabel">weeks</span>
+                        <label for="eventStartDate">Start Date *</label>
+                        <input type="date" id="eventStartDate" name="start_date" class="game-input no-emoji" required>
+                    </div>
+                    <div class="form-group" id="startTimeGroup">
+                        <label for="eventStartTime">Start Time</label>
+                        <input type="time" id="eventStartTime" name="start_time" class="game-input no-emoji">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="eventEndDate">End Date *</label>
+                        <input type="date" id="eventEndDate" name="end_date" class="game-input no-emoji" required>
+                    </div>
+                    <div class="form-group" id="endTimeGroup">
+                        <label for="eventEndTime">End Time</label>
+                        <input type="time" id="eventEndTime" name="end_time" class="game-input no-emoji">
+                    </div>
+                </div>
+
+                
+                <%# Recurrence %>
+                <div class="form-group">
+                    <label for="recurrenceRule">Repeat</label>
+                    <select id="recurrenceRule" name="recurrence_rule" class="game-input no-emoji">
+                        <option value="">Does not repeat</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="biweekly">Bi-weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                </div>
+                <div id="recurrenceOptions" class="hidden">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="recurrenceInterval">Every</label>
+                            <div class="recurrence-interval-row">
+                                <input type="number" id="recurrenceInterval" name="recurrence_interval" class="game-input no-emoji" value="1" min="1" max="99">
+                                <span id="recurrenceIntervalLabel">weeks</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="recurrenceEndDate">Ends on (optional)</label>
+                            <input type="date" id="recurrenceEndDate" name="recurrence_end_date" class="game-input no-emoji">
                         </div>
                     </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
-                        <label for="recurrenceEndDate">Ends on (optional)</label>
-                        <input type="date" id="recurrenceEndDate" name="recurrence_end_date">
+                        <label for="eventCategory">Category</label>
+                        <input type="text" id="eventCategory" name="category" class="game-input" list="categoryList">
+                        <datalist id="categoryList"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventColor">Color</label>
+                        <input type="color" id="eventColor" name="color" class="no-emoji" value="#3788d8">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="eventAttendees">Attendees</label>
+                    <div id="attendees-container" class="selector-grid">
                     </div>
                 </div>
             </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="eventCategory">Category</label>
-                    <input type="text" id="eventCategory" name="category" list="categoryList">
-                    <datalist id="categoryList"></datalist>
-                </div>
-                <div class="form-group">
-                    <label for="eventColor">Color</label>
-                    <input type="color" id="eventColor" name="color" value="#3788d8">
-                </div>
-            </div>
             
-            <div class="form-group">
-                <label for="eventAttendees">Attendees</label>
-                <div id="attendees-container" class="selector-grid">
-                </div>
-            </div>
-            
-            <div class="modal-actions">
+            <div class="modal-actions modal-actions-center">
                 <button type="button" class="btn-danger btn-small hidden" id="deleteEventBtn">🗑️ Delete</button>
                 <button type="button" class="btn-clone btn-small hidden" id="cloneEventBtn">📋 Clone</button>
                 <button type="button" class="btn-warning btn-small hidden" id="skipOccurrenceBtn">⏭️ Skip</button>
@@ -219,10 +222,12 @@
 <%# Event Details Modal %>
 <div id="eventDetailsModal" class="modal-overlay">
     <div class="modal-content">
-        <span class="close" onclick="closeDetailsModal()">&times;</span>
-        <div id="eventDetailsContent">
+        <div class="modal-header">
+            <h3>Event Details</h3>
+            <span class="close-btn" onclick="closeDetailsModal()">&times;</span>
         </div>
-        <div class="modal-actions">
+        <div class="modal-body" id="eventDetailsContent"></div>
+        <div class="modal-actions modal-actions-center">
             <button type="button" id="editFromDetailsBtn" class="btn-primary btn-small">✏️ Edit</button>
         </div>
     </div>
@@ -230,27 +235,30 @@
 <%# Search / History Modal %>
 <div id="historyModal" class="modal-overlay">
     <div class="modal-content modal-large">
-        <span class="close" onclick="closeHistoryModal()">&times;</span>
-        <div class="modal-header-centered">
-            <h2>📋 Event History & Audit</h2>
-            <p>Search and manage the full family event roster</p>
-        </div>
-
-        <div class="history-controls">
-            <div class="search-input-wrapper">
-                <input type="text" id="historySearchInput" placeholder="Search events (title, description)..." oninput="filterHistory()">
-                <span class="search-icon">🔍</span>
+        <div class="modal-header modal-header-centered">
+            <div>
+                <h3>📋 Event History & Audit</h3>
+                <p>Search and manage the full family event roster</p>
             </div>
-            <select id="historyCategoryFilter" class="category-dropdown" onchange="filterHistory()">
-                <option value="">All Categories</option>
-            </select>
+            <span class="close-btn" onclick="closeHistoryModal()">&times;</span>
         </div>
+        <div class="modal-body">
+            <div class="history-controls">
+                <div class="search-input-wrapper">
+                    <input type="text" id="historySearchInput" class="game-input" placeholder="Search events (title, description)..." oninput="filterHistory()">
+                    <span class="search-icon">🔍</span>
+                </div>
+                <select id="historyCategoryFilter" class="game-input category-dropdown no-emoji" onchange="filterHistory()">
+                    <option value="">All Categories</option>
+                </select>
+            </div>
 
-        <div class="history-table-wrapper table-responsive">
-            <div id="historyTableContainer">
-                <div class="component-loading">
-                    <span class="loading-icon-pulse">⌛</span>
-                    <p>Retrieving archival records...</p>
+            <div class="history-table-wrapper table-responsive">
+                <div id="historyTableContainer">
+                    <div class="component-loading">
+                        <span class="loading-icon-pulse">⌛</span>
+                        <p>Retrieving archival records...</p>
+                    </div>
                 </div>
             </div>
         </div>
