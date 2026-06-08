@@ -22,7 +22,9 @@
  */
 const CONFIG = {
     SYNC_INTERVAL_MS: 300000,
-    DEBOUNCE_MS: 300
+    DEBOUNCE_MS: 300,
+    FUEL_UPLOAD_MAX_EDGE: 1280,
+    FUEL_UPLOAD_JPEG_QUALITY: 0.82
 };
 
 let STATE = {
@@ -34,7 +36,10 @@ let STATE = {
     summary: {},
     currentUser: '',
     isAdmin: false,
-    refinedBlobs: { image1: null, image2: null }
+    refinedBlobs: { image1: null, image2: null },
+    uploadErrors: { image1: null, image2: null },
+    uploadProcessing: { image1: false, image2: false },
+    uploadTokens: { image1: 0, image2: 0 }
 };
 
 let UPLOAD_PREVIEW_URLS = {
@@ -43,7 +48,7 @@ let UPLOAD_PREVIEW_URLS = {
 };
 let MODAL_IMAGE_URL = null;
 
-const MANUAL_UPLOAD_FIELDS = ['uploadOdometer', 'uploadLitres', 'uploadPrice', 'uploadTotal', 'uploadStation'];
+const MANUAL_UPLOAD_FIELDS = ['uploadOdometer', 'uploadLitres', 'uploadTotal', 'uploadStation'];
 
 /**
  * Bootstraps state loading, filters, uploads, and modal behavior.
@@ -232,7 +237,6 @@ function renderLogs() {
                 </td>
                 <td class="col-actions" data-label="Actions">
                     <div class="action-buttons">
-                        ${hasFuelPhotos(log) ? `<button type="button" class="btn-icon-ai" onclick="runFuelScan(${log.id})" title="Rescan">🔍</button>` : ''}
                         ${canEdit ? `
                             <button type="button" class="btn-icon-edit" onclick="openEditModal(${log.id})" title="Edit">✏️</button>
                             <button type="button" class="btn-icon-delete" onclick="confirmDeleteFuel(${log.id}, '${escapeHtml(vehicle)}')" title="Delete">🗑️</button>
@@ -406,26 +410,40 @@ async function renderFuelUploadPreview(inputId) {
     }
 
     if (!input.files || input.files.length === 0) {
+        STATE.uploadTokens[inputId] += 1;
         slot.innerHTML = emptyFuelPreviewHtml(inputId);
         STATE.refinedBlobs[inputId] = null;
+        STATE.uploadErrors[inputId] = null;
+        STATE.uploadProcessing[inputId] = false;
         return;
     }
 
     const file = input.files[0];
-    let displayFile = file;
+    const token = STATE.uploadTokens[inputId] + 1;
+    STATE.uploadTokens[inputId] = token;
     STATE.refinedBlobs[inputId] = null;
+    STATE.uploadErrors[inputId] = null;
+    STATE.uploadProcessing[inputId] = true;
+    slot.innerHTML = `
+        <div class="empty-preview-hint">
+            <span>Processing photo...</span>
+        </div>
+    `;
 
-    const low = file.name.toLowerCase();
-    if (low.endsWith('.heic') || low.endsWith('.heif')) {
-        if (typeof showToast === 'function') showToast('Processing modern image format...', 'info');
-        try {
-            const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 });
-            displayFile = Array.isArray(blob) ? blob[0] : blob;
-            STATE.refinedBlobs[inputId] = displayFile;
-        } catch (err) {
-            console.error("HEIC conversion failed", err);
-            if (typeof showToast === 'function') showToast('Conversion failed', 'error');
-        }
+    let displayFile;
+    try {
+        displayFile = await prepareFuelUploadImage(file);
+        if (STATE.uploadTokens[inputId] !== token) return;
+        STATE.refinedBlobs[inputId] = displayFile;
+    } catch (err) {
+        if (STATE.uploadTokens[inputId] !== token) return;
+        console.error("Fuel image preparation failed", err);
+        STATE.uploadErrors[inputId] = 'Could not process this photo. Please retry or use manual entry.';
+        slot.innerHTML = emptyFuelPreviewHtml(inputId);
+        if (typeof showToast === 'function') showToast(STATE.uploadErrors[inputId], 'error');
+        return;
+    } finally {
+        if (STATE.uploadTokens[inputId] === token) STATE.uploadProcessing[inputId] = false;
     }
 
     const url = URL.createObjectURL(displayFile);
@@ -442,6 +460,62 @@ async function renderFuelUploadPreview(inputId) {
             </div>
         </div>
     `;
+}
+
+/**
+ * Converts any supported fuel photo into a bounded JPEG upload blob.
+ *
+ * @param {File|Blob} file - Selected upload image.
+ * @returns {Promise<Blob>} JPEG blob ready for storage and AI analysis.
+ */
+async function prepareFuelUploadImage(file) {
+    let source = file;
+    const low = (file.name || '').toLowerCase();
+    if (low.endsWith('.heic') || low.endsWith('.heif')) {
+        if (typeof showToast === 'function') showToast('Processing modern image format...', 'info');
+        const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: CONFIG.FUEL_UPLOAD_JPEG_QUALITY });
+        source = Array.isArray(converted) ? converted[0] : converted;
+    }
+
+    const image = await loadFuelImage(source);
+    const scale = Math.min(1, CONFIG.FUEL_UPLOAD_MAX_EDGE / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas not available');
+    ctx.drawImage(image, 0, 0, width, height);
+
+    return await new Promise((resolve, reject) => {
+        canvas.toBlob(blob => {
+            if (blob) resolve(blob);
+            else reject(new Error('JPEG export failed'));
+        }, 'image/jpeg', CONFIG.FUEL_UPLOAD_JPEG_QUALITY);
+    });
+}
+
+/**
+ * Loads an upload blob into an image element for canvas resizing.
+ *
+ * @param {Blob} blob - Image blob to decode.
+ * @returns {Promise<HTMLImageElement>} Loaded image element.
+ */
+function loadFuelImage(blob) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(blob);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(img);
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Image decode failed'));
+        };
+        img.src = url;
+    });
 }
 
 /**
@@ -535,12 +609,18 @@ async function handleUpload(event) {
     try {
         const endpoint = mode === 'manual' ? '/fuel/api/manual' : '/fuel/api/upload';
         const formData = new FormData(form);
-        
-        if (STATE.refinedBlobs.image1) {
+
+        if (mode === 'photos') {
+            if (STATE.uploadProcessing.image1 || STATE.uploadProcessing.image2) {
+                throw new Error('Still processing photos. Please try again in a moment.');
+            }
+            const error = STATE.uploadErrors.image1 || STATE.uploadErrors.image2;
+            if (error) throw new Error(error);
+            if (!STATE.refinedBlobs.image1 || !STATE.refinedBlobs.image2) {
+                throw new Error('Please choose two valid photos before uploading.');
+            }
             formData.delete('image1');
             formData.append('image1', STATE.refinedBlobs.image1, 'image1.jpg');
-        }
-        if (STATE.refinedBlobs.image2) {
             formData.delete('image2');
             formData.append('image2', STATE.refinedBlobs.image2, 'image2.jpg');
         }
@@ -551,6 +631,8 @@ async function handleUpload(event) {
             await loadState(true);
             if (mode === 'photos' && result.log && result.log.id) openEditModal(result.log.id);
         }
+    } catch (err) {
+        if (typeof showToast === 'function') showToast(err.message || 'Fuel upload failed', 'error');
     } finally {
         if (typeof hideLoadingOverlay === 'function') hideLoadingOverlay();
         btn.disabled = false;
@@ -589,11 +671,25 @@ function openEditModal(id) {
     setValue('editFillType', log.fill_type || 'full');
     setValue('editOdometer', log.odometer || '');
     setValue('editLitres', log.litres || '');
-    setValue('editPrice', log.price_per_litre || '');
     setValue('editDiscount', log.discount_per_litre || 0);
     setValue('editTotal', log.total_amount || '');
     setValue('editStation', log.station_name || '');
     setValue('editDescription', log.description || '');
+
+    const editLitres = document.getElementById('editLitres');
+    const editTotal = document.getElementById('editTotal');
+    const editPrice = document.getElementById('editPrice');
+    function recalcPrice() {
+        const l = parseFloat(editLitres?.value) || 0;
+        const t = parseFloat(editTotal?.value) || 0;
+        if (editPrice) {
+            editPrice.value = l > 0 ? (t / l).toFixed(3) : '';
+        }
+    }
+    if (editLitres) editLitres.oninput = recalcPrice;
+    if (editTotal) editTotal.oninput = recalcPrice;
+    recalcPrice();
+
     renderReviewReasons(log);
 
     const scan = document.getElementById('btnScanAI');
