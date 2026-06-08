@@ -29,15 +29,8 @@
 
         <%# Chat Input Area %>
         <div class="chat-input-area">
-            <div id="file-indicator" class="file-pill">
-                <span id="file-label"></span>
-                <span class="close-btn" onclick="clearFile()">&times;</span>
-            </div>
-            
             <form id="chatForm" onsubmit="sendPrompt(event)">
                 <input type="text" id="prompt-input" class="game-input" placeholder="Ask me about the house..." autocomplete="off">
-                <input type="hidden" id="file-id">
-                <input type="hidden" id="file-type">
                 <button type="submit" id="send-btn" class="btn-primary">➕</button>
             </form>
         </div>
