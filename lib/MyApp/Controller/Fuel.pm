@@ -11,14 +11,14 @@ use Mojo::Promise;
 #
 # Features:
 #   - Dual image upload for odometer and pump or receipt photos.
-#   - Gemini extraction with manual review fallback.
+#   - AI extraction with manual review fallback.
 #   - Vehicle management through the primary fuel interface.
 #   - State-driven ledger payloads for spending and economy analytics.
 #
 # Integration Points:
 #   - Restricted to family members via the route bridge.
 #   - Depends on DB::Fuel for persistence and efficiency calculations.
-#   - Uses centralized Gemini helpers for structured extraction.
+#   - Uses centralized AI helpers for structured extraction.
 
 # Renders the main fuel ledger skeleton.
 # Route: GET /fuel
@@ -228,7 +228,7 @@ sub serve {
     $c->render(data => $data);
 }
 
-# Runs or re-runs Gemini extraction for an existing log.
+# Runs or re-runs AI extraction for an existing log.
 # Route: POST /fuel/api/ai_analyze/:id
 sub api_ai_analyze {
     my $c = shift;
@@ -310,10 +310,11 @@ sub api_vehicle_delete {
 sub _prepare_upload {
     my ($c, $upload, $prefix) = @_;
 
+    my $max_size = 5 * 1024 * 1024;
     my $original = $upload->filename || "${prefix}.jpg";
     my $size = $upload->size || 0;
     my $mime = $upload->headers->content_type || 'application/octet-stream';
-    return { error => 'File too large (Max 1GB)' } if $size > 1024 * 1024 * 1024;
+    return { error => 'Photo is too large. Please retry image processing or use manual entry.' } if $size > $max_size;
 
     my $data = $upload->asset->slurp;
     return { error => 'Only image uploads are supported' } unless _looks_like_image($data, $mime);
@@ -342,22 +343,23 @@ sub _looks_like_image {
     return (($mime // '') =~ m{^image/}) ? 1 : 0;
 }
 
-# Executes Gemini extraction and persists the normalized result.
+# Executes AI extraction and persists the normalized result.
 sub _analyze_and_update_log {
     my ($c, $id) = @_;
 
     my $log = $c->db->get_fuel_log_by_id($id);
     return Mojo::Promise->reject('Record not found') unless $log;
 
-    return $c->gemini_analyze_fuel(
+    return $c->ai_analyze_fuel(
         $log->{image1_file_data}, $log->{image1_mime_type},
         $log->{image2_file_data}, $log->{image2_mime_type}
     )->then(sub {
         my $response = shift;
         my $json_text = _candidate_json_text($response);
-        my $ai_data;
-        eval { $ai_data = decode_json($json_text); };
+        my $ai_data = $c->ai_decode_json($json_text);
         return Mojo::Promise->reject('Invalid AI JSON') unless $ai_data && ref($ai_data) eq 'HASH';
+        delete $ai_data->{price_per_litre};
+        delete $ai_data->{confidence}{price_per_litre} if ref($ai_data->{confidence}) eq 'HASH';
 
         my ($normalized, $reasons) = _normalize_ai_payload($c, $log, $ai_data);
         $normalized->{ai_json} = encode_json($ai_data);
@@ -370,14 +372,11 @@ sub _analyze_and_update_log {
     });
 }
 
-# Extracts the first structured text candidate from Gemini's response.
+# Extracts the first structured text candidate from a normalized AI response.
 sub _candidate_json_text {
     my ($data) = @_;
     return undef unless $data && $data->{candidates} && @{$data->{candidates}};
     my $text = $data->{candidates}[0]{content}{parts}[0]{text};
-    return undef unless defined $text;
-    if ($text =~ /```json\s*(.*?)\s*```/s) { return $1; }
-    if ($text =~ /^\s*(\{.*\})\s*$/s) { return $1; }
     return $text;
 }
 
@@ -388,21 +387,17 @@ sub _normalize_ai_payload {
     my @reasons;
     my $odometer = _positive_int($ai->{odometer});
     my $litres = _positive_decimal($ai->{litres});
-    my $price = _positive_decimal($ai->{price_per_litre});
     my $total = _positive_decimal($ai->{total_amount});
     my $discount = _non_negative_decimal($ai->{discount_per_litre});
     $discount = _non_negative_decimal($log->{discount_per_litre}) // 0 unless defined $discount;
+    my $price = (defined $litres && $litres > 0 && defined $total)
+        ? sprintf('%.3f', $total / $litres) + 0
+        : undef;
     my $date = ($ai->{date} && $ai->{date} =~ /^\d{4}-\d{2}-\d{2}$/) ? $ai->{date} : ($log->{log_date} || $c->now->strftime('%Y-%m-%d'));
 
     push @reasons, 'missing odometer' unless defined $odometer;
     push @reasons, 'missing litres' unless defined $litres;
-    push @reasons, 'missing price per litre' unless defined $price;
     push @reasons, 'missing total amount' unless defined $total;
-
-    if (defined $litres && defined $price && defined $total) {
-        my $expected = $litres * ($price - ($discount / 100));
-        push @reasons, 'litres and unit price do not match total' if abs($expected - $total) > 1.00;
-    }
 
     if ($ai->{needs_review}) {
         push @reasons, 'AI requested manual review';
@@ -443,12 +438,13 @@ sub _extract_manual_payload {
 
     my $odometer = _positive_int($c->param('odometer'));
     my $litres = _positive_decimal($c->param('litres'));
-    my $price = _positive_decimal($c->param('price_per_litre'));
     my $discount = _non_negative_decimal($c->param('discount_per_litre'));
     my $total = _positive_decimal($c->param('total_amount'));
+    my $price = (defined $litres && $litres > 0 && defined $total)
+        ? sprintf('%.3f', $total / $litres) + 0
+        : undef;
     push @reasons, 'odometer is required' unless defined $odometer;
     push @reasons, 'litres is required' unless defined $litres;
-    push @reasons, 'price per litre is required' unless defined $price;
     push @reasons, 'discount is invalid' unless defined $discount;
     push @reasons, 'total amount is required' unless defined $total;
 
@@ -488,13 +484,14 @@ sub _extract_manual_create_payload {
 
     my $odometer = _positive_int($c->param('odometer'));
     my $litres = _positive_decimal($c->param('litres'));
-    my $price = _positive_decimal($c->param('price_per_litre'));
     my $discount = _non_negative_decimal($c->param('discount_per_litre'));
     my $total = _positive_decimal($c->param('total_amount'));
+    my $price = (defined $litres && $litres > 0 && defined $total)
+        ? sprintf('%.3f', $total / $litres) + 0
+        : undef;
     my $station = trim($c->param('station_name') // '');
     push @reasons, 'odometer is required' unless defined $odometer;
     push @reasons, 'litres is required' unless defined $litres;
-    push @reasons, 'price per litre is required' unless defined $price;
     push @reasons, 'discount is invalid' unless defined $discount;
     push @reasons, 'total amount is required' unless defined $total;
     push @reasons, 'station is required' unless $station;
