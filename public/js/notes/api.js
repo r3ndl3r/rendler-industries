@@ -8,8 +8,10 @@
 window.NoteAPI = {
     STATE_CACHE_PREFIX: 'notes_state_cache:',
     STATE_CACHE_LAST_KEY: 'notes_state_cache:last',
+    STATE_CACHE_STORAGE_NAME: 'notes-state-cache-v1',
     STATE_CACHE_MAX_ENTRIES: 5,
     STATE_CACHE_MAX_AGE_MS: 86400000 * 7,
+    stateCacheQuotaWarningShown: false,
 
     /**
      * Determines whether the browser currently reports an offline transport state.
@@ -44,6 +46,20 @@ window.NoteAPI = {
         const canvasId = parsed.searchParams.get('canvas_id') || 'default';
         const layerId = parsed.searchParams.get('layer_id') || 'default';
         return `${this.STATE_CACHE_PREFIX}${canvasId}:${layerId}`;
+    },
+
+    stateCacheStorageRequest(key) {
+        const url = new URL('/notes/__state_cache', window.location.origin);
+        url.searchParams.set('key', key);
+        return new Request(url.href);
+    },
+
+    stateCacheStorageKey(request) {
+        try {
+            return new URL(request.url).searchParams.get('key') || '';
+        } catch (_) {
+            return '';
+        }
     },
 
     /**
@@ -146,8 +162,9 @@ window.NoteAPI = {
     writeStateCacheWithQuotaRecovery(keys, payload, currentKey) {
         let popped = 0;
         let poppedBytes = 0;
+        let replacedCurrent = false;
         const aliases = keys.filter(key => key !== currentKey);
-        const maxAttempts = this.stateCacheEntries().filter(entry => entry.key !== currentKey).length + 1;
+        const maxAttempts = this.stateCacheEntries().filter(entry => entry.key !== currentKey).length + 2;
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             try {
@@ -168,6 +185,15 @@ window.NoteAPI = {
 
                 const victim = candidates[0];
                 if (!victim) {
+                    if (!replacedCurrent) {
+                        const currentPayload = localStorage.getItem(currentKey) || '';
+                        localStorage.removeItem(currentKey);
+                        localStorage.removeItem(this.STATE_CACHE_LAST_KEY);
+                        popped++;
+                        poppedBytes += currentKey.length + currentPayload.length;
+                        replacedCurrent = true;
+                        continue;
+                    }
                     return { success: false, popped, poppedBytes, error: err };
                 }
 
@@ -186,31 +212,112 @@ window.NoteAPI = {
         return { success: false, popped, poppedBytes, error: new Error('Notes state cache quota recovery exhausted') };
     },
 
+    compactStateForCache(data) {
+        return {
+            success: data.success,
+            canvas_id: data.canvas_id,
+            notes: data.notes,
+            user_id: data.user_id,
+            canvases: data.canvases,
+            viewport: data.viewport,
+            layer_map: data.layer_map,
+            last_mutation: data.last_mutation,
+            is_locked: data.is_locked
+        };
+    },
+
+    async writeStateCacheStorage(keys, payload, currentKey) {
+        if (typeof caches === 'undefined') return { success: false, error: new Error('Cache Storage unavailable') };
+
+        try {
+            const cache = await caches.open(this.STATE_CACHE_STORAGE_NAME);
+            const responseInit = { headers: { 'Content-Type': 'application/json' } };
+            await cache.put(this.stateCacheStorageRequest(currentKey), new Response(payload, responseInit));
+            await cache.put(this.stateCacheStorageRequest(this.STATE_CACHE_LAST_KEY), new Response(currentKey, { headers: { 'Content-Type': 'text/plain' } }));
+
+            for (const key of keys.filter(key => key !== currentKey)) {
+                try {
+                    await cache.put(this.stateCacheStorageRequest(key), new Response(payload, responseInit));
+                } catch (_) {
+                    await cache.delete(this.stateCacheStorageRequest(key));
+                }
+            }
+
+            const removable = (await cache.keys()).filter((request) => {
+                const key = this.stateCacheStorageKey(request);
+                return key && key !== this.STATE_CACHE_LAST_KEY && key !== currentKey;
+            });
+            while (removable.length > this.STATE_CACHE_MAX_ENTRIES - 1) {
+                await cache.delete(removable.shift());
+            }
+            return { success: true };
+        } catch (err) {
+            return { success: false, error: err };
+        }
+    },
+
     /**
      * Stores a successful notes state payload for offline hydration.
      * @param {string} url - Target endpoint.
      * @param {Object} data - Parsed state payload.
      */
-    cacheState(url, data) {
+    async cacheState(url, data) {
         if (!data || !data.success || data.is_locked || !Array.isArray(data.notes)) return;
-        const payload = JSON.stringify({ timestamp: Date.now(), data });
+        const timestamp = Date.now();
+        const payload = JSON.stringify({ timestamp, data });
         const requestKey = this.stateCacheKey(url);
         const resolvedKey = `${this.STATE_CACHE_PREFIX}${data.canvas_id || 'default'}:${data.viewport?.layer_id || 'default'}`;
         const keys = Array.from(new Set([requestKey, resolvedKey]));
+        let fallbackPayload = payload;
 
         const pruned = this.pruneStateCache({ keepKey: resolvedKey });
-        const result = this.writeStateCacheWithQuotaRecovery(keys, payload, resolvedKey);
+        let result = this.writeStateCacheWithQuotaRecovery(keys, payload, resolvedKey);
+        let compacted = false;
 
         if (!result.success) {
+            const compactPayload = JSON.stringify({ timestamp, data: this.compactStateForCache(data) });
+            if (compactPayload.length < payload.length) {
+                fallbackPayload = compactPayload;
+                result = this.writeStateCacheWithQuotaRecovery(keys, compactPayload, resolvedKey);
+                compacted = result.success;
+            }
+        }
+
+        if (!result.success) {
+            const storageResult = await this.writeStateCacheStorage(keys, fallbackPayload, resolvedKey);
+            if (storageResult.success) {
+                keys.forEach(key => localStorage.removeItem(key));
+                localStorage.removeItem(this.STATE_CACHE_LAST_KEY);
+                console.warn('Notes state cache stored in Cache Storage after localStorage quota pressure.', {
+                    pruned,
+                    quotaRecovery: result,
+                    compacted
+                });
+                return;
+            }
+
+            const noNotesCacheLeft = pruned.beforeCount === 0 && result.poppedBytes <= resolvedKey.length;
+            if (noNotesCacheLeft) {
+                if (!this.stateCacheQuotaWarningShown) {
+                    this.stateCacheQuotaWarningShown = true;
+                    console.info('Notes state cache skipped: localStorage quota is full and no notes cache entries remain to prune.', {
+                        payloadBytes: payload.length,
+                        storage: this.localStorageDiagnostics(),
+                        cacheStorageError: storageResult.error
+                    });
+                }
+                return;
+            }
             console.warn('Unable to cache notes state after quota recovery:', {
                 error: result.error,
+                cacheStorageError: storageResult.error,
                 pruned,
                 popped: result.popped,
                 poppedBytes: result.poppedBytes,
                 storage: this.localStorageDiagnostics()
             });
-        } else if (pruned.removed > 0 || result.popped > 0) {
-            console.warn('Notes state cache maintained:', { pruned, quotaRecovery: result });
+        } else if (pruned.removed > 0 || result.popped > 0 || compacted) {
+            console.warn('Notes state cache maintained:', { pruned, quotaRecovery: result, compacted });
         }
     },
 
@@ -235,6 +342,34 @@ window.NoteAPI = {
             console.warn('Unable to read cached notes state:', err);
         }
         return null;
+    },
+
+    async cachedStateFromStorage(url) {
+        if (typeof caches === 'undefined') return null;
+
+        try {
+            const cache = await caches.open(this.STATE_CACHE_STORAGE_NAME);
+            const lastResponse = await cache.match(this.stateCacheStorageRequest(this.STATE_CACHE_LAST_KEY));
+            const lastKey = lastResponse ? await lastResponse.text() : null;
+            const keys = [this.stateCacheKey(url), lastKey].filter(Boolean);
+
+            for (const key of keys) {
+                const response = await cache.match(this.stateCacheStorageRequest(key));
+                if (!response) continue;
+                const parsed = await response.json();
+                if (parsed && parsed.data && parsed.data.success) {
+                    parsed.data.offline_cached = true;
+                    return parsed.data;
+                }
+            }
+        } catch (err) {
+            console.warn('Unable to read cached notes state from Cache Storage:', err);
+        }
+        return null;
+    },
+
+    async cachedStateAny(url) {
+        return this.cachedState(url) || await this.cachedStateFromStorage(url);
     },
 
     /**
@@ -282,12 +417,18 @@ window.NoteAPI = {
 
             if (!response.ok) {
                 console.error(`NoteAPI Get: HTTP ${response.status} for ${url}`);
-                if (isStateRequest) return this.cachedState(url);
+                if (isStateRequest) return await this.cachedStateAny(url);
                 return null;
             }
 
             const data = await response.json();
-            if (isStateRequest) this.cacheState(url, data);
+            if (isStateRequest) {
+                try {
+                    await this.cacheState(url, data);
+                } catch (cacheErr) {
+                    console.warn('Unable to maintain notes state cache:', cacheErr);
+                }
+            }
             if (data.error && !data.success) {
                 if (!options.silent) showToast(data.error, 'error');
             }
@@ -297,7 +438,7 @@ window.NoteAPI = {
             // Signal Management: Silence intentional context-switch abortions
             if (err.name === 'AbortError' && !timedOut) return null;
             if (isStateRequest) {
-                const cached = this.cachedState(url);
+                const cached = await this.cachedStateAny(url);
                 if (cached) return cached;
             }
             console.error('NoteAPI Get Error:', err);
