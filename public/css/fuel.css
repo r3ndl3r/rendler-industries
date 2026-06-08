@@ -378,6 +378,13 @@
     display: inline-block;
 }
 
+#imageModal .close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 1;
+}
+
 .receipt-modal-img {
     max-width: 90vw;
     max-height: 90vh;
@@ -445,4 +452,24 @@
     .fuel-table .fuel-empty-ledger::before {
         content: none;
     }
+}
+
+.calc-readonly {
+    opacity: 0.75;
+    cursor: default;
+    background: rgba(15, 23, 42, 0.45);
+    border-color: rgba(148, 163, 184, 0.3);
+}
+
+.calc-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.15);
+    padding: 1px 5px;
+    border-radius: 4px;
+    vertical-align: middle;
+    margin-left: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
