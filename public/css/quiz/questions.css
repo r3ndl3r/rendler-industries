@@ -4,7 +4,7 @@
 
 :root {
     --bg-gradient-start: #0f172a;
-    --bg-gradient-end: #1e293b;
+    --bg-gradient-end: var(--color-surface);
     --glass-bg: rgba(255, 255, 255, 0.05);
     --glass-border: rgba(255, 255, 255, 0.1);
     --glass-highlight: rgba(255, 255, 255, 0.15);
@@ -708,7 +708,7 @@ body {
 }
 
 .custom-modal-box {
-    background: #1e293b;
+    background: var(--color-surface);
     border: 1px solid var(--glass-border);
     border-radius: 20px;
     width: 100%;
