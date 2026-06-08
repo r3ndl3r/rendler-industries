@@ -117,6 +117,7 @@ sub DB::get_global_search_notes {
         WHERE (c.user_id = ? OR c.id IN (SELECT canvas_id FROM canvas_shares WHERE user_id = ?))
         AND (c.password_hash IS NULL $in_clause)
         AND n.is_deleted = 0
+        AND (n.title IS NULL OR n.title NOT LIKE BINARY 'FENCE:%')
         AND (n.title LIKE ? OR n.content LIKE ? OR n.filename LIKE ? OR cl.alias LIKE ?)
         ORDER BY n.updated_at DESC
         LIMIT 50
