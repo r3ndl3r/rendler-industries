@@ -32,10 +32,21 @@ let STATE = {
     settings: {},                   // Global system settings (pushover, gotify, app_secret, etc)
     email_settings: {},             // SMTP and email dispatch configuration
     timer_reset_hour: 0,            // Scheduled daily maintenance hour
+    ai_provider: 'gemini',          // Active AI API provider
     gemini: {                       // AI Integration metadata
         key: '',
         models: [],
-        active: ''
+        active: '',
+        model_error: ''
+    },
+    opencode: {                     // OpenCode Zen metadata
+        key: '',
+        models: [],
+        active: '',
+        model_error: ''
+    },
+    local_ai: {                      // Local OpenAI-compatible endpoint metadata
+        url: ''
     },
     google_cloud: {                 // Cloud Services (TTS/Translation) metadata
         key: ''
@@ -74,7 +85,10 @@ async function loadState() {
             STATE.settings = data.settings;
             STATE.email_settings = data.email_settings;
             STATE.timer_reset_hour = data.timer_reset_hour;
+            STATE.ai_provider = data.ai_provider || 'gemini';
             STATE.gemini = data.gemini;
+            STATE.opencode = data.opencode || STATE.opencode;
+            STATE.local_ai = data.local_ai || STATE.local_ai;
             STATE.google_cloud = data.google_cloud;
             STATE.owm_api_key = data.owm_api_key;
             
@@ -117,37 +131,18 @@ function renderSettings() {
             buttonText: el.dataset.buttonText || '💾 Save',
             buttonType: el.dataset.buttonType || 'submit',
             buttonClass: el.dataset.buttonClass || '',
+            section: el.dataset.section || '',
             noButton: el.dataset.noButton === 'true',
             noEmoji: true
         };
         const row = renderRowInput(el, options);
+        if (options.section && row.button) row.button.dataset.section = options.section;
         
-        // Custom Logic: Add Visibility Toggle for passwords
-        if (options.type === 'password') {
-            const toggle = document.createElement('button');
-            toggle.type = 'button';
-            toggle.className = 'btn-toggle';
-            toggle.dataset.toggleVisibility = 'true';
-            toggle.textContent = 'Show';
-            toggle.onclick = () => {
-                const revealing = row.input.type === 'password';
-                row.input.type = revealing ? 'text' : 'password';
-                toggle.textContent = revealing ? 'Hide' : 'Show';
-            };
-            row.input.parentNode.appendChild(toggle);
-        }
-
-        // Custom Logic: Add Model Button handler (if button exists)
-        if (options.id === 'newModelInput' && row.button) {
-            row.button.onclick = handleAddGeminiModel;
-        }
     });
 
     // Interaction: Re-bind form submission handlers to the new dynamic DOM
     container.querySelectorAll('form').forEach(form => {
-        if (form.id === 'addModelForm') {
-            form.onsubmit = handleAddGeminiModel;
-        } else if (form.onsubmit) {
+        if (form.onsubmit) {
             // Already handled via inline assignment or legacy
         } else {
             form.onsubmit = handleSettingsUpdate;
@@ -239,21 +234,38 @@ function renderEmailPanel() {
 function renderIntegrationsPanel() {
     const s = STATE.settings;
     const g = STATE.gemini;
+    const o = STATE.opencode;
+    const l = STATE.local_ai;
     const cloud = STATE.google_cloud;
 
     const modelOptions = g.models.map(m => `
         <option value="${escapeHtml(m)}" ${m === g.active ? 'selected' : ''}>${escapeHtml(m)}</option>
     `).join('');
 
-    const modelPills = g.models.map(m => `
-        <div class="pill-badge">
-            <span class="model-name-text">${escapeHtml(m)}</span>
-            <button type="button" class="btn-remove-model" onclick="confirmDeleteModel('${escapeHtml(m)}')" title="Remove Model">&times;</button>
-        </div>
+    const opencodeModelOptions = o.models.map(m => `
+        <option value="${escapeHtml(m)}" ${m === o.active ? 'selected' : ''}>${escapeHtml(m)}</option>
     `).join('');
 
     return `
         <div class="settings-panel" id="panel-integrations">
+            ${renderCard('ai_provider', 'AI Provider', 'Choose which provider handles text-only AI calls. Image analysis uses Gemini when required by the request.', true, `
+                <div class="settings-fields">
+                    <div class="form-group full-width">
+                        <label>Active Provider</label>
+                        <div class="modal-prompt-row">
+                            <div class="create-input-wrapper" style="flex: 1;">
+                                <select name="ai_provider" class="game-input gemini-select">
+                                    <option value="gemini" ${STATE.ai_provider === 'gemini' ? 'selected' : ''}>Google Gemini</option>
+                                    <option value="opencode" ${STATE.ai_provider === 'opencode' ? 'selected' : ''}>OpenCode Zen</option>
+                                    <option value="local" ${STATE.ai_provider === 'local' ? 'selected' : ''}>Local LLM (llama.cpp)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn-primary btn-go-row">💾 Save</button>
+                        </div>
+                    </div>
+                </div>
+            `, true, STATE.ai_provider === 'opencode' ? 'OpenCode' : STATE.ai_provider === 'local' ? 'Local' : 'Gemini')}
+
             ${renderCard('unsplash', 'Unsplash', 'High-quality images for platform modules.', !!s.unsplash_key, `
                 <div class="settings-fields">
                     <div class="form-group full-width">
@@ -264,10 +276,11 @@ function renderIntegrationsPanel() {
             `, true)}
 
             ${renderCard('gemini', 'Google Gemini', 'Gemini API key and model configuration.', !!g.key, `
+                ${g.model_error ? `<div class="form-warning">${escapeHtml(g.model_error)}</div>` : ''}
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         <label>API Key</label>
-                        <div class="render-row-input" data-id="gemini_key" data-name="gemini_key" data-type="password" data-value="" data-placeholder="${g.key ? '(configured — paste new value to replace)' : 'API Key'}"></div>
+                        <div class="render-row-input" data-id="gemini_key" data-section="gemini_key" data-name="gemini_key" data-type="password" data-value="" data-placeholder="${g.key ? '(configured — paste new value to replace)' : 'API Key'}"></div>
                     </div>
                     <div class="form-group full-width">
                         <label>Active Model</label>
@@ -277,24 +290,41 @@ function renderIntegrationsPanel() {
                                     ${modelOptions}
                                 </select>
                             </div>
-                            <button type="submit" class="btn-primary btn-go-row">💾 Save</button>
+                            <button type="submit" class="btn-primary btn-go-row" data-section="gemini_model">💾 Save</button>
                         </div>
-                    </div>
-                </div>
-                <hr class="settings-separator">
-                <div class="settings-fields">
-                    <div class="form-group full-width">
-                        <label>Available Models</label>
-                        <div class="model-list-container">
-                            ${modelPills}
-                        </div>
-                    </div>
-                    <div class="form-group mt-15">
-                        <label>Add New Model Name</label>
-                        <div class="render-row-input" data-id="newModelInput" data-placeholder="e.g. gemini-3.1-pro-preview" data-button-type="button"></div>
                     </div>
                 </div>
             `, true)}
+
+            ${renderCard('opencode', 'OpenCode Zen', 'OpenCode API key and live model selection for text-only AI routing.', !!o.key, `
+                ${o.model_error ? `<div class="form-warning">${escapeHtml(o.model_error)}</div>` : ''}
+                <div class="settings-fields">
+                    <div class="form-group full-width">
+                        <label>API Key</label>
+                        <div class="render-row-input" data-id="opencode_key" data-section="opencode_key" data-name="opencode_key" data-type="password" data-value="" data-placeholder="${o.key ? '(configured — paste new value to replace)' : 'API Key'}"></div>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Active Model</label>
+                        <div class="modal-prompt-row">
+                            <div class="create-input-wrapper" style="flex: 1;">
+                                <select name="opencode_active_model" class="game-input gemini-select">
+                                    ${opencodeModelOptions}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn-primary btn-go-row" data-section="opencode_model">💾 Save</button>
+                        </div>
+                    </div>
+                </div>
+            `, true)}
+
+            ${renderCard('local_ai', 'Local LLM', 'OpenAI-compatible chat completions URL for local text-only AI routing.', !!l.url, `
+                <div class="settings-fields">
+                    <div class="form-group full-width">
+                        <label>Application URL</label>
+                        <input type="url" name="local_ai_url" class="game-input" value="${escapeHtml(l.url || '')}" placeholder="http://host:port/v1/chat/completions">
+                    </div>
+                </div>
+            `)}
 
             ${renderCard('google_cloud', 'Google Cloud', 'API key for TTS and Translation services.', !!cloud.key, `
                 <div class="settings-fields">
@@ -513,7 +543,7 @@ async function handleSettingsUpdate(e) {
     const form = e.target;
     // Use e.submitter to identify the specific button that triggered the submit
     const btn = e.submitter || form.querySelector('button[type="submit"]');
-    const formData = new FormData(form);
+    const formData = buildSettingsPayload(form, btn);
     const section = formData.get('section');
 
     // Workflow: Mandatory Action confirmation for sensitive system parameters
@@ -559,57 +589,27 @@ async function handleSettingsUpdate(e) {
     }
 }
 
-/**
- * Specialized handler for Gemini model registry additions.
- * 
- * @async
- * @returns {Promise<void>}
- */
-async function handleAddGeminiModel() {
-    const input = document.getElementById('newModelInput');
-    const name = input?.value.trim();
-    if (!name) return;
-
-    const result = await apiPost('/admin/settings/update', {
-        section: 'gemini_models',
-        action: 'add',
-        new_model: name
-    });
-
-    if (result && result.success) {
-        if (input) input.value = '';
-        await loadState();
+function buildSettingsPayload(form, btn) {
+    const scopedSection = btn?.dataset?.section;
+    if (!scopedSection) {
+        const formData = new FormData(form);
+        form.querySelectorAll('input[type="password"]').forEach(input => {
+            if (!input.value.trim()) formData.delete(input.name);
+        });
+        return formData;
     }
-}
 
-/**
- * Orchestrates the Mandatory Action removal of AI model metadata.
- * 
- * @param {string} modelName - Target identifier.
- * @returns {void}
- */
-function confirmDeleteModel(modelName) {
-    showConfirmModal({
-        title: 'Remove Model',
-        message: `Permanently remove \"<strong>${escapeHtml(modelName)}</strong>\" from the available registry?`,
-        danger: true,
-        confirmText: 'Remove',
-        hideCancel: true,
-        alignment: 'center',
-        onConfirm: async () => {
-            const result = await apiPost('/admin/settings/update', {
-                section: 'gemini_models',
-                action: 'delete',
-                model_name: modelName
-            });
-            if (result && result.success) await loadState();
-        }
-    });
+    const formData = new FormData();
+    formData.set('section', scopedSection);
+
+    const row = btn.closest('.modal-prompt-row');
+    const field = row?.querySelector('input[name], select[name], textarea[name]');
+    if (field && field.name) formData.set(field.name, field.value);
+
+    return formData;
 }
 
 window.loadState = loadState;
 window.toggleCard = toggleCard;
 window.activateTab = activateTab;
 window.handleSettingsUpdate = handleSettingsUpdate;
-window.handleAddGeminiModel = handleAddGeminiModel;
-window.confirmDeleteModel = confirmDeleteModel;
