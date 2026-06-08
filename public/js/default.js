@@ -256,9 +256,21 @@ async function apiPost(url, data = {}, timeout = 30000) {
  * @param {number} timeout - Request timeout in ms (default 3s).
  * @returns {Promise<Object|null>} - Parsed JSON response or null on failure.
  */
+function shouldCacheApiGet(url) {
+    try {
+        const pathname = new URL(url, window.location.origin).pathname;
+        return pathname !== '/admin/automator/api/status'
+            && pathname !== '/admin/automator/api/state';
+    } catch (_) {
+        return true;
+    }
+}
+
 async function apiGet(url, timeout = 3000) {
     const cacheKey = `api_cache:${url}`;
+    const cacheable = shouldCacheApiGet(url);
     const getCached = () => {
+        if (!cacheable) return null;
         try {
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
@@ -295,7 +307,7 @@ async function apiGet(url, timeout = 3000) {
         }
 
         // Cache successful state responses
-        if (result && result.success) {
+        if (cacheable && result && result.success) {
             try {
                 localStorage.setItem(cacheKey, JSON.stringify({
                     data: result,
@@ -508,6 +520,8 @@ window.renderRowInput = function(container, options) {
  *   - input: { type, placeholder, requiredText } - Prompt
  *   - onConfirm: Async callback (receives input value)
  */
+let confirmModalCloseTimer = null;
+
 window.showConfirmModal = function(options) {
     const modal = document.getElementById('globalConfirmActionModal');
     const content = document.getElementById('globalConfirmModalContent');
@@ -523,6 +537,12 @@ window.showConfirmModal = function(options) {
     let promptInput = document.getElementById('globalConfirmPromptInput');
 
     if (!modal || !btnConfirm) return;
+
+    if (confirmModalCloseTimer) {
+        clearTimeout(confirmModalCloseTimer);
+        confirmModalCloseTimer = null;
+    }
+    modal.classList.remove('modal-closing');
 
     // Reset UI State & Self-Healing Restoration
     content.className = 'delete-modal-content';
@@ -651,12 +671,24 @@ window.showConfirmModal = function(options) {
 };
 
 /**
- * Hides the global confirmation modal and restores button state.
+ * Hides the global confirmation modal with exit animation and restores button state.
  */
 window.closeConfirmModal = function() {
     const modal = document.getElementById('globalConfirmActionModal');
-    if (modal) modal.classList.remove('show');
-    document.body.classList.remove('modal-open');
+    if (!modal || !modal.classList.contains('show')) return;
+
+    if (confirmModalCloseTimer) {
+        clearTimeout(confirmModalCloseTimer);
+    }
+
+    modal.classList.add('modal-closing');
+    
+    // Wait for exit animation to finish before fully hiding
+    confirmModalCloseTimer = setTimeout(() => {
+        modal.classList.remove('show', 'modal-closing');
+        document.body.classList.remove('modal-open');
+        confirmModalCloseTimer = null;
+    }, 200);
 };
 
 /**
