@@ -5,7 +5,7 @@
  * 
  * This module manages the Receipt Ledger and AI-powered digitization pipeline.
  * It handles multipart binary transfers, client-side image manipulation,
- * and high-fidelity electronic receipt generation via Gemini 2.0.
+ * and high-fidelity electronic receipt generation via AI.
  * 
  * Features:
  * - Real-time state-driven ledger with dynamic filtering and pagination
