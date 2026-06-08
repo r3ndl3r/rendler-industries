@@ -112,6 +112,7 @@ function renderSummary() {
     const cal  = STATE.calendar_today ?? [];
     const bdays = STATE.birthdays ?? [];
     const chores = STATE.chores  ?? [];
+    const medicationReminders = STATE.medication_reminders ?? [];
 
     let greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     let parts = [];
@@ -130,6 +131,10 @@ function renderSummary() {
 
     if (chores.length > 0) {
         parts.push(`${chores.length} active chore${chores.length > 1 ? 's' : ''} waiting`);
+    }
+
+    if (medicationReminders.length > 0) {
+        parts.push(`${medicationReminders.length} medication reminder${medicationReminders.length > 1 ? 's' : ''} today`);
     }
 
     const body = parts.length > 0 ? parts.join(' · ') : 'No events, chores, or birthdays today.';
@@ -270,29 +275,47 @@ function renderChores() {
  * @returns {void}
  */
 function renderReminders() {
-    const tile      = document.getElementById('tile-reminders');
+    const tile = document.getElementById('tile-reminders');
     const reminders = STATE.reminders ?? [];
+    const medicationReminders = STATE.medication_reminders ?? [];
 
     let html = `<h3>🔔 Reminders</h3>`;
 
-    if (!reminders.length) {
+    if (!reminders.length && !medicationReminders.length) {
         html += `<p class="brief-tile-empty">No reminders for today.</p>`;
         tile.innerHTML = html;
         return;
     }
 
-    html += reminders.map(r => {
-        const [h, m]  = (r.reminder_time ?? '00:00').split(':');
-        const hour    = parseInt(h, 10);
-        const ampm    = hour >= 12 ? 'PM' : 'AM';
-        const hour12  = hour % 12 || 12;
-        const time    = `${hour12}:${m} ${ampm}`;
-        return `
-            <div class="reminder-item">
-                <span>${escapeHtml(r.title)}</span>
-                <span class="reminder-time">${escapeHtml(time)}</span>
-            </div>`;
-    }).join('');
+    if (reminders.length) {
+        html += reminders.map(r => {
+            const [h, m]  = (r.reminder_time ?? '00:00').split(':');
+            const hour    = parseInt(h, 10);
+            const ampm    = hour >= 12 ? 'PM' : 'AM';
+            const hour12  = hour % 12 || 12;
+            const time    = `${hour12}:${m} ${ampm}`;
+            return `
+                <div class="reminder-item">
+                    <span>${escapeHtml(r.title)}</span>
+                    <span class="reminder-time">${escapeHtml(time)}</span>
+                </div>`;
+        }).join('');
+    }
+
+    if (medicationReminders.length) {
+        html += medicationReminders.map(r => {
+            const [h, m]  = (r.reminder_time ?? '00:00').split(':');
+            const hour    = parseInt(h, 10);
+            const ampm    = hour >= 12 ? 'PM' : 'AM';
+            const hour12  = hour % 12 || 12;
+            const time    = `${hour12}:${m} ${ampm}`;
+            return `
+                <div class="reminder-item">
+                    <span>💊 ${escapeHtml(r.medication_name)}</span>
+                    <span class="reminder-time">${escapeHtml(time)}</span>
+                </div>`;
+        }).join('');
+    }
 
     tile.innerHTML = html;
 }
