@@ -86,6 +86,26 @@ sub DB::log_medication_dose {
     return $self->{dbh}->last_insert_id();
 }
 
+# Updates the source medication log row for a reminder confirmation instead of
+# creating a second medication_logs row.
+# Parameters:
+#   log_id        : Integer medication_logs.id
+#   confirmed_by  : Integer user ID
+#   dosage        : Numeric mg
+# Returns:
+#   Boolean success
+sub DB::update_reminder_source_log {
+    my ($self, $log_id, $confirmed_by, $dosage) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("
+        UPDATE medication_logs
+        SET taken_at = NOW(), logged_by_id = ?, dosage = ?
+        WHERE id = ?
+    ");
+    return $sth->execute($confirmed_by, $dosage, $log_id) > 0;
+}
+
 # Updates an existing medication log entry.
 # Parameters:
 #   id               : Unique ID of the log entry
@@ -108,12 +128,25 @@ sub DB::update_medication_log {
     my ($med_id) = $sth_id->fetchrow_array();
 
     # 2. Log update
-    my $sth = $self->{dbh}->prepare("
-        UPDATE medication_logs 
-        SET medication_id = ?, family_member_id = ?, dosage = ?, taken_at = ? 
-        WHERE id = ?
-    ");
-    return $sth->execute($med_id, $family_member_id, $dosage, $taken_at, $id);
+    my $sql = "UPDATE medication_logs SET medication_id = ?, family_member_id = ?, dosage = ?" . (defined $taken_at ? ", taken_at = ?" : "") . " WHERE id = ?";
+    my $sth = $self->{dbh}->prepare($sql);
+
+    my @params = ($med_id, $family_member_id, $dosage);
+    push @params, $taken_at if defined $taken_at;
+    push @params, $id;
+
+    $sth->execute(@params);
+    return 1 if $sth->rows > 0;
+
+    # MySQL/MariaDB reports changed rows by default, so a no-op save on an
+    # existing record returns 0. Treat that as success and reserve false only
+    # for genuinely missing IDs.
+    my ($exists) = $self->{dbh}->selectrow_array(
+        "SELECT 1 FROM medication_logs WHERE id = ?",
+        undef,
+        $id
+    );
+    return $exists ? 1 : 0;
 }
 
 # Resets a medication log entry's timestamp to NOW() or a custom value.
@@ -158,9 +191,10 @@ sub DB::get_registry_with_stats {
     $self->ensure_connection;
     
     my $sth = $self->{dbh}->prepare("
-        SELECT mr.*, COUNT(ml.id) as usage_count 
+        SELECT mr.*, (COUNT(DISTINCT ml.id) + COUNT(DISTINCT mrem.id)) as usage_count
         FROM medication_registry mr
         LEFT JOIN medication_logs ml ON mr.id = ml.medication_id
+        LEFT JOIN medication_reminders mrem ON mr.id = mrem.medication_id
         GROUP BY mr.id
         ORDER BY mr.name ASC
     ");
@@ -191,12 +225,16 @@ sub DB::delete_registry_item {
     my ($self, $id) = @_;
     $self->ensure_connection;
     
-    # Check if used in logs
-    my $sth_check = $self->{dbh}->prepare("SELECT COUNT(*) FROM medication_logs WHERE medication_id = ?");
-    $sth_check->execute($id);
+    # Check if used in logs or reminder schedules.
+    my $sth_check = $self->{dbh}->prepare("
+        SELECT
+            (SELECT COUNT(*) FROM medication_logs WHERE medication_id = ?) +
+            (SELECT COUNT(*) FROM medication_reminders WHERE medication_id = ?)
+    ");
+    $sth_check->execute($id, $id);
     my ($count) = $sth_check->fetchrow_array();
     
-    return (0, "Cannot delete: Medication has historical logs.") if $count > 0;
+    return (0, "Cannot delete: Medication has historical logs or reminders.") if $count > 0;
     
     my $sth = $self->{dbh}->prepare("DELETE FROM medication_registry WHERE id = ?");
     return ($sth->execute($id), "");
@@ -213,6 +251,282 @@ sub DB::get_medication_members {
     my $sth = $self->{dbh}->prepare("SELECT id, username FROM users WHERE is_family = 1 ORDER BY username ASC");
     $sth->execute();
     
+    return $sth->fetchall_arrayref({});
+}
+
+###############################################################################
+# MEDICATION REMINDERS
+###############################################################################
+
+# Retrieves all medication reminder schedules with related registry names.
+# Parameters: None
+# Returns: ArrayRef of HashRefs
+sub DB::get_medication_reminders {
+    my ($self) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("
+        SELECT mr.id, mr.medication_id, mr.family_member_id, mr.dosage,
+               mr.reminder_time, mr.days_of_week, mr.is_active, mr.source_log_id,
+               mr.created_by, mr.created_at,
+               reg.name as medication_name,
+               u.username as family_member_name
+        FROM medication_reminders mr
+        JOIN medication_registry reg ON mr.medication_id = reg.id
+        JOIN users u ON mr.family_member_id = u.id
+        ORDER BY u.username ASC, mr.reminder_time ASC
+    ");
+    $sth->execute();
+    return $sth->fetchall_arrayref({});
+}
+
+# Retrieves reminder schedules for a specific family member.
+# Parameters: $member_id - Integer user ID
+# Returns: ArrayRef of HashRefs
+sub DB::get_medication_reminders_for_member {
+    my ($self, $member_id) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("
+        SELECT mr.id, mr.medication_id, mr.dosage, mr.reminder_time,
+               mr.days_of_week, mr.is_active, mr.source_log_id,
+               reg.name as medication_name
+        FROM medication_reminders mr
+        JOIN medication_registry reg ON mr.medication_id = reg.id
+        WHERE mr.family_member_id = ?
+        ORDER BY mr.reminder_time ASC
+    ");
+    $sth->execute($member_id);
+    return $sth->fetchall_arrayref({});
+}
+
+# Saves (replaces) the set of reminder times for a medication + family member combo.
+# Deletes all existing reminders for that combination and inserts the new set.
+# Parameters:
+#   medication_id    : Integer
+#   family_member_id : Integer user ID
+#   dosage           : Integer mg
+#   times            : ArrayRef of time strings ("HH:MM" or "HH:MM:SS")
+#   days_of_week     : String of comma-separated day numbers e.g. "1,2,3,4,5" (default "1,2,3,4,5,6,7")
+#   created_by       : Integer user ID
+#   source_log_id    : Required medication_logs.id to update on confirm
+# Returns: Integer count of reminders created
+sub DB::save_medication_reminders {
+    my ($self, $medication_id, $family_member_id, $dosage, $times, $days_of_week, $created_by, $source_log_id) = @_;
+    $self->ensure_connection;
+
+    $days_of_week = '1,2,3,4,5,6,7' unless defined $days_of_week && $days_of_week ne '';
+    my $times_ref = ref($times) eq 'ARRAY' ? $times : [$times];
+
+    $self->{dbh}->begin_work;
+    eval {
+        my $sth_del = $self->{dbh}->prepare("DELETE FROM medication_reminders WHERE medication_id = ? AND family_member_id = ?");
+        $sth_del->execute($medication_id, $family_member_id);
+
+        my $sth_ins = $self->{dbh}->prepare("INSERT INTO medication_reminders (medication_id, family_member_id, dosage, reminder_time, days_of_week, source_log_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        my $count = 0;
+        foreach my $t (@$times_ref) {
+            next unless $t && $t =~ /\A\d{1,2}:\d{2}/;
+            my $time_str = $t =~ /:/ ? $t : "$t:00";
+            $time_str .= ':00' if $time_str =~ /\A\d{2}:\d{2}\z/;
+            $sth_ins->execute($medication_id, $family_member_id, $dosage, $time_str, $days_of_week, $source_log_id, $created_by);
+            $count++;
+        }
+        $self->{dbh}->commit;
+        return $count;
+    };
+    if ($@) {
+        $self->{dbh}->rollback;
+        die "save_medication_reminders failed: $@";
+    }
+}
+
+# Toggles the is_active flag on a reminder schedule.
+# Parameters:
+#   id     : Integer reminder ID
+#   active : Boolean
+# Returns: Boolean success
+sub DB::toggle_medication_reminder {
+    my ($self, $id, $active) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare("UPDATE medication_reminders SET is_active = ? WHERE id = ?");
+    return $sth->execute($active ? 1 : 0, $id);
+}
+
+# Deletes a single reminder schedule (events cascade via FK).
+# Parameters:
+#   id : Integer reminder ID
+# Returns: Boolean success
+sub DB::delete_medication_reminder {
+    my ($self, $id) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare("DELETE FROM medication_reminders WHERE id = ?");
+    return $sth->execute($id) > 0;
+}
+
+# Retrieves due medication reminders for the current minute that do NOT already
+# have a confirmation event for today and match the current day of week.
+# Parameters:
+#   current_date : String in YYYY-MM-DD format (today)
+#   current_time : String in HH:MM format (current minute)
+#   day_number   : Integer 1=Mon..7=Sun
+# Returns: ArrayRef of HashRefs with reminder details + registry name
+sub DB::get_due_medication_reminders {
+    my ($self, $current_date, $current_time, $day_number) = @_;
+    $self->ensure_connection;
+
+    my $sql = "
+        SELECT r.id, r.medication_id, r.family_member_id, r.dosage,
+               r.reminder_time, r.days_of_week,
+               reg.name as medication_name,
+               u.username as family_member_name
+        FROM medication_reminders r
+        JOIN medication_registry reg ON r.medication_id = reg.id
+        JOIN users u ON r.family_member_id = u.id
+        WHERE r.is_active = 1
+          AND r.reminder_time LIKE ?
+          AND FIND_IN_SET(?, r.days_of_week)
+          AND NOT EXISTS (
+              SELECT 1 FROM medication_reminder_events e
+              WHERE e.reminder_id = r.id
+                AND e.scheduled_date = ?
+          )
+    ";
+
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute("$current_time%", $day_number, $current_date);
+    return $sth->fetchall_arrayref({});
+}
+
+# Creates a new medication_reminder_events row for a due reminder, or updates
+# last_fired_at if the row already exists (handles concurrent maintenance runs).
+# This marks that the reminder has been "fired" for today.
+# Parameters:
+#   reminder_id     : Integer
+#   scheduled_date  : String YYYY-MM-DD
+#   scheduled_time  : String HH:MM:SS
+# Returns: Integer event ID (or existing ID if upsert)
+sub DB::create_medication_reminder_event {
+    my ($self, $reminder_id, $scheduled_date, $scheduled_time) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("
+        INSERT INTO medication_reminder_events (reminder_id, scheduled_date, scheduled_time, last_fired_at)
+        VALUES (?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE last_fired_at = NOW()
+    ");
+    $sth->execute($reminder_id, $scheduled_date, $scheduled_time);
+
+    # Fetch the event ID (existing or newly inserted)
+    my $fetch = $self->{dbh}->prepare("SELECT id FROM medication_reminder_events WHERE reminder_id = ? AND scheduled_date = ?");
+    $fetch->execute($reminder_id, $scheduled_date);
+    my ($eid) = $fetch->fetchrow_array();
+    return $eid;
+}
+
+# Updates the last_fired_at timestamp on an event (used for re-alert tracking).
+# Parameters:
+#   event_id : Integer event ID
+# Returns: Boolean success
+sub DB::touch_medication_reminder_event {
+    my ($self, $event_id) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare("UPDATE medication_reminder_events SET last_fired_at = NOW() WHERE id = ?");
+    return $sth->execute($event_id) > 0;
+}
+
+# Retrieves overdue (unconfirmed) reminder events where last_fired_at is older
+# than 30 minutes. These need a re-alert notification.
+# Parameters: None (uses NOW())
+# Returns: ArrayRef of HashRefs with event + reminder + registry data
+sub DB::get_overdue_medication_confirmations {
+    my ($self) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("
+        SELECT e.id as event_id, e.reminder_id, e.scheduled_date,
+               e.scheduled_time, e.last_fired_at,
+               r.medication_id, r.family_member_id, r.dosage,
+               reg.name as medication_name,
+               u.username as family_member_name
+        FROM medication_reminder_events e
+        JOIN medication_reminders r ON e.reminder_id = r.id
+        JOIN medication_registry reg ON r.medication_id = reg.id
+        JOIN users u ON r.family_member_id = u.id
+        WHERE e.confirmed_at IS NULL
+          AND r.is_active = 1
+          AND (e.last_fired_at IS NULL OR e.last_fired_at < NOW() - INTERVAL 30 MINUTE)
+    ");
+    $sth->execute();
+    return $sth->fetchall_arrayref({});
+}
+
+# Confirms a pending reminder event as taken and updates the reminder's source
+# medication log instead of creating a second log row.
+# Parameters:
+#   event_id       : Integer event ID
+#   confirmed_by   : Integer user ID who confirmed
+# Returns: HashRef { success => 1, log_id => Integer|null }
+sub DB::confirm_medication_reminder {
+    my ($self, $event_id, $confirmed_by) = @_;
+    $self->ensure_connection;
+
+    # Only the family member attached to the reminder can confirm it.
+    my $sth = $self->{dbh}->prepare("
+        UPDATE medication_reminder_events e
+        JOIN medication_reminders r ON e.reminder_id = r.id
+        SET e.confirmed_at = NOW(), e.confirmed_by = ?
+        WHERE e.id = ? AND e.confirmed_at IS NULL
+          AND r.family_member_id = ?
+    ");
+    $sth->execute($confirmed_by, $event_id, $confirmed_by);
+    return { success => 0 } unless $sth->rows > 0;
+
+    # Fetch the reminder schedule for dose-log handling
+    my $sth_r = $self->{dbh}->prepare("
+        SELECT r.medication_id, r.family_member_id, r.dosage, r.source_log_id,
+               e.scheduled_date, e.scheduled_time,
+               reg.name as medication_name
+        FROM medication_reminder_events e
+        JOIN medication_reminders r ON e.reminder_id = r.id
+        JOIN medication_registry reg ON r.medication_id = reg.id
+        WHERE e.id = ?
+    ");
+    $sth_r->execute($event_id);
+    my $reminder = $sth_r->fetchrow_hashref();
+
+    my $log_id = undef;
+    if ($reminder && $reminder->{source_log_id}) {
+        if ($self->update_reminder_source_log($reminder->{source_log_id}, $confirmed_by, $reminder->{dosage})) {
+            $log_id = $reminder->{source_log_id};
+        }
+    }
+
+    return { success => 1, log_id => $log_id };
+}
+
+# Retrieves today's pending (unconfirmed) reminder events for a family member.
+# Parameters:
+#   member_id : Integer user ID
+#   date      : String YYYY-MM-DD (today)
+# Returns: ArrayRef of HashRefs
+sub DB::get_pending_medication_reminders {
+    my ($self, $member_id, $date) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare("
+        SELECT e.id as event_id, e.reminder_id, e.scheduled_time, e.last_fired_at,
+               UNIX_TIMESTAMP(e.last_fired_at) as last_fired_at_unix,
+               r.dosage, reg.name as medication_name
+        FROM medication_reminder_events e
+        JOIN medication_reminders r ON e.reminder_id = r.id
+        JOIN medication_registry reg ON r.medication_id = reg.id
+        WHERE e.confirmed_at IS NULL
+          AND r.family_member_id = ?
+          AND e.scheduled_date = ?
+        ORDER BY e.scheduled_time ASC
+    ");
+    $sth->execute($member_id, $date);
     return $sth->fetchall_arrayref({});
 }
 
