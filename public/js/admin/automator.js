@@ -140,6 +140,7 @@ function handleAutomatorAction(event) {
     else if (action === 'edit-inventory') openInventoryModal(id);
     else if (action === 'delete-playbook') deletePlaybook(id);
     else if (action === 'delete-inventory') deleteInventory(id);
+    else if (action === 'delete-history') deleteHistory(id);
     else if (action === 'open-console') openConsole(id);
     else if (action === 'show-console-log') setConsoleView('log');
     else if (action === 'show-console-report') setConsoleView('report');
@@ -589,9 +590,9 @@ function renderHistory() {
             </div>
             <div class="history-sub">${formatDateTime(h.started_at)} • ${escapeHtml(h.mode || 'run')} • ${window.getUserIcon(h.triggered_by_name?.toLowerCase()) || '👤'} ${escapeHtml(h.triggered_by_name || 'system')}</div>
             <div class="history-actions">
-                <button type="button" class="btn-secondary compact" data-automator-action="open-console" data-id="${h.id}">View Log</button>
-                ${h.playbook_id ? `<button type="button" class="btn-secondary compact" data-automator-action="run-playbook" data-id="${h.playbook_id}" data-mode="${escapeHtml(h.mode || 'run')}">Re-run</button>` : ''}
-                ${h.status === 'running' ? `<button type="button" class="btn-danger-outline compact" data-automator-action="abort-run" data-id="${h.id}">Abort</button>` : ''}
+                <button type="button" class="btn-icon-view" data-automator-action="open-console" data-id="${h.id}" title="View Log">👁️</button>
+                ${h.playbook_id ? `<button type="button" class="btn-icon-copy" data-automator-action="run-playbook" data-id="${h.playbook_id}" data-mode="${escapeHtml(h.mode || 'run')}" title="Re-run">🔁</button>` : ''}
+                ${h.status === 'running' ? `<button type="button" class="btn-icon-delete" data-automator-action="abort-run" data-id="${h.id}" title="Abort Run">🛑</button>` : `<button type="button" class="btn-icon-delete" data-automator-action="delete-history" data-id="${h.id}" title="Delete Log">🗑️</button>`}
             </div>
         </article>
     `).join('');
@@ -1064,6 +1065,31 @@ function deletePlaybook(id) {
         onConfirm: async () => {
             await apiPost(`/admin/automator/api/playbook/delete/${id}`, {});
             await refreshState(true);
+        }
+    });
+}
+
+/**
+ * Deletes one finished history log through the global confirm modal.
+ *
+ * @param {number} id - History record ID.
+ * @returns {void}
+ */
+function deleteHistory(id) {
+    const h = STATE.history.find(row => Number(row.id) === Number(id));
+    const playbookLabel = h?.playbook_name ? ` for ${escapeHtml(h.playbook_name)}` : '';
+    showConfirmModal({
+        title: 'Delete Log',
+        message: `Permanently delete log #${id}${playbookLabel}?`,
+        confirmText: 'DELETE',
+        danger: true,
+        hideCancel: true,
+        onConfirm: async () => {
+            const result = await apiPost(`/admin/automator/api/history/delete/${id}`, {});
+            if (!result) return;
+            if (Number(currentConsoleHistoryId) === Number(id)) closeConsoleModal();
+            if (historyPlaybookId) await loadHistoryPage(true);
+            else await refreshState(true);
         }
     });
 }
@@ -1578,8 +1604,9 @@ function showVaultGate(setupRequired) {
     STATE.setup_required = setupRequired ? 1 : 0;
     document.getElementById('vaultGate')?.classList.add('show');
     document.getElementById('automatorApp')?.classList.add('hidden');
+    setLockedHeaderActionsVisible(false);
     setText('vaultTitle', setupRequired ? 'Vault Setup' : 'Vault Locked');
-    setText('vaultMessage', setupRequired ? 'Create the Automator master password. Recovery requires a direct database reset.' : 'Enter the Automator master password to unlock orchestration controls.');
+    setText('vaultMessage', setupRequired ? 'Create the Automator master password. Recovery requires a direct database reset.' : 'Enter the Automator master password to unlock.');
     setText('vaultSubmitBtn', setupRequired ? 'Initialize Vault' : 'Unlock');
 }
 
@@ -1591,6 +1618,19 @@ function showVaultGate(setupRequired) {
 function showAutomatorApp() {
     document.getElementById('vaultGate')?.classList.remove('show');
     document.getElementById('automatorApp')?.classList.remove('hidden');
+    setLockedHeaderActionsVisible(true);
+}
+
+/**
+ * Toggles header actions that require an unlocked vault.
+ *
+ * @param {boolean} visible - Whether unlocked-only header actions should be visible.
+ * @returns {void}
+ */
+function setLockedHeaderActionsVisible(visible) {
+    document.querySelectorAll('[data-automator-action="open-playbook"], [data-automator-action="open-inventory-manage"], [data-automator-action="open-secret"], [data-automator-action="lock-vault"]').forEach(action => {
+        action.classList.toggle('hidden', !visible);
+    });
 }
 
 /**
