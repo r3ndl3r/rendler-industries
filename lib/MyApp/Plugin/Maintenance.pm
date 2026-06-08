@@ -63,6 +63,15 @@ use constant MANIFEST => {
         is_enabled       => 1,
         interval_minutes => 1,
     },
+    medication_reminders => {
+        label            => 'Medication Dose Reminders',
+        description      => 'Fires due medication dose reminders and sends 30-min re-alerts for unconfirmed doses.',
+        function_name    => 'run_medication_reminder_maintenance',
+        is_async         => 0,
+        run_last         => 0,
+        is_enabled       => 1,
+        interval_minutes => 1,
+    },
     emoji_maintenance => {
         label            => 'Emoji Preprocessing',
         description      => 'Async subprocess: prepends emojis to tasks, shopping items, and calendar events via AI/dict.',
