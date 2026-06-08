@@ -230,7 +230,7 @@
 /* --- 3. Admin Management (Ledger) --- */
 
 .timers-table {
-    background: #1e293b;
+    background: var(--color-surface);
     color: #e2e8f0;
 }
 
@@ -240,11 +240,11 @@
 
 .timers-table th {
     color: #94a3b8;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--color-border);
 }
 
 .timers-table td {
-    border-top: 1px solid #334155;
+    border-top: 1px solid var(--color-border);
     color: #e2e8f0;
 }
 
@@ -253,7 +253,7 @@
 }
 
 .timers-table tbody tr:hover {
-    background: #334155;
+    background: var(--color-surface-deep);
 }
 
 .manage-filters {
@@ -522,7 +522,7 @@
             "status status actions"
             "used remaining actions";
         gap: 0.75rem;
-        background: #1e293b;
+        background: var(--color-surface);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 1rem;
         padding: 1.25rem;
@@ -533,7 +533,7 @@
     .timers-table td { padding: 0 !important; border: none !important; display: block; }
     .timers-table .user-cell { grid-area: user; font-size: 0.8rem; }
     .timers-table .category-cell { grid-area: category; justify-self: end; }
-    .timers-table .name-cell { grid-area: name; font-weight: 700; border-bottom: 1px solid #334155; padding-bottom: 0.5rem !important; }
+    .timers-table .name-cell { grid-area: name; font-weight: 700; border-bottom: 1px solid var(--color-border); padding-bottom: 0.5rem !important; }
     .timers-table .status-cell { grid-area: status; }
     
     .timers-table .elapsed-cell,
