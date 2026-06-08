@@ -16,15 +16,18 @@ use utf8;
 # Controller for the Audiobooks player module.
 #
 # Features:
-#   - Filesystem-driven book discovery from assets/audiobooks/<slug>/.
+#   - Book metadata served from database — no filesystem scan on page load.
+#   - Admin-only scan endpoint discovers new books via filesystem + ffprobe.
 #   - Per-user playback progress (chapter index + position) stored in MariaDB.
 #   - Range-aware audio streaming via Mojolicious reply->file (HTTP 206).
 #   - Admin-editable book metadata persisted in the audiobooks DB table.
-#   - Chapter extraction: CUE sheet, embedded MP4 atoms (via ffprobe), or filename scan.
-#   - ffprobe is called once per new book via Mojo::IOLoop->subprocess; result is
-#     cached to DB so subsequent loads are instant.
+#   - Chapter extraction (CUE sheet, embedded MP4 atoms via ffprobe, filename scan)
+#     runs only during admin scan, via Mojo::IOLoop->subprocess; result cached to DB.
+#   - Orphan cleanup: admin scan removes DB entries for deleted book directories.
 #
 # Integration Points:
+#   - GET /audiobooks/api/state is a pure DB read (synchronous, instant).
+#   - POST /audiobooks/admin/api/scan triggers the full fs+ffprobe pipeline.
 #   - Restricted to family members via $family router bridge.
 #   - Metadata write endpoints restricted to $admin bridge.
 #   - Depends on DB::Audiobooks for progress persistence.
@@ -681,8 +684,8 @@ sub index {
 
 # Returns consolidated state: all books with metadata and current user's progress.
 # Route: GET /audiobooks/api/state
-# Uses render_later + Mojo::Promise::all so ffprobe subprocesses for books
-# without cached metadata do not block the event loop.
+# Reads only from the database — no filesystem scan, no ffprobe.
+# Books must be scanned via the admin Scan endpoint before appearing here.
 # Returns:
 #   JSON: { books: [...], is_admin: 0|1, success: 1 }
 sub api_state {
@@ -690,38 +693,18 @@ sub api_state {
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
         unless $c->is_family;
 
-    $c->render_later;
-
     my $user_id   = $c->current_user_id;
     my $progress  = $c->db->get_audiobook_progress_all($user_id);
     my $books_map = $c->db->get_all_audiobooks();
     my $is_admin  = $c->is_admin ? 1 : 0;
-    my $root      = _books_root($c);
-    my @slugs;
 
-    if (-d $root && opendir(my $dh, $root)) {
-        @slugs = sort grep { !/^\./ && -d $root->child($_) }
-                      map  { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
-        closedir($dh);
+    my @books;
+    for my $slug (sort keys %$books_map) {
+        my $entry = _format_book_entry($slug, $books_map->{$slug}, $progress->{$slug} // {});
+        push @books, $entry if $entry;
     }
 
-    my $db      = $c->db;
-    my $covers  = _covers_root($c);
-    my @promises = map {
-        my $slug = $_;
-        _safe_component($slug)
-            ? _build_book_entry_async($slug, $root->child($slug), $progress->{$slug}, $db, $books_map->{$slug}, $covers)
-            : Mojo::Promise->resolve(undef);
-    } @slugs;
-
-    Mojo::Promise->all(@promises)->then(sub {
-        my @books = grep { defined } map { $_->[0] } @_;
-        $c->render(json => { books => \@books, is_admin => $is_admin, success => 1 });
-    })->catch(sub {
-        my $err = shift;
-        $c->app->log->error("Audiobooks api_state error: $err");
-        $c->render(json => { success => 0, error => 'Internal error' }, status => 500);
-    });
+    $c->render(json => { books => \@books, is_admin => $is_admin, success => 1 });
 }
 
 # Strips HTML-unsafe characters from a string before embedding in JSON.
@@ -958,10 +941,9 @@ sub api_admin_state {
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
         unless $c->is_admin;
 
-    $c->render_later;
-
     my $root      = _books_root($c);
     my $books_map = $c->db->get_all_audiobooks();
+    my $covers    = _covers_root($c);
     my @slugs;
 
     if (-d $root && opendir(my $dh, $root)) {
@@ -970,55 +952,180 @@ sub api_admin_state {
         closedir($dh);
     }
 
-    my $db     = $c->db;
-    my $covers = _covers_root($c);
-    my @promises = map {
-        my $slug = $_;
-        _safe_component($slug)
-            ? _build_book_entry_async($slug, $root->child($slug), undef, $db, $books_map->{$slug}, $covers)
-            : Mojo::Promise->resolve(undef);
-    } @slugs;
-
-    Mojo::Promise->all(@promises)->then(sub {
-        my @books        = grep { defined } map { $_->[0] } @_;
-        my $prog_by_slug = $c->db->get_all_users_audiobook_progress();
-        for my $book (@books) {
-            $book->{meta_cached}    = (defined $books_map->{ $book->{slug} }) ? 1 : 0;
-            $book->{has_cover_file} = ($book->{cover_url} ne '')               ? 1 : 0;
-            $book->{user_progress}  = $prog_by_slug->{ $book->{slug} }        // [];
+    my @books;
+    for my $slug (@slugs) {
+        next unless _safe_component($slug);
+        my $existing = $books_map->{$slug};
+        if (ref $existing eq 'HASH') {
+            my $entry = _format_book_entry($slug, $existing, {});
+            next unless $entry;
+            $entry->{meta_cached}    = 1;
+            $entry->{has_cover_file} = ($entry->{cover_url} ne '') ? 1 : 0;
+            push @books, $entry;
+        } else {
+            my $title = $slug;
+            $title =~ s/[-_]/ /g;
+            $title =~ s/\b(\w)/uc($1)/ge;
+            my $cover = _find_cover($covers, $slug);
+            push @books, {
+                slug           => $slug,
+                title          => $title,
+                author         => '',
+                narrator       => '',
+                description    => '',
+                series         => '',
+                series_index   => 0,
+                cover_url      => $cover ? '/audiobooks/api/cover/' . Mojo::Util::url_escape($slug) : '',
+                chapters       => [],
+                total_chapters => 0,
+                progress       => { chapter_idx => 0, position_sec => 0, completed => 0 },
+                date_added     => 0,
+                meta_cached    => 0,
+                has_cover_file => $cover ? 1 : 0,
+            };
         }
-        $c->render(json => { books => \@books, success => 1 });
-    })->catch(sub {
-        my $err = shift;
-        $c->app->log->error("Audiobooks api_admin_state error: $err");
-        $c->render(json => { success => 0, error => 'Internal error' }, status => 500);
-    });
+    }
+
+    my $prog_by_slug = $c->db->get_all_users_audiobook_progress();
+    for my $book (@books) {
+        $book->{user_progress} = $prog_by_slug->{ $book->{slug} } // [];
+    }
+
+    $c->render(json => { books => \@books, success => 1 });
 }
 
-# Removes the DB metadata record for one or all books, forcing re-discovery
-# on the next api_state or api_admin_state request.
-# Route: POST /audiobooks/admin/api/rescan
+# Scans the filesystem for audio book directories, probes uncached books via
+# ffprobe, removes orphaned DB entries, and optionally wipes all metadata first.
+# Route: POST /audiobooks/admin/api/scan
 # Parameters:
-#   slug : (optional) book directory slug — omit to rescan all books.
+#   slug         : (optional) single book slug to re-scan (always re-probes).
+#   delete_first : (optional) 1 to delete all existing metadata before scanning.
 # Returns:
-#   JSON: { success: 1, rescanned: N }
-sub api_admin_rescan {
+#   JSON: { success: 1, scanned: N, added: N, orphans_removed: N, errors: N }
+sub api_admin_scan {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
         unless $c->is_admin;
 
-    my $slug  = trim($c->param('slug') // '');
-    my $count = 0;
+    my $slug   = trim($c->param('slug') // '');
+    my $wipe   = $c->param('delete_first') // 0;
+    my $root   = _books_root($c);
+    my $db     = $c->db;
+    my $covers = _covers_root($c);
 
+    # ── Single-book scan ───────────────────────────────────────────────
     if (length $slug) {
         return $c->render(json => { error => 'Invalid slug' }, status => 400)
             unless _safe_component($slug);
-        $count = $c->db->delete_audiobook_meta($slug);
-    } else {
-        $count = $c->db->delete_all_audiobook_meta();
+
+        my $dir = $root->child($slug);
+        return $c->render(json => { error => 'Book directory not found' }, status => 404)
+            unless -d $dir;
+
+        $db->delete_audiobook_meta($slug);
+
+        $c->render_later;
+        _build_book_entry_async($slug, $dir, undef, $db, undef, $covers)
+            ->then(sub {
+                my $entry = shift;
+                my $added = $entry ? 1 : 0;
+                $c->render(json => {
+                    success         => 1,
+                    scanned         => 1,
+                    added           => $added,
+                    orphans_removed => 0,
+                    errors          => $added ? 0 : 1,
+                });
+            })->catch(sub {
+                my $err = shift;
+                $c->app->log->error("Audiobooks scan error for $slug: $err");
+                $c->render(json => {
+                    success         => 1,
+                    scanned         => 1,
+                    added           => 0,
+                    orphans_removed => 0,
+                    errors          => 1,
+                });
+            });
+        return;
     }
 
-    $c->render(json => { success => 1, rescanned => $count });
+    # ── Full library scan ─────────────────────────────────────────────
+    $c->render_later;
+
+    # 1. Discover slugs on disk
+    my @slugs_on_disk;
+    if (-d $root && opendir(my $dh, $root)) {
+        @slugs_on_disk = sort grep { !/^\./ && -d $root->child($_) }
+                              map  { decode_utf8($_, Encode::FB_DEFAULT) } readdir($dh);
+        closedir($dh);
+    }
+
+    # 2. Query DB state
+    my $books_map = $db->get_all_audiobooks();
+
+    # 3. Orphan cleanup: remove DB records whose directories no longer exist
+    my $orphans_removed = 0;
+    for my $s (keys %$books_map) {
+        next if -d $root->child($s);
+        $orphans_removed += $db->delete_audiobook_meta($s);
+        delete $books_map->{$s};
+    }
+
+    # 4. Optionally wipe all remaining metadata (forces full re-probe)
+    if ($wipe) {
+        $db->delete_all_audiobook_meta();
+        $books_map = {};
+    }
+
+    # 5. Unmet books = on disk but not in DB
+    my @uncached = grep { !defined $books_map->{$_} && _safe_component($_) } @slugs_on_disk;
+
+    unless (@uncached) {
+        return $c->render(json => {
+            success         => 1,
+            scanned         => scalar @slugs_on_disk,
+            added           => 0,
+            orphans_removed => $orphans_removed,
+            errors          => 0,
+        });
+    }
+
+    # 6. Probe all uncached books concurrently
+    my $total_added  = 0;
+    my $total_errors = 0;
+    my @promises = map {
+        my $s = $_;
+        _build_book_entry_async($s, $root->child($s), undef, $db, undef, $covers)
+            ->then(sub {
+                my $entry = shift;
+                if ($entry) { $total_added++ }
+                else        { $total_errors++ }
+                return $entry ? 1 : 0;
+            })
+            ->catch(sub { $total_errors++; return 0 });
+    } @uncached;
+
+    Mojo::Promise->all(@promises)->then(sub {
+        $c->render(json => {
+            success         => 1,
+            scanned         => scalar @slugs_on_disk,
+            added           => $total_added,
+            orphans_removed => $orphans_removed,
+            errors          => $total_errors,
+        });
+    })->catch(sub {
+        my $err = shift;
+        $c->app->log->error("Audiobooks scan error: $err");
+        $c->render(json => {
+            success         => 0,
+            error           => 'Scan failed',
+            scanned         => scalar @slugs_on_disk,
+            added           => $total_added,
+            orphans_removed => $orphans_removed,
+            errors          => $total_errors,
+        }, status => 500);
+    });
 }
 
 # Replaces the cover image for a book via a multipart file upload.
@@ -1106,7 +1213,7 @@ sub register_routes {
     $r->{admin}->post('/audiobooks/api/meta/#slug')->to('Audiobooks#api_save_meta');
     $r->{admin}->get('/audiobooks/admin')->to('Audiobooks#admin_index');
     $r->{admin}->get('/audiobooks/admin/api/state')->to('Audiobooks#api_admin_state');
-    $r->{admin}->post('/audiobooks/admin/api/rescan')->to('Audiobooks#api_admin_rescan');
+    $r->{admin}->post('/audiobooks/admin/api/scan')->to('Audiobooks#api_admin_scan');
     $r->{admin}->post('/audiobooks/admin/api/cover/#slug')->to('Audiobooks#api_admin_upload_cover');
 }
 
