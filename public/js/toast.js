@@ -54,6 +54,12 @@ function showToast(message, type = 'info', duration = 3000) {
     const content = document.createElement('span');
     content.textContent = `${icon} ${message}`;
     toast.appendChild(content);
+
+    // Progress bar: visual countdown for auto-dismiss timing
+    const progress = document.createElement('div');
+    progress.className = 'toast-progress';
+    progress.style.animationDuration = `${duration}ms`;
+    toast.appendChild(progress);
     
     container.appendChild(toast);
     
