@@ -9,7 +9,6 @@
  * 
  * Features:
  * - State-driven message history rendering
- * - Multi-modal attachment system for file analysis
  * - Dynamic markdown formatting for AI responses
  * - Automatic scroll orchestration for dialogue flow
  * - High-density JSDoc documentation
@@ -140,9 +139,6 @@ async function sendPrompt(event) {
     
     const input = document.getElementById('prompt-input');
     const prompt = input.value.trim();
-    const fileId = document.getElementById('file-id').value;
-    const fileType = document.getElementById('file-type').value;
-    
     if (!prompt) return;
 
     // 1. Optimistic Update: append user turn
@@ -155,18 +151,13 @@ async function sendPrompt(event) {
 
     // 3. API Dispatch
     try {
-        const result = await apiPost('/ai/api/chat', {
-            prompt: prompt,
-            file_id: fileId,
-            file_type: fileType
-        });
+        const result = await apiPost('/ai/api/chat', { prompt: prompt }, 300000);
         
         if (typing) typing.remove();
 
         if (result && result.success) {
             // Success: reconcile state with model response
             STATE.history.push({ role: 'model', content: result.content });
-            clearFile(); 
             renderMessages();
         }
     } catch (err) {
@@ -247,46 +238,9 @@ function clearChat() {
 }
 
 /**
- * Bridges files into AI context.
- * 
- * @param {number} id - Resource ID.
- * @param {string} type - Resource type.
- * @param {string} label - File label.
- * @returns {void}
- */
-function attachFile(id, type, label) {
-    const idField = document.getElementById('file-id');
-    const typeField = document.getElementById('file-type');
-    const labelField = document.getElementById('file-label');
-    const indicator = document.getElementById('file-indicator');
-
-    if (idField) idField.value = id;
-    if (typeField) typeField.value = type;
-    if (labelField) labelField.textContent = `Analyzing ${type}: ${label}`;
-    if (indicator) indicator.style.display = 'inline-flex';
-}
-
-/**
- * Resets multimodal context.
- * 
- * @returns {void}
- */
-function clearFile() {
-    const idField = document.getElementById('file-id');
-    const typeField = document.getElementById('file-type');
-    const indicator = document.getElementById('file-indicator');
-
-    if (idField) idField.value = '';
-    if (typeField) typeField.value = '';
-    if (indicator) indicator.style.display = 'none';
-}
-
-/**
  * --- Global Exposure ---
  */
 window.sendPrompt = sendPrompt;
 window.quickPrompt = quickPrompt;
 window.clearChat = clearChat;
-window.attachFile = attachFile;
-window.clearFile = clearFile;
 window.loadState = loadState;
