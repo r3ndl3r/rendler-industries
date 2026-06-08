@@ -32,15 +32,29 @@ sub index {
 sub api_state {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
-    
+
+    my ($gemini_models, $gemini_model_error) = _fetch_gemini_models($c);
+    my ($opencode_models, $opencode_model_error) = _fetch_opencode_models($c);
+
     my $state = {
         settings         => $c->db->get_all_settings(),
         email_settings   => $c->db->get_email_settings(),
         timer_reset_hour => $c->db->get_timer_reset_hour(),
+        ai_provider      => $c->db->get_ai_provider(),
         gemini           => {
             key    => $c->db->get_gemini_key(),
-            models => $c->db->get_gemini_models(),
-            active => $c->db->get_gemini_active_model()
+            models => $gemini_models,
+            active => $c->db->get_gemini_active_model(),
+            model_error => $gemini_model_error
+        },
+        opencode         => {
+            key         => $c->db->get_opencode_key(),
+            models      => $opencode_models,
+            active      => $c->db->get_opencode_active_model(),
+            model_error => $opencode_model_error
+        },
+        local_ai         => {
+            url => $c->db->get_local_ai_url()
         },
         google_cloud     => {
             key => $c->db->get_google_cloud_key()
@@ -63,8 +77,9 @@ sub update {
     my $section = $c->param('section') // '';
     
     if ($section eq 'pushover') {
-        my $token = trim($c->param('pushover_token') // '');
-        my $user = trim($c->param('pushover_user') // '');
+        my $existing = $c->db->get_all_settings()->{pushover} || {};
+        my $token = _secret_update_value($c->param('pushover_token')) || ($existing->{token} // '');
+        my $user = _secret_update_value($c->param('pushover_user')) || ($existing->{user} // '');
         
         if ($token && $user) {
             $c->db->update_pushover($token, $user);
@@ -74,7 +89,8 @@ sub update {
         }
     }
     elsif ($section eq 'gotify') {
-        my $token = trim($c->param('gotify_token') // '');
+        my $existing = $c->db->get_all_settings()->{gotify} || {};
+        my $token = _secret_update_value($c->param('gotify_token')) || ($existing->{token} // '');
         
         if ($token) {
             $c->db->update_gotify($token);
@@ -84,8 +100,9 @@ sub update {
         }
     }
     elsif ($section eq 'app_secret') {
-        my $secret = trim($c->param('app_secret') // '');
-        
+        my $secret = _secret_update_value($c->param('app_secret'));
+        return $c->render(json => { success => 1, message => 'App secret left unchanged' }) unless length $secret;
+
         if ($secret && length($secret) >= 32) {
             $c->db->update_app_secret($secret);
             return $c->render(json => { success => 1, message => 'App secret updated successfully. Restart required.' });
@@ -94,16 +111,18 @@ sub update {
         }
     }
     elsif ($section eq 'unsplash') {
-        my $api_key = trim($c->param('unsplash_key') // '');
-        
-        $c->db->update_unsplash_key($api_key);
-        
-        my $msg = $api_key ? 'Unsplash API key updated successfully' : 'Unsplash API key cleared (will use Picsum fallback)';
+        my $api_key = _secret_update_value($c->param('unsplash_key'));
+
+        $c->db->update_unsplash_key($api_key) if length $api_key;
+
+        my $msg = $api_key ? 'Unsplash API key updated successfully' : 'Unsplash API key left unchanged';
         return $c->render(json => { success => 1, message => $msg });
     }
     elsif ($section eq 'email') {
+        my $existing = $c->db->get_email_settings();
         my $gmail_email = trim($c->param('gmail_email') // '');
-        my $gmail_password = trim($c->param('gmail_app_password') // '');
+        my $gmail_password = _secret_update_value($c->param('gmail_app_password'));
+        $gmail_password = $existing->{gmail_app_password} // '' unless length $gmail_password;
         $gmail_password =~ s/\s+//g;
         my $from_name = trim($c->param('gmail_from_name') // '');
         
@@ -133,47 +152,61 @@ sub update {
                          : sprintf("%d:00 PM", $reset_hour - 12);
         
         return $c->render(json => { success => 1, message => "Timer reset time set to $display_hour" });
-    } elsif ($section eq 'gemini') {
-        my $api_key = trim($c->param('gemini_key') // '');
-        $c->db->update_gemini_key($api_key);
-        
-        my $active_model = $c->param('gemini_active_model');
-        $c->db->update_gemini_active_model($active_model) if $active_model;
-
-        return $c->render(json => { success => 1, message => 'Gemini settings updated successfully' });
     }
-    elsif ($section eq 'gemini_models') {
-        my $action = $c->param('action') // 'update';
-        my $models = $c->db->get_gemini_models();
-
-        if ($action eq 'add') {
-            my $new_model = trim($c->param('new_model') // '');
-            if ($new_model && !grep { $_ eq $new_model } @$models) {
-                push @$models, $new_model;
-                $c->db->update_gemini_models($models);
-                return $c->render(json => { success => 1, message => "Added model: $new_model" });
-            }
-            return $c->render(json => { success => 0, error => "Invalid or duplicate model name" });
+    elsif ($section eq 'ai_provider') {
+        my $provider = trim($c->param('ai_provider') // '');
+        unless ($provider eq 'gemini' || $provider eq 'opencode' || $provider eq 'local') {
+            return $c->render(json => { success => 0, error => 'Invalid AI provider' });
         }
-        elsif ($action eq 'delete') {
-            my $to_delete = $c->param('model_name');
-            my @filtered = grep { $_ ne $to_delete } @$models;
-            $c->db->update_gemini_models(\@filtered);
-            return $c->render(json => { success => 1, message => "Removed model: $to_delete" });
+        $c->db->update_ai_provider($provider);
+        return $c->render(json => { success => 1, message => 'AI provider updated successfully' });
+    }
+    elsif ($section eq 'gemini_key') {
+        my $api_key = _secret_update_value($c->param('gemini_key'));
+        return $c->render(json => { success => 1, message => 'Gemini API key left unchanged' }) unless length $api_key;
+        $c->db->update_gemini_key($api_key);
+        return $c->render(json => { success => 1, message => 'Gemini API key updated successfully' });
+    }
+    elsif ($section eq 'gemini_model') {
+        my $active_model = trim($c->param('gemini_active_model') // '');
+        return $c->render(json => { success => 0, error => 'Invalid Gemini model' }) unless length $active_model;
+        $c->db->update_gemini_active_model($active_model);
+        return $c->render(json => { success => 1, message => 'Gemini model updated successfully' });
+    }
+    elsif ($section eq 'opencode_key') {
+        my $api_key = _secret_update_value($c->param('opencode_key'));
+        return $c->render(json => { success => 1, message => 'OpenCode API key left unchanged' }) unless length $api_key;
+        $c->db->update_opencode_key($api_key);
+        return $c->render(json => { success => 1, message => 'OpenCode API key updated successfully' });
+    }
+    elsif ($section eq 'opencode_model') {
+        my $active_model = trim($c->param('opencode_active_model') // '');
+        return $c->render(json => { success => 0, error => 'Invalid OpenCode model' }) unless length $active_model;
+        $c->db->update_opencode_active_model($active_model);
+        return $c->render(json => { success => 1, message => 'OpenCode model updated successfully' });
+    }
+    elsif ($section eq 'local_ai') {
+        my $url = trim($c->param('local_ai_url') // '');
+        unless ($url =~ m{^https?://\S+$}) {
+            return $c->render(json => { success => 0, error => 'Local LLM URL must start with http:// or https://' });
         }
+        $c->db->update_local_ai_url($url);
+        return $c->render(json => { success => 1, message => 'Local LLM URL updated successfully' });
     }
     elsif ($section eq 'google_cloud') {
-        my $api_key = trim($c->param('google_cloud_key') // '');
-        $c->db->update_google_cloud_key($api_key);
-        return $c->render(json => { success => 1, message => 'Google Cloud API key updated successfully' });
+        my $api_key = _secret_update_value($c->param('google_cloud_key'));
+        $c->db->update_google_cloud_key($api_key) if length $api_key;
+        my $msg = $api_key ? 'Google Cloud API key updated successfully' : 'Google Cloud API key left unchanged';
+        return $c->render(json => { success => 1, message => $msg });
     }
     elsif ($section eq 'openweathermap') {
-        my $api_key = trim($c->param('owm_api_key') // '');
-        $c->db->update_owm_api_key($api_key);
-        return $c->render(json => { success => 1, message => 'OpenWeatherMap API key updated successfully' });
+        my $api_key = _secret_update_value($c->param('owm_api_key'));
+        $c->db->update_owm_api_key($api_key) if length $api_key;
+        my $msg = $api_key ? 'OpenWeatherMap API key updated successfully' : 'OpenWeatherMap API key left unchanged';
+        return $c->render(json => { success => 1, message => $msg });
     }
     elsif ($section eq 'discord') {
-        my $token = trim($c->param('discord_token') // '');
+        my $token = _secret_update_value($c->param('discord_token')) || ($c->db->get_discord_token() // '');
         unless ($token) {
             return $c->render(json => { success => 0, error => 'Bot token is required' });
         }
@@ -182,6 +215,25 @@ sub update {
     }
 
     return $c->render(json => { success => 0, error => 'Unknown settings section' });
+}
+
+sub _fetch_opencode_models {
+    my ($c) = @_;
+    return $c->ai_opencode_models;
+}
+
+sub _fetch_gemini_models {
+    my ($c) = @_;
+    return $c->ai_gemini_models;
+}
+
+sub _secret_update_value {
+    my ($value) = @_;
+    $value = trim($value // '');
+    return '' unless length $value;
+    return '' if $value =~ /\A\(configured\b/i;
+    return '' if $value =~ /\A[\*\x{2022}]{4,}\z/;
+    return $value;
 }
 
 
