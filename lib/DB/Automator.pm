@@ -679,6 +679,15 @@ sub DB::abort_automator_history {
     );
 }
 
+sub DB::delete_automator_history {
+    my ($self, $id) = @_;
+    $self->ensure_connection;
+    $self->{dbh}->do(
+        "DELETE FROM automator_history WHERE id = ? AND status <> 'running'",
+        undef, $id
+    );
+}
+
 sub DB::automator_heartbeat {
     my ($self) = @_;
     $self->ensure_connection;
