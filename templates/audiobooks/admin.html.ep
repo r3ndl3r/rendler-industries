@@ -12,8 +12,8 @@
     <div class="header-bar">
         <h1>📚 <span>Library Admin</span></h1>
         <div class="manage-actions">
-            <a href="/audiobooks" class="btn-secondary">← Library</a>
-            <button type="button" class="btn-primary" id="rescanAllBtn" onclick="rescanAll()">🔄 Re-scan All</button>
+            <a href="/audiobooks" class="action-btn">← Library</a>
+            <button type="button" class="btn-primary" id="scanAllBtn" onclick="scanAll()">🔍 Scan Library</button>
         </div>
     </div>
 
