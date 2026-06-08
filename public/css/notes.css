@@ -461,7 +461,7 @@ pre code {
 .note-divider-label {
     position: relative;
     z-index: 1;
-    background: #1e293b; /* Masks the ::before line behind the label */
+    background: var(--color-surface); /* Masks the ::before line behind the label */
     padding: 0 0.75rem;
     font-size: 0.75rem;
     text-transform: uppercase;
@@ -589,10 +589,11 @@ pre code {
 
 .note-badge {
     display: inline-block;
-    padding: 0.15rem 0.5rem;
-    border-radius: 6px;
+    padding: 0.12rem 0.45rem;
+    border-radius: 0.4rem;
     font-size: 0.75rem;
     font-weight: 600;
+    line-height: 1.05;
     margin: 0 0.2rem;
     vertical-align: middle;
     background: rgba(255, 255, 255, 0.1);
@@ -1651,7 +1652,7 @@ pre code {
     display: flex;
     gap: 3px;
     padding-bottom: 0;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--color-border);
     flex-wrap: nowrap;
     overflow-x: auto;
 }
@@ -1661,7 +1662,7 @@ pre code {
     font-size: 0.78em;
     font-weight: 600;
     background: #0f1829;
-    border: 1px solid #334155;
+    border: 1px solid var(--color-border);
     border-bottom: none;
     border-radius: 6px 6px 0 0;
     color: rgba(255, 255, 255, 0.4);
@@ -1678,20 +1679,20 @@ pre code {
 }
 
 .guide-tab-btn.active {
-    background: #1e293b;
-    border-color: #334155;
-    border-bottom: 1px solid #1e293b;
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    border-bottom: 1px solid var(--color-surface);
     color: #93c5fd;
     z-index: 1;
 }
 
 .guide-tab-panel {
     display: none;
-    border: 1px solid #334155;
+    border: 1px solid var(--color-border);
     border-top: none;
     border-radius: 0 0 6px 6px;
     padding: 14px 16px;
-    background: #1e293b;
+    background: var(--color-surface);
 }
 
 .guide-tab-panel.active {
@@ -5189,7 +5190,7 @@ input:checked + .switch-sm .slider:before {
 .wikilink-dropdown {
     position: absolute;
     z-index: 9999;
-    background: #1e293b;
+    background: var(--color-surface);
     border: 1px solid #3b82f6;
     border-radius: 8px;
     min-width: 220px;
