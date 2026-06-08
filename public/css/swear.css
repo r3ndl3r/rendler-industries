@@ -9,12 +9,12 @@
 /* Header & View Toggling */
 /* Glass Panels & Cards */
 .glass-panel {
-    background: #1e293b;
+    background: var(--color-surface);
     border-radius: 0.75rem;
     padding: 20px;
     margin-bottom: 25px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    border: 1px solid #334155;
+    border: 1px solid var(--color-border);
 }
 
 .panel-padding {
@@ -55,7 +55,7 @@
 .jar-row,
 .member-row {
     background: #0f172a;
-    border: 1px solid #334155;
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 15px;
     margin-bottom: 12px;
@@ -101,7 +101,7 @@
 /* History Log */
 .history-item {
     font-size: 0.95rem;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--color-border);
     padding: 14px 5px;
     color: #e0e0e0;
 }
@@ -244,7 +244,7 @@
     height: auto;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    border: 2px solid #334155;
+    border: 2px solid var(--color-border);
     transition: transform 0.2s;
 }
 
