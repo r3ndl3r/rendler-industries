@@ -296,7 +296,7 @@ sub DB::upsert_audiobook_meta {
 }
 
 # Deletes the metadata record for a single book by slug.
-# Called by api_admin_rescan to force re-discovery on next state fetch.
+# Called by api_admin_scan before re-probing a single book.
 # Parameters:
 #   slug : Book directory slug.
 # Returns:
@@ -311,7 +311,7 @@ sub DB::delete_audiobook_meta {
 }
 
 # Deletes all metadata records, forcing re-discovery for every book.
-# Called by api_admin_rescan when no slug is supplied.
+# Called by api_admin_scan when a full metadata wipe is requested.
 # Returns:
 #   Number of rows deleted.
 sub DB::delete_all_audiobook_meta {
