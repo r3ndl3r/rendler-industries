@@ -464,6 +464,77 @@ sub run_reminder_maintenance {
     return $stats;
 }
 
+# Internal helper to handle medication dose reminder dispatch and re-alert.
+# Called every 60 seconds by the maintenance system.
+# Parameters:
+#   - now : DateTime object
+# Returns:
+#   Stats HashRef { checked_minute, initial_fired, re_alerts_sent, errors }
+sub run_medication_reminder_maintenance {
+    my ($c, $now) = @_;
+
+    my $stats = {
+        checked_minute => $now->strftime('%H:%M'),
+        day_number     => $now->day_of_week, # 1=Mon, 7=Sun
+        initial_fired  => 0,
+        re_alerts_sent => 0,
+        errors         => 0
+    };
+
+    my $current_date = $now->strftime('%Y-%m-%d');
+    my $current_time = $now->strftime('%H:%M');
+
+    # PHASE 1: INITIAL FIRE — due reminders with no today's event yet, matching current day of week
+    my $due = $c->db->get_due_medication_reminders($current_date, $current_time, $stats->{day_number});
+    foreach my $r (@$due) {
+        eval {
+            # Create event FIRST (marks as "in flight", prevents double-fire)
+            $c->db->create_medication_reminder_event($r->{id}, $current_date, $r->{reminder_time});
+
+            # Notify the family member (the person who needs to take it)
+            my $time_display = substr($r->{reminder_time}, 0, 5);
+            $c->notify_templated($r->{family_member_id}, 'medication_dose_reminder', {
+                medication    => $r->{medication_name},
+                dosage        => $r->{dosage},
+                family_member => $r->{family_member_name},
+                time          => $time_display
+            }, 0);
+
+            $stats->{initial_fired}++;
+        };
+        if ($@) {
+            $c->app->log->error("Medication reminder initial fire failed for reminder $r->{id}: $@");
+            $stats->{errors}++;
+        }
+    }
+
+    # PHASE 2: RE-ALERT — overdue confirmations (unconfirmed + last_fired_at > 30 min ago or never fired)
+    my $overdue = $c->db->get_overdue_medication_confirmations();
+    foreach my $o (@$overdue) {
+        eval {
+            # Update last_fired_at to NOW() (prevents re-trigger for another 30 min)
+            $c->db->touch_medication_reminder_event($o->{event_id});
+
+            # Dispatch re-alert notification
+            my $time_display = substr($o->{scheduled_time}, 0, 5);
+            $c->notify_templated($o->{family_member_id}, 'medication_dose_overdue', {
+                medication    => $o->{medication_name},
+                dosage        => $o->{dosage},
+                family_member => $o->{family_member_name},
+                time          => $time_display
+            }, 0);
+
+            $stats->{re_alerts_sent}++;
+        };
+        if ($@) {
+            $c->app->log->error("Medication reminder re-alert failed for event $o->{event_id}: $@");
+            $stats->{errors}++;
+        }
+    }
+
+    return $stats;
+}
+
 # Internal helper to handle timer-specific maintenance tasks.
 # Parameters: None
 # Returns:
@@ -656,7 +727,7 @@ sub run_calendar_notifications {
 #   - Skips texts that already begin with an Emoji sequence.
 #   - Fallback 1: Isolated AI Dictionary (ai_emoji_dictionary).
 #   - Fallback 2: Standard UI Dictionary (emojis).
-#   - Fallback 3: Google Gemini API generation.
+#   - Fallback 3: Configured AI provider generation.
 sub run_emoji_maintenance_p {
     my $c = shift;
     
@@ -724,30 +795,30 @@ sub run_emoji_maintenance_p {
                 last if $ai_calls >= $max_calls;
                 $ai_calls++;
 
-                # We call the helper via the controller instance passed into the subprocess
-                # or replicate the logic if the instance is not safely shared.
-                # In Mojo subprocesses, we should use a fresh UA and the logic from the plugin.
-                my $api_key = $c->db->get_gemini_key();
-                my $active_model = $c->db->get_gemini_active_model();
-                my $api_version = ($active_model =~ /preview|exp|2\.[05]|3\./) ? 'v1beta' : 'v1';
-                my $endpoint = "https://generativelanguage.googleapis.com/$api_version/models/$active_model:generateContent?key=$api_key";
-
                 my $ua = Mojo::UserAgent->new->request_timeout(10);
-                my $tx = $ua->post($endpoint => json => {
-                    contents => [ { role => 'user', parts => [ { text => $item->{text} } ] } ],
-                    system_instruction => { parts => [ { text => "Respond ONLY with one emoji character." } ] },
-                    generationConfig => { temperature => 0.1, maxOutputTokens => 5 }
-                });
+                my $data = eval {
+                    MyApp::Plugin::AI::ai_prompt_sync(
+                        ua             => $ua,
+                        provider       => $c->db->get_ai_provider(),
+                        opencode_key   => $c->db->get_opencode_key(),
+                        opencode_model => $c->db->get_opencode_active_model(),
+                        local_ai_url   => $c->db->get_local_ai_url(),
+                        gemini_key     => $c->db->get_gemini_key(),
+                        gemini_model   => $c->db->get_gemini_active_model(),
+                        contents       => [ { role => 'user', parts => [ { text => "Reply with exactly one emoji for: $item->{text}" } ] } ],
+                        temp           => 0.1,
+                        max_tokens     => 2048,
+                        timeout        => 10,
+                        debug          => ($c->app->config->{debug} || 0)
+                    );
+                };
 
-                if (my $res = $tx->result) {
-                    if ($res->is_success) {
-                        my $ai_response = Mojo::Util::trim($res->json->{candidates}[0]{content}{parts}[0]{text} // '');
-                        $ai_response =~ s/^['"]+|['"]+$//g;
-                        # Truncate AI response to prevent log bloat if it returns a paragraph
-                        $ai_response = substr($ai_response, 0, 10) if length($ai_response) > 10;
-                        if (length($ai_response) > 0 && $ai_response !~ /[a-zA-Z]{3,}/) {
-                            push @results, { %$item, emoji => $ai_response };
-                        }
+                if ($data) {
+                    my $ai_response = Mojo::Util::trim($data->{candidates}[0]{content}{parts}[0]{text} // '');
+                    $ai_response =~ s/^['"]+|['"]+$//g;
+                    $ai_response = substr($ai_response, 0, 10) if length($ai_response) > 10;
+                    if (length($ai_response) > 0 && $ai_response !~ /[a-zA-Z]{3,}/) {
+                        push @results, { %$item, emoji => $ai_response };
                     }
                 }
             }
