@@ -24,7 +24,7 @@
         <div id="solution-card" class="glass-card result-card" style="display: none;">
             <div class="section-heading">
                 <div>
-                    <span class="eyebrow">Gemini AI Analysis</span>
+                    <span class="eyebrow">AI Analysis</span>
                     <h2>✅ Optimal Solution</h2>
                 </div>
             </div>
@@ -87,14 +87,14 @@
                     <div class="step-num">1</div>
                     <div class="step-body">
                         <strong>Two-Photo Capture</strong>
-                        <p>We use Gemini AI to analyze two photos showing all 6 faces (54 stickers) of your cube.</p>
+                        <p>We use AI to analyze two photos showing all 6 faces (54 stickers) of your cube.</p>
                     </div>
                 </div>
                 <div class="guide-step">
                     <div class="step-num">2</div>
                     <div class="step-body">
                         <strong>Partial State Mapping</strong>
-                        <p>Gemini fills what it can see and marks unclear stickers for manual review.</p>
+                        <p>AI fills what it can see and marks unclear stickers for manual review.</p>
                     </div>
                 </div>
                 <div class="guide-step">
