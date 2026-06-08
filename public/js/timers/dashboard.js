@@ -73,8 +73,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
-        const response = await fetch('/timers/api/state');
-        const data = await response.json();
+        const data = await apiGet('/timers/api/state');
         
         if (data && data.success) {
             STATE.timers = data.timers;
