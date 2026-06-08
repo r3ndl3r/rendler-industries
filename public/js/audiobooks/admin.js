@@ -6,7 +6,7 @@
  * Features:
  *   - Tabular overview of all books with cover, metadata, and status flags.
  *   - Inline metadata editing via modal (title, author, narrator, description, series).
- *   - Per-book and full-library metadata cache invalidation (re-scan).
+ *   - Per-book and full-library filesystem scanning.
  *   - Cover art replacement via file upload.
  *   - Summary stats bar showing total books, cover coverage, and metadata cache status.
  * Dependencies: default.js (apiPost, escapeHtml, showToast, showConfirmModal, setupGlobalModalClosing)
@@ -109,7 +109,7 @@ function renderTable() {
             <td class="col-ab-family" data-label="Family">${_renderUserProgress(book.user_progress, book.total_chapters)}</td>
             <td class="col-ab-actions">
                 <button type="button" class="btn-icon-edit"   title="Edit metadata"    onclick="openEditModal(${slugJs})">✏️</button>
-                <button type="button" class="btn-icon-rescan" title="Re-scan metadata" onclick="rescanBook(${slugJs})">🔄</button>
+                <button type="button" class="btn-icon-scan"   title="Scan metadata"    onclick="scanBook(${slugJs})">🔄</button>
                 <button type="button" class="btn-icon-cover"  title="Upload cover"     onclick="triggerCoverUpload(${slugJs})">🖼</button>
             </td>
         </tr>`;
@@ -196,27 +196,28 @@ async function saveEdit() {
 }
 
 /**
- * Confirms then invalidates the metadata cache for a single book.
- * The next loadState call will re-run ffprobe and rebuild meta.json.
+ * Confirms then re-scans a single book from the filesystem.
+ * Deletes existing metadata and re-probes the book via ffprobe.
  * @param {string} slug - The book's directory slug.
  * @returns {void}
  */
-function rescanBook(slug) {
+function scanBook(slug) {
     const book = STATE.books.find(b => b.slug === slug);
     const name = book ? (book.title || slug) : slug;
 
     showConfirmModal({
-        title:       'Re-scan Book',
+        title:       'Scan Book',
         icon:        '🔄',
         hideCancel:  true,
-        message:     `Delete cached metadata for <strong>${escapeHtml(name)}</strong>? It will be re-discovered on next load.`,
-        confirmText: 'Re-scan',
+        message:     `Re-scan <strong>${escapeHtml(name)}</strong> from filesystem? Metadata will be re-probed via ffprobe.`,
+        confirmText: 'Scan',
         onConfirm:   async () => {
             const fd = new FormData();
             fd.set('slug', slug);
-            const res = await apiPost('/audiobooks/admin/api/rescan', fd);
+            fd.set('delete_first', '1');
+            const res = await apiPost('/audiobooks/admin/api/scan', fd, 300000);
             if (res) {
-                showToast('Metadata cleared — reloading…', 'info');
+                showToast('Book scanned', 'success');
                 loadState(true);
             }
         },
@@ -224,32 +225,41 @@ function rescanBook(slug) {
 }
 
 /**
- * Confirms then invalidates the metadata cache for every book in the library.
+ * Confirms then scans the filesystem for new books, probes uncached metadata,
+ * removes orphaned DB entries, and optionally wipes all metadata first.
  * @returns {void}
  */
-function rescanAll() {
+function scanAll() {
     const count = STATE.books.length;
 
     showConfirmModal({
-        title:       'Re-scan All Books',
+        title:       'Scan Library',
         icon:        '🔄',
-        hideCancel:  true,
-        message:     `Delete cached metadata for all ${count} book${count !== 1 ? 's' : ''}? Each book will be re-scanned on next load via ffprobe.`,
-        confirmText: 'Re-scan All',
+        message:     `Scans the filesystem for new books and probes metadata via ffprobe.<div style="margin-top:12px;"><label><input type="checkbox" id="scanDeleteFirst"> Delete existing metadata before scanning</label></div>`,
+        confirmText: 'Scan',
         onConfirm:   async () => {
-            const btn = document.getElementById('rescanAllBtn');
+            const btn = document.getElementById('scanAllBtn');
             btn.disabled    = true;
             btn.textContent = '⌛ Scanning…';
 
             try {
-                const res = await apiPost('/audiobooks/admin/api/rescan', new FormData());
+                const fd = new FormData();
+                if (document.getElementById('scanDeleteFirst').checked) {
+                    fd.set('delete_first', '1');
+                }
+                const res = await apiPost('/audiobooks/admin/api/scan', fd, 300000);
                 if (res) {
-                    showToast(`Cleared metadata for ${res.rescanned} book${res.rescanned !== 1 ? 's' : ''} — reloading…`, 'info');
+                    const parts = [];
+                    parts.push(`Scanned ${res.scanned} books`);
+                    parts.push(`added ${res.added} new`);
+                    if (res.orphans_removed > 0) parts.push(`removed ${res.orphans_removed} orphan${res.orphans_removed !== 1 ? 's' : ''}`);
+                    if (res.errors > 0) parts.push(`${res.errors} error${res.errors !== 1 ? 's' : ''}`);
+                    showToast(parts.join(', '), res.errors > 0 ? 'warning' : 'success');
                     loadState(true);
                 }
             } finally {
                 btn.disabled    = false;
-                btn.textContent = '🔄 Re-scan All';
+                btn.textContent = '🔍 Scan Library';
             }
         },
     });
