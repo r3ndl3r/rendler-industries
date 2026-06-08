@@ -359,6 +359,22 @@ use constant MANIFEST => {
     },
 
     # --- GENERAL ---
+    'medication_dose_reminder' => {
+        desc    => "Sent when a scheduled medication dose is due.",
+        tags    => "medication, dosage, family_member, time",
+        url     => '/medication',
+        sample  => { medication => "Ibuprofen", dosage => "200", family_member => "Alex", time => "07:00" },
+        default_subject => "💊 Dose Reminder: [medication] for [family_member]",
+        default_body    => "💊 **MEDICATION DUE** 💊\n\n**[family_member]** needs to take:\n**[medication]** - [dosage] mg\n\n⏰ Scheduled: [time]\n\nPlease confirm when taken.\n[sys_url /medication]"
+    },
+    'medication_dose_overdue' => {
+        desc    => "Re-alert when a medication dose confirmation is overdue (30+ min).",
+        tags    => "medication, dosage, family_member, time",
+        url     => '/medication',
+        sample  => { medication => "Ibuprofen", dosage => "200", family_member => "Alex", time => "07:00" },
+        default_subject => "⏰ OVERDUE: [medication] for [family_member]",
+        default_body    => "⏰ **MEDICATION OVERDUE** ⏰\n\n**[family_member]** still needs to take:\n**[medication]** - [dosage] mg\n\n⏰ Was scheduled at: [time]\n\nPlease confirm when taken.\n[sys_url /medication]"
+    },
     'reminder_alert' => {
         desc    => "Standard alert for user-created reminders.",
         tags    => "title, description",
