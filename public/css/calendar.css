@@ -82,7 +82,7 @@
     justify-content: center;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    background: #1e293b;
+    background: var(--color-surface);
     color: #ffffff;
     cursor: pointer;
     font-size: 14px;
@@ -90,7 +90,7 @@
 }
 
 .nav-btn:hover {
-    background: #334155;
+    background: var(--color-surface-deep);
     border-color: #3b82f6;
     box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
 }
@@ -469,41 +469,20 @@
 /* --- 5. Modals & Dialogs --- */
 
 .modal-overlay {
-    display: none;
-    position: fixed;
     z-index: 10001;
-    left: 0; top: 0; width: 100%; height: 100%;
-    overflow: auto;
-    background-color: rgba(5, 12, 29, 0.85);
-    backdrop-filter: blur(8px);
-    justify-content: center;
-    align-items: flex-start;
-    padding-top: 40px;
-    animation: fadeIn 0.3s;
 }
 
 .modal-overlay.show, .modal-overlay.active {
     display: flex !important;
 }
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-.modal-content {
-    background: #1e293b;
-    display: block;
-    margin: 0 auto 50px auto;
-    padding: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    width: 90%;
-    max-width: 500px;
-    color: #ffffff;
-    animation: slideDown 0.3s ease-out;
-}
-
 .modal-content.modal-large {
     max-width: 1100px;
+}
+
+#eventModal .modal-content,
+#eventDetailsModal .modal-content {
+    max-width: 600px;
 }
 
 #historyModal {
@@ -516,74 +495,35 @@
 
 .modal-header-centered {
     text-align: center;
-    margin-bottom: 25px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    justify-content: center;
 }
 
-.modal-header-centered h2 {
+.modal-header-centered h3 {
     font-size: 1.8rem;
     margin: 0;
     font-weight: 300;
 }
 
+.modal-header-centered > div {
+    width: 100%;
+}
+
 .modal-header-centered p {
-    color: #94a3b8;
     margin: 5px 0 0 0;
     font-size: 0.95rem;
-}
-
-
-@keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-.close {
-    color: #94a3b8;
-    float: right;
-    font-size: 24px;
-    font-weight: bold;
-    cursor: pointer;
-    line-height: 20px;
-}
-
-.close:hover, .close:focus { color: #ffffff; }
-
-.modal-content h2 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: #ffffff;
-    font-size: 1.2em;
 }
 
 /* Form Styles inside Modals */
 .form-group { margin-bottom: 10px; }
 .form-group label {
-    display: block;
     margin-bottom: 3px;
-    font-weight: bold;
-    color: #94a3b8;
-    font-size: 0.85em;
-}
-
-.form-group input[type="text"],
-.form-group input[type="date"],
-.form-group input[type="time"],
-.form-group textarea,
-.form-group select {
-    width: 100%;
-    padding: 8px 12px;
-    background: #0f172a;
-    border: 1px solid #334155;
-    border-radius: 6px;
-    font-size: 0.9em;
-    box-sizing: border-box;
-    color: #ffffff;
 }
 
 .form-group textarea { resize: vertical; }
 .form-group input[type="color"] { 
     width: 100%; 
     height: 35px; 
-    border: 1px solid #334155; 
+    border: 1px solid var(--color-border); 
     border-radius: 6px; 
     cursor: pointer; 
     background: #0f172a;
@@ -601,41 +541,36 @@
 }
 
 .checkbox-group { margin-bottom: 10px; }
-.checkbox-group label { display: flex; align-items: center; gap: 8px; font-weight: normal; color: #cbd5e1; }
+.checkbox-group label { display: flex; align-items: center; gap: 8px; }
 .checkbox-group input[type="checkbox"] { 
     width: auto; 
     cursor: pointer;
-    accent-color: #3b82f6;
 }
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-.btn-primary, .btn-secondary, .btn-clone, .btn-danger, .btn-small {
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    font-size: 0.9em;
+#eventModal .form-row,
+#eventModal #recurrenceOptions .form-row {
+    grid-template-columns: 1fr;
 }
 
-.btn-primary { background-color: var(--accent-color, #3b82f6); color: white; }
-.btn-secondary, .btn-clone { background-color: #334155; color: white; }
-.btn-danger { background-color: #ef4444; color: white; }
+#eventModal #startTimeGroup,
+#eventModal #endTimeGroup {
+    grid-column: auto;
+}
+
+#eventModal .form-row:has(#startTimeGroup),
+#eventModal .form-row:has(#endTimeGroup) {
+    grid-template-columns: 1fr 1fr;
+}
+
 .btn-small { padding: 5px 10px; font-size: 0.8em; }
 
-.modal-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    margin-top: 20px;
-}
-
 /* Event Details Layout */
-.event-details-header { border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 15px; }
+.event-details-header { border-bottom: 1px solid var(--color-border); padding-bottom: 10px; margin-bottom: 15px; }
 .event-details-header h2 { margin: 0; font-size: 1.3em; display: flex; align-items: center; gap: 8px; }
 
-.event-detail-row { display: flex; padding: 10px 0; border-bottom: 1px solid #334155; gap: 15px; }
+.event-detail-row { display: flex; padding: 10px 0; border-bottom: 1px solid var(--color-border); gap: 15px; }
 .event-detail-row:last-child { border-bottom: none; }
 .event-detail-row strong { min-width: 140px; color: #94a3b8; font-size: 0.95em; }
 .event-detail-row span { flex: 1; color: #ffffff; font-size: 0.95em; }
@@ -660,18 +595,12 @@
 
 #historySearchInput {
     width: 100%;
-    padding: 10px 15px 10px 40px;
-    background: #0f172a;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 8px;
-    color: white;
-    outline: none;
-    transition: all 0.2s;
+    padding-left: 40px !important;
 }
 
-#historySearchInput:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+#historyCategoryFilter option {
+    color: #111827;
+    background: #ffffff;
 }
 
 .search-icon {
@@ -683,8 +612,6 @@
 }
 
 .history-table-wrapper {
-    max-height: 60vh;
-    overflow-y: auto;
     background: rgba(15, 23, 42, 0.4);
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -870,18 +797,6 @@
        MODAL & DIALOG FIXES
        ========================================= */
     
-    .modal-overlay {
-        padding-top: 30px;
-    }
-
-    .modal-content {
-        margin: 0 auto 20px auto !important; 
-        width: 95%;
-        padding: 15px;
-        max-height: 85vh; 
-        overflow-y: auto;
-    }
-
     /* =========================================
        GENERAL LAYOUT ADJUSTMENTS
        ========================================= */
