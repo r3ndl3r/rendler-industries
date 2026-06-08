@@ -4,6 +4,7 @@ package DB::AI;
 
 use strict;
 use warnings;
+use DateTime;
 use Mojo::JSON qw(encode_json decode_json);
 
 # Database helper for Family Pulse AI interactions.
@@ -86,13 +87,18 @@ sub DB::get_dashboard_snapshot {
     my @now = localtime(time);
     my $start = sprintf("%04d-%02d-%02d", $now[5]+1900, $now[4]+1, $now[3]);
     
-    my @future = localtime(time + (86400 * 14));
+    my @future = localtime(time + (86400 * 60));
     my $end = sprintf("%04d-%02d-%02d", $future[5]+1900, $future[4]+1, $future[3]);
 
     my ($cal_events) = $self->get_calendar_events(0, 1, $start, $end);
 
+    my $tz = $self->{timezone} || 'UTC';
+    my $request_time = DateTime->now(time_zone => $tz);
+
     my $snapshot = {
-        current_time => scalar(localtime),
+        current_time => $request_time->strftime('%Y-%m-%d %H:%M:%S %Z'),
+        current_timezone => $tz,
+        current_time_context => 'This is the date and time when the latest user message was sent. Use it as authoritative for relative time references.',
         medication   => $self->get_medication_logs_by_user(),
         shopping     => $self->get_shopping_items(),
         calendar     => $cal_events,
@@ -105,25 +111,6 @@ sub DB::get_dashboard_snapshot {
     };
     
     return $snapshot;
-}
-
-# Retrieves a file or receipt BLOB for AI analysis.
-# Parameters:
-#   type : 'receipt' or 'file'
-#   id   : Unique identifier in the respective table
-# Returns:
-#   HashRef: { data => Binary BLOB, mime => String }
-sub DB::get_ai_attachment {
-    my ($self, $type, $id) = @_;
-    $self->ensure_connection;
-    
-    my $sql = $type eq 'receipt' 
-        ? "SELECT file_data as data, 'image/jpeg' as mime FROM receipts WHERE id = ?"
-        : "SELECT file_data as data, mime_type as mime FROM files WHERE id = ?";
-        
-    my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute($id);
-    return $sth->fetchrow_hashref();
 }
 
 1;
