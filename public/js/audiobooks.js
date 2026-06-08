@@ -275,7 +275,7 @@ async function loadState(force = false) {
         return;
     }
 
-    const res = await apiGet('/audiobooks/api/state');
+    const res = await apiGet('/audiobooks/api/state', 10000);
     if (!res || !res.success) {
         // API unreachable or timed out — try loading from cache (offline cold-start).
         if (force) _loadCachedState();
@@ -1180,6 +1180,7 @@ function openPlayer(slug, chapter_idx, autoplay = false) {
     document.getElementById('playPauseBtn').textContent = '▶';
 
     document.getElementById('playerPanel').classList.add('show');
+    _updateSleepControls();
     _startSaveTimer();
     _loadChapter(idx, autoplay);
 }
@@ -1210,6 +1211,7 @@ function closePlayer() {
 
     document.getElementById('playerPanel').classList.remove('show', 'player-buffering');
     document.getElementById('chapterDrawer').classList.remove('show');
+    _updateSleepControls();
 
     PLAYER.player_open  = false;
     PLAYER.slug         = null;
@@ -1704,6 +1706,8 @@ function _onPlaying() {
     clearTimeout(_stallTimeout);
     document.getElementById('playPauseBtn').textContent = '⏸';
     document.getElementById('playerPanel').classList.remove('player-buffering');
+    _resumeSleepTimer();
+    _updateSleepControls();
     
     const Cap = window.Capacitor;
     const msPlugin = Cap && Cap.Plugins && Cap.Plugins.MediaSession ? Cap.Plugins.MediaSession : null;
@@ -1723,6 +1727,8 @@ function _onPlaying() {
  */
 function _onPaused() {
     document.getElementById('playPauseBtn').textContent = '▶';
+    _pauseSleepTimer();
+    _updateSleepControls();
     if (PLAYER.player_open && PLAYER.loaded_url) {
         PLAYER.paused_at = Date.now();
         _persistPauseState();
@@ -1973,10 +1979,82 @@ function toggleChapterDrawer() {
 // ─── Sleep timer ──────────────────────────────────────────────────────────────
 
 /**
+ * Shows the sleep controls only while audio is actively playing.
+ * @returns {void}
+ */
+function _updateSleepControls() {
+    const sleepBtn = document.getElementById('sleepBtn');
+    if (!sleepBtn) return;
+
+    const wrap = sleepBtn.closest('.sleep-wrap');
+    const isPlaying = !!(PLAYER.player_open && PLAYER.audio && !PLAYER.audio.paused);
+    const hasActiveSleep = !!(PLAYER.sleep_end_of_ch || PLAYER.sleep_timer || PLAYER.sleep_remaining > 0);
+
+    sleepBtn.disabled = !isPlaying;
+    if (wrap) wrap.classList.toggle('hidden', !isPlaying && !hasActiveSleep);
+    if (!isPlaying) {
+        document.getElementById('sleepMenu').classList.add('hidden');
+    }
+}
+
+/**
+ * Starts or resumes the active countdown-based sleep timer.
+ * @returns {void}
+ */
+function _resumeSleepTimer() {
+    if (PLAYER.sleep_end_of_ch || PLAYER.sleep_remaining <= 0 || !PLAYER.audio || PLAYER.audio.paused) return;
+
+    if (PLAYER.sleep_timer) clearTimeout(PLAYER.sleep_timer);
+    if (PLAYER.sleep_tick) clearInterval(PLAYER.sleep_tick);
+
+    PLAYER.sleep_timer = setTimeout(() => {
+        PLAYER.sleep_timer = null;
+        if (PLAYER.audio) PLAYER.audio.pause();
+        _saveProgress(false);
+        cancelSleepTimer();
+        showToast('Sleep timer ended. Paused.', 'info');
+    }, PLAYER.sleep_remaining * 1000);
+
+    PLAYER.sleep_tick = setInterval(() => {
+        PLAYER.sleep_remaining = Math.max(0, PLAYER.sleep_remaining - 1);
+        _showSleepBadge(_formatTime(PLAYER.sleep_remaining));
+        if (PLAYER.sleep_remaining <= 0 && PLAYER.sleep_tick) {
+            clearInterval(PLAYER.sleep_tick);
+            PLAYER.sleep_tick = null;
+        }
+    }, 1000);
+
+    _showSleepBadge(_formatTime(PLAYER.sleep_remaining));
+    document.getElementById('cancelSleepBtn').classList.remove('hidden');
+}
+
+/**
+ * Freezes the active countdown-based sleep timer without clearing it.
+ * @returns {void}
+ */
+function _pauseSleepTimer() {
+    if (PLAYER.sleep_timer) {
+        clearTimeout(PLAYER.sleep_timer);
+        PLAYER.sleep_timer = null;
+    }
+    if (PLAYER.sleep_tick) {
+        clearInterval(PLAYER.sleep_tick);
+        PLAYER.sleep_tick = null;
+    }
+    if (PLAYER.sleep_remaining > 0) {
+        _showSleepBadge(_formatTime(PLAYER.sleep_remaining));
+    }
+}
+
+/**
  * Opens the sleep timer menu.
  * @returns {void}
  */
 function openSleepMenu() {
+    if (!PLAYER.audio || PLAYER.audio.paused) {
+        _updateSleepControls();
+        return;
+    }
     document.getElementById('sleepMenu').classList.toggle('hidden');
 }
 
@@ -1987,6 +2065,7 @@ function openSleepMenu() {
  * @returns {void}
  */
 function startSleepTimer(minutes) {
+    if (!PLAYER.audio || PLAYER.audio.paused) return;
     cancelSleepTimer();
     document.getElementById('sleepMenu').classList.add('hidden');
 
@@ -1997,25 +2076,8 @@ function startSleepTimer(minutes) {
         return;
     }
 
-    const ms = minutes * 60 * 1000;
     PLAYER.sleep_remaining = minutes * 60;
-
-    PLAYER.sleep_timer = setTimeout(() => {
-        if (PLAYER.audio) PLAYER.audio.pause();
-        _saveProgress(false);
-        PLAYER.sleep_timer = null;
-        cancelSleepTimer();
-        showToast('Sleep timer ended. Paused.', 'info');
-    }, ms);
-
-    // Countdown tick every second.
-    PLAYER.sleep_tick = setInterval(() => {
-        PLAYER.sleep_remaining = Math.max(0, PLAYER.sleep_remaining - 1);
-        _showSleepBadge(_formatTime(PLAYER.sleep_remaining));
-    }, 1000);
-
-    _showSleepBadge(_formatTime(PLAYER.sleep_remaining));
-    document.getElementById('cancelSleepBtn').classList.remove('hidden');
+    _resumeSleepTimer();
 }
 
 /**
@@ -2023,6 +2085,7 @@ function startSleepTimer(minutes) {
  * @returns {void}
  */
 function startCustomSleepTimer() {
+    if (!PLAYER.audio || PLAYER.audio.paused) return;
     const input = document.getElementById('customSleepMinutes');
     const minutes = input ? parseInt(input.value, 10) : 0;
     if (!Number.isInteger(minutes) || minutes < 1 || minutes > 999) {
