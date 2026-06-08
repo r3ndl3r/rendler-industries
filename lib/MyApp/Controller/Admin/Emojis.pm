@@ -120,7 +120,7 @@ sub api_test {
     
     $c->render_later;
     
-    $c->gemini_generate_emoji($text)->then(sub {
+    $c->ai_generate_emoji($text)->then(sub {
         my $data = shift;
         
         if ($data && $data->{candidates} && @{$data->{candidates}}) {
@@ -138,7 +138,7 @@ sub api_test {
         }
     })->catch(sub {
         my $err = shift;
-        $c->render(json => { success => 0, error => "Gemini Error: $err" });
+        $c->render(json => { success => 0, error => "AI Error: $err" });
     });
 }
 
