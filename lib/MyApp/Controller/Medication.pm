@@ -2,6 +2,7 @@
 
 package MyApp::Controller::Medication;
 use Mojo::Base 'Mojolicious::Controller';
+use Mojo::JSON qw(decode_json);
 use Mojo::Util qw(trim);
 
 # Controller for AJAX-driven Medication Tracker.
@@ -31,7 +32,7 @@ sub index {
 
 # Returns the consolidated state for the module.
 # Route: GET /medication/api/state
-# Returns: JSON object { logs, registry, members, is_admin, success }
+# Returns: JSON object { logs, registry, members, is_admin, is_parent, success }
 sub api_state {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
@@ -40,12 +41,20 @@ sub api_state {
     my $registry = $c->db->get_registry_with_stats();
     my $members  = $c->db->get_medication_members();
     
+    my $reminders      = $c->db->get_medication_reminders();
+    my $current_date   = $c->now->strftime('%Y-%m-%d');
+    my $current_user   = $c->current_user_id;
+    my $pending_events = $c->db->get_pending_medication_reminders($current_user, $current_date);
+
     $c->render(json => {
         success  => 1,
         logs     => $logs,
         registry => $registry,
         members  => $members,
-        is_admin => $c->is_admin ? 1 : 0
+        is_admin      => $c->is_admin ? 1 : 0,
+        is_parent     => $c->is_parent ? 1 : 0,
+        reminders     => $reminders,
+        pending_events => $pending_events
     });
 }
 
@@ -91,8 +100,11 @@ sub edit {
     $taken_at =~ s/T/ / if $taken_at;
 
     eval {
-        $c->db->update_medication_log($id, $medication_name, $family_member_id, $dosage, $taken_at);
-        $c->render(json => { success => 1, message => "Log updated." });
+        if ($c->db->update_medication_log($id, $medication_name, $family_member_id, $dosage, $taken_at || undef)) {
+            $c->render(json => { success => 1, message => "Log updated." });
+        } else {
+            $c->render(json => { success => 0, error => "Entry not found." });
+        }
     };
     if ($@) {
         $c->render(json => { success => 0, error => "Database error." });
@@ -211,6 +223,138 @@ sub delete_registry {
     }
 }
 
+###############################################################################
+# MEDICATION REMINDER ENDPOINTS
+###############################################################################
+
+# Returns reminder schedules and pending events.
+# Route: GET /medication/api/reminders
+sub api_reminders {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
+    my $reminders = $c->db->get_medication_reminders();
+    my $current_date = $c->now->strftime('%Y-%m-%d');
+    my $pending_events = $c->db->get_pending_medication_reminders($c->current_user_id, $current_date);
+
+    $c->render(json => {
+        success  => 1,
+        reminders     => $reminders,
+        pending_events => $pending_events
+    });
+}
+
+# Creates or replaces reminder times for a medication + family member.
+# Parameters: medication_id, family_member_id, dosage, source_log_id (required medication_logs.id), times (JSON array of time strings),
+#             days_of_week (JSON array of day numbers 1-7, default all)
+# Route: POST /medication/api/reminders/save
+sub save_reminders {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
+    my $medication_id    = $c->param('medication_id');
+    my $family_member_id = $c->param('family_member_id');
+    my $dosage           = trim($c->param('dosage') // 0);
+    my $source_log_id    = $c->param('source_log_id');
+    my $times_json       = $c->param('times');
+    my $days_json        = $c->param('days_of_week');
+
+    unless ($medication_id && $family_member_id && $dosage > 0 && $source_log_id && $times_json) {
+        return $c->render(json => { success => 0, error => 'Missing required fields.' });
+    }
+
+    my $times = eval { decode_json($times_json) };
+    if ($@ || ref($times) ne 'ARRAY' || @$times < 1 || @$times > 4) {
+        return $c->render(json => { success => 0, error => 'times must be a JSON array of 1-4 time strings.' });
+    }
+
+    my $days_of_week = '1,2,3,4,5,6,7';
+    if ($days_json) {
+        my $days_arr = eval { decode_json($days_json) };
+        if ($@ || ref($days_arr) ne 'ARRAY' || @$days_arr < 1) {
+            return $c->render(json => { success => 0, error => 'days_of_week must be a JSON array of day numbers (1-7).' });
+        }
+        for my $d (@$days_arr) {
+            if ($d !~ /^[1-7]$/) {
+                return $c->render(json => { success => 0, error => 'Each day value must be 1-7.' });
+            }
+        }
+        $days_of_week = join(',', sort { $a <=> $b } @$days_arr);
+    }
+
+    eval {
+        $c->db->save_medication_reminders($medication_id, $family_member_id, $dosage, $times, $days_of_week, $c->current_user_id, $source_log_id);
+        $c->render(json => { success => 1, message => 'Reminder saved.' });
+    };
+    if ($@) {
+        $c->app->log->error("Save medication reminder error: $@");
+        $c->render(json => { success => 0, error => 'Database error.' });
+    }
+}
+
+# Toggles a reminder schedule's is_active flag.
+# Route: POST /medication/api/reminders/toggle/:id
+sub toggle_reminder {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
+    my $id     = $c->param('id');
+    my $active = $c->param('active') // 0;
+
+    eval {
+        $c->db->toggle_medication_reminder($id, $active);
+        $c->render(json => { success => 1, message => 'Reminder updated.' });
+    };
+    if ($@) {
+        $c->render(json => { success => 0, error => 'Database error.' });
+    }
+}
+
+# Deletes a reminder schedule.
+# Route: POST /medication/api/reminders/delete/:id
+sub delete_reminder_schedule {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
+    my $id = $c->param('id');
+
+    eval {
+        if ($c->db->delete_medication_reminder($id)) {
+            $c->render(json => { success => 1, message => 'Reminder deleted.' });
+        } else {
+            $c->render(json => { success => 0, error => 'Reminder not found.' });
+        }
+    };
+    if ($@) {
+        $c->render(json => { success => 0, error => 'Database error.' });
+    }
+}
+
+# Confirms a pending reminder event as taken and logs the dose unless it was
+# already recorded near the scheduled reminder time.
+# Route: POST /medication/api/reminders/confirm/:id
+sub confirm_reminder_event {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
+    my $event_id = $c->param('id');
+
+    eval {
+        my $result = $c->db->confirm_medication_reminder($event_id, $c->current_user_id);
+        if ($result->{success}) {
+            my $msg = 'Dose confirmed.';
+            $msg .= ' Source dose log updated.' if $result->{log_id};
+            $c->render(json => { success => 1, message => $msg, log_id => $result->{log_id} });
+        } else {
+            $c->render(json => { success => 0, error => 'Already confirmed or not found.' });
+        }
+    };
+    if ($@) {
+        $c->app->log->error("Confirm medication reminder error: $@");
+        $c->render(json => { success => 0, error => 'Database error.' });
+    }
+}
+
 
 sub register_routes {
     my ($class, $r) = @_;
@@ -222,6 +366,11 @@ sub register_routes {
     $r->{family}->post('/medication/api/delete/:id')->to('medication#delete');
     $r->{admin}->post('/medication/api/manage/update/:id')->to('medication#update_registry');
     $r->{admin}->post('/medication/api/manage/delete/:id')->to('medication#delete_registry');
+    $r->{family}->get('/medication/api/reminders')->to('medication#api_reminders');
+    $r->{family}->post('/medication/api/reminders/save')->to('medication#save_reminders');
+    $r->{family}->post('/medication/api/reminders/toggle/:id')->to('medication#toggle_reminder');
+    $r->{family}->post('/medication/api/reminders/delete/:id')->to('medication#delete_reminder_schedule');
+    $r->{family}->post('/medication/api/reminders/confirm/:id')->to('medication#confirm_reminder_event');
 }
 
 1;
