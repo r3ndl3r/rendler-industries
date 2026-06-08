@@ -7,7 +7,7 @@
     object-fit: cover;
     border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    background: #0f172a;
+    background: var(--color-surface-deep);
     transition: transform 0.2s;
     cursor: zoom-in;
 }
@@ -231,7 +231,7 @@
 }
 
 .filter-select option {
-    background: #1e293b;
+    background: var(--color-surface);
     color: white;
 }
 
@@ -241,6 +241,13 @@
     max-width: 90vw;
     max-height: 90vh;
     display: inline-block;
+}
+
+#receiptModal .close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 1;
 }
 
 /* Upload Progress Overlay */
@@ -295,7 +302,7 @@
 /* Electronic Receipt (AI) Styles */
 .ereceipt-modal-content {
     max-width: 500px;
-    background: #1e293b;
+    background: var(--color-surface);
     border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
@@ -572,11 +579,11 @@
         display: grid;
         grid-template-columns: auto 1fr auto;
         gap: 0.55rem;
-        background: #1e293b; 
+        background: var(--color-surface); 
         border-radius: 0.75rem; 
         padding: 1rem 0.75rem 0.25rem 0.75rem; 
         margin-bottom: 0.75rem; 
-        border: 1px solid #334155; 
+        border: 1px solid var(--color-border); 
         position: relative; 
     }
     .files-table td:not(.col-icon):not(.col-actions) { 
@@ -645,7 +652,7 @@
 .receipt-upload-modal .modal-content {
     max-width: 500px;
     width: 95%;
-    background: #1e293b;
+    background: var(--color-surface);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 1rem;
     padding: 2rem;
