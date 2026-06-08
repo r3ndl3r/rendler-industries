@@ -203,7 +203,7 @@
 }
 
 .board-frame {
-    background: #1e293b;
+    background: var(--color-surface);
     padding: 15px;
     border-radius: 20px;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
