@@ -15,10 +15,10 @@
     <div class="header-bar automator-header">
         <h1>🧑‍🔧 <span>Automator</span></h1>
         <div class="manage-actions">
-            <button type="button" class="action-btn" data-automator-action="open-playbook">＋ Playbook</button>
-            <button type="button" class="action-btn" data-automator-action="open-inventory-manage">▤ Inventories</button>
-            <button type="button" class="action-btn" data-automator-action="open-secret">🔐 Secret</button>
-            <button type="button" class="action-btn action-btn-muted" data-automator-action="lock-vault">🔒 Lock</button>
+            <button type="button" class="action-btn hidden" data-automator-action="open-playbook">＋ Playbook</button>
+            <button type="button" class="action-btn hidden" data-automator-action="open-inventory-manage">▤ Inventories</button>
+            <button type="button" class="action-btn hidden" data-automator-action="open-secret">🔐 Secret</button>
+            <button type="button" class="action-btn action-btn-muted hidden" data-automator-action="lock-vault">🔒 Lock</button>
         </div>
     </div>
 
@@ -26,7 +26,7 @@
         <div class="vault-panel">
             <div class="vault-icon">🔐</div>
             <h2 id="vaultTitle">Vault Locked</h2>
-            <p id="vaultMessage">Enter the Automator master password to unlock orchestration controls.</p>
+            <p id="vaultMessage">Enter the Automator master password to unlock.</p>
             <form id="vaultForm">
                 <input type="password" id="vaultPassword" class="game-input no-emoji" autocomplete="current-password" placeholder="Master password">
                 <button type="submit" id="vaultSubmitBtn" class="btn-primary">Unlock</button>
