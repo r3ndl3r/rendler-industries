@@ -12,13 +12,13 @@ use Mojo::JSON qw(decode_json encode_json);
 #   - Binary upload and persistent storage of receipt images.
 #   - Metadata tagging (Store, Date, Total) with OCR assistance.
 #   - Pagination for large ledgers.
-#   - Gemini AI integration for high-fidelity electronic receipts.
+#   - AI integration for high-fidelity electronic receipts.
 #   - Client-side image cropping and refinement.
 #
 # Integration Points:
 #   - Restricted to family members via router bridge.
 #   - Depends on DB::Receipts for binary and structured storage.
-#   - Leverages global AI service helpers ($c->gemini_*).
+#   - Leverages global AI service helpers.
 
 # Renders the main receipt ledger skeleton.
 # Route: GET /receipts
@@ -260,22 +260,16 @@ sub api_ai_analyze {
     $c->render_later;
     
     # Use localized subprocess for heavy AI analysis
-    $c->gemini_analyze_receipt($receipt->{file_data}, $receipt->{mime_type})->then(sub {
+    $c->ai_analyze_receipt($receipt->{file_data}, $receipt->{mime_type})->then(sub {
         my $data = shift;
         
-        # Parse Gemini response structure to extract candidate JSON
+        # Parse the normalized AI response structure to extract candidate JSON.
         if ($data && $data->{candidates} && @{$data->{candidates}}) {
             my $json_text = $data->{candidates}[0]{content}{parts}[0]{text};
-            
-            # Strip markdown wrapping if present
-            if ($json_text =~ /```json\s*(.*?)\s*```/s) { $json_text = $1; }
-            elsif ($json_text =~ /^\s*(\{.*?\})\s*$/s) { $json_text = $1; }
-
-            my $extracted;
-            eval { $extracted = decode_json($json_text); };
+            my $extracted = $c->ai_decode_json($json_text);
             
             if ($extracted && ref($extracted) eq 'HASH') {
-                $c->db->update_receipt_ai_json($id, $json_text);
+                $c->db->update_receipt_ai_json($id, encode_json($extracted));
                 $c->render(json => { success => 1, data => $extracted });
                 return;
             }
