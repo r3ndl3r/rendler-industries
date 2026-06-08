@@ -3,19 +3,18 @@
 package MyApp::Controller::AI;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::UserAgent;
-use Mojo::Util qw(b64_encode trim);
+use Mojo::Util qw(trim);
 use Mojo::JSON qw(encode_json decode_json);
 
 # Controller for "The Family Pulse AI".
 # Features:
 #   - Contextual memory (Dashboard state injection)
-#   - Multimodal analysis (BLOB image processing from DB)
 #   - Conversational persistence via MariaDB
 #   - Synchronized message history handshake
 # Integration points:
 #   - Restricted to 'family' bridge via router
 #   - Depends on DB::AI for state aggregation and history
-#   - Uses global gemini_api_key from app_secrets
+#   - Uses the configured AI provider and API credentials from app_secrets
 
 # Renders the message interface.
 # Route: GET /ai
@@ -47,37 +46,27 @@ sub api_state {
 sub chat {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+    $c->inactivity_timeout(300);
 
     my $user_id = $c->current_user_id;
     my $prompt  = trim($c->param('prompt') // '');
-    my $file_id = $c->param('file_id');
-    my $file_type = $c->param('file_type') // 'file';
 
     return $c->render(json => { success => 0, error => "Say something!" }) unless $prompt;
 
     # 1. Gather Context & Build System Message
     my $snapshot = $c->db->get_dashboard_snapshot();
-    my $system_instructions = "You are 'The Family Pulse AI', the central brain of Rendler Industries. 
-    You have access to real-time family data and Google Search. 
-    If you don't know an answer (like an address or specific detail), use Google Search to find it. 
-    Be helpful, concise, and occasionally slightly witty. 
+    my $ai_provider = $c->db->get_ai_provider();
+    my $system_instructions = "You are 'The Family Pulse AI', the central brain of Rendler Industries.
+    Use the conversation and CURRENT DASHBOARD STATE as factual sources for Rendler family context.
+    If a search tool is available, use it for current external facts such as sports fixtures, public schedules, news, or information not present in the dashboard.
+    The CURRENT DASHBOARD STATE includes current_time and current_timezone for the latest user message. Treat those fields as the authoritative current date/time for relative phrases like today, tomorrow, tonight, next week, and recently.
+    Do not invent birthdays, exams, appointments, registrations, reminders, weather, addresses, or family status. Mention a specific fact only if it appears in CURRENT DASHBOARD STATE or the conversation.
+    If the user asks for a status update, summarize only visible snapshot items and say when there is no relevant data.
+    Be helpful, concise, and occasionally slightly witty.
     CURRENT DASHBOARD STATE: " . encode_json($snapshot);
 
     # 2. Prepare Payload
     my @user_parts = ({ text => $prompt });
-    
-    if ($file_id) {
-        my $attachment = $c->db->get_ai_attachment($file_type, $file_id);
-        if ($attachment && $attachment->{data}) {
-            push @user_parts, {
-                inlineData => { 
-                    mimeType => $attachment->{mime},
-                    data     => b64_encode($attachment->{data}, '')
-                }
-            };
-        }
-    }
-
     my @contents;
     # History injection (Last 10 turns)
     my $history = $c->db->get_ai_history($user_id, 10);
@@ -87,15 +76,18 @@ sub chat {
     # Current turn
     push @contents, { role => 'user', parts => \@user_parts };
 
-    # 3. Dispatch to Gemini
+    # 3. Dispatch to configured AI provider
     $c->render_later;
 
-    $c->gemini_prompt(
+    my %prompt_args = (
         contents => \@contents,
         system   => $system_instructions,
-        timeout  => 45,
-        # Specialized Search config preserved for chat
-        tools    => [{ google_search => {} }]
+        timeout  => 300,
+    );
+    $prompt_args{web_search} = 1 if $ai_provider eq 'gemini' || $ai_provider eq 'opencode';
+
+    $c->ai_prompt(
+        %prompt_args
     )->then(sub {
         my $data = shift;
 
@@ -104,7 +96,7 @@ sub chat {
             my $ai_text = $data->{candidates}[0]{content}{parts}[0]{text} // "I'm not sure how to respond to that.";
             
             # Persist both user and model turns
-            $c->db->save_ai_message($user_id, 'user', $prompt, $file_id ? { file_id => $file_id, file_type => $file_type } : undef);
+            $c->db->save_ai_message($user_id, 'user', $prompt);
             $c->db->save_ai_message($user_id, 'model', $ai_text);
             
             $c->render(json => { 
@@ -117,7 +109,7 @@ sub chat {
         }
     })->catch(sub {
         my $err = shift;
-        $c->app->log->error("Gemini API Exception: $err");
+        $c->app->log->error("AI API Exception: $err");
         $c->render(json => { success => 0, error => "AI service error: $err" });
     });
 }
