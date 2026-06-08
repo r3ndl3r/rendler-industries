@@ -18,16 +18,20 @@ let STATE = {
     all_users: []
 };
 
-// Persistent queue for multi-photo uploads
+// Persistent queue for prepared multi-photo uploads
 let UPLOAD_QUEUE = [];
+let UPLOAD_TOKEN = 0;
 
 const CONFIG = {
-    SYNC_INTERVAL_MS: 30000
+    SYNC_INTERVAL_MS: 30000,
+    ROOM_UPLOAD_JPEG_QUALITY: 0.82,
+    ROOM_UPLOAD_TIMEOUT_MS: 90000
 };
 
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
     setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
+    setupUploadInput();
 
     // Global modal closure integration
     setupGlobalModalClosing(['modal-overlay'], [closeUploadModal, closePhotoModal, closeSettingsModal]);
@@ -517,32 +521,39 @@ async function applySettingsModal() {
 function renderUploadPreviews() {
     const previewContainer = document.getElementById('filePreviews');
     const uploadBtn = document.getElementById('uploadBtn');
-    if (!previewContainer) return;
+    if (!previewContainer || !uploadBtn) return;
 
     previewContainer.innerHTML = '';
     
     if (UPLOAD_QUEUE.length > 0) {
         uploadBtn.classList.remove('hidden');
         previewContainer.classList.add('file-previews');
-        UPLOAD_QUEUE.forEach((file, index) => {
-            const objectUrl = URL.createObjectURL(file);
+        UPLOAD_QUEUE.forEach(item => {
             const div = document.createElement('div');
             div.className = 'upload-preview-item';
-
-            const img = document.createElement('img');
-            img.className = 'preview-thumb';
-            img.src = objectUrl;
-            // Release memory once the image has loaded or failed
-            img.onload  = () => URL.revokeObjectURL(objectUrl);
-            img.onerror = () => { URL.revokeObjectURL(objectUrl); img.alt = file.name; };
 
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'preview-remove';
             btn.textContent = '×';
-            btn.onclick = () => removeFromQueue(index);
+            btn.disabled = item.processing;
+            btn.onclick = () => removeQueueItem(item.id);
 
-            div.appendChild(img);
+            if (item.processing) {
+                div.innerHTML = `
+                    <div class="empty-preview-hint">
+                        <span>⌛</span>
+                        <strong>Processing...</strong>
+                    </div>
+                `;
+            } else if (item.previewUrl) {
+                const img = document.createElement('img');
+                img.className = 'preview-thumb';
+                img.src = item.previewUrl;
+                img.alt = item.name;
+                div.appendChild(img);
+            }
+
             div.appendChild(btn);
             previewContainer.appendChild(div);
         });
@@ -565,8 +576,9 @@ function renderUploadPreviews() {
  * @returns {void}
  */
 function removeFromQueue(index) {
-    UPLOAD_QUEUE.splice(index, 1);
-    renderUploadPreviews();
+    const item = UPLOAD_QUEUE[index];
+    if (!item) return;
+    removeQueueItem(item.id);
 }
 
 /**
@@ -578,20 +590,27 @@ function removeFromQueue(index) {
 async function handleUpload(event) {
     event.preventDefault();
     if (UPLOAD_QUEUE.length === 0) return;
+    if (UPLOAD_QUEUE.some(item => item.processing)) {
+        showToast('Still processing photos. Please wait a moment.', 'error');
+        return;
+    }
 
     const btn = document.getElementById('uploadBtn');
     const formData = new FormData();
     
-    UPLOAD_QUEUE.forEach(file => {
-        formData.append('files[]', file);
+    UPLOAD_QUEUE.forEach(item => {
+        formData.append('files[]', item.blob, item.uploadName);
     });
     
     btn.disabled = true;
     const originalHtml = btn.innerHTML;
     btn.innerHTML = `⌛ Uploading ${UPLOAD_QUEUE.length} photos...`;
+    if (typeof showLoadingOverlay === 'function') {
+        showLoadingOverlay('Uploading room photos...', 'Preparing your submission for review.');
+    }
     
     try {
-        const result = await apiPost('/room/api/upload', formData);
+        const result = await apiPost('/room/api/upload', formData, CONFIG.ROOM_UPLOAD_TIMEOUT_MS);
         if (result && result.success) {
             closeUploadModal();
             loadState();
@@ -599,6 +618,7 @@ async function handleUpload(event) {
     } catch (err) {
         console.error("Upload process failed:", err);
     } finally {
+        if (typeof hideLoadingOverlay === 'function') hideLoadingOverlay();
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
@@ -708,8 +728,9 @@ function showFailComment(id) {
  */
 function openUploadModal() {
     document.getElementById('uploadModal').classList.add('show');
-    UPLOAD_QUEUE = []; 
+    clearUploadQueue();
     renderUploadPreviews();
+    document.body.classList.add('modal-open');
 }
 
 /**
@@ -720,7 +741,8 @@ function closeUploadModal() {
     if (modal) modal.classList.remove('show');
     const form = document.getElementById('uploadForm');
     if (form) form.reset();
-    UPLOAD_QUEUE = [];
+    clearUploadQueue();
+    document.body.classList.remove('modal-open');
 }
 
 /**
@@ -769,42 +791,139 @@ function confirmDeleteSubmission(id) {
 }
 
 /**
- * Opens a fresh file-picker input. A new element is created each time to
- * avoid stale capture state. A sessionStorage sentinel is written before the
- * picker launches so that a process-kill/reload cycle can be detected on the
- * next page load and a recovery notice shown to the user.
+ * Opens the persistent room upload input and marks the camera round-trip as active.
  */
 function openRoomFileInput() {
-    const input = document.createElement('input');
-    input.type   = 'file';
-    input.name   = 'files[]';
-    input.accept = 'image/*';
-    input.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0;';
-
-    input.onchange = () => {
-        // Sentinel cleared: process survived the camera round-trip.
-        sessionStorage.removeItem('room_camera_pending');
-
-        const allFiles  = Array.from(input.files);
-        const validFiles = allFiles.filter(f => f.size > 0);
-        const badCount  = allFiles.length - validFiles.length;
-
-        if (allFiles.length === 0) {
-            showToast('No photo was captured. Please try again.', 'error');
-        } else if (badCount > 0) {
-            showToast('One or more photos came back empty. Please try again.', 'error');
-        }
-
-        if (validFiles.length > 0) {
-            UPLOAD_QUEUE = [...UPLOAD_QUEUE, ...validFiles];
-            renderUploadPreviews();
-        }
-
-        input.remove();
-    };
-
-    document.body.appendChild(input);
+    const input = document.getElementById('roomUploadInput');
+    if (!input) return;
     sessionStorage.setItem('room_camera_pending', '1');
     input.click();
 }
 
+/**
+ * Wires the persistent upload input used by the mobile camera flow.
+ *
+ * @returns {void}
+ */
+function setupUploadInput() {
+    const input = document.getElementById('roomUploadInput');
+    if (!input) return;
+
+    input.addEventListener('change', async () => {
+        sessionStorage.removeItem('room_camera_pending');
+
+        const files = Array.from(input.files || []);
+        input.value = '';
+
+        if (files.length === 0) {
+            showToast('No photo was captured. Please try again.', 'error');
+            return;
+        }
+
+        await addRoomUploadFiles(files);
+    });
+}
+
+/**
+ * Adds selected files to the upload queue after client-side normalization.
+ *
+ * @param {File[]} files - Selected camera/gallery files.
+ * @returns {Promise<void>}
+ */
+async function addRoomUploadFiles(files) {
+    const token = ++UPLOAD_TOKEN;
+    const validFiles = files.filter(file => file && file.size > 0);
+    const badCount = files.length - validFiles.length;
+
+    if (badCount > 0) {
+        showToast('One or more photos came back empty. Please try again.', 'error');
+    }
+    if (validFiles.length === 0) return;
+
+    const queueItems = validFiles.map((file, index) => ({
+        id: `${Date.now()}-${token}-${index}`,
+        name: file.name || `room-photo-${UPLOAD_QUEUE.length + index + 1}`,
+        uploadName: normalizedUploadName(file.name, token, index),
+        processing: true,
+        blob: null,
+        previewUrl: null
+    }));
+
+    UPLOAD_QUEUE = [...UPLOAD_QUEUE, ...queueItems];
+    renderUploadPreviews();
+
+    await Promise.all(queueItems.map(async (item, index) => {
+        const file = validFiles[index];
+        if (!file) return;
+
+        try {
+            const prepared = await prepareRoomUploadImage(file);
+            item.blob = prepared;
+            item.processing = false;
+            item.previewUrl = URL.createObjectURL(prepared);
+        } catch (err) {
+            console.error('Room image preparation failed', err);
+            item.processing = false;
+            removeQueueItem(item.id, false);
+            showToast(`Could not process ${file.name || 'this photo'}. Please try again.`, 'error');
+        } finally {
+            renderUploadPreviews();
+        }
+    }));
+}
+
+/**
+ * Converts modern mobile photos when needed without resizing room images.
+ *
+ * @param {File|Blob} file - Selected image file.
+ * @returns {Promise<File|Blob>} Prepared upload payload.
+ */
+async function prepareRoomUploadImage(file) {
+    const low = (file.name || '').toLowerCase();
+    if ((low.endsWith('.heic') || low.endsWith('.heif')) && typeof heic2any === 'function') {
+        showToast('Processing modern image format...', 'info');
+        const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: CONFIG.ROOM_UPLOAD_JPEG_QUALITY });
+        return Array.isArray(converted) ? converted[0] : converted;
+    }
+    return file;
+}
+
+/**
+ * Clears the upload queue and releases preview URLs.
+ *
+ * @returns {void}
+ */
+function clearUploadQueue() {
+    UPLOAD_QUEUE.forEach(item => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    });
+    UPLOAD_QUEUE = [];
+}
+
+/**
+ * Removes a queued item and optionally refreshes previews.
+ *
+ * @param {string} id - Queue item id.
+ * @param {boolean} rerender - Whether to refresh the preview grid.
+ * @returns {void}
+ */
+function removeQueueItem(id, rerender = true) {
+    const index = UPLOAD_QUEUE.findIndex(item => item.id === id);
+    if (index === -1) return;
+    const [item] = UPLOAD_QUEUE.splice(index, 1);
+    if (item && item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    if (rerender) renderUploadPreviews();
+}
+
+/**
+ * Normalizes a queue filename for upload.
+ *
+ * @param {string} name - Source filename.
+ * @param {number} token - Selection token.
+ * @param {number} index - Selection index.
+ * @returns {string} Upload filename.
+ */
+function normalizedUploadName(name, token, index) {
+    const base = (name || `room-photo-${token}-${index + 1}`).replace(/\.[^.]*$/, '').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'room-photo';
+    return `${base}-${token}-${index + 1}.jpg`;
+}
