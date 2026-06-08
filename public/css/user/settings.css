@@ -15,7 +15,7 @@
 
 /* --- Card --- */
 .settings-card {
-    background: #1e293b;
+    background: var(--color-surface);
     border-radius: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.05);
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
