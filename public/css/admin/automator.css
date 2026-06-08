@@ -167,7 +167,6 @@
 
 .playbook-category {
     background: rgba(15, 23, 42, 0.42);
-    backdrop-filter: blur(18px);
     border: 1px solid rgba(148, 163, 184, 0.14);
     border-radius: 8px;
     overflow: hidden;
@@ -179,7 +178,6 @@
     justify-content: space-between;
     gap: 12px;
     background: rgba(30, 41, 59, 0.82);
-    backdrop-filter: blur(14px);
     color: #e0f2fe;
     padding: 12px 16px;
     font-weight: 700;
@@ -241,7 +239,6 @@
 
 .playbook-meta span {
     background: rgba(15, 23, 42, 0.7);
-    backdrop-filter: blur(12px);
     border: 1px solid rgba(148, 163, 184, 0.14);
     border-radius: 6px;
     padding: 4px 8px;
@@ -249,7 +246,6 @@
 
 .playbook-meta-action {
     background: rgba(15, 23, 42, 0.7);
-    backdrop-filter: blur(12px);
     border: 1px solid rgba(59, 130, 246, 0.28);
     border-radius: 6px;
     color: #bfdbfe;
@@ -998,7 +994,6 @@
             "actions";
         gap: 12px;
         background: rgba(30, 41, 59, 0.72);
-        backdrop-filter: blur(16px);
         border: 1px solid rgba(148, 163, 184, 0.18);
         border-radius: 1rem;
         padding: 1.25rem;
@@ -1512,7 +1507,7 @@
 }
 
 .history-select {
-    background: #1e293b;
+    background: var(--color-surface);
     border: 1px solid rgba(148, 163, 184, 0.2);
     color: #f8fafc;
     padding: 4px 8px;
@@ -1521,6 +1516,6 @@
 }
 
 .history-select option {
-    background: #1e293b;
+    background: var(--color-surface);
     color: #f8fafc;
 }
