@@ -252,7 +252,7 @@ sub api_reassign_solve {
     $c->render(json => { success => 1, message => 'Cube type updated', solves => $solves });
 }
 
-# API Endpoint: Processes two images of a Rubik's cube and extracts the state via Gemini AI.
+# API Endpoint: Processes two images of a Rubik's cube and extracts the state via AI.
 # Route: POST /rubiks/api/solver/upload
 sub api_upload_solver {
     my $c = shift;
@@ -270,7 +270,7 @@ sub api_upload_solver {
     my $data1 = $img1->asset->slurp;
     my $data2 = $img2->asset->slurp;
 
-    # Gemini Vision Prompt for lossy color mapping
+    # Vision prompt for lossy color mapping
     my $requested_dim = $c->param('dimension') || 'auto';
     my $dim = $requested_dim =~ /^[34]$/ ? int($requested_dim) : 'auto';
     my $sticker_goal = $dim eq 'auto'
@@ -303,7 +303,7 @@ Return ONLY a JSON object with either the 'state_string' field OR the 'error' fi
 
     $c->render_later;
 
-    $c->gemini_prompt(
+    $c->ai_prompt(
         contents => [{ role => 'user', parts => \@user_parts }],
         system   => $system_instructions,
         timeout  => 60,
@@ -313,12 +313,8 @@ Return ONLY a JSON object with either the 'state_string' field OR the 'error' fi
 
         if ($data && $data->{candidates} && @{$data->{candidates}}) {
             my $json_text = $data->{candidates}[0]{content}{parts}[0]{text} // '';
-            # Strip markdown code blocks if present
-            $json_text =~ s/```json\n?//g;
-            $json_text =~ s/\n?```//g;
-
             eval {
-                my $parsed = Mojo::JSON::decode_json(trim($json_text));
+                my $parsed = $c->ai_decode_json($json_text);
                 if ($parsed && $parsed->{error}) {
                     $c->render(json => { success => 0, error => $parsed->{error} });
                 } elsif ($parsed && $parsed->{state_string}) {
