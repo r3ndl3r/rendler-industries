@@ -1,6 +1,6 @@
 // /public/sw.js
 
-const CACHE_NAME = 'rendler-offline-v104';
+const CACHE_NAME = 'rendler-offline-v116';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 const OFFLINE_CACHE_PREFIX = 'rendler-offline-';
 const NAVIGATION_NETWORK_TIMEOUT_MS = 1500;
@@ -138,6 +138,11 @@ function isApiGet(request, url) {
     return request.method === 'GET' && (url.pathname.startsWith('/api/') || url.pathname.includes('/api/'));
 }
 
+function shouldBypassApiGetCache(url) {
+    return url.pathname === '/admin/automator/api/status'
+        || url.pathname === '/admin/automator/api/state';
+}
+
 function cacheStatusResponse() {
     return caches.keys().then(keys => Promise.all(
         keys.filter(k => k.startsWith(OFFLINE_CACHE_PREFIX)).sort().reverse().map(name => {
@@ -217,6 +222,9 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (url.pathname.startsWith('/audiobooks/api/stream/')) return;
+    if (url.pathname === '/audiobooks/api/state') return;
+
+    if (shouldBypassApiGetCache(url)) return;
 
     if (isApiGet(event.request, url)) {
         event.respondWith(apiGetResponse(event));
