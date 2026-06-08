@@ -238,11 +238,11 @@
     
     .data-table tr {
         display: block; 
-        background: #1e293b; 
+        background: var(--color-surface); 
         border-radius: 0.75rem; 
         padding: 1rem; 
         margin-bottom: 0.75rem; 
-        border: 1px solid #334155; 
+        border: 1px solid var(--color-border); 
         position: relative;
     }
 
