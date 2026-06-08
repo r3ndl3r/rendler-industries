@@ -3,7 +3,6 @@
 package MyApp::Controller::Notes;
 
 use Mojo::Base 'Mojolicious::Controller';
-use Mojo::JSON qw(decode_json);
 use Mojo::Util qw(trim);
 
 sub _is_fence_note_title {
@@ -891,6 +890,7 @@ sub api_copy_note {
 sub api_ai_format_note {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
+    $c->inactivity_timeout(300);
 
     my $user_id = $c->current_user_id();
     my $note_id = $c->param('id');
@@ -913,6 +913,7 @@ sub api_ai_format_note {
 
     my $style_guide = <<'STYLE_GUIDE';
 Available Rendler note formatting. Use only these supported syntaxes:
+If a formatting pattern is not listed below, keep it as plain text and do not invent a new tag.
 - Headings: # H1, ## H2, ### H3
 - Text: **Bold**, *Italic*, ~~Strikethrough~~, `Inline Code`
 - Code blocks: ```lang for multi-line blocks
@@ -925,7 +926,7 @@ Available Rendler note formatting. Use only these supported syntaxes:
   Names: yellow, orange, red, pink, green, blue, indigo, violet, slate, accent, info, success, warning, danger
 - Sizes: [size:xs|sm|md|lg|xl|2xl]Text[/size]
 - Highlights: [bg:name|#hex]Text[/bg]
-- Tags: [tag:label|color] using the same named colors
+- Tags: [tag:label] or [tag:label|color] using the same named colors
 - Dates: [date:YYYY-MM-DD]
 - Progress: [progress:percent|label]
 - Spoilers: [spoiler:Title]Content[/spoiler] or [spoiler]Content[/spoiler]
@@ -949,23 +950,23 @@ STYLE_GUIDE
     my $now_context = $c->now->strftime('%Y-%m-%d %H:%M:%S %Z');
     my $date_context = "Current system date/time: $now_context. DATE YEAR RULES: If source content has dates without an explicit year, you MUST infer the year from the strongest surrounding context before emitting any [date:YYYY-MM-DD] tags. Strong context includes the note title, unit/semester labels, nearby headings, and current academic period. If the title contains a year such as '2026' or a semester marker such as '2026-1', that year applies to all yearless due dates in the note unless the source explicitly says otherwise. For example, in a note titled 'Swinburne Due Dates 2026-1', 'Due 3 Jun at 23:59' MUST become [date:2026-06-03]. Do NOT default to old/past years like 2021 or 2024. Do NOT invent a year that is not supported by title/content/current period context. Do NOT change years that are explicit in the source.";
 
-    my $prompt = "Reformat the provided note into a polished Rendler dashboard note. Preserve all factual content, dates, tasks, links, filenames, code, and meaning. Do not invent new facts. Use one consistent structure for comparable sections. Return ONLY valid JSON with keys title and content.\n\n$date_context$custom_block\n\n$style_guide\n\nOriginal title:\n$clone->{title}\n\nOriginal content:\n$clone->{content}";
+    my $prompt = "Reformat the provided note body into a polished Rendler dashboard note. Preserve all factual content, dates, tasks, links, filenames, code, and meaning. Do not invent new facts or unsupported tags. If a tag or syntax is not listed in the style guide, leave that content as plain text. Use one consistent structure for comparable sections. Return ONLY the formatted note body. Do not return JSON. Do not include the note title unless it was already part of the original content.\n\n$date_context$custom_block\n\n$style_guide\n\nOriginal title for context only, do not rewrite it:\n$clone->{title}\n\nOriginal content:\n$clone->{content}";
 
     $c->render_later;
     $c->ai_prompt(
         contents        => [{ role => 'user', parts => [{ text => $prompt }] }],
-        system          => 'You are a senior dashboard architect formatting notes for a personal Rendler dashboard. Return compact, valid JSON only.',
-        response_format => 'application/json',
+        system          => 'You are a senior dashboard architect formatting notes for a personal Rendler dashboard. Return only the formatted note body, never JSON.',
         max_tokens      => 8192,
-        timeout         => 60
+        timeout         => 300
     )->then(sub {
         my $data = shift;
-        my $ai_text = $data->{candidates}[0]{content}{parts}[0]{text} // '{}';
-        my $formatted = $c->ai_decode_json($ai_text) || {};
-        my $new_title = trim($formatted->{title} // $clone->{title} // 'Untitled Note');
-        my $content   = $formatted->{content};
+        my $content = $data->{candidates}[0]{content}{parts}[0]{text} // '';
+        my $new_title = trim($clone->{title} // 'Untitled Note');
+        $content =~ s/^\s*```(?:markdown|md|text)?\s*//i;
+        $content =~ s/\s*```\s*$//;
 
         unless (defined $content && !ref $content && length trim($content)) {
+            $c->app->log->error('AI note format returned empty content');
             return $c->render(json => { success => 0, error => 'AI returned invalid note content', clone_id => int($clone_id) });
         }
 
