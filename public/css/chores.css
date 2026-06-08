@@ -522,8 +522,30 @@ select.game-input-premium option {
     .chore-grid { grid-template-columns: 1fr; gap: 1.5rem; }
     .chore-title { font-size: 1.1rem; }
 
-    .header-bar { flex-wrap: wrap; gap: 0.75rem; }
-    .header-actions { flex-wrap: wrap; width: 100%; justify-content: space-between; }
+    .header-bar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .header-bar h1 {
+        min-width: 0;
+        margin: 0;
+    }
+    .header-actions {
+        display: contents;
+    }
+    #adminActions {
+        grid-column: 2;
+        justify-self: end;
+    }
+    #adminActions .btn-primary {
+        white-space: nowrap;
+    }
+    #headerStats,
+    #childSubmitActions {
+        grid-column: 1 / -1;
+    }
 
     .form-row-balanced { flex-direction: column; gap: 1rem; }
     .btn-premium-action-shrink { width: auto; }
@@ -548,11 +570,11 @@ select.game-input-premium option {
     #historyTable tr,
     #pendingSubmissionsTable tr {
         display: block;
-        background: #1e293b;
+        background: var(--color-surface);
         border-radius: 1rem;
         padding: 1rem 1.25rem;
         margin-bottom: 1rem;
-        border: 1px solid #334155;
+        border: 1px solid var(--color-border);
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         position: relative;
     }
