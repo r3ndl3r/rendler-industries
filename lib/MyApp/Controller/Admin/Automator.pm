@@ -75,7 +75,7 @@ sub api_vault_status {
     $c->render(json => {
         success        => 1,
         setup_required => $c->db->automator_master_exists ? 0 : 1,
-        unlocked       => $c->session('automator_unlocked') ? 1 : 0
+        unlocked       => _vault_unlocked($c, 0) ? 1 : 0
     });
 }
 
@@ -384,6 +384,25 @@ sub api_abort {
     _broadcast($id, "\n[Automator] Abort requested.\n");
     $c->db->automator_log_audit($c->current_user_id, 'abort_run', 'history', $id, {});
     $c->render(json => { success => 1, message => 'Run abort requested', state => $c->db->get_automator_state(_state_filters($c)) });
+}
+
+# Permanently removes one finished run history log.
+# Route: POST /admin/automator/api/history/delete/:id
+# Parameters:
+#   id : History record ID to delete
+sub api_delete_history {
+    my $c = shift;
+    return _locked($c) unless _api_allowed($c);
+    my $id = $c->stash('id');
+    my $h = $c->db->get_automator_history($id);
+    return $c->render(json => { success => 0, error => 'Run not found' }, status => 404)
+        unless _owned_history($c, $h);
+    return $c->render(json => { success => 0, error => 'Cannot delete a running log' }, status => 409)
+        if ($h->{status} // '') eq 'running';
+
+    $c->db->delete_automator_history($id);
+    $c->db->automator_log_audit($c->current_user_id, 'delete_history', 'history', $id, {});
+    $c->render(json => { success => 1, message => 'Log deleted', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
 # Requests a global abort for all currently running playbooks.
@@ -842,16 +861,7 @@ sub _validate_inventory {
 sub _api_allowed {
     my ($c) = @_;
     return 0 unless $c->is_admin;
-    if ($c->session('automator_unlocked')) {
-        my $last = int($c->session('automator_last_activity') || 0);
-        if ($last && time - $last > 900) {
-            $c->session(automator_unlocked => 0);
-            return 0;
-        }
-        $c->session(automator_last_activity => time);
-        return 1;
-    }
-    return 0;
+    return _vault_unlocked($c, 1);
 }
 
 sub _locked {
@@ -864,6 +874,21 @@ sub _unlock_session {
     my ($c) = @_;
     $c->session(automator_unlocked => 1);
     $c->session(automator_last_activity => time);
+}
+
+sub _vault_unlocked {
+    my ($c, $refresh_activity) = @_;
+    return 0 unless $c->session('automator_unlocked');
+
+    my $last = int($c->session('automator_last_activity') || 0);
+    if ($last && time - $last > 900) {
+        $c->session(automator_unlocked      => 0);
+        $c->session(automator_last_activity => 0);
+        return 0;
+    }
+
+    $c->session(automator_last_activity => time) if $refresh_activity;
+    return 1;
 }
 
 sub _filters {
@@ -1006,16 +1031,16 @@ sub api_ai_report {
     $raw_text";
 
     $c->render_later;
-    $c->gemini_prompt(
+    $c->ai_prompt(
         contents => [{ role => 'user', parts => [{ text => $prompt }] }],
         system   => "You are an expert DevOps analyst. Use the provided Run IDs to link issues back to specific logs.",
+        response_format => 'application/json',
+        temp    => 0.1,
         timeout  => 60
     )->then(sub {
         my $data = shift;
         my $ai_text = $data->{candidates}[0]{content}{parts}[0]{text} // "{}";
-        $ai_text =~ s/^```json\s*//i; $ai_text =~ s/\s*```$//;
-        
-        my $report = eval { decode_json($ai_text) } || { summary => "Parse error.", issues => [], recommendations => [], final_summary => "Error." };
+        my $report = $c->ai_decode_json($ai_text) || { summary => "Parse error.", issues => [], recommendations => [], final_summary => "Error." };
         _sanitize_ai_report_run_ids($c, $report, \%valid_run_id);
         $report->{created_at} = _db_timestamp($c->now);
 
@@ -1051,6 +1076,7 @@ sub register_routes {
     $r->post('/admin/automator/api/run')->to('admin-automator#api_run');
     $r->post('/admin/automator/api/abort/all')->to('admin-automator#api_abort_all');
     $r->post('/admin/automator/api/abort/:id')->to('admin-automator#api_abort');
+    $r->post('/admin/automator/api/history/delete/:id')->to('admin-automator#api_delete_history');
     $r->post('/admin/automator/api/inventory/save')->to('admin-automator#api_save_inventory');
     $r->post('/admin/automator/api/inventory/delete/:id')->to('admin-automator#api_delete_inventory');
     $r->post('/admin/automator/api/playbook/save')->to('admin-automator#api_save_playbook');
