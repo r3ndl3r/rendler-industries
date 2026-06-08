@@ -25,8 +25,9 @@ sub dashboard {
     return $c->redirect_to('/login') unless $c->is_logged_in;
     return $c->render('noperm') unless $c->is_family;
     
-    # Redirection: admins and parents utilize the unified management interface
-    return $c->redirect_to('/timers/manage') if $c->is_parent;
+    # Render appropriate template directly to avoid a redirect, which prevents
+    # the Service Worker from caching the response for offline use.
+    return $c->render('timers/manage') if $c->is_parent;
 
     $c->render('timers/dashboard');
 }
