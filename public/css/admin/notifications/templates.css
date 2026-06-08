@@ -45,7 +45,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 1rem 1.25rem;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--color-border);
 }
 
 .ledger-section-header h3 {
@@ -66,7 +66,7 @@
 }
 
 .ledger-section-header.collapsible-header.active-section {
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--color-border);
 }
 
 .toggle-icon {
@@ -156,7 +156,7 @@
 .tag-chip {
     background: #0f172a;
     color: #60a5fa;
-    border: 1px solid #334155;
+    border: 1px solid var(--color-border);
     border-radius: 6px;
     padding: 3px 10px;
     font-size: 0.8rem;
@@ -166,7 +166,7 @@
 }
 
 .tag-chip:hover {
-    background: #1e293b;
+    background: var(--color-surface);
     border-color: #3b82f6;
     transform: scale(1.05);
 }
@@ -303,11 +303,11 @@
     /* Template Cards (Exclude Separators) */
     .data-table tr:not(.namespace-separator) {
         display: block; 
-        background: #1e293b; 
+        background: var(--color-surface); 
         border-radius: 0.75rem; 
         padding: 0.85rem; /* Tighter card padding */
         margin-bottom: 0.75rem; /* Tighter separation */
-        border: 1px solid #334155; 
+        border: 1px solid var(--color-border); 
         position: relative;
         padding-right: 3.5rem !important;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
