@@ -212,7 +212,7 @@ The system features a redundant, priority-weighted alert engine for real-time an
 
 ### ⛽ Fuel Usage Logger (`/fuel`)
 *   **Quick Fuel Stop Logging:** Upload a photo of the odometer and a photo of the pump or receipt; the app works out which photo is which.
-*   **Automatic Data Entry:** Reads the odometer, litres, price per litre, total cost, date, and station name where possible.
+*   **Automatic Data Entry:** Reads the odometer, litres, total cost, date, and station name where possible, then calculates price per litre.
 *   **Review Before Saving:** If a photo is blurry or something looks uncertain, the log opens for quick correction instead of saving bad information.
 *   **Multiple Vehicles:** Track fuel use separately for each car in the household.
 *   **Running Costs:** See weekly, monthly, and yearly fuel spend, monthly litres, average fuel price, L/100km, and cost per kilometre once enough fill-ups have been recorded.
