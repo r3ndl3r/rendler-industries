@@ -72,12 +72,36 @@ sub DB::get_all_settings {
         $settings->{email} = $email_settings;
     };
 
+    # Safely fetch AI provider preference
+    eval {
+        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'ai_provider'");
+        $sth->execute();
+        my ($provider) = $sth->fetchrow_array();
+        $settings->{ai_provider} = $provider || 'gemini';
+    };
+
     # Safely fetch Google Gemini API key
     eval {
         my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'gemini_api_key'");
         $sth->execute();
         my ($key) = $sth->fetchrow_array();
         $settings->{gemini_key} = $key || '';
+    };
+
+    # Safely fetch OpenCode Zen API key
+    eval {
+        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'opencode_api_key'");
+        $sth->execute();
+        my ($key) = $sth->fetchrow_array();
+        $settings->{opencode_key} = $key || '';
+    };
+
+    # Safely fetch Local LLM application URL
+    eval {
+        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'local_ai_url'");
+        $sth->execute();
+        my ($url) = $sth->fetchrow_array();
+        $settings->{local_ai_url} = $url || '';
     };
 
     # Safely fetch Google Cloud API key (TTS/Translation)
@@ -331,6 +355,34 @@ sub DB::set_timer_reset_hour {
     }
 }
 
+sub DB::get_ai_provider {
+    my ($self) = @_;
+    $self->ensure_connection;
+    my $sql = "SELECT secret_value FROM app_secrets WHERE key_name = 'ai_provider'";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute();
+    my ($val) = $sth->fetchrow_array();
+    return ($val && ($val eq 'opencode' || $val eq 'local')) ? $val : 'gemini';
+}
+
+sub DB::update_ai_provider {
+    my ($self, $provider) = @_;
+    $self->ensure_connection;
+    return 0 unless $provider && ($provider eq 'gemini' || $provider eq 'opencode' || $provider eq 'local');
+
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'ai_provider'");
+    $sth->execute();
+    my ($count) = $sth->fetchrow_array();
+    if ($count > 0) {
+        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'ai_provider'");
+        $sth->execute($provider);
+    } else {
+        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('ai_provider', ?)");
+        $sth->execute($provider);
+    }
+    return 1;
+}
+
 # Retrieves the Google Gemini API key.
 # Parameters: None
 # Returns:
@@ -367,42 +419,6 @@ sub DB::update_gemini_key {
 }
 
 # Retrieves the list of available Gemini models.
-sub DB::get_gemini_models {
-    my ($self) = @_;
-    $self->ensure_connection;
-    my $sql = "SELECT secret_value FROM app_secrets WHERE key_name = 'gemini_models'";
-    my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute();
-    my ($val) = $sth->fetchrow_array();
-    
-    # Default list if not set
-    if (!$val) {
-        return ['gemini-3.1-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
-    }
-    
-    my $decoded = eval { decode_json($val) };
-    return (ref $decoded eq 'ARRAY') ? $decoded : [];
-}
-
-# Updates the list of available Gemini models.
-sub DB::update_gemini_models {
-    my ($self, $models_ref) = @_;
-    $self->ensure_connection;
-    my $models_json = encode_json($models_ref);
-    
-    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'gemini_models'");
-    $sth->execute();
-    my ($count) = $sth->fetchrow_array();
-    
-    if ($count > 0) {
-        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'gemini_models'");
-        $sth->execute($models_json);
-    } else {
-        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('gemini_models', ?)");
-        $sth->execute($models_json);
-    }
-}
-
 # Retrieves the active Gemini model.
 sub DB::get_gemini_active_model {
     my ($self) = @_;
@@ -429,6 +445,89 @@ sub DB::update_gemini_active_model {
     } else {
         $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('gemini_active_model', ?)");
         $sth->execute($model);
+    }
+}
+
+sub DB::get_opencode_key {
+    my ($self) = @_;
+    $self->ensure_connection;
+    my $key = '';
+    eval {
+        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'opencode_api_key'");
+        $sth->execute();
+        ($key) = $sth->fetchrow_array();
+    };
+    return $key || '';
+}
+
+sub DB::update_opencode_key {
+    my ($self, $api_key) = @_;
+    $self->ensure_connection;
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'opencode_api_key'");
+    $sth->execute();
+    my ($count) = $sth->fetchrow_array();
+    if ($count > 0) {
+        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'opencode_api_key'");
+        $sth->execute($api_key);
+    } else {
+        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('opencode_api_key', ?)");
+        $sth->execute($api_key);
+    }
+}
+
+sub DB::get_opencode_active_model {
+    my ($self) = @_;
+    $self->ensure_connection;
+    my $sql = "SELECT secret_value FROM app_secrets WHERE key_name = 'opencode_active_model'";
+    my $sth = $self->{dbh}->prepare($sql);
+    $sth->execute();
+    my ($val) = $sth->fetchrow_array();
+    return $val // 'big-pickle';
+}
+
+sub DB::update_opencode_active_model {
+    my ($self, $model) = @_;
+    $self->ensure_connection;
+    return unless defined $model && length $model;
+
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'opencode_active_model'");
+    $sth->execute();
+    my ($count) = $sth->fetchrow_array();
+    if ($count > 0) {
+        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'opencode_active_model'");
+        $sth->execute($model);
+    } else {
+        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('opencode_active_model', ?)");
+        $sth->execute($model);
+    }
+}
+
+sub DB::get_local_ai_url {
+    my ($self) = @_;
+    $self->ensure_connection;
+    my $url = '';
+    eval {
+        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'local_ai_url'");
+        $sth->execute();
+        ($url) = $sth->fetchrow_array();
+    };
+    return $url || '';
+}
+
+sub DB::update_local_ai_url {
+    my ($self, $url) = @_;
+    $self->ensure_connection;
+    return unless defined $url && length $url;
+
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'local_ai_url'");
+    $sth->execute();
+    my ($count) = $sth->fetchrow_array();
+    if ($count > 0) {
+        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'local_ai_url'");
+        $sth->execute($url);
+    } else {
+        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('local_ai_url', ?)");
+        $sth->execute($url);
     }
 }
 
