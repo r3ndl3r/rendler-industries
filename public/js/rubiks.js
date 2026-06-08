@@ -1218,7 +1218,7 @@ async function handleSolverUpload(e) {
     const form = e.target;
 
     if (typeof showLoadingOverlay === 'function') {
-        showLoadingOverlay('Analyzing Cube State...', 'Gemini AI is parsing stickers from your photos.');
+        showLoadingOverlay('Analyzing Cube State...', 'AI is parsing stickers from your photos.');
     }
 
     try {
@@ -1255,7 +1255,7 @@ async function handleSolverUpload(e) {
 }
 
 /**
- * Runs the local Kociemba solver library on the state string returned by Gemini.
+ * Runs the local Kociemba solver library on the state string returned by AI.
  */
 async function computeLocalSolution(stateString) {
     const display = document.getElementById('solve-sequence');
