@@ -22,7 +22,7 @@ sub index {
 
 # Returns consolidated state for all brief data sources.
 # Route: GET /brief/api/state
-# Returns: JSON { weather, calendar, chores, reminders, points, birthdays, is_admin, success }
+# Returns: JSON { weather, calendar, chores, reminders, medication_reminders, points, birthdays, is_admin, success }
 sub api_state {
     my $c = shift;
 
@@ -63,6 +63,17 @@ sub api_state {
         $active_day && $recipient;
     } @$all_reminders;
 
+    # Medication reminders: today's active reminders for the current family member only
+    my $medication_reminders = [];
+    if ($c->is_family) {
+        my $all_medication_reminders = $c->db->get_medication_reminders_for_member($user_id);
+        my @filtered_medication_reminders = grep {
+            my $days = $_->{days_of_week} // '';
+            grep { $_ == $today_dow } split(/,/, $days);
+        } @$all_medication_reminders;
+        $medication_reminders = \@filtered_medication_reminders;
+    }
+
     # Points: balance and last 5 transactions for this user
     my $points_total   = $c->db->get_user_points($user_id);
     my $points_history = $c->db->get_point_history($user_id);
@@ -99,6 +110,7 @@ sub api_state {
         calendar_tomorrow => $calendar_tomorrow,
         chores            => $chores,
         reminders         => \@reminders,
+        medication_reminders => $medication_reminders,
         points            => { total => $points_total, recent => \@recent_points },
         birthdays         => \@birthdays,
         users             => $c->db->get_family_users(),
