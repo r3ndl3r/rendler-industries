@@ -134,11 +134,11 @@
 
 /* ─── Action buttons ─────────────────────────────────────────────────────────── */
 
-.btn-icon-rescan {
+.btn-icon-scan {
     background: #06b6d4;
 }
 
-.btn-icon-rescan:hover {
+.btn-icon-scan:hover {
     background: #0891b2;
 }
 
@@ -171,16 +171,29 @@
 
 @media (max-width: 639px) {
     .app-container .header-bar {
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .app-container .header-bar h1 {
+        min-width: 0;
+        flex: 1 1 auto;
     }
 
     .app-container .manage-actions {
-        display: contents;
+        display: flex;
+        width: auto;
+        flex: 0 0 auto;
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        margin-left: auto;
+        gap: 0.5rem;
     }
 
     .app-container .manage-actions .btn-secondary,
-    .app-container .manage-actions .btn-primary {
-        order: 1;
+    .app-container .manage-actions .btn-primary,
+    .app-container .manage-actions .action-btn {
         margin-top: 6px;
         padding: 0.4rem 0.8rem;
         font-size: 0.75rem;
@@ -189,7 +202,7 @@
     }
 
     .app-container .manage-actions .btn-primary {
-        margin-left: auto;
+        margin-left: 0;
     }
 }
 
@@ -215,11 +228,11 @@
 
     #adminTableWrap .data-table tbody tr {
         display: block;
-        background: #1e293b;
+        background: var(--color-surface);
         border-radius: 1rem;
         padding: 1rem 1.25rem;
         margin-bottom: 1rem;
-        border: 1px solid #334155;
+        border: 1px solid var(--color-border);
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         position: relative;
     }
