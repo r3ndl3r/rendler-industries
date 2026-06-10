@@ -1973,7 +1973,19 @@ function _applySpeedPillUI(rate) {
  * @returns {void}
  */
 function toggleChapterDrawer() {
-    document.getElementById('chapterDrawer').classList.toggle('show');
+    const drawer = document.getElementById('chapterDrawer');
+    const wasHidden = !drawer.classList.contains('show');
+    drawer.classList.toggle('show');
+    if (wasHidden) {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const currentItem = drawer.querySelector('.chapter-item.current');
+                if (currentItem) {
+                    currentItem.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                }
+            });
+        });
+    }
 }
 
 // ─── Sleep timer ──────────────────────────────────────────────────────────────
