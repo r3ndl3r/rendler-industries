@@ -469,8 +469,9 @@ function deleteBookProgress(slug) {
             const res = await apiPost('/audiobooks/api/progress/delete', { book_slug: slug });
             if (!res || !res.success) return;
             try {
-                const pending = JSON.parse(localStorage.getItem('ab_pending_progress') || 'null');
-                if (pending && pending.book_slug === slug) localStorage.removeItem('ab_pending_progress');
+                const pendingMap = _readPendingProgressMap();
+                delete pendingMap[slug];
+                _writePendingProgressMap(pendingMap);
             } catch(e) {}
             book.progress = {};
             if (PLAYER.slug === slug) {
@@ -524,9 +525,8 @@ function _loadCachedState() {
  */
 function _applyPendingProgressToState() {
     try {
-        const pendingRaw = localStorage.getItem('ab_pending_progress');
-        if (pendingRaw) {
-            const pending = JSON.parse(pendingRaw);
+        const pendingMap = _readPendingProgressMap();
+        Object.values(pendingMap).forEach(pending => {
             if (pending && pending.book_slug) {
                 const book = STATE.books.find(b => b.slug === pending.book_slug);
                 if (book) {
@@ -543,7 +543,7 @@ function _applyPendingProgressToState() {
                     }
                 }
             }
-        }
+        });
     } catch(e) {
         console.error('Error applying pending progress to state:', e);
     }
@@ -581,10 +581,67 @@ function _pendingProgressIsNotNewerThan(current, payload) {
  * @returns {void}
  */
 function _removePendingProgressIfCurrent(payload) {
-    const current = localStorage.getItem('ab_pending_progress');
-    if (_pendingProgressMatches(current, payload)) {
-        localStorage.removeItem('ab_pending_progress');
+    const map = _readPendingProgressMap();
+    const current = map[payload.book_slug] || null;
+    if (_pendingProgressMatches(JSON.stringify(current), payload)) {
+        delete map[payload.book_slug];
+        _writePendingProgressMap(map);
     }
+}
+
+/**
+ * Reads the pending progress map from localStorage.
+ * Returns an empty object if the value is missing, invalid, or in legacy format.
+ * @returns {Object} Map keyed by book_slug.
+ */
+function _readPendingProgressMap() {
+    try {
+        const raw = localStorage.getItem('ab_pending_progress');
+        if (!raw) return {};
+
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            localStorage.removeItem('ab_pending_progress');
+            return {};
+        }
+
+        for (const [slug, payload] of Object.entries(parsed)) {
+            if (!slug || !payload || typeof payload !== 'object' || Array.isArray(payload) || payload.book_slug !== slug) {
+                localStorage.removeItem('ab_pending_progress');
+                return {};
+            }
+        }
+
+        return parsed;
+    } catch(e) {
+        localStorage.removeItem('ab_pending_progress');
+        return {};
+    }
+}
+
+/**
+ * Writes the pending progress map to localStorage.
+ * Removes the key entirely if the map is empty.
+ * @param {Object} map - Pending progress map keyed by book_slug.
+ * @returns {void}
+ */
+function _writePendingProgressMap(map) {
+    if (!map || Object.keys(map).length === 0) {
+        localStorage.removeItem('ab_pending_progress');
+    } else {
+        localStorage.setItem('ab_pending_progress', JSON.stringify(map));
+    }
+}
+
+/**
+ * Buffers a single book's progress into the pending map.
+ * @param {Object} payload - Progress payload with book_slug.
+ * @returns {void}
+ */
+function _setPendingProgress(payload) {
+    const map = _readPendingProgressMap();
+    map[payload.book_slug] = payload;
+    _writePendingProgressMap(map);
 }
 
 /**
@@ -636,20 +693,27 @@ async function _postProgressQuietly(payload) {
  * @returns {void}
  */
 async function _flushPendingProgress() {
-    const pending = localStorage.getItem('ab_pending_progress');
-    if (!pending) return 'none';
+    const pendingMap = _readPendingProgressMap();
+    const payloads = Object.values(pendingMap);
+    if (!payloads.length) return 'none';
+    let sawPending = false;
+    let sawRejected = false;
     try {
-        const payload = JSON.parse(pending);
-        if (!payload.client_updated_ms) {
-            payload.client_updated_ms = Date.now();
-            localStorage.setItem('ab_pending_progress', JSON.stringify(payload));
+        for (const payload of payloads) {
+            if (!payload.client_updated_ms) {
+                payload.client_updated_ms = Date.now();
+                _setPendingProgress(payload);
+            }
+            const res = await _postProgressQuietly(payload);
+            if (res && res.success) {
+                _removePendingProgressIfCurrent(payload);
+                if (!res.applied) sawRejected = true;
+                continue;
+            }
+            sawPending = true;
         }
-        const res = await _postProgressQuietly(payload);
-        if (res && res.success) {
-            _removePendingProgressIfCurrent(payload);
-            return res.applied ? 'applied' : 'rejected';
-        }
-        return 'pending';
+        if (sawPending) return 'pending';
+        return sawRejected ? 'rejected' : 'applied';
     } catch(e) {
         localStorage.removeItem('ab_pending_progress');
         return 'cleared';
@@ -2238,19 +2302,21 @@ function _saveProgress(completed) {
     _postProgressQuietly(payload)
         .then(res => {
             if (res && res.success && res.applied) {
-                const current = localStorage.getItem('ab_pending_progress');
-                if (_pendingProgressIsNotNewerThan(current, payload)) {
-                    localStorage.removeItem('ab_pending_progress');
+                const pendingMap = _readPendingProgressMap();
+                const current = pendingMap[payload.book_slug] || null;
+                if (_pendingProgressIsNotNewerThan(JSON.stringify(current), payload)) {
+                    delete pendingMap[payload.book_slug];
+                    _writePendingProgressMap(pendingMap);
                 }
             } else if (res && res.success) {
                 _removePendingProgressIfCurrent(payload);
             } else {
-                localStorage.setItem('ab_pending_progress', JSON.stringify(payload));
+                _setPendingProgress(payload);
             }
         })
         .catch(() => {
             // Buffer to localStorage so progress survives app kill while offline.
-            localStorage.setItem('ab_pending_progress', JSON.stringify(payload));
+            _setPendingProgress(payload);
         });
 }
 
