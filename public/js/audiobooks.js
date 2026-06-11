@@ -758,7 +758,7 @@ function _renderBookRow(book) {
                 <div class="book-row-actions">
                     ${offlineBtn}
                     <button type="button" class="book-row-play-btn" aria-label="Play" tabindex="-1"
-                            onclick="event.stopPropagation(); openPlayer(${slugJs}, ${chapIdx}, true)">▶</button>
+                            onclick="event.stopPropagation(); openPlayer(${slugJs}, ${chapIdx}, false)">▶</button>
                 </div>
             </div>`;
 }
@@ -1108,7 +1108,7 @@ function playDetailBook() {
     if (!book) return;
     const prog = book.progress || {};
     closeDetail();
-    openPlayer(book.slug, prog.chapter_idx || 0, true);
+    openPlayer(book.slug, prog.chapter_idx || 0, false);
 }
 
 
