@@ -19,8 +19,7 @@
  * --- Application State ---
  */
 let STATE = {
-    isProcessing: false,
-    canBroadcast: true
+    isProcessing: false
 };
 
 /**
