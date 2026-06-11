@@ -1902,12 +1902,15 @@ function updatePeriodTitle() {
  */
 function initializeViewFromUrl() {
     const p = new URLSearchParams(window.location.search);
-    if (p.get('view')) STATE.currentView = p.get('view');
-    if (p.get('date')) {
-        const urlDate = new Date(p.get('date'));
-        if (!isNaN(urlDate.getTime())) {
-            STATE.currentDate = urlDate;
-        }
+    const requestedView = p.get('view');
+    if (['month', 'week', 'day'].includes(requestedView)) {
+        STATE.currentView = requestedView;
+    }
+
+    const requestedDate = p.get('date');
+    if (requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+        const [year, month, day] = requestedDate.split('-').map(Number);
+        STATE.currentDate = new Date(year, month - 1, day);
     }
     updateViewButtons();
 }
