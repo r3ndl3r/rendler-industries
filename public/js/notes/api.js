@@ -790,11 +790,14 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
                         }
                         context.resolve(res);
                     } else {
-                        context.reject(new Error(res?.error || 'Save failed'));
+                        const message = res?.error || 'Save failed';
+                        if (type !== 'silent') showToast(message, 'error');
+                        context.resolve({ success: 0, error: message });
                     }
                 } catch (e) {
                     console.error(`[syncNotePosition] Debounced save failed for note ${id}:`, e);
-                    context.reject(e);
+                    if (type !== 'silent') showToast('Failed to save note position', 'error');
+                    context.resolve({ success: 0, error: e.message || 'Save failed' });
                 } finally {
                     // Only release the sync guard if no new timer was registered for this sid
                     // while the API call was in flight (i.e. we are still the active owner).
@@ -855,26 +858,23 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
             }
             return res;
         } else {
-            const error = new Error(res?.error || 'Save failed');
+            const message = res?.error || 'Save failed';
+            if (type !== 'silent') showToast(message, 'error');
             if (pendingContext) {
-                try { pendingContext.reject(error); } catch (_) {}
+                try { pendingContext.resolve({ success: 0, error: message }); } catch (_) {}
             }
-            throw error;
+            return { success: 0, error: message };
         }
     } catch (e) {
         console.error(`[syncNotePosition] Immediate save failed for note ${id}:`, e);
+        if (type !== 'silent') showToast('Failed to save note position', 'error');
         if (pendingContext) {
-            try { pendingContext.reject(e); } catch (_) {}
+            try { pendingContext.resolve({ success: 0, error: e.message || 'Save failed' }); } catch (_) {}
         }
-        throw e;
+        return { success: 0, error: e.message || 'Save failed' };
     } finally {
         if (type !== 'silent') el.classList.remove('pending');
         if (typeof window.removeActiveSync === 'function') window.removeActiveSync(sid);
-        
-        // Settle orphaned debounce promise if the immediate path arrived after the debounce deleted it
-        if (pendingContext) {
-            try { pendingContext.resolve({ success: 0, error: 'superseded_by_immediate' }); } catch (_) {}
-        }
     }
 }
 
