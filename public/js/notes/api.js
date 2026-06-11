@@ -236,6 +236,17 @@ window.NoteAPI = {
         };
     },
 
+    /**
+     * Checks if a state payload belongs to a password-protected board.
+     * @param {Object} data - State payload.
+     * @returns {boolean}
+     */
+    isProtectedState(data) {
+        const canvases = Array.isArray(data?.canvases) ? data.canvases : [];
+        const canvas = canvases.find(c => String(c.id) === String(data?.canvas_id));
+        return !!(canvas && Number(canvas.is_protected));
+    },
+
     async writeStateCacheStorage(keys, payload, currentKey, lastKeyName = this.STATE_CACHE_LAST_KEY) {
         if (typeof caches === 'undefined') return { success: false, error: new Error('Cache Storage unavailable') };
 
@@ -272,7 +283,7 @@ window.NoteAPI = {
      * @param {Object} data - Parsed state payload.
      */
     async cacheState(url, data) {
-        if (!data || !data.success || data.is_locked || !Array.isArray(data.notes)) return;
+        if (!data || !data.success || data.is_locked || this.isProtectedState(data) || !Array.isArray(data.notes)) return;
         const userId = this.stateCacheUserId(data);
         if (!userId) return;
         const timestamp = Date.now();
@@ -348,7 +359,7 @@ window.NoteAPI = {
                 const cached = localStorage.getItem(key);
                 if (!cached) continue;
                 const parsed = JSON.parse(cached);
-                if (parsed && parsed.data && parsed.data.success) {
+                if (parsed && parsed.data && parsed.data.success && !this.isProtectedState(parsed.data)) {
                     parsed.data.offline_cached = true;
                     return parsed.data;
                 }
@@ -374,7 +385,7 @@ window.NoteAPI = {
                 const response = await cache.match(this.stateCacheStorageRequest(key));
                 if (!response) continue;
                 const parsed = await response.json();
-                if (parsed && parsed.data && parsed.data.success) {
+                if (parsed && parsed.data && parsed.data.success && !this.isProtectedState(parsed.data)) {
                     parsed.data.offline_cached = true;
                     return parsed.data;
                 }
