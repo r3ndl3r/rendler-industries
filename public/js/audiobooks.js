@@ -474,11 +474,11 @@ function deleteBookProgress(slug) {
             } catch(e) {}
             book.progress = {};
             if (PLAYER.slug === slug) {
+                const wasPlaying = PLAYER.audio && !PLAYER.audio.paused;
                 PLAYER.chapter_idx = 0;
                 PLAYER.book = book;
-                if (PLAYER.audio && isFinite(PLAYER.audio.duration)) {
-                    PLAYER.audio.currentTime = 0;
-                }
+                PLAYER.pending_seek = null;
+                _loadChapter(0, wasPlaying);
             }
             renderLibrary();
         }
