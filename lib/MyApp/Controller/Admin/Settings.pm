@@ -2,6 +2,7 @@
 
 package MyApp::Controller::Admin::Settings;
 use Mojo::Base 'Mojolicious::Controller';
+use Mojo::JSON qw(decode_json);
 use Mojo::Util qw(trim);
 
 # Controller for Application Configuration Management.
@@ -56,6 +57,7 @@ sub api_state {
         local_ai         => {
             url => $c->db->get_local_ai_url()
         },
+        ai_apps          => $c->db->get_ai_app_models(),
         google_cloud     => {
             key => $c->db->get_google_cloud_key()
         },
@@ -193,6 +195,33 @@ sub update {
         $c->db->update_local_ai_url($url);
         return $c->render(json => { success => 1, message => 'Local LLM URL updated successfully' });
     }
+    elsif ($section eq 'ai_app_models') {
+        my $raw = $c->param('ai_app_models') // '[]';
+        my $rows = eval { decode_json($raw) } || [];
+        return $c->render(json => { success => 0, error => 'Invalid AI feature defaults' }) unless ref $rows eq 'ARRAY';
+
+        my %models;
+        for my $row (@$rows) {
+            return $c->render(json => { success => 0, error => 'Invalid AI feature default row' }) unless ref $row eq 'HASH';
+            my $profile_key = trim($row->{key} // '');
+            my $provider = trim($row->{provider} // '');
+            my $model = trim($row->{model} // '');
+
+            unless (_valid_ai_app_key($profile_key)) {
+                return $c->render(json => { success => 0, error => 'Invalid AI feature' });
+            }
+            unless ($provider eq 'gemini' || $provider eq 'opencode' || $provider eq 'local') {
+                return $c->render(json => { success => 0, error => 'Invalid AI provider' });
+            }
+            $model = 'local' if $provider eq 'local';
+            return $c->render(json => { success => 0, error => 'Invalid AI model' }) unless length $model;
+
+            $models{$profile_key} = { provider => $provider, model => $model };
+        }
+
+        $c->db->update_ai_app_models(\%models);
+        return $c->render(json => { success => 1, message => 'AI feature defaults updated successfully' });
+    }
     elsif ($section eq 'google_cloud') {
         my $api_key = _secret_update_value($c->param('google_cloud_key'));
         $c->db->update_google_cloud_key($api_key) if length $api_key;
@@ -225,6 +254,19 @@ sub _fetch_opencode_models {
 sub _fetch_gemini_models {
     my ($c) = @_;
     return $c->ai_gemini_models;
+}
+
+sub _valid_ai_app_key {
+    my ($key) = @_;
+    return scalar grep { $_ eq $key } qw(
+        ai_chat
+        notes_format
+        emoji_lookup
+        receipts
+        fuel
+        rubiks
+        automator_report
+    );
 }
 
 sub _secret_update_value {
