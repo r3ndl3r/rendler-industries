@@ -39,13 +39,23 @@ window.NoteAPI = {
     /**
      * Builds a stable local cache key for a notes state request.
      * @param {string} url - Target endpoint.
-     * @returns {string} Cache key scoped to the requested board and layer.
+     * @param {string|null} userId - User ID to scope the cache key.
+     * @returns {string|null} Cache key scoped to user, board, and layer.
      */
-    stateCacheKey(url) {
+    stateCacheUserId(data = null) {
+        return data?.user_id || (typeof STATE !== 'undefined' ? STATE.user_id : null) || null;
+    },
+
+    stateCacheLastKey(userId = null) {
+        return userId ? `${this.STATE_CACHE_LAST_KEY}:${userId}` : this.STATE_CACHE_LAST_KEY;
+    },
+
+    stateCacheKey(url, userId = null) {
+        if (!userId) return null;
         const parsed = new URL(url, window.location.origin);
         const canvasId = parsed.searchParams.get('canvas_id') || 'default';
         const layerId = parsed.searchParams.get('layer_id') || 'default';
-        return `${this.STATE_CACHE_PREFIX}${canvasId}:${layerId}`;
+        return `${this.STATE_CACHE_PREFIX}${userId}:${canvasId}:${layerId}`;
     },
 
     stateCacheStorageRequest(key) {
@@ -70,7 +80,7 @@ window.NoteAPI = {
         const entries = [];
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (!key || !key.startsWith(this.STATE_CACHE_PREFIX) || key === this.STATE_CACHE_LAST_KEY) continue;
+            if (!key || !key.startsWith(this.STATE_CACHE_PREFIX) || key.startsWith(this.STATE_CACHE_LAST_KEY)) continue;
 
             const raw = localStorage.getItem(key) || '';
             let timestamp = 0;
@@ -159,7 +169,7 @@ window.NoteAPI = {
      * @param {string} currentKey - Entry that should be preserved where possible.
      * @returns {{success:boolean,popped:number,poppedBytes:number,error?:any}}
      */
-    writeStateCacheWithQuotaRecovery(keys, payload, currentKey) {
+    writeStateCacheWithQuotaRecovery(keys, payload, currentKey, lastKeyName = this.STATE_CACHE_LAST_KEY) {
         let popped = 0;
         let poppedBytes = 0;
         let replacedCurrent = false;
@@ -169,7 +179,7 @@ window.NoteAPI = {
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             try {
                 localStorage.setItem(currentKey, payload);
-                localStorage.setItem(this.STATE_CACHE_LAST_KEY, currentKey);
+                localStorage.setItem(lastKeyName, currentKey);
                 aliases.forEach((key) => {
                     try {
                         localStorage.setItem(key, payload);
@@ -188,7 +198,7 @@ window.NoteAPI = {
                     if (!replacedCurrent) {
                         const currentPayload = localStorage.getItem(currentKey) || '';
                         localStorage.removeItem(currentKey);
-                        localStorage.removeItem(this.STATE_CACHE_LAST_KEY);
+                        localStorage.removeItem(lastKeyName);
                         popped++;
                         poppedBytes += currentKey.length + currentPayload.length;
                         replacedCurrent = true;
@@ -226,14 +236,14 @@ window.NoteAPI = {
         };
     },
 
-    async writeStateCacheStorage(keys, payload, currentKey) {
+    async writeStateCacheStorage(keys, payload, currentKey, lastKeyName = this.STATE_CACHE_LAST_KEY) {
         if (typeof caches === 'undefined') return { success: false, error: new Error('Cache Storage unavailable') };
 
         try {
             const cache = await caches.open(this.STATE_CACHE_STORAGE_NAME);
             const responseInit = { headers: { 'Content-Type': 'application/json' } };
             await cache.put(this.stateCacheStorageRequest(currentKey), new Response(payload, responseInit));
-            await cache.put(this.stateCacheStorageRequest(this.STATE_CACHE_LAST_KEY), new Response(currentKey, { headers: { 'Content-Type': 'text/plain' } }));
+            await cache.put(this.stateCacheStorageRequest(lastKeyName), new Response(currentKey, { headers: { 'Content-Type': 'text/plain' } }));
 
             for (const key of keys.filter(key => key !== currentKey)) {
                 try {
@@ -245,7 +255,7 @@ window.NoteAPI = {
 
             const removable = (await cache.keys()).filter((request) => {
                 const key = this.stateCacheStorageKey(request);
-                return key && key !== this.STATE_CACHE_LAST_KEY && key !== currentKey;
+                return key && key !== lastKeyName && key !== currentKey;
             });
             while (removable.length > this.STATE_CACHE_MAX_ENTRIES - 1) {
                 await cache.delete(removable.shift());
@@ -263,31 +273,34 @@ window.NoteAPI = {
      */
     async cacheState(url, data) {
         if (!data || !data.success || data.is_locked || !Array.isArray(data.notes)) return;
+        const userId = this.stateCacheUserId(data);
+        if (!userId) return;
         const timestamp = Date.now();
         const payload = JSON.stringify({ timestamp, data });
-        const requestKey = this.stateCacheKey(url);
-        const resolvedKey = `${this.STATE_CACHE_PREFIX}${data.canvas_id || 'default'}:${data.viewport?.layer_id || 'default'}`;
+        const requestKey = this.stateCacheKey(url, userId);
+        const resolvedKey = `${this.STATE_CACHE_PREFIX}${userId}:${data.canvas_id || 'default'}:${data.viewport?.layer_id || 'default'}`;
         const keys = Array.from(new Set([requestKey, resolvedKey]));
+        const lastKeyName = this.stateCacheLastKey(userId);
         let fallbackPayload = payload;
 
         const pruned = this.pruneStateCache({ keepKey: resolvedKey });
-        let result = this.writeStateCacheWithQuotaRecovery(keys, payload, resolvedKey);
+        let result = this.writeStateCacheWithQuotaRecovery(keys, payload, resolvedKey, lastKeyName);
         let compacted = false;
 
         if (!result.success) {
             const compactPayload = JSON.stringify({ timestamp, data: this.compactStateForCache(data) });
             if (compactPayload.length < payload.length) {
                 fallbackPayload = compactPayload;
-                result = this.writeStateCacheWithQuotaRecovery(keys, compactPayload, resolvedKey);
+                result = this.writeStateCacheWithQuotaRecovery(keys, compactPayload, resolvedKey, lastKeyName);
                 compacted = result.success;
             }
         }
 
         if (!result.success) {
-            const storageResult = await this.writeStateCacheStorage(keys, fallbackPayload, resolvedKey);
+            const storageResult = await this.writeStateCacheStorage(keys, fallbackPayload, resolvedKey, lastKeyName);
             if (storageResult.success) {
                 keys.forEach(key => localStorage.removeItem(key));
-                localStorage.removeItem(this.STATE_CACHE_LAST_KEY);
+                localStorage.removeItem(lastKeyName);
                 console.warn('Notes state cache stored in Cache Storage after localStorage quota pressure.', {
                     pruned,
                     quotaRecovery: result,
@@ -328,7 +341,9 @@ window.NoteAPI = {
      */
     cachedState(url) {
         try {
-            const keys = [this.stateCacheKey(url), localStorage.getItem(this.STATE_CACHE_LAST_KEY)].filter(Boolean);
+            const userId = this.stateCacheUserId();
+            if (!userId) return null;
+            const keys = [this.stateCacheKey(url, userId), localStorage.getItem(this.stateCacheLastKey(userId))].filter(Boolean);
             for (const key of keys) {
                 const cached = localStorage.getItem(key);
                 if (!cached) continue;
@@ -348,10 +363,12 @@ window.NoteAPI = {
         if (typeof caches === 'undefined') return null;
 
         try {
+            const userId = this.stateCacheUserId();
+            if (!userId) return null;
             const cache = await caches.open(this.STATE_CACHE_STORAGE_NAME);
-            const lastResponse = await cache.match(this.stateCacheStorageRequest(this.STATE_CACHE_LAST_KEY));
+            const lastResponse = await cache.match(this.stateCacheStorageRequest(this.stateCacheLastKey(userId)));
             const lastKey = lastResponse ? await lastResponse.text() : null;
-            const keys = [this.stateCacheKey(url), lastKey].filter(Boolean);
+            const keys = [this.stateCacheKey(url, userId), lastKey].filter(Boolean);
 
             for (const key of keys) {
                 const response = await cache.match(this.stateCacheStorageRequest(key));
