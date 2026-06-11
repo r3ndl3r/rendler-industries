@@ -29,6 +29,7 @@ const CONFIG = {
 
 let STATE = {
     links: [],                      // Collection of all menu records
+    parents: [],                    // All non-separator items eligible to be parents
     isAdmin: false                  // Administrative authorization flag
 };
 
@@ -70,7 +71,8 @@ const MenuMgmt = {
 
             if (data && data.success) {
                 STATE.links  = data.links;
-                    STATE.isAdmin = !!data.is_admin;
+                STATE.parents = data.parents;
+                STATE.isAdmin = !!data.is_admin;
                 this.renderUI();
             }
         } catch (err) {
