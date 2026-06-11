@@ -1494,6 +1494,9 @@ function showEventDetails(uid) {
     const content = document.getElementById('eventDetailsContent');
     const dateStr = formatDateTimeFriendly(event.start_date, event.all_day);
     const timeInfo = event.all_day ? 'All Day' : `${formatTime(event.start_date)} - ${formatTime(event.end_date)}`;
+    const recurrenceSummary = event.recurrence_rule
+        ? formatRecurrenceSummary(event.recurrence_rule, event.recurrence_interval, event.recurrence_end_date)
+        : '';
 
     content.innerHTML = `
         <div class="event-details-header">
@@ -1507,7 +1510,7 @@ function showEventDetails(uid) {
             <div class="event-detail-row"><strong>📅 Date:</strong> <span>${dateStr}</span></div>
             <div class="event-detail-row"><strong>🕒 Time:</strong> <span>${timeInfo}</span></div>
             ${event.category ? `<div class="event-detail-row"><strong>ℹ️ Category:</strong> <span>${escapeHtml(event.category)}</span></div>` : ''}
-            ${event.recurrence_rule ? `<div class="event-detail-row"><strong>🔁 Repeat:</strong> <span>Every ${event.recurrence_interval || 1} ${event.recurrence_rule.replace('ly', 's')}${event.recurrence_end_date ? ` until ${event.recurrence_end_date.split('-').reverse().join('-')}` : ''}</span></div>` : ''}
+            ${recurrenceSummary ? `<div class="event-detail-row"><strong>🔁 Repeat:</strong> <span>${escapeHtml(recurrenceSummary)}</span></div>` : ''}
             ${event.notification_minutes && event.notification_minutes > 0 ? `<div class="event-detail-row"><strong>🔔 Reminder:</strong> <span>${formatReminderMinutes(event.notification_minutes)} before</span></div>` : ''}
             ${event.description ? `<div class="event-detail-row"><strong>📋 Description:</strong> <span>${escapeHtml(event.description)}</span></div>` : ''}
             ${event.attendee_names ? `<div class="event-detail-row"><strong>👨‍👩‍👧‍👦 Attendees:</strong> <span>${renderAttendeePills(event.attendee_names, true)}</span></div>` : ''}
@@ -1773,6 +1776,26 @@ function formatReminderMinutes(totalMins) {
     if (mins > 0) parts.push(`${mins} minute${mins !== 1 ? 's' : ''}`);
     
     return parts.join(', ');
+}
+
+/**
+ * Formats a recurrence rule into a human-readable summary string.
+ * @param {string} rule - Recurrence rule (daily, weekly, monthly, yearly).
+ * @param {number} interval - Recurrence interval.
+ * @param {string} [endDate] - Optional end date in YYYY-MM-DD format.
+ * @returns {string}
+ */
+function formatRecurrenceSummary(rule, interval, endDate) {
+    const units = {
+        daily: 'day',
+        weekly: 'week',
+        monthly: 'month',
+        yearly: 'year'
+    };
+    const count = Math.max(parseInt(interval, 10) || 1, 1);
+    const unit = units[rule] || 'period';
+    const until = endDate ? ` until ${endDate.split('-').reverse().join('-')}` : '';
+    return `Every ${count} ${unit}${count === 1 ? '' : 's'}${until}`;
 }
 
 /**
