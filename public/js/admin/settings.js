@@ -28,6 +28,16 @@ const CONFIG = {
     CARD_KEY: 'settings_open_cards'  // LocalStorage key for expanded cards
 };
 
+const AI_FEATURES = [
+    { key: 'ai_chat', label: '/ai Chat', desc: 'Family Pulse chat responses and current-info lookups.', defaultProvider: '' },
+    { key: 'notes_format', label: 'Notes AI Formatting', desc: 'Reformats note bodies into Rendler dashboard markup.', defaultProvider: '' },
+    { key: 'emoji_lookup', label: 'Emoji Lookup System', desc: 'Background emoji generation for todo, shopping, reminders, calendar, and meals text.', defaultProvider: '' },
+    { key: 'receipts', label: 'Receipts AI Scan', desc: 'Receipt image digitization. Image input requires Gemini.', defaultProvider: 'gemini' },
+    { key: 'fuel', label: 'Fuel AI Scan', desc: 'Fuel receipt, pump, and odometer image extraction. Image input requires Gemini.', defaultProvider: 'gemini' },
+    { key: 'rubiks', label: "Rubik's Solver", desc: 'Cube photo analysis. Image input requires Gemini.', defaultProvider: 'gemini' },
+    { key: 'automator_report', label: 'Automator AI Report', desc: '24-hour automation log analysis.', defaultProvider: '' }
+];
+
 let STATE = {
     settings: {},                   // Global system settings (pushover, gotify, app_secret, etc)
     email_settings: {},             // SMTP and email dispatch configuration
@@ -48,6 +58,7 @@ let STATE = {
     local_ai: {                      // Local OpenAI-compatible endpoint metadata
         url: ''
     },
+    ai_apps: {},                     // Per-feature AI provider/model overrides
     google_cloud: {                 // Cloud Services (TTS/Translation) metadata
         key: ''
     }
@@ -89,6 +100,7 @@ async function loadState() {
             STATE.gemini = data.gemini;
             STATE.opencode = data.opencode || STATE.opencode;
             STATE.local_ai = data.local_ai || STATE.local_ai;
+            STATE.ai_apps = data.ai_apps || {};
             STATE.google_cloud = data.google_cloud;
             STATE.owm_api_key = data.owm_api_key;
             
@@ -116,6 +128,7 @@ function renderSettings() {
     container.innerHTML = `
         ${renderNotificationsPanel()}
         ${renderEmailPanel()}
+        ${renderAIPanel()}
         ${renderIntegrationsPanel()}
         ${renderApplicationPanel()}
     `;
@@ -226,54 +239,98 @@ function renderEmailPanel() {
     `;
 }
 
+function providerLabel(provider) {
+    if (provider === 'opencode') return 'OpenCode';
+    if (provider === 'local') return 'Local';
+    return 'Gemini';
+}
+
+function activeModelForProvider(provider) {
+    if (provider === 'opencode') return STATE.opencode?.active || '';
+    if (provider === 'local') return 'local';
+    return STATE.gemini?.active || '';
+}
+
+function renderProviderOptions(active) {
+    return `
+        <option value="gemini" ${active === 'gemini' ? 'selected' : ''}>Google Gemini</option>
+        <option value="opencode" ${active === 'opencode' ? 'selected' : ''}>OpenCode Zen</option>
+        <option value="local" ${active === 'local' ? 'selected' : ''}>Local LLM (llama.cpp)</option>
+    `;
+}
+
+function renderModelOptions(provider, active) {
+    const models = provider === 'opencode'
+        ? [...(STATE.opencode?.models || [])]
+        : provider === 'local'
+            ? ['local']
+            : [...(STATE.gemini?.models || [])];
+    const selected = active || activeModelForProvider(provider);
+    if (selected && !models.includes(selected)) models.unshift(selected);
+
+    return models.map(m => `
+        <option value="${escapeHtml(m)}" ${m === selected ? 'selected' : ''}>${escapeHtml(m)}</option>
+    `).join('');
+}
+
+function getAIAppSelection(feature) {
+    const saved = STATE.ai_apps?.[feature.key] || {};
+    const provider = saved.provider || feature.defaultProvider || STATE.ai_provider || 'gemini';
+    const model = saved.model || activeModelForProvider(provider);
+    return { provider, model };
+}
+
+function renderAIAppRows() {
+    return AI_FEATURES.map(feature => {
+        const selected = getAIAppSelection(feature);
+        return `
+            <div class="modal-prompt-row ai-feature-row" data-ai-feature-key="${escapeHtml(feature.key)}">
+                <div class="create-input-wrapper" style="flex: 1.5;">
+                    <label>${escapeHtml(feature.label)}</label>
+                    <p class="help-text-muted">${escapeHtml(feature.desc)}</p>
+                </div>
+                <div class="create-input-wrapper" style="flex: 1;">
+                    <select name="ai_app_provider" class="game-input gemini-select" data-ai-provider-key="${escapeHtml(feature.key)}" onchange="syncAIAppModelSelect('${escapeHtml(feature.key)}')">
+                        ${renderProviderOptions(selected.provider)}
+                    </select>
+                </div>
+                <div class="create-input-wrapper" style="flex: 1.4;">
+                    <select name="ai_app_model" class="game-input gemini-select" data-ai-model-key="${escapeHtml(feature.key)}">
+                        ${renderModelOptions(selected.provider, selected.model)}
+                    </select>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 /**
- * Generates the Integrations (AI/Cloud) configuration fragment.
+ * Generates the AI configuration fragment.
  * 
  * @returns {string} - Rendered HTML.
  */
-function renderIntegrationsPanel() {
-    const s = STATE.settings;
+function renderAIPanel() {
     const g = STATE.gemini;
     const o = STATE.opencode;
     const l = STATE.local_ai;
-    const cloud = STATE.google_cloud;
-
-    const modelOptions = g.models.map(m => `
-        <option value="${escapeHtml(m)}" ${m === g.active ? 'selected' : ''}>${escapeHtml(m)}</option>
-    `).join('');
-
-    const opencodeModelOptions = o.models.map(m => `
-        <option value="${escapeHtml(m)}" ${m === o.active ? 'selected' : ''}>${escapeHtml(m)}</option>
-    `).join('');
 
     return `
-        <div class="settings-panel" id="panel-integrations">
-            ${renderCard('ai_provider', 'AI Provider', 'Choose which provider handles text-only AI calls. Image analysis uses Gemini when required by the request.', true, `
+        <div class="settings-panel" id="panel-ai">
+            ${renderCard('ai_provider', 'AI Provider', 'Choose the default provider for text-only AI calls. Feature-specific defaults below can override this.', true, `
                 <div class="settings-fields">
                     <div class="form-group full-width">
-                        <label>Active Provider</label>
+                        <label>Default Provider</label>
                         <div class="modal-prompt-row">
                             <div class="create-input-wrapper" style="flex: 1;">
                                 <select name="ai_provider" class="game-input gemini-select">
-                                    <option value="gemini" ${STATE.ai_provider === 'gemini' ? 'selected' : ''}>Google Gemini</option>
-                                    <option value="opencode" ${STATE.ai_provider === 'opencode' ? 'selected' : ''}>OpenCode Zen</option>
-                                    <option value="local" ${STATE.ai_provider === 'local' ? 'selected' : ''}>Local LLM (llama.cpp)</option>
+                                    ${renderProviderOptions(STATE.ai_provider)}
                                 </select>
                             </div>
                             <button type="submit" class="btn-primary btn-go-row">💾 Save</button>
                         </div>
                     </div>
                 </div>
-            `, true, STATE.ai_provider === 'opencode' ? 'OpenCode' : STATE.ai_provider === 'local' ? 'Local' : 'Gemini')}
-
-            ${renderCard('unsplash', 'Unsplash', 'High-quality images for platform modules.', !!s.unsplash_key, `
-                <div class="settings-fields">
-                    <div class="form-group full-width">
-                        <label>Access Key</label>
-                        <div class="render-row-input" data-id="unsplash_key" data-name="unsplash_key" data-type="password" data-value="" data-placeholder="${s.unsplash_key ? '(configured — paste new value to replace)' : 'Access Key'}"></div>
-                    </div>
-                </div>
-            `, true)}
+            `, true, providerLabel(STATE.ai_provider))}
 
             ${renderCard('gemini', 'Google Gemini', 'Gemini API key and model configuration.', !!g.key, `
                 ${g.model_error ? `<div class="form-warning">${escapeHtml(g.model_error)}</div>` : ''}
@@ -287,7 +344,7 @@ function renderIntegrationsPanel() {
                         <div class="modal-prompt-row">
                             <div class="create-input-wrapper" style="flex: 1;">
                                 <select name="gemini_active_model" class="game-input gemini-select">
-                                    ${modelOptions}
+                                    ${renderModelOptions('gemini', g.active)}
                                 </select>
                             </div>
                             <button type="submit" class="btn-primary btn-go-row" data-section="gemini_model">💾 Save</button>
@@ -308,7 +365,7 @@ function renderIntegrationsPanel() {
                         <div class="modal-prompt-row">
                             <div class="create-input-wrapper" style="flex: 1;">
                                 <select name="opencode_active_model" class="game-input gemini-select">
-                                    ${opencodeModelOptions}
+                                    ${renderModelOptions('opencode', o.active)}
                                 </select>
                             </div>
                             <button type="submit" class="btn-primary btn-go-row" data-section="opencode_model">💾 Save</button>
@@ -325,6 +382,40 @@ function renderIntegrationsPanel() {
                     </div>
                 </div>
             `)}
+
+            ${renderCard('ai_app_models', 'Feature Defaults', 'Choose provider and model defaults for each AI-powered feature.', true, `
+                <div class="settings-fields">
+                    <div class="form-group full-width">
+                        ${renderAIAppRows()}
+                        <div class="modal-actions modal-actions-center">
+                            <button type="submit" class="btn-primary" data-section="ai_app_models">💾 Save</button>
+                        </div>
+                    </div>
+                </div>
+            `, true, 'Configured')}
+        </div>
+    `;
+}
+
+/**
+ * Generates the non-AI integrations configuration fragment.
+ * 
+ * @returns {string} - Rendered HTML.
+ */
+function renderIntegrationsPanel() {
+    const s = STATE.settings;
+    const cloud = STATE.google_cloud;
+
+    return `
+        <div class="settings-panel" id="panel-integrations">
+            ${renderCard('unsplash', 'Unsplash', 'High-quality images for platform modules.', !!s.unsplash_key, `
+                <div class="settings-fields">
+                    <div class="form-group full-width">
+                        <label>Access Key</label>
+                        <div class="render-row-input" data-id="unsplash_key" data-name="unsplash_key" data-type="password" data-value="" data-placeholder="${s.unsplash_key ? '(configured — paste new value to replace)' : 'Access Key'}"></div>
+                    </div>
+                </div>
+            `, true)}
 
             ${renderCard('google_cloud', 'Google Cloud', 'API key for TTS and Translation services.', !!cloud.key, `
                 <div class="settings-fields">
@@ -527,6 +618,15 @@ function saveOpenCards(list) {
     localStorage.setItem(CONFIG.CARD_KEY, JSON.stringify(list));
 }
 
+function syncAIAppModelSelect(featureKey) {
+    const providerSelect = document.querySelector(`[data-ai-provider-key="${featureKey}"]`);
+    const modelSelect = document.querySelector(`[data-ai-model-key="${featureKey}"]`);
+    if (!providerSelect || !modelSelect) return;
+
+    const provider = providerSelect.value;
+    modelSelect.innerHTML = renderModelOptions(provider, activeModelForProvider(provider));
+}
+
 /**
  * --- API Interactions ---
  */
@@ -602,9 +702,20 @@ function buildSettingsPayload(form, btn) {
     const formData = new FormData();
     formData.set('section', scopedSection);
 
+    if (scopedSection === 'ai_app_models') {
+        const rows = [...form.querySelectorAll('.ai-feature-row')].map(row => ({
+            key: row.dataset.aiFeatureKey || '',
+            provider: row.querySelector('select[name="ai_app_provider"]')?.value || '',
+            model: row.querySelector('select[name="ai_app_model"]')?.value || ''
+        }));
+        formData.set('ai_app_models', JSON.stringify(rows));
+        return formData;
+    }
+
     const row = btn.closest('.modal-prompt-row');
-    const field = row?.querySelector('input[name], select[name], textarea[name]');
-    if (field && field.name) formData.set(field.name, field.value);
+    row?.querySelectorAll('input[name], select[name], textarea[name]').forEach(field => {
+        formData.set(field.name, field.value);
+    });
 
     return formData;
 }
@@ -613,3 +724,4 @@ window.loadState = loadState;
 window.toggleCard = toggleCard;
 window.activateTab = activateTab;
 window.handleSettingsUpdate = handleSettingsUpdate;
+window.syncAIAppModelSelect = syncAIAppModelSelect;
