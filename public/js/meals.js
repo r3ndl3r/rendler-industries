@@ -168,12 +168,16 @@ function renderVaultTable(meals) {
             <td><strong>${escapeHtml(m.name)}</strong></td>
             <td class="col-actions">
                 <div class="action-buttons">
-                    <button type="button" class="btn-icon-edit" onclick="openAddEditMealModal(${m.id}, '${escapeHtml(m.name).replace(/'/g, "\\'")}')" title="Edit Name">
+                    <button type="button" class="btn-icon-edit"
+                            data-name="${escapeHtml(m.name)}"
+                            onclick="openAddEditMealModal(${m.id}, this.dataset.name)"
+                            title="Edit Name">
                         ✏️
                     </button>
                     <button type="button" class="btn-icon-delete ${m.is_used ? 'disabled' : ''}" 
                             ${m.is_used ? 'disabled' : ''} 
-                            onclick="deleteManageMeal(${m.id}, '${escapeHtml(m.name).replace(/'/g, "\\'")}')"
+                            data-name="${escapeHtml(m.name)}"
+                            onclick="deleteManageMeal(${m.id}, this.dataset.name)"
                             title="${m.is_used ? 'Cannot delete: Meal is part of a plan' : 'Remove from Vault'}">
                         🗑️
                     </button>
@@ -319,7 +323,7 @@ function renderDayColumn(day, index) {
         contentHtml = `
             <div class="blackout-state">
                 <span class="blackout-icon">🚫</span>
-                <p>🍲 Your meal plan is empty!</p>
+                <p>${escapeHtml(blackout)}</p>
                 ${STATE.isAdmin ? `
                     <div class="day-actions mt-4">
                         <button type="button" class="btn-secondary btn-small" onclick="adminUnlock(${day.id})">
@@ -377,10 +381,16 @@ function renderDayColumn(day, index) {
                         🗳️
                     </button>
                     ${(STATE.isAdmin || s.suggested_by_id == STATE.currentUserId) ? `
-                        <button type="button" class="btn-icon-edit" onclick="openEditSuggestionModal(${s.id}, '${s.meal_name.replace(/'/g, "\\'")}')" title="Edit suggestion">
+                        <button type="button" class="btn-icon-edit"
+                                data-name="${escapeHtml(s.meal_name)}"
+                                onclick="openEditSuggestionModal(${s.id}, this.dataset.name)"
+                                title="Edit suggestion">
                             ✏️
                         </button>
-                        <button type="button" class="btn-icon-delete" onclick="deleteSuggestion(${s.id}, '${s.meal_name.replace(/'/g, "\\'")}')" title="Remove suggestion">
+                        <button type="button" class="btn-icon-delete"
+                                data-name="${escapeHtml(s.meal_name)}"
+                                onclick="deleteSuggestion(${s.id}, this.dataset.name)"
+                                title="Remove suggestion">
                             🗑️
                         </button>` : ''}
                     ${STATE.isAdmin ? `
@@ -530,11 +540,15 @@ async function castVote(id) {
     const row = document.querySelector(`.suggestion-row[data-suggestion-id="${id}"]`);
     if (row) row.classList.add('vote-pop');
 
-    const result = await window.apiPost('/meals/api/vote', { suggestion_id: id });
-    if (result && result.success) {
-        await loadState(true);
-    } else {
-        if (row) row.classList.remove('vote-pop');
+    let refreshed = false;
+    try {
+        const result = await window.apiPost('/meals/api/vote', { suggestion_id: id });
+        if (result && result.success) {
+            await loadState(true);
+            refreshed = true;
+        }
+    } finally {
+        if (!refreshed && row) row.classList.remove('vote-pop');
     }
 }
 
@@ -752,4 +766,3 @@ window.openAddEditMealModal = openAddEditMealModal;
 window.closeAddEditMealModal = closeAddEditMealModal;
 window.submitManageMeal = submitManageMeal;
 window.deleteManageMeal = deleteManageMeal;
-
