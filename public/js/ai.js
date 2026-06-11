@@ -142,6 +142,7 @@ async function sendPrompt(event) {
     if (!prompt) return;
 
     // 1. Optimistic Update: append user turn
+    const optimisticIndex = STATE.history.length;
     STATE.history.push({ role: 'user', content: prompt });
     input.value = '';
     renderMessages();
@@ -159,9 +160,14 @@ async function sendPrompt(event) {
             // Success: reconcile state with model response
             STATE.history.push({ role: 'model', content: result.content });
             renderMessages();
+        } else {
+            STATE.history.splice(optimisticIndex, 1);
+            renderMessages();
         }
     } catch (err) {
         if (typing) typing.remove();
+        STATE.history.splice(optimisticIndex, 1);
+        renderMessages();
         showToast("Neural link failure", "error");
     }
 }
