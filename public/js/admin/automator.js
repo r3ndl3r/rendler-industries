@@ -901,9 +901,10 @@ function closeInventoryManageModal() {
  */
 function deleteInventory(id) {
     const inv = STATE.inventories.find(row => Number(row.id) === Number(id));
+    const label = inv ? escapeHtml(inv.name) : `#${id}`;
     showConfirmModal({
         title: 'Delete Inventory',
-        message: `Permanently delete ${inv ? inv.name : `#${id}`}? Playbooks using it will be detached.`,
+        message: `Permanently delete ${label}? Playbooks using it will be detached.`,
         confirmText: 'DELETE',
         danger: true,
         hideCancel: true,
@@ -1017,9 +1018,10 @@ function editSecret(id) {
 function deleteSecret(id) {
     if (!id) return;
     const secret = STATE.secrets.find(row => Number(row.id) === Number(id));
+    const label = secret ? escapeHtml(secret.name) : `#${id}`;
     showConfirmModal({
         title: 'Delete Secret',
-        message: `Delete ${secret ? secret.name : `#${id}`}? Playbook attachments using it will be removed.`,
+        message: `Delete ${label}? Playbook attachments using it will be removed.`,
         confirmText: 'DELETE',
         danger: true,
         hideCancel: true,
@@ -1056,9 +1058,10 @@ async function saveSecret(event) {
  */
 function deletePlaybook(id) {
     const p = STATE.playbooks.find(row => Number(row.id) === Number(id));
+    const label = p ? escapeHtml(p.name) : `#${id}`;
     showConfirmModal({
         title: 'Delete Playbook',
-        message: `Soft-delete ${p ? p.name : `#${id}`}?`,
+        message: `Soft-delete ${label}?`,
         confirmText: 'DELETE',
         danger: true,
         hideCancel: true,
