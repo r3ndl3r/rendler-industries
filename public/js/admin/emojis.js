@@ -250,7 +250,7 @@ async function testAI() {
             saveBtn.dataset.emoji = result.emoji;
             saveBtn.dataset.text = text;
         } else {
-            resultArea.innerHTML = `<span class="error-text">⚠️ ${escapeHtml(result.error || 'Prediction failed')}</span>`;
+            resultArea.innerHTML = `<span class="error-text">⚠️ ${escapeHtml(result ? (result.error || 'Prediction failed') : 'Prediction failed')}</span>`;
         }
     } catch (err) {
         resultArea.innerHTML = `<span class="error-text">Network error during prediction</span>`;
