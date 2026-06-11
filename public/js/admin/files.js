@@ -343,9 +343,7 @@ function confirmDeleteFile(id, filename) {
  */
 function copyFileLink(id) {
     const url = `${window.location.origin}/files/serve/${id}`;
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(url).then(() => showToast('Link copied', 'success'));
-    } else {
+    const fallbackCopy = () => {
         const el = document.createElement('textarea');
         el.value = url;
         document.body.appendChild(el);
@@ -353,6 +351,12 @@ function copyFileLink(id) {
         document.execCommand('copy');
         document.body.removeChild(el);
         showToast('Link copied', 'success');
+    };
+
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(url).then(() => showToast('Link copied', 'success')).catch(fallbackCopy);
+    } else {
+        fallbackCopy();
     }
 }
 
