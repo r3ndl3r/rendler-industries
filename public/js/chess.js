@@ -762,15 +762,18 @@ const ChessApp = {
                     onConfirm: async () => {
                         const opponentId = (STATE.userId === STATE.p1Id) ? STATE.p2Id : STATE.p1Id;
                         STATE.isInteracting = true;
-                        await window.apiPost('/chess/api/move', {
-                            game_id: STATE.activeGameId, 
-                            fen: STATE.engine.fen(), 
-                            next_turn_id: 0, 
-                            status: 'finished', 
-                            winner_id: opponentId,
-                            last_move: null 
-                        });
-                        STATE.isInteracting = false;
+                        try {
+                            await window.apiPost('/chess/api/move', {
+                                game_id: STATE.activeGameId, 
+                                fen: STATE.engine.fen(), 
+                                next_turn_id: 0, 
+                                status: 'finished', 
+                                winner_id: opponentId,
+                                last_move: null 
+                            });
+                        } finally {
+                            STATE.isInteracting = false;
+                        }
                         this.pollGame(true);
                     }
                 });
@@ -788,8 +791,11 @@ const ChessApp = {
                     onConfirm: async () => {
                         STATE.drawOfferByMe = true;
                         STATE.isInteracting = true;
-                        await window.apiPost(`/chess/api/offer_draw/${STATE.activeGameId}`);
-                        STATE.isInteracting = false;
+                        try {
+                            await window.apiPost(`/chess/api/offer_draw/${STATE.activeGameId}`);
+                        } finally {
+                            STATE.isInteracting = false;
+                        }
                         this.pollGame(true);
                     }
                 });
@@ -800,8 +806,11 @@ const ChessApp = {
         if (acceptDrawBtn) {
             acceptDrawBtn.onclick = async () => {
                 STATE.isInteracting = true;
-                await window.apiPost(`/chess/api/respond_draw/${STATE.activeGameId}`, { accept: 1 });
-                STATE.isInteracting = false;
+                try {
+                    await window.apiPost(`/chess/api/respond_draw/${STATE.activeGameId}`, { accept: 1 });
+                } finally {
+                    STATE.isInteracting = false;
+                }
                 this.pollGame(true);
             };
         }
@@ -810,8 +819,11 @@ const ChessApp = {
         if (refuseDrawBtn) {
             refuseDrawBtn.onclick = async () => {
                 STATE.isInteracting = true;
-                await window.apiPost(`/chess/api/respond_draw/${STATE.activeGameId}`, { accept: 0 });
-                STATE.isInteracting = false;
+                try {
+                    await window.apiPost(`/chess/api/respond_draw/${STATE.activeGameId}`, { accept: 0 });
+                } finally {
+                    STATE.isInteracting = false;
+                }
                 this.pollGame(true);
             };
         }
