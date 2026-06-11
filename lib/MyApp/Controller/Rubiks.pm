@@ -307,7 +307,8 @@ Return ONLY a JSON object with either the 'state_string' field OR the 'error' fi
         contents => [{ role => 'user', parts => \@user_parts }],
         system   => $system_instructions,
         timeout  => 60,
-        response_format => 'application/json'
+        response_format => 'application/json',
+        app_profile     => 'rubiks'
     )->then(sub {
         my $data = shift;
 
