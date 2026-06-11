@@ -708,7 +708,7 @@ async function openHistoryModal() {
     if (catFilter) catFilter.value = '';
 
     modal.classList.add('show');
-    document.body.classList.add('modal-open');
+    syncCalendarModalLock();
 
     await loadHistoryPage(false);
 }
@@ -721,7 +721,7 @@ function closeHistoryModal() {
     clearTimeout(filterDebounceTimer);
 
     modal.classList.remove('show');
-    document.body.classList.remove('modal-open');
+    syncCalendarModalLock();
 }
 
 function filterHistory() {
@@ -1194,7 +1194,7 @@ function openAddEventModal(dateStr) {
     }
 
     modal.classList.add('show');
-    document.body.classList.add('modal-open');
+    syncCalendarModalLock();
 }
 
 /**
@@ -1290,7 +1290,7 @@ function openEditModalById(id) {
 
     const modal = document.getElementById('eventModal');
     modal.classList.add('show');
-    document.body.classList.add('modal-open');
+    syncCalendarModalLock();
 }
 
 /**
@@ -1403,7 +1403,7 @@ function openEditModalByUid(uid) {
 
     const modal = document.getElementById('eventModal');
     modal.classList.add('show');
-    document.body.classList.add('modal-open');
+    syncCalendarModalLock();
 }
 
 /**
@@ -1532,7 +1532,7 @@ function showEventDetails(uid) {
 
     const modal = document.getElementById('eventDetailsModal');
     modal.classList.add('show');
-    document.body.classList.add('modal-open');
+    syncCalendarModalLock();
 }
 
 /**
@@ -1544,7 +1544,7 @@ function closeEventModal() {
     const modal = document.getElementById('eventModal');
     if (modal) {
         modal.classList.remove('show');
-        document.body.classList.remove('modal-open');
+        syncCalendarModalLock();
     }
 }
 
@@ -1557,8 +1557,18 @@ function closeDetailsModal() {
     const modal = document.getElementById('eventDetailsModal');
     if (modal) {
         modal.classList.remove('show');
-        document.body.classList.remove('modal-open');
+        syncCalendarModalLock();
     }
+}
+
+/**
+ * Synchronizes body scroll lock based on aggregate calendar modal state.
+ * Prevents background scrolling while any calendar modal is open.
+ * @returns {void}
+ */
+function syncCalendarModalLock() {
+    const hasOpenModal = !!document.querySelector('#eventModal.show, #eventDetailsModal.show, #historyModal.show');
+    document.body.classList.toggle('modal-open', hasOpenModal);
 }
 
 /**
