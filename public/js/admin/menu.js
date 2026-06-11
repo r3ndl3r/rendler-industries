@@ -148,7 +148,7 @@ const MenuMgmt = {
                     ${indent}
                     ${link.is_separator ?
                         '<span class="separator-label">&#9135;&#9135;&#9135;&#9135;&#9135; SEPARATOR &#9135;&#9135;&#9135;&#9135;&#9135;</span>' :
-                        `<span class="${link.css_class || ''}"><strong>${escapeHtml(link.label)}</strong></span>`
+                        `<span class="${escapeHtml(link.css_class || '')}"><strong>${escapeHtml(link.label)}</strong></span>`
                     }
                 </td>
                 <td data-label="URL">
