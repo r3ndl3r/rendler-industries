@@ -28,7 +28,8 @@ const CONFIG = {
 
 let STATE = {
     history: [],                    // Collection of {role, content, timestamp}
-    username: 'user'                // Active user for avatar resolution
+    username: 'user',               // Active user for avatar resolution
+    isSending: false
 };
 
 /**
@@ -136,24 +137,29 @@ function scrollToBottom() {
  */
 async function sendPrompt(event) {
     if (event) event.preventDefault();
-    
+    if (STATE.isSending) return;
+
     const input = document.getElementById('prompt-input');
+    const btn = document.getElementById('send-btn');
     const prompt = input.value.trim();
     if (!prompt) return;
+
+    STATE.isSending = true;
+    if (btn) btn.disabled = true;
 
     // 1. Optimistic Update: append user turn
     const optimisticIndex = STATE.history.length;
     STATE.history.push({ role: 'user', content: prompt });
     input.value = '';
     renderMessages();
-    
+
     // 2. UI: reveal thinking indicator
     const typing = showTyping();
 
     // 3. API Dispatch
     try {
         const result = await apiPost('/ai/api/chat', { prompt: prompt }, 300000);
-        
+
         if (typing) typing.remove();
 
         if (result && result.success) {
@@ -169,6 +175,9 @@ async function sendPrompt(event) {
         STATE.history.splice(optimisticIndex, 1);
         renderMessages();
         showToast("Neural link failure", "error");
+    } finally {
+        STATE.isSending = false;
+        if (btn) btn.disabled = false;
     }
 }
 
