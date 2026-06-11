@@ -161,7 +161,7 @@ function renderTable() {
     if (!tbody) return;
 
     if (STATE.users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="text-center">No users registered in the system.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center">No users registered in the system.</td></tr>';
         return;
     }
 
