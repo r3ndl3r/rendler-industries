@@ -467,21 +467,25 @@ sub register {
     $app->helper(ai_prompt => sub {
         my ($c, %args) = @_;
 
-        my $provider = $c->db->get_ai_provider();
-        my $model = $args{model} || (
-            $provider eq 'opencode' && !_has_gemini_only_parts(\%args)
-                ? $c->db->get_opencode_active_model()
-            : $provider eq 'local' && !_has_gemini_only_parts(\%args)
-                ? 'local'
-                : $c->db->get_gemini_active_model()
-        );
+        my $profile_key = $args{app_profile} || $args{ai_profile} || $args{app_context} || '';
+        my $profile = length $profile_key ? $c->db->get_ai_model_profile($profile_key) : {};
+        my $requires_gemini = _has_gemini_only_parts(\%args);
+        my $provider = $args{provider} || $profile->{provider} || $c->db->get_ai_provider();
+        $provider = 'gemini' if $requires_gemini;
+        my $model = $args{model};
+        $model ||= $profile->{model} if !$requires_gemini && ($profile->{provider} || '') eq $provider;
+        $model ||= $provider eq 'opencode' ? $c->db->get_opencode_active_model()
+                : $provider eq 'local'    ? 'local'
+                :                           $c->db->get_gemini_active_model();
+        $args{model} = $model;
+        $args{web_search} = 0 unless $provider eq 'gemini' || $provider eq 'opencode';
         $c->ai_debug("Request provider=$provider model=", $model,
             " system=", ($args{system} // ''), " contents=", substr(($args{contents}[0]{parts}[0]{text} // ''), 0, 200));
 
         my $promise;
-        if ($provider eq 'opencode' && !_has_gemini_only_parts(\%args)) {
+        if ($provider eq 'opencode' && !$requires_gemini) {
             $promise = _opencode_prompt($c, %args);
-        } elsif ($provider eq 'local' && !_has_gemini_only_parts(\%args)) {
+        } elsif ($provider eq 'local' && !$requires_gemini) {
             $promise = _local_prompt($c, %args);
         } else {
             $promise = _gemini_prompt($c, %args);
@@ -531,7 +535,8 @@ sub register {
 
         return $c->ai_prompt(
             contents => \@contents,
-            system   => "You are the Rendler Family Assistant. Be helpful, concise, and professional."
+            system   => "You are the Rendler Family Assistant. Be helpful, concise, and professional.",
+            app_profile => 'ai_chat'
         );
     });
 
@@ -553,7 +558,8 @@ sub register {
             image  => $image,
             mime   => $mime,
             system => $system,
-            prompt => "Digitize this receipt accurately."
+            prompt => "Digitize this receipt accurately.",
+            app_profile => 'receipts'
         );
     });
 
@@ -577,7 +583,8 @@ sub register {
             system          => $args{system},
             response_format => 'application/json',
             temp            => 0.1,
-            timeout         => 60
+            timeout         => 60,
+            app_profile     => $args{app_profile}
         );
     });
 
@@ -634,7 +641,8 @@ Image 1 follows, then image 2.
             system          => $system,
             response_format => 'application/json',
             temp            => 0.1,
-            timeout         => 60
+            timeout         => 60,
+            app_profile     => 'fuel'
         );
     });
 
@@ -648,7 +656,8 @@ Image 1 follows, then image 2.
             system     => "Respond ONLY with one emoji character.",
             temp       => 0.1,
             max_tokens => 2048,
-            timeout    => 10
+            timeout    => 10,
+            app_profile => 'emoji_lookup'
         );
     });
 
