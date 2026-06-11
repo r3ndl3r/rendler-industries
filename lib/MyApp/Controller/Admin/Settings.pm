@@ -9,7 +9,7 @@ use Mojo::Util qw(trim);
 # Features:
 #   - Centralized settings display interface for admins
 #   - Handles updates for Pushover, Gotify, Unsplash, App Secret, and Email settings
-#   - Dynamic Gemini AI model registry management
+#   - Dynamic AI engine registry management
 #   - Real-time configuration state synchronization
 # Integration points:
 #   - Restricted to administrative members via router bridge
@@ -34,29 +34,13 @@ sub api_state {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
 
-    my ($gemini_models, $gemini_model_error) = _fetch_gemini_models($c);
-    my ($opencode_models, $opencode_model_error) = _fetch_opencode_models($c);
+    my $registry = $c->db->get_ai_engine_registry();
 
     my $state = {
         settings         => $c->db->get_all_settings(),
         email_settings   => $c->db->get_email_settings(),
         timer_reset_hour => $c->db->get_timer_reset_hour(),
-        ai_provider      => $c->db->get_ai_provider(),
-        gemini           => {
-            key    => $c->db->get_gemini_key(),
-            models => $gemini_models,
-            active => $c->db->get_gemini_active_model(),
-            model_error => $gemini_model_error
-        },
-        opencode         => {
-            key         => $c->db->get_opencode_key(),
-            models      => $opencode_models,
-            active      => $c->db->get_opencode_active_model(),
-            model_error => $opencode_model_error
-        },
-        local_ai         => {
-            url => $c->db->get_local_ai_url()
-        },
+        ai_engine_registry => _public_ai_engine_registry($c, $registry),
         ai_apps          => $c->db->get_ai_app_models(),
         google_cloud     => {
             key => $c->db->get_google_cloud_key()
@@ -155,45 +139,18 @@ sub update {
         
         return $c->render(json => { success => 1, message => "Timer reset time set to $display_hour" });
     }
-    elsif ($section eq 'ai_provider') {
-        my $provider = trim($c->param('ai_provider') // '');
-        unless ($provider eq 'gemini' || $provider eq 'opencode' || $provider eq 'local') {
-            return $c->render(json => { success => 0, error => 'Invalid AI provider' });
+    elsif ($section eq 'ai_engine_registry') {
+        my $raw = $c->param('ai_engine_registry') // '{}';
+        my $payload = eval { decode_json($raw) };
+        return $c->render(json => { success => 0, error => 'Invalid AI engine registry' }) if $@ || ref $payload ne 'HASH';
+        my $current = $c->db->get_ai_engine_registry();
+        my ($registry, $error) = _validate_ai_engine_registry_payload($payload, $current);
+        return $c->render(json => { success => 0, error => $error }) if $error;
+
+        unless ($c->db->update_ai_engine_registry($registry)) {
+            return $c->render(json => { success => 0, error => 'AI engine registry was not saved' });
         }
-        $c->db->update_ai_provider($provider);
-        return $c->render(json => { success => 1, message => 'AI provider updated successfully' });
-    }
-    elsif ($section eq 'gemini_key') {
-        my $api_key = _secret_update_value($c->param('gemini_key'));
-        return $c->render(json => { success => 1, message => 'Gemini API key left unchanged' }) unless length $api_key;
-        $c->db->update_gemini_key($api_key);
-        return $c->render(json => { success => 1, message => 'Gemini API key updated successfully' });
-    }
-    elsif ($section eq 'gemini_model') {
-        my $active_model = trim($c->param('gemini_active_model') // '');
-        return $c->render(json => { success => 0, error => 'Invalid Gemini model' }) unless length $active_model;
-        $c->db->update_gemini_active_model($active_model);
-        return $c->render(json => { success => 1, message => 'Gemini model updated successfully' });
-    }
-    elsif ($section eq 'opencode_key') {
-        my $api_key = _secret_update_value($c->param('opencode_key'));
-        return $c->render(json => { success => 1, message => 'OpenCode API key left unchanged' }) unless length $api_key;
-        $c->db->update_opencode_key($api_key);
-        return $c->render(json => { success => 1, message => 'OpenCode API key updated successfully' });
-    }
-    elsif ($section eq 'opencode_model') {
-        my $active_model = trim($c->param('opencode_active_model') // '');
-        return $c->render(json => { success => 0, error => 'Invalid OpenCode model' }) unless length $active_model;
-        $c->db->update_opencode_active_model($active_model);
-        return $c->render(json => { success => 1, message => 'OpenCode model updated successfully' });
-    }
-    elsif ($section eq 'local_ai') {
-        my $url = trim($c->param('local_ai_url') // '');
-        unless ($url =~ m{^https?://\S+$}) {
-            return $c->render(json => { success => 0, error => 'Local LLM URL must start with http:// or https://' });
-        }
-        $c->db->update_local_ai_url($url);
-        return $c->render(json => { success => 1, message => 'Local LLM URL updated successfully' });
+        return $c->render(json => { success => 1, message => 'AI engines updated successfully' });
     }
     elsif ($section eq 'ai_app_models') {
         my $raw = $c->param('ai_app_models') // '[]';
@@ -210,10 +167,9 @@ sub update {
             unless (_valid_ai_app_key($profile_key)) {
                 return $c->render(json => { success => 0, error => 'Invalid AI feature' });
             }
-            unless ($provider eq 'gemini' || $provider eq 'opencode' || $provider eq 'local') {
+            unless (_valid_ai_engine_id($c, $provider)) {
                 return $c->render(json => { success => 0, error => 'Invalid AI provider' });
             }
-            $model = 'local' if $provider eq 'local';
             return $c->render(json => { success => 0, error => 'Invalid AI model' }) unless length $model;
 
             $models{$profile_key} = { provider => $provider, model => $model };
@@ -246,16 +202,104 @@ sub update {
     return $c->render(json => { success => 0, error => 'Unknown settings section' });
 }
 
-sub _fetch_opencode_models {
-    my ($c) = @_;
-    return $c->ai_opencode_models;
+# Validates submitted AI engine JSON and preserves stored secrets for blank key fields.
+sub _validate_ai_engine_registry_payload {
+    my ($payload, $current) = @_;
+    return (undef, 'Invalid AI engine registry') unless ref $payload eq 'HASH' && ref $current eq 'HASH';
+
+    my $submitted = $payload->{engines};
+    my @rows;
+    if (ref $submitted eq 'HASH') {
+        @rows = map {
+            my $row = ref $submitted->{$_} eq 'HASH' ? { %{$submitted->{$_}} } : {};
+            $row->{id} = $_;
+            $row;
+        } sort keys %$submitted;
+    } elsif (ref $submitted eq 'ARRAY') {
+        @rows = @$submitted;
+    } else {
+        return (undef, 'Invalid AI engine rows');
+    }
+    return (undef, 'At least one AI engine is required') unless @rows;
+
+    my $default_engine = trim($payload->{default_engine} // '');
+    return (undef, 'Invalid default AI engine') unless $default_engine =~ /\A[a-z0-9_]+\z/;
+
+    my %engines;
+    for my $row (@rows) {
+        return (undef, 'Invalid AI engine row') unless ref $row eq 'HASH';
+        my $id = trim($row->{id} // '');
+        return (undef, 'Invalid AI engine') unless $id =~ /\A[a-z0-9_]+\z/;
+
+        my $existing = ref $current->{engines}{$id} eq 'HASH' ? $current->{engines}{$id} : {};
+        my $type = trim($row->{type} // ($existing->{type} || ''));
+        return (undef, 'Invalid AI engine type') unless $type eq 'gemini' || $type eq 'openai_compatible';
+
+        my $chat_endpoint = trim($row->{chat_endpoint} // '');
+        return (undef, 'AI chat endpoint must start with http:// or https://')
+            unless $chat_endpoint =~ m{^https?://\S+$};
+
+        my $models_endpoint = trim($row->{models_endpoint} // '');
+        return (undef, 'AI models endpoint must start with http:// or https://')
+            if length($models_endpoint) && $models_endpoint !~ m{^https?://\S+$};
+
+        my $active_model = trim($row->{active_model} // '');
+        return (undef, 'Invalid AI active model') unless length $active_model;
+
+        my $api_key = _secret_update_value($row->{api_key});
+        $api_key = $existing->{api_key} // '' unless length $api_key;
+        my $existing_fallbacks = ref $existing->{fallback_models} eq 'ARRAY' ? $existing->{fallback_models} : [];
+        my $existing_caps = ref $existing->{capabilities} eq 'ARRAY' ? $existing->{capabilities} : [];
+        my $fallback_models = ref $row->{fallback_models} eq 'ARRAY' ? $row->{fallback_models} : $existing_fallbacks;
+        my $capabilities = ref $row->{capabilities} eq 'ARRAY' ? $row->{capabilities} : $existing_caps;
+
+        $engines{$id} = {
+            label           => trim($row->{label} // $existing->{label} // $id),
+            type            => $type,
+            enabled         => $row->{enabled} ? 1 : 0,
+            api_key         => $api_key,
+            active_model    => $active_model,
+            fallback_models => [ grep { defined $_ && length $_ } @$fallback_models ],
+            chat_endpoint   => $chat_endpoint,
+            models_endpoint => $models_endpoint,
+            capabilities    => [ grep { defined $_ && /\A[a-z0-9_]+\z/ } @$capabilities ]
+        };
+    }
+
+    return (undef, 'Default AI engine must be enabled')
+        unless $engines{$default_engine} && $engines{$default_engine}{enabled};
+
+    return ({
+        default_engine => $default_engine,
+        engines        => \%engines
+    }, undef);
 }
 
-sub _fetch_gemini_models {
-    my ($c) = @_;
-    return $c->ai_gemini_models;
+# Returns a UI-safe copy of the registry with secrets redacted and model choices attached.
+sub _public_ai_engine_registry {
+    my ($c, $registry) = @_;
+    my %engines;
+
+    for my $id (sort keys %{$registry->{engines} || {}}) {
+        my $engine = $registry->{engines}{$id};
+        next unless ref $engine eq 'HASH';
+        my ($models, $model_error) = $c->ai_engine_models($id);
+        $engines{$id} = {
+            %$engine,
+            api_key => '',
+            api_key_configured => length($engine->{api_key} || '') ? 1 : 0,
+            models => $models,
+            model_error => $model_error
+        };
+    }
+
+    return {
+        default_engine => $registry->{default_engine},
+        engines        => \%engines
+    };
 }
 
+# Checks whether a submitted AI feature key is one the settings UI owns.
 sub _valid_ai_app_key {
     my ($key) = @_;
     return scalar grep { $_ eq $key } qw(
@@ -269,6 +313,14 @@ sub _valid_ai_app_key {
     );
 }
 
+# Checks whether a submitted AI engine id exists in the current registry.
+sub _valid_ai_engine_id {
+    my ($c, $engine_id) = @_;
+    my $registry = $c->db->get_ai_engine_registry();
+    return exists $registry->{engines}{$engine_id || ''};
+}
+
+# Normalizes secret field submissions so placeholders never overwrite real values.
 sub _secret_update_value {
     my ($value) = @_;
     $value = trim($value // '');
