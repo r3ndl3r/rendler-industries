@@ -446,7 +446,11 @@ const ChessApp = {
         // Only show last-move highlights if it is currently my turn (showing opponent's move)
         const isMyTurn = STATE.currentTurnId === STATE.userId;
         if (isMyTurn && STATE.serverLastMove?.includes('-')) {
-            [lastMoveFrom, lastMoveTo] = STATE.serverLastMove.split('-');
+            const [from, to] = STATE.serverLastMove.split('-');
+            if (this.isSquareName(from) && this.isSquareName(to)) {
+                lastMoveFrom = from;
+                lastMoveTo = to;
+            }
         }
 
         squares.forEach(sq => {
@@ -490,7 +494,7 @@ const ChessApp = {
         
         // Only show the line if it's my turn (meaning the opponent just moved)
         const isMyTurn = STATE.currentTurnId === STATE.userId;
-        if (!from || !to || !isMyTurn) return;
+        if (!this.isSquareName(from) || !this.isSquareName(to) || !isMyTurn) return;
 
         const isBlackPerspective = (STATE.userId === STATE.p2Id);
         
@@ -841,6 +845,15 @@ const ChessApp = {
     capitalize: function(s) {
         if (!s) return '';
         return s.charAt(0).toUpperCase() + s.slice(1);
+    },
+
+    /**
+     * Validates that a string is a valid chess square name (e.g., 'e4').
+     * @param {string} square - The square name to validate.
+     * @returns {boolean}
+     */
+    isSquareName: function(square) {
+        return /^[a-h][1-8]$/.test(String(square || ''));
     }
 };
 
