@@ -159,13 +159,24 @@ const ChessApp = {
      * @returns {void}
      */
     resolveRoute: function(path) {
-        if (STATE.pollInterval) clearInterval(STATE.pollInterval);
+        this.resetPolling();
         
         const match = path.match(/\/chess\/play\/(\d+)/);
         if (match && match[1]) {
             this.showGame(match[1]);
         } else {
             this.showLobby();
+        }
+    },
+
+    /**
+     * Clears the active polling interval and resets the stored interval ID.
+     * @returns {void}
+     */
+    resetPolling: function() {
+        if (STATE.pollInterval) {
+            clearInterval(STATE.pollInterval);
+            STATE.pollInterval = null;
         }
     },
 
@@ -198,6 +209,7 @@ const ChessApp = {
      * @returns {void}
      */
     showLobby: function() {
+        this.resetPolling();
         if (STATE.view !== 'lobby') {
             window.history.pushState({}, '', '/chess');
         }
@@ -294,6 +306,7 @@ const ChessApp = {
      * @returns {Promise<void>}
      */
     showGame: async function(id) {
+        this.resetPolling();
         if (window.location.pathname !== `/chess/play/${id}`) {
             window.history.pushState({}, '', `/chess/play/${id}`);
         }
@@ -681,7 +694,7 @@ const ChessApp = {
                 gameOverModal.classList.add('active');
             }
             
-            if (STATE.pollInterval) clearInterval(STATE.pollInterval);
+            this.resetPolling();
             
             const winnerId = parseInt(data.winner_id, 10);
             if (winnerId === 0) {
