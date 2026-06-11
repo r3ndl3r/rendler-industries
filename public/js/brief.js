@@ -146,6 +146,15 @@ function renderSummary() {
  *
  * @returns {void}
  */
+function parseWeatherData(raw) {
+    try {
+        return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+        console.error('Brief weather parse error:', err);
+        return null;
+    }
+}
+
 function renderWeather() {
     const tile = document.getElementById('tile-weather');
     const w = STATE.weather ?? null;
@@ -158,11 +167,17 @@ function renderWeather() {
         return;
     }
 
-    const obs = JSON.parse(w.data);
+    const obs = parseWeatherData(w.data);
+    if (!obs) {
+        html += `<p class="brief-tile-empty">No weather data available.</p>`;
+        tile.innerHTML = html;
+        return;
+    }
     const cur = obs.current ?? {};
     const daily = obs.daily?.[0] ?? {};
     
-    const temp     = cur.temp != null ? cur.temp.toFixed(1) : '—';
+    const tempValue = Number(cur.temp);
+    const temp     = Number.isFinite(tempValue) ? tempValue.toFixed(1) : '—';
     const desc     = cur.weather?.[0]?.description ?? '';
     const summary  = daily.summary ?? '';
     const iconCode = (cur.weather?.[0]?.icon ?? '').slice(0, 2);
