@@ -42,21 +42,9 @@ let STATE = {
     settings: {},                   // Global system settings (pushover, gotify, app_secret, etc)
     email_settings: {},             // SMTP and email dispatch configuration
     timer_reset_hour: 0,            // Scheduled daily maintenance hour
-    ai_provider: 'gemini',          // Active AI API provider
-    gemini: {                       // AI Integration metadata
-        key: '',
-        models: [],
-        active: '',
-        model_error: ''
-    },
-    opencode: {                     // OpenCode Zen metadata
-        key: '',
-        models: [],
-        active: '',
-        model_error: ''
-    },
-    local_ai: {                      // Local OpenAI-compatible endpoint metadata
-        url: ''
+    ai_engine_registry: {
+        default_engine: 'gemini',
+        engines: {}
     },
     ai_apps: {},                     // Per-feature AI provider/model overrides
     google_cloud: {                 // Cloud Services (TTS/Translation) metadata
@@ -96,10 +84,7 @@ async function loadState() {
             STATE.settings = data.settings;
             STATE.email_settings = data.email_settings;
             STATE.timer_reset_hour = data.timer_reset_hour;
-            STATE.ai_provider = data.ai_provider || 'gemini';
-            STATE.gemini = data.gemini;
-            STATE.opencode = data.opencode || STATE.opencode;
-            STATE.local_ai = data.local_ai || STATE.local_ai;
+            STATE.ai_engine_registry = data.ai_engine_registry || STATE.ai_engine_registry;
             STATE.ai_apps = data.ai_apps || {};
             STATE.google_cloud = data.google_cloud;
             STATE.owm_api_key = data.owm_api_key;
@@ -141,7 +126,7 @@ function renderSettings() {
             type: el.dataset.type || 'text',
             value: el.dataset.value || '',
             placeholder: el.dataset.placeholder || '',
-            buttonText: el.dataset.buttonText || '💾 Save',
+            buttonText: el.dataset.buttonText || 'Save',
             buttonType: el.dataset.buttonType || 'submit',
             buttonClass: el.dataset.buttonClass || '',
             section: el.dataset.section || '',
@@ -239,32 +224,53 @@ function renderEmailPanel() {
     `;
 }
 
+/**
+ * Returns the current AI engine registry map from page state.
+ */
+function getAIEngines() {
+    return STATE.ai_engine_registry?.engines || {};
+}
+
+/**
+ * Returns AI engine ids in a stable display order.
+ */
+function getAIEngineIds() {
+    const engines = getAIEngines();
+    const preferred = ['gemini', 'opencode', 'local'].filter(id => engines[id]);
+    const extra = Object.keys(engines).filter(id => !preferred.includes(id)).sort();
+    return [...preferred, ...extra];
+}
+
+/**
+ * Formats an AI engine id for labels and badges.
+ */
 function providerLabel(provider) {
-    if (provider === 'opencode') return 'OpenCode';
-    if (provider === 'local') return 'Local';
-    return 'Gemini';
+    return getAIEngines()[provider]?.label || provider || 'AI Engine';
 }
 
+/**
+ * Resolves the active model for an AI engine with fallback support.
+ */
 function activeModelForProvider(provider) {
-    if (provider === 'opencode') return STATE.opencode?.active || '';
-    if (provider === 'local') return 'local';
-    return STATE.gemini?.active || '';
+    const engine = getAIEngines()[provider] || {};
+    return engine.active_model || engine.fallback_models?.[0] || '';
 }
 
+/**
+ * Renders provider select options from the registry.
+ */
 function renderProviderOptions(active) {
-    return `
-        <option value="gemini" ${active === 'gemini' ? 'selected' : ''}>Google Gemini</option>
-        <option value="opencode" ${active === 'opencode' ? 'selected' : ''}>OpenCode Zen</option>
-        <option value="local" ${active === 'local' ? 'selected' : ''}>Local LLM (llama.cpp)</option>
-    `;
+    return getAIEngineIds().map(id => `
+        <option value="${escapeHtml(id)}" ${active === id ? 'selected' : ''}>${escapeHtml(providerLabel(id))}</option>
+    `).join('');
 }
 
+/**
+ * Renders model select options for the selected AI engine.
+ */
 function renderModelOptions(provider, active) {
-    const models = provider === 'opencode'
-        ? [...(STATE.opencode?.models || [])]
-        : provider === 'local'
-            ? ['local']
-            : [...(STATE.gemini?.models || [])];
+    const engine = getAIEngines()[provider] || {};
+    const models = [...(engine.models || engine.fallback_models || [])];
     const selected = active || activeModelForProvider(provider);
     if (selected && !models.includes(selected)) models.unshift(selected);
 
@@ -273,13 +279,21 @@ function renderModelOptions(provider, active) {
     `).join('');
 }
 
+/**
+ * Resolves one feature's provider/model selection from saved overrides.
+ */
 function getAIAppSelection(feature) {
     const saved = STATE.ai_apps?.[feature.key] || {};
-    const provider = saved.provider || feature.defaultProvider || STATE.ai_provider || 'gemini';
+    const engines = getAIEngines();
+    let provider = saved.provider || feature.defaultProvider || STATE.ai_engine_registry?.default_engine || 'gemini';
+    if (!engines[provider]) provider = STATE.ai_engine_registry?.default_engine || getAIEngineIds()[0] || 'gemini';
     const model = saved.model || activeModelForProvider(provider);
     return { provider, model };
 }
 
+/**
+ * Renders per-feature AI routing rows.
+ */
 function renderAIAppRows() {
     return AI_FEATURES.map(feature => {
         const selected = getAIAppSelection(feature);
@@ -305,90 +319,72 @@ function renderAIAppRows() {
 }
 
 /**
+ * Builds the editable AI registry JSON object from UI-safe state.
+ */
+function getEditableAIEngineRegistry() {
+    const engines = {};
+    getAIEngineIds().forEach(id => {
+        const engine = getAIEngines()[id] || {};
+        engines[id] = {
+            label: engine.label || id,
+            type: engine.type || 'openai_compatible',
+            enabled: !!engine.enabled,
+            api_key: engine.api_key_configured ? '(configured - paste new value to replace)' : '',
+            active_model: engine.active_model || activeModelForProvider(id),
+            fallback_models: engine.fallback_models || [],
+            chat_endpoint: engine.chat_endpoint || '',
+            models_endpoint: engine.models_endpoint || '',
+            capabilities: engine.capabilities || []
+        };
+    });
+
+    return {
+        default_engine: STATE.ai_engine_registry?.default_engine || getAIEngineIds()[0] || '',
+        engines
+    };
+}
+
+/**
+ * Renders the raw AI engine registry JSON editor.
+ */
+function renderAIEngineRegistryEditor() {
+    const json = JSON.stringify(getEditableAIEngineRegistry(), null, 2);
+    return `
+        <div class="form-group full-width">
+            <label>AI Engine Registry JSON</label>
+            <p class="help-text-muted">
+                Edit this JSON to add, remove, or update engines. Configured <code>api_key</code> values are redacted after save; keep the configured placeholder or paste a new key to replace one.
+            </p>
+            <textarea name="ai_engine_registry_json" class="game-input no-emoji" rows="24" spellcheck="false" style="font-family: monospace; min-height: 460px;">${escapeHtml(json)}</textarea>
+        </div>
+    `;
+}
+
+/**
  * Generates the AI configuration fragment.
  * 
  * @returns {string} - Rendered HTML.
  */
 function renderAIPanel() {
-    const g = STATE.gemini;
-    const o = STATE.opencode;
-    const l = STATE.local_ai;
+    const defaultEngine = STATE.ai_engine_registry?.default_engine || getAIEngineIds()[0] || 'gemini';
 
     return `
         <div class="settings-panel" id="panel-ai">
-            ${renderCard('ai_provider', 'AI Provider', 'Choose the default provider for text-only AI calls. Feature-specific defaults below can override this.', true, `
+            ${renderCard('ai_engine_registry', 'AI Engines', 'Edit the canonical AI engine registry JSON.', true, `
                 <div class="settings-fields">
-                    <div class="form-group full-width">
-                        <label>Default Provider</label>
-                        <div class="modal-prompt-row">
-                            <div class="create-input-wrapper" style="flex: 1;">
-                                <select name="ai_provider" class="game-input gemini-select">
-                                    ${renderProviderOptions(STATE.ai_provider)}
-                                </select>
-                            </div>
-                            <button type="submit" class="btn-primary btn-go-row">💾 Save</button>
-                        </div>
+                    ${renderAIEngineRegistryEditor()}
+                    <div class="modal-actions modal-actions-center settings-actions">
+                        <button type="submit" class="btn-primary" data-section="ai_engine_registry">Save</button>
                     </div>
                 </div>
-            `, true, providerLabel(STATE.ai_provider))}
-
-            ${renderCard('gemini', 'Google Gemini', 'Gemini API key and model configuration.', !!g.key, `
-                ${g.model_error ? `<div class="form-warning">${escapeHtml(g.model_error)}</div>` : ''}
-                <div class="settings-fields">
-                    <div class="form-group full-width">
-                        <label>API Key</label>
-                        <div class="render-row-input" data-id="gemini_key" data-section="gemini_key" data-name="gemini_key" data-type="password" data-value="" data-placeholder="${g.key ? '(configured — paste new value to replace)' : 'API Key'}"></div>
-                    </div>
-                    <div class="form-group full-width">
-                        <label>Active Model</label>
-                        <div class="modal-prompt-row">
-                            <div class="create-input-wrapper" style="flex: 1;">
-                                <select name="gemini_active_model" class="game-input gemini-select">
-                                    ${renderModelOptions('gemini', g.active)}
-                                </select>
-                            </div>
-                            <button type="submit" class="btn-primary btn-go-row" data-section="gemini_model">💾 Save</button>
-                        </div>
-                    </div>
-                </div>
-            `, true)}
-
-            ${renderCard('opencode', 'OpenCode Zen', 'OpenCode API key and live model selection for text-only AI routing.', !!o.key, `
-                ${o.model_error ? `<div class="form-warning">${escapeHtml(o.model_error)}</div>` : ''}
-                <div class="settings-fields">
-                    <div class="form-group full-width">
-                        <label>API Key</label>
-                        <div class="render-row-input" data-id="opencode_key" data-section="opencode_key" data-name="opencode_key" data-type="password" data-value="" data-placeholder="${o.key ? '(configured — paste new value to replace)' : 'API Key'}"></div>
-                    </div>
-                    <div class="form-group full-width">
-                        <label>Active Model</label>
-                        <div class="modal-prompt-row">
-                            <div class="create-input-wrapper" style="flex: 1;">
-                                <select name="opencode_active_model" class="game-input gemini-select">
-                                    ${renderModelOptions('opencode', o.active)}
-                                </select>
-                            </div>
-                            <button type="submit" class="btn-primary btn-go-row" data-section="opencode_model">💾 Save</button>
-                        </div>
-                    </div>
-                </div>
-            `, true)}
-
-            ${renderCard('local_ai', 'Local LLM', 'OpenAI-compatible chat completions URL for local text-only AI routing.', !!l.url, `
-                <div class="settings-fields">
-                    <div class="form-group full-width">
-                        <label>Application URL</label>
-                        <input type="url" name="local_ai_url" class="game-input" value="${escapeHtml(l.url || '')}" placeholder="http://host:port/v1/chat/completions">
-                    </div>
-                </div>
-            `)}
+            `, true, providerLabel(defaultEngine))}
 
             ${renderCard('ai_app_models', 'Feature Defaults', 'Choose provider and model defaults for each AI-powered feature.', true, `
                 <div class="settings-fields">
                     <div class="form-group full-width">
                         ${renderAIAppRows()}
-                        <div class="modal-actions modal-actions-center">
-                            <button type="submit" class="btn-primary" data-section="ai_app_models">💾 Save</button>
+                        <div class="modal-actions modal-actions-center settings-actions">
+                            <button type="submit" class="btn-primary" data-section="ai_app_models">Save</button>
                         </div>
                     </div>
                 </div>
@@ -487,7 +483,7 @@ function renderApplicationPanel() {
 function renderCard(key, title, desc, isConfigured, content, hideStandardFooter = false, customBadgeText = '', customBtnText = '') {
     const badgeText = customBadgeText || (isConfigured ? 'Configured' : 'Not Set');
     const badgeClass = isConfigured ? 'badge-active' : 'badge-inactive';
-    const btnText = customBtnText || `💾 Save`;
+    const btnText = customBtnText || 'Save';
     const btnClass = key === 'app_secret' ? 'btn-danger' : 'btn-primary';
     const safeKey = escapeHtml(key);
     const safeTitle = escapeHtml(title);
@@ -624,6 +620,9 @@ function saveOpenCards(list) {
     localStorage.setItem(CONFIG.CARD_KEY, JSON.stringify(list));
 }
 
+/**
+ * Refreshes a feature model dropdown when its provider changes.
+ */
 function syncAIAppModelSelect(featureKey) {
     const providerSelect = document.querySelector(`[data-ai-provider-key="${featureKey}"]`);
     const modelSelect = document.querySelector(`[data-ai-model-key="${featureKey}"]`);
@@ -695,6 +694,9 @@ async function handleSettingsUpdate(e) {
     }
 }
 
+/**
+ * Builds a scoped settings update payload without submitting unrelated fields.
+ */
 function buildSettingsPayload(form, btn) {
     const scopedSection = btn?.dataset?.section;
     if (!scopedSection) {
@@ -707,6 +709,11 @@ function buildSettingsPayload(form, btn) {
 
     const formData = new FormData();
     formData.set('section', scopedSection);
+
+    if (scopedSection === 'ai_engine_registry') {
+        formData.set('ai_engine_registry', form.querySelector('textarea[name="ai_engine_registry_json"]')?.value || '{}');
+        return formData;
+    }
 
     if (scopedSection === 'ai_app_models') {
         const rows = [...form.querySelectorAll('.ai-feature-row')].map(row => ({
