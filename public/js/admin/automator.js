@@ -1483,6 +1483,9 @@ function updateConsoleStatusUI(status) {
  */
 function closeConsoleModal() {
     hideModal('consoleModal');
+    closeAutomatorWebSocket();
+    currentConsoleHistoryId = null;
+    currentConsoleTerminal = false;
 }
 
 /**
@@ -1492,8 +1495,9 @@ function closeConsoleModal() {
  * @returns {void}
  */
 function connectWS(historyId) {
-    if (ws) ws.close();
+    closeAutomatorWebSocket();
     ws = new WebSocket(`/admin/automator/ws/${historyId}`);
+    const socket = ws;
     const consoleEl = document.getElementById('consoleOutput');
     ws.onmessage = (event) => {
         if (!consoleEl) return;
@@ -1526,6 +1530,8 @@ function connectWS(historyId) {
         consoleEl.scrollTop = consoleEl.scrollHeight;
     };
     ws.onclose = (event) => {
+        if (socket !== ws) return;
+        ws = null;
         if (event.code === 1008) {
             showVaultGate(false);
             return;
@@ -1533,7 +1539,9 @@ function connectWS(historyId) {
         if (wsRetries >= AUTOMATOR_CONFIG.WS_MAX_RETRIES || currentConsoleHistoryId !== historyId) return;
         const delay = Math.min(1000 * 2 ** wsRetries, 30000);
         wsRetries += 1;
-        setTimeout(() => connectWS(historyId), delay);
+        setTimeout(() => {
+            if (currentConsoleHistoryId === historyId) connectWS(historyId);
+        }, delay);
     };
     ws.onopen = () => { wsRetries = 0; };
 }
@@ -1610,6 +1618,10 @@ function globalAbort() {
  * @returns {void}
  */
 function showVaultGate(setupRequired) {
+    closeAutomatorWebSocket();
+    currentConsoleHistoryId = null;
+    currentConsoleTerminal = false;
+    hideModal('consoleModal');
     STATE.setup_required = setupRequired ? 1 : 0;
     document.getElementById('vaultGate')?.classList.add('show');
     document.getElementById('automatorApp')?.classList.add('hidden');
@@ -1636,6 +1648,15 @@ function showAutomatorApp() {
  * @param {boolean} visible - Whether unlocked-only header actions should be visible.
  * @returns {void}
  */
+function closeAutomatorWebSocket() {
+    if (ws) {
+        ws.onclose = null;
+        ws.close();
+        ws = null;
+    }
+    wsRetries = 0;
+}
+
 function setLockedHeaderActionsVisible(visible) {
     document.querySelectorAll('[data-automator-action="open-playbook"], [data-automator-action="open-inventory-manage"], [data-automator-action="open-secret"], [data-automator-action="lock-vault"]').forEach(action => {
         action.classList.toggle('hidden', !visible);
