@@ -418,12 +418,6 @@ function confirmDeleteUser(id, username) {
 }
 
 /**
- * Prevents XSS by sanitizing dynamic content before DOM injection.
- * 
- * @param {string} text - Raw input string.
- * @returns {string} - HTML-escaped output.
- */
-/**
  * --- Global Exposure ---
  */
 window.loadState = loadState;
