@@ -90,8 +90,10 @@ async function loadState(force = false) {
         const data = await apiGet('/todo/api/state');
         
         if (data && data.success) {
-            STATE.todos = data.todos;
-            renderTable();
+            if (JSON.stringify(data.todos) !== JSON.stringify(STATE.todos)) {
+                STATE.todos = data.todos;
+                renderTable();
+            }
         } else if (data && data.error) {
             console.error('State Synchronization Error:', data.error);
         }
