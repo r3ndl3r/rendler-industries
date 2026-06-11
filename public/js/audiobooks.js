@@ -282,10 +282,12 @@ async function loadState(force = false) {
         return;
     }
 
-    _flushPendingProgress();
+    const flushResult = await _flushPendingProgress();
 
     STATE.books    = Array.isArray(res.books) ? res.books : [];
-    _applyPendingProgressToState();
+    if (flushResult !== 'rejected') {
+        _applyPendingProgressToState();
+    }
     STATE.is_admin = res.is_admin ? true : false;
     STATE.offline_mode = false;
 
@@ -572,6 +574,20 @@ function _pendingProgressIsNotNewerThan(current, payload) {
 }
 
 /**
+ * Removes the pending progress entry from localStorage only if it still
+ * matches the given payload. Prevents clearing a newer pending payload that
+ * was buffered between the original save and the server response.
+ * @param {Object} payload - The progress payload to match against.
+ * @returns {void}
+ */
+function _removePendingProgressIfCurrent(payload) {
+    const current = localStorage.getItem('ab_pending_progress');
+    if (_pendingProgressMatches(current, payload)) {
+        localStorage.removeItem('ab_pending_progress');
+    }
+}
+
+/**
  * Saves audiobook progress without global toast noise.
  *
  * API STANDARDIZATION EXCEPTION:
@@ -619,27 +635,24 @@ async function _postProgressQuietly(payload) {
  * Called after a successful loadState() confirms the server is reachable.
  * @returns {void}
  */
-function _flushPendingProgress() {
+async function _flushPendingProgress() {
     const pending = localStorage.getItem('ab_pending_progress');
-    if (!pending) return;
+    if (!pending) return 'none';
     try {
         const payload = JSON.parse(pending);
         if (!payload.client_updated_ms) {
             payload.client_updated_ms = Date.now();
             localStorage.setItem('ab_pending_progress', JSON.stringify(payload));
         }
-        _postProgressQuietly(payload)
-            .then(res => {
-                if (res && res.success && res.applied) {
-                    const current = localStorage.getItem('ab_pending_progress');
-                    if (_pendingProgressMatches(current, payload)) {
-                        localStorage.removeItem('ab_pending_progress');
-                    }
-                }
-            })
-            .catch(() => {});
+        const res = await _postProgressQuietly(payload);
+        if (res && res.success) {
+            _removePendingProgressIfCurrent(payload);
+            return res.applied ? 'applied' : 'rejected';
+        }
+        return 'pending';
     } catch(e) {
         localStorage.removeItem('ab_pending_progress');
+        return 'cleared';
     }
 }
 
@@ -2207,6 +2220,8 @@ function _saveProgress(completed) {
                 if (_pendingProgressIsNotNewerThan(current, payload)) {
                     localStorage.removeItem('ab_pending_progress');
                 }
+            } else if (res && res.success) {
+                _removePendingProgressIfCurrent(payload);
             } else {
                 localStorage.setItem('ab_pending_progress', JSON.stringify(payload));
             }
