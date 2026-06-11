@@ -383,6 +383,60 @@ sub DB::update_ai_provider {
     return 1;
 }
 
+sub DB::get_ai_app_models {
+    my ($self) = @_;
+    $self->ensure_connection;
+
+    my $raw = '';
+    eval {
+        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'ai_app_models'");
+        $sth->execute();
+        ($raw) = $sth->fetchrow_array();
+    };
+
+    my $models = {};
+    eval { $models = decode_json($raw || '{}') || {}; };
+    return ref $models eq 'HASH' ? $models : {};
+}
+
+sub DB::get_ai_model_profile {
+    my ($self, $profile_key) = @_;
+    my $models = $self->get_ai_app_models();
+    my $profile = ref $models->{$profile_key || ''} eq 'HASH' ? $models->{$profile_key} : {};
+
+    my $provider = $profile->{provider} || $self->get_ai_provider();
+    $provider = 'gemini' unless $provider eq 'gemini' || $provider eq 'opencode' || $provider eq 'local';
+
+    my $model = $profile->{model} || '';
+    if (!length $model) {
+        $model = $provider eq 'opencode' ? $self->get_opencode_active_model()
+             : $provider eq 'local'    ? 'local'
+             :                           $self->get_gemini_active_model();
+    }
+
+    return { provider => $provider, model => $model };
+}
+
+sub DB::update_ai_app_models {
+    my ($self, $models) = @_;
+    $self->ensure_connection;
+    return 0 unless ref $models eq 'HASH';
+
+    my $json = encode_json($models);
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'ai_app_models'");
+    $sth->execute();
+    my ($count) = $sth->fetchrow_array();
+
+    if ($count > 0) {
+        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'ai_app_models'");
+        $sth->execute($json);
+    } else {
+        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('ai_app_models', ?)");
+        $sth->execute($json);
+    }
+    return 1;
+}
+
 # Retrieves the Google Gemini API key.
 # Parameters: None
 # Returns:
