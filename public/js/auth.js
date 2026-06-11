@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // UI Feedback: indicate processing to prevent double-submission
                 submitBtn.style.opacity = '0.7';
                 submitBtn.value = 'Processing...';
+                submitBtn.disabled = true;
             }
         });
     });
