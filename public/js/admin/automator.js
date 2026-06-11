@@ -2244,7 +2244,7 @@ async function generateAiReport() {
             renderAiReport(data.content);
             refreshAiReportHistory();
         } else {
-            content.innerHTML = `<div class="report-empty">Error: ${data?.error || 'Unknown failure'}</div>`;
+            content.innerHTML = `<div class="report-empty">Error: ${escapeHtml(data?.error || 'Unknown failure')}</div>`;
         }
     } catch (err) {
         content.innerHTML = `<div class="report-empty">Service currently unavailable.</div>`;
