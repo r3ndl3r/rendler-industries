@@ -23,6 +23,19 @@ window.NoteAPI = {
             && !navigator.onLine;
     },
 
+    handleJson403(body403, options = {}) {
+        if (!body403 || !body403.error || body403.error === 'Unauthorized') {
+            window.location.href = '/login';
+            return null;
+        }
+        if (body403.error === 'Canvas is locked' && typeof showLockedOverlay === 'function') {
+            showLockedOverlay();
+        } else if (!options.silent) {
+            showToast(body403.error, 'error');
+        }
+        return body403;
+    },
+
     /**
      * Determines whether a GET request carries the full notes state payload.
      * @param {string} url - Target endpoint.
@@ -431,16 +444,8 @@ window.NoteAPI = {
             if (response.status === 403) {
                 let body403 = null;
                 try { body403 = await response.json(); } catch (_) {}
-                
-                if (body403 && (body403.error === 'Canvas is locked' || body403.error === 'Note is locked by another session')) {
-                    if (body403.error === 'Canvas is locked' && typeof showLockedOverlay === 'function') {
-                        showLockedOverlay();
-                    }
-                    return body403;
-                }
-                
-                window.location.href = '/login';
-                return null;
+
+                return this.handleJson403(body403, options);
             }
 
             if (!response.ok) {
@@ -518,16 +523,8 @@ window.NoteAPI = {
             if (response.status === 403) {
                 let body403 = null;
                 try { body403 = await response.json(); } catch (_) {}
-                
-                if (body403 && (body403.error === 'Canvas is locked' || body403.error === 'Note is locked by another session')) {
-                    if (body403.error === 'Canvas is locked' && typeof showLockedOverlay === 'function') {
-                        showLockedOverlay();
-                    }
-                    return body403;
-                }
-                
-                window.location.href = '/login';
-                return null;
+
+                return this.handleJson403(body403, options);
             }
 
             if (!response.ok) {
@@ -564,7 +561,11 @@ window.NoteAPI = {
                     if (typeof showLockedOverlay === 'function') showLockedOverlay();
                     return null;
                 }
-                window.location.href = '/login';
+                if (text === 'Unauthorized') {
+                    window.location.href = '/login';
+                } else if (!options.silent) {
+                    showToast('Media access denied', 'error');
+                }
                 return null;
             }
 
