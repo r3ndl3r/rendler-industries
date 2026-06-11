@@ -582,20 +582,23 @@ function renderHistory() {
         list.innerHTML = `<div class="automator-empty compact-empty">${historyPlaybookId ? 'No runs for this playbook yet.' : 'No run history yet.'}</div>`;
         return;
     }
-    list.innerHTML = STATE.history.map(h => `
+    list.innerHTML = STATE.history.map(h => {
+        const userIcon = escapeHtml(window.getUserIcon(h.triggered_by_name?.toLowerCase()) || '👤');
+        return `
         <article class="history-tile status-${escapeHtml(h.status)}">
             <div class="history-top">
                 <strong>#${h.id} ${escapeHtml(h.playbook_name || 'Deleted Playbook')}</strong>
                 <span>${statusIcon(h.status)} ${escapeHtml(h.status)}</span>
             </div>
-            <div class="history-sub">${formatDateTime(h.started_at)} • ${escapeHtml(h.mode || 'run')} • ${window.getUserIcon(h.triggered_by_name?.toLowerCase()) || '👤'} ${escapeHtml(h.triggered_by_name || 'system')}</div>
+            <div class="history-sub">${formatDateTime(h.started_at)} • ${escapeHtml(h.mode || 'run')} • ${userIcon} ${escapeHtml(h.triggered_by_name || 'system')}</div>
             <div class="history-actions">
                 <button type="button" class="btn-icon-view" data-automator-action="open-console" data-id="${h.id}" title="View Log">👁️</button>
                 ${h.playbook_id ? `<button type="button" class="btn-icon-copy" data-automator-action="run-playbook" data-id="${h.playbook_id}" data-mode="${escapeHtml(h.mode || 'run')}" title="Re-run">🔁</button>` : ''}
                 ${h.status === 'running' ? `<button type="button" class="btn-icon-delete" data-automator-action="abort-run" data-id="${h.id}" title="Abort Run">🛑</button>` : `<button type="button" class="btn-icon-delete" data-automator-action="delete-history" data-id="${h.id}" title="Delete Log">🗑️</button>`}
             </div>
         </article>
-    `).join('');
+    `;
+    }).join('');
 }
 
 /**
@@ -755,7 +758,10 @@ function addNotifRow(data = null) {
     const row = document.createElement('div');
     row.className = 'notif-row';
 
-    const admins = (STATE.admins || []).map(a => `<option value="${a.id}" ${data && String(data.user_id) === String(a.id) ? 'selected' : ''}>${window.getUserIcon(a.username?.toLowerCase()) || '👤'} ${escapeHtml(a.username)}</option>`).join('');
+    const admins = (STATE.admins || []).map(a => {
+        const userIcon = escapeHtml(window.getUserIcon(a.username?.toLowerCase()) || '👤');
+        return `<option value="${a.id}" ${data && String(data.user_id) === String(a.id) ? 'selected' : ''}>${userIcon} ${escapeHtml(a.username)}</option>`;
+    }).join('');
     const channels = [
         { id: 'discord', label: 'Discord', icon: '💬' },
         { id: 'email', label: 'Email', icon: '📧' },
