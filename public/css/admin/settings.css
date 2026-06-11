@@ -315,12 +315,6 @@
 .gap-10 { gap: 10px; }
 .w-100  { width: 100%; }
 
-.gemini-select {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
-    color: white;
-}
-
 /* --- Responsive --- */
 @media (max-width: 768px) {
     .settings-container { padding: 1rem; overflow-x: hidden; }
