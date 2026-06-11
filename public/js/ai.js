@@ -22,7 +22,7 @@
  * --- Module Configuration & State ---
  */
 const CONFIG = {
-    MAX_HISTORY: 50,                 // Client-side message retention limit
+    MAX_HISTORY: 100,                 // Client-side message retention limit
     SCROLL_DELAY_MS: 100             // UI timing for vertical alignment
 };
 
