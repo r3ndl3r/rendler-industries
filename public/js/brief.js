@@ -286,6 +286,24 @@ function renderChores() {
 }
 
 /**
+ * Formats a reminder time string (HH:MM) to 12-hour AM/PM format.
+ * Returns '--:--' for invalid values.
+ * @param {string} value - Time string in HH:MM format.
+ * @returns {string}
+ */
+function formatReminderTime(value) {
+    const [h, m] = String(value || '00:00').split(':');
+    const hour = parseInt(h, 10);
+    const minute = parseInt(m, 10);
+    if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+        return '--:--';
+    }
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${String(minute).padStart(2, '0')} ${ampm}`;
+}
+
+/**
  * Renders today's reminders into #tile-reminders.
  *
  * @returns {void}
@@ -305,11 +323,7 @@ function renderReminders() {
 
     if (reminders.length) {
         html += reminders.map(r => {
-            const [h, m]  = (r.reminder_time ?? '00:00').split(':');
-            const hour    = parseInt(h, 10);
-            const ampm    = hour >= 12 ? 'PM' : 'AM';
-            const hour12  = hour % 12 || 12;
-            const time    = `${hour12}:${m} ${ampm}`;
+            const time    = formatReminderTime(r.reminder_time);
             return `
                 <div class="reminder-item">
                     <span>${escapeHtml(r.title)}</span>
@@ -320,11 +334,7 @@ function renderReminders() {
 
     if (medicationReminders.length) {
         html += medicationReminders.map(r => {
-            const [h, m]  = (r.reminder_time ?? '00:00').split(':');
-            const hour    = parseInt(h, 10);
-            const ampm    = hour >= 12 ? 'PM' : 'AM';
-            const hour12  = hour % 12 || 12;
-            const time    = `${hour12}:${m} ${ampm}`;
+            const time    = formatReminderTime(r.reminder_time);
             return `
                 <div class="reminder-item">
                     <span>💊 ${escapeHtml(r.medication_name)}</span>
