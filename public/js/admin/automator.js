@@ -479,7 +479,8 @@ function isMobileAutomatorView() {
  */
 function getExpandedCategories() {
     try {
-        return new Set(JSON.parse(localStorage.getItem(AUTOMATOR_CONFIG.EXPANDED_CATEGORIES_KEY) || '[]'));
+        const parsed = JSON.parse(localStorage.getItem(AUTOMATOR_CONFIG.EXPANDED_CATEGORIES_KEY) || '[]');
+        return new Set(Array.isArray(parsed) ? parsed.filter(category => typeof category === 'string') : []);
     } catch (err) {
         return new Set();
     }
@@ -507,7 +508,9 @@ function toggleCategory(category) {
     const expanded = getExpandedCategories();
     if (expanded.has(category)) expanded.delete(category);
     else expanded.add(category);
-    localStorage.setItem(AUTOMATOR_CONFIG.EXPANDED_CATEGORIES_KEY, JSON.stringify([...expanded]));
+    try {
+        localStorage.setItem(AUTOMATOR_CONFIG.EXPANDED_CATEGORIES_KEY, JSON.stringify([...expanded]));
+    } catch (err) { }
     renderPlaybooks();
 }
 
