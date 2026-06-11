@@ -2204,13 +2204,14 @@ function openAiReportModal() {
 function refreshAiReportHistory() {
     const history = document.getElementById('aiReportHistory');
     apiGet('/admin/automator/api/ai-report/history', 5000).then(res => {
-        if (res && res.success && res.history && res.history.length) {
-            window.AI_REPORT_HISTORY = res.history;
+        const reports = Array.isArray(res?.history) ? res.history : [];
+        if (res && res.success && reports.length) {
+            window.AI_REPORT_HISTORY = reports;
             if (history) {
                 history.innerHTML = `
                     <select class="history-select" onchange="handleAutomatorAction({target: this.options[this.selectedIndex]})">
                         <option value="">(Past Reports)</option>
-                        ${res.history.map(h => `<option value="${h.id}" data-automator-action="view-ai-history" data-id="${h.id}">${formatAiRelativeDate(h.created_at)}</option>`).join('')}
+                        ${reports.map(h => `<option value="${automatorEscapeAttr(h.id)}" data-automator-action="view-ai-history" data-id="${automatorEscapeAttr(h.id)}">${escapeHtml(formatAiRelativeDate(h.created_at))}</option>`).join('')}
                     </select>
                 `;
             }
