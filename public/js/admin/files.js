@@ -120,7 +120,7 @@ function renderTable() {
             </td>
             <td data-label="Actions">
                 <div class="action-buttons">
-                    <a href="/files/serve/${file.id}" target="_blank" class="btn-icon-view" title="View/Download">👁️</a>
+                    <a href="/files/serve/${file.id}" target="_blank" rel="noopener noreferrer" class="btn-icon-view" title="View/Download">👁️</a>
                     <button type="button" class="btn-icon-copy" onclick="copyFileLink(${file.id})" title="Copy Link">📋</button>
                     ${moduleState.isAdmin ? `
                         <button type="button" class="btn-icon-edit" onclick="openPermissionModal(${file.id})" title="Permissions">⚙️</button>
