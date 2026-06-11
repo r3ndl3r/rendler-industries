@@ -32,7 +32,7 @@ sub api_state {
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $user_id = $c->current_user_id;
-    my $history = $c->db->get_ai_history($user_id, 20);
+    my $history = $c->db->get_ai_history($user_id, 50);
     
     $c->render(json => {
         success  => 1,
@@ -55,7 +55,6 @@ sub chat {
 
     # 1. Gather Context & Build System Message
     my $snapshot = $c->db->get_dashboard_snapshot();
-    my $ai_provider = $c->db->get_ai_provider();
     my $system_instructions = "You are 'The Family Pulse AI', the central brain of Rendler Industries.
     Use the conversation and CURRENT DASHBOARD STATE as factual sources for Rendler family context.
     If a search tool is available, use it for current external facts such as sports fixtures, public schedules, news, or information not present in the dashboard.
@@ -69,7 +68,7 @@ sub chat {
     my @user_parts = ({ text => $prompt });
     my @contents;
     # History injection (Last 10 turns)
-    my $history = $c->db->get_ai_history($user_id, 10);
+    my $history = $c->db->get_ai_history($user_id, 50);
     foreach my $msg (@$history) {
         push @contents, { role => $msg->{role}, parts => [{ text => $msg->{content} }] };
     }
@@ -80,11 +79,12 @@ sub chat {
     $c->render_later;
 
     my %prompt_args = (
-        contents => \@contents,
-        system   => $system_instructions,
-        timeout  => 300,
+        contents    => \@contents,
+        system      => $system_instructions,
+        timeout     => 300,
+        app_profile => 'ai_chat',
+        web_search  => 1,
     );
-    $prompt_args{web_search} = 1 if $ai_provider eq 'gemini' || $ai_provider eq 'opencode';
 
     $c->ai_prompt(
         %prompt_args
