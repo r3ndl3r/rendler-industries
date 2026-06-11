@@ -406,11 +406,6 @@ function closeEntryModal() {
 }
 
 /**
- */
-
- /**
- * --- Global Exposure ---
-
  * Normalizes SQL timestamps to user-friendly strings.
  * 
  * @param {string} dateStr - SQL timestamp.
@@ -422,6 +417,10 @@ function formatDate(dateStr) {
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+/**
+ * --- Global Exposure ---
+ */
+ 
 window.openAddEntryModal = openAddEntryModal;
 window.closeEntryModal = closeEntryModal;
 window.handleEntrySubmit = handleEntrySubmit;
