@@ -1036,7 +1036,8 @@ sub api_ai_report {
         system   => "You are an expert DevOps analyst. Use the provided Run IDs to link issues back to specific logs.",
         response_format => 'application/json',
         temp    => 0.1,
-        timeout  => 60
+        timeout  => 60,
+        app_profile => 'automator_report'
     )->then(sub {
         my $data = shift;
         my $ai_text = $data->{candidates}[0]{content}{parts}[0]{text} // "{}";
