@@ -2219,7 +2219,7 @@ function refreshAiReportHistory() {
             window.AI_REPORT_HISTORY = reports;
             if (history) {
                 history.innerHTML = `
-                    <select class="history-select" onchange="handleAutomatorAction({target: this.options[this.selectedIndex]})">
+                    <select class="game-input history-select" onchange="handleAutomatorAction({target: this.options[this.selectedIndex]})">
                         <option value="">(Past Reports)</option>
                         ${reports.map(h => `<option value="${automatorEscapeAttr(h.id)}" data-automator-action="view-ai-history" data-id="${automatorEscapeAttr(h.id)}">${escapeHtml(formatAiRelativeDate(h.created_at))}</option>`).join('')}
                     </select>
