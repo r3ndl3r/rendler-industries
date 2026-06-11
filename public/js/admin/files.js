@@ -260,9 +260,10 @@ async function submitFileUpload(event) {
         const result = await apiPost('/admin/files/api/upload', formData);
 
         if (result && result.success) {
-        closeUploadModal();
-        loadState(true);
-        }    } finally {
+            closeUploadModal();
+            loadState(true);
+        }
+    } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
     }
