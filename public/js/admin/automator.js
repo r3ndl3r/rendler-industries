@@ -2240,6 +2240,12 @@ async function generateAiReport() {
     const content = document.getElementById('aiReportContent');
     if (!content) return;
 
+    const btn = document.querySelector('[data-automator-action="generate-ai-report"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Generating…';
+    }
+
     showModal('aiReportModal');
     document.getElementById('aiReportFooter')?.classList.add('hidden');
     content.innerHTML = `
@@ -2259,6 +2265,11 @@ async function generateAiReport() {
         }
     } catch (err) {
         content.innerHTML = `<div class="report-empty">Service currently unavailable.</div>`;
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Generate';
+        }
     }
 }
 
