@@ -1082,58 +1082,6 @@ async function copyNoteToBoard(id, canvas_id) {
 }
 
 /**
- * Copy/Clone Actions
- * Deep-copies a note across isolation layers within the same board.
- */
-async function copyNoteToLevel(id, newLevelId) {
-    const note = STATE.notes.find(n => n.id == id);
-    if (!note) return;
-
-    // Interaction Locking
-    const el = document.getElementById(`note-${id}`);
-    if (el) el.classList.add('pending');
-
-    try {
-        const res = await NoteAPI.post('/notes/api/save', {
-            id: null, // Force creation of a NEW record
-            source_id: id, // Link for binary deep-copy (images)
-            canvas_id: STATE.canvas_id,
-            layer_id: newLevelId,
-            type: note.type || 'text', // Preserve 'image' vs 'text' identity
-            title: note.title, // Clean clone: No (Copy) suffix
-            content: note.content,
-            filename: note.filename || '',
-            x: note.x + 20, // Offset horizontally for clarity
-            y: note.y + 20, // Offset vertically for clarity
-            width: note.width,
-            height: note.height,
-            color: note.color,
-            z_index: window.getNoteZIndex?.(note) || note.z_index,
-            is_collapsed: note.is_collapsed
-        });
-
-        if (res && res.success) {
-            if (res.notes && typeof window.mergeNoteState === 'function') {
-                window.mergeNoteState(res.notes);
-            } else if (res.notes) {
-                STATE.notes = res.notes;
-            }
-            if (!STATE.last_mutation || res.last_mutation > STATE.last_mutation) {
-                STATE.last_mutation = res.last_mutation;
-            }
-            if (newLevelId == STATE.activeLayerId && typeof renderUI === 'function') {
-                renderUI();
-            }
-        }
-    } catch (e) {
-        console.error("Duplication failure:", e);
-        showToast("Failed to copy note between levels", "error");
-    } finally {
-        if (el) el.classList.remove('pending');
-    }
-}
-
-/**
  * Moves one or more notes to a different layer on the same canvas.
  * @param {number[]} ids - Note IDs to move.
  * @param {number} layerId - Target layer (1-99).
@@ -1165,7 +1113,7 @@ async function moveNotesToLevel(ids, layerId) {
  * @param {number} layerId - Target layer (1-99).
  * @returns {Promise<boolean>} True on success.
  */
-async function bulkCopyToLevel(ids, layerId) {
+async function copyNotesToLevel(ids, layerId) {
     const res = await NoteAPI.post('/notes/api/notes/bulk-copy-level', {
         ids:       JSON.stringify(ids),
         canvas_id: STATE.canvas_id,

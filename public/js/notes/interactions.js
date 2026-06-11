@@ -3964,7 +3964,7 @@ function showNoteContextMenu(e, noteId) {
             if (operation === 'move') {
                 await moveNotesToLevel(ids, level);
             } else {
-                await bulkCopyToLevel(ids, level);
+                await copyNotesToLevel(ids, level);
             }
             window.closeConfirmModal();
         };
