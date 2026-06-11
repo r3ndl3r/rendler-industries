@@ -671,7 +671,6 @@ function setupHistoryScrollObserver() {
         if (entries[0].isIntersecting && !STATE.historyLoading && STATE.hasMore) {
             historyObserver.disconnect();
             historyObserver = null;
-            STATE.historyLoading = true;   // Lock immediately before async engages
             loadHistoryPage(true);
         }
     }, { root: root, threshold: 0.1 });
