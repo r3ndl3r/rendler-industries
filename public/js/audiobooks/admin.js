@@ -57,13 +57,18 @@ function renderStats() {
     const total     = STATE.books.length;
     const withCover = STATE.books.filter(b => b.has_cover_file).length;
     const withMeta  = STATE.books.filter(b => b.meta_cached).length;
+    const totalEl   = document.getElementById('statTotal');
+    const coverEl   = document.getElementById('statWithCover');
+    const metaEl    = document.getElementById('statWithMeta');
+    const statsBar  = document.getElementById('statsBar');
+    if (!totalEl || !coverEl || !metaEl || !statsBar) return;
 
-    document.getElementById('statTotal').textContent     = `📚 ${total} book${total !== 1 ? 's' : ''}`;
-    document.getElementById('statWithCover').textContent = `🖼 ${withCover} / ${total} covers`;
-    document.getElementById('statWithMeta').textContent  = `📋 ${withMeta} / ${total} metadata cached`;
+    totalEl.textContent = `📚 ${total} book${total !== 1 ? 's' : ''}`;
+    coverEl.textContent = `🖼 ${withCover} / ${total} covers`;
+    metaEl.textContent  = `📋 ${withMeta} / ${total} metadata cached`;
 
-    document.getElementById('statsBar').classList.remove('hidden');
-    document.getElementById('statsBar').classList.add('show');
+    statsBar.classList.remove('hidden');
+    statsBar.classList.add('show');
 }
 
 /**
@@ -72,6 +77,7 @@ function renderStats() {
  */
 function renderTable() {
     const wrap = document.getElementById('adminTableWrap');
+    if (!wrap) return;
 
     if (!STATE.books.length) {
         wrap.innerHTML = '<p class="library-empty">No books found in the library.</p>';
