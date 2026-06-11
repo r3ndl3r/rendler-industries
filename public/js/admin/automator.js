@@ -1213,12 +1213,12 @@ function validateVars(vars, schema) {
  * @returns {Promise<void>}
  */
 async function loadHistoryPage(reset = false) {
-    if (reset) historyPage = 0;
-    historyPage += 1;
-    const params = new URLSearchParams({ page: String(historyPage), per_page: '50' });
+    const nextPage = reset ? 1 : historyPage + 1;
+    const params = new URLSearchParams({ page: String(nextPage), per_page: '50' });
     if (historyPlaybookId) params.set('playbook', String(historyPlaybookId));
     const data = await apiGet(`/admin/automator/api/history?${params.toString()}`, 6000);
     if (!data || !data.success) return;
+    historyPage = nextPage;
     STATE.history = reset ? (data.history || []) : [...STATE.history, ...(data.history || [])];
     renderHistory();
 }
