@@ -602,7 +602,8 @@ function renderTableRows(events, state) {
                 <div class="action-btns">
                     <button type="button" class="btn-icon-view" title="View Details">👁️</button>
                     <button type="button" class="btn-icon-delete"
-                        onclick="event.stopPropagation(); confirmDeleteEvent(${e.id}, '${escapeHtml(e.title)}')"
+                        data-title="${escapeHtml(e.title)}"
+                        onclick="event.stopPropagation(); confirmDeleteEvent(${e.id}, this.dataset.title)"
                         title="Delete">🗑️</button>
                 </div>
             </td>
