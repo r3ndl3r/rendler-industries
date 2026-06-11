@@ -46,7 +46,8 @@ let STATE = {
     currentTurnId: 0,
     gameStatus: 'loading',
     p1Id: 0,
-    p2Id: 0
+    p2Id: 0,
+    gamePollGeneration: 0
 };
 
 /**
@@ -210,6 +211,7 @@ const ChessApp = {
      */
     showLobby: function() {
         this.resetPolling();
+        STATE.gamePollGeneration++;
         if (window.location.pathname !== '/chess') {
             window.history.pushState({}, '', '/chess');
         }
@@ -335,9 +337,11 @@ const ChessApp = {
         // Network requests are suppressed if the user is currently interacting
         // or if the game view is not the active interface.
         if (!force && (STATE.isInteracting || STATE.view !== 'game')) return true;
+        const generation = ++STATE.gamePollGeneration;
 
         try {
             const data = await apiGet(`/chess/api/game/${STATE.activeGameId}`);
+            if (generation !== STATE.gamePollGeneration || STATE.view !== 'game') return true;
             
             if (data && data.error) return false;
             if (!data) return false;
