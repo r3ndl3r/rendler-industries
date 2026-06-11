@@ -797,9 +797,11 @@ sub run_emoji_maintenance_p {
 
                 my $ua = Mojo::UserAgent->new->request_timeout(10);
                 my $data = eval {
+                    my $emoji_profile = $c->db->get_ai_model_profile('emoji_lookup');
                     MyApp::Plugin::AI::ai_prompt_sync(
                         ua             => $ua,
-                        provider       => $c->db->get_ai_provider(),
+                        provider       => $emoji_profile->{provider},
+                        model          => $emoji_profile->{model},
                         opencode_key   => $c->db->get_opencode_key(),
                         opencode_model => $c->db->get_opencode_active_model(),
                         local_ai_url   => $c->db->get_local_ai_url(),
