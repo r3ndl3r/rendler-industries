@@ -1617,10 +1617,9 @@ function _onTimeUpdate() {
             if (newIdx !== PLAYER.chapter_idx) {
                 // End-of-chapter sleep fires on CUE chapter boundaries, not file end.
                 if (PLAYER.sleep_end_of_ch) {
-                    PLAYER.sleep_end_of_ch = false;
-                    _hideSleepBadge();
                     audio.pause();
                     _saveProgress(false);
+                    cancelSleepTimer();
                     return;
                 }
                 PLAYER.chapter_idx = newIdx;
@@ -1681,9 +1680,8 @@ function _onTimeUpdate() {
 function _onChapterEnded() {
     // End-of-chapter sleep: pause now and cancel timer mode.
     if (PLAYER.sleep_end_of_ch) {
-        PLAYER.sleep_end_of_ch = false;
-        _hideSleepBadge();
         _saveProgress(false);
+        cancelSleepTimer();
         return;
     }
 
