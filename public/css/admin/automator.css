@@ -1507,15 +1507,8 @@
 }
 
 .history-select {
-    background: var(--color-surface);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    color: #f8fafc;
-    padding: 4px 8px;
-    border-radius: 4px;
+    width: auto;
+    min-width: 160px;
+    padding: 4px 2.25rem 4px 8px;
     font-size: 0.85rem;
-}
-
-.history-select option {
-    background: var(--color-surface);
-    color: #f8fafc;
 }
