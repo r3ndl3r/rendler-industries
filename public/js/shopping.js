@@ -24,7 +24,7 @@
  * --- Module Configuration & State ---
  */
 const CONFIG = {
-    SYNC_INTERVAL_MS: 2000           // Background synchronization frequency
+    SYNC_INTERVAL_MS: 2000           // Server sync every 2s for multi-user collaboration
 };
 
 let STATE = {
@@ -74,9 +74,11 @@ async function loadState(force = false) {
         const data = await apiGet('/shopping/api/state');
         
         if (data && data.success) {
-            STATE.items = data.items;
             STATE.isAdmin = !!data.is_admin;
-            renderTable();
+            if (JSON.stringify(data.items) !== JSON.stringify(STATE.items)) {
+                STATE.items = data.items;
+                renderTable();
+            }
         } else if (data && data.error) {
             console.error('State Synchronization Error:', data.error);
         }
@@ -168,7 +170,10 @@ function renderItemRow(item) {
                         ✎
                     </button>
                 ` : ''}
-                <button type="button" class="btn-icon-delete" onclick="confirmDeleteItem(${item.id}, \`${item.item_name.replace(/`/g, "\\`")}\`)" title="Remove Item">
+                <button type="button" class="btn-icon-delete"
+                        data-name="${escapeHtml(item.item_name)}"
+                        onclick="confirmDeleteItem(${item.id}, this.dataset.name)"
+                        title="Remove Item">
                     🗑️
                 </button>
             </div>
@@ -232,15 +237,19 @@ async function toggleItem(id) {
     const row = document.querySelector(`.shopping-item[data-id="${id}"]`);
     if (row) row.classList.add('pending');
 
-    const result = await apiPost(`/shopping/api/toggle/${id}`);
-    if (result && result.success) {
-        const item = STATE.items.find(i => i.id == id);
-        if (item) {
-            item.is_checked = !item.is_checked;
-            renderTable();
+    let rendered = false;
+    try {
+        const result = await apiPost(`/shopping/api/toggle/${id}`);
+        if (result && result.success) {
+            const item = STATE.items.find(i => i.id == id);
+            if (item) {
+                item.is_checked = !item.is_checked;
+                renderTable();
+                rendered = true;
+            }
         }
-    } else {
-        if (row) row.classList.remove('pending');
+    } finally {
+        if (!rendered && row) row.classList.remove('pending');
     }
 }
 
