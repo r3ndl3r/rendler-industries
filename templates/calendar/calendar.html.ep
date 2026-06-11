@@ -33,7 +33,7 @@
     <div class="filter-section">
         <div class="filter-left">
             <label>Filter by Category:</label>
-            <select id="categoryFilter" class="category-dropdown no-emoji">
+            <select id="categoryFilter" class="game-input category-dropdown no-emoji">
                 <option value="">All Categories</option>
             </select>
         </div>
