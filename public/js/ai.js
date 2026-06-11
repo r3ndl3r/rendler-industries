@@ -191,7 +191,7 @@ function showTyping() {
  */
 function formatMarkdown(text) {
     if (!text) return "";
-    return text
+    return escapeHtml(String(text))
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/^\s*[\*\-]\s+/gm, '• ')
         .replace(/ \*\s+/g, '<br>• ')
