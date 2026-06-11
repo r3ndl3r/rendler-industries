@@ -24,6 +24,10 @@
         <span class="tab-icon">📝</span>
         <span class="tab-label">Email</span>
       </button>
+      <button class="settings-tab" data-tab="ai">
+        <span class="tab-icon">🧠</span>
+        <span class="tab-label">AI</span>
+      </button>
       <button class="settings-tab" data-tab="integrations">
         <span class="tab-icon">🔗</span>
         <span class="tab-label">Integrations</span>
