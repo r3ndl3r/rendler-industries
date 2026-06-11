@@ -1319,8 +1319,10 @@ function openEditModalByUid(uid) {
     syncAllDayTimeGroups();
     document.getElementById('eventIsPrivate').checked = !!event.is_private;
 
-    const [sDate, sTime] = event.start_date.split(' ');
-    const [eDate, eTime] = event.end_date.split(' ');
+    const editStartDate = event.is_recurring_instance ? (event.series_start_date || event.start_date) : event.start_date;
+    const editEndDate = event.is_recurring_instance ? (event.series_end_date || event.end_date) : event.end_date;
+    const [sDate, sTime] = editStartDate.split(' ');
+    const [eDate, eTime] = editEndDate.split(' ');
     document.getElementById('eventStartDate').value = sDate;
     document.getElementById('eventStartTime').value = (sTime || '').substring(0, 5);
     document.getElementById('eventEndDate').value = eDate;

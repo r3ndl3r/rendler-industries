@@ -106,6 +106,8 @@ sub _expand_recurring {
 
         push @instances, {
             %$event,
+            series_start_date       => $event->{start_date},
+            series_end_date         => $event->{end_date},
             start_date            => "$occ_date $time_start",
             end_date              => $occ_end_tp->strftime('%Y-%m-%d %H:%M:%S'),
             is_recurring_instance => 1,
