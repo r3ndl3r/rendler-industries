@@ -212,6 +212,7 @@ function renderTable() {
 function renderTableRow(t) {
     const remaining = t.remaining_seconds || 0;
     const catClass = (t.category || '').toLowerCase().replace(' ', '-');
+    const userLabel = `${window.getUserIcon ? window.getUserIcon(t.username) : '👤'} ${escapeHtml(t.username)}`;
     
     // Determine specific display values
     const weekdayDisplay = t.weekday_minutes === -1 ? 'Unlimited' : `${t.weekday_minutes}m`;
@@ -220,7 +221,7 @@ function renderTableRow(t) {
 
     return `
         <tr data-timer-id="${t.id}">
-            <td class="user-cell" data-label="User">${escapeHtml(t.username)}</td>
+            <td class="user-cell" data-label="User">${userLabel}</td>
             <td class="name-cell" data-label="Timer Name">${escapeHtml(t.name)}</td>
             <td class="category-cell" data-label="Category">
                 <span class="category-badge ${catClass}">${escapeHtml(t.category)}</span>
@@ -254,12 +255,15 @@ function renderTableRow(t) {
  * @returns {void}
  */
 function renderUserDropdowns() {
-    const options = STATE.users.map(u => `<option value="${u.id}">${escapeHtml(u.username)}</option>`).join('');
+    const options = STATE.users.map(u => {
+        const icon = window.getUserIcon ? window.getUserIcon(u.username) : '👤';
+        return `<option value="${u.id}">${icon} ${escapeHtml(u.username)}</option>`;
+    }).join('');
     
     document.querySelectorAll('.user-dropdown').forEach(el => {
         const currentVal = el.value;
         const isFilter = el.id === 'user-filter';
-        el.innerHTML = (isFilter ? '<option value="">All Users</option>' : '<option value="">Select User...</option>') + options;
+        el.innerHTML = (isFilter ? '<option value="">👥 All Users</option>' : '<option value="">Select User...</option>') + options;
         el.value = currentVal;
     });
 }
