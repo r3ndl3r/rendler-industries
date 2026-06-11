@@ -489,27 +489,32 @@ function renderCard(key, title, desc, isConfigured, content, hideStandardFooter 
     const badgeClass = isConfigured ? 'badge-active' : 'badge-inactive';
     const btnText = customBtnText || `💾 Save`;
     const btnClass = key === 'app_secret' ? 'btn-danger' : 'btn-primary';
+    const safeKey = escapeHtml(key);
+    const safeTitle = escapeHtml(title);
+    const safeDesc = escapeHtml(desc);
+    const safeBadgeText = escapeHtml(badgeText);
+    const safeBtnText = escapeHtml(btnText);
 
     return `
-        <div class="settings-card" data-card="${key}">
+        <div class="settings-card" data-card="${safeKey}">
             <div class="settings-card-header" role="button" tabindex="0" onclick="toggleCard(this.closest('.settings-card'))">
                 <div class="card-header-meta">
-                    <h3 class="settings-card-title">${title}</h3>
-                    <p class="settings-card-desc">${desc}</p>
+                    <h3 class="settings-card-title">${safeTitle}</h3>
+                    <p class="settings-card-desc">${safeDesc}</p>
                 </div>
                 <div class="card-header-right">
-                    <span class="settings-badge ${badgeClass}">${badgeText}</span>
+                    <span class="settings-badge ${badgeClass}">${safeBadgeText}</span>
                     <span class="card-chevron"></span>
                 </div>
             </div>
             <div class="settings-card-body">
                 <div class="settings-card-body-inner">
                     <form onsubmit="handleSettingsUpdate(event)">
-                        <input type="hidden" name="section" value="${key}">
+                        <input type="hidden" name="section" value="${safeKey}">
                         ${content}
                         ${!hideStandardFooter ? `
                             <div class="form-actions">
-                                <button type="submit" class="${btnClass} btn-small">${btnText}</button>
+                                <button type="submit" class="${btnClass} btn-small">${safeBtnText}</button>
                             </div>
                         ` : ''}
                     </form>
