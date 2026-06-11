@@ -1014,6 +1014,16 @@ function _populateReminderDropdowns(totalMins) {
 }
 
 /**
+ * Resets the admin announcement checkbox to unchecked.
+ * Prevents stale notification state from a previous modal affecting the next save.
+ * @returns {void}
+ */
+function resetAnnouncementCheckbox() {
+    const sendNotifyCb = document.getElementById('sendNotifications');
+    if (sendNotifyCb) sendNotifyCb.checked = false;
+}
+
+/**
  * Executes persistent record creation or modification.
  * 
  * @async
@@ -1139,6 +1149,7 @@ function openAddEventModal(dateStr) {
 
     form.reset();
     syncAllDayTimeGroups();
+    resetAnnouncementCheckbox();
     document.getElementById('eventId').value = '';
     document.getElementById('modalTitle').innerHTML = `Add Event`;
     document.getElementById('deleteEventBtn').classList.add('hidden');
@@ -1195,6 +1206,7 @@ function openAddEventModal(dateStr) {
 function openEditModalById(id) {
     const event = STATE.events.find(e => e.id == id);
     if (!event) return;
+    resetAnnouncementCheckbox();
 
     document.getElementById('eventId').value = event.id;
     document.getElementById('eventTitle').value = event.title;
@@ -1294,6 +1306,7 @@ function openEditModalByUid(uid) {
                 || STATE.historyEvents.find(e => e.uid == uid)
                 || (STATE.searchResults || []).find(e => e.uid == uid);
     if (!event) return;
+    resetAnnouncementCheckbox();
 
     document.getElementById('eventId').value = event.is_recurring_instance
         ? event.recurrence_source_id
@@ -1412,6 +1425,7 @@ async function skipOccurrence(id, date) {
 function cloneEvent(event) {
     document.getElementById('eventId').value = '';
     document.getElementById('modalTitle').innerHTML = `Clone Event`;
+    resetAnnouncementCheckbox();
     
     document.getElementById('deleteEventBtn').classList.add('hidden');
     document.getElementById('cloneEventBtn').classList.add('hidden');
