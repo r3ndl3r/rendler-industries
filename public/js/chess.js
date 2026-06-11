@@ -595,7 +595,7 @@ const ChessApp = {
             const buttons = promoModal.querySelectorAll('.promo-btn');
             buttons.forEach(btn => {
                 btn.onclick = () => {
-                    const piece = btn.dataset.piece;
+                    const piece = ['q', 'r', 'b', 'n'].includes(btn.dataset.piece) ? btn.dataset.piece : 'q';
                     promoModal.classList.remove('active');
                     STATE.isInteracting = false;
                     resolve(piece);
