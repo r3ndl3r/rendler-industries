@@ -86,26 +86,6 @@ sub DB::log_medication_dose {
     return $self->{dbh}->last_insert_id();
 }
 
-# Updates the source medication log row for a reminder confirmation instead of
-# creating a second medication_logs row.
-# Parameters:
-#   log_id        : Integer medication_logs.id
-#   confirmed_by  : Integer user ID
-#   dosage        : Numeric mg
-# Returns:
-#   Boolean success
-sub DB::update_reminder_source_log {
-    my ($self, $log_id, $confirmed_by, $dosage) = @_;
-    $self->ensure_connection;
-
-    my $sth = $self->{dbh}->prepare("
-        UPDATE medication_logs
-        SET taken_at = NOW(), logged_by_id = ?, dosage = ?
-        WHERE id = ?
-    ");
-    return $sth->execute($confirmed_by, $dosage, $log_id) > 0;
-}
-
 # Updates an existing medication log entry.
 # Parameters:
 #   id               : Unique ID of the log entry
@@ -461,8 +441,8 @@ sub DB::get_overdue_medication_confirmations {
     return $sth->fetchall_arrayref({});
 }
 
-# Confirms a pending reminder event as taken and updates the reminder's source
-# medication log instead of creating a second log row.
+# Confirms a pending reminder event as taken and inserts a new dose log
+# with duplicate prevention.
 # Parameters:
 #   event_id       : Integer event ID
 #   confirmed_by   : Integer user ID who confirmed
@@ -496,9 +476,25 @@ sub DB::confirm_medication_reminder {
     my $reminder = $sth_r->fetchrow_hashref();
 
     my $log_id = undef;
-    if ($reminder && $reminder->{source_log_id}) {
-        if ($self->update_reminder_source_log($reminder->{source_log_id}, $confirmed_by, $reminder->{dosage})) {
-            $log_id = $reminder->{source_log_id};
+    if ($reminder) {
+        my $dup_sth = $self->{dbh}->prepare("
+            SELECT id FROM medication_logs
+            WHERE medication_id = ?
+              AND family_member_id = ?
+              AND logged_by_id = ?
+              AND ABS(TIMESTAMPDIFF(MINUTE, taken_at, NOW())) < 5
+            LIMIT 1
+        ");
+        $dup_sth->execute($reminder->{medication_id}, $reminder->{family_member_id}, $confirmed_by);
+        my $existing = $dup_sth->fetchrow_array();
+
+        unless ($existing) {
+            my $ins_sth = $self->{dbh}->prepare("
+                INSERT INTO medication_logs (medication_id, family_member_id, logged_by_id, dosage)
+                VALUES (?, ?, ?, ?)
+            ");
+            $ins_sth->execute($reminder->{medication_id}, $reminder->{family_member_id}, $confirmed_by, $reminder->{dosage});
+            $log_id = $self->{dbh}->last_insert_id();
         }
     }
 
