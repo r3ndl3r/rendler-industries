@@ -746,8 +746,8 @@ function _renderBookRow(book) {
         }
     }
 
-    return `<div class="book-row" onclick="openPlayer(${slugJs}, ${chapIdx})" role="button" tabindex="0"
-                 onkeydown="if(event.key==='Enter')openPlayer(${slugJs}, ${chapIdx})">
+    return `<div class="book-row" onclick="openDetail(${slugJs})" role="button" tabindex="0"
+                 onkeydown="if(event.key==='Enter')openDetail(${slugJs})">
                 <div class="book-row-cover">${thumbHtml}</div>
                 <div class="book-row-info">
                     <p class="book-row-title">${escapeHtml(book.title || book.slug)}${clearProgressBtn}${newBadge}${offlineBadge}</p>
@@ -1096,6 +1096,19 @@ function closeDetail() {
     document.getElementById('detailPanel').classList.remove('show');
     PLAYER.detail_open = false;
     PLAYER.detail_slug = null;
+}
+
+/**
+ * Starts playback from the detail panel using saved progress.
+ * Closes the detail view and opens the player at the saved chapter.
+ * @returns {void}
+ */
+function playDetailBook() {
+    const book = STATE.books.find(b => b.slug === PLAYER.detail_slug);
+    if (!book) return;
+    const prog = book.progress || {};
+    closeDetail();
+    openPlayer(book.slug, prog.chapter_idx || 0, true);
 }
 
 

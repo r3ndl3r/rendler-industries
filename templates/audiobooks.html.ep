@@ -44,6 +44,7 @@
 <div id="detailPanel" class="detail-panel">
     <div class="detail-header">
         <span id="detailHeaderTitle" class="detail-header-title"></span>
+        <button type="button" class="icon-btn detail-close-btn" onclick="closeDetail()" aria-label="Close">✕</button>
     </div>
     <div class="detail-scroll">
         <div class="detail-cover-row">
@@ -60,8 +61,9 @@
             </div>
         </div>
         <p id="detailDescription" class="detail-description"></p>
-
-
+        <div class="detail-actions">
+            <button type="button" class="btn-primary" onclick="playDetailBook()">▶ Play</button>
+        </div>
     </div>
 </div>
 

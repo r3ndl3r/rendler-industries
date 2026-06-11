@@ -1200,6 +1200,13 @@
     background: rgba(255,255,255,0.04);
 }
 
+.detail-close-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+    background: rgba(255,255,255,0.04);
+}
+
 /* ─── Utility ─────────────────────────────────────────────────────────────── */
 
 .hidden {
