@@ -224,7 +224,7 @@ const MenuMgmt = {
 
         if (STATE.links.length === 0) {
             const empty = document.createElement('tbody');
-            empty.innerHTML = '<tr><td colspan="7" class="empty-state">No menu links found.</td></tr>';
+            empty.innerHTML = '<tr><td colspan="8" class="empty-state">No menu links found.</td></tr>';
             table.appendChild(empty);
             return;
         }
