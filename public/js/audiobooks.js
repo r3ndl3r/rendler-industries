@@ -2186,6 +2186,16 @@ function _stopSaveTimer() {
 }
 
 /**
+ * Returns the effective completed flag, preserving an already-completed state.
+ * Once a book is marked completed, only an explicit progress reset can clear it.
+ * @param {boolean} completed - Whether this save intends to mark the book finished.
+ * @returns {number} 1 if completed, 0 otherwise.
+ */
+function _effectiveCompletedFlag(completed) {
+    return completed || !!(PLAYER.book && PLAYER.book.progress && PLAYER.book.progress.completed) ? 1 : 0;
+}
+
+/**
  * Sends the current playback position to /api/progress.
  * On network failure, buffers the position to localStorage so it can be
  * flushed on the next successful save or loadState() call.
@@ -2199,18 +2209,19 @@ function _saveProgress(completed) {
         ? pending.position_sec
         : (isFinite(PLAYER.audio.currentTime) ? PLAYER.audio.currentTime : 0);
     const chapterIdx = pending ? pending.chapter_idx : PLAYER.chapter_idx;
+    const completedFlag = _effectiveCompletedFlag(completed);
     const payload = {
         book_slug:   PLAYER.slug,
         chapter_idx: chapterIdx,
         position_sec: pos,
-        completed:   completed ? 1 : 0,
+        completed:   completedFlag,
         client_updated_ms: Date.now(),
     };
     if (PLAYER.book) {
         PLAYER.book.progress = PLAYER.book.progress || {};
         PLAYER.book.progress.chapter_idx  = chapterIdx;
         PLAYER.book.progress.position_sec = pos;
-        PLAYER.book.progress.completed    = completed ? 1 : 0;
+        PLAYER.book.progress.completed    = completedFlag;
         PLAYER.book.progress.updated_at   = _formatDbDate(new Date());
     }
     _postProgressQuietly(payload)
