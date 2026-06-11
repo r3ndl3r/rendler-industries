@@ -147,11 +147,14 @@ async function loadEvents(force = false) {
 
     if (!force && (anyModalOpen || inputFocused) && STATE.events.length > 0) return;
 
+    const vStart = getViewStartDate();
     const vEnd = getViewEndDate();
-    const buffer = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const buffer = new Date(today);
     buffer.setDate(buffer.getDate() + 30); // Ensure at least 30 days visibility for the Upcoming widget
 
-    const start = formatDate(getViewStartDate());
+    const start = formatDate(vStart < today ? vStart : today);
     const end   = formatDate(vEnd > buffer ? vEnd : buffer);
     const gen   = ++eventsGeneration;
 
