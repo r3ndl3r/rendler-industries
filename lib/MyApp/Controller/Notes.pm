@@ -917,8 +917,8 @@ If a formatting pattern is not listed below, keep it as plain text and do not in
 - Headings: # H1, ## H2, ### H3
 - Text: **Bold**, *Italic*, ~~Strikethrough~~, `Inline Code`
 - Code blocks: ```lang for multi-line blocks
-- Lists: - Bullet, * Bullet, 1. Numbered, - [ ] Task, - [x] Completed, [ ] Bare task
-- Horizontal rule: ---
+- Lists: - Bullet, * Bullet, 1. Numbered, [ ] Task, [x] Completed (do not put anything before [ ], if found remove them)
+- Horizontal rule: --- (must have NO blank lines above or below it, if found remove them)
 - Callouts: > [!note] Title, > [!tip] Title, > [!info] Title, > [!success] Title, > [!warning] Title, > [!danger] Title, > [!question] Title
   > Body lines must also start with >
 - Dividers: [divider:Section Title]
@@ -944,7 +944,7 @@ If a formatting pattern is not listed below, keep it as plain text and do not in
 STYLE_GUIDE
 
     my $custom_block = length($custom_prompt)
-        ? "\n\nMANDATORY USER CUSTOM INSTRUCTIONS:\n$custom_prompt\nApply these instructions exactly when they do not conflict with preserving factual content. If the user asks for checkboxes, tasks, assignments, assessments, deadlines, or to-do items, render every matching item with Rendler task syntax: - [ ] Item."
+        ? "\n\nMANDATORY USER CUSTOM INSTRUCTIONS:\n$custom_prompt\nApply these instructions exactly when they do not conflict with preserving factual content. If the user asks for checkboxes, tasks, assignments, assessments, deadlines, or to-do items, render every matching item with Rendler task syntax: [ ] Item."
         : '';
 
     my $now_context = $c->now->strftime('%Y-%m-%d %H:%M:%S %Z');
