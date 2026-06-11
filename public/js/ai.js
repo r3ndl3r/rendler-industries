@@ -26,6 +26,12 @@ const CONFIG = {
     SCROLL_DELAY_MS: 100             // UI timing for vertical alignment
 };
 
+function trimHistory() {
+    if (STATE.history.length > CONFIG.MAX_HISTORY) {
+        STATE.history = STATE.history.slice(-CONFIG.MAX_HISTORY);
+    }
+}
+
 let STATE = {
     history: [],                    // Collection of {role, content, timestamp}
     username: 'user',               // Active user for avatar resolution
@@ -62,6 +68,7 @@ async function loadState() {
         if (data && data.success) {
             STATE.history = data.history;
             STATE.username = data.username;
+            trimHistory();
             renderMessages();
         }
     } catch (err) {
@@ -165,6 +172,7 @@ async function sendPrompt(event) {
         if (result && result.success) {
             // Success: reconcile state with model response
             STATE.history.push({ role: 'model', content: result.content });
+            trimHistory();
             renderMessages();
         } else {
             STATE.history.splice(optimisticIndex, 1);
