@@ -19,7 +19,7 @@
 
     <div class="manage-filters">
         <label for="user-filter">Filter by User:</label>
-        <select id="user-filter" class="user-select user-dropdown">
+        <select id="user-filter" class="game-input user-select user-dropdown">
             <option value="">All Users</option>
         </select>
     </div>
