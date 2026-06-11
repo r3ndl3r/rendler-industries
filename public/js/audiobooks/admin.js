@@ -314,14 +314,16 @@ async function handleCoverFile(event) {
  */
 function _renderUserProgress(userProgress, totalChapters) {
     if (!userProgress || !userProgress.length) return '—';
-    const total = totalChapters > 0 ? totalChapters : '?';
+    const totalCount = Number(totalChapters);
+    const total = Number.isFinite(totalCount) && totalCount > 0 ? totalCount : '?';
     return userProgress.map(u => {
         const name = escapeHtml(u.username || '?');
         const icon = getUserIcon(u.username || '');
         if (u.completed) {
             return `<span class="ab-user-prog ab-user-prog-done" title="${name}: Finished">${icon} ${name}</span>`;
         }
-        const ch = (u.chapter_idx || 0) + 1;
+        const chapterIndex = Number(u.chapter_idx);
+        const ch = Number.isFinite(chapterIndex) && chapterIndex >= 0 ? chapterIndex + 1 : 1;
         return `<span class="ab-user-prog" title="${name}: Chapter ${ch} of ${total}">${icon} ${name} · Ch.${ch}/${total}</span>`;
     }).join('');
 }
