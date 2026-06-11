@@ -25,7 +25,6 @@ use Mojo::JSON qw(encode_json decode_json);
 #     - gotify: { token => '...' }
 #     - app_secret: String
 #     - unsplash_key: String
-#     - gemini_key: String
 # Behavior:
 #   - Uses eval blocks to safely return defaults if tables/keys are missing
 sub DB::get_all_settings {
@@ -70,38 +69,6 @@ sub DB::get_all_settings {
     eval {
         my $email_settings = $self->get_email_settings();
         $settings->{email} = $email_settings;
-    };
-
-    # Safely fetch AI provider preference
-    eval {
-        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'ai_provider'");
-        $sth->execute();
-        my ($provider) = $sth->fetchrow_array();
-        $settings->{ai_provider} = $provider || 'gemini';
-    };
-
-    # Safely fetch Google Gemini API key
-    eval {
-        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'gemini_api_key'");
-        $sth->execute();
-        my ($key) = $sth->fetchrow_array();
-        $settings->{gemini_key} = $key || '';
-    };
-
-    # Safely fetch OpenCode Zen API key
-    eval {
-        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'opencode_api_key'");
-        $sth->execute();
-        my ($key) = $sth->fetchrow_array();
-        $settings->{opencode_key} = $key || '';
-    };
-
-    # Safely fetch Local LLM application URL
-    eval {
-        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'local_ai_url'");
-        $sth->execute();
-        my ($url) = $sth->fetchrow_array();
-        $settings->{local_ai_url} = $url || '';
     };
 
     # Safely fetch Google Cloud API key (TTS/Translation)
@@ -355,34 +322,197 @@ sub DB::set_timer_reset_hour {
     }
 }
 
-sub DB::get_ai_provider {
-    my ($self) = @_;
-    $self->ensure_connection;
-    my $sql = "SELECT secret_value FROM app_secrets WHERE key_name = 'ai_provider'";
-    my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute();
-    my ($val) = $sth->fetchrow_array();
-    return ($val && ($val eq 'opencode' || $val eq 'local')) ? $val : 'gemini';
+# Reads one app_secrets value without exposing table details to registry helpers.
+sub _app_secret_value {
+    my ($self, $key_name) = @_;
+    my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = ?");
+    $sth->execute($key_name);
+    my ($value) = $sth->fetchrow_array();
+    return $value // '';
 }
 
-sub DB::update_ai_provider {
-    my ($self, $provider) = @_;
-    $self->ensure_connection;
-    return 0 unless $provider && ($provider eq 'gemini' || $provider eq 'opencode' || $provider eq 'local');
-
-    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'ai_provider'");
-    $sth->execute();
+# Writes one app_secrets value, creating the row when it does not exist yet.
+sub _upsert_app_secret {
+    my ($self, $key_name, $value) = @_;
+    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = ?");
+    $sth->execute($key_name);
     my ($count) = $sth->fetchrow_array();
+
     if ($count > 0) {
-        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'ai_provider'");
-        $sth->execute($provider);
+        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = ?");
+        $sth->execute($value, $key_name);
     } else {
-        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('ai_provider', ?)");
-        $sth->execute($provider);
+        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES (?, ?)");
+        $sth->execute($key_name, $value);
     }
+}
+
+# Builds the default AI registry for fresh installs.
+sub _ai_engine_defaults {
+    return {
+        default_engine => 'gemini',
+        engines => {
+            gemini => {
+                label           => 'Google Gemini',
+                type            => 'gemini',
+                enabled         => 1,
+                api_key         => '',
+                active_model    => 'gemini-3.1-flash-lite',
+                fallback_models => ['gemini-3.1-flash-lite', 'gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-2.5-pro'],
+                chat_endpoint   => 'https://generativelanguage.googleapis.com/{api_version}/models/{model}:generateContent?key={api_key}',
+                models_endpoint => 'https://generativelanguage.googleapis.com/v1beta/models?key={api_key}',
+                capabilities    => ['text', 'image', 'json_mode', 'web_search']
+            },
+            opencode => {
+                label           => 'OpenCode Zen',
+                type            => 'openai_compatible',
+                enabled         => 1,
+                api_key         => '',
+                active_model    => 'big-pickle',
+                fallback_models => ['big-pickle', 'deepseek-v4-flash-free', 'mimo-v2.5-free', 'qwen3.6-plus-free', 'minimax-m3-free', 'nemotron-3-super-free'],
+                chat_endpoint   => 'https://opencode.ai/zen/v1/chat/completions',
+                models_endpoint => 'https://opencode.ai/zen/v1/models',
+                capabilities    => ['text', 'json_mode']
+            },
+            local => {
+                label           => 'Local LLM',
+                type            => 'openai_compatible',
+                enabled         => 1,
+                api_key         => '',
+                active_model    => 'local',
+                fallback_models => ['local'],
+                chat_endpoint   => 'http://127.0.0.1:8080/v1/chat/completions',
+                models_endpoint => '',
+                capabilities    => ['text', 'json_mode']
+            }
+        }
+    };
+}
+
+# Normalizes one AI engine entry into the supported persisted shape.
+sub _normalize_ai_engine {
+    my ($id, $engine) = @_;
+    return undef unless $id =~ /\A[a-z0-9_]+\z/ && ref $engine eq 'HASH';
+
+    my $fallback_models = ref $engine->{fallback_models} eq 'ARRAY' ? $engine->{fallback_models} : [];
+    my $capabilities = ref $engine->{capabilities} eq 'ARRAY' ? $engine->{capabilities} : [];
+
+    return {
+        label           => $engine->{label} // $id,
+        type            => $engine->{type} // '',
+        enabled         => $engine->{enabled} ? 1 : 0,
+        api_key         => $engine->{api_key} // '',
+        active_model    => $engine->{active_model} // '',
+        fallback_models => [ grep { defined $_ && length $_ } @$fallback_models ],
+        chat_endpoint   => $engine->{chat_endpoint} // '',
+        models_endpoint => $engine->{models_endpoint} // '',
+        capabilities    => [ grep { defined $_ && /\A[a-z0-9_]+\z/ } @$capabilities ]
+    };
+}
+
+# Normalizes a decoded AI registry into the supported persisted shape.
+sub _normalize_ai_engine_registry {
+    my ($self, $registry, $opts) = @_;
+    my $use_defaults = ref $opts eq 'HASH' && $opts->{use_defaults};
+    $registry = {} unless ref $registry eq 'HASH';
+
+    my $normalized = $use_defaults ? _ai_engine_defaults() : { default_engine => '', engines => {} };
+    my $engines = ref $registry->{engines} eq 'HASH' ? $registry->{engines} : {};
+
+    for my $id (keys %$engines) {
+        my $engine = _normalize_ai_engine($id, $engines->{$id});
+        $normalized->{engines}{$id} = $engine if $engine;
+    }
+
+    my $default_engine = $registry->{default_engine} || $normalized->{default_engine};
+    $default_engine = (sort keys %{$normalized->{engines}})[0] || '' unless exists $normalized->{engines}{$default_engine};
+    $normalized->{default_engine} = $default_engine;
+    return $normalized;
+}
+
+# Checks that a normalized registry is safe to persist.
+sub _valid_ai_engine_registry {
+    my ($registry) = @_;
+    return 0 unless ref $registry eq 'HASH' && ref $registry->{engines} eq 'HASH';
+    my $default_engine = $registry->{default_engine} || '';
+    return 0 unless exists $registry->{engines}{$default_engine};
+    return 0 unless $registry->{engines}{$default_engine}{enabled};
+
+    for my $id (keys %{$registry->{engines}}) {
+        return 0 unless $id =~ /\A[a-z0-9_]+\z/;
+        my $engine = $registry->{engines}{$id};
+        return 0 unless ref $engine eq 'HASH';
+        return 0 unless ($engine->{type} || '') =~ /\A(?:gemini|openai_compatible)\z/;
+        return 0 unless length($engine->{active_model} || '');
+        return 0 unless ($engine->{chat_endpoint} || '') =~ m{^https?://\S+$};
+        return 0 if length($engine->{models_endpoint} || '') && $engine->{models_endpoint} !~ m{^https?://\S+$};
+        return 0 unless ref $engine->{fallback_models} eq 'ARRAY';
+        return 0 unless ref $engine->{capabilities} eq 'ARRAY';
+        return 0 if grep { !defined $_ || $_ !~ /\A[a-z0-9_]+\z/ } @{$engine->{capabilities}};
+    }
+
     return 1;
 }
 
+# Returns the canonical AI engine registry, seeding fresh defaults when absent.
+sub DB::get_ai_engine_registry {
+    my ($self) = @_;
+    $self->ensure_connection;
+
+    my $raw = _app_secret_value($self, 'ai_engine_registry');
+    my $registry = eval { decode_json($raw || '') };
+    unless (ref $registry eq 'HASH' && ref $registry->{engines} eq 'HASH') {
+        $registry = _normalize_ai_engine_registry($self, {}, { use_defaults => 1 });
+        _upsert_app_secret($self, 'ai_engine_registry', encode_json($registry));
+        return $registry;
+    }
+
+    my $normalized = _normalize_ai_engine_registry($self, $registry);
+    return $normalized if _valid_ai_engine_registry($normalized);
+
+    $normalized = _normalize_ai_engine_registry($self, {}, { use_defaults => 1 });
+    _upsert_app_secret($self, 'ai_engine_registry', encode_json($normalized));
+    return $normalized;
+}
+
+# Persists a validated AI engine registry.
+sub DB::update_ai_engine_registry {
+    my ($self, $registry) = @_;
+    $self->ensure_connection;
+    return 0 unless ref $registry eq 'HASH';
+
+    my $normalized = _normalize_ai_engine_registry($self, $registry);
+    return 0 unless _valid_ai_engine_registry($normalized);
+    _upsert_app_secret($self, 'ai_engine_registry', encode_json($normalized));
+    return 1;
+}
+
+# Returns one AI engine configuration by registry id.
+sub DB::get_ai_engine {
+    my ($self, $engine_id) = @_;
+    my $registry = $self->get_ai_engine_registry();
+    return $registry->{engines}{$engine_id || ''};
+}
+
+# Finds the first enabled engine that advertises the requested capability.
+sub DB::get_ai_engine_for_capability {
+    my ($self, $capability) = @_;
+    my $registry = $self->get_ai_engine_registry();
+    my @ids = ($registry->{default_engine}, sort keys %{$registry->{engines} || {}});
+    my %seen;
+
+    for my $id (@ids) {
+        next unless defined $id && !$seen{$id}++;
+        my $engine = $registry->{engines}{$id};
+        next unless ref $engine eq 'HASH' && $engine->{enabled};
+        my %caps = map { $_ => 1 } @{$engine->{capabilities} || []};
+        return $id if $caps{$capability};
+    }
+
+    return '';
+}
+
+# Returns per-feature AI model overrides keyed by feature profile.
 sub DB::get_ai_app_models {
     my ($self) = @_;
     $self->ensure_connection;
@@ -399,24 +529,30 @@ sub DB::get_ai_app_models {
     return ref $models eq 'HASH' ? $models : {};
 }
 
+# Resolves a feature profile into an enabled engine/model pair with global fallback.
 sub DB::get_ai_model_profile {
     my ($self, $profile_key) = @_;
+    my $registry = $self->get_ai_engine_registry();
     my $models = $self->get_ai_app_models();
     my $profile = ref $models->{$profile_key || ''} eq 'HASH' ? $models->{$profile_key} : {};
 
-    my $provider = $profile->{provider} || $self->get_ai_provider();
-    $provider = 'gemini' unless $provider eq 'gemini' || $provider eq 'opencode' || $provider eq 'local';
+    my $fallback_provider = $registry->{default_engine} || 'gemini';
+    $fallback_provider = $self->get_ai_engine_for_capability('text') || 'gemini'
+        unless $registry->{engines}{$fallback_provider} && $registry->{engines}{$fallback_provider}{enabled};
+
+    my $provider = $profile->{provider} || $fallback_provider;
+    $provider = $fallback_provider
+        unless exists $registry->{engines}{$provider} && $registry->{engines}{$provider}{enabled};
 
     my $model = $profile->{model} || '';
     if (!length $model) {
-        $model = $provider eq 'opencode' ? $self->get_opencode_active_model()
-             : $provider eq 'local'    ? 'local'
-             :                           $self->get_gemini_active_model();
+        $model = $registry->{engines}{$provider}{active_model} || ($registry->{engines}{$provider}{fallback_models}[0] // '');
     }
 
     return { provider => $provider, model => $model };
 }
 
+# Persists per-feature AI model overrides as a single JSON app_secret value.
 sub DB::update_ai_app_models {
     my ($self, $models) = @_;
     $self->ensure_connection;
@@ -435,154 +571,6 @@ sub DB::update_ai_app_models {
         $sth->execute($json);
     }
     return 1;
-}
-
-# Retrieves the Google Gemini API key.
-# Parameters: None
-# Returns:
-# String (API Key) or empty string if not found
-sub DB::get_gemini_key {
-    my ($self) = @_;
-    $self->ensure_connection;
-    my $key = '';
-    eval {
-        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'gemini_api_key'");
-        $sth->execute();
-        ($key) = $sth->fetchrow_array();
-    };
-    return $key || '';
-}
-
-# Updates the Google Gemini API key.
-# Parameters:
-# api_key : New API Key string
-# Returns: Void
-sub DB::update_gemini_key {
-    my ($self, $api_key) = @_;
-    $self->ensure_connection;
-    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'gemini_api_key'");
-    $sth->execute();
-    my ($count) = $sth->fetchrow_array();
-    if ($count > 0) {
-        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'gemini_api_key'");
-        $sth->execute($api_key);
-    } else {
-        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('gemini_api_key', ?)");
-        $sth->execute($api_key);
-    }
-}
-
-# Retrieves the list of available Gemini models.
-# Retrieves the active Gemini model.
-sub DB::get_gemini_active_model {
-    my ($self) = @_;
-    $self->ensure_connection;
-    my $sql = "SELECT secret_value FROM app_secrets WHERE key_name = 'gemini_active_model'";
-    my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute();
-    my ($val) = $sth->fetchrow_array();
-    return $val // 'gemini-2.5-flash-lite';
-}
-
-# Updates the active Gemini model.
-sub DB::update_gemini_active_model {
-    my ($self, $model) = @_;
-    $self->ensure_connection;
-    
-    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'gemini_active_model'");
-    $sth->execute();
-    my ($count) = $sth->fetchrow_array();
-    
-    if ($count > 0) {
-        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'gemini_active_model'");
-        $sth->execute($model);
-    } else {
-        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('gemini_active_model', ?)");
-        $sth->execute($model);
-    }
-}
-
-sub DB::get_opencode_key {
-    my ($self) = @_;
-    $self->ensure_connection;
-    my $key = '';
-    eval {
-        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'opencode_api_key'");
-        $sth->execute();
-        ($key) = $sth->fetchrow_array();
-    };
-    return $key || '';
-}
-
-sub DB::update_opencode_key {
-    my ($self, $api_key) = @_;
-    $self->ensure_connection;
-    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'opencode_api_key'");
-    $sth->execute();
-    my ($count) = $sth->fetchrow_array();
-    if ($count > 0) {
-        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'opencode_api_key'");
-        $sth->execute($api_key);
-    } else {
-        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('opencode_api_key', ?)");
-        $sth->execute($api_key);
-    }
-}
-
-sub DB::get_opencode_active_model {
-    my ($self) = @_;
-    $self->ensure_connection;
-    my $sql = "SELECT secret_value FROM app_secrets WHERE key_name = 'opencode_active_model'";
-    my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute();
-    my ($val) = $sth->fetchrow_array();
-    return $val // 'big-pickle';
-}
-
-sub DB::update_opencode_active_model {
-    my ($self, $model) = @_;
-    $self->ensure_connection;
-    return unless defined $model && length $model;
-
-    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'opencode_active_model'");
-    $sth->execute();
-    my ($count) = $sth->fetchrow_array();
-    if ($count > 0) {
-        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'opencode_active_model'");
-        $sth->execute($model);
-    } else {
-        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('opencode_active_model', ?)");
-        $sth->execute($model);
-    }
-}
-
-sub DB::get_local_ai_url {
-    my ($self) = @_;
-    $self->ensure_connection;
-    my $url = '';
-    eval {
-        my $sth = $self->{dbh}->prepare("SELECT secret_value FROM app_secrets WHERE key_name = 'local_ai_url'");
-        $sth->execute();
-        ($url) = $sth->fetchrow_array();
-    };
-    return $url || '';
-}
-
-sub DB::update_local_ai_url {
-    my ($self, $url) = @_;
-    $self->ensure_connection;
-    return unless defined $url && length $url;
-
-    my $sth = $self->{dbh}->prepare("SELECT COUNT(*) FROM app_secrets WHERE key_name = 'local_ai_url'");
-    $sth->execute();
-    my ($count) = $sth->fetchrow_array();
-    if ($count > 0) {
-        $sth = $self->{dbh}->prepare("UPDATE app_secrets SET secret_value = ? WHERE key_name = 'local_ai_url'");
-        $sth->execute($url);
-    } else {
-        $sth = $self->{dbh}->prepare("INSERT INTO app_secrets (key_name, secret_value) VALUES ('local_ai_url', ?)");
-        $sth->execute($url);
-    }
 }
 
 # Retrieves the Google Cloud API key (TTS/Translation).
