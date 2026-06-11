@@ -106,6 +106,22 @@ function _getCoverUrl(book) {
 }
 
 /**
+ * Resolves a potentially relative URL to an absolute URL, returning a
+ * fallback value instead of throwing on malformed input.
+ * @param {string} value - URL string to resolve.
+ * @param {string} baseUrl - Base URL for relative paths.
+ * @param {string} [fallback=''] - Value to return on failure.
+ * @returns {string}
+ */
+function _absoluteUrlOrFallback(value, baseUrl, fallback = '') {
+    try {
+        return value ? new URL(value, baseUrl).href : fallback;
+    } catch (err) {
+        return fallback;
+    }
+}
+
+/**
  * Returns the best playable URL for a chapter.
  * Downloaded Android books use the native loopback server so MP4/M4B range
  * probing behaves like normal HTTP instead of WebView request interception.
@@ -406,7 +422,7 @@ function downloadBook(slug) {
     }
 
     STATE.downloading[slug] = { total: 100, done: 0 };
-    const absCoverUrl = book.cover_url ? new URL(book.cover_url, 'https://rendler.org').href : '';
+    const absCoverUrl = _absoluteUrlOrFallback(book.cover_url, window.location.origin);
     const title = book.title || slug;
     window.OfflineAudiobooks.downloadBook(slug, JSON.stringify(chapters), absCoverUrl, title);
 
@@ -1516,10 +1532,10 @@ function _updateMediaSessionMetadata() {
     const chapters = Array.isArray(book.chapters) ? book.chapters : [];
     const ch = chapters[PLAYER.chapter_idx] || {};
     
-    // APK Support: Force production URL so Android can fetch artwork from outside the app
-    const baseUrl = 'https://rendler.org';
+    // APK Support: Use an absolute artwork URL for Android media sessions
+    const baseUrl = window.location.origin;
     const coverSrc = _getCoverUrl(book);
-    const artworkUrl = coverSrc ? new URL(coverSrc, baseUrl).href : 'https://rendler.org/favicon.ico';
+    const artworkUrl = _absoluteUrlOrFallback(coverSrc, baseUrl, `${window.location.origin}/favicon.ico`);
 
     const title = ch.title || book.title || 'Audiobook';
     const artist = book.author || 'Rendler Industries';
