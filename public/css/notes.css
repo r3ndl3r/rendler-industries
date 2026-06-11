@@ -5190,7 +5190,7 @@ input:checked + .switch-sm .slider:before {
 .wikilink-dropdown {
     position: absolute;
     z-index: 9999;
-    background: var(--color-surface);
+    background: rgba(30, 41, 59, 0.8);
     border: 1px solid #3b82f6;
     border-radius: 8px;
     min-width: 220px;
