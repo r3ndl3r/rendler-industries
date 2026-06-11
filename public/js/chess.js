@@ -210,7 +210,7 @@ const ChessApp = {
      */
     showLobby: function() {
         this.resetPolling();
-        if (STATE.view !== 'lobby') {
+        if (window.location.pathname !== '/chess') {
             window.history.pushState({}, '', '/chess');
         }
         this.toggleView('lobby');
