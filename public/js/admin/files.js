@@ -160,7 +160,11 @@ function openUploadModal() {
     const modal = document.getElementById('uploadModal');
     if (modal) {
         document.getElementById('uploadForm').reset();
-        document.getElementById('fileNameDisplay').textContent = '';
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        if (fileNameDisplay) {
+            fileNameDisplay.textContent = '';
+            fileNameDisplay.classList.add('hidden');
+        }
         modal.classList.add('show');
         document.body.classList.add('modal-open');
     }
