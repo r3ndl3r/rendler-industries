@@ -2276,12 +2276,16 @@ function renderAiReport(report) {
     const ts = document.getElementById('aiReportTimestamp');
     if (!content) return;
 
+    report = report && typeof report === 'object' ? report : {};
+    const issues = Array.isArray(report.issues) ? report.issues : null;
+    const recommendations = Array.isArray(report.recommendations) ? report.recommendations : null;
+
     let issuesHtml = '';
-    if (report.issues && report.issues.length) {
+    if (issues && issues.length) {
         issuesHtml = `
             <h4>Detected Issues</h4>
             <div class="ai-report-grid">
-                ${report.issues.map(issue => {
+                ${issues.map(issue => {
                     const severity = normalizeAiSeverity(issue.severity);
                     const runId = Number(issue.run_id);
                     return `
@@ -2297,14 +2301,20 @@ function renderAiReport(report) {
                 }).join('')}
             </div>
         `;
+    } else if (issues === null && report.issues !== undefined) {
+        issuesHtml = `<p class="report-empty">Issues data was malformed and could not be displayed.</p>`;
     }
 
     content.innerHTML = `
-        <div class="ai-report-summary">${escapeHtml(report.summary)}</div>
+        <div class="ai-report-summary">${escapeHtml(report.summary || 'No summary provided.')}</div>
         ${issuesHtml}
         <div class="ai-report-recommendations">
             <h4>Recommendations</h4>
-            <ul>${(report.recommendations || []).map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>
+            ${recommendations
+                ? `<ul>${recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>`
+                : report.recommendations !== undefined
+                    ? `<p class="report-empty">Recommendations data was malformed and could not be displayed.</p>`
+                    : `<ul></ul>`}
         </div>
         <div class="ai-report-final">${escapeHtml(report.final_summary)}</div>
     `;
