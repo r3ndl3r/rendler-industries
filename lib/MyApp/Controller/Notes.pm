@@ -957,7 +957,8 @@ STYLE_GUIDE
         contents        => [{ role => 'user', parts => [{ text => $prompt }] }],
         system          => 'You are a senior dashboard architect formatting notes for a personal Rendler dashboard. Return only the formatted note body, never JSON.',
         max_tokens      => 8192,
-        timeout         => 300
+        timeout         => 300,
+        app_profile     => 'notes_format'
     )->then(sub {
         my $data = shift;
         my $content = $data->{candidates}[0]{content}{parts}[0]{text} // '';
