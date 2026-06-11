@@ -124,7 +124,10 @@ function renderTable() {
                     <button type="button" class="btn-icon-copy" onclick="copyFileLink(${file.id})" title="Copy Link">📋</button>
                     ${moduleState.isAdmin ? `
                         <button type="button" class="btn-icon-edit" onclick="openPermissionModal(${file.id})" title="Permissions">⚙️</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteFile(${file.id}, '${escapeHtml(file.original_filename)}')" title="Purge">🗑️</button>
+                        <button type="button" class="btn-icon-delete"
+                                data-filename="${escapeHtml(file.original_filename)}"
+                                onclick="confirmDeleteFile(${file.id}, this.dataset.filename)"
+                                title="Purge">🗑️</button>
                     ` : ''}
                 </div>
             </td>
@@ -311,7 +314,7 @@ async function submitPermissions(event) {
 function confirmDeleteFile(id, filename) {
     showConfirmModal({
         title: 'Purge Resource',
-        message: `Are you sure you want to permanently delete \"<strong>${filename}</strong>\"?`,
+        message: `Are you sure you want to permanently delete \"<strong>${escapeHtml(filename)}</strong>\"?`,
         danger: true,
         confirmText: 'Purge',
         hideCancel: true,
