@@ -135,22 +135,64 @@ sub _api_error_message {
     return $res->message || $fallback;
 }
 
-sub _gemini_endpoint {
-    my ($model, $api_key) = @_;
-    my $api_version = ($model =~ /preview|exp|2\.[05]|3\./) ? 'v1beta' : 'v1';
-    return "https://generativelanguage.googleapis.com/$api_version/models/$model:generateContent?key=$api_key";
+# Checks whether a registry engine advertises a capability such as image or web_search.
+sub _engine_supports {
+    my ($engine, $capability) = @_;
+    return 0 unless ref $engine eq 'HASH';
+    my %caps = map { $_ => 1 } @{$engine->{capabilities} || []};
+    return $caps{$capability} ? 1 : 0;
 }
 
+# Expands endpoint templates stored in the AI engine registry.
+sub _endpoint_from_template {
+    my ($template, %vars) = @_;
+    $template ||= '';
+    $template =~ s/\{([a-z_]+)\}/defined $vars{$1} ? $vars{$1} : ''/ge;
+    return $template;
+}
+
+# Selects the Gemini API version required by a model id.
+sub _gemini_api_version {
+    my ($model) = @_;
+    return ($model =~ /preview|exp|2\.[05]|3\./) ? 'v1beta' : 'v1';
+}
+
+# Builds the Gemini chat endpoint from the registry engine and selected model.
+sub _gemini_endpoint {
+    my ($engine, $model) = @_;
+    my $api_key = $engine->{api_key} || '';
+    my $api_version = _gemini_api_version($model);
+    return _endpoint_from_template(
+        $engine->{chat_endpoint},
+        api_version => $api_version,
+        model       => $model,
+        api_key     => $api_key
+    );
+}
+
+# Builds a model-list endpoint from a registry engine.
+sub _models_endpoint {
+    my ($engine) = @_;
+    return _endpoint_from_template(
+        $engine->{models_endpoint},
+        api_key => $engine->{api_key} || ''
+    );
+}
+
+# Fetches Gemini models for one registry engine, falling back to configured models.
 sub gemini_models_sync {
     my (%args) = @_;
-    my @fallback = ('gemini-3.1-flash-lite', 'gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-2.5-pro');
-    my $api_key = $args{api_key} || '';
+    my $engine = $args{engine} || {};
+    my @fallback = @{$engine->{fallback_models} || ['gemini-3.1-flash-lite', 'gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-2.5-pro']};
+    my $api_key = $engine->{api_key} || '';
     return (\@fallback, 'Gemini API key missing') unless $api_key;
 
     my $ua = $args{ua} || Mojo::UserAgent->new;
     $ua->request_timeout($args{timeout} || 5);
 
-    my $tx = $ua->get("https://generativelanguage.googleapis.com/v1beta/models?key=$api_key");
+    my $endpoint = _models_endpoint({ %$engine, api_key => $api_key });
+    return (\@fallback, 'Gemini models endpoint missing') unless $endpoint;
+    my $tx = $ua->get($endpoint);
     my $res = $tx->result;
     unless ($res && $res->is_success) {
         return (\@fallback, 'Could not fetch live Gemini models');
@@ -173,13 +215,18 @@ sub gemini_models_sync {
     return (@ids ? (\@ids, '') : (\@fallback, 'Gemini returned no generateContent models'));
 }
 
+# Fetches OpenAI-compatible models for one registry engine, falling back to configured models.
 sub opencode_models_sync {
     my (%args) = @_;
+    my $engine = $args{engine} || {};
     my $ua = $args{ua} || Mojo::UserAgent->new;
     $ua->request_timeout($args{timeout} || 5);
 
-    my @fallback = ('big-pickle', 'deepseek-v4-flash-free', 'mimo-v2.5-free', 'qwen3.6-plus-free', 'minimax-m3-free', 'nemotron-3-super-free');
-    my $tx = $ua->get('https://opencode.ai/zen/v1/models');
+    my @fallback = @{$engine->{fallback_models} || ['big-pickle', 'deepseek-v4-flash-free', 'mimo-v2.5-free', 'qwen3.6-plus-free', 'minimax-m3-free', 'nemotron-3-super-free']};
+    my $endpoint = _models_endpoint($engine);
+    return (\@fallback, '') unless $endpoint;
+
+    my $tx = $ua->get($endpoint);
     my $res = $tx->result;
     unless ($res && $res->is_success) {
         return (\@fallback, 'Could not fetch live OpenCode models');
@@ -195,46 +242,59 @@ sub opencode_models_sync {
     return (@models ? (\@models, '') : (\@fallback, 'OpenCode returned no models'));
 }
 
+# Posts to an OpenAI-compatible async endpoint with an optional bearer token.
+sub _openai_post_p {
+    my ($ua, $endpoint, $api_key, $payload) = @_;
+    return $api_key
+        ? $ua->post_p($endpoint => { Authorization => "Bearer $api_key" } => json => $payload)
+        : $ua->post_p($endpoint => json => $payload);
+}
+
+# Posts to an OpenAI-compatible sync endpoint with an optional bearer token.
+sub _openai_post {
+    my ($ua, $endpoint, $api_key, $payload) = @_;
+    return $api_key
+        ? $ua->post($endpoint => { Authorization => "Bearer $api_key" } => json => $payload)
+        : $ua->post($endpoint => json => $payload);
+}
+
+# Runs a synchronous AI request from a fully resolved registry engine.
 sub ai_prompt_sync {
     my (%args) = @_;
     my $ua = $args{ua} || Mojo::UserAgent->new;
     my $timeout = $args{timeout} || 30;
     $ua->request_timeout($timeout)->inactivity_timeout($timeout);
 
-    my $provider = $args{provider} || 'gemini';
-    my $model = $args{model}
-        || ($provider eq 'opencode' ? $args{opencode_model}
-            : $provider eq 'local' ? 'local'
-            : $args{gemini_model})
-        || '';
+    my $engine = $args{engine};
+    die "AI engine missing" unless ref $engine eq 'HASH';
+    my $provider = $args{provider} || $engine->{id} || 'gemini';
+    my $fallback_models = ref $engine->{fallback_models} eq 'ARRAY' ? $engine->{fallback_models} : [];
+    my $model = $args{model} || $engine->{active_model} || $fallback_models->[0] || '';
     my $debug = $args{debug};
     my $log = sub { warn "[AI] @_\n" if $debug };
 
     $log->("Sync request provider=$provider model=$model system=" . ($args{system} // '') . " contents=" . substr(($args{contents}[0]{parts}[0]{text} // ''), 0, 200));
 
-    if ($provider eq 'opencode' && !_has_gemini_only_parts(\%args)) {
-        die "OpenCode AI key missing" unless $args{opencode_key};
+    if (($engine->{type} || '') eq 'openai_compatible' && !_has_gemini_only_parts(\%args)) {
+        my $endpoint = $engine->{chat_endpoint} || '';
+        die "$engine->{label} URL missing" unless $endpoint;
+        die "$engine->{label} AI key missing" if ($engine->{id} || '') eq 'opencode' && !$engine->{api_key};
+
         my $payload = _opencode_payload(%args, model => $model);
-        my $tx = $ua->post('https://opencode.ai/zen/v1/chat/completions' => {
-            Authorization => "Bearer $args{opencode_key}"
-        } => json => $payload);
+        my $tx = _openai_post($ua, $endpoint, $engine->{api_key} || '', $payload);
         my $res = $tx->result;
         die "Network connection failure" unless $res;
         if (!$res->is_success && $args{web_search}) {
-            $tx = $ua->post('https://opencode.ai/zen/v1/chat/completions' => {
-                Authorization => "Bearer $args{opencode_key}"
-            } => json => _opencode_payload_without_web_search($payload));
+            $tx = _openai_post($ua, $endpoint, $engine->{api_key} || '', _opencode_payload_without_web_search($payload));
             $res = $tx->result;
             die "Network connection failure" unless $res;
         }
         if (!$res->is_success && ($args{response_format} // '') eq 'application/json') {
-            $tx = $ua->post('https://opencode.ai/zen/v1/chat/completions' => {
-                Authorization => "Bearer $args{opencode_key}"
-            } => json => _opencode_payload_without_json_mode($payload));
+            $tx = _openai_post($ua, $endpoint, $engine->{api_key} || '', _opencode_payload_without_json_mode($payload));
             $res = $tx->result;
             die "Network connection failure" unless $res;
         }
-        die _api_error_message($res, 'OpenCode API error') unless $res->is_success;
+        die _api_error_message($res, "$engine->{label} API error") unless $res->is_success;
         my $text = _opencode_text($res->json || {});
         $log->("Sync response text=" . substr($text, 0, 500));
         return {
@@ -244,25 +304,8 @@ sub ai_prompt_sync {
         };
     }
 
-    if ($provider eq 'local' && !_has_gemini_only_parts(\%args)) {
-        my $payload = _opencode_payload(%args, model => $model);
-        my $endpoint = $args{local_ai_url} || '';
-        die "Local LLM URL missing" unless $endpoint;
-        my $tx = $ua->post($endpoint => json => $payload);
-        my $res = $tx->result;
-        die "Network connection failure" unless $res;
-        die _api_error_message($res, 'Local LLM API error') unless $res->is_success;
-        my $text = _opencode_text($res->json || {});
-        $log->("Sync response text=" . substr($text, 0, 500));
-        return {
-            candidates => [{
-                content => { parts => [{ text => $text }] }
-            }]
-        };
-    }
-
-    die "Gemini AI key missing" unless $args{gemini_key};
-    $model = $args{model} || $args{gemini_model};
+    die "Gemini AI key missing" unless $engine->{api_key};
+    $model = $args{model} || $engine->{active_model};
     my $payload = {
         contents => $args{contents} || [],
         generationConfig => {
@@ -275,7 +318,10 @@ sub ai_prompt_sync {
     $payload->{tools} = $args{tools} if $args{tools};
     $payload->{system_instruction} = { parts => [{ text => $args{system} }] } if $args{system};
 
-    my $tx = $ua->post(_gemini_endpoint($model, $args{gemini_key}) => json => $payload);
+    my $endpoint = _gemini_endpoint($engine, $model);
+    die "$engine->{label} endpoint missing" unless $endpoint;
+
+    my $tx = $ua->post($endpoint => json => $payload);
     my $res = $tx->result;
     die "Network connection failure" unless $res;
     die _api_error_message($res, 'Gemini API error') unless $res->is_success;
@@ -284,17 +330,22 @@ sub ai_prompt_sync {
     return $json;
 }
 
+# Sends a non-blocking Gemini request using the resolved registry engine.
 sub _gemini_prompt {
     my ($c, %args) = @_;
 
-    my $api_key      = $c->db->get_gemini_key();
-    my $active_model = $args{model} || $c->db->get_gemini_active_model();
+    my $engine = $args{engine} || $c->db->get_ai_engine('gemini');
+    my $api_key = $engine->{api_key} || '';
+    my $active_model = $args{model} || $engine->{active_model} || $engine->{fallback_models}[0];
 
     unless ($api_key) {
         return Mojo::Promise->reject("Gemini AI key missing");
     }
 
-    my $endpoint = _gemini_endpoint($active_model, $api_key);
+    my $endpoint = _gemini_endpoint($engine, $active_model);
+    unless ($endpoint) {
+        return Mojo::Promise->reject("Gemini endpoint missing");
+    }
 
     my $payload = {
         contents => $args{contents} || [],
@@ -330,27 +381,29 @@ sub _gemini_prompt {
         });
 }
 
+# Sends a non-blocking OpenAI-compatible request using the resolved registry engine.
 sub _opencode_prompt {
     my ($c, %args) = @_;
 
-    my $api_key = $c->db->get_opencode_key();
-    my $model   = $args{model} || $c->db->get_opencode_active_model();
+    my $engine = $args{engine} || $c->db->get_ai_engine($args{provider} || 'opencode');
+    my $api_key = $engine->{api_key} || '';
+    my $model = $args{model} || $engine->{active_model} || $engine->{fallback_models}[0];
+    my $endpoint = $engine->{chat_endpoint} || '';
+    my $label = $engine->{label} || 'OpenAI-compatible AI';
 
-    unless ($api_key) {
-        return Mojo::Promise->reject("OpenCode AI key missing");
+    unless ($endpoint) {
+        return Mojo::Promise->reject("$label URL missing");
+    }
+    if (($engine->{id} || '') eq 'opencode' && !$api_key) {
+        return Mojo::Promise->reject("$label key missing");
     }
 
     my $payload = _opencode_payload(%args, model => $model);
 
-    my $headers = { Authorization => "Bearer $api_key" };
     my $timeout = $args{timeout} || 30;
     my $ua = $c->ua->request_timeout($timeout)->inactivity_timeout($timeout);
 
-    return $ua->post_p(
-        'https://opencode.ai/zen/v1/chat/completions' => {
-            Authorization => "Bearer $api_key"
-        } => json => $payload
-    )->then(sub {
+    return _openai_post_p($ua, $endpoint, $api_key, $payload)->then(sub {
         my $tx = shift;
         if (my $res = $tx->result) {
             if ($res->is_success) {
@@ -364,7 +417,7 @@ sub _opencode_prompt {
                     }]
                 };
             } elsif ($args{web_search}) {
-                return $ua->post_p('https://opencode.ai/zen/v1/chat/completions' => $headers => json => _opencode_payload_without_web_search($payload))
+                return _openai_post_p($ua, $endpoint, $api_key, _opencode_payload_without_web_search($payload))
                     ->then(sub {
                         my $retry_tx = shift;
                         if (my $retry_res = $retry_tx->result) {
@@ -380,13 +433,13 @@ sub _opencode_prompt {
                                 };
                             }
                             my $msg = _api_error_message($retry_res, 'Unknown');
-                            $c->app->log->error("OpenCode API Error [" . $retry_res->code . "]: " . $msg);
+                            $c->app->log->error("$label API Error [" . $retry_res->code . "]: " . $msg);
                             return Mojo::Promise->reject($msg || "API Error " . $retry_res->code);
                         }
                         return Mojo::Promise->reject("Network connection failure");
                     });
             } elsif (($args{response_format} // '') eq 'application/json') {
-                return $ua->post_p('https://opencode.ai/zen/v1/chat/completions' => $headers => json => _opencode_payload_without_json_mode($payload))
+                return _openai_post_p($ua, $endpoint, $api_key, _opencode_payload_without_json_mode($payload))
                     ->then(sub {
                         my $retry_tx = shift;
                         if (my $retry_res = $retry_tx->result) {
@@ -402,14 +455,14 @@ sub _opencode_prompt {
                                 };
                             }
                             my $msg = _api_error_message($retry_res, 'Unknown');
-                            $c->app->log->error("OpenCode API Error [" . $retry_res->code . "]: " . $msg);
+                            $c->app->log->error("$label API Error [" . $retry_res->code . "]: " . $msg);
                             return Mojo::Promise->reject($msg || "API Error " . $retry_res->code);
                         }
                         return Mojo::Promise->reject("Network connection failure");
                     });
             } else {
                 my $msg = _api_error_message($res, 'Unknown');
-                $c->app->log->error("OpenCode API Error [" . $res->code . "]: " . $msg);
+                $c->app->log->error("$label API Error [" . $res->code . "]: " . $msg);
                 return Mojo::Promise->reject($msg || "API Error " . $res->code);
             }
         }
@@ -417,40 +470,13 @@ sub _opencode_prompt {
     });
 }
 
+# Sends a non-blocking local LLM request through the OpenAI-compatible adapter.
 sub _local_prompt {
     my ($c, %args) = @_;
 
-    my $model    = $args{model} || 'local';
-    my $endpoint = $c->db->get_local_ai_url();
-    return Mojo::Promise->reject("Local LLM URL missing") unless $endpoint;
-
-    my $payload = _opencode_payload(%args, model => $model);
-
-    my $timeout = $args{timeout} || 300;
-    my $ua = $c->ua->request_timeout($timeout)->inactivity_timeout($timeout);
-
-    return $ua->post_p($endpoint => json => $payload)
-        ->then(sub {
-            my $tx = shift;
-            if (my $res = $tx->result) {
-                if ($res->is_success) {
-                    my $json = $res->json || {};
-                    my $text = _opencode_text($json);
-                    return {
-                        candidates => [{
-                            content => {
-                                parts => [{ text => $text }]
-                            }
-                        }]
-                    };
-                } else {
-                    my $msg = _api_error_message($res, 'Unknown');
-                    $c->app->log->error("Local LLM API Error [" . $res->code . "]: " . $msg);
-                    return Mojo::Promise->reject($msg || "API Error " . $res->code);
-                }
-            }
-            return Mojo::Promise->reject("Network connection failure");
-        });
+    $args{engine} ||= $c->db->get_ai_engine('local');
+    $args{provider} ||= 'local';
+    return _opencode_prompt($c, %args);
 }
 
 sub register {
@@ -467,26 +493,28 @@ sub register {
     $app->helper(ai_prompt => sub {
         my ($c, %args) = @_;
 
+        my $registry = $c->db->get_ai_engine_registry();
         my $profile_key = $args{app_profile} || $args{ai_profile} || $args{app_context} || '';
         my $profile = length $profile_key ? $c->db->get_ai_model_profile($profile_key) : {};
         my $requires_gemini = _has_gemini_only_parts(\%args);
-        my $provider = $args{provider} || $profile->{provider} || $c->db->get_ai_provider();
-        $provider = 'gemini' if $requires_gemini;
+        my $provider = $args{provider} || $profile->{provider} || $registry->{default_engine} || 'gemini';
+        $provider = $c->db->get_ai_engine_for_capability('image') || 'gemini' if $requires_gemini;
+        $provider = $c->db->get_ai_engine_for_capability('text') || 'gemini'
+            unless exists $registry->{engines}{$provider} && $registry->{engines}{$provider}{enabled};
+        my $engine = $registry->{engines}{$provider};
         my $model = $args{model};
         $model ||= $profile->{model} if !$requires_gemini && ($profile->{provider} || '') eq $provider;
-        $model ||= $provider eq 'opencode' ? $c->db->get_opencode_active_model()
-                : $provider eq 'local'    ? 'local'
-                :                           $c->db->get_gemini_active_model();
+        $model ||= $engine->{active_model} || $engine->{fallback_models}[0] || '';
         $args{model} = $model;
-        $args{web_search} = 0 unless $provider eq 'gemini' || $provider eq 'opencode';
+        $args{provider} = $provider;
+        $args{engine} = $engine;
+        $args{web_search} = 0 unless _engine_supports($engine, 'web_search');
         $c->ai_debug("Request provider=$provider model=", $model,
             " system=", ($args{system} // ''), " contents=", substr(($args{contents}[0]{parts}[0]{text} // ''), 0, 200));
 
         my $promise;
-        if ($provider eq 'opencode' && !$requires_gemini) {
+        if (($engine->{type} || '') eq 'openai_compatible' && !$requires_gemini) {
             $promise = _opencode_prompt($c, %args);
-        } elsif ($provider eq 'local' && !$requires_gemini) {
-            $promise = _local_prompt($c, %args);
         } else {
             $promise = _gemini_prompt($c, %args);
         }
@@ -508,17 +536,14 @@ sub register {
         return ai_decode_json_text($text);
     });
 
-    $app->helper(ai_gemini_models => sub {
-        my ($c) = @_;
-        return gemini_models_sync(
-            ua      => $c->ua,
-            api_key => $c->db->get_gemini_key()
-        );
-    });
-
-    $app->helper(ai_opencode_models => sub {
-        my ($c) = @_;
-        return opencode_models_sync(ua => $c->ua);
+    # Fetches model choices for any registry engine shown in admin settings.
+    $app->helper(ai_engine_models => sub {
+        my ($c, $engine_id) = @_;
+        my $engine = $c->db->get_ai_engine($engine_id);
+        return ([], 'Unknown AI engine') unless ref $engine eq 'HASH';
+        return gemini_models_sync(ua => $c->ua, engine => $engine) if ($engine->{type} || '') eq 'gemini';
+        return opencode_models_sync(ua => $c->ua, engine => $engine) if ($engine->{models_endpoint});
+        return ($engine->{fallback_models} || [], '');
     });
 
     # Specialized: Chat Interface
