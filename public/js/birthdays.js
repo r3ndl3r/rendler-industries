@@ -217,7 +217,8 @@ function renderManageList() {
                         onclick="openEditModal(${b.id})" 
                         title="Edit Record">✎</button>
                 <button type="button" class="btn-icon-delete" 
-                        onclick="confirmDelete(${b.id}, '${escapeHtml(b.name)}')" 
+                        data-name="${escapeHtml(b.name)}"
+                        onclick="confirmDelete(${b.id}, this.dataset.name)" 
                         title="Remove Record">🗑️</button>
             </div>
         </div>
