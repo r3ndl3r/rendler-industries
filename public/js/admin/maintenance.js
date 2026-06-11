@@ -56,7 +56,7 @@ function renderTasks() {
     }
 
     grid.innerHTML = STATE.tasks.map(task => `
-        <div class="task-card glass-panel" data-name="${task.name}">
+        <div class="task-card glass-panel" data-name="${escapeHtml(task.name)}">
             <div class="task-card-header">
                 <div class="task-info">
                     <h3 class="task-label">${escapeHtml(task.label)}</h3>
@@ -73,9 +73,9 @@ function renderTasks() {
                 </div>
             </div>
             <div class="task-card-footer modal-actions-center">
-                <button class="btn-secondary task-run-btn" onclick="runTask('${task.name}')">▶ Run Now</button>
-                <button class="btn-icon-edit" title="Edit task" onclick="openEditModal('${task.name}')">✎</button>
-                <button class="btn-icon-delete" title="Delete task" onclick="confirmDeleteTask('${task.name}')">🗑️</button>
+                <button class="btn-secondary task-run-btn" onclick="runTask(this.closest('.task-card').dataset.name)">▶ Run Now</button>
+                <button class="btn-icon-edit" title="Edit task" onclick="openEditModal(this.closest('.task-card').dataset.name)">✎</button>
+                <button class="btn-icon-delete" title="Delete task" onclick="confirmDeleteTask(this.closest('.task-card').dataset.name)">🗑️</button>
             </div>
         </div>
     `).join('');
@@ -112,7 +112,7 @@ async function loadState(force = false) {
  * @returns {Promise<void>}
  */
 async function runTask(name) {
-    const card = document.querySelector(`.task-card[data-name="${name}"]`);
+    const card = Array.from(document.querySelectorAll('.task-card')).find(el => el.dataset.name === name);
     if (!card) return;
 
     const btn  = card.querySelector('.task-run-btn');
