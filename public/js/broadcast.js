@@ -156,7 +156,6 @@ async function sendBroadcast(message) {
         if (result && result.success) {
             const messageInput = document.getElementById('broadcast-message');
             if (messageInput) messageInput.value = '';
-            showToast('Broadcast successfully dispatched.', 'success');
         }
     } catch (err) {
         console.error('Dispatch Failure:', err);
