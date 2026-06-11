@@ -189,6 +189,10 @@
     grid-column: 1 / -1;
 }
 
+.settings-fields .settings-actions {
+    grid-column: 1 / -1;
+}
+
 .form-group {
     display: flex;
     flex-direction: column;
