@@ -590,10 +590,11 @@ function restoreUIState() {
     // Left-fade affordance: reveal once the user has scrolled the nav rightward
     const nav    = document.querySelector('.settings-nav');
     const wrapper = document.querySelector('.settings-nav-wrapper');
-    if (nav && wrapper) {
+    if (nav && wrapper && nav.dataset.scrollBound !== 'true') {
         nav.addEventListener('scroll', () => {
             wrapper.classList.toggle('scrolled', nav.scrollLeft > 8);
         }, { passive: true });
+        nav.dataset.scrollBound = 'true';
     }
 
     // Card Restoration
