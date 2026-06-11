@@ -1939,11 +1939,10 @@ function renderMsgContent(msg) {
  * Renders task output sections for the report view.
  *
  * @param {Array<Object>} tasks - Parsed task outputs.
- * @param {Object} jsonResult - Structured json_result from DB.
- * @param {string} hostStatusHtml - Host status section to insert after detailed audit output.
- * @returns {string} HTML.
- */
-function renderTaskOutputs(tasks, jsonResult, hostStatusHtml = '') {
+     * @param {string} hostStatusHtml - Host status section to insert after detailed audit output.
+     * @returns {string} HTML.
+     */
+    function renderTaskOutputs(tasks, hostStatusHtml = '') {
     if (!tasks || !tasks.length) {
         return `<div class="report-empty">No task output available. Check the Raw Log tab for full output.</div>${hostStatusHtml}`;
     }
@@ -2141,7 +2140,7 @@ function renderReportView(data) {
 
             <div class="report-task-outputs">
                 <h3 class="report-section-title">Task Output</h3>
-                ${renderTaskOutputs(tasks, jsonResult, hostStatusSection)}
+                ${renderTaskOutputs(tasks, hostStatusSection)}
             </div>
         </div>
     `;
@@ -2347,15 +2346,6 @@ function normalizeAiSeverity(severity) {
     const normalized = String(severity || '').toLowerCase();
     if (normalized === 'high' || normalized === 'medium') return normalized;
     return 'low';
-}
-
-/**
- * Returns the application timezone for AI report date formatting.
- *
- * @returns {string}
- */
-function getAiReportTimeZone() {
-    return typeof APP_TZ !== 'undefined' && APP_TZ ? APP_TZ : 'UTC';
 }
 
 /**
