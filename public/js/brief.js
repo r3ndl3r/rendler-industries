@@ -119,9 +119,10 @@ function renderSummary() {
 
     if (bdays.length > 0) {
         const b = bdays[0];
-        const label = b.days_until === 0 ? `today is ${escapeHtml(b.name)}'s birthday! 🎂`
-                    : b.days_until === 1 ? `${escapeHtml(b.name)}'s birthday is tomorrow`
-                    : `${escapeHtml(b.name)}'s birthday is in ${b.days_until} days`;
+        const name = b.name || '';
+        const label = b.days_until === 0 ? `today is ${name}'s birthday! 🎂`
+                    : b.days_until === 1 ? `${name}'s birthday is tomorrow`
+                    : `${name}'s birthday is in ${b.days_until} days`;
         parts.push(label);
     }
 
