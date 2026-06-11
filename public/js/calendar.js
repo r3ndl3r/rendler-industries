@@ -57,6 +57,7 @@ let historyObserver = null;
 let filterDebounceTimer  = null;
 let historyGeneration    = 0;
 let searchGeneration     = 0;
+let eventsGeneration     = 0;
 let searchDebounceTimer  = null;
 
 /**
@@ -152,6 +153,7 @@ async function loadEvents(force = false) {
 
     const start = formatDate(getViewStartDate());
     const end   = formatDate(vEnd > buffer ? vEnd : buffer);
+    const gen   = ++eventsGeneration;
 
     const container = document.getElementById('calendarView');
     // Show initial pulse if collection is empty
@@ -166,6 +168,7 @@ async function loadEvents(force = false) {
 
     try {
         const data = await apiGet(`/calendar/api/events?start=${start}&end=${end}`);
+        if (gen !== eventsGeneration) return;
         
         if (data && data.success) {
             STATE.events = (data.events || []).map(e => ({
@@ -178,7 +181,7 @@ async function loadEvents(force = false) {
             renderUI();
         }
     } catch (err) {
-        console.error('loadEvents failed:', err);
+        if (gen === eventsGeneration) console.error('loadEvents failed:', err);
     }
 }
 
