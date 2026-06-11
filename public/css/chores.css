@@ -248,47 +248,12 @@
     margin-bottom: 1.5rem;
 }
 
-/* Premium Form Elements */
-.game-input-premium {
-    width: 100%;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 1rem;
-    color: #fff;
-    font-family: inherit;
-    transition: all 0.2s;
-}
-
-.game-input-premium:focus {
-    outline: none;
-    border-color: var(--accent-blue);
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
-}
-
 .form-group-glass {
     margin-bottom: 1.5rem;
     display: flex;
     flex-direction: column;
     position: relative; /* Anchor for absolute elements like the emoji picker trigger */
     width: 100%;
-}
-
-/* Themed Select Elements */
-select.game-input-premium {
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 1rem center;
-    background-size: 1rem;
-    padding-right: 2.5rem;
-}
-
-select.game-input-premium option {
-    background-color: #0f172a; /* Solid dark background for the dropdown menu */
-    color: #fff;
-    padding: 10px;
 }
 
 .input-with-icon { position: relative; display: flex; align-items: center; }
