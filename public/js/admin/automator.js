@@ -1343,10 +1343,12 @@ function processConsoleEventLine(line) {
  * @returns {void}
  */
 function updateConsoleEventState(event) {
+    if (!event || typeof event !== 'object') return;
     if (!CONSOLE_EVENTS) resetConsoleEvents();
+    const eventHosts = Array.isArray(event.hosts) ? event.hosts : [];
     if (event.type === 'play_start') {
         CONSOLE_EVENTS.currentPlay = event.play || 'Play';
-        (event.hosts || []).forEach(host => {
+        eventHosts.forEach(host => {
             if (!CONSOLE_EVENTS.hosts[host]) CONSOLE_EVENTS.hosts[host] = { status: 'pending', task: 'Queued' };
         });
     } else if (event.type === 'task_start') {
@@ -1361,7 +1363,7 @@ function updateConsoleEventState(event) {
         };
     } else if (event.type === 'task_result') {
         const host = event.host || 'localhost';
-        const status = event.status || 'ok';
+        const status = normalizeConsoleStatus(event.status, 'ok');
         CONSOLE_EVENTS.hosts[host] = {
             status,
             task: event.task || 'Task',
@@ -1371,7 +1373,7 @@ function updateConsoleEventState(event) {
         if (status === 'ok' && event.changed) CONSOLE_EVENTS.counts.changed += 1;
         else if (CONSOLE_EVENTS.counts[status] !== undefined) CONSOLE_EVENTS.counts[status] += 1;
     } else if (event.type === 'run_complete') {
-        (event.hosts || Object.keys(CONSOLE_EVENTS.hosts)).forEach(host => {
+        (eventHosts.length ? eventHosts : Object.keys(CONSOLE_EVENTS.hosts)).forEach(host => {
             const summary = event.summary?.[host] || {};
             const failed = Number(summary.failures || 0) > 0 || Number(summary.unreachable || 0) > 0;
             CONSOLE_EVENTS.hosts[host] = {
@@ -1393,7 +1395,7 @@ function renderConsoleStatusView() {
     if (!CONSOLE_EVENTS) return;
     setText('consoleCurrentPlay', CONSOLE_EVENTS.currentPlay);
     const hostRows = Object.values(CONSOLE_EVENTS.hosts);
-    const activeCount = hostRows.filter(row => ['pending', 'running'].includes(row.status || 'pending')).length;
+    const activeCount = hostRows.filter(row => ['pending', 'running'].includes(normalizeConsoleStatus(row.status, 'pending'))).length;
     setText('consoleHostsActive', `${activeCount} / ${hostRows.length}`);
     const counts = document.getElementById('consoleCounts');
     if (counts) {
@@ -1407,7 +1409,7 @@ function renderConsoleStatusView() {
     const hosts = Object.keys(CONSOLE_EVENTS.hosts).sort();
     list.innerHTML = hosts.length ? hosts.map(host => {
         const row = CONSOLE_EVENTS.hosts[host];
-        const status = row.status || 'pending';
+        const status = normalizeConsoleStatus(row.status, 'pending');
         return `
             <article class="console-host-row status-${escapeHtml(status)}">
                 <strong><span class="console-host-icon" aria-hidden="true">${escapeHtml(statusIconForHost(status, row.changed))}</span>${escapeHtml(host)}</strong>
@@ -1442,10 +1444,16 @@ function statusIconForHost(status, changed) {
  * @returns {string} Label.
  */
 function statusLabel(status, changed) {
+    status = normalizeConsoleStatus(status, 'pending');
     if (status === 'complete') return 'Complete';
     if (status === 'ok' && changed) return 'Changed';
     if (status === 'skipped') return 'Not required';
     return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function normalizeConsoleStatus(status, fallback = 'pending') {
+    const normalized = String(status || fallback).toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    return normalized || fallback;
 }
 
 /**
