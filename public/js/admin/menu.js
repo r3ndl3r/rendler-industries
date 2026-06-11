@@ -178,7 +178,10 @@ const MenuMgmt = {
                 <td class="actions-cell">
                     <div class="action-buttons">
                         <button type="button" class="btn-icon-edit" onclick="MenuMgmt.openEditModal(${link.id})" title="Edit">&#9999;&#65039;</button>
-                        <button type="button" class="btn-icon-delete" onclick="MenuMgmt.confirmDelete(${link.id}, '${escapeHtml(link.label)}')" title="Delete">&#128465;&#65039;</button>
+                        <button type="button" class="btn-icon-delete"
+                                data-label="${escapeHtml(link.label)}"
+                                onclick="MenuMgmt.confirmDelete(${link.id}, this.dataset.label)"
+                                title="Delete">&#128465;&#65039;</button>
                     </div>
                 </td>
             </tr>
