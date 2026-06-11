@@ -18,24 +18,29 @@
  * Sets up listeners for authentication workflows when the DOM is ready.
  */
 document.addEventListener('DOMContentLoaded', function() {
-    // Scan for all forms within the auth container
     const forms = document.querySelectorAll('form');
-    
+    const resetSubmitButton = (button) => {
+        if (!button) return;
+        button.style.opacity = button.dataset.originalOpacity || '';
+        button.value = button.dataset.originalValue || button.value;
+        button.disabled = false;
+    };
+
     forms.forEach(form => {
-        /**
-         * Action: Form Submission Handler
-         * Manages UI state during the authentication handshake.
-         */
         form.addEventListener('submit', function(e) {
             const submitBtn = form.querySelector('input[type="submit"]');
-            
-            // Only proceed if a submit button is found
+
             if(submitBtn) {
-                // UI Feedback: indicate processing to prevent double-submission
+                submitBtn.dataset.originalOpacity = submitBtn.style.opacity || '';
+                submitBtn.dataset.originalValue = submitBtn.value;
                 submitBtn.style.opacity = '0.7';
                 submitBtn.value = 'Processing...';
                 submitBtn.disabled = true;
             }
         });
+    });
+
+    window.addEventListener('pageshow', () => {
+        forms.forEach(form => resetSubmitButton(form.querySelector('input[type="submit"]')));
     });
 });
