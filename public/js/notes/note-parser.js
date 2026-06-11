@@ -167,6 +167,141 @@ const NoteParser = (() => {
         return -1;
     };
 
+    const renderHeadingInline = (text, noteId, depth = 0) => {
+        if (depth > 12) return renderInline(text);
+        const bracketIndex = buildBracketIndex(text);
+        let output = '';
+        let cursor = 0;
+        let textBuffer = '';
+
+        const flushBuffer = () => {
+            if (textBuffer) {
+                output += renderInline(textBuffer);
+                textBuffer = '';
+            }
+        };
+
+        const inlineWrapRenderers = {
+            'color': (pos, innerHtml) => {
+                const color = pos.value.toLowerCase();
+                const isHex = CONFIG.hexRegex.test(color);
+                const isNamed = CONFIG.colors.includes(color);
+                if (!isHex && !isNamed) return null;
+                const hexColor = (typeof window.normalizeColorHex === 'function')
+                    ? window.normalizeColorHex(color)
+                    : color;
+                return `<span style="color: ${hexColor}">${innerHtml}</span>`;
+            },
+            'colour': (pos, innerHtml) => {
+                const color = pos.value.toLowerCase();
+                const isHex = CONFIG.hexRegex.test(color);
+                const isNamed = CONFIG.colors.includes(color);
+                if (!isHex && !isNamed) return null;
+                const hexColor = (typeof window.normalizeColorHex === 'function')
+                    ? window.normalizeColorHex(color)
+                    : color;
+                return `<span style="color: ${hexColor}">${innerHtml}</span>`;
+            },
+            'size': (pos, innerHtml) => {
+                const size = pos.value.toLowerCase();
+                const valid = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
+                if (!valid.includes(size)) return null;
+                return `<span class="note-text-${size}">${innerHtml}</span>`;
+            },
+            'bg': (pos, innerHtml) => {
+                const color = pos.value.toLowerCase();
+                const isHex = CONFIG.hexRegex.test(color);
+                const isNamed = CONFIG.colors.includes(color);
+                if (!isHex && !isNamed) return null;
+                const hexColor = (typeof window.normalizeColorHex === 'function')
+                    ? window.normalizeColorHex(color)
+                    : color;
+                return `<span class="note-bg-highlight" style="background-color: ${hexColor}">${innerHtml}</span>`;
+            }
+        };
+
+        while (cursor < text.length) {
+            const char = text[cursor];
+
+            if (char === '[' && text[cursor + 1] === '[') {
+                const closeIdx = text.indexOf(']]', cursor + 2);
+                if (closeIdx !== -1) {
+                    const title = text.substring(cursor + 2, closeIdx);
+                    if (title.length > 0 && !title.includes('[') && !title.includes(']') && !title.includes('\n')) {
+                        flushBuffer();
+                        output += renderWikilink(title);
+                        cursor = closeIdx + 2;
+                        continue;
+                    }
+                }
+            }
+
+            if (char === '[') {
+                const endIdx = bracketIndex.get(cursor) ?? -1;
+                if (endIdx === -1) {
+                    flushBuffer();
+                    output += window.escapeHtml('[');
+                    cursor++;
+                    continue;
+                }
+
+                const rawTag = text.substring(cursor + 1, endIdx);
+                const pos = parsePositional(rawTag);
+                const wrapRenderer = inlineWrapRenderers[pos.type];
+
+                if (wrapRenderer) {
+                    const closeTag = `[/${pos.type}]`;
+                    const remainder = text.substring(endIdx + 1);
+                    const closeIdx = findClosingTag(`[${pos.type}:`, closeTag, remainder);
+                    if (closeIdx !== -1) {
+                        const innerHtml = renderHeadingInline(remainder.substring(0, closeIdx), noteId, depth + 1);
+                        const wrapped = wrapRenderer(pos, innerHtml);
+                        if (wrapped !== null) {
+                            flushBuffer();
+                            output += wrapped;
+                            cursor = endIdx + 1 + closeIdx + closeTag.length;
+                            continue;
+                        }
+                    }
+                }
+
+                if (['date', 'tag', 'note', 'link'].includes(pos.type)) {
+                    const renderer = RENDERERS[pos.type];
+                    const result = renderer ? renderer(pos, noteId, text.substring(endIdx + 1), 0, 0) : null;
+                    if (typeof result === 'string') {
+                        flushBuffer();
+                        output += result;
+                        cursor = endIdx + 1;
+                        continue;
+                    }
+                }
+
+                const remainder = text.substring(endIdx + 1);
+                const linkMatch = remainder.match(/^\((https?:\/\/[^\s\)]+)\)/);
+                if (linkMatch) {
+                    const url = getSafeUrl(linkMatch[1]);
+                    if (url) {
+                        flushBuffer();
+                        output += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" data-action="stop-propagation">${renderInline(rawTag)}</a>`;
+                        cursor = endIdx + 1 + linkMatch[0].length;
+                        continue;
+                    }
+                }
+
+                flushBuffer();
+                output += window.escapeHtml(text.substring(cursor, endIdx + 1));
+                cursor = endIdx + 1;
+                continue;
+            }
+
+            textBuffer += char;
+            cursor++;
+        }
+
+        flushBuffer();
+        return output;
+    };
+
     // Forward declaration: wrapping renderers (color, size, bg, spoiler) call parseNote
     // recursively. Declared here so RENDERERS can reference it; assigned below.
     let parseNote;
@@ -833,7 +968,7 @@ const NoteParser = (() => {
                     const level = hMatch[2].length;
                     const content = hMatch[3];
                     const indent = hMatch[1] ? `<span class="note-indent">${window.escapeHtml(hMatch[1])}</span>` : '';
-                    output += `${indent}<h${level + 2} class="note-h${level}">${renderInline(content)}</h${level + 2}>`;
+                    output += `${indent}<h${level + 2} class="note-h${level}">${renderHeadingInline(content, noteId)}</h${level + 2}>`;
                     cursor += hMatch[0].length;
                     isLineStart = true;
                     continue;
