@@ -529,8 +529,6 @@ const ChessApp = {
      * @returns {Promise<void>}
      */
     handleSquareClick: async function(squareName) {
-        AudioEngine.move(); 
-        
         if (STATE.currentTurnId !== STATE.userId || STATE.gameStatus !== 'active') return;
 
         const moveAttempt = STATE.validMoves.find(m => m.to === squareName);
@@ -570,6 +568,7 @@ const ChessApp = {
             if (piece?.color === playerColor) {
                 STATE.selectedSquare = squareName;
                 STATE.validMoves = STATE.engine.moves({ square: squareName, verbose: true });
+                AudioEngine.move();
             } else {
                 STATE.selectedSquare = null;
                 STATE.validMoves = [];
