@@ -798,15 +798,12 @@ sub run_emoji_maintenance_p {
                 my $ua = Mojo::UserAgent->new->request_timeout(10);
                 my $data = eval {
                     my $emoji_profile = $c->db->get_ai_model_profile('emoji_lookup');
+                    my $emoji_engine = $c->db->get_ai_engine($emoji_profile->{provider});
                     MyApp::Plugin::AI::ai_prompt_sync(
                         ua             => $ua,
                         provider       => $emoji_profile->{provider},
                         model          => $emoji_profile->{model},
-                        opencode_key   => $c->db->get_opencode_key(),
-                        opencode_model => $c->db->get_opencode_active_model(),
-                        local_ai_url   => $c->db->get_local_ai_url(),
-                        gemini_key     => $c->db->get_gemini_key(),
-                        gemini_model   => $c->db->get_gemini_active_model(),
+                        engine         => $emoji_engine,
                         contents       => [ { role => 'user', parts => [ { text => "Reply with exactly one emoji for: $item->{text}" } ] } ],
                         temp           => 0.1,
                         max_tokens     => 2048,
