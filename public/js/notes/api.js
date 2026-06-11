@@ -601,6 +601,26 @@ window.NoteAPI = {
  */
 const POSITION_SYNC_TIMERS   = new Map();
 const POSITION_SYNC_PROMISES = new Map(); // Global registry for debounced settlement contexts
+const POSITION_SYNC_TOKENS   = new Map();
+
+/**
+ * Cancels a pending debounced position sync and settles the promise with a reason.
+ * @param {string} sid - String note ID.
+ * @param {string} reason - Cancellation reason ('deleted', 'superseded_by_immediate').
+ */
+function cancelPendingPositionSync(sid, reason = 'cancelled') {
+    if (POSITION_SYNC_TIMERS.has(sid)) {
+        clearTimeout(POSITION_SYNC_TIMERS.get(sid));
+        POSITION_SYNC_TIMERS.delete(sid);
+    }
+    POSITION_SYNC_TOKENS.delete(sid);
+    const context = POSITION_SYNC_PROMISES.get(sid);
+    POSITION_SYNC_PROMISES.delete(sid);
+    if (context) {
+        try { context.resolve({ success: 0, error: reason }); } catch (_) {}
+    }
+    if (typeof window.removeActiveSync === 'function') window.removeActiveSync(sid);
+}
 
 /**
  * Note Deletion Bridge (Soft-Delete)
@@ -631,12 +651,7 @@ function deleteNote(id) {
                 // Flush all pending position syncs before any delete to prevent stale-position saves racing the deletes
                 for (const tid of targetIds) {
                     const sid = String(tid);
-                    if (POSITION_SYNC_TIMERS.has(sid)) {
-                        clearTimeout(POSITION_SYNC_TIMERS.get(sid));
-                        POSITION_SYNC_TIMERS.delete(sid);
-                        POSITION_SYNC_PROMISES.delete(sid);
-                        if (typeof window.removeActiveSync === 'function') window.removeActiveSync(sid);
-                    }
+                    cancelPendingPositionSync(sid, 'deleted');
                 }
 
                 let res;
@@ -725,18 +740,17 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
         }
 
         const timerToken = {};
-        POSITION_SYNC_TIMERS._tokens = POSITION_SYNC_TIMERS._tokens || new Map();
-        POSITION_SYNC_TIMERS._tokens.set(sid, timerToken);
+        POSITION_SYNC_TOKENS.set(sid, timerToken);
 
         const timer = setTimeout(async () => {
             // Ownership check: bail if a newer timer has replaced us or an immediate sync ran.
-            if (POSITION_SYNC_TIMERS._tokens.get(sid) !== timerToken) return;
+            if (POSITION_SYNC_TOKENS.get(sid) !== timerToken) return;
 
             const context = POSITION_SYNC_PROMISES.get(sid);
             if (context) {
                 POSITION_SYNC_PROMISES.delete(sid);
                 POSITION_SYNC_TIMERS.delete(sid);
-                POSITION_SYNC_TIMERS._tokens.delete(sid);
+                POSITION_SYNC_TOKENS.delete(sid);
 
                 // Abort if the note was deleted while the debounce timer was pending
                 if (!STATE.notes.find(n => n.id == id)) {
@@ -800,6 +814,7 @@ async function syncNotePosition(id, type = 'normal', debounceMs = 0) {
     if (POSITION_SYNC_TIMERS.has(sid)) {
         clearTimeout(POSITION_SYNC_TIMERS.get(sid));
         POSITION_SYNC_TIMERS.delete(sid);
+        POSITION_SYNC_TOKENS.delete(sid);
     }
     const pendingContext = POSITION_SYNC_PROMISES.get(sid) || null;
     POSITION_SYNC_PROMISES.delete(sid);
