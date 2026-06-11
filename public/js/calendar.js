@@ -844,6 +844,20 @@ function renderUpcomingEvents() {
  */
 
 /**
+ * Synchronizes time-group visibility with the all-day checkbox state.
+ * Called on checkbox change and after programmatic checkbox updates in modals.
+ * @returns {void}
+ */
+function syncAllDayTimeGroups() {
+    const allDayCb = document.getElementById('eventAllDay');
+    const timeGroups = [document.getElementById('startTimeGroup'), document.getElementById('endTimeGroup')];
+    const hidden = !!allDayCb?.checked;
+    timeGroups.forEach(group => {
+        if (group) group.classList.toggle('hidden', hidden);
+    });
+}
+
+/**
  * Orchestrates navigation control and filter registration.
  * 
  * @returns {void}
@@ -914,15 +928,7 @@ function setupEventListeners() {
 
     const allDayCb = document.getElementById('eventAllDay');
     if (allDayCb) {
-        allDayCb.onchange = () => {
-            const timeGroups = [document.getElementById('startTimeGroup'), document.getElementById('endTimeGroup')];
-            timeGroups.forEach(g => { 
-                if (g) {
-                    if (allDayCb.checked) g.classList.add('hidden');
-                    else g.classList.remove('hidden');
-                }
-            });
-        };
+        allDayCb.onchange = syncAllDayTimeGroups;
     }
 
     const recurrenceSelect  = document.getElementById('recurrenceRule');
@@ -1132,6 +1138,7 @@ function openAddEventModal(dateStr) {
     if (!modal || !form) return;
 
     form.reset();
+    syncAllDayTimeGroups();
     document.getElementById('eventId').value = '';
     document.getElementById('modalTitle').innerHTML = `Add Event`;
     document.getElementById('deleteEventBtn').classList.add('hidden');
@@ -1195,6 +1202,7 @@ function openEditModalById(id) {
     document.getElementById('eventCategory').value = event.category || '';
     document.getElementById('eventColor').value = event.color || '#3788d8';
     document.getElementById('eventAllDay').checked = !!event.all_day;
+    syncAllDayTimeGroups();
     document.getElementById('eventIsPrivate').checked = !!event.is_private;
     
     const [sDate, sTime] = event.start_date.split(' ');
@@ -1295,6 +1303,7 @@ function openEditModalByUid(uid) {
     document.getElementById('eventCategory').value = event.category || '';
     document.getElementById('eventColor').value = event.color || '#3788d8';
     document.getElementById('eventAllDay').checked = !!event.all_day;
+    syncAllDayTimeGroups();
     document.getElementById('eventIsPrivate').checked = !!event.is_private;
 
     const [sDate, sTime] = event.start_date.split(' ');
