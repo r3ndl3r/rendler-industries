@@ -302,6 +302,7 @@ function openSearchModal() {
 
     input.value = '';
     modal.classList.add('show');
+    document.body.classList.add('modal-open');
     
     // Populate with ALL available notes for the current canvas
     if (typeof filterSearch === 'function') filterSearch('');
@@ -727,6 +728,7 @@ function openMoveModal(e, id, opts = {}) {
 
     modal.classList.add('show');
     modal.classList.add('active');
+    document.body.classList.add('modal-open');
 }
 
 function closeMoveModal() {
