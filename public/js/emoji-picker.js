@@ -646,6 +646,9 @@ const EmojiPicker = {
             this.triggerBtn.style.position = 'absolute';
             this.triggerBtn.style.top = `${input.offsetTop + (input.offsetHeight / 2)}px`;
             this.triggerBtn.style.left = `${input.offsetLeft + input.offsetWidth - 40}px`;
+        } else if (this.triggerBtn) {
+            this.triggerBtn.classList.remove('show');
+            this.activeInput = null;
         }
     },
 
