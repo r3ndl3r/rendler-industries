@@ -789,7 +789,7 @@ async function apiAction(url, params = {}, btn = null) {
     try {
         const res = await window.apiPost(url, params);
         if (res && res.success) {
-            loadGameState();
+            await loadGameState();
         } else if (res && !res.success) {
             window.showToast(res.error || "Action failed", "error");
         }
