@@ -244,7 +244,7 @@ function renderTableRow(t) {
                         ` : ''}
                     ` : ''}
                     <button class="btn-icon-edit" onclick="openEditModal(${t.id})" title="Edit Timer">✎</button>
-                    <button class="btn-icon-delete" onclick="confirmDeleteTimer(${t.id}, '${escapeHtml(t.name)}')" title="Delete Timer">🗑️</button>
+                    <button class="btn-icon-delete" onclick="confirmDeleteTimer(${Number(t.id)}, ${escapeHtml(JSON.stringify(t.name || ''))})" title="Delete Timer">🗑️</button>
                 </div>
             </td>
         </tr>
