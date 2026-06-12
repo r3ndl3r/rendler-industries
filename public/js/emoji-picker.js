@@ -20,6 +20,7 @@ const EmojiPicker = {
     /**
      * Internal State
      */
+    initialized: false,             // Guards against duplicate initialization
     activeInput: null,              // Input element currently being augmented
     pickerElement: null,            // DOM reference to the selection panel
     triggerBtn: null,               // Floating button trigger
@@ -439,6 +440,8 @@ const EmojiPicker = {
      * @returns {void}
      */
     init: function() {
+        if (this.initialized) return;
+        this.initialized = true;
         this.createTrigger();
         this.createPicker();
         this.renderEmojis(this.emojis['smileys']); // Populate initial grid
