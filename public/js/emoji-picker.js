@@ -695,8 +695,9 @@ const EmojiPicker = {
             top = rect.top - 405;
         }
         
-        // Logic: prevent horizontal viewport overflow
-        if (left < 10) left = 10;
+        // Logic: clamp panel within viewport bounds
+        top = Math.max(10, Math.min(top, window.innerHeight - 410));
+        left = Math.max(10, Math.min(left, window.innerWidth - 330));
         
         this.pickerElement.style.top = `${top}px`;
         this.pickerElement.style.left = `${left}px`;
