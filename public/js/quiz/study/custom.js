@@ -122,10 +122,11 @@ function renderPage() {
     pageQuestions.forEach((q, index) => {
         const correctAnswer = q.answers.find(a => a.is_correct);
         const absoluteIndex = start + index + 1;
-        const imageHtml     = q.image
+        const safeImage = safeAssetFilename(q.image);
+        const imageHtml = safeImage
             ? `<div class="quiz-image-wrapper">
-                 <img src="/images/quiz/${escapeHtml(q.image)}" alt="Question Illustration" loading="lazy" class="hint-image">
-               </div>`
+                  <img src="/images/quiz/${safeImage}" alt="Question Illustration" loading="lazy" class="hint-image">
+                </div>`
             : '';
 
         const card = document.createElement('div');
@@ -191,6 +192,11 @@ function updateControls() {
     if (pageIndicator) pageIndicator.textContent = `Page ${currentPage + 1} of ${totalPages}`;
 }
 
+function safeAssetFilename(filename) {
+    const value = String(filename || '').trim();
+    return /^[A-Za-z0-9._-]+$/.test(value) ? encodeURIComponent(value) : '';
+}
+
 /**
  * Starts playback of a quiz audio file, stopping any active track first.
  *
@@ -198,12 +204,16 @@ function updateControls() {
  * @returns {void}
  */
 function playAudio(filename) {
-    if (!filename) return;
+    const safeFilename = safeAssetFilename(filename);
+    if (!safeFilename) return;
     stopSpeaking();
-    currentPlayingFile = filename;
-    currentAudio = new Audio(`/audio/quiz/${filename}`);
+    currentPlayingFile = safeFilename;
+    currentAudio = new Audio(`/audio/quiz/${safeFilename}`);
     currentAudio.onended = () => { currentPlayingFile = null; };
-    currentAudio.play().catch(e => console.warn('Audio playback failed:', e));
+    currentAudio.play().catch(e => {
+        console.warn('Audio playback failed:', e);
+        stopSpeaking();
+    });
 }
 
 /**
