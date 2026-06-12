@@ -315,6 +315,8 @@ async function apiAction(url, params = {}, btn = null) {
         if (res && res.success) {
             didSucceed = true;
             await loadState(true);
+        } else {
+            await loadState(true);
         }
     } catch (err) {
         console.error("API Action Failed:", url, err);
