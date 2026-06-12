@@ -955,15 +955,6 @@ async function loadBin() {
 }
 
 /**
- * Restoration Engine
- */
-async function restoreNote(id, canvas_id, layer_id, x, y) {
-    return await NoteAPI.post('/notes/api/restore', { id, canvas_id, layer_id, x, y });
-}
-
-
-
-/**
  * Canvas Management
  */
 async function renameCanvas(canvas_id, name) {
@@ -972,10 +963,6 @@ async function renameCanvas(canvas_id, name) {
 
 async function deleteCanvasApi(canvas_id) {
     return await NoteAPI.post('/notes/api/canvases/delete', { canvas_id });
-}
-
-async function createCanvas(name) {
-    return await NoteAPI.post('/notes/api/canvases/create', { name });
 }
 
 /**
@@ -992,17 +979,6 @@ async function addShare(canvas_id, username) {
             renderShareList(canvas_id, res.share_list);
         }
         showToast('Shared successfully', 'success');
-    }
-    return res;
-}
-
-async function updateSharePermission(canvasId, username, canEdit) {
-    const res = await NoteAPI.post('/notes/api/canvases/share', { canvas_id: canvasId, username, can_edit: canEdit });
-    if (res && res.success) {
-        if (canvasId == STATE.canvas_id) {
-            STATE.share_list = res.share_list;
-        }
-        showToast('Permissions updated', 'success');
     }
     return res;
 }
