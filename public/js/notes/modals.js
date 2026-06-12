@@ -442,11 +442,12 @@ function renderCanvasList() {
             const targetIndex = STATE.canvases.findIndex(c => c.id === targetId);
 
             if (sourceIndex !== -1 && targetIndex !== -1) {
+                const previousOrder = STATE.canvases.slice();
                 const movedItem = STATE.canvases.splice(sourceIndex, 1)[0];
                 STATE.canvases.splice(targetIndex, 0, movedItem);
                 
                 renderCanvasList();
-                syncCanvasOrder();
+                syncCanvasOrder(previousOrder);
             }
         };
 
@@ -457,9 +458,18 @@ function renderCanvasList() {
 /**
  * Persists the current board sequence to the database.
  */
-async function syncCanvasOrder() {
+async function syncCanvasOrder(previousOrder = null) {
     const orderMap = STATE.canvases.map((c, i) => ({ id: c.id, order: i }));
-    await NoteAPI.post('/notes/api/canvases/reorder', orderMap);
+    try {
+        const res = await NoteAPI.post('/notes/api/canvases/reorder', orderMap);
+        if (!res || !res.success) throw new Error((res && res.error) || 'Reorder failed');
+    } catch (err) {
+        if (previousOrder) {
+            STATE.canvases = previousOrder;
+            renderCanvasList();
+        }
+        showToast('Failed to save board order', 'error');
+    }
 }
 
 /**
