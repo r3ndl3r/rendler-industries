@@ -601,11 +601,15 @@ window.showConfirmModal = function(options) {
     if (promptContainer && promptInput) {
         if (options.input) {
             promptContainer.classList.remove('hidden');
+            promptInput.removeAttribute('min');
+            promptInput.removeAttribute('max');
+            promptInput.removeAttribute('step');
             promptInput.type = options.input.type || 'text';
             promptInput.placeholder = options.input.placeholder || '';
             promptInput.value = options.input.value || '';
             if (options.input.min !== undefined) promptInput.min = options.input.min;
             if (options.input.max !== undefined) promptInput.max = options.input.max;
+            if (options.input.step !== undefined) promptInput.step = options.input.step;
 
             // Suppression opt-out for specialized modals
             if (options.noEmoji) promptInput.classList.add('no-emoji');
