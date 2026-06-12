@@ -120,6 +120,19 @@ function playerDisplayName(player) {
 }
 
 /**
+ * Compares two server IDs with numeric coercion.
+ *
+ * @param {*} left - First ID (string or number).
+ * @param {*} right - Second ID (string or number).
+ * @returns {boolean} True when both IDs represent the same number.
+ */
+function sameId(left, right) {
+    const leftId = Number(left);
+    const rightId = Number(right);
+    return Number.isFinite(leftId) && Number.isFinite(rightId) && leftId === rightId;
+}
+
+/**
  * State: Fetches the appropriate state based on current view.
  * @returns {Promise<void>}
  */
@@ -205,7 +218,7 @@ async function loadGameState() {
             }
             
             // Sync drawnCardPlayable from server field
-            if (data.game && data.game.turn !== data.game.current_user_id) {
+            if (data.game && !sameId(data.game.turn, data.game.current_user_id)) {
                 STATE.drawnCardPlayable = false;
             } else if (data.game && data.game.player_drawn_this_turn) {
                 STATE.drawnCardPlayable = !!data.game.player_drawn_this_turn;
@@ -326,7 +339,7 @@ function renderWaitingRoom(container) {
                                 <span class="ready-label ${p.ready ? 'is-ready' : 'not-ready'}">
                                     ${p.ready ? 'Ready' : 'Not Ready'}
                                 </span>
-                                ${isHost && p.id !== STATE.game.current_user_id ? `<button onclick="kickPlayer(${p.id}, this)" class="btn-danger btn-small">Kick</button>` : ''}
+                                ${isHost && !sameId(p.id, STATE.game.current_user_id) ? `<button onclick="kickPlayer(${p.id}, this)" class="btn-danger btn-small">Kick</button>` : ''}
                             </div>
                         </div>
                     `).join('')}
@@ -334,7 +347,7 @@ function renderWaitingRoom(container) {
 
                 <div class="waiting-room-actions">
                     <button onclick="apiAction('/uno/api/ready', {id: STATE.game_id}, this)" class="btn-purple btn-action-large">
-                        ${STATE.game.players.find(p => p.id === STATE.game.current_user_id)?.ready ? 'UNREADY' : 'READY UP'}
+                        ${STATE.game.players.find(p => sameId(p.id, STATE.game.current_user_id))?.ready ? 'UNREADY' : 'READY UP'}
                     </button>
                     ${isHost ? `
                         <button onclick="startGame(this)" ${!(allReady && minPlayers) ? 'disabled' : ''} class="btn-emerald btn-action-large ${!(allReady && minPlayers) ? 'btn-disabled' : ''}">
@@ -354,7 +367,7 @@ function renderWaitingRoom(container) {
  * @returns {void}
  */
 function renderBoard(container) {
-    const isMyTurn = STATE.game.turn === STATE.game.current_user_id;
+    const isMyTurn = sameId(STATE.game.turn, STATE.game.current_user_id);
     const myHand = STATE.game.my_hand || [];
     const players = STATE.game.players;
     const topCard = STATE.game.top_card;
@@ -384,7 +397,7 @@ function renderBoard(container) {
                         ? window.getUserIcon(name)
                         : `<div class="default-avatar">${escapeHtml(name.charAt(0).toUpperCase() || '?')}</div>`;
                     return `
-                    <div class="player-slot slot-${i} ${STATE.game.turn === p.id ? 'active-turn' : ''}">
+                    <div class="player-slot slot-${i} ${sameId(STATE.game.turn, p.id) ? 'active-turn' : ''}">
                         <div class="player-avatar">
                             ${avatar}
                         </div>
@@ -487,7 +500,7 @@ function canPlay(card) {
  * @returns {Promise<void>}
  */
 async function playCard(idx, card, el) {
-    if (STATE.game.turn !== STATE.game.current_user_id || STATE.pendingAction) return;
+    if (!sameId(STATE.game.turn, STATE.game.current_user_id) || STATE.pendingAction) return;
     
     if (!canPlay(card)) {
         window.showToast("Cannot play this card!", "error");
@@ -510,7 +523,7 @@ async function playCard(idx, card, el) {
  * @returns {Promise<void>}
  */
 async function drawCard(el) {
-    if (STATE.game.turn !== STATE.game.current_user_id || STATE.pendingAction) return;
+    if (!sameId(STATE.game.turn, STATE.game.current_user_id) || STATE.pendingAction) return;
     
     if (STATE.drawnCardPlayable) {
         window.showToast("You already drew. Play the card or pass your turn.", "warning");
@@ -742,7 +755,7 @@ function startGame(btn) {
 function showWinModal() {
     if (document.querySelector('.win-modal-body')) return;
     
-    const winnerName = STATE.game.players.find(p => p.id === STATE.game.winner)?.name || "Someone";
+    const winnerName = STATE.game.players.find(p => sameId(p.id, STATE.game.winner))?.name || "Someone";
     const div = document.createElement('div');
     div.className = 'modal-overlay show win-modal-body win-modal-overlay';
     div.innerHTML = `
@@ -765,7 +778,7 @@ function showWinModal() {
 function getOrderedPlayers(players) {
     if (!players || !STATE.game || !STATE.game.current_user_id) return players || [];
     
-    const myIndex = players.findIndex(p => Number(p.id) === Number(STATE.game.current_user_id));
+    const myIndex = players.findIndex(p => sameId(p.id, STATE.game.current_user_id));
     if (myIndex === -1) return players;
     
     const ordered = [];
