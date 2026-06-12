@@ -1549,7 +1549,7 @@ async function processSyncQueue() {
         for (const item of items) {
             // Migration: NoteAPI handles CSRF and error management internally
             const res = await NoteAPI.post('/notes/api/viewport', item.params, { keepalive: true, silent: true });
-            if (!res) failedItems.push(item);
+            if (!res || !res.success) failedItems.push(item);
         }
         
         if (failedItems.length > 0) {
