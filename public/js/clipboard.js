@@ -154,6 +154,18 @@ function updateNotificationOptions() {
 }
 
 /**
+ * Resets all notification channel checkboxes to unchecked.
+ * Ensures each new clipping starts with no implicit notification dispatch.
+ *
+ * @returns {void}
+ */
+function resetNotificationSelections() {
+    document.querySelectorAll('#notification-options input[type="checkbox"]').forEach(input => {
+        input.checked = false;
+    });
+}
+
+/**
  * Prepares and reveals the content creation interface.
  * Resets form state to ensure a clean capture environment.
  * 
@@ -164,15 +176,15 @@ function openModal() {
     const idField = document.getElementById('messageId');
     const input = document.getElementById('paste');
     const modal = document.getElementById('contentModal');
-    const notifyOptions = document.getElementById('notification-options');
 
     if (title) title.textContent = 'Add New Content';
     if (idField) idField.value = '';
     if (input) input.value = '';
-    
-    // Default: show notification routing for new items
-    if (notifyOptions) notifyOptions.classList.remove('hidden');
-    
+    resetNotificationSelections();
+
+    // Show only the notification routes available to this user
+    updateNotificationOptions();
+
     if (modal) {
         modal.classList.add('show');
         document.body.classList.add('modal-open');
