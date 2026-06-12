@@ -216,9 +216,11 @@ function renderChores() {
  * @returns {void}
  */
 function confirmClaim(choreId, title, points) {
+    const safeTitle = escapeHtml(title || '');
+    const safePoints = Number(points) || 0;
     showConfirmModal({
         title: 'Chore Completion',
-        message: `Confirm that you completed "<strong>${title}</strong>"?<br><br>Rewards: ${points > 0 ? `<span class="text-success">${points} pts</span>` : 'no points'}.`,
+        message: `Confirm that you completed "<strong>${safeTitle}</strong>"?<br><br>Rewards: ${safePoints > 0 ? `<span class="text-success">${safePoints} pts</span>` : 'no points'}.`,
         confirmText: 'Confirm Completion',
         hideCancel: true,
         onConfirm: async () => {
@@ -246,9 +248,10 @@ function confirmClaim(choreId, title, points) {
  * @returns {void}
  */
 function confirmDeleteChore(choreId, title) {
+    const safeTitle = escapeHtml(title || '');
     showConfirmModal({
         title: 'Delete Chore',
-        message: `Permanently delete "<strong>${title}</strong>"?`,
+        message: `Permanently delete "<strong>${safeTitle}</strong>"?`,
         danger: true,
         confirmText: 'Delete',
         hideCancel: true,
