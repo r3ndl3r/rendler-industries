@@ -520,28 +520,6 @@ const NoteParser = (() => {
             const label = data.params[0] ? renderInline(data.params[0]) : '';
             return `<div class="note-progress-container"><div class="note-progress-track"><div class="note-progress-bar" style="width: ${val}%;"></div></div>${label ? `<span class="note-progress-text">${label}</span>` : ''}</div>`;
         },
-        'date': (data) => {
-            const dateStr = data.value;
-            // Parse as local midnight by splitting manually; avoids UTC-shift from ISO date-only strings.
-            const parts = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-            if (!parts) return null;
-            const target = new Date(parseInt(parts[1], 10), parseInt(parts[2], 10) - 1, parseInt(parts[3], 10));
-            if (isNaN(target.getTime())) return null;
-
-            let display = target.toLocaleDateString();
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-
-            const diffDays = Math.round((target - now) / (1000 * 60 * 60 * 24));
-            
-            if (diffDays === 0) display = "Today";
-            else if (diffDays === 1) display = "Tomorrow";
-            else if (diffDays === -1) display = "Yesterday";
-            else if (diffDays > 0 && diffDays < 7) display = `In ${diffDays} days`;
-            else if (diffDays < 0 && diffDays > -7) display = `${Math.abs(diffDays)} days ago`;
-
-            return `<span class="note-date-tag" title="${dateStr}">📅 ${display}</span>`;
-        },
         'tag': (data) => {
             const label = renderInline(data.value);
             const VALID_TAG_COLORS = ['info', 'success', 'warning', 'danger',
