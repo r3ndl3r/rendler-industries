@@ -30,7 +30,8 @@ const CONFIG = {
 let STATE = {
     timers: [],                     // Collection of all timer definitions
     users: [],                      // Collection of platform user accounts
-    filterUserId: ''                // Current active user filter
+    filterUserId: '',               // Current active user filter
+    expiryRefreshPending: false     // Prevents redundant forced refreshes on expiry
 };
 
 /**
@@ -112,9 +113,10 @@ function updateLocalTimers() {
                         }
                     }
 
-                    if (t.limit_seconds !== -1 && t.remaining_seconds <= 0) {
+                    if (t.limit_seconds !== -1 && t.remaining_seconds <= 0 && !STATE.expiryRefreshPending) {
                         // Force a server state refresh once the timer reaches zero.
-                        loadState(true);
+                        STATE.expiryRefreshPending = true;
+                        loadState(true).finally(() => { STATE.expiryRefreshPending = false; });
                     }
                 }
             }
