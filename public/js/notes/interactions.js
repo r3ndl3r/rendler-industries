@@ -463,6 +463,7 @@ function handleResizeStart(e, handle) {
     document.addEventListener('mouseup', handleResizeEnd);
     document.addEventListener('touchmove', handleResizeMove, { passive: false });
     document.addEventListener('touchend', handleResizeEnd);
+    document.addEventListener('touchcancel', handleResizeEnd);
 }
 
 /**
@@ -610,6 +611,7 @@ function handleResizeEnd(e) {
     document.removeEventListener('mouseup', handleResizeEnd);
     document.removeEventListener('touchmove', handleResizeMove);
     document.removeEventListener('touchend', handleResizeEnd);
+    document.removeEventListener('touchcancel', handleResizeEnd);
 
     ctx.el.classList.remove('resizing');
     STATE.isResizing = null; 
