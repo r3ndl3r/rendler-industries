@@ -916,6 +916,7 @@ const NoteParser = (() => {
         let inCheckboxRow = false;
         let inBulletRow = false;
         let textBuffer = '';
+        let currentLine = lineOffset;
 
         const flushBuffer = () => {
             if (textBuffer) {
@@ -941,6 +942,7 @@ const NoteParser = (() => {
                         const codeEnd = bodyStart + closeMatch.index;
                         const fenceEnd = bodyStart + closeMatch.index + closeMatch[0].length;
                         output += renderCodeBlock(text.substring(bodyStart, codeEnd), codeFence[1] || '');
+                        currentLine += (text.substring(cursor, fenceEnd).match(/\n/g) || []).length;
                         cursor = fenceEnd;
                         isLineStart = true;
                         continue;
@@ -955,6 +957,7 @@ const NoteParser = (() => {
                     const content = hMatch[3];
                     const indent = hMatch[1] ? `<span class="note-indent">${window.escapeHtml(hMatch[1])}</span>` : '';
                     output += `${indent}<h${level + 2} class="note-h${level}">${renderHeadingInline(content, noteId)}</h${level + 2}>`;
+                    currentLine += (hMatch[0].match(/\n/g) || []).length;
                     cursor += hMatch[0].length;
                     isLineStart = true;
                     continue;
@@ -966,6 +969,7 @@ const NoteParser = (() => {
                     flushBuffer();
                     const indent = hrMatch[1] ? `<span class="note-indent">${window.escapeHtml(hrMatch[1])}</span>` : '';
                     output += `${indent}<hr class="note-hr">`;
+                    currentLine += (hrMatch[0].match(/\n/g) || []).length;
                     cursor += hrMatch[0].length;
                     isLineStart = true;
                     continue;
@@ -981,8 +985,7 @@ const NoteParser = (() => {
                     const checked = state === 'x';
                     const checkedClass = checked ? 'checked' : '';
 
-                    let lineIndex = lineOffset;
-                    for (let i = 0; i < cursor; i++) if (text[i] === '\n') lineIndex++;
+                    const lineIndex = currentLine;
                     const indent = prefix ? `<span class="note-indent">${window.escapeHtml(prefix)}</span>` : '';
                     output += `${indent}<span class="checkbox-row-inline note-check-trigger ${checkedClass}" data-note-id="${noteId}" data-index="${lineIndex}"><span class="cb ${checkedClass}"></span>`;
 
@@ -1090,10 +1093,12 @@ const NoteParser = (() => {
                         const html = typeof result === 'string' ? result : result.html;
                         if (typeof result === 'string') {
                             output += result;
+                            currentLine += (text.substring(cursor, endIdx + 1).match(/\n/g) || []).length;
                             cursor = endIdx + 1;
                         } else {
                             // Complex renderer (e.g. color) that handles own internal content
                             output += result.html;
+                            currentLine += (text.substring(cursor, endIdx + 1 + result.consumed).match(/\n/g) || []).length;
                             cursor = endIdx + 1 + result.consumed;
                         }
                         // Block-level components consume their trailing \n to prevent a
@@ -1112,6 +1117,7 @@ const NoteParser = (() => {
                     if (url) {
                         flushBuffer();
                         output += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" data-action="stop-propagation">${renderInline(rawTag)}</a>`;
+                        currentLine += (text.substring(cursor, endIdx + 1 + linkMatch[0].length).match(/\n/g) || []).length;
                         cursor = endIdx + 1 + linkMatch[0].length;
                         isLineStart = false;
                         continue;
@@ -1120,6 +1126,7 @@ const NoteParser = (() => {
 
                 flushBuffer();
                 output += window.escapeHtml(text.substring(cursor, endIdx + 1));
+                currentLine += (text.substring(cursor, endIdx + 1).match(/\n/g) || []).length;
                 cursor = endIdx + 1;
                 isLineStart = false;
                 continue;
@@ -1151,6 +1158,7 @@ const NoteParser = (() => {
                     inBulletRow = false;
                 }
                 output += '<br>';
+                currentLine++;
                 cursor++;
                 isLineStart = true;
                 continue;
