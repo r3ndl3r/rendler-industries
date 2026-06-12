@@ -271,6 +271,7 @@ function confirmDeleteChore(choreId, title) {
                 loadState(true);
             } else {
                 if (card) card.classList.remove('pending');
+                await loadState(true);
             }
         }
     });
@@ -486,6 +487,8 @@ function confirmApprove(submissionId) {
                 showToast('Submission approved and points awarded!', 'success');
                 closeReviewModal();
                 await loadState(true);
+            } else {
+                await loadState(true);
             }
         }
     });
@@ -515,6 +518,8 @@ function confirmReject(submissionId) {
             if (res && res.success) {
                 showToast('Submission rejected. Child notified.', 'success');
                 closeReviewModal();
+                await loadState(true);
+            } else {
                 await loadState(true);
             }
         }
@@ -783,6 +788,7 @@ function confirmRevoke(choreId) {
                 loadState(true);
             } else {
                 if (row) row.classList.remove('pending');
+                await loadState(true);
             }
         }
     });
