@@ -1814,29 +1814,37 @@ async function restoreNote(id) {
         confirmIcon: '🔄',
         hideCancel: true,
         onConfirm: async () => {
-            showLoadingOverlay('Restoring piece...');
-            
-            // Calculate current logical center for placement
             const wrapper = STATE.wrapperEl;
-            const canvasCX = (wrapper.scrollLeft + wrapper.clientWidth / 2) / STATE.scale;
-            const canvasCY = (wrapper.scrollTop + wrapper.clientHeight / 2) / STATE.scale;
+            if (!wrapper) {
+                showToast('Cannot restore note because the canvas is not ready.', 'error');
+                return;
+            }
+            showLoadingOverlay('Restoring piece...');
+            try {
+                // Calculate current logical center for placement
+                const canvasCX = (wrapper.scrollLeft + wrapper.clientWidth / 2) / STATE.scale;
+                const canvasCY = (wrapper.scrollTop + wrapper.clientHeight / 2) / STATE.scale;
 
-            const res = await NoteAPI.post('/notes/api/restore', { 
-                id: id, 
-                canvas_id: STATE.canvas_id, 
-                layer_id: STATE.activeLayerId,
-                x: Math.round(canvasCX / 10) * 10 - 140, // Match creation centering logic
-                y: Math.round(canvasCY / 10) * 10 - 100
-            });
-            hideLoadingOverlay();
+                const res = await NoteAPI.post('/notes/api/restore', { 
+                    id: id, 
+                    canvas_id: STATE.canvas_id, 
+                    layer_id: STATE.activeLayerId,
+                    x: Math.round(canvasCX / 10) * 10 - 140, // Match creation centering logic
+                    y: Math.round(canvasCY / 10) * 10 - 100
+                });
 
-            if (res && res.success) {
-                showToast('Note restored to current board', 'success');
-                // Refresh local state to show the restored note
-                await loadState(false, STATE.canvas_id);
-                if (typeof openBinModal === 'function') openBinModal(); // Refresh bin list
-            } else {
-                showToast(res.error || 'Restoration failed', 'error');
+                if (res && res.success) {
+                    showToast('Note restored to current board', 'success');
+                    await loadState(false, STATE.canvas_id);
+                    if (typeof openBinModal === 'function') openBinModal();
+                } else {
+                    showToast((res && res.error) || 'Restoration failed', 'error');
+                }
+            } catch (err) {
+                console.error('Restore failed:', err);
+                showToast('Restoration failed', 'error');
+            } finally {
+                hideLoadingOverlay();
             }
         }
     });
