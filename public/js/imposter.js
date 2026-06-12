@@ -123,7 +123,7 @@ function renderLobby(container) {
         <div class="fixed-bottom-bar">
             <div class="controls-inner">
                 <div class="input-with-action">
-                    <input type="text" id="new-player-name" placeholder="Enter player name..." 
+                    <input type="text" id="new-player-name" placeholder="Enter player name..." maxlength="40"
                            onkeypress="if(event.key === 'Enter') addPlayer()"
                            class="game-input">
                     <button onclick="addPlayer()" class="btn-add-input">
@@ -160,6 +160,7 @@ function renderPassing(container) {
     if (!STATE.game.players) return;
     const currentName = STATE.game.players[STATE.game.current_index];
     const isImposter = STATE.game.is_current_imposter;
+    const imageSrc = safeImageSrc(STATE.game.image_url);
     
     let html = `
         <div class="phase-container">
@@ -178,8 +179,8 @@ function renderPassing(container) {
                         <span class="reveal-prompt">Tap to Reveal</span>
                     </button>
                 ` : `
-                    ${STATE.game.image_url && !isImposter ? `
-                        <img src="${sanitizeUrl(STATE.game.image_url)}?t=${Date.now()}" class="imposter-secret-image">
+                    ${imageSrc && !isImposter ? `
+                        <img src="${imageSrc}" class="imposter-secret-image">
                     ` : ''}
 
                     <div class="secret-reveal-box">
@@ -267,13 +268,15 @@ function renderResults(container) {
         TIMER_INTERVAL = null;
     }
 
+    const imageSrc = safeImageSrc(STATE.game.image_url);
+
     let html = `
         <div class="phase-container results-phase-padding">
             <div class="result-card">
                 <div class="result-header-gradient"></div>
                 
-                ${STATE.game.image_url ? `
-                    <img src="${sanitizeUrl(STATE.game.image_url)}?t=${Date.now()}" class="imposter-secret-image results">
+                ${imageSrc ? `
+                    <img src="${imageSrc}" class="imposter-secret-image results">
                 ` : ''}
                 
                 <p class="result-label-imposter">The Imposter Was</p>
@@ -328,12 +331,15 @@ async function apiAction(url, params = {}, btn = null) {
  * Action: Adds a player to the roster.
  * @returns {void}
  */
-function addPlayer() {
+async function addPlayer() {
     const input = document.getElementById('new-player-name');
     const btn = document.querySelector('.btn-add-input');
-    if (!input || !input.value.trim()) return;
-    apiAction('/imposter/api/add_player', { player_name: input.value.trim() }, btn);
-    input.value = '';
+    if (!input) return;
+    const playerName = input.value.trim();
+    if (!isValidPlayerName(playerName)) { showToast('Player names must be 1-40 characters.', 'error'); return; }
+    if (await apiAction('/imposter/api/add_player', { player_name: playerName }, btn)) {
+        input.value = '';
+    }
 }
 
 /**
@@ -373,11 +379,16 @@ function editPlayer(oldName) {
             type: 'text',
             placeholder: 'New player name...',
             value: oldName,
-            requiredText: '' 
+            requiredText: '',
+            max: 40
         },
         onConfirm: async (newName) => {
             const trimmed = (newName || "").trim();
-            if (trimmed && trimmed !== oldName) {
+            if (!isValidPlayerName(trimmed)) {
+                showToast('Player names must be 1-40 characters.', 'error');
+                return;
+            }
+            if (trimmed !== oldName) {
                 await apiAction('/imposter/api/edit_player', { old_name: oldName, new_name: trimmed });
             }
         }
@@ -414,6 +425,16 @@ function formatTime(seconds) {
 }
 
 /**
+ * Helper: Validates a player name is 1-40 characters.
+ * @param {*} name - The name to validate.
+ * @returns {boolean} True if the name is valid.
+ */
+function isValidPlayerName(name) {
+    const trimmed = String(name || '').trim();
+    return trimmed.length > 0 && Array.from(trimmed).length <= 40;
+}
+
+/**
  * Helper: Serializes a value as a safe JavaScript inline string argument.
  * @param {*} value - The value to serialize.
  * @returns {string} A safely JSON-stringified and HTML-escaped string.
@@ -429,11 +450,21 @@ function inlineJsArg(value) {
  */
 function sanitizeUrl(url) {
     if (!url) return '';
-    const clean = url.trim();
+    const clean = String(url).trim();
     if (clean.toLowerCase().startsWith('javascript:') || clean.toLowerCase().startsWith('data:')) {
         return '';
     }
     return escapeHtml(clean);
+}
+
+/**
+ * Helper: Returns a cache-busted image src string from a URL.
+ * @param {string} url - The image URL.
+ * @returns {string} A cache-busted src string or empty string.
+ */
+function safeImageSrc(url) {
+    const clean = sanitizeUrl(url);
+    return clean ? `${clean}?t=${Date.now()}` : '';
 }
 
 // Global exposure
