@@ -269,9 +269,9 @@ function renderModalList(query) {
     const countEl = document.getElementById('modal-count');
     if (!list) return;
 
-    const lq       = query.toLowerCase();
+    const lq       = String(query || '').toLowerCase();
     const filtered = lq
-        ? STATE.all_questions.filter(q => q.question.toLowerCase().includes(lq))
+        ? STATE.all_questions.filter(q => String(q.question || '').toLowerCase().includes(lq))
         : STATE.all_questions;
 
     if (countEl) countEl.textContent = `${STATE.count} selected · ${filtered.length} shown`;
