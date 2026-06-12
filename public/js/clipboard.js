@@ -91,10 +91,33 @@ function renderList() {
                     <button class="btn-icon-edit" onclick="editMessage(${msg.id}, '${safeRaw}')" title="Edit">✎</button>
                     <button class="btn-icon-delete" onclick="removeMessage(${msg.id})" title="Delete">🗑️</button>
                 </div>
-                <span class="message-text">${msg.text}</span>
+                <span class="message-text">${renderMessageText(msg)}</span>
             </div>
         `;
     }).join('');
+}
+
+/**
+ * Renders message text from sanitized raw content.
+ * Escapes all text with escapeHtml, preserves newlines as <br>,
+ * and linkifies HTTP(S) URLs when the raw content starts with "http".
+ *
+ * @param {Object} msg - Clipboard message object with raw and text fields.
+ * @returns {string} Safe HTML string for display.
+ */
+function renderMessageText(msg) {
+    const raw = String(msg.raw ?? msg.text ?? '');
+    const escaped = escapeHtml(raw).replace(/\r\n/g, '\n').replace(/\n/g, '<br>');
+
+    if (!raw.startsWith('http')) {
+        return escaped;
+    }
+
+    const urlPattern = /https?:\/\/\S+/g;
+    return escaped.replace(urlPattern, (url) => {
+        const safeUrl = escapeHtml(url);
+        return `<a href="${safeUrl}">${safeUrl}</a>`;
+    });
 }
 
 /**
