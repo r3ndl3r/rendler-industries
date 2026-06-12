@@ -42,9 +42,9 @@ function handleFileSelection(e) {
 
     if (isImage) {
         // Images require a DataURL for the reel preview
-        const reader = new FileReader();
-        reader.onload = (event) => finalize(event.target.result);
-        reader.readAsDataURL(file);
+        readFileAsDataURL(file)
+            .then(finalize)
+            .catch(() => showToast('Failed to read image preview', 'error'));
     } else {
         // Generic files don't need a preview; bypass the reader to avoid dead-code callbacks
         finalize(null);
@@ -365,9 +365,9 @@ function initDropZones() {
         const results = await Promise.all(processingSlots.map(slot => {
             return new Promise(resolve => {
                 if (slot.file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => resolve({ index: slot.index, data: ev.target.result, file: slot.file });
-                    reader.readAsDataURL(slot.file);
+                    readFileAsDataURL(slot.file)
+                        .then(data => resolve({ index: slot.index, data, file: slot.file }))
+                        .catch(() => resolve({ index: slot.index, data: null, file: slot.file }));
                 } else {
                     // Non-Image files are passed through without a preview DataURL
                     resolve({ index: slot.index, data: null, file: slot.file });
@@ -495,16 +495,12 @@ async function handleGlobalClipPaste(e) {
         if (item.type.startsWith('image/')) {
             const file = item.getAsFile();
             if (file) {
-                return new Promise(resolve => {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => resolve({ 
-                        index, 
-                        type: 'image', 
-                        data: ev.target.result,
-                        file: file
-                    });
-                    reader.readAsDataURL(file);
-                });
+                return readFileAsDataURL(file).then(data => ({
+                    index,
+                    type: 'image',
+                    data,
+                    file
+                })).catch(() => null);
             }
         } else if (item.type === 'text/plain' && !textPayload) {
             const text = await new Promise(resolve => item.getAsString(resolve));
@@ -555,11 +551,7 @@ async function handleGlobalClipPaste(e) {
                 const resBlob = await NoteAPI.blob(`/notes/attachment/serve/${blobId}`);
                 
                 if (resBlob && resBlob.type.startsWith('image/')) {
-                    const dataUrl = await new Promise(resolve => {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => resolve(ev.target.result);
-                        reader.readAsDataURL(resBlob);
-                    });
+                    const dataUrl = await readFileAsDataURL(resBlob);
                     showCreateNoteModal('image', dataUrl);
                     return;
                 }
@@ -574,6 +566,22 @@ async function handleGlobalClipPaste(e) {
     }
 }
 
+
+/**
+ * Reads a file as a Data URL, returning a promise that resolves on load
+ * and rejects on error or abort.
+ * @param {File} file - The file to read.
+ * @returns {Promise<string>} - Resolves with the Data URL string.
+ */
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve(event.target.result);
+        reader.onerror = () => reject(reader.error || new Error('File read failed'));
+        reader.onabort = () => reject(new Error('File read aborted'));
+        reader.readAsDataURL(file);
+    });
+}
 
 window.confirmAttachmentRemoval = confirmAttachmentRemoval;
 window.removePendingUpload        = removePendingUpload;
