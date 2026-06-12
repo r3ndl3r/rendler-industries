@@ -26,6 +26,17 @@ const UNO_CARD_LABELS = {
     reverse: '⇄',
     skip: '⊘'
 };
+const UNO_ACTIVE_COLORS = new Set(['red', 'blue', 'green', 'yellow']);
+
+/**
+ * Normalizes an active game color, falling back to 'unknown' for invalid values.
+ *
+ * @param {string} color - Raw color value from API state.
+ * @returns {string} Known active color or 'unknown'.
+ */
+function normalizeGameColor(color) {
+    return UNO_ACTIVE_COLORS.has(color) ? color : 'unknown';
+}
 
 /**
  * Parses and validates a UNO card identifier against the known card vocabulary.
@@ -338,14 +349,15 @@ function renderBoard(container) {
     const topCard = STATE.game.top_card;
     
     const orderedPlayers = getOrderedPlayers(players);
+    const currentColor = normalizeGameColor(STATE.game.color);
     const hasPlayable = myHand.some(c => canPlay(c));
     const mustDraw = isMyTurn && !hasPlayable && !STATE.drawnCardPlayable;
 
     let html = `
         <div class="game-table-container">
             <div class="game-info-overlay">
-                <div class="current-color-indicator ${STATE.game.color}">
-                    ${STATE.game.color}
+                <div class="current-color-indicator ${currentColor}">
+                    ${escapeHtml(currentColor)}
                 </div>
                 <div class="game-direction">
                     ${STATE.game.direction === 1 ? '↻ Clockwise' : '↺ Counter-Clockwise'}
