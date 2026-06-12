@@ -239,7 +239,7 @@ function renderLogs() {
                     <div class="action-buttons">
                         ${canEdit ? `
                             <button type="button" class="btn-icon-edit" onclick="openEditModal(${log.id})" title="Edit">✏️</button>
-                            <button type="button" class="btn-icon-delete" onclick="confirmDeleteFuel(${log.id}, '${escapeHtml(vehicle)}')" title="Delete">🗑️</button>
+                            <button type="button" class="btn-icon-delete" onclick="confirmDeleteFuel(${Number(log.id)}, ${escapeHtml(JSON.stringify(vehicle || ''))})" title="Delete">🗑️</button>
                         ` : ''}
                     </div>
                 </td>
@@ -942,7 +942,7 @@ function renderVehicleList() {
             </div>
             <div class="action-buttons">
                 <button type="button" class="btn-icon-edit" onclick="editVehicle(${vehicle.id})" title="Edit">✏️</button>
-                ${vehicle.is_active == 1 ? `<button type="button" class="btn-icon-delete" onclick="archiveVehicle(${vehicle.id}, '${escapeHtml(vehicle.name || '')}')" title="Archive">🗑️</button>` : ''}
+                ${vehicle.is_active == 1 ? `<button type="button" class="btn-icon-delete" onclick="archiveVehicle(${Number(vehicle.id)}, ${escapeHtml(JSON.stringify(vehicle.name || ''))})" title="Archive">🗑️</button>` : ''}
             </div>
         </div>
     `).join('');
