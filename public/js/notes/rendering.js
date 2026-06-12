@@ -555,6 +555,7 @@ function formatNoteContent(content, noteId) {
  */
 function normalizeColorHex(color) {
     if (!color) return '#fef3c7';
+    const raw = String(color).trim();
     
     // Core Project Palette: Semantic tokens mapped to canonical hex
     const map = {
@@ -575,7 +576,7 @@ function normalizeColorHex(color) {
         'warning': '#f59e0b'
     };
     
-    return map[color.toLowerCase()] || (color.startsWith('#') ? color : '#f59e0b');
+    return map[raw.toLowerCase()] || (/^#[0-9a-fA-F]{6}$/.test(raw) ? raw : '#f59e0b');
 }
 
 /**
