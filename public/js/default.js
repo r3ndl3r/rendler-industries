@@ -125,7 +125,9 @@ function setupGlobalModalClosing(modalClasses = ['modal-overlay', 'delete-modal-
     const originalFetch = window.fetch;
     window.fetch = function(url, options = {}) {
         const token = getCsrfToken();
-        const method = (options.method || 'GET').toUpperCase();
+        const request = url instanceof Request ? url : null;
+        const requestUrl = request ? request.url : url;
+        const method = (options.method || request?.method || 'GET').toUpperCase();
         
         // Security: Only inject token for state-changing, same-origin requests
         // This prevents leaking the token to external domains.
@@ -139,15 +141,11 @@ function setupGlobalModalClosing(modalClasses = ['modal-overlay', 'delete-modal-
             }
         };
 
-        if (token && !['GET', 'HEAD', 'OPTIONS'].includes(method) && isSameOrigin(url.toString())) {
-            options.headers = options.headers || {};
-            if (options.headers instanceof Headers) {
-                if (!options.headers.has('X-CSRF-Token')) options.headers.append('X-CSRF-Token', token);
-            } else if (Array.isArray(options.headers)) {
-                if (!options.headers.some(h => h[0].toLowerCase() === 'x-csrf-token')) options.headers.push(['X-CSRF-Token', token]);
-            } else {
-                if (!options.headers['X-CSRF-Token']) options.headers['X-CSRF-Token'] = token;
-            }
+        if (token && !['GET', 'HEAD', 'OPTIONS'].includes(method) && isSameOrigin(requestUrl.toString())) {
+            const headers = new Headers(request ? request.headers : undefined);
+            new Headers(options.headers || {}).forEach((value, key) => headers.set(key, value));
+            if (!headers.has('X-CSRF-Token')) headers.set('X-CSRF-Token', token);
+            options = { ...options, headers };
         }
         return originalFetch(url, options);
     };
