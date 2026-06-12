@@ -97,19 +97,22 @@ function renderLobby(container) {
         </div>
 
         <div class="player-grid">
-            ${STATE.lobby.map(player => `
+            ${STATE.lobby.map(player => {
+                const playerArg = inlineJsArg(player);
+                return `
                 <div class="player-card">
                     <span class="player-card-name">${escapeHtml(player)}</span>
                     <div class="player-card-actions">
-                        <button onclick="editPlayer('${escapeHtml(player).replace(/'/g, "\\'")}')" class="btn-icon-edit">
+                        <button onclick="editPlayer(${playerArg})" class="btn-icon-edit">
                             ✏️
                         </button>
-                        <button onclick="removePlayer('${escapeHtml(player).replace(/'/g, "\\'")}')" class="btn-icon-delete">
+                        <button onclick="removePlayer(${playerArg})" class="btn-icon-delete">
                             🗑️
                         </button>
                     </div>
                 </div>
-            `).join('')}
+            `;
+            }).join('')}
             ${STATE.lobby.length === 0 ? `
                 <div class="empty-state">
                     <p>Add players to begin</p>
@@ -180,7 +183,6 @@ function renderPassing(container) {
                     ` : ''}
 
                     <div class="secret-reveal-box">
-                        <div class="empty-state">🕵️ Loading Imposter game...</div>
                         
                         ${isImposter ? `
                             <div class="hint-label">Your Hint</div>
@@ -398,6 +400,15 @@ function formatTime(seconds) {
     const mins = Math.floor(Math.max(0, seconds) / 60);
     const secs = Math.max(0, seconds) % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Helper: Serializes a value as a safe JavaScript inline string argument.
+ * @param {*} value - The value to serialize.
+ * @returns {string} A safely JSON-stringified and HTML-escaped string.
+ */
+function inlineJsArg(value) {
+    return escapeHtml(JSON.stringify(String(value ?? '')));
 }
 
 /**
