@@ -46,7 +46,9 @@ let STATE = {
 const AudioEngine = (() => {
     let audioCtx = null;
     function getCtx() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) return null;
+        if (!audioCtx) audioCtx = new AudioCtor();
         if (audioCtx.state === 'suspended') audioCtx.resume();
         return audioCtx;
     }
@@ -54,6 +56,7 @@ const AudioEngine = (() => {
     function playTone(freq, type, duration, volume = 0.1) {
         try {
             const ctx = getCtx();
+            if (!ctx) return;
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.type = type;
@@ -156,6 +159,10 @@ const Connect4App = {
      * --- Lobby Workflow ---
      */
     showLobby: function() {
+        if (STATE.pollInterval) {
+            clearInterval(STATE.pollInterval);
+            STATE.pollInterval = null;
+        }
         if (STATE.view !== 'lobby') {
             window.history.pushState({}, '', '/connect4');
         }
@@ -231,6 +238,10 @@ const Connect4App = {
      * --- Game Workflow ---
      */
     showGame: async function(id) {
+        if (STATE.pollInterval) {
+            clearInterval(STATE.pollInterval);
+            STATE.pollInterval = null;
+        }
         if (window.location.pathname !== `/connect4/play/${id}`) {
             window.history.pushState({}, '', `/connect4/play/${id}`);
         }
