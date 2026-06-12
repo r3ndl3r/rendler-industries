@@ -26,6 +26,13 @@ let questions = [];                 // Master collection from server
 let currentPage = 0;                // Pagination pointer
 const ITEMS_PER_PAGE = 10;          // View threshold
 
+function getTotalPages() {
+    return Math.max(1, Math.ceil(questions.length / ITEMS_PER_PAGE));
+}
+function clampCurrentPage() {
+    currentPage = Math.min(Math.max(currentPage, 0), getTotalPages() - 1);
+}
+
 /**
  * TTS/Audio State
  */
@@ -43,7 +50,6 @@ async function initStudyMode() {
     const questionsContainer = document.getElementById('questions-container');
     const controlsContainer = document.getElementById('pagination-controls');
     const errorState = document.getElementById('error-state');
-    const totalDisplay = document.getElementById('total-questions');
 
     const data = await apiGet('/quiz/api/questions?mode=all');
     
@@ -66,6 +72,18 @@ async function initStudyMode() {
 }
 
 /**
+ * Utility: safeAssetFilename
+ * Validates and sanitizes asset filenames to prevent path traversal.
+ * 
+ * @param {string} filename - Raw filename input
+ * @returns {string} Safe filename or empty string
+ */
+function safeAssetFilename(filename) {
+    const value = String(filename || '').trim();
+    return /^[A-Za-z0-9._-]+$/.test(value) ? encodeURIComponent(value) : '';
+}
+
+/**
  * Logic: playAudio
  * Executes the playback of a localized MP3/WAV asset.
  * Implements automated stop-and-reset for overlapping requests.
@@ -73,19 +91,23 @@ async function initStudyMode() {
  * @param {string} filename - Target resource
  */
 function playAudio(filename) {
-    if (!filename) return;
+    const safeFilename = safeAssetFilename(filename);
+    if (!safeFilename) return;
     
     // Lifecycle: ensure silence before starting new stream
     stopSpeaking(); 
     
-    currentPlayingFile = filename;
-    currentAudio = new Audio(`/audio/quiz/${filename}`);
+    currentPlayingFile = safeFilename;
+    currentAudio = new Audio(`/audio/quiz/${safeFilename}`);
     
     currentAudio.onended = () => {
         currentPlayingFile = null;
     };
 
-    currentAudio.play().catch(e => console.warn("Audio playback failed:", e));
+    currentAudio.play().catch(e => {
+        console.warn("Audio playback failed:", e);
+        stopSpeaking();
+    });
 }
 
 /**
@@ -121,6 +143,7 @@ function toggleAudio(filename) {
  * Generates the paginated list of question cards for the current page index.
  */
 function renderPage() {
+    clampCurrentPage();
     const container = document.getElementById('questions-container');
     if (!container) return;
     
@@ -135,13 +158,18 @@ function renderPage() {
 
     // UI Component Generation Loop
     pageQuestions.forEach((q, index) => {
-        const correctAnswer = q.answers.find(a => a.is_correct);
         const absoluteIndex = start + index + 1;
+        const correctAnswer = q.answers.find(a => a.is_correct);
+        if (!correctAnswer) {
+            console.warn('Skipping study question without a correct answer:', absoluteIndex);
+            return;
+        }
 
         // UI Detail: Conditional image rendering
-        const imageHtml = q.image 
+        const safeImage = safeAssetFilename(q.image);
+        const imageHtml = safeImage 
             ? `<div class="quiz-image-wrapper">
-                 <img src="/images/quiz/${q.image}" 
+                 <img src="/images/quiz/${safeImage}" 
                       alt="Question Illustration" 
                       loading="lazy"
                       class="hint-image">
@@ -162,12 +190,12 @@ function renderPage() {
                     ${imageHtml}
 
                     <div class="study-question-row">
-                        <div class="q-text-en flex-1">${q.question}</div>
+                        <div class="q-text-en flex-1">${window.escapeHtml(q.question || '')}</div>
                         <button class="btn-tts tts-q-btn" aria-label="Read Question">🔊</button>
                     </div>
 
-                    <div class="q-text-ph">${q.question_ph}</div>
-                    <div class="q-text-th thai-text">${q.question_th}</div>
+                    <div class="q-text-ph">${window.escapeHtml(q.question_ph || '')}</div>
+                    <div class="q-text-th thai-text">${window.escapeHtml(q.question_th || '')}</div>
                 </div>
             </div>
             
@@ -180,26 +208,26 @@ function renderPage() {
                 <div class="study-answer-box">
                     <div class="study-answer-text-row">
                         <div class="study-answer-text flex-1">
-                            ${correctAnswer.text}
+                            ${window.escapeHtml(correctAnswer.text || '')}
                         </div>
                         <button class="btn-tts tts-a-btn" aria-label="Read Answer">🔊</button>
                     </div>
 
                     <div class="answer-text-ph">
-                        ${correctAnswer.ph}
+                        ${window.escapeHtml(correctAnswer.ph || '')}
                     </div>
                     <div class="thai-text answer-text-th">
-                        ${correctAnswer.th}
+                        ${window.escapeHtml(correctAnswer.th || '')}
                     </div>
                 </div>
                 
                 ${correctAnswer.explanation ? `
                     <div class="study-explanation-box">
                         <div class="study-explanation-title">💡 Explanation:</div>
-                        <div class="study-explanation-text">${correctAnswer.explanation}</div>
+                        <div class="study-explanation-text">${window.escapeHtml(correctAnswer.explanation || '')}</div>
                         ${correctAnswer.explanation_th ? `
                             <div class="thai-text result-text-th">
-                                ${correctAnswer.explanation_th}
+                                ${window.escapeHtml(correctAnswer.explanation_th || '')}
                             </div>
                         ` : ''}
                     </div>
@@ -239,7 +267,7 @@ function updateControls() {
     const nextBtn = document.getElementById('next-btn');
     const pageIndicator = document.getElementById('page-indicator');
     
-    const totalPages = Math.ceil(questions.length / ITEMS_PER_PAGE);
+    const totalPages = getTotalPages();
     
     if (prevBtn) prevBtn.classList.toggle('hidden', currentPage === 0);
     if (nextBtn) nextBtn.classList.toggle('hidden', currentPage >= totalPages - 1);
@@ -256,8 +284,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextBtn = document.getElementById('next-btn');
     if (nextBtn) {
         nextBtn.addEventListener('click', () => {
-            currentPage++;
-            renderPage();
+            if (currentPage < getTotalPages() - 1) {
+                currentPage++;
+                renderPage();
+            }
         });
     }
 
