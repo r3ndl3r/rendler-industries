@@ -131,7 +131,11 @@ async function loadGameState() {
             STATE.failCount = 0;
             
             // Action Card Toasts
-            if (STATE.game && (STATE.game.top_card !== data.game.top_card || STATE.game.color !== data.game.color)) {
+            if (
+                STATE.game &&
+                typeof data.game.top_card === 'string' &&
+                (STATE.game.top_card !== data.game.top_card || STATE.game.color !== data.game.color)
+            ) {
                 const tc = data.game.top_card;
                 const tcVal = tc.split('_').slice(1).join('_');
                 if (tcVal === 'skip') window.showToast("Skip played!", "warning");
