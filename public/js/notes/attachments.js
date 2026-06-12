@@ -7,6 +7,7 @@
 function handleFileSelection(e) {
     const file = e.target.files[0];
     if (!file) return;
+    const input = e.target;
 
     // Type Normalization: Images get special rendering/previews, others become generic 'file'
     const isImage = file.type.startsWith('image/');
@@ -38,6 +39,7 @@ function handleFileSelection(e) {
         // 4. Update Reel & Notify
         renderDraftReel();
         showToast(`File attached: ${file.name}`, 'success');
+        input.value = '';
     };
 
     if (isImage) {
@@ -240,6 +242,7 @@ function triggerInlineUpload(id) {
 async function handleInlineFileSelection(e, id) {
     const file = e.target.files[0];
     if (!file) return;
+    const input = e.target;
 
     const formData = new FormData();
     formData.append('note_id', id);
@@ -288,6 +291,7 @@ async function handleInlineFileSelection(e, id) {
         }
     } finally {
         if (el) el.classList.remove('pending');
+        input.value = '';
     }
 }
 
