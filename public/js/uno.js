@@ -373,6 +373,7 @@ function renderBoard(container) {
     const topCard = STATE.game.top_card;
     
     const orderedPlayers = getOrderedPlayers(players);
+    const opponents = orderedPlayers.filter(p => !sameId(p.id, STATE.game.current_user_id));
     const currentColor = normalizeGameColor(STATE.game.color);
     const hasPlayable = myHand.some(c => canPlay(c));
     const mustDraw = isMyTurn && !hasPlayable && !STATE.drawnCardPlayable;
@@ -390,14 +391,13 @@ function renderBoard(container) {
             </div>
 
             <div class="opponents-grid">
-                ${orderedPlayers.map((p, i) => {
-                    if (i === 0) return '';
+                ${opponents.map((p, i) => {
                     const name = playerDisplayName(p);
                     const avatar = window.getUserIcon
                         ? window.getUserIcon(name)
                         : `<div class="default-avatar">${escapeHtml(name.charAt(0).toUpperCase() || '?')}</div>`;
                     return `
-                    <div class="player-slot slot-${i} ${sameId(STATE.game.turn, p.id) ? 'active-turn' : ''}">
+                    <div class="player-slot slot-${i + 1} ${sameId(STATE.game.turn, p.id) ? 'active-turn' : ''}">
                         <div class="player-avatar">
                             ${avatar}
                         </div>
