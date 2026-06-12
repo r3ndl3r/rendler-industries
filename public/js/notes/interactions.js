@@ -3533,8 +3533,9 @@ async function copyToClipboard(text, imageBlob = null) {
     // 2. Secondary Strategy: Dynamic Textarea Elevation (Unsecured Context Fallback)
     // IMPORTANT: Images CANNOT be copied in non-secure contexts due to browser security policies.
     if (!text) return false;
+    let textArea = null;
     try {
-        const textArea = document.createElement("textarea");
+        textArea = document.createElement("textarea");
         textArea.value = text;
         
         textArea.style.position = "fixed";
@@ -3547,11 +3548,12 @@ async function copyToClipboard(text, imageBlob = null) {
         textArea.setSelectionRange(0, 99999);
         
         const successful = document.execCommand('copy');
-        document.body.removeChild(textArea);
         return successful;
     } catch (err) {
         console.error('Unified Clipboard Failure:', err);
         return false;
+    } finally {
+        if (textArea?.parentNode) textArea.parentNode.removeChild(textArea);
     }
 }
 
@@ -3667,22 +3669,27 @@ async function fetchAndNormalizeImage(blobId) {
         if (raw.type !== 'image/png') {
             const img = new Image();
             img.crossOrigin = "anonymous";
-            img.src = URL.createObjectURL(raw);
+            const objectUrl = URL.createObjectURL(raw);
+            img.src = objectUrl;
             
-            await new Promise((resolve, reject) => {
-                img.onload = resolve;
-                img.onerror = () => reject(new Error('Image load failed'));
-            });
-            
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            
-            const pngBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-            URL.revokeObjectURL(img.src);
-            return pngBlob;
+            try {
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = () => reject(new Error('Image load failed'));
+                });
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return null;
+                ctx.drawImage(img, 0, 0);
+                
+                const pngBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+                return pngBlob || null;
+            } finally {
+                URL.revokeObjectURL(objectUrl);
+            }
         }
         return raw;
     } catch (e) {
