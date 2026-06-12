@@ -312,11 +312,25 @@ function openAddModal() {
  *
  * @returns {void}
  */
+/**
+ * Checks whether any chores or global confirmation modal is currently visible.
+ * Used to prevent premature body-scroll unlock when modals are layered.
+ * @returns {boolean} True if at least one chores/global modal has the 'show' class.
+ */
+function hasOpenChoresModal() {
+    return !!document.querySelector([
+        '#addChoreModal.show',
+        '#submitWorkModal.show',
+        '#reviewSubmissionModal.show',
+        '#globalConfirmActionModal.show'
+    ].join(', '));
+}
+
 function closeAddModal() {
     const modal = document.getElementById('addChoreModal');
     if (modal) {
         modal.classList.remove('show');
-        document.body.classList.remove('modal-open');
+        if (!hasOpenChoresModal()) document.body.classList.remove('modal-open');
     }
 }
 
@@ -342,7 +356,7 @@ function closeSubmitModal() {
     const modal = document.getElementById('submitWorkModal');
     if (modal) {
         modal.classList.remove('show');
-        document.body.classList.remove('modal-open');
+        if (!hasOpenChoresModal()) document.body.classList.remove('modal-open');
     }
     const form = document.getElementById('submitWorkForm');
     if (form) form.reset();
@@ -443,7 +457,7 @@ function closeReviewModal() {
     const modal = document.getElementById('reviewSubmissionModal');
     if (modal) {
         modal.classList.remove('show');
-        document.body.classList.remove('modal-open');
+        if (!hasOpenChoresModal()) document.body.classList.remove('modal-open');
     }
 }
 
