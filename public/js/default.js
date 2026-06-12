@@ -508,6 +508,27 @@ window.renderRowInput = function(container, options) {
  */
 let confirmModalCloseTimer = null;
 
+/**
+ * Checks whether any modal overlay is currently visible in the DOM.
+ * Used to prevent premature body scroll unlock when stacked overlays exist.
+ *
+ * @returns {boolean} True if at least one overlay is visible.
+ */
+function hasVisibleModalOverlay() {
+    return !!document.querySelector([
+        '.modal-overlay.show',
+        '.modal-overlay.active',
+        '.modal-content.show',
+        '.modal-content.active',
+        '.delete-modal-overlay.show',
+        '.delete-modal-overlay.active',
+        '.custom-modal-overlay:not(.hidden)',
+        '.weather-detail-overlay.show',
+        '.weather-detail-overlay.active',
+        '.game-overlay.active'
+    ].join(', '));
+}
+
 window.showConfirmModal = function(options) {
     const modal = document.getElementById('globalConfirmActionModal');
     const content = document.getElementById('globalConfirmModalContent');
@@ -676,7 +697,9 @@ window.closeConfirmModal = function() {
     // Wait for exit animation to finish before fully hiding
     confirmModalCloseTimer = setTimeout(() => {
         modal.classList.remove('show', 'modal-closing');
-        document.body.classList.remove('modal-open');
+        if (!hasVisibleModalOverlay()) {
+            document.body.classList.remove('modal-open');
+        }
         confirmModalCloseTimer = null;
     }, 200);
 };
@@ -1075,7 +1098,7 @@ document.addEventListener('DOMContentLoaded', checkApkUpdate);
             visibleModal.classList.remove('show');
             visibleModal.classList.remove('active');
             if (visibleModal.classList.contains('custom-modal-overlay')) visibleModal.classList.add('hidden');
-            if (!document.querySelector('.modal-overlay.show, .modal-overlay.active, .delete-modal-overlay.show, .delete-modal-overlay.active, .weather-detail-overlay.show, .weather-detail-overlay.active, .game-overlay.active, .custom-modal-overlay:not(.hidden)')) {
+            if (!hasVisibleModalOverlay()) {
                 document.body.classList.remove('modal-open');
             }
             return true;
