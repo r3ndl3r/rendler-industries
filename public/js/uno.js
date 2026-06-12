@@ -19,6 +19,31 @@ let STATE = {
 
 let SYNC_INTERVAL = null;
 
+const UNO_CARD_COLORS = new Set(['red', 'blue', 'green', 'yellow', 'wild']);
+const UNO_CARD_LABELS = {
+    draw2: '+2',
+    draw4: '+4',
+    reverse: '⇄',
+    skip: '⊘'
+};
+
+/**
+ * Parses and validates a UNO card identifier against the known card vocabulary.
+ *
+ * @param {string} card - Card identifier (e.g. "red_5", "wild_draw4").
+ * @returns {Object|null} Parsed card object with color, value, isWild, or null if invalid.
+ */
+function parseUnoCard(card) {
+    if (typeof card !== 'string') return null;
+    const [color, value] = card.split('_', 2);
+    if (!UNO_CARD_COLORS.has(color)) return null;
+    if (color === 'wild') {
+        return { color, value: value === 'draw4' ? 'draw4' : '', isWild: true };
+    }
+    if (!/^(?:[0-9]|draw2|reverse|skip)$/.test(value || '')) return null;
+    return { color, value, isWild: false };
+}
+
 /**
  * Lifecycle: Entry point for the UNO application.
  * @returns {void}
@@ -388,14 +413,14 @@ function renderBoard(container) {
  * @returns {string} HTML fragment.
  */
 function renderCard(card, extraClass = '') {
-    if (!card) return '';
-    const [color, value] = card.split('_', 2);
-    const isWild = color === 'wild';
-    const displayValue = value ? value.replace('draw2', '+2').replace('reverse', '⇄').replace('skip', '⊘') : 'W';
-    const finalValue = card === 'wild_draw4' ? '+4' : displayValue;
+    const parsed = parseUnoCard(card);
+    if (!parsed) return '';
+    const safeExtraClass = extraClass === 'playable' ? 'playable' : '';
+    const displayValue = parsed.value ? (UNO_CARD_LABELS[parsed.value] || parsed.value) : 'W';
+    const finalValue = escapeHtml(displayValue);
 
     return `
-        <div class="uno-card ${isWild ? 'wild' : color} ${extraClass}">
+        <div class="uno-card ${parsed.isWild ? 'wild' : parsed.color} ${safeExtraClass}">
             <div class="card-inner">
                 <div class="card-top-left">${finalValue}</div>
                 <div class="card-center">${finalValue}</div>
