@@ -475,7 +475,7 @@ function showTransferModal(fromId) {
             <p>Transfer remaining time from <strong>${escapeHtml(source.name)}</strong> to another device for <strong>${escapeHtml(source.username)}</strong>:</p>
             <div class="transfer-targets-list">
                 ${targets.map(t => `
-                    <div class="transfer-target-item" onclick="handleTransfer(${fromId}, ${t.id})">
+                    <div class="transfer-target-item" data-from-id="${fromId}" data-to-id="${t.id}" onclick="handleTransfer(${fromId}, ${t.id})">
                         <div class="target-icon ${t.category.toLowerCase().replace(' ', '-')}">
                             ${{ 'work': '💼', 'school': '🎓', 'gaming': '🎮', 'screen': '📱', 'ai': '🧠' }[t.category.toLowerCase().replace(' ', '-')] || '🕒'}
                         </div>
@@ -519,7 +519,7 @@ function showTransferModal(fromId) {
  * @returns {Promise<void>}
  */
 async function handleTransfer(fromId, toId) {
-    const targetItem = document.querySelector(`.transfer-target-item[onclick*="${toId}"]`);
+    const targetItem = document.querySelector(`.transfer-target-item[data-to-id="${toId}"]`);
     if (targetItem) {
         targetItem.classList.add('pending');
         targetItem.innerHTML = `<div class="loading-spinner">⌛ Transferring...</div>`;
