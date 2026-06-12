@@ -35,6 +35,13 @@ let currentPage = 0;
 /** @type {number} Questions rendered per page. */
 const ITEMS_PER_PAGE = 10;
 
+function getTotalPages() {
+    return Math.max(1, Math.ceil(STATE.study_questions.length / ITEMS_PER_PAGE));
+}
+function clampCurrentPage() {
+    currentPage = Math.min(Math.max(currentPage, 0), getTotalPages() - 1);
+}
+
 /** @type {Audio|null} Active Audio instance for TTS playback. */
 let currentAudio = null;
 
@@ -90,8 +97,8 @@ function renderUI() {
     questionsContainer?.classList.remove('hidden');
     paginationControls?.classList.remove('hidden');
 
-    const totalPages = Math.ceil(STATE.study_questions.length / ITEMS_PER_PAGE);
-    if (currentPage >= totalPages) currentPage = Math.max(0, totalPages - 1);
+    const totalPages = getTotalPages();
+    clampCurrentPage();
 
     renderPage();
 }
@@ -315,8 +322,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loadState();
 
     document.getElementById('next-btn')?.addEventListener('click', () => {
-        currentPage++;
-        renderPage();
+        if (currentPage < getTotalPages() - 1) {
+            currentPage++;
+            renderPage();
+        }
     });
 
     document.getElementById('prev-btn')?.addEventListener('click', () => {
