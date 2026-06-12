@@ -617,7 +617,9 @@ function renderQuickAdd() {
     if (!container) return;
 
     if (STATE.quick_add_chores.length === 0) {
-        container.innerHTML = `<div class="component-loading"><span class="loading-icon-pulse">⌛</span></div>`;
+        container.innerHTML = hasLoadedChoresState
+            ? `<div class="empty-hint">No recent chore templates yet.</div>`
+            : `<div class="component-loading"><span class="loading-icon-pulse">⌛</span></div>`;
         return;
     }
 
