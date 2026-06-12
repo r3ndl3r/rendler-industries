@@ -78,6 +78,12 @@ const NoteParser = (() => {
         return null;
     };
 
+    const clampNumber = (value, min, max, fallback) => {
+        const num = Number(value);
+        if (!Number.isFinite(num)) return fallback;
+        return Math.min(max, Math.max(min, num));
+    };
+
     /**
      * Nested Inline Formatter (1-Level):
      * Processes basic Markdown (Bold/Italic/Strikethrough/Code) within component labels.
@@ -314,7 +320,7 @@ const NoteParser = (() => {
             const url = getSafeUrl(data.value);
             if (!url) return null;
             
-            const height = parseInt(data.params[0], 10);
+            const height = clampNumber(parseInt(data.params[0], 10), 120, 1200, 0);
             const style = height ? `style="height: ${height}px;"` : 'class="iframe-fill"';
             return `<div class="note-iframe-wrap" ${style}><iframe src="${url}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe></div>`;
         },
@@ -343,8 +349,8 @@ const NoteParser = (() => {
             }
             const meta = STATE.note_map[id];
             
-            let scale = parseFloat(data.params[0] || '1.0');
-            let width = (scale <= 1.0 ? scale * 100 : scale);
+            const scale = clampNumber(parseFloat(data.params[0] || '1.0'), 0.1, 2, 1);
+            const width = clampNumber(scale <= 1.0 ? scale * 100 : scale, 10, 200, 100);
             
             const attachments = meta ? (meta.attachments || []) : [];
             const blobId      = (meta && meta.blob_id) ? meta.blob_id : (attachments[0] ? attachments[0].blob_id : null);
