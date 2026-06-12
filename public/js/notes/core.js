@@ -165,6 +165,7 @@ window.showLockedOverlay = function(autoFocus = true) {
     STATE.notes = [];
     STATE.note_map = {};
     STATE.note_map_hash = null;
+    STATE.embed_cache = {};
     overlay.style.display = 'flex';
 
     const input = document.getElementById('unlock-password');
@@ -1106,6 +1107,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                 STATE.notes = [];
                 STATE.note_map = {};
                 STATE.note_map_hash = null;
+                STATE.embed_cache = {};
                 if (typeof showLockedOverlay === 'function') showLockedOverlay(false);
             } else {
                 if (typeof hideLockedOverlay === 'function') hideLockedOverlay();
@@ -1261,6 +1263,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             STATE.notes = [];
             STATE.note_map = {};
             STATE.note_map_hash = null;
+            STATE.embed_cache = {};
 
             if (initial) {
                 showToast('Failed to load whiteboard state', 'error');
@@ -1276,6 +1279,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
             STATE.notes = [];
             STATE.note_map = {};
             STATE.note_map_hash = null;
+            STATE.embed_cache = {};
         }
         if (!initial) {
             // Authoritative Propagation: Normalise all non-initial failure classes to 
@@ -1438,6 +1442,7 @@ window.setupHeartbeat = function setupHeartbeat() {
                         STATE.notes = [];
                         STATE.note_map = {};
                         STATE.note_map_hash = null;
+                        STATE.embed_cache = {};
                         if (res.unlocked_canvases) {
                             STATE.unlockedCanvases = new Set(res.unlocked_canvases.map(id => parseInt(id)));
                         } else {
