@@ -309,6 +309,7 @@ function renderLogItem(l) {
     const takenAt = l.taken_at || '';
     const reminders = getRemindersForLog(l);
     const displayDt = formatTakenAtLabel(takenAt);
+    const deleteLabel = escapeHtml(JSON.stringify(`${l.medication_name || ''} for ${l.family_member || ''}`));
 
     return `
         <div class="med-item" data-id="${l.id}" onclick="toggleMedExpand(this)">
@@ -332,7 +333,7 @@ function renderLogItem(l) {
                         <button type="button" class="btn-icon-reset" onclick="confirmResetMedication(${l.id})" title="Reset Time">🔄</button>
                         <button type="button" class="btn-icon-reset btn-icon-reminder" onclick="openReminderSchedulerFromLog(${l.id})" title="Schedule Dose Reminder">⏰</button>
                         <button type="button" class="btn-icon-edit" onclick='openEditModal(${JSON.stringify(l)})' title="Edit Log">✏️</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, '${escapeHtml(l.medication_name)} for ${escapeHtml(l.family_member)}')" title="Delete Log">🗑️</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, ${deleteLabel})" title="Delete Log">🗑️</button>
                     </div>
                 </div>
             </div>
@@ -455,20 +456,24 @@ function renderRegistryTable() {
     const body = document.getElementById('registry-table-body');
     if (!body) return;
 
-    body.innerHTML = STATE.registry.map(m => `
+    body.innerHTML = STATE.registry.map(m => {
+        const safeNameArg = escapeHtml(JSON.stringify(m.name || ''));
+        const safeDosageArg = escapeHtml(JSON.stringify(m.default_dosage || ''));
+        return `
         <tr>
             <td><strong>${escapeHtml(m.name)}</strong></td>
             <td>${m.default_dosage} mg</td>
             <td>${m.usage_count}</td>
             <td class="col-actions">
                 <div class="action-buttons">
-                    <button type="button" class="btn-icon-edit" onclick="openManageModal('${m.id}', '${escapeHtml(m.name)}', '${m.default_dosage}')" title="Edit Registry">✏️</button>
-                    <button type="button" class="btn-icon-delete" onclick="confirmDeleteRegistry(${m.id}, '${escapeHtml(m.name)}')" 
+                    <button type="button" class="btn-icon-edit" onclick="openManageModal(${m.id}, ${safeNameArg}, ${safeDosageArg})" title="Edit Registry">✏️</button>
+                    <button type="button" class="btn-icon-delete" onclick="confirmDeleteRegistry(${m.id}, ${safeNameArg})" 
                             ${m.usage_count > 0 ? 'disabled' : ''} title="Remove Registry Item">🗑️</button>
                 </div>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
 /**
