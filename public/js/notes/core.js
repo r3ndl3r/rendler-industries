@@ -439,7 +439,8 @@ async function initNotes() {
         if (typeof handleCanvasTouchStart === 'function') canvas.addEventListener('touchstart', handleCanvasTouchStart, { passive: false });
         if (typeof handleCanvasTouchMove === 'function')  canvas.addEventListener('touchmove',  handleCanvasTouchMove,  { passive: false });
         if (typeof handleCanvasTouchEnd === 'function')   canvas.addEventListener('touchend',   handleCanvasTouchEnd,   { passive: false });
-        if (typeof handleCanvasTouchCancel === 'function') canvas.addEventListener('touchcancel', handleCanvasTouchEnd,  { passive: false });
+        const touchCancelHandler = typeof handleCanvasTouchCancel === 'function' ? handleCanvasTouchCancel : handleCanvasTouchEnd;
+        if (typeof touchCancelHandler === 'function') canvas.addEventListener('touchcancel', touchCancelHandler, { passive: false });
         
         // 4. Interaction Layer: Attach specialized module managers
         if (typeof setupLevelManagement === 'function') setupLevelManagement();
