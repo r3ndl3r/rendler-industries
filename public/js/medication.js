@@ -43,6 +43,7 @@ let STATE = {
 };
 
 let loadStateRequestSeq = 0;
+let loadPendingRequestSeq = 0;
 
 /**
  * Bootstraps the module state and establishes background lifecycles.
@@ -117,7 +118,9 @@ async function loadPending() {
     if (schedulerOpen) return;
 
     try {
+        const requestSeq = ++loadPendingRequestSeq;
         const data = await apiGet('/medication/api/reminders');
+        if (requestSeq !== loadPendingRequestSeq) return;
         if (data && data.success) {
             STATE.reminders = data.reminders || [];
             STATE.pendingEvents = data.pending_events || [];
