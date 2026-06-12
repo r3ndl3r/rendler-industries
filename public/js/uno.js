@@ -813,8 +813,14 @@ function catchUno(targetId, btn) {
  * @returns {void}
  */
 function kickPlayer(targetId, btn) {
-    window.showConfirmModal("Kick Player?", "Are you sure you want to kick this player from the game?", () => {
-        apiAction('/uno/api/kick', { id: STATE.game_id, target_id: targetId }, btn);
+    window.showConfirmModal({
+        title: "Kick Player?",
+        message: "Are you sure you want to kick this player from the game?",
+        danger: true,
+        confirmText: "Kick",
+        onConfirm: async () => {
+            await apiAction('/uno/api/kick', { id: STATE.game_id, target_id: targetId }, btn);
+        }
     });
 }
 
