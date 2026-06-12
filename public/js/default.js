@@ -916,13 +916,13 @@ window.translateText = translateText;
  * Sanitizes user-provided content by converting sensitive HTML characters 
  * into their entity equivalents.
  * 
- * @param {string} text - The raw string to sanitize.
+ * @param {*} text - The value to sanitize (coerced to string).
  * @returns {string} - The sanitized HTML string.
  */
 window.escapeHtml = function(text) {
-    if (!text) return '';
+    if (text === null || text === undefined) return '';
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = String(text);
     return div.innerHTML.replace(/"/g, '&quot;');
 };
 
