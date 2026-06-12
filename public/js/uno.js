@@ -61,6 +61,19 @@ function escapeHtml(str) {
 }
 
 /**
+ * Formats a date value for lobby display using the shared formatter when available.
+ *
+ * @param {*} value - Date value to format.
+ * @returns {string} Formatted date string or escaped raw value.
+ */
+function formatLobbyDate(value) {
+    if (typeof window.format_datetime === 'function') {
+        return window.format_datetime(value);
+    }
+    return escapeHtml(value || '');
+}
+
+/**
  * State: Fetches the appropriate state based on current view.
  * @returns {Promise<void>}
  */
@@ -203,7 +216,7 @@ function renderLobby(container) {
                     <div class="lobby-card-info">
                         <h3 class="lobby-card-title">${escapeHtml(l.host_name)}'s Game</h3>
                         <div class="lobby-card-meta">
-                            <span>Created: ${window.format_datetime(l.created_at)}</span>
+                            <span>Created: ${formatLobbyDate(l.created_at)}</span>
                             <span class="player-count-badge">${l.player_count}/4 Players</span>
                         </div>
                     </div>
