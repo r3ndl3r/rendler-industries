@@ -1016,11 +1016,17 @@ function closeBinModal() {
     }
 }
 
-function copyViewContent() {
+async function copyViewContent() {
     const content = document.getElementById('note-view-content')?.textContent;
     if (content) {
-        navigator.clipboard.writeText(resolveNoteEmbeddedText(content));
-        showToast('Content copied to clipboard', 'success');
+        try {
+            const copied = await copyToClipboard(resolveNoteEmbeddedText(content));
+            if (!copied) throw new Error('Copy failed');
+            showToast('Content copied to clipboard', 'success');
+        } catch (err) {
+            console.error('Copy failed:', err);
+            showToast('Failed to copy content', 'error');
+        }
     }
 }
 
