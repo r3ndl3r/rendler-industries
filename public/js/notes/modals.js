@@ -82,9 +82,11 @@ async function executeCreateNote() {
     };
 
     const confirmBtn = document.getElementById('create-note-btn');
-    const originalText = confirmBtn.innerHTML;
-    confirmBtn.disabled = true;
-    confirmBtn.innerHTML = `⌛ Saving...`;
+    const originalText = confirmBtn ? confirmBtn.innerHTML : '';
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = `⌛ Saving...`;
+    }
 
     try {
         // 1. Initial State Sync: Save text and metadata
@@ -138,13 +140,17 @@ async function executeCreateNote() {
             closeCreateModal();
             await loadState(false, STATE.canvas_id);
             showToast(id ? 'Note Updated' : 'Note Created', 'success');
+        } else {
+            showToast((res && res.error) || 'Failed to save note', 'error');
         }
     } catch (err) {
         console.error('Execution Error:', err);
         showToast('Failed to save note', 'error');
     } finally {
-        confirmBtn.disabled = false;
-        confirmBtn.innerHTML = originalText;
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = originalText;
+        }
     }
 }
 
