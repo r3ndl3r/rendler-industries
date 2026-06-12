@@ -39,6 +39,7 @@ let STATE = {
 };
 let choresStateRequestSeq = 0;
 let mySubmissionsRequestSeq = 0;
+let hasLoadedChoresState = false;
 
 /**
  * Bootstraps the module state and establishes event delegation.
@@ -64,7 +65,7 @@ async function loadState(force = false) {
     const anyModalOpen = document.querySelector('.modal-overlay.show') || document.querySelector('.delete-modal-overlay.show');
     const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
 
-    if (!force && (anyModalOpen || inputFocused) && STATE.active_chores.length > 0) return;
+    if (!force && hasLoadedChoresState && (anyModalOpen || inputFocused)) return;
 
     try {
         const requestSeq = ++choresStateRequestSeq;
@@ -72,6 +73,7 @@ async function loadState(force = false) {
         if (requestSeq !== choresStateRequestSeq) return;
         if (data && data.success) {
             STATE = { ...STATE, ...data };
+            hasLoadedChoresState = true;
             renderUI();
         } else {
             const noAccess = document.getElementById('noAccessView');
