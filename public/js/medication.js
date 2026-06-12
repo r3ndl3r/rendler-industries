@@ -332,7 +332,7 @@ function renderLogItem(l) {
                     <div class="med-item-actions" onclick="event.stopPropagation()">
                         <button type="button" class="btn-icon-reset" onclick="confirmResetMedication(${l.id})" title="Reset Time">🔄</button>
                         <button type="button" class="btn-icon-reset btn-icon-reminder" onclick="openReminderSchedulerFromLog(${l.id})" title="Schedule Dose Reminder">⏰</button>
-                        <button type="button" class="btn-icon-edit" onclick='openEditModal(${JSON.stringify(l)})' title="Edit Log">✏️</button>
+                        <button type="button" class="btn-icon-edit" onclick="openEditModalById(${l.id})" title="Edit Log">✏️</button>
                         <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, ${deleteLabel})" title="Delete Log">🗑️</button>
                     </div>
                 </div>
@@ -1060,6 +1060,12 @@ function closeDoseModal() {
  * @param {Object} data - Source record metadata.
  * @returns {void}
  */
+function openEditModalById(id) {
+    const logs = Object.values(STATE.logs || {}).flat();
+    const log = logs.find(item => item.id == id);
+    if (log) openEditModal(log);
+}
+
 function openEditModal(data) {
     const form = document.getElementById('editForm');
     if (!form) return;
@@ -1304,6 +1310,7 @@ window.fillForm = fillForm;
 window.toggleMedExpand = toggleMedExpand;
 window.openDoseModal = openDoseModal;
 window.closeDoseModal = closeDoseModal;
+window.openEditModalById = openEditModalById;
 window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
 window.confirmDeleteMedication = confirmDeleteMedication;
