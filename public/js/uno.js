@@ -448,7 +448,9 @@ function renderCard(card, extraClass = '') {
  * @returns {boolean} True if card can be played.
  */
 function canPlay(card) {
+    if (typeof card !== 'string') return false;
     if (card.startsWith('wild')) return true;
+    if (!STATE.game || typeof STATE.game.top_card !== 'string') return false;
     const [color, value] = card.split('_', 2);
     const topCard = STATE.game.top_card;
     const [topColor, topValue] = topCard.split('_', 2);
