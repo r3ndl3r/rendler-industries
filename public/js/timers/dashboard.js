@@ -184,7 +184,7 @@ function renderTimerCard(t) {
                 `)}
                 
                 ${STATE.is_child && !isUnlimited ? `
-                    <button class="btn-redeem-small" onclick="openRedeemModal(${t.id}, '${escapeHtml(t.name)}')">
+                    <button class="btn-redeem-small" onclick="openRedeemModal(${Number(t.id)}, ${escapeHtml(JSON.stringify(t.name || ''))})">
                         ⭐ Redeem
                     </button>
                 ` : ''}
