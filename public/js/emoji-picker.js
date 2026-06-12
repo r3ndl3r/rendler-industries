@@ -501,6 +501,21 @@ const EmojiPicker = {
     },
 
     /**
+     * Input Capability: isTextCapableInput
+     * Checks whether the target element supports text selection/insertion.
+     * 
+     * @param {HTMLElement|null} target - The element to check
+     * @returns {boolean} True if the target is a text-capable input
+     */
+    isTextCapableInput: function(target) {
+        if (!target || target.readOnly || target.disabled) return false;
+        if (target.tagName === 'TEXTAREA') return true;
+        if (target.tagName !== 'INPUT') return false;
+        const allowedTypes = ['text', 'search', 'email', 'url', 'tel', 'password'];
+        return allowedTypes.includes((target.type || 'text').toLowerCase());
+    },
+
+    /**
      * UI Engine: renderEmojis
      * Reconciles the emoji grid with a provided list of character objects.
      * 
@@ -541,7 +556,7 @@ const EmojiPicker = {
             const isSearchField = target.classList.contains('emoji-search');
             const isOptedOut = target.classList.contains('no-emoji');
 
-            if (isEmojiCompatible && !isSearchField && !isOptedOut) {
+            if (isEmojiCompatible && this.isTextCapableInput(target) && !isSearchField && !isOptedOut) {
                 this.activeInput = target;
                 this.attachTrigger(target);
             } else if (!isInsidePicker && !isTrigger) {
@@ -697,7 +712,7 @@ const EmojiPicker = {
      */
     insertEmoji: function(emoji) {
         const input = this.activeInput;
-        if (!input) return;
+        if (!this.isTextCapableInput(input)) return;
         
         const start = input.selectionStart;
         const end = input.selectionEnd;
