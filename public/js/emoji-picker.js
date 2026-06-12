@@ -525,6 +525,7 @@ const EmojiPicker = {
     renderEmojis: function(list) {
         const grid = this.pickerElement.querySelector('.emoji-grid');
         if (!grid) return;
+        list = Array.isArray(list) ? list : [];
         grid.innerHTML = '';
         
         list.forEach(emoji => {
