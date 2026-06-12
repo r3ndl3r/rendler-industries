@@ -3436,7 +3436,8 @@ async function handleNoteCopyClick(id) {
     const label = (liveNote && liveNote.title) || (mapNote && mapNote.title) || `Note #${id}`;
 
     try {
-        await navigator.clipboard.writeText(text);
+        const copied = await copyToClipboard(text);
+        if (!copied) throw new Error('Copy failed');
         showToast(`Copied: ${window.escapeHtml(label)}`, 'success');
     } catch (err) {
         showToast('Clipboard access denied', 'error');
