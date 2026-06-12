@@ -822,6 +822,7 @@ async function openImageModal(id, image) {
     if (!modal || !img) return;
 
     modal.classList.add('show');
+    document.body.classList.add('modal-open');
     img.src = ''; // Clear previous
 
     try {
@@ -854,6 +855,7 @@ function closeImageModal() {
     const modal = document.getElementById('imageModal');
     const img = document.getElementById('modalImg');
     if (modal) modal.classList.remove('show');
+    document.body.classList.remove('modal-open');
     if (img) img.src = '';
     if (MODAL_IMAGE_URL) {
         URL.revokeObjectURL(MODAL_IMAGE_URL);
