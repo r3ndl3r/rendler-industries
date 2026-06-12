@@ -346,6 +346,8 @@ function refreshNoteContentPrecise(id) {
 function initDropZones() {
     const canvas = document.getElementById('notes-canvas');
     if (!canvas) return;
+    if (canvas.dataset.dropZonesBound === '1') return;
+    canvas.dataset.dropZonesBound = '1';
 
     canvas.addEventListener('dragover', (e) => {
         e.preventDefault();
