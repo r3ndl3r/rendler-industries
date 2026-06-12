@@ -83,7 +83,50 @@ sub DB::log_medication_dose {
     push @params, $taken_at if $taken_at;
     
     $sth_log->execute(@params);
-    return $self->{dbh}->last_insert_id();
+    my $log_id = $self->{dbh}->last_insert_id();
+
+    # Auto-confirm the single closest pending reminder event for this
+    # medication/member/date so overdue alerts stop without clearing every
+    # same-day reminder for that medication.
+    my ($event_date, $logged_time);
+    if ($taken_at && $taken_at =~ /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}(?::\d{2})?)/) {
+        $event_date = $1;
+        $logged_time = $2;
+        $logged_time .= ':00' if $logged_time =~ /^\d{2}:\d{2}$/;
+    } else {
+        ($event_date, $logged_time) = $self->{dbh}->selectrow_array(
+            "SELECT CURDATE(), TIME_FORMAT(CURTIME(), '%H:%i:%s')"
+        );
+    }
+
+    my $event_sth = $self->{dbh}->prepare("
+        SELECT e.id
+        FROM medication_reminder_events e
+        JOIN medication_reminders r ON e.reminder_id = r.id
+        WHERE r.medication_id = ?
+          AND r.family_member_id = ?
+          AND e.scheduled_date = ?
+          AND e.confirmed_at IS NULL
+        ORDER BY
+          CASE WHEN e.scheduled_time <= ? THEN 0 ELSE 1 END ASC,
+          ABS(TIME_TO_SEC(TIMEDIFF(e.scheduled_time, ?))) ASC,
+          e.id ASC
+        LIMIT 1
+    ");
+    $event_sth->execute($med_id, $family_member_id, $event_date, $logged_time, $logged_time);
+    my ($event_id) = $event_sth->fetchrow_array();
+
+    if ($event_id) {
+        my $confirm_sth = $self->{dbh}->prepare("
+            UPDATE medication_reminder_events
+            SET confirmed_at = NOW(), confirmed_by = ?
+            WHERE id = ?
+              AND confirmed_at IS NULL
+        ");
+        $confirm_sth->execute($logged_by_id, $event_id);
+    }
+
+    return $log_id;
 }
 
 # Updates an existing medication log entry.
@@ -417,10 +460,11 @@ sub DB::touch_medication_reminder_event {
 
 # Retrieves overdue (unconfirmed) reminder events where last_fired_at is older
 # than 30 minutes. These need a re-alert notification.
-# Parameters: None (uses NOW())
+# Parameters:
+#   current_date : String YYYY-MM-DD (today)
 # Returns: ArrayRef of HashRefs with event + reminder + registry data
 sub DB::get_overdue_medication_confirmations {
-    my ($self) = @_;
+    my ($self, $current_date) = @_;
     $self->ensure_connection;
 
     my $sth = $self->{dbh}->prepare("
@@ -434,10 +478,11 @@ sub DB::get_overdue_medication_confirmations {
         JOIN medication_registry reg ON r.medication_id = reg.id
         JOIN users u ON r.family_member_id = u.id
         WHERE e.confirmed_at IS NULL
+          AND e.scheduled_date = ?
           AND r.is_active = 1
           AND (e.last_fired_at IS NULL OR e.last_fired_at < NOW() - INTERVAL 30 MINUTE)
     ");
-    $sth->execute();
+    $sth->execute($current_date);
     return $sth->fetchall_arrayref({});
 }
 

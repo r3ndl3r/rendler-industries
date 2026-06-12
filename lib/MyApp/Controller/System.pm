@@ -509,7 +509,7 @@ sub run_medication_reminder_maintenance {
     }
 
     # PHASE 2: RE-ALERT — overdue confirmations (unconfirmed + last_fired_at > 30 min ago or never fired)
-    my $overdue = $c->db->get_overdue_medication_confirmations();
+    my $overdue = $c->db->get_overdue_medication_confirmations($current_date);
     foreach my $o (@$overdue) {
         eval {
             # Update last_fired_at to NOW() (prevents re-trigger for another 30 min)
