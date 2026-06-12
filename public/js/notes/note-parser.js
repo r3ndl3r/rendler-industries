@@ -821,6 +821,13 @@ const NoteParser = (() => {
         // Relative paths are rejected because there is no target URL to resolve them against
         // (unlike renderBookmarkTile which has urlPart for origin resolution).
         const iconUrl = (iconPart && /^https?:\/\//i.test(iconPart.trim())) ? getSafeUrl(iconPart) : null;
+        let iconProxyUrl = '';
+        if (iconUrl) {
+            try {
+                const iconHost = new URL(iconPart.trim()).hostname;
+                iconProxyUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(iconHost)}&sz=32`;
+            } catch (_) { /* malformed URL — no proxy fallback */ }
+        }
 
         if (iconUrl) {
             iconHtml = `
@@ -828,6 +835,7 @@ const NoteParser = (() => {
                     <img src="${iconUrl}" 
                          class="note-bookmark-favicon" 
                          alt="" 
+                         data-proxy-url="${iconProxyUrl}"
                          data-action="favicon-cascade">
                     <div class="note-bookmark-emoji-fallback" style="display:none;">${fallbackEmoji}</div>
                 </div>
