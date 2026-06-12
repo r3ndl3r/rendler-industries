@@ -587,8 +587,8 @@ const EmojiPicker = {
             search.oninput = (e) => {
                 const val = e.target.value.toLowerCase().trim();
                 if (!val) {
-                    const activeCat = this.pickerElement.querySelector('.category-btn.active').dataset.cat;
-                    return this.renderEmojis(this.emojis[activeCat]);
+                    const activeCat = this.pickerElement.querySelector('.category-btn.active')?.dataset.cat || 'smileys';
+                    return this.renderEmojis(this.emojis[activeCat] || this.emojis.smileys);
                 }
                 
                 let filtered = [];
