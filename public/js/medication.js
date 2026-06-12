@@ -398,7 +398,7 @@ function renderLogReminderItem(r) {
             </div>
             <div class="reminder-item-actions">
                 <label class="reminder-toggle-switch">
-                    <input type="checkbox" ${active ? 'checked' : ''} onchange="toggleReminderActive(${r.id}, this.checked)">
+                    <input type="checkbox" ${active ? 'checked' : ''} onchange="toggleReminderActive(${r.id}, this.checked, this)">
                     <span class="toggle-slider"></span>
                 </label>
                 <button type="button" class="btn-icon-delete" onclick="deleteReminderSchedule(${r.id})" title="Delete Reminder">🗑️</button>
@@ -537,7 +537,7 @@ function renderReminderItem(r) {
             <div class="reminder-item-actions">
                 <button type="button" class="btn-icon-edit" onclick="openReminderSchedulerForEdit(${r.id})" title="Edit Reminder">✏️</button>
                 <label class="reminder-toggle-switch">
-                    <input type="checkbox" ${active ? 'checked' : ''} onchange="toggleReminderActive(${r.id}, this.checked)">
+                    <input type="checkbox" ${active ? 'checked' : ''} onchange="toggleReminderActive(${r.id}, this.checked, this)">
                     <span class="toggle-slider"></span>
                 </label>
                 <button type="button" class="btn-icon-delete" onclick="deleteReminderSchedule(${r.id})" title="Delete Reminder">🗑️</button>
@@ -896,7 +896,7 @@ function closeReminderScheduler() {
  * @param {boolean} active
  * @returns {Promise<void>}
  */
-async function toggleReminderActive(id, active) {
+async function toggleReminderActive(id, active, checkbox = null) {
     const result = await apiPost(`/medication/api/reminders/toggle/${id}`, { active: active ? 1 : 0 });
     if (result && result.success) {
         const reminder = STATE.reminders.find(r => r.id == id);
@@ -904,6 +904,8 @@ async function toggleReminderActive(id, active) {
         renderReminderList();
         renderGrid();
         updateAllIntervals();
+    } else if (checkbox) {
+        checkbox.checked = !active;
     }
 }
 
