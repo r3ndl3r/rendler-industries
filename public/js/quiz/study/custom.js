@@ -121,6 +121,10 @@ function renderPage() {
 
     pageQuestions.forEach((q, index) => {
         const correctAnswer = q.answers.find(a => a.is_correct);
+        if (!correctAnswer) {
+            console.warn('Custom study: question has no correct answer, skipping');
+            return;
+        }
         const absoluteIndex = start + index + 1;
         const safeImage = safeAssetFilename(q.image);
         const imageHtml = safeImage
