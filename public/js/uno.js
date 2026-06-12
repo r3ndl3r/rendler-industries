@@ -702,7 +702,10 @@ function exitToLobby() {
         SYNC_INTERVAL = null;
     }
     const winModal = document.querySelector('.win-modal-body');
-    if (winModal) winModal.remove();
+    if (winModal) {
+        winModal.remove();
+        document.body.classList.remove('modal-open');
+    }
     
     STATE.view = 'lobby';
     STATE.game_id = null;
@@ -750,6 +753,7 @@ function showWinModal() {
         </div>
     `;
     document.body.appendChild(div);
+    document.body.classList.add('modal-open');
 }
 
 /**
