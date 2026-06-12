@@ -188,13 +188,13 @@ function renderChores() {
                     <div class="chore-header">
                         <div class="chore-title">${escapeHtml(c.title)}</div>
                         <div class="chore-actions">
-                            ${STATE.is_admin ? `<button class="btn-icon-delete" title="Delete Chore" onclick="confirmDeleteChore(${c.id}, '${escapeHtml(c.title).replace(/'/g, "\\'")}')">🗑️</button>` : ''}
+                            ${STATE.is_admin ? `<button class="btn-icon-delete" title="Delete Chore" onclick="confirmDeleteChore(${c.id}, ${escapeHtml(JSON.stringify(c.title || ''))})">🗑️</button>` : ''}
                         </div>
                     </div>
                 </div>
                 ${STATE.is_child ? `
                 <button class="btn-chore-claim" 
-                    onclick="confirmClaim(${c.id}, '${escapeHtml(c.title).replace(/'/g, "\\'")}', ${c.points})">
+                    onclick="confirmClaim(${c.id}, ${escapeHtml(JSON.stringify(c.title || ''))}, ${Number(c.points) || 0})">
                     ✅ I Finished This! <span class="btn-points-tag">Points: ${c.points}</span>
                 </button>
                 ` : `
@@ -595,7 +595,7 @@ function renderQuickAdd() {
     container.innerHTML = STATE.quick_add_chores.map(c => {
         const iconHtml = c.assigned_username ? window.getUserIcon(c.assigned_username) : '🌍';
         return `
-            <div class="repost-item" title="${escapeHtml(c.title)}" onclick="fillChoreForm('${escapeHtml(c.title)}', ${c.points}, '${c.assigned_to || ''}')">
+            <div class="repost-item" title="${escapeHtml(c.title)}" onclick="fillChoreForm(${escapeHtml(JSON.stringify(c.title || ''))}, ${Number(c.points) || 0}, ${escapeHtml(JSON.stringify(c.assigned_to || ''))})">
                 <span class="repost-icon">${iconHtml}</span>
                 <span class="repost-title">${escapeHtml(c.title)}</span>
                 <span class="repost-pts">+${c.points}</span>
