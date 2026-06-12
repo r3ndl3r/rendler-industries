@@ -1110,9 +1110,10 @@ function closeEditModal() {
  * @returns {void}
  */
 function confirmDeleteMedication(id, name) {
+    const safeName = escapeHtml(name || '');
     showConfirmModal({
         title: 'Delete Log',
-        message: `Are you sure you want to delete the log for <strong>${name}</strong>?`,
+        message: `Are you sure you want to delete the log for <strong>${safeName}</strong>?`,
         danger: true,
         confirmText: 'Delete',
         hideCancel: true,
@@ -1286,9 +1287,10 @@ function closeManageModal() {
  * @returns {void}
  */
 function confirmDeleteRegistry(id, name) {
+    const safeName = escapeHtml(name || '');
     showConfirmModal({
         title: 'Remove from Registry',
-        message: `Are you sure you want to remove <strong>${name}</strong> from the registry?`,
+        message: `Are you sure you want to remove <strong>${safeName}</strong> from the registry?`,
         danger: true,
         confirmText: 'Remove',
         hideCancel: true,
