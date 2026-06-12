@@ -48,8 +48,8 @@ let currentAudio = null;
 /** @type {string|null} Filename of the currently playing audio track. */
 let currentPlayingFile = null;
 
-/** @type {number} Global sequence counter to prevent stale AJAX overwrites. */
-let requestCounter = 0;
+/** @type {boolean} Prevents concurrent AJAX mutations on the modal. */
+let mutationInFlight = false;
 
 /**
  * Fetches the full custom study state from the server and triggers a re-render.
@@ -288,18 +288,20 @@ function renderModalList(query) {
         `;
 
         item.querySelector('.custom-modal-toggle').addEventListener('click', async (e) => {
-            const requestId = ++requestCounter;
+            if (mutationInFlight) return;
+            mutationInFlight = true;
             const btn       = e.currentTarget;
             const index     = parseInt(btn.dataset.index, 10);
             const removing  = q.in_list;
-            btn.disabled    = true;
+
+            document.querySelectorAll('.custom-modal-toggle').forEach(b => b.disabled = true);
 
             const endpoint = removing ? '/quiz/api/custom/remove' : '/quiz/api/custom/add';
             const res      = await apiPost(endpoint, { question_index: index });
 
-            // Lifecycle: Ignore response if a newer request has already been initiated
-            if (!res || requestId !== requestCounter) {
-                if (!res) btn.disabled = false;
+            if (!res) {
+                mutationInFlight = false;
+                document.querySelectorAll('.custom-modal-toggle').forEach(b => b.disabled = false);
                 return;
             }
 
@@ -309,6 +311,7 @@ function renderModalList(query) {
 
             renderUI();
             renderModalList(document.getElementById('question-search')?.value ?? '');
+            mutationInFlight = false;
         });
 
         list.appendChild(item);
