@@ -300,17 +300,28 @@ function renderResults(container) {
  * @returns {Promise<void>}
  */
 async function apiAction(url, params = {}, btn = null) {
-    if (btn) btn.classList.add('pending');
+    if (btn && btn.disabled) return false;
+    const wasDisabled = btn ? btn.disabled : false;
+    if (btn) {
+        btn.classList.add('pending');
+        btn.disabled = true;
+    }
+    let didSucceed = false;
     try {
         const res = await window.apiPost(url, params);
         if (res && res.success) {
+            didSucceed = true;
             await loadState(true);
         }
     } catch (err) {
         console.error("API Action Failed:", url, err);
     } finally {
-        if (btn) btn.classList.remove('pending');
+        if (btn) {
+            btn.classList.remove('pending');
+            btn.disabled = wasDisabled;
+        }
     }
+    return didSucceed;
 }
 
 /**
