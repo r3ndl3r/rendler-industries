@@ -166,7 +166,11 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil(
+        caches.keys().then(keys => Promise.all(
+            keys.filter(k => k.startsWith(OFFLINE_CACHE_PREFIX) && k !== CACHE_NAME).map(k => caches.delete(k))
+        )).then(() => self.clients.claim())
+    );
 });
 
 self.addEventListener('push', (event) => {
@@ -225,6 +229,7 @@ self.addEventListener('fetch', (event) => {
     if (url.pathname === '/audiobooks/api/state') return;
 
     if (shouldBypassApiGetCache(url)) return;
+    if (url.pathname === '/admin/automator') return;
 
     if (isApiGet(event.request, url)) {
         event.respondWith(apiGetResponse(event));
