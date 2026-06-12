@@ -34,6 +34,29 @@ let isAnswered = false;             // Interaction semaphore
 let currentAudio = null;            // Global Audio element reference
 let currentPlayingFile = null;      // Identifier for smart-toggle logic
 
+function asArray(value) {
+    return Array.isArray(value) ? value : [];
+}
+
+function isCorrectValue(value) {
+    return value === true || value === 1 || value === '1' || value === 'true';
+}
+
+function normalizeQuestion(question) {
+    return {
+        ...question,
+        answers: asArray(question && question.answers).map(answer => ({
+            ...answer,
+            is_correct: isCorrectValue(answer && answer.is_correct)
+        }))
+    };
+}
+
+function safeAssetFilename(filename) {
+    const value = String(filename || '').trim();
+    return /^[A-Za-z0-9._-]+$/.test(value) ? encodeURIComponent(value) : '';
+}
+
 /**
  * Initialization System: initQuiz
  * Boots the quiz interface based on URL context (Random vs. All).
@@ -52,7 +75,7 @@ async function initQuiz() {
     const data = await apiGet(apiUrl);
     
     if (data && data.success) {
-        questions = data.questions;
+        questions = asArray(data.questions).map(normalizeQuestion);
         
         if (loadingState) loadingState.classList.add('hidden');
         if (questions.length > 0) {
@@ -75,13 +98,14 @@ async function initQuiz() {
  * @param {string} filename - The target audio resource
  */
 function playAudio(filename) {
-    if (!filename) return;
+    const safeFilename = safeAssetFilename(filename);
+    if (!safeFilename) return;
     
     // Lifecycle: ensure silence before starting new stream
     stopSpeaking(); 
 
-    currentPlayingFile = filename;
-    currentAudio = new Audio(`/audio/quiz/${filename}`);
+    currentPlayingFile = safeFilename;
+    currentAudio = new Audio(`/audio/quiz/${safeFilename}`);
     
     currentAudio.onended = () => {
         currentPlayingFile = null;
@@ -137,9 +161,10 @@ function renderQuestion() {
     if (hintBtn) hintBtn.classList.remove('active');
 
     // Context: resolve image-based hints
-    if (currentQ.image && hintBtn && hintImage) {
+    const safeImage = safeAssetFilename(currentQ.image);
+    if (safeImage && hintBtn && hintImage) {
         hintBtn.classList.remove('hidden'); 
-        hintImage.src = `/images/quiz/${currentQ.image}`; 
+        hintImage.src = `/images/quiz/${safeImage}`; 
         
         // Interaction: attach toggle logic via cloning to purge previous listeners
         const newBtn = hintBtn.cloneNode(true);
@@ -204,19 +229,19 @@ function renderQuestion() {
         answersContainer.innerHTML = '';
 
         // Logic: Shuffle answers to prevent pattern-guessing
-        const shuffledAnswers = [...currentQ.answers].sort(() => Math.random() - 0.5);
+        const shuffledAnswers = asArray(currentQ.answers).sort(() => Math.random() - 0.5);
 
         shuffledAnswers.forEach(answer => {
             const btn = document.createElement('button');
             btn.className = 'answer-btn';
             
             // Context: tag for validation hook
-            btn.dataset.correct = answer.is_correct; 
+            btn.dataset.correct = answer.is_correct ? 'true' : 'false'; 
 
             btn.innerHTML = `
-                <div class="answer-text-en">${answer.text}</div>
-                <div class="answer-text-ph">${answer.ph}</div>
-                <div class="thai-text answer-text-th">${answer.th}</div>
+                <div class="answer-text-en">${escapeHtml(answer.text || '')}</div>
+                <div class="answer-text-ph">${escapeHtml(answer.ph || '')}</div>
+                <div class="thai-text answer-text-th">${escapeHtml(answer.th || '')}</div>
             `;
 
             btn.onclick = () => handleAnswer(btn, answer);
@@ -251,7 +276,7 @@ function handleAnswer(selectedBtn, answerObj) {
 
     // Logic: Identify target records from state
     const currentQ = questions[currentQuestionIndex];
-    const correctAnswerObj = currentQ.answers.find(a => a.is_correct);
+    const correctAnswerObj = asArray(currentQ.answers).find(a => a.is_correct);
 
     if (answerObj.is_correct) {
         // Scenario: Success
