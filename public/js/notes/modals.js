@@ -1280,7 +1280,11 @@ function showBoardInfo() {
     // Delegated tab switching: wired after showConfirmModal renders the DOM synchronously.
     if (!modalContent) return;
 
-    modalContent.addEventListener('click', (e) => {
+    if (modalContent._boardGuideTabHandler) {
+        modalContent.removeEventListener('click', modalContent._boardGuideTabHandler);
+    }
+
+    modalContent._boardGuideTabHandler = (e) => {
         const btn = e.target.closest('[data-action="guide-tab"]');
         if (!btn) return;
 
@@ -1292,7 +1296,9 @@ function showBoardInfo() {
         btn.classList.add('active');
         const panel = modalContent.querySelector(`.guide-tab-panel[data-panel="${tab}"]`);
         if (panel) panel.classList.add('active');
-    });
+    };
+
+    modalContent.addEventListener('click', modalContent._boardGuideTabHandler);
 }
 
 /**
