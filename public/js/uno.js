@@ -518,7 +518,7 @@ async function drawCard(el) {
     }
 
     STATE.pendingAction = true;
-    el.classList.add('pending');
+    if (el) el.classList.add('pending');
     
     try {
         const res = await window.apiPost('/uno/api/draw_card', { id: STATE.game_id });
@@ -535,7 +535,7 @@ async function drawCard(el) {
         console.error("Draw Card Failed:", err);
     } finally {
         STATE.pendingAction = false;
-        el.classList.remove('pending');
+        if (el) el.classList.remove('pending');
     }
 }
 
