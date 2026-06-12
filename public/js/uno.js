@@ -110,6 +110,16 @@ function formatLobbyDate(value) {
 }
 
 /**
+ * Returns a safe display name for a player, defaulting to 'Player'.
+ *
+ * @param {Object} player - Player object with optional name field.
+ * @returns {string} Safe display name.
+ */
+function playerDisplayName(player) {
+    return String(player?.name || 'Player');
+}
+
+/**
  * State: Fetches the appropriate state based on current view.
  * @returns {Promise<void>}
  */
@@ -366,19 +376,26 @@ function renderBoard(container) {
             </div>
 
             <div class="opponents-grid">
-                ${orderedPlayers.map((p, i) => i === 0 ? '' : `
+                ${orderedPlayers.map((p, i) => {
+                    if (i === 0) return '';
+                    const name = playerDisplayName(p);
+                    const avatar = window.getUserIcon
+                        ? window.getUserIcon(name)
+                        : `<div class="default-avatar">${escapeHtml(name.charAt(0).toUpperCase() || '?')}</div>`;
+                    return `
                     <div class="player-slot slot-${i} ${STATE.game.turn === p.id ? 'active-turn' : ''}">
                         <div class="player-avatar">
-                            ${window.getUserIcon ? window.getUserIcon(p.name) : '<div class="default-avatar">' + p.name.charAt(0).toUpperCase() + '</div>'}
+                            ${avatar}
                         </div>
                         <div class="player-meta">
-                            <span class="player-name">${escapeHtml(p.name)}</span>
+                            <span class="player-name">${escapeHtml(name)}</span>
                             <span class="card-count">${p.card_count} Cards</span>
                             ${p.said_uno ? '<span class="uno-badge">UNO!</span>' : ''}
                             ${p.card_count === 1 && !p.said_uno ? `<button onclick="catchUno(${p.id}, this)" class="btn-danger btn-small catch-btn">Catch!</button>` : ''}
                         </div>
                     </div>
-                `).join('')}
+                `;
+                }).join('')}
             </div>
 
             <div class="table-center">
