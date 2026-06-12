@@ -42,6 +42,8 @@ let STATE = {
     reminderSaving: false           // Prevents double-submits from creating duplicate saves
 };
 
+let loadStateRequestSeq = 0;
+
 /**
  * Bootstraps the module state and establishes background lifecycles.
  * 
@@ -86,7 +88,9 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
+        const requestSeq = ++loadStateRequestSeq;
         const data = await apiGet('/medication/api/state');
+        if (requestSeq !== loadStateRequestSeq) return;
 
         if (data && data.success) {
             STATE.logs = data.logs;
