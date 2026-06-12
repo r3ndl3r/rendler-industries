@@ -37,6 +37,8 @@ let STATE = {
     pending_submissions: [],
     my_submissions: []
 };
+let choresStateRequestSeq = 0;
+let mySubmissionsRequestSeq = 0;
 
 /**
  * Bootstraps the module state and establishes event delegation.
@@ -65,7 +67,9 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.active_chores.length > 0) return;
 
     try {
+        const requestSeq = ++choresStateRequestSeq;
         const data = await apiGet('/chores/api/state');
+        if (requestSeq !== choresStateRequestSeq) return;
         if (data && data.success) {
             STATE = { ...STATE, ...data };
             renderUI();
@@ -91,7 +95,9 @@ async function loadMySubmissions(force = false) {
     if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
+        const requestSeq = ++mySubmissionsRequestSeq;
         const data = await apiGet('/chores/api/my_submissions');
+        if (requestSeq !== mySubmissionsRequestSeq) return;
         if (data && data.success) {
             STATE.my_submissions = data.submissions || [];
             renderMySubmissions();
