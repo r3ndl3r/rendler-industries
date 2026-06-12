@@ -76,7 +76,6 @@ function renderUI() {
     const emptyState         = document.getElementById('empty-state');
     const questionsContainer = document.getElementById('questions-container');
     const paginationControls = document.getElementById('pagination-controls');
-    const totalDisplay       = document.getElementById('total-questions');
 
     loadingState?.classList.add('hidden');
 
@@ -84,14 +83,12 @@ function renderUI() {
         emptyState?.classList.remove('hidden');
         questionsContainer?.classList.add('hidden');
         paginationControls?.classList.add('hidden');
-        if (totalDisplay) totalDisplay.classList.add('hidden');
         return;
     }
 
     emptyState?.classList.add('hidden');
     questionsContainer?.classList.remove('hidden');
     paginationControls?.classList.remove('hidden');
-    if (totalDisplay) totalDisplay.classList.add('hidden');
 
     const totalPages = Math.ceil(STATE.study_questions.length / ITEMS_PER_PAGE);
     if (currentPage >= totalPages) currentPage = Math.max(0, totalPages - 1);
