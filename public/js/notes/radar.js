@@ -247,7 +247,9 @@ function handleRadarWheel(e) {
  */
 function toggleRadar() {
     STATE.showRadar = !STATE.showRadar;
-    localStorage.setItem('notes_show_radar', STATE.showRadar);
+    try {
+        localStorage.setItem('notes_show_radar', STATE.showRadar ? 'true' : 'false');
+    } catch (err) { }
     renderRadarState();
 }
 
@@ -258,10 +260,25 @@ function toggleRadar() {
 function renderRadarState() {
     const radar = document.getElementById('radar-container');
     if (!radar) return;
+    if (typeof STATE.showRadar === 'undefined') {
+        STATE.showRadar = getStoredRadarVisibility();
+    }
 
     if (STATE.showRadar) {
         radar.classList.add('is-open');
     } else {
         radar.classList.remove('is-open');
+    }
+}
+
+/**
+ * Reads radar visibility preference from localStorage with safe fallback.
+ * @returns {boolean} True if radar was previously shown, false otherwise.
+ */
+function getStoredRadarVisibility() {
+    try {
+        return localStorage.getItem('notes_show_radar') === 'true';
+    } catch (err) {
+        return false;
     }
 }
