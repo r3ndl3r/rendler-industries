@@ -109,14 +109,26 @@ function renderGrid() {
 }
 
 /**
- * Generates the HTML fragment for a single timer session card.
+ * Clamps elapsed/limit progress to a valid 0-100 percentage.
+ *
+ * @param {number} elapsed
+ * @param {number} limit
+ * @returns {number}
+ */
+function progressPercent(elapsed, limit) {
+    if (limit <= 0) return 0;
+    return Math.min(100, Math.max(0, (elapsed / limit) * 100));
+}
+
+/**
+ * Renders a single timer card with full status, controls, and progress bar.
  * 
  * @param {Object} t - Timer record metadata.
  * @returns {string} - Rendered HTML.
  */
 function renderTimerCard(t) {
     const isUnlimited = t.limit_seconds === -1;
-    const progress = (isUnlimited || t.limit_seconds <= 0) ? 0 : (t.elapsed_seconds / t.limit_seconds * 100);
+    const progress = isUnlimited ? 0 : progressPercent(t.elapsed_seconds, t.limit_seconds);
     const isExpired = !isUnlimited && t.remaining_seconds <= 0;
     
     const cat = t.category || '';
@@ -390,7 +402,7 @@ function updateLocalTimers() {
                         }
                     }
                     if (progressBar) {
-                        const progress = t.limit_seconds > 0 ? (t.elapsed_seconds / t.limit_seconds * 100) : 0;
+                        const progress = progressPercent(t.elapsed_seconds, t.limit_seconds);
                         progressBar.style.width = `${progress}%`;
                     }
 
