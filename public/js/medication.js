@@ -885,7 +885,7 @@ function closeReminderScheduler() {
     const modal = document.getElementById('reminderSchedulerModal');
     if (modal) {
         modal.classList.remove('show');
-        document.body.classList.remove('modal-open');
+        if (!hasOpenMedicationModal()) document.body.classList.remove('modal-open');
     }
 }
 
@@ -1046,11 +1046,22 @@ function openDoseModal() {
  * 
  * @returns {void}
  */
+function hasOpenMedicationModal() {
+    return !!document.querySelector([
+        '#doseModal.show',
+        '#editModal.show',
+        '#registryModal.show',
+        '#manageEditModal.show',
+        '#reminderSchedulerModal.show',
+        '#globalConfirmActionModal.show'
+    ].join(', '));
+}
+
 function closeDoseModal() { 
     const modal = document.getElementById('doseModal');
     if (modal) {
         modal.classList.remove('show');
-        document.body.classList.remove('modal-open');
+        if (!hasOpenMedicationModal()) document.body.classList.remove('modal-open');
     }
 }
 
@@ -1098,7 +1109,7 @@ function closeEditModal() {
     const modal = document.getElementById('editModal');
     if (modal) {
         modal.classList.remove('show');
-        document.body.classList.remove('modal-open');
+        if (!hasOpenMedicationModal()) document.body.classList.remove('modal-open');
     }
 }
 
@@ -1246,7 +1257,7 @@ function closeRegistryModal() {
     const modal = document.getElementById('registryModal');
     if (modal) {
         modal.classList.remove('show'); 
-        document.body.classList.remove('modal-open');
+        if (!hasOpenMedicationModal()) document.body.classList.remove('modal-open');
     }
 }
 
