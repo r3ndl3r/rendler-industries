@@ -35,6 +35,7 @@ async function loadPrintContent() {
         }
 
         renderQuestions(data.study_questions);
+        document.getElementById('print-btn')?.removeAttribute('disabled');
     } else {
         document.getElementById('loading-state')?.classList.add('hidden');
         document.getElementById('error-state')?.classList.remove('hidden');
@@ -54,10 +55,16 @@ function renderQuestions(questions) {
 
     if (!list || !content) return;
 
+    list.innerHTML = '';
+
     if (subtitle) subtitle.textContent = `${questions.length} Questions`;
 
     questions.forEach((q, index) => {
         const correctAnswer = q.answers.find(a => a.is_correct);
+        if (!correctAnswer) {
+            console.warn(`Print: No correct answer for question ${index + 1}, skipping`);
+            return;
+        }
 
         const item = document.createElement('div');
         item.className = 'print-item';
@@ -76,6 +83,11 @@ function renderQuestions(questions) {
                         <span class="print-explanation-label">💡 </span>${escapeHtml(correctAnswer.explanation)}
                     </div>
                 ` : ''}
+                ${correctAnswer.explanation_th ? `
+                    <div class="print-explanation print-explanation-th">
+                        ${escapeHtml(correctAnswer.explanation_th)}
+                    </div>
+                ` : ''}
             </div>
         `;
 
@@ -92,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPrintContent();
 
     document.getElementById('print-btn')?.addEventListener('click', () => {
+        if (document.getElementById('print-content')?.classList.contains('hidden')) return;
         window.print();
     });
 });

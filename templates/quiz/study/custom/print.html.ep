@@ -15,7 +15,7 @@
     </div>
     <div class="manage-actions">
       <a href="/quiz/study/custom" class="btn-back">⬅️ Back</a>
-      <button id="print-btn" class="btn-primary">🖨️ Print</button>
+      <button id="print-btn" class="btn-primary" disabled>🖨️ Print</button>
     </div>
   </div>
 
