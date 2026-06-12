@@ -29,7 +29,6 @@
     <link rel="stylesheet" href="/css/menubar.css">
 
     <%# Global Script Dependencies %>
-    <script src="/js/jquery.js"></script>
     <script src="/js/toast.js"></script>
     <script src="/js/default.js"></script>
     <script src="/js/emoji-picker.js"></script>

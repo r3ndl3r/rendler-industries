@@ -150,18 +150,6 @@ function setupGlobalModalClosing(modalClasses = ['modal-overlay', 'delete-modal-
         return originalFetch(url, options);
     };
 
-    // 2. jQuery AJAX Hook: Injects token into all jQuery-based requests
-    if (window.jQuery) {
-        window.jQuery.ajaxSetup({
-            beforeSend: function(xhr, settings) {
-                const token = getCsrfToken();
-                if (token && !['GET', 'HEAD', 'OPTIONS'].includes(settings.type.toUpperCase())) {
-                    xhr.setRequestHeader('X-CSRF-Token', token);
-                }
-            }
-        });
-    }
-
     // 3. Form Submission Hook: Injects hidden input into standard POST forms
     document.addEventListener('submit', function(e) {
         if (e.target.tagName === 'FORM') {
