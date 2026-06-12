@@ -1514,8 +1514,10 @@ function renderSearchResults(results, isGlobal) {
         return;
     }
 
-    container.innerHTML = CURRENT_SEARCH_RESULTS.map(note => `
-        <div class="search-result-item" style="--note-accent: ${note.color || '#3b82f6'}" onclick="handleSearchResultClick(${note.id})">
+    container.innerHTML = CURRENT_SEARCH_RESULTS.map(note => {
+        const accentColor = typeof normalizeColorHex === 'function' ? normalizeColorHex(note.color) : (note.color || '#3b82f6');
+        return `
+        <div class="search-result-item" style="--note-accent: ${accentColor}" onclick="handleSearchResultClick(${note.id})">
             <div class="search-result-icon">
                 <span class="global-icon">${note.type === 'image' ? '🖼️' : note.type === 'file' ? '📁' : '✏️'}</span>
             </div>
@@ -1532,7 +1534,8 @@ function renderSearchResults(results, isGlobal) {
                 ${note.type === 'text' && note.content ? `<button class="search-result-copy-btn global-icon" onclick="copySearchResultContent(event, ${note.id})" title="Copy content">📋</button>` : ''}
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function copySearchResultContent(event, id) {
