@@ -576,6 +576,8 @@ function restoreUIState() {
     const savedTab = localStorage.getItem(CONFIG.TAB_KEY);
     if (savedTab && document.getElementById(`panel-${savedTab}`)) {
         activateTab(savedTab);
+    } else {
+        activateTab('notifications');
     }
 
     // Interaction: Tab navigation listeners
