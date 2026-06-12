@@ -150,6 +150,7 @@ function startPolling() {
         if (document.querySelector('.modal-overlay.show')) return;
         if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
         if (STATE.colorPickerResolve) return; // Don't sync while picking color
+        if (STATE.pendingAction) return;
 
         // Stop polling if game is finished
         if (STATE.game && STATE.game.status === 'finished') {
