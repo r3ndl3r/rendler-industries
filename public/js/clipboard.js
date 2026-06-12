@@ -24,7 +24,7 @@
 let moduleState = {
     messages: [],                   // Collection of clipping records from DB
     isAdmin: false,                  // Elevated privilege flag for administrative tools
-    userConfig: {}                  // Permission flags for notification channels
+    user_config: {}                 // Permission flags for notification channels
 };
 
 /**
