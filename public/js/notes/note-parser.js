@@ -358,9 +358,11 @@ const NoteParser = (() => {
             const safeTitle   = meta   ? window.escapeHtml(meta.title || id) : `Image #${id}`;
 
             const att      = attachments[0] || {};
-            const ext      = att.mime_type ? att.mime_type.split('/')[1].toUpperCase() : 'IMG';
+            const ext      = att.mime_type
+                ? String(att.mime_type.split('/')[1] || 'IMG').toUpperCase().replace(/[^A-Z0-9.+-]/g, '')
+                : 'IMG';
             const sizeStr  = att.file_size ? ` • ${window.formatBytes(att.file_size)}` : '';
-            const metaInfo = `${ext}${sizeStr} • #${id}`;
+            const metaInfo = window.escapeHtml(`${ext || 'IMG'}${sizeStr} • #${id}`);
 
             const dataAction = blobId ? 'view-attachment' : 'view-note';
             const dataAttrs = blobId ? `data-action="${dataAction}" data-blob-id="${blobId}" data-note-id="${id}"` : `data-action="${dataAction}" data-note-id="${id}"`;
