@@ -171,15 +171,15 @@ function renderTable() {
     const container = document.getElementById('manageTableContainer');
     if (!container) return;
 
-    if (STATE.timers.length === 0) {
-        container.innerHTML = `<div class="no-timers"><p>No timers found.</p></div>`;
-        return;
-    }
-
     // Apply local filtering
     const filtered = STATE.filterUserId 
         ? STATE.timers.filter(t => t.user_id == STATE.filterUserId)
         : STATE.timers;
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="no-timers"><p>No timers found.</p></div>`;
+        return;
+    }
 
     let html = `
         <table class="data-table timers-table">
