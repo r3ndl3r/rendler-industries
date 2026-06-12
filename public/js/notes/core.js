@@ -29,6 +29,7 @@ const STATE = {
     share_list: [],       // ACL for the current board
     vpSaveTimer: null,    // Debounce handle for viewport persistence
     isInitializing: false, // Prevents save-during-load race conditions
+    isInitialized:  false, // Lifecycle Guard: Prevents duplicate listener registration
     maxZ:           1,     // Global Depth Tracking: Accelerates "Bring to Front" actions to O(1)
     viewportDirty:  false, // Mutation Guard: Prevents heartbeat from overwriting unsaved local scrolls
     selectedNoteIds: new Set(), // Bulk Operations: Tracks notes captured by the Marquee/Lasso
@@ -388,6 +389,8 @@ function closeBacklinks() {
  * @returns {Promise<void>}
  */
 async function initNotes() {
+    if (STATE.isInitialized) return;
+    STATE.isInitialized = true;
     // 1. Initial Cache: Establish DOM handles BEFORE any logic runs
     STATE.canvasEl  = document.getElementById('notes-canvas');
     STATE.wrapperEl = document.getElementById('canvas-wrapper');
