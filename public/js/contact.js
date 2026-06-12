@@ -12,12 +12,3 @@
  * - High-density link mapping for social platform deep-linking
  * - Glassmorphism card aesthetic for cross-platform visual consistency
  */
-
-/**
- * Initialization System
- * Boots the contact module and confirms lifecycle state.
- */
-document.addEventListener('DOMContentLoaded', function() {
-    // Lifecycle: verify module load in the client console
-    console.log("Contact module loaded.");
-});
