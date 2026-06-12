@@ -239,7 +239,7 @@ function confirmClaim(choreId, title, points) {
                 loadState(true);
             } else {
                 if (card) card.classList.remove('pending');
-                if (res && res.error) showToast(res.error, "danger");
+                if (res && res.error) showToast(res.error, 'error');
                 loadState(true);
             }
         }
