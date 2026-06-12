@@ -136,7 +136,6 @@ function renderUI() {
         if (adminActions) adminActions.classList.remove('hidden');
         renderAdminControlPanel();
         renderChores();
-        renderUserBalances();
         renderPendingSubmissions();
     } else if (STATE.is_child) {
         if (childView) childView.classList.remove('hidden');
