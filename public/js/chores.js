@@ -565,7 +565,7 @@ async function addChore(e) {
         const res = await apiPost('/chores/api/add', formData);
         
         if (res && res.success) {
-            showToast(`✨ Posted: ${escapeHtml(formData.get('title'))} (+${formData.get('points')} pts). Notification sent!`, 'success');
+            showToast(`✨ Posted: ${formData.get('title')} (+${formData.get('points')} pts). Notification sent!`, 'success');
             form.reset();
             closeAddModal();
             await loadState(true);
