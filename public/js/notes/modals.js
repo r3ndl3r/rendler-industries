@@ -1630,10 +1630,11 @@ async function renderBinList() {
     container.innerHTML = `<div class="loading-bin">⌛ Retrieving archived notes...</div>`;
 
     try {
-        const data = await NoteAPI.get(`/notes/api/bin?canvas_id=${STATE.canvas_id}`);
+        const data = await NoteAPI.get('/notes/api/bin');
+        const notes = Array.isArray(data?.notes) ? data.notes : [];
 
         const emptyBtn = document.getElementById('btn-empty-bin');
-        if (!data.success || !data.notes || data.notes.length === 0) {
+        if (!data || !data.success || notes.length === 0) {
             container.innerHTML = `
                 <div class="bin-empty">
                     <span class="bin-icon">📭</span>
@@ -1645,7 +1646,14 @@ async function renderBinList() {
         }
         if (emptyBtn) emptyBtn.classList.remove('hidden');
 
-        container.innerHTML = data.notes.map(note => {
+        container.onclick = (event) => {
+            const button = event.target.closest('[data-action][data-note-id]');
+            if (!button) return;
+            if (button.dataset.action === 'restore') restoreNote(button.dataset.noteId);
+            if (button.dataset.action === 'purge') confirmNotePurge(button.dataset.noteId);
+        };
+
+        container.innerHTML = notes.map(note => {
             // Parity with notes.js: Normalize color and use updated_at as deletion timestamp
             const accentColor = (typeof normalizeColorHex === 'function') ? normalizeColorHex(note.color) : (note.color || '#3b82f6');
             const deletionDate = note.updated_at ? new Date(note.updated_at).toLocaleDateString() : 'Unknown Date';
@@ -1661,8 +1669,8 @@ async function renderBinList() {
                         </div>
                     </div>
                     <div class="bin-item-actions">
-                        <button class="btn-icon-view" onclick="restoreNote(${note.id})" title="Restore Note">🔄</button>
-                        <button class="btn-icon-delete" onclick="confirmNotePurge(${note.id})" title="Permanently Delete">🗑️</button>
+                        <button class="btn-icon-view" data-action="restore" data-note-id="${note.id}" title="Restore Note">🔄</button>
+                        <button class="btn-icon-delete" data-action="purge" data-note-id="${note.id}" title="Permanently Delete">🗑️</button>
                     </div>
                 </div>
             `;
