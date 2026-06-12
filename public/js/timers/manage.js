@@ -536,14 +536,11 @@ async function handleTransfer(fromId, toId) {
             await loadState(true);
         } else {
             // Error is automatically toasted by apiPost
-            if (targetItem) {
-                targetItem.classList.remove('pending');
-                // Reset content via local render if needed
-                renderUI(); 
-            }
+            showTransferModal(fromId);
         }
     } catch (err) {
         console.error("Transfer Error:", err);
+        showTransferModal(fromId);
     }
 }
 
