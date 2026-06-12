@@ -584,11 +584,12 @@ function normalizeColorHex(color) {
  * Mounted to window to allow use in template strings.
  */
 window.formatBytes = function(bytes, decimals = 1) {
-    if (bytes === 0) return '0 Bytes';
+    bytes = Number(bytes);
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 Bytes';
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(k)));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
