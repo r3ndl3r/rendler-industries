@@ -138,7 +138,7 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
-        const data = await apiGet(`/timers/api/manage/state${STATE.filterUserId ? `?user_id=${STATE.filterUserId}` : ''}`);
+        const data = await apiGet('/timers/api/manage/state');
         
         if (data && data.success) {
             STATE.timers = data.timers;
