@@ -156,10 +156,13 @@ async function loadMore() {
     btn.innerHTML = `⌛ Loading...`;
 
     const filters = getActiveFilters();
+    const filterKey = new URLSearchParams(filters).toString();
     const params = new URLSearchParams({ ...filters, offset: STATE.offset });
 
     try {
         const data = await apiGet(`/receipts/api/list?${params.toString()}`);
+
+        if (filterKey !== new URLSearchParams(getActiveFilters()).toString()) return;
 
         if (data && data.success && data.receipts) {
             STATE.receipts = [...STATE.receipts, ...data.receipts];
