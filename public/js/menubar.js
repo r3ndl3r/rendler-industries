@@ -398,7 +398,7 @@ function restoreMenuVisibility() {
 function escapeHtmlForMenuSearch(str) {
     const div = document.createElement('div');
     div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/`/g, '&#96;');
 }
 
 /**
@@ -434,7 +434,7 @@ function initMenuSearch() {
         results.onmousedown = (e) => {
             const item = e.target.closest('.menu-search-result-item');
             if (item && item.dataset.url) {
-                if (item.dataset.target === '_blank') window.open(item.dataset.url);
+                if (item.dataset.target === '_blank') window.open(item.dataset.url, '_blank', 'noopener,noreferrer');
                 else window.location.href = item.dataset.url;
             }
         };
