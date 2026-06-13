@@ -5,14 +5,13 @@
  * 
  * This module manages the high-level dashboard functionality for the 
  * landing interface. It coordinates the primary system clock, uptime 
- * synchronization, and the project directory explorer.
+ * synchronization hook, and quick-access redirect overlay.
  * 
  * Features:
  * - Real-time AEST dashboard clock with 1-minute prefix updates
  * - Integrated 3D Flip Clock engine initialization
- * - Collaborative "Quick Access" redirection system with progress feedback
- * - AJAX-driven project file mapper with recursive tree rendering
- * - Uptime synchronization for system cores and family members
+ * - Quick Access redirection system with progress feedback
+ * - Uptime synchronization hook for system cores and family members
  * 
  * Dependencies:
  * - moment.js & moment-tz.js: For timezone-accurate formatting
