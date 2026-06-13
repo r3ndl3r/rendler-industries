@@ -209,7 +209,7 @@ async function handlePruneSubmit() {
         hideCancel: true,
         onConfirm: async () => {
             const result = await apiPost('/admin/notifications/logs/api/prune', { days });
-            if (result.success) {
+            if (result && result.success) {
                 closePruneModal();
                 loadState();
                 showToast('Maintenance complete: logs pruned', 'success');
@@ -233,7 +233,7 @@ function confirmDelete(id) {
         hideCancel: true,
         onConfirm: async () => {
             const result = await apiPost(`/admin/notifications/logs/api/delete/${id}`);
-            if (result.success) {
+            if (result && result.success) {
                 loadState();
                 showToast('Entry removed', 'success');
             }
