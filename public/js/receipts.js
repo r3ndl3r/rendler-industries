@@ -402,6 +402,7 @@ function setupUploadOrchestration() {
     zone.addEventListener('dragover', () => zone.classList.add('dragover'));
     zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
     zone.addEventListener('drop', evt => {
+        zone.classList.remove('dragover');
         if (evt.dataTransfer.files.length) {
             input.files = evt.dataTransfer.files;
             input.dispatchEvent(new Event('change'));
