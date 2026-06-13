@@ -264,7 +264,7 @@ function removeLink(id, keyword) {
  * @returns {void}
  */
 function copyGoLink(keyword) {
-    const url = `${window.location.origin}/g/${keyword}`;
+    const url = `${window.location.origin}/g/${encodeURIComponent(keyword)}`;
     navigator.clipboard.writeText(url).then(() => {
         window.showToast(`Link copied: g/${keyword}`, 'success');
     }).catch(err => {
