@@ -49,8 +49,13 @@ sub api_state {
         personal_only => $c->param('personal_only') || 0
     };
 
+    my $receipts = $c->db->get_all_receipts_metadata(11, 0, $f, $user);
+    my $has_more = @$receipts > 10 ? 1 : 0;
+    pop @$receipts if $has_more;
+
     my $state = {
-        receipts    => $c->db->get_all_receipts_metadata(10, 0, $f, $user),
+        receipts    => $receipts,
+        has_more    => $has_more,
         store_names => $c->db->get_unique_store_names(),
         uploaders   => $c->db->get_all_users(),
         summary     => $c->db->get_spending_summary(),

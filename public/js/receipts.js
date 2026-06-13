@@ -131,7 +131,7 @@ async function loadState(force = false) {
             updateFilterDropdowns();
             
             const btn = document.getElementById('loadMoreBtn');
-            if (btn) btn.classList.toggle('hidden', !(data.has_more || STATE.receipts.length >= CONFIG.LIMIT));
+            if (btn) btn.classList.toggle('hidden', !data.has_more);
         }
     } catch (err) {
         console.error("loadState failure:", err);
