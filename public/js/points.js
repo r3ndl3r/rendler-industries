@@ -171,11 +171,12 @@ function renderHistory() {
  * @returns {void}
  */
 function openTransactionModal(userId, username, type) {
+    if (!['reward', 'deduct'].includes(type)) return;
     document.getElementById('targetUserId').value = userId;
     document.getElementById('transactionType').value = type;
 
     const title = document.getElementById('modalTitle');
-    title.innerHTML = `🪙 ${type.toUpperCase()} for ${escapeHtml(username)}`;
+    title.textContent = `🪙 ${type.toUpperCase()} for ${username}`;
 
     document.getElementById('transactionAmount').value = (type === 'reward' ? '1' : '');
     document.getElementById('transactionReason').value = '';
@@ -183,10 +184,10 @@ function openTransactionModal(userId, username, type) {
     const btn = document.getElementById('saveTransactionBtn');
     if (type === 'reward') {
         btn.className = 'btn-success';
-        btn.innerHTML = `💾 ADD`;
+        btn.textContent = `💾 ADD`;
     } else {
         btn.className = 'btn-danger';
-        btn.innerHTML = `💾 DEDUCT`;
+        btn.textContent = `💾 DEDUCT`;
     }
 
     document.getElementById('transactionModal').classList.add('show');
@@ -220,6 +221,11 @@ async function submitTransaction(event) {
     const type = document.getElementById('transactionType').value;
     let amount = parseInt(document.getElementById('transactionAmount').value, 10);
     const reason = document.getElementById('transactionReason').value.trim();
+
+    if (!['reward', 'deduct'].includes(type)) {
+        showToast('Invalid transaction type.', 'error');
+        return;
+    }
 
     if (isNaN(amount) || amount <= 0) {
         showToast('Please enter a valid positive amount.', 'error');
