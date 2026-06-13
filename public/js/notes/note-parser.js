@@ -1033,6 +1033,7 @@ const NoteParser = (() => {
                     const calloutStartCursor = cursor;
                     const type  = calloutMatch[1].toLowerCase().replace(/[^a-z0-9-]/g, '');
                     const title = calloutMatch[2].trim();
+                    let consumedNewlines = (calloutMatch[0].match(/\n/g) || []).length;
                     cursor     += calloutMatch[0].length;
 
                     const bodyLines = [];
@@ -1041,6 +1042,7 @@ const NoteParser = (() => {
                         const line    = lineEnd === -1 ? text.substring(cursor) : text.substring(cursor, lineEnd);
                         if (line.startsWith('> ') || line === '>') {
                             bodyLines.push(line.startsWith('> ') ? line.substring(2) : '');
+                            consumedNewlines++;
                             cursor = lineEnd === -1 ? text.length : lineEnd + 1;
                         } else {
                             break;
@@ -1056,6 +1058,7 @@ const NoteParser = (() => {
                     const safeTitle = title ? window.escapeHtml(title) : meta.label;
                     const bodyHtml  = parseNote(bodyLines.join('\n'), noteId, depth + 1, calloutBodyOffset);
                     output += `<div class="note-callout note-callout--${type}"><div class="note-callout-header"><span class="note-callout-icon">${meta.icon}</span><span class="note-callout-title">${safeTitle}</span></div><div class="note-callout-body">${bodyHtml}</div></div>`;
+                    currentLine += consumedNewlines;
                     isLineStart = true;
                     continue;
                 }
@@ -1112,7 +1115,10 @@ const NoteParser = (() => {
                         // Block-level components consume their trailing \n to prevent a
                         // spurious <br> from appearing after every div/details/hr element.
                         const isBlock = /^<(div|details)/.test(html);
-                        if (isBlock && text[cursor] === '\n') cursor++;
+                        if (isBlock && text[cursor] === '\n') {
+                            currentLine++;
+                            cursor++;
+                        }
                         isLineStart = isBlock;
                         continue;
                     }
