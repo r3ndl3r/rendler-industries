@@ -61,7 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function onHandlePointerUp(e) {
         isDraggingHandle = false;
-        scrollHandle.releasePointerCapture(e.pointerId);
+        if (!scrollHandle) return;
+        if (typeof scrollHandle.hasPointerCapture !== 'function' || scrollHandle.hasPointerCapture(e.pointerId)) {
+            scrollHandle.releasePointerCapture(e.pointerId);
+        }
         scrollHandle.removeEventListener('pointermove', onHandlePointerMove);
         scrollHandle.removeEventListener('pointerup', onHandlePointerUp);
         scrollHandle.removeEventListener('pointercancel', onHandlePointerUp);
