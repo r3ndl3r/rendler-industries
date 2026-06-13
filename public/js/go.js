@@ -129,9 +129,15 @@ function renderList() {
                 </div>
                 
                 <div class="item-actions">
-                    <button type="button" class="btn-icon-copy" onclick="copyGoLink('${safeKeyword}')" title="Copy Link">📋</button>
+                    <button type="button" class="btn-icon-copy"
+                            data-keyword="${safeKeyword}"
+                            onclick="copyGoLink(this.dataset.keyword)"
+                            title="Copy Link">📋</button>
                     <button type="button" class="btn-icon-edit" onclick="openEditModal(${link.id})" title="Edit">✏️</button>
-                    <button type="button" class="btn-icon-delete" onclick="removeLink(${link.id}, '${safeKeyword}')" title="Delete">🗑️</button>
+                    <button type="button" class="btn-icon-delete"
+                            data-keyword="${safeKeyword}"
+                            onclick="removeLink(${link.id}, this.dataset.keyword)"
+                            title="Delete">🗑️</button>
                 </div>
             </div>
         `;
@@ -231,7 +237,7 @@ async function submitEntry(event, isEdit = false) {
 function removeLink(id, keyword) {
     window.showConfirmModal({
         title: 'Delete Link',
-        message: `Are you sure you want to permanently delete the link for <strong>g/${keyword}</strong>?`,
+        message: `Are you sure you want to permanently delete the link for <strong>g/${escapeHtml(keyword)}</strong>?`,
         danger: true,
         confirmText: 'Delete Link',
         hideCancel: true,
