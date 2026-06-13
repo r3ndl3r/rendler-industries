@@ -116,7 +116,7 @@ function renderList() {
             <div class="go-item glass-panel" id="link-row-${link.id}">
                 <div class="item-details">
                     <div class="link-header">
-                        <a href="${safeUrl}" target="_blank" class="item-link">
+                        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="item-link">
                             g/${safeKeyword}
                         </a>
                         <span class="visit-badge">${link.visits} visits</span>
