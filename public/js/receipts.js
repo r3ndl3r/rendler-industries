@@ -528,6 +528,7 @@ async function initPreUploadCrop(file) {
             source = Array.isArray(blob) ? blob[0] : blob;
         } catch (err) {
             showToast('Conversion failed', 'error');
+            openUploadModal();
             return;
         }
     }
