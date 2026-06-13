@@ -131,7 +131,7 @@ function renderHistory() {
     tbody.innerHTML = '';
 
     if (!STATE.history || STATE.history.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center">📜 No transaction history available.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center">📜 No transaction history available.</td></tr>`;
         return;
     }
 
