@@ -854,6 +854,7 @@ async function openCropModal(id) {
     
     try {
         const response = await fetch('/receipts/serve/' + id);
+        if (!response.ok) throw new Error('Failed to load receipt image');
         const blob = await response.blob();
         let display = blob;
         
@@ -863,6 +864,11 @@ async function openCropModal(id) {
         }
         
         const url = URL.createObjectURL(display);
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            showToast('Failed to load image for refinement.', 'error');
+            closeCropModal();
+        };
         img.onload = () => {
             if (STATE.cropper) STATE.cropper.destroy();
             STATE.cropper = new Cropper(img, { viewMode: 1, autoCropArea: 1, responsive: true, checkOrientation: true });
@@ -912,6 +918,7 @@ async function openCropModal(id) {
             }, 'image/png');
         };
     } catch (err) {
+        showToast('Failed to load image for refinement.', 'error');
         closeCropModal();
     }
 }
