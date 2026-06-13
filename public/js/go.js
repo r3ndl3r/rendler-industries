@@ -149,10 +149,6 @@ function renderList() {
  */
 
 /**
- * --- UI & Interaction Logic ---
- */
-
-/**
  * Pre-fills and displays the record modification interface.
  * 
  * @param {number} id - Record identifier.
