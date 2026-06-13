@@ -267,7 +267,7 @@ function renderReceipts(append = false, batch = null) {
                         <button type="button" class="btn-icon-crop" onclick="openCropModal('${r.id}')" title="Refine">✂️</button>
                         <button type="button" class="btn-icon-bonus" onclick="triggerOCR('${r.id}')" title="OCR Scan" id="ocr-btn-${r.id}">🔍</button>
                         <button type="button" class="btn-icon-edit" onclick="openEditModal(${r.id})" title="Edit">✏️</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('${r.id}', '${escapeHtml(r.store_name || r.original_filename)}')" title="Delete">🗑️</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteReceipt('${escapeHtml(String(r.id))}', ${escapeHtml(JSON.stringify(r.store_name || r.original_filename || ''))})" title="Delete">🗑️</button>
                     ` : ''}
                 </div>
             </td>
