@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         el.addEventListener(eventType, () => {
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => loadState(), CONFIG.DEBOUNCE_MS);
+            debounceTimer = setTimeout(() => loadState(true), CONFIG.DEBOUNCE_MS);
         });
     });
 
@@ -62,8 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
-            loadState();
-        };
+            loadState(true);
+        }
     }
 
     // Modal: Global Closure Logic
@@ -81,13 +81,14 @@ document.addEventListener('DOMContentLoaded', () => {
  * Synchronizes the ledger state with the server.
  * 
  * @async
+ * @param {boolean} [force=false] - Skip interaction guard for explicit user actions
  * @returns {Promise<void>}
  */
-async function loadState() {
+async function loadState(force = false) {
     const anyModalOpen = document.querySelector('.modal-overlay.show');
     const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
 
-    if (anyModalOpen || inputFocused) return;
+    if (!force && (anyModalOpen || inputFocused)) return;
 
     const filters = getActiveFilters();
     const params = new URLSearchParams(filters);
