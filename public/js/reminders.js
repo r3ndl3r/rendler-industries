@@ -368,10 +368,12 @@ async function handleAdd(e) {
     e.preventDefault();
     const form = e.target;
     const btn = form.querySelector('button[type="submit"]');
-    const originalHtml = btn.innerHTML;
+    const originalHtml = btn ? btn.innerHTML : '';
     
-    btn.disabled = true;
-    btn.innerHTML = `⌛ Creating...`;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `⌛ Creating...`;
+    }
 
     try {
         const result = await apiPost('/reminders/api/add', new FormData(form));
@@ -380,8 +382,10 @@ async function handleAdd(e) {
             await loadState(true);
         }
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
     }
 }
 
@@ -395,12 +399,18 @@ async function handleAdd(e) {
 async function handleEdit(e) {
     e.preventDefault();
     const form = e.target;
-    const id = document.getElementById('editReminderId').value;
+    const id = document.getElementById('editReminderId')?.value;
+    if (!id) {
+        showToast('Missing reminder ID', 'error');
+        return;
+    }
     const btn = form.querySelector('button[type="submit"]');
-    const originalHtml = btn.innerHTML;
+    const originalHtml = btn ? btn.innerHTML : '';
 
-    btn.disabled = true;
-    btn.innerHTML = `⌛ Saving...`;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `⌛ Saving...`;
+    }
 
     try {
         const result = await apiPost(`/reminders/api/update/${id}`, new FormData(form));
@@ -409,8 +419,10 @@ async function handleEdit(e) {
             await loadState(true);
         }
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
     }
 }
 
