@@ -1118,7 +1118,17 @@ function closeEditModal() { const m = document.getElementById('editModal'); if (
  * 
  * @returns {void}
  */
-function closeCropModal() { const m = document.getElementById('cropModal'); if (m) m.classList.remove('show'); }
+function closeCropModal() {
+    const m = document.getElementById('cropModal');
+    if (m) m.classList.remove('show');
+    if (STATE.cropper) {
+        STATE.cropper.destroy();
+        STATE.cropper = null;
+    }
+    const img = document.getElementById('cropImg');
+    if (img) img.removeAttribute('src');
+    window.saveCrop = null;
+}
 
 /**
  * Hides the AI-structured data view.
