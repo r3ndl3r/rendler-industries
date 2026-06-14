@@ -993,7 +993,7 @@ async function viewElectronicReceipt(id, force = 0, preLoaded = null, initialIco
             content.innerHTML = `
                 <div class="alert alert-error">
                     <p>⚙️ <strong>Analysis Failed</strong></p>
-                    <p class="error-detail">${errorMsg}</p>
+                    <p class="error-detail">${escapeHtml(errorMsg)}</p>
                 </div>`;
         }
     } catch (err) {
