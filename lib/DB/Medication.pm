@@ -74,20 +74,7 @@ sub DB::log_medication_dose {
     my $sth_id = $self->{dbh}->prepare("SELECT id FROM medication_registry WHERE name = ?");
     $sth_id->execute($medication_name);
     my ($med_id) = $sth_id->fetchrow_array();
-    
-    # 3. Insert the log
-    my $sql = "INSERT INTO medication_logs (medication_id, family_member_id, logged_by_id, dosage" . ($taken_at ? ", taken_at" : "") . ") VALUES (?, ?, ?, ?" . ($taken_at ? ", ?" : "") . ")";
-    my $sth_log = $self->{dbh}->prepare($sql);
-    
-    my @params = ($med_id, $family_member_id, $logged_by_id, $dosage);
-    push @params, $taken_at if $taken_at;
-    
-    $sth_log->execute(@params);
-    my $log_id = $self->{dbh}->last_insert_id();
 
-    # Auto-confirm the single closest pending reminder event for this
-    # medication/member/date so overdue alerts stop without clearing every
-    # same-day reminder for that medication.
     my ($event_date, $logged_time);
     if ($taken_at && $taken_at =~ /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}(?::\d{2})?)/) {
         $event_date = $1;
@@ -100,7 +87,7 @@ sub DB::log_medication_dose {
     }
 
     my $event_sth = $self->{dbh}->prepare("
-        SELECT e.id
+        SELECT e.id, r.source_log_id
         FROM medication_reminder_events e
         JOIN medication_reminders r ON e.reminder_id = r.id
         WHERE r.medication_id = ?
@@ -114,19 +101,58 @@ sub DB::log_medication_dose {
         LIMIT 1
     ");
     $event_sth->execute($med_id, $family_member_id, $event_date, $logged_time, $logged_time);
-    my ($event_id) = $event_sth->fetchrow_array();
+    my $event = $event_sth->fetchrow_hashref();
 
-    if ($event_id) {
-        my $confirm_sth = $self->{dbh}->prepare("
-            UPDATE medication_reminder_events
-            SET confirmed_at = NOW(), confirmed_by = ?
-            WHERE id = ?
-              AND confirmed_at IS NULL
-        ");
-        $confirm_sth->execute($logged_by_id, $event_id);
+    if ($event && $event->{source_log_id}) {
+        $self->{dbh}->begin_work;
+        eval {
+            my $taken_expr = $taken_at ? '?' : 'NOW()';
+            my $update_sth = $self->{dbh}->prepare("
+                UPDATE medication_logs
+                SET taken_at = $taken_expr, logged_by_id = ?, dosage = ?
+                WHERE id = ?
+                  AND medication_id = ?
+                  AND family_member_id = ?
+            ");
+            my @update_params;
+            push @update_params, $taken_at if $taken_at;
+            push @update_params, $logged_by_id, $dosage, $event->{source_log_id}, $med_id, $family_member_id;
+            $update_sth->execute(@update_params);
+            if ($update_sth->rows <= 0) {
+                my ($exists) = $self->{dbh}->selectrow_array(
+                    "SELECT 1 FROM medication_logs WHERE id = ? AND medication_id = ? AND family_member_id = ?",
+                    undef,
+                    $event->{source_log_id}, $med_id, $family_member_id
+                );
+                die "source medication log not found for reminder event $event->{id}" unless $exists;
+            }
+
+            my $confirm_sth = $self->{dbh}->prepare("
+                UPDATE medication_reminder_events
+                SET confirmed_at = NOW(), confirmed_by = ?
+                WHERE id = ?
+                  AND confirmed_at IS NULL
+            ");
+            $confirm_sth->execute($logged_by_id, $event->{id});
+
+            $self->{dbh}->commit;
+        };
+        if ($@) {
+            $self->{dbh}->rollback;
+            die $@;
+        }
+        return $event->{source_log_id};
     }
-
-    return $log_id;
+    
+    # 3. Insert the log
+    my $sql = "INSERT INTO medication_logs (medication_id, family_member_id, logged_by_id, dosage" . ($taken_at ? ", taken_at" : "") . ") VALUES (?, ?, ?, ?" . ($taken_at ? ", ?" : "") . ")";
+    my $sth_log = $self->{dbh}->prepare($sql);
+    
+    my @params = ($med_id, $family_member_id, $logged_by_id, $dosage);
+    push @params, $taken_at if $taken_at;
+    
+    $sth_log->execute(@params);
+    return $self->{dbh}->last_insert_id();
 }
 
 # Updates an existing medication log entry.
@@ -486,8 +512,7 @@ sub DB::get_overdue_medication_confirmations {
     return $sth->fetchall_arrayref({});
 }
 
-# Confirms a pending reminder event as taken and inserts a new dose log
-# with duplicate prevention.
+# Confirms a pending reminder event as taken and updates its source dose log.
 # Parameters:
 #   event_id       : Integer event ID
 #   confirmed_by   : Integer user ID who confirmed
@@ -496,54 +521,70 @@ sub DB::confirm_medication_reminder {
     my ($self, $event_id, $confirmed_by) = @_;
     $self->ensure_connection;
 
-    # Only the family member attached to the reminder can confirm it.
-    my $sth = $self->{dbh}->prepare("
-        UPDATE medication_reminder_events e
-        JOIN medication_reminders r ON e.reminder_id = r.id
-        SET e.confirmed_at = NOW(), e.confirmed_by = ?
-        WHERE e.id = ? AND e.confirmed_at IS NULL
-          AND r.family_member_id = ?
-    ");
-    $sth->execute($confirmed_by, $event_id, $confirmed_by);
-    return { success => 0 } unless $sth->rows > 0;
-
-    # Fetch the reminder schedule for dose-log handling
-    my $sth_r = $self->{dbh}->prepare("
-        SELECT r.medication_id, r.family_member_id, r.dosage, r.source_log_id,
-               e.scheduled_date, e.scheduled_time,
-               reg.name as medication_name
-        FROM medication_reminder_events e
-        JOIN medication_reminders r ON e.reminder_id = r.id
-        JOIN medication_registry reg ON r.medication_id = reg.id
-        WHERE e.id = ?
-    ");
-    $sth_r->execute($event_id);
-    my $reminder = $sth_r->fetchrow_hashref();
-
-    my $log_id = undef;
-    if ($reminder) {
-        my $dup_sth = $self->{dbh}->prepare("
-            SELECT id FROM medication_logs
-            WHERE medication_id = ?
-              AND family_member_id = ?
-              AND logged_by_id = ?
-              AND ABS(TIMESTAMPDIFF(MINUTE, taken_at, NOW())) < 5
-            LIMIT 1
+    $self->{dbh}->begin_work;
+    eval {
+        # Only the family member attached to the reminder can confirm it.
+        my $sth = $self->{dbh}->prepare("
+            UPDATE medication_reminder_events e
+            JOIN medication_reminders r ON e.reminder_id = r.id
+            SET e.confirmed_at = NOW(), e.confirmed_by = ?
+            WHERE e.id = ? AND e.confirmed_at IS NULL
+              AND r.family_member_id = ?
         ");
-        $dup_sth->execute($reminder->{medication_id}, $reminder->{family_member_id}, $confirmed_by);
-        my $existing = $dup_sth->fetchrow_array();
-
-        unless ($existing) {
-            my $ins_sth = $self->{dbh}->prepare("
-                INSERT INTO medication_logs (medication_id, family_member_id, logged_by_id, dosage)
-                VALUES (?, ?, ?, ?)
-            ");
-            $ins_sth->execute($reminder->{medication_id}, $reminder->{family_member_id}, $confirmed_by, $reminder->{dosage});
-            $log_id = $self->{dbh}->last_insert_id();
+        $sth->execute($confirmed_by, $event_id, $confirmed_by);
+        unless ($sth->rows > 0) {
+            $self->{dbh}->rollback;
+            return { success => 0 };
         }
-    }
 
-    return { success => 1, log_id => $log_id };
+        my $sth_r = $self->{dbh}->prepare("
+            SELECT r.medication_id, r.family_member_id, r.dosage, r.source_log_id
+            FROM medication_reminder_events e
+            JOIN medication_reminders r ON e.reminder_id = r.id
+            WHERE e.id = ?
+        ");
+        $sth_r->execute($event_id);
+        my $reminder = $sth_r->fetchrow_hashref();
+        unless ($reminder && $reminder->{source_log_id}) {
+            $self->{dbh}->rollback;
+            return { success => 0 };
+        }
+
+        my $log_sth = $self->{dbh}->prepare("
+            UPDATE medication_logs
+            SET taken_at = NOW(), logged_by_id = ?, dosage = ?
+            WHERE id = ?
+              AND medication_id = ?
+              AND family_member_id = ?
+        ");
+        $log_sth->execute(
+            $confirmed_by,
+            $reminder->{dosage},
+            $reminder->{source_log_id},
+            $reminder->{medication_id},
+            $reminder->{family_member_id}
+        );
+        my $log_updated = $log_sth->rows > 0;
+        unless ($log_updated) {
+            my ($exists) = $self->{dbh}->selectrow_array(
+                "SELECT 1 FROM medication_logs WHERE id = ? AND medication_id = ? AND family_member_id = ?",
+                undef,
+                $reminder->{source_log_id}, $reminder->{medication_id}, $reminder->{family_member_id}
+            );
+            $log_updated = 1 if $exists;
+        }
+        unless ($log_updated) {
+            $self->{dbh}->rollback;
+            return { success => 0 };
+        }
+
+        $self->{dbh}->commit;
+        return { success => 1, log_id => $reminder->{source_log_id} };
+    };
+    if ($@) {
+        $self->{dbh}->rollback;
+        die $@;
+    }
 }
 
 # Retrieves today's pending (unconfirmed) reminder events for a family member.
