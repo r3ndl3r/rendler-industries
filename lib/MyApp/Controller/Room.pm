@@ -11,6 +11,17 @@ use constant {
     ROOM_MAX_FILE_SIZE => 5 * 1024 * 1024,
 };
 
+sub _detect_room_image_mime {
+    my ($data) = @_;
+    return undef unless defined $data && length($data) >= 8;
+    return 'image/jpeg' if $data =~ /^\xFF\xD8\xFF/s;
+    return 'image/png'  if $data =~ /^\x89PNG\r\n\x1A\n/s;
+    return 'image/gif'  if $data =~ /^GIF8[79]a/s;
+    return 'image/webp' if $data =~ /^RIFF.{4}WEBP/s;
+    return 'image/heic' if substr($data, 4, 8) =~ /^ftyp(heic|heix|hevc|hevx|mif1|msf1)/;
+    return undef;
+}
+
 # Controller for the Room Cleaning Tracker.
 #
 # Features:
@@ -101,13 +112,12 @@ sub api_upload {
                 next;
             }
 
-            my $mime_type = $upload->headers->content_type || 'application/octet-stream';
-            if ($mime_type !~ m{^image/}i) {
-                $c->app->log->warn("Skipping non-image upload: $original_filename ($mime_type)");
+            my $file_data = $upload->asset->slurp;
+            my $mime_type = _detect_room_image_mime($file_data);
+            unless ($mime_type) {
+                $c->app->log->warn("Skipping unsupported room upload content: $original_filename");
                 next;
             }
-
-            my $file_data = $upload->asset->slurp;
 
             unless (length($file_data)) {
                 $c->app->log->warn("Skipping file with empty content despite non-zero size: $original_filename ($file_size bytes reported)");
