@@ -472,9 +472,14 @@ async function toggleDay(reminderId, day, active) {
  * @returns {Date|null} - Target date object.
  */
 function getNextOccurrence(timeStr, daysStr, lastRunAt = '') {
-    if (!daysStr || !timeStr) return null;
+    if (typeof daysStr !== 'string' || typeof timeStr !== 'string' || !daysStr || !timeStr) return null;
     const [h, m] = timeStr.split(':').map(Number);
-    const days = daysStr.split(',').map(Number);
+    if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+    const days = daysStr
+        .split(',')
+        .map(Number)
+        .filter(day => Number.isInteger(day) && day >= 1 && day <= 7);
+    if (days.length === 0) return null;
 
     const now = new Date();
     const isoToday = now.getDay() === 0 ? 7 : now.getDay();
@@ -482,11 +487,13 @@ function getNextOccurrence(timeStr, daysStr, lastRunAt = '') {
     const targetMins = h * 60 + m;
 
     let hasRunToday = false;
-    if (lastRunAt) {
+    if (typeof lastRunAt === 'string' && lastRunAt) {
         const lastRun = new Date(lastRunAt.replace(' ', 'T'));
-        const todayAtTarget = new Date(now);
-        todayAtTarget.setHours(h, m, 0, 0);
-        if (lastRun >= todayAtTarget) hasRunToday = true;
+        if (!Number.isNaN(lastRun.getTime())) {
+            const todayAtTarget = new Date(now);
+            todayAtTarget.setHours(h, m, 0, 0);
+            if (lastRun >= todayAtTarget) hasRunToday = true;
+        }
     }
 
     for (let offset = 0; offset <= 7; offset++) {
