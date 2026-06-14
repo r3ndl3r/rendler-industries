@@ -136,25 +136,6 @@ input:disabled + .slider {
     justify-content: center;
 }
 
-.btn-icon-edit, .btn-icon-delete {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 1rem;
-}
-
-.btn-icon-edit { background: #3b82f6; color: white; }
-.btn-icon-delete { background: #ef4444; color: white; }
-
-.btn-icon-edit:hover { background: #2563eb; transform: translateY(-1px); }
-.btn-icon-delete:hover { background: #dc2626; transform: translateY(-1px); }
-
 .roles-row-container {
     margin-top: 1.5rem;
     padding: 1.25rem;
