@@ -316,7 +316,7 @@
 <%# Image Viewer Modal %>
 <div id="imageModal" class="modal-overlay">
     <div class="image-modal-content">
-        <span class="close-btn" onclick="closeImageModal()">❌</span>
+        <span class="close-btn" onclick="closeImageModal()">×</span>
         <img id="modalImg" src="" class="receipt-modal-img">
     </div>
 </div>
