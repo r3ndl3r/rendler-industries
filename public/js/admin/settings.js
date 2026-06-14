@@ -49,6 +49,10 @@ let STATE = {
     ai_apps: {},                     // Per-feature AI provider/model overrides
     google_cloud: {                 // Cloud Services (TTS/Translation) metadata
         key: ''
+    },
+    trakt: {
+        client_id_configured: false,
+        client_secret_configured: false
     }
 };
 
@@ -87,6 +91,7 @@ async function loadState() {
             STATE.ai_engine_registry = data.ai_engine_registry || STATE.ai_engine_registry;
             STATE.ai_apps = data.ai_apps || {};
             STATE.google_cloud = data.google_cloud;
+            STATE.trakt = data.trakt || STATE.trakt;
             STATE.owm_api_key = data.owm_api_key;
             
             renderSettings();
@@ -401,6 +406,8 @@ function renderAIPanel() {
 function renderIntegrationsPanel() {
     const s = STATE.settings;
     const cloud = STATE.google_cloud;
+    const trakt = STATE.trakt || {};
+    const traktConfigured = !!(trakt.client_id_configured && trakt.client_secret_configured);
 
     return `
         <div class="settings-panel" id="panel-integrations">
@@ -427,6 +434,19 @@ function renderIntegrationsPanel() {
                     <div class="form-group full-width">
                         <label>One Call 3.0 API Key</label>
                         <div class="render-row-input" data-id="owm_api_key" data-name="owm_api_key" data-type="password" data-value="" data-placeholder="${STATE.owm_api_key ? '(configured — paste new value to replace)' : 'One Call 3.0 API Key'}"></div>
+                    </div>
+                </div>
+            `, true)}
+
+            ${renderCard('trakt', 'Trakt API', 'Application credentials used for family member Trakt OAuth connections.', traktConfigured, `
+                <div class="settings-fields">
+                    <div class="form-group">
+                        <label>Client ID</label>
+                        <div class="render-row-input" data-id="trakt_client_id" data-name="trakt_client_id" data-type="password" data-value="" data-placeholder="${trakt.client_id_configured ? '(configured — paste new value to replace)' : 'Client ID'}" data-no-button="true"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Client Secret</label>
+                        <div class="render-row-input" data-id="trakt_client_secret" data-name="trakt_client_secret" data-type="password" data-value="" data-placeholder="${trakt.client_secret_configured ? '(configured — paste new value to replace)' : 'Client Secret'}"></div>
                     </div>
                 </div>
             `, true)}
