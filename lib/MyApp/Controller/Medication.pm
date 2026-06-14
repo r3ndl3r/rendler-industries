@@ -128,6 +128,7 @@ sub reset {
     $taken_at =~ s/T/ / if $taken_at;
 
     eval {
+        my $reminder_scheduled = 0;
         if ($c->db->reset_medication_log($id, $taken_at || undef)) {
             
             # Handle optional follow-up reminder creation
@@ -136,6 +137,9 @@ sub reset {
                 my $recipients = $c->param('reminder_recipients') // '';
                 my $title      = $c->param('reminder_title') // 'Medication Reminder';
                 my $desc       = $c->param('reminder_desc')  // 'Follow-up dose reminder.';
+
+                return $c->render(json => { success => 0, error => "Invalid reminder delay." })
+                    unless $delay =~ /\A(?:[1-9]|1[0-9]|2[0-4])\z/;
 
                 if ($recipients) {
                     my $dt;
@@ -158,11 +162,12 @@ sub reset {
                     my $creator_id = $c->current_user_id;
 
                     $c->db->create_reminder($title, $desc, $trigger_day, $trigger_time, $creator_id, \@uids, 1);
+                    $reminder_scheduled = 1;
                 }
             }
 
             my $msg = "Dose time updated.";
-            $msg .= " Follow-up reminder scheduled." if $c->param('create_reminder');
+            $msg .= " Follow-up reminder scheduled." if $reminder_scheduled;
 
             $c->render(json => { success => 1, message => $msg });
         } else {
