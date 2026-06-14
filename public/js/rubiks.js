@@ -17,6 +17,10 @@ const RUBIKS_CONFIG = {
     fontFamily: 'Inter, sans-serif'
 };
 
+function inlineJsArg(value) {
+    return escapeHtml(JSON.stringify(value));
+}
+
 let RUBIKS_STATE = {
     sequence: '',
     cubeSize: 3,
@@ -192,7 +196,8 @@ function renderLibrary() {
     }
 
     list.innerHTML = visible.map(alg => {
-        const safeAlg = JSON.stringify(alg).replace(/"/g, '&quot;');
+        const safeAlg = inlineJsArg(alg);
+        const idArg = inlineJsArg(String(alg.id ?? ''));
         return `
             <div class="library-item" onclick="loadAlgorithm(${safeAlg})">
                 <div class="alg-info">
@@ -202,7 +207,7 @@ function renderLibrary() {
                 </div>
                 <div class="alg-actions">
                     <button class="btn-tiny" onclick="event.stopPropagation(); editAlgorithm(${safeAlg})">✏️</button>
-                    <button class="btn-tiny danger" onclick="event.stopPropagation(); deleteAlgorithm(${alg.id})">🗑️</button>
+                    <button class="btn-tiny danger" onclick="event.stopPropagation(); deleteAlgorithm(${idArg})">🗑️</button>
                 </div>
             </div>
         `;
@@ -315,7 +320,7 @@ async function deleteAlgorithm(id) {
         danger: true,
         onConfirm: async () => {
             try {
-                const res = await apiPost(`/rubiks/api/delete/${id}`);
+                const res = await apiPost(`/rubiks/api/delete/${encodeURIComponent(String(id))}`);
                 if (res && res.success) {
                     loadLibrary();
                 } else {
