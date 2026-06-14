@@ -100,6 +100,10 @@ sub edit {
     
     $taken_at =~ s/T/ / if $taken_at;
 
+    unless ($id && $medication_name && $family_member_id && $dosage > 0) {
+        return $c->render(json => { success => 0, error => "Missing required fields." });
+    }
+
     eval {
         if ($c->db->update_medication_log($id, $medication_name, $family_member_id, $dosage, $taken_at || undef)) {
             $c->render(json => { success => 1, message => "Log updated." });
