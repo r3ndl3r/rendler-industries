@@ -246,7 +246,8 @@ function shouldCacheApiGet(url) {
     try {
         const pathname = new URL(url, window.location.origin).pathname;
         return pathname !== '/admin/automator/api/status'
-            && pathname !== '/admin/automator/api/state';
+            && pathname !== '/admin/automator/api/state'
+            && !pathname.startsWith('/trakt/api/');
     } catch (_) {
         return true;
     }
