@@ -39,6 +39,7 @@ const PLAYER = {
     seeking:         false,   // true while user drags seek bar
     loaded_url:      null,    // audio.src that is currently loaded
     pending_seek:    null,    // requested chapter seek waiting for audio.currentTime to settle
+    replay_chapter_idx: null, // chapter selected for replaying a completed book
     paused_at:       null,    // timestamp used for smart rewind on long pauses
     detail_slug:     null,    // slug currently shown in detail panel
     player_open:     false,
@@ -1325,6 +1326,7 @@ function closePlayer() {
     PLAYER.chapter_idx  = 0;
     PLAYER.loaded_url   = null;
     PLAYER.pending_seek = null;
+    PLAYER.replay_chapter_idx = null;
 }
 
 /**
@@ -1981,6 +1983,7 @@ function togglePlay() {
     const audio = PLAYER.audio;
     if (!audio) return;
     if (audio.paused) {
+        if (_restartCompletedBook()) return;
         _updateMediaSessionMetadata(); // Set metadata before playing for OS promotion
         _applySmartRewindIfNeeded();
         audio.play().catch(err => showToast('Playback failed: ' + err.message, 'error'));
@@ -2039,6 +2042,15 @@ function nextChapter() {
  * @returns {void}
  */
 function jumpToChapter(idx) {
+    const replayingCompleted = !!(PLAYER.book && PLAYER.book.progress && PLAYER.book.progress.completed);
+    if (replayingCompleted) {
+        PLAYER.replay_chapter_idx = idx;
+    }
+    if (replayingCompleted && PLAYER.audio && !PLAYER.audio.paused) {
+        _restartCompletedBook();
+        document.getElementById('chapterDrawer').classList.remove('show');
+        return;
+    }
     if (idx === PLAYER.chapter_idx) return;
     PLAYER.chapter_idx = idx;
     _loadChapter(idx, !PLAYER.audio.paused);
@@ -2278,12 +2290,36 @@ function _stopSaveTimer() {
 
 /**
  * Returns the effective completed flag, preserving an already-completed state.
- * Once a book is marked completed, only an explicit progress reset can clear it.
+ * Once a book is marked completed, only progress reset or replay can clear it.
  * @param {boolean} completed - Whether this save intends to mark the book finished.
  * @returns {number} 1 if completed, 0 otherwise.
  */
 function _effectiveCompletedFlag(completed) {
     return completed || !!(PLAYER.book && PLAYER.book.progress && PLAYER.book.progress.completed) ? 1 : 0;
+}
+
+/**
+ * Restarts a finished book when playback is requested again.
+ * @returns {boolean} True when a completed book replay was started.
+ */
+function _restartCompletedBook() {
+    if (!PLAYER.book || !PLAYER.book.progress || !PLAYER.book.progress.completed) return false;
+
+    const chapters = Array.isArray(PLAYER.book.chapters) ? PLAYER.book.chapters : [];
+    const targetIdx = PLAYER.replay_chapter_idx !== null ? PLAYER.replay_chapter_idx : 0;
+    const idx = Math.max(0, Math.min(targetIdx, chapters.length - 1));
+
+    PLAYER.book.progress.chapter_idx  = idx;
+    PLAYER.book.progress.position_sec = 0;
+    PLAYER.book.progress.completed    = 0;
+    PLAYER.chapter_idx = idx;
+    PLAYER.pending_seek = null;
+    PLAYER.replay_chapter_idx = null;
+
+    _loadChapter(idx, true);
+    _saveProgress(false);
+    renderLibrary();
+    return true;
 }
 
 /**
