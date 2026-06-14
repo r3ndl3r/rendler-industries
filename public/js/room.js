@@ -23,6 +23,17 @@ let UPLOAD_QUEUE = [];
 let UPLOAD_TOKEN = 0;
 
 /**
+ * Normalizes a room submission status to a known safe value.
+ * 
+ * @param {*} status - Raw status value from the server.
+ * @returns {string} One of 'pending', 'passed', or 'failed'.
+ */
+function normalizeRoomStatus(status) {
+    const value = String(status || '').toLowerCase();
+    return ['pending', 'passed', 'failed'].includes(value) ? value : 'pending';
+}
+
+/**
  * Checks whether any room modal is currently visible.
  * 
  * @returns {boolean} True if at least one room modal has the .show class.
@@ -144,8 +155,8 @@ function renderTeenStatus() {
         title.innerText = "Ready for Review?";
         desc.innerText = "You haven't uploaded your room photos for today yet.";
     } else {
-        const failed = submissions.filter(s => s.status === 'failed');
-        const pending = submissions.filter(s => s.status === 'pending');
+        const failed = submissions.filter(s => normalizeRoomStatus(s.status) === 'failed');
+        const pending = submissions.filter(s => normalizeRoomStatus(s.status) === 'pending');
         
         if (failed.length > 0) {
             icon.innerHTML = '❌';
@@ -165,20 +176,23 @@ function renderTeenStatus() {
 
         if (container) container.classList.remove('hidden');
         if (gallery) {
-            gallery.innerHTML = submissions.map(s => `
+            gallery.innerHTML = submissions.map(s => {
+                const status = normalizeRoomStatus(s.status);
+                return `
                 <div class="submission-item">
                     <div class="photo-container" onclick="openPhotoModal(${s.id})">
                         <img src="/room/serve/${s.id}" class="submission-thumb">
-                        <span class="status-badge status-${s.status}">${s.status.toUpperCase()}</span>
+                        <span class="status-badge status-${status}">${status.toUpperCase()}</span>
                     </div>
-                    ${s.status === 'failed' && s.admin_comment ? `
+                    ${status === 'failed' && s.admin_comment ? `
                         <div class="photo-feedback">
                             <strong>Feedback:</strong>
                             ${escapeHtml(s.admin_comment)}
                         </div>
                     ` : ''}
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
     }
 }
@@ -357,12 +371,14 @@ function renderReviewQueue() {
                 <h3>${window.getUserIcon(g.username)} ${escapeHtml(g.username)} <small>(${g.date})</small></h3>
             </div>
             <div class="submission-grid">
-                ${g.photos.map(p => `
-                    <div class="review-photo-card ${p.status === 'failed' ? 'failed' : ''}">
+                ${g.photos.map(p => {
+                    const status = normalizeRoomStatus(p.status);
+                    return `
+                    <div class="review-photo-card ${status === 'failed' ? 'failed' : ''}">
                         <div class="submission-item" onclick="openPhotoModal(${p.id})">
                             <div class="photo-container">
                                 <img src="/room/serve/${p.id}" class="submission-thumb">
-                                <span class="status-badge status-${p.status}">${p.status.toUpperCase()}</span>
+                                <span class="status-badge status-${status}">${status.toUpperCase()}</span>
                             </div>
                         </div>
                         <div class="photo-controls">
@@ -378,12 +394,13 @@ function renderReviewQueue() {
                 </button>
                             </div>
                         </div>
-                        <div id="fail-box-${p.id}" class="${p.status === 'failed' ? '' : 'hidden'}">
+                        <div id="fail-box-${p.id}" class="${status === 'failed' ? '' : 'hidden'}">
                             <textarea id="comment-${p.id}" class="game-input fail-comment-box" placeholder="Why did it fail?">${escapeHtml(p.admin_comment || '')}</textarea>
                             <button class="btn-primary btn-small full-width" onclick="updateStatus(${p.id}, 'failed')">Update Feedback</button>
                         </div>
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         </div>
     `).join('');
