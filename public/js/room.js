@@ -189,6 +189,8 @@ function renderTeenStatus() {
         icon.innerHTML = '⌛';
         title.innerText = "Ready for Review?";
         desc.innerText = "You haven't uploaded your room photos for today yet.";
+        if (container) container.classList.add('hidden');
+        if (gallery) gallery.innerHTML = '';
     } else {
         const failed = submissions.filter(s => normalizeRoomStatus(s.status) === 'failed');
         const pending = submissions.filter(s => normalizeRoomStatus(s.status) === 'pending');
