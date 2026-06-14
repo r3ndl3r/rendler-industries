@@ -1,0 +1,666 @@
+/* /public/css/trakt.css */
+
+.trakt-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.trakt-details-modal {
+    max-width: 960px;
+    width: min(96vw, 960px);
+}
+
+.trakt-list-edit-modal {
+    max-width: 540px;
+    width: min(94vw, 540px);
+}
+
+.trakt-empty {
+    text-align: center;
+    padding: 2rem;
+}
+
+.trakt-tabs,
+.trakt-toolbar,
+.trakt-list-actions,
+.trakt-search-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.trakt-tabs {
+    margin: 1rem 0;
+}
+
+.trakt-tab {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: inherit;
+    padding: 0.55rem 1rem;
+    cursor: pointer;
+}
+
+.trakt-tab.active {
+    background: rgba(80, 140, 255, 0.28);
+    border-color: rgba(120, 170, 255, 0.5);
+}
+
+.trakt-panel,
+.trakt-list,
+.trakt-search {
+    margin-top: 1rem;
+}
+
+.trakt-panel-stage {
+    position: relative;
+}
+
+.trakt-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(255, 255, 255, 0.12);
+    border-top-color: rgba(100, 180, 255, 0.7);
+    border-radius: 50%;
+    margin: 0 auto 0.75rem;
+    animation: trakt-spin 0.8s linear infinite;
+}
+
+.trakt-loading p {
+    animation: trakt-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes trakt-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes trakt-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+.trakt-list-table {
+    overflow-x: auto;
+}
+
+.trakt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 1rem;
+}
+
+.trakt-card,
+.trakt-item {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.trakt-card {
+    padding: 1rem;
+}
+
+.trakt-card h3,
+.trakt-list h3 {
+    margin: 0 0 0.35rem;
+}
+
+.trakt-card-kicker,
+.trakt-muted,
+.trakt-item small {
+    color: rgba(255, 255, 255, 0.68);
+}
+
+.trakt-card-kicker {
+    font-size: 0.85rem;
+    margin-bottom: 0.45rem;
+}
+
+.trakt-list-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.trakt-list-title {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    text-align: left;
+    padding: 0;
+    cursor: pointer;
+    min-width: 0;
+    flex: 1;
+}
+
+.trakt-list-title h3,
+.trakt-list-title p {
+    margin: 0;
+}
+
+.trakt-list-heading {
+    min-width: 0;
+}
+
+.trakt-list-title p {
+    color: rgba(255, 255, 255, 0.68);
+    margin-top: 0.25rem;
+}
+
+.trakt-list-actions {
+    justify-content: flex-end;
+}
+
+.trakt-list-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    background: rgba(80, 140, 255, 0.2);
+    border: 1px solid rgba(120, 170, 255, 0.35);
+    vertical-align: middle;
+}
+
+.trakt-list-chevron {
+    font-size: 1.2rem;
+    line-height: 1.2;
+    opacity: 0.8;
+}
+
+.trakt-list-picker {
+    min-width: 220px;
+}
+
+.trakt-show-link {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    display: block;
+    max-width: 100%;
+}
+
+.trakt-show-link strong {
+    text-decoration: underline;
+    text-underline-offset: 0.15rem;
+    display: block;
+    white-space: normal;
+}
+
+.trakt-episode-badge {
+    display: inline-block;
+    padding: 0.08rem 0.45rem;
+    border-radius: 5px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.88);
+    vertical-align: middle;
+}
+
+.trakt-unwatched-pill {
+    display: inline-block;
+    margin-top: 0.3rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(59, 130, 246, 0.18);
+    color: #bfdbfe;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.trakt-table-show-cell,
+.trakt-item-content,
+.trakt-show-summary-grid {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.85rem;
+    align-items: center;
+}
+
+.trakt-table-show-cell,
+.trakt-item-content,
+.trakt-table-show-copy,
+.trakt-item-main,
+.trakt-show-summary-grid {
+    min-width: 0;
+}
+
+.trakt-table-show-art,
+.trakt-item-art,
+.trakt-show-poster,
+.trakt-mobile-art {
+    display: block;
+    height: 4.4rem;
+    object-fit: cover;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.trakt-show-poster {
+    height: 14rem;
+    border-radius: 14px;
+}
+
+.trakt-item-art {
+    height: 6rem;
+}
+
+.trakt-mobile-art {
+    height: 5.8rem;
+    border-radius: 12px;
+}
+
+.trakt-table-show-art-placeholder,
+.trakt-item-art-placeholder,
+.trakt-show-poster-placeholder,
+.trakt-mobile-art-placeholder {
+    background:
+        linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(30, 41, 59, 0.22)),
+        rgba(255, 255, 255, 0.04);
+}
+
+.trakt-items {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.trakt-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.75rem;
+    cursor: default;
+}
+
+.trakt-item-main .trakt-show-link,
+.trakt-item-main strong {
+    margin-bottom: 0.2rem;
+}
+
+.trakt-item strong,
+.trakt-item small {
+    display: block;
+}
+
+.trakt-item strong {
+    overflow-wrap: break-word;
+    word-break: normal;
+}
+
+.trakt-item-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.trakt-item-action {
+    padding: 0;
+}
+
+.trakt-item.is-pending {
+    opacity: 0.72;
+}
+
+.trakt-item-action:disabled {
+    opacity: 0.5;
+}
+
+.trakt-search-list-modal {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.trakt-search-list-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.trakt-mobile-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.trakt-mobile-card {
+    display: grid;
+    gap: 0.85rem;
+    padding: 0.95rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.trakt-mobile-card-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.85rem;
+    align-items: start;
+}
+
+.trakt-mobile-card-date-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.trakt-mobile-card-copy,
+.trakt-mobile-card-field {
+    min-width: 0;
+}
+
+.trakt-mobile-card-copy {
+    display: grid;
+    gap: 0.3rem;
+}
+
+.trakt-mobile-card-copy small {
+    color: rgba(255, 255, 255, 0.68);
+}
+
+.trakt-mobile-card-grid {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.trakt-mobile-card-field {
+    display: grid;
+    gap: 0.22rem;
+}
+
+.trakt-mobile-card-field-wide {
+    grid-column: 1 / -1;
+}
+
+.trakt-mobile-card-label {
+    color: #94a3b8;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.trakt-mobile-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.trakt-search-list-row small {
+    display: block;
+    color: rgba(255, 255, 255, 0.68);
+    margin-top: 0.2rem;
+}
+
+.trakt-show-summary {
+    margin-bottom: 1rem;
+}
+
+.trakt-show-summary-grid {
+    align-items: center;
+}
+
+.trakt-show-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.trakt-season-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.trakt-season-heading {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 0.35rem;
+}
+
+.trakt-season-toggle {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+}
+
+.trakt-season-toggle h4 {
+    margin: 0;
+}
+
+.trakt-season-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.trakt-season-header,
+.trakt-episode-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.trakt-season-actions {
+    align-self: center;
+}
+
+.trakt-episode-list {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.trakt-episode-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.trakt-episode-row.watched {
+    opacity: 0.8;
+}
+
+.trakt-episode-main {
+    min-width: 0;
+}
+
+.trakt-episode-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.trakt-episode-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.trakt-pill-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.trakt-pill-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.trakt-pill-button:disabled {
+    cursor: wait;
+    opacity: 0.75;
+}
+
+.trakt-pill-button.is-busy {
+    opacity: 0.85;
+    transform: none;
+}
+
+.trakt-pill-button.watched {
+    background: rgba(16, 185, 129, 0.18);
+    color: #86efac;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.trakt-pill-button.unwatched {
+    background: rgba(59, 130, 246, 0.15);
+    color: #bfdbfe;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.trakt-episode-row p {
+    margin: 0.4rem 0 0;
+}
+
+.trakt-search-form {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.trakt-search-form .game-input {
+    min-width: 180px;
+}
+
+.trakt-search-empty {
+    display: grid;
+    place-items: center;
+    padding: 3.5rem 1.5rem;
+}
+
+.trakt-search-empty-icon {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 0.35rem;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.16);
+    border: 1px solid rgba(120, 170, 255, 0.32);
+    color: #bfdbfe;
+    font-size: 1.9rem;
+    line-height: 1;
+}
+
+.trakt-search-count {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+@media (max-width: 760px) {
+    .trakt-panel-stage {
+        overflow: hidden;
+    }
+
+    .trakt-search-form {
+        flex-wrap: wrap;
+    }
+
+    .trakt-list-header {
+        flex-direction: column;
+    }
+
+    .trakt-table-show-cell,
+    .trakt-item-content,
+    .trakt-show-summary-grid {
+        align-items: flex-start;
+    }
+
+    .trakt-item {
+        gap: 0.75rem;
+        padding: 0.7rem;
+    }
+
+    .trakt-item-content {
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.7rem;
+    }
+
+    .trakt-item-art {
+        height: 6.5rem;
+    }
+
+    .trakt-item-actions {
+        width: auto;
+        justify-content: flex-start;
+        flex-direction: column;
+        gap: 0.45rem;
+    }
+
+    .trakt-toolbar .btn-primary {
+        width: 100%;
+    }
+
+    .trakt-show-poster {
+        height: 10rem;
+    }
+
+    .trakt-list-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .trakt-search-list-row {
+        align-items: flex-start;
+    }
+
+    .trakt-search-form #searchType {
+        width: 100%;
+    }
+
+    .trakt-search-form #searchQuery {
+        flex: 1;
+        min-width: 20px;
+    }
+}
