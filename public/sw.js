@@ -1,6 +1,6 @@
 // /public/sw.js
 
-const CACHE_NAME = 'rendler-offline-v124';
+const CACHE_NAME = 'rendler-offline-v125';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 const OFFLINE_CACHE_PREFIX = 'rendler-offline-';
 const NAVIGATION_NETWORK_TIMEOUT_MS = 1500;
@@ -131,7 +131,15 @@ function apiGetResponse(event) {
 
     return fetchWithTimeout(request, NAVIGATION_NETWORK_TIMEOUT_MS)
         .then(response => cacheResponse(request, response).then(() => response))
-        .catch(() => matchInOfflineCaches(request, matchOpts));
+        .catch(() => matchInOfflineCaches(request, matchOpts).then(cached => {
+            return cached || new Response(JSON.stringify({
+                success: 0,
+                error: 'Network unavailable'
+            }), {
+                status: 503,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }));
 }
 
 function isApiGet(request, url) {
@@ -140,7 +148,8 @@ function isApiGet(request, url) {
 
 function shouldBypassApiGetCache(url) {
     return url.pathname === '/admin/automator/api/status'
-        || url.pathname === '/admin/automator/api/state';
+        || url.pathname === '/admin/automator/api/state'
+        || url.pathname.startsWith('/trakt/api/');
 }
 
 function cacheStatusResponse() {
