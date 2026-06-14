@@ -22,6 +22,7 @@ let STATE = {
 let UPLOAD_QUEUE = [];
 let UPLOAD_TOKEN = 0;
 let roomStateRequestSeq = 0;
+let hasLoadedRoomState = false;
 
 /**
  * Normalizes a room submission status to a known safe value.
@@ -108,7 +109,7 @@ async function loadState(force = false) {
     const anyModalOpen = document.querySelector('.modal-overlay.show');
     const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
 
-    if (!force && (anyModalOpen || inputFocused) && STATE.all_users.length > 0) return;
+    if (!force && hasLoadedRoomState && (anyModalOpen || inputFocused)) return;
 
     try {
         const requestSeq = ++roomStateRequestSeq;
@@ -117,6 +118,7 @@ async function loadState(force = false) {
 
         if (data && data.success) {
             STATE = { ...STATE, ...normalizeRoomState(data) };
+            hasLoadedRoomState = true;
             renderUI();
         }
     } catch (err) {
