@@ -21,6 +21,8 @@ function inlineJsArg(value) {
     return escapeHtml(JSON.stringify(value));
 }
 
+let rubiksLeaderboardRequestSeq = 0;
+
 let RUBIKS_STATE = {
     sequence: '',
     cubeSize: 3,
@@ -954,10 +956,13 @@ async function loadLeaderboard() {
     const caption = document.getElementById('leaderboard-caption');
     if (!container) return;
 
-    if (caption) caption.textContent = `Top 5 Absolute Bests (${RUBIKS_STATE.timerCubeType})`;
+    const cubeType = RUBIKS_STATE.timerCubeType;
+    const requestSeq = ++rubiksLeaderboardRequestSeq;
+    if (caption) caption.textContent = `Top 5 Absolute Bests (${cubeType})`;
 
     try {
-        const res = await apiGet(`/rubiks/api/solves/top/${RUBIKS_STATE.timerCubeType}`);
+        const res = await apiGet(`/rubiks/api/solves/top/${encodeURIComponent(cubeType)}`);
+        if (requestSeq !== rubiksLeaderboardRequestSeq || cubeType !== RUBIKS_STATE.timerCubeType) return;
         if (res && res.success) {
             renderLeaderboard(res.top);
         }
