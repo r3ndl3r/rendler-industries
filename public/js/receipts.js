@@ -485,6 +485,19 @@ function toggleStatTile(el) {
     if (icon && getComputedStyle(icon).display !== 'none') el.classList.toggle('expanded');
 }
 
+function setReceiptModalVisible(id, visible) {
+    const modal = document.getElementById(id);
+    if (!modal) return null;
+    modal.classList.toggle('show', visible);
+    syncReceiptModalLock();
+    return modal;
+}
+
+function syncReceiptModalLock() {
+    const openModal = document.querySelector('.modal-overlay.show, .delete-modal-overlay.show');
+    document.body.classList.toggle('modal-open', !!openModal);
+}
+
 /**
  * Generates URL for merchant branding assets.
  * 
@@ -557,7 +570,7 @@ async function initPreUploadCrop(file) {
         if (img.decode) await img.decode();
         if (img.src !== currentUrl) return;
         
-        modal.classList.add('show');
+        setReceiptModalVisible('preUploadCropModal', true);
         if (STATE.cropper) {
             STATE.cropper.destroy();
             STATE.cropper = null;
@@ -730,11 +743,8 @@ function updateFileName(name) {
  */
 function openReceiptModal(id) {
     const img = document.getElementById('modalImg');
-    const modal = document.getElementById('receiptModal');
-    if (img && modal) { 
-        img.src = '/receipts/serve/' + id; 
-        modal.classList.add('show'); 
-    }
+    const modal = setReceiptModalVisible('receiptModal', true);
+    if (img && modal) img.src = '/receipts/serve/' + id;
 }
 
 /**
@@ -826,7 +836,7 @@ function openEditModal(id) {
         };
     }
 
-    modal.classList.add('show');
+    setReceiptModalVisible('editModal', true);
 }
 
 /**
@@ -840,7 +850,7 @@ async function openCropModal(id) {
     const modal = document.getElementById('cropModal');
     const img   = document.getElementById('cropImg');
     if (!modal || !img) return;
-    modal.classList.add('show');
+    setReceiptModalVisible('cropModal', true);
     
     try {
         const response = await fetch('/receipts/serve/' + id);
@@ -955,7 +965,7 @@ async function viewElectronicReceipt(id, force = 0, preLoaded = null, initialIco
     const content = document.getElementById('eReceiptContent');
     if (!modal || !content) return;
 
-    modal.classList.add('show');
+    setReceiptModalVisible('eReceiptModal', true);
     modal.dataset.receiptId = id;
     modal.dataset.initialIcon = initialIcon || '';
 
@@ -1094,14 +1104,14 @@ async function reScanReceipt() {
  * 
  * @returns {void}
  */
-function closeReceiptModal() { const m = document.getElementById('receiptModal'); if (m) m.classList.remove('show'); }
+function closeReceiptModal() { setReceiptModalVisible('receiptModal', false); }
 
 /**
  * Hides the metadata editor.
  * 
  * @returns {void}
  */
-function closeEditModal() { const m = document.getElementById('editModal'); if (m) m.classList.remove('show'); }
+function closeEditModal() { setReceiptModalVisible('editModal', false); }
 
 /**
  * Hides the post-upload refinement interface.
@@ -1109,8 +1119,7 @@ function closeEditModal() { const m = document.getElementById('editModal'); if (
  * @returns {void}
  */
 function closeCropModal() {
-    const m = document.getElementById('cropModal');
-    if (m) m.classList.remove('show');
+    setReceiptModalVisible('cropModal', false);
     if (STATE.cropper) {
         STATE.cropper.destroy();
         STATE.cropper = null;
@@ -1125,14 +1134,14 @@ function closeCropModal() {
  * 
  * @returns {void}
  */
-function closeEReceiptModal() { const m = document.getElementById('eReceiptModal'); if (m) m.classList.remove('show'); }
+function closeEReceiptModal() { setReceiptModalVisible('eReceiptModal', false); }
 
 /**
  * Displays the binary transfer interface.
  * 
  * @returns {void}
  */
-function openUploadModal() { const m = document.getElementById('uploadModal'); if (m) m.classList.add('show'); }
+function openUploadModal() { setReceiptModalVisible('uploadModal', true); }
 
 /**
  * Hides the binary transfer interface and clears pending state.
@@ -1140,8 +1149,7 @@ function openUploadModal() { const m = document.getElementById('uploadModal'); i
  * @returns {void}
  */
 function closeUploadModal() { 
-    const m = document.getElementById('uploadModal'); 
-    if (m) m.classList.remove('show'); 
+    setReceiptModalVisible('uploadModal', false);
     
     const form = document.getElementById('uploadForm');
     if (form) form.reset();
@@ -1163,7 +1171,7 @@ function closeUploadModal() {
 function closePreUploadCropModal() {
     const m = document.getElementById('preUploadCropModal');
     if (m && m.classList.contains('show')) {
-        m.classList.remove('show');
+        setReceiptModalVisible('preUploadCropModal', false);
         if (STATE.cropper) { STATE.cropper.destroy(); STATE.cropper = null; }
         openUploadModal();
     }
