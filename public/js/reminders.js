@@ -181,7 +181,8 @@ function renderReminderCard(r) {
                 title="Edit Reminder">✎
         </button>
         <button class="btn-icon-delete"
-                onclick="confirmDeleteReminder(${r.id}, \`${(r.title || 'Untitled').replace(/`/g, '\\`')}\`)"
+                data-title="${escapeHtml(r.title || 'Untitled')}"
+                onclick="confirmDeleteReminder(${r.id}, this.dataset.title)"
                 title="Delete Reminder">🗑️
         </button>
     ` : `<span class="reminder-owner-badge">${window.getUserIcon?.(r.creator_name) ?? '👤'} ${escapeHtml(r.creator_name || 'Unknown')}</span>`;
