@@ -843,6 +843,8 @@ function openPhotoModal(id) {
 function closePhotoModal() {
     const modal = document.getElementById('photoModal');
     if (modal) modal.classList.remove('show');
+    const img = document.getElementById('modalImg');
+    if (img) img.removeAttribute('src');
     if (!hasOpenRoomModal()) document.body.classList.remove('modal-open');
 }
 
