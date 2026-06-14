@@ -98,6 +98,41 @@ sub DB::get_all_settings {
     return $settings;
 }
 
+sub DB::get_trakt_app_credentials {
+    my ($self) = @_;
+    $self->ensure_connection;
+
+    my $creds = {
+        client_id     => '',
+        client_secret => ''
+    };
+
+    eval {
+        my $sth = $self->{dbh}->prepare("SELECT key_name, secret_value FROM app_secrets WHERE key_name IN ('trakt_client_id', 'trakt_client_secret')");
+        $sth->execute();
+        while (my ($key, $value) = $sth->fetchrow_array()) {
+            $creds->{client_id} = $value if $key eq 'trakt_client_id';
+            $creds->{client_secret} = $value if $key eq 'trakt_client_secret';
+        }
+    };
+
+    return $creds;
+}
+
+sub DB::update_trakt_app_credentials {
+    my ($self, $client_id, $client_secret) = @_;
+    $self->ensure_connection;
+
+    my $sth = $self->{dbh}->prepare(
+        q{INSERT INTO app_secrets (key_name, secret_value)
+          VALUES (?, ?)
+          ON DUPLICATE KEY UPDATE secret_value = VALUES(secret_value)}
+    );
+
+    $sth->execute('trakt_client_id', $client_id) if defined $client_id && length $client_id;
+    $sth->execute('trakt_client_secret', $client_secret) if defined $client_secret && length $client_secret;
+}
+
 # Updates or creates the Pushover API configuration.
 # Parameters:
 #   token : Application API Token
