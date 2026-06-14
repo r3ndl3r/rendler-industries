@@ -160,6 +160,10 @@ sub reset {
 
                     my @uids = split(',', $recipients);
                     my $creator_id = $c->current_user_id;
+                    my %family_user = map { $_->{id} => 1 } @{$c->db->get_family_users()};
+                    @uids = grep { defined $_ && /\A\d+\z/ && $family_user{$_} } @uids;
+                    return $c->render(json => { success => 0, error => "Invalid reminder recipients." })
+                        unless @uids;
 
                     $c->db->create_reminder($title, $desc, $trigger_day, $trigger_time, $creator_id, \@uids, 1);
                     $reminder_scheduled = 1;
