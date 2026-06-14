@@ -51,6 +51,7 @@ let STATE = {
     historySeen: new Set(),         // recurrence_source_ids seen across all pages; prevents duplicate series rows
     _historyPastGroupState: { lastDay: '', groupClass: 'group-even' },  // Day-group continuity across infinite scroll pages
     _historyUpcomingGroupState: { lastDay: '', groupClass: 'group-even' },
+    deepLinkHandled: false,
 };
 
 let historyObserver = null;
@@ -124,6 +125,8 @@ async function loadState(force = false) {
             }
             
             await loadEvents();
+
+            await openPendingEventDeepLink();
         }
     } catch (err) {
         console.error('loadState failed:', err);
@@ -1060,6 +1063,12 @@ async function handleEventSubmit(event) {
         return;
     }
 
+    const eventNotifyCb = document.getElementById('eventNotify');
+    if (eventNotifyCb && eventNotifyCb.checked && notifyMins === 0) {
+        window.showToast('Please select a reminder time', 'error');
+        return;
+    }
+
     const start = `${formData.get('start_date')} ${formData.get('start_time') || '00:00'}:00`;
     const end = `${formData.get('end_date')} ${formData.get('end_time') || '23:59'}:59`;
     formData.set('start_date', start);
@@ -1072,7 +1081,6 @@ async function handleEventSubmit(event) {
     const sendNotifyCb = document.getElementById('sendNotifications');
     if (sendNotifyCb) formData.set('send_notifications', sendNotifyCb.checked ? 1 : 0);
 
-    const eventNotifyCb = document.getElementById('eventNotify');
     if (eventNotifyCb) formData.set('event_notify', eventNotifyCb.checked ? 1 : 0);
 
     const originalHtml = btn.innerHTML;
@@ -1717,6 +1725,34 @@ function formatDate(date) {
     return `${y}-${m}-${d}`;
 }
 
+function parseUrlDate(dateStr) {
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+}
+
+function eventDatePart(event) {
+    return String(event?.instance_date || event?.start_date || '').split(' ')[0];
+}
+
+function findDeepLinkedEvent(eventId, eventDate) {
+    return STATE.events.find(e => {
+        if (String(e.uid) === String(eventId)) return true;
+        if (!e.is_recurring_instance || String(e.recurrence_source_id) !== String(eventId)) return false;
+        return !eventDate || eventDatePart(e) === eventDate;
+    });
+}
+
+async function openPendingEventDeepLink() {
+    const pending = STATE.pendingEvent;
+    if (!pending || STATE.deepLinkHandled) return;
+
+    const event = findDeepLinkedEvent(pending.id, pending.date);
+    STATE.deepLinkHandled = true;
+    delete STATE.pendingEvent;
+    if (event) showEventDetails(event.uid);
+}
+
 /**
  * Generates a high-density descriptive date/time label.
  * 
@@ -1923,10 +1959,17 @@ function initializeViewFromUrl() {
     }
 
     const requestedDate = p.get('date');
-    if (requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
-        const [year, month, day] = requestedDate.split('-').map(Number);
-        STATE.currentDate = new Date(year, month - 1, day);
+    const parsedDate = parseUrlDate(requestedDate);
+    if (parsedDate) {
+        STATE.currentDate = parsedDate;
     }
+
+    const eventId = p.get('event');
+    if (!STATE.deepLinkHandled && eventId && /^\d+$/.test(eventId)) {
+        STATE.pendingEvent = { id: eventId };
+        if (parsedDate) STATE.pendingEvent.date = requestedDate;
+    }
+
     updateViewButtons();
 }
 

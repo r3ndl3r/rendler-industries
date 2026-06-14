@@ -96,8 +96,6 @@ sub api_events {
     $c->render(json => \%resp);
 }
 
-
-
 # API Endpoint: Validates and creates a new calendar event.
 # Route: POST /calendar/api/add
 sub api_add {
@@ -134,6 +132,10 @@ sub api_add {
         return $c->render(json => { success => 0, error => 'Please select at least one attendee for notifications' });
     }
 
+    if ($notification_minutes == 0 && $c->param('event_notify')) {
+        return $c->render(json => { success => 0, error => 'Please select a reminder time' });
+    }
+
     if ($end_date lt $start_date) {
         return $c->render(json => { success => 0, error => 'End date cannot be before start date' });
     }
@@ -164,7 +166,9 @@ sub api_add {
                     start       => $c->format_datetime($start_date, $all_day),
                     end         => $c->format_datetime($end_date, $all_day),
                     category    => $category || 'General',
-                    attendees   => $attendee_names
+                    attendees   => $attendee_names,
+                    id          => $event_id,
+                    date        => substr($start_date // '', 0, 10)
                 }, $event_id);
             }
         }
@@ -223,6 +227,10 @@ sub api_edit {
         return $c->render(json => { success => 0, error => 'Please select at least one attendee for notifications' });
     }
 
+    if ($notification_minutes == 0 && $c->param('event_notify')) {
+        return $c->render(json => { success => 0, error => 'Please select a reminder time' });
+    }
+
     if ($end_date lt $start_date) {
         return $c->render(json => { success => 0, error => 'End date cannot be before start date' });
     }
@@ -256,7 +264,9 @@ sub api_edit {
                     start       => $c->format_datetime($start_date, $all_day),
                     end         => $c->format_datetime($end_date, $all_day),
                     category    => $category || 'General',
-                    attendees   => $attendee_names
+                    attendees   => $attendee_names,
+                    id          => $id,
+                    date        => substr($start_date // '', 0, 10)
                 }, $id);
             }
         }
