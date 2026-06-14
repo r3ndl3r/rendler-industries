@@ -738,16 +738,6 @@ function openReceiptModal(id) {
 }
 
 /**
- * Hides the full-size receipt Lightbox.
- * 
- * @returns {void}
- */
-function closeReceiptModal() { 
-    const m = document.getElementById('receiptModal'); 
-    if (m) m.classList.remove('show'); 
-}
-
-/**
  * Pre-fills the metadata editor from the in-memory state record.
  * Wires the AI scan button and conditionally shows the apply button.
  *
