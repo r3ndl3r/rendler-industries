@@ -22,6 +22,20 @@ let STATE = {
 let UPLOAD_QUEUE = [];
 let UPLOAD_TOKEN = 0;
 
+/**
+ * Checks whether any room modal is currently visible.
+ * 
+ * @returns {boolean} True if at least one room modal has the .show class.
+ */
+function hasOpenRoomModal() {
+    return !!document.querySelector([
+        '#uploadModal.show',
+        '#photoModal.show',
+        '#userSettingsModal.show',
+        '#globalConfirmActionModal.show'
+    ].join(', '));
+}
+
 const CONFIG = {
     SYNC_INTERVAL_MS: 30000,
     ROOM_UPLOAD_JPEG_QUALITY: 0.82,
@@ -478,6 +492,7 @@ function openSettingsModal(userId, username, time, isActive) {
     document.getElementById('settingsAlertTime').value = time;
     document.getElementById('settingsIsActive').checked = !!isActive;
     document.getElementById('userSettingsModal').classList.add('show');
+    document.body.classList.add('modal-open');
 }
 
 /**
@@ -488,6 +503,7 @@ function openSettingsModal(userId, username, time, isActive) {
 function closeSettingsModal() {
     const modal = document.getElementById('userSettingsModal');
     if (modal) modal.classList.remove('show');
+    if (!hasOpenRoomModal()) document.body.classList.remove('modal-open');
 }
 
 /**
@@ -742,7 +758,7 @@ function closeUploadModal() {
     const form = document.getElementById('uploadForm');
     if (form) form.reset();
     clearUploadQueue();
-    document.body.classList.remove('modal-open');
+    if (!hasOpenRoomModal()) document.body.classList.remove('modal-open');
 }
 
 /**
@@ -756,6 +772,7 @@ function openPhotoModal(id) {
     if (modal && img) {
         img.src = `/room/serve/${id}`;
         modal.classList.add('show');
+        document.body.classList.add('modal-open');
     }
 }
 
@@ -765,6 +782,7 @@ function openPhotoModal(id) {
 function closePhotoModal() {
     const modal = document.getElementById('photoModal');
     if (modal) modal.classList.remove('show');
+    if (!hasOpenRoomModal()) document.body.classList.remove('modal-open');
 }
 
 /**
