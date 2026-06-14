@@ -294,11 +294,21 @@ function openEditModal(id) {
     const form = document.getElementById('editReminderForm');
     if (form) form.reset();
 
-    document.getElementById('editReminderId').value = r.id;
-    document.getElementById('editReminderTitle').value = r.title;
-    document.getElementById('editReminderDescription').value = r.description || '';
-    document.getElementById('editReminderTime').value = r.reminder_time.substring(0, 5);
-    document.getElementById('editReminderOneOff').checked = (r.is_one_off == 1);
+    const setValue = (fieldId, value) => {
+        const field = document.getElementById(fieldId);
+        if (field) field.value = value ?? '';
+    };
+    const setChecked = (fieldId, checked) => {
+        const field = document.getElementById(fieldId);
+        if (field) field.checked = !!checked;
+    };
+    const reminderTime = (r.reminder_time || '00:00').substring(0, 5);
+
+    setValue('editReminderId', r.id);
+    setValue('editReminderTitle', r.title);
+    setValue('editReminderDescription', r.description || '');
+    setValue('editReminderTime', reminderTime);
+    setChecked('editReminderOneOff', r.is_one_off == 1);
 
     if (r.days_of_week) {
         r.days_of_week.split(',').forEach(d => {
