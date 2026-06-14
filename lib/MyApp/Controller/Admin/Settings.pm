@@ -45,6 +45,7 @@ sub api_state {
         google_cloud     => {
             key => $c->db->get_google_cloud_key()
         },
+        trakt             => _public_trakt_credentials($c->db->get_trakt_app_credentials()),
         owm_api_key      => $c->db->get_all_settings()->{owm_api_key},
         success          => 1
     };
@@ -198,6 +199,18 @@ sub update {
         $c->db->update_discord($token);
         return $c->render(json => { success => 1, message => 'Discord bot token updated successfully' });
     }
+    elsif ($section eq 'trakt') {
+        my $existing = $c->db->get_trakt_app_credentials();
+        my $client_id = _secret_update_value($c->param('trakt_client_id')) || ($existing->{client_id} // '');
+        my $client_secret = _secret_update_value($c->param('trakt_client_secret')) || ($existing->{client_secret} // '');
+
+        unless ($client_id && $client_secret) {
+            return $c->render(json => { success => 0, error => 'Trakt client ID and client secret are required' });
+        }
+
+        $c->db->update_trakt_app_credentials($client_id, $client_secret);
+        return $c->render(json => { success => 1, message => 'Trakt API credentials updated successfully' });
+    }
 
     return $c->render(json => { success => 0, error => 'Unknown settings section' });
 }
@@ -296,6 +309,15 @@ sub _public_ai_engine_registry {
     return {
         default_engine => $registry->{default_engine},
         engines        => \%engines
+    };
+}
+
+sub _public_trakt_credentials {
+    my ($creds) = @_;
+    $creds ||= {};
+    return {
+        client_id_configured     => length($creds->{client_id} || '') ? 1 : 0,
+        client_secret_configured => length($creds->{client_secret} || '') ? 1 : 0
     };
 }
 
