@@ -62,26 +62,6 @@
     flex: 1;
 }
 
-.btn-icon-reset {
-    background: #0ea5e9;
-    color: white;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    width: 38px;
-    height: 38px;
-    border-radius: 8px;
-    flex: 0 0 auto;
-}
-
-.btn-icon-reset:hover {
-    background: #0284c7;
-    transform: rotate(-45deg);
-}
-
 .fuel-table th.col-preview {
     width: 96px;
 }
