@@ -171,6 +171,7 @@ function renderTeenStatus() {
     const desc = document.getElementById('statusDesc');
     const gallery = document.getElementById('todayGallery');
     const container = document.getElementById('todayGalleryContainer');
+    if (icon) icon.style.color = '';
 
     if (STATE.is_blackout) {
         icon.innerHTML = '📅';
