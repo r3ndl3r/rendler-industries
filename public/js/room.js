@@ -21,6 +21,7 @@ let STATE = {
 // Persistent queue for prepared multi-photo uploads
 let UPLOAD_QUEUE = [];
 let UPLOAD_TOKEN = 0;
+let roomStateRequestSeq = 0;
 
 /**
  * Normalizes a room submission status to a known safe value.
@@ -110,7 +111,9 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.all_users.length > 0) return;
 
     try {
+        const requestSeq = ++roomStateRequestSeq;
         const data = await apiGet('/room/api/state');
+        if (requestSeq !== roomStateRequestSeq) return;
 
         if (data && data.success) {
             STATE = { ...STATE, ...normalizeRoomState(data) };
