@@ -919,13 +919,22 @@ function setupUploadInput() {
  * @param {File[]} files - Selected camera/gallery files.
  * @returns {Promise<void>}
  */
+function isRoomImageFile(file) {
+    const name = (file?.name || '').toLowerCase();
+    return !!file && (
+        (file.type && file.type.toLowerCase().startsWith('image/')) ||
+        name.endsWith('.heic') ||
+        name.endsWith('.heif')
+    );
+}
+
 async function addRoomUploadFiles(files) {
     const token = ++UPLOAD_TOKEN;
-    const validFiles = files.filter(file => file && file.size > 0);
+    const validFiles = files.filter(file => file && file.size > 0 && isRoomImageFile(file));
     const badCount = files.length - validFiles.length;
 
     if (badCount > 0) {
-        showToast('One or more photos came back empty. Please try again.', 'error');
+        showToast('One or more selected files were empty or not images.', 'error');
     }
     if (validFiles.length === 0) return;
 
