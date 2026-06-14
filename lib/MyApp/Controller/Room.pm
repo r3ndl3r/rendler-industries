@@ -130,11 +130,13 @@ sub api_upload {
 # Serves raw binary binary content for rendering.
 sub serve {
     my $c = shift;
-    return $c->render(text => 'Unauthorized', status => 403) unless $c->is_logged_in;
+    return $c->render(text => 'Unauthorized', status => 403) unless $c->is_logged_in && $c->is_family;
     
     my $id = $c->stash('id');
     my $photo = $c->db->get_room_photo_by_id($id);
     return $c->render(text => 'Not found', status => 404) unless $photo;
+    return $c->render(text => 'Unauthorized', status => 403)
+        unless $c->is_parent || (($photo->{user_id} // 0) == ($c->current_user_id // 0));
     
     $c->res->headers->content_type($photo->{mime_type});
     $c->render(data => $photo->{file_data});
