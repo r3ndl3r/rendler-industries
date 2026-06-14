@@ -34,6 +34,35 @@ function normalizeRoomStatus(status) {
 }
 
 /**
+ * Ensures a value is an array, falling back to an empty array.
+ * 
+ * @param {*} value - The value to check.
+ * @returns {Array} The original array or an empty array.
+ */
+function asArray(value) {
+    return Array.isArray(value) ? value : [];
+}
+
+/**
+ * Normalizes raw API state with safe defaults for collection fields.
+ * 
+ * @param {Object} data - Raw state object from /room/api/state.
+ * @returns {Object} State object with normalized collections.
+ */
+function normalizeRoomState(data) {
+    return {
+        ...data,
+        today_status: asArray(data.today_status),
+        pending_submissions: asArray(data.pending_submissions),
+        room_configs: asArray(data.room_configs),
+        blackout_dates: asArray(data.blackout_dates),
+        all_users: asArray(data.all_users),
+        daily_summary: asArray(data.daily_summary),
+        storage_stats: data.storage_stats && typeof data.storage_stats === 'object' ? data.storage_stats : null
+    };
+}
+
+/**
  * Checks whether any room modal is currently visible.
  * 
  * @returns {boolean} True if at least one room modal has the .show class.
@@ -84,7 +113,7 @@ async function loadState(force = false) {
         const data = await apiGet('/room/api/state');
 
         if (data && data.success) {
-            STATE = { ...STATE, ...data };
+            STATE = { ...STATE, ...normalizeRoomState(data) };
             renderUI();
         }
     } catch (err) {
