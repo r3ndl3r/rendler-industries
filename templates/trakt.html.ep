@@ -1,0 +1,76 @@
+<%# /templates/trakt.html.ep %>
+
+% layout 'default', navbar_title => '🎬 Trakt', favicon => '🎬';
+% title 'Trakt';
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/trakt.css">
+    <script src="/js/trakt.js"></script>
+% end
+
+<div class="trakt-container app-container">
+    <div class="header-bar">
+        <h1>🎬 <span>Trakt</span></h1>
+        <div class="manage-actions" id="traktHeaderActions"></div>
+    </div>
+
+    <div id="traktApp">
+        <div class="component-loading">
+            <div class="loading-scan-line"></div>
+            <span class="loading-icon-pulse">🎬</span>
+            <p class="loading-label">Synchronizing Trakt dashboard...</p>
+            <p class="loading-sub">Loading OAuth state, lists, and watch progress</p>
+        </div>
+    </div>
+</div>
+
+<div id="showDetailsModal" class="modal-overlay">
+    <div class="modal-content trakt-details-modal">
+        <div class="modal-header">
+            <h3 id="showDetailsTitle">Show Details</h3>
+            <span class="close-btn" onclick="closeShowDetailsModal()">&times;</span>
+        </div>
+        <div id="showDetailsBody" class="modal-body">
+            <div class="component-loading">
+                <div class="loading-scan-line"></div>
+                <span class="loading-icon-pulse">🎬</span>
+                <p class="loading-label">Loading show details...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="listEditModal" class="modal-overlay">
+    <div class="modal-content trakt-list-edit-modal">
+        <div class="modal-header">
+            <h3>✎ Edit List</h3>
+            <span class="close-btn" onclick="closeListEditModal()">&times;</span>
+        </div>
+        <form id="listEditForm" onsubmit="submitListEdit(event)">
+            <div class="modal-body">
+                <div class="modal-group">
+                    <label for="listEditName">List Name</label>
+                    <input type="text" id="listEditName" name="name" class="game-input" required maxlength="255" placeholder="List name">
+                    <input type="hidden" id="listEditId" name="id">
+                </div>
+                <div class="modal-group">
+                    <label for="listEditDescription">Description</label>
+                    <textarea id="listEditDescription" name="description" class="game-input" rows="4" maxlength="1000" placeholder="Optional description"></textarea>
+                </div>
+            </div>
+            <div class="modal-actions modal-actions-center">
+                <button type="submit" id="listEditSaveBtn" class="btn-primary">💾 Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="searchListModal" class="modal-overlay">
+    <div class="modal-content trakt-list-edit-modal">
+        <div class="modal-header">
+            <h3 id="searchListModalTitle">Manage Lists</h3>
+            <span class="close-btn" onclick="closeSearchListModal()">&times;</span>
+        </div>
+        <div id="searchListModalBody" class="modal-body"></div>
+    </div>
+</div>
