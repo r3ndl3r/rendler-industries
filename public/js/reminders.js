@@ -538,7 +538,8 @@ function updateCountdowns() {
             el.innerHTML = '<div class="flip-card due-badge">DUE NOW</div>';
             delete FlipClockManager.prevStates[reminderId];
             
-            if (card.dataset.oneOff === '1' && !card.classList.contains('row-fade-out')) {
+            if (card.dataset.oneOff === '1' && card.dataset.removing !== '1' && !card.classList.contains('row-fade-out')) {
+                card.dataset.removing = '1';
                 setTimeout(() => {
                     card.classList.add('row-fade-out');
                     setTimeout(() => {
