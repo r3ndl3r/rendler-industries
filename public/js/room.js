@@ -932,6 +932,7 @@ async function addRoomUploadFiles(files) {
 
         try {
             const prepared = await prepareRoomUploadImage(file);
+            if (token !== UPLOAD_TOKEN || !UPLOAD_QUEUE.some(queueItem => queueItem.id === item.id)) return;
             item.blob = prepared;
             item.processing = false;
             item.previewUrl = URL.createObjectURL(prepared);
@@ -968,6 +969,7 @@ async function prepareRoomUploadImage(file) {
  * @returns {void}
  */
 function clearUploadQueue() {
+    UPLOAD_TOKEN++;
     UPLOAD_QUEUE.forEach(item => {
         if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
     });
