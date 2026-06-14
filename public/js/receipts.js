@@ -311,7 +311,7 @@ async function handleUpload(e) {
     showLoadingOverlay('Processing receipt...', 'Performing binary scan and OCR extraction.');
     
     try {
-        const result = await apiPost('/receipts/api/upload', formData);
+        const result = await apiPost('/receipts/api/upload', formData, 90000);
         if (result && result.success) {
             form.reset();
             const display = document.getElementById('fileName');
@@ -816,7 +816,7 @@ function openEditModal(id) {
             btnScan.disabled = true;
             btnScan.innerHTML = `⌛ Scanning...`;
             try {
-                const res = await apiPost('/receipts/api/ai_analyze/' + r.id);
+                const res = await apiPost('/receipts/api/ai_analyze/' + r.id, {}, 90000);
                 if (res && res.success && res.data) {
                     const rec = STATE.receipts.find(x => x.id === r.id);
                     if (rec) rec.ai_json = JSON.stringify(res.data);
@@ -939,7 +939,7 @@ async function triggerOCR(id) {
     btn.innerHTML = `⌛ ...`;
     
     try {
-        const data = await apiPost('/receipts/api/ocr/' + id);
+        const data = await apiPost('/receipts/api/ocr/' + id, {}, 90000);
         if (data && data.success) {
             loadState(true);
             showToast('Scan complete', 'success');
@@ -984,7 +984,7 @@ async function viewElectronicReceipt(id, force = 0, preLoaded = null, initialIco
     content.innerHTML = getLoadingHtml('Digitizing...', 'Analyzing structured data', true);
 
     try {
-        const res = await apiPost(`/receipts/api/ai_analyze/${id}`, new URLSearchParams({ force: force }));
+        const res = await apiPost(`/receipts/api/ai_analyze/${id}`, new URLSearchParams({ force: force }), 90000);
         if (res && res.success) {
             loadState(true);
             renderEReceipt(res.data, initialIcon);
