@@ -299,8 +299,6 @@ async function handleSaveAlgorithm(e) {
         if (res && res.success) {
             closeSaveModal();
             loadLibrary();
-        } else {
-            showToast(res?.error || 'Save failed. Please try again.', 'error');
         }
     } catch (err) {
         console.error("Rubiks: Save Error:", err);
@@ -328,8 +326,6 @@ async function deleteAlgorithm(id) {
                 const res = await apiPost(`/rubiks/api/delete/${encodeURIComponent(String(id))}`);
                 if (res && res.success) {
                     loadLibrary();
-                } else {
-                    showToast(res?.error || 'Delete failed. Please try again.', 'error');
                 }
             } catch (err) {
                 console.error("Rubiks: Delete Error:", err);
@@ -663,8 +659,6 @@ async function saveSolveTime(duration, cubeType) {
         if (res && res.success) {
             RUBIKS_STATE.solves = res.solves || [];
             renderSolveDashboard(duration, cubeType);
-        } else {
-            showToast(res?.error || 'Solve save failed. Please try again.', 'error');
         }
     } catch (err) {
         console.error('Rubiks solve save failed:', err);
@@ -769,8 +763,6 @@ function reassignSolveCubeType(id, currentType) {
                 if (res && res.success) {
                     RUBIKS_STATE.solves = res.solves || [];
                     renderSolveDashboard();
-                } else {
-                    showToast(res?.error || 'Reassign failed. Please try again.', 'error');
                 }
             } catch (err) {
                 console.error('Rubiks solve reassign failed:', err);
@@ -1256,8 +1248,6 @@ async function handleSolverUpload(e) {
                     display4x4State(res.state_string);
                 }
             }
-        } else {
-            showToast(res?.error || 'Vision analysis failed. Ensure photos are clear.', 'error');
         }
     } catch (err) {
         console.error('Rubiks solver upload failed:', err);
