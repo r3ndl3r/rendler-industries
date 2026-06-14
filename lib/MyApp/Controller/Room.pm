@@ -6,6 +6,10 @@ use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 use Digest::SHA qw(sha256_hex);
 use DateTime;
+use constant {
+    ROOM_MAX_UPLOADS   => 8,
+    ROOM_MAX_FILE_SIZE => 5 * 1024 * 1024,
+};
 
 # Controller for the Room Cleaning Tracker.
 #
@@ -66,6 +70,8 @@ sub api_upload {
 
     my $uploads = $c->req->uploads('files[]');
     return $c->render(json => { success => 0, error => 'No files uploaded' }) unless @$uploads;
+    return $c->render(json => { success => 0, error => 'Too many files uploaded' }, status => 400)
+        if @$uploads > ROOM_MAX_UPLOADS;
 
     my $user_id = $c->current_user_id;
     my $username = $c->session('user');
@@ -88,6 +94,10 @@ sub api_upload {
 
             if (!$file_size) {
                 $c->app->log->warn("Skipping zero-size file: $original_filename");
+                next;
+            }
+            if ($file_size > ROOM_MAX_FILE_SIZE) {
+                $c->app->log->warn("Skipping oversized room upload: $original_filename ($file_size bytes)");
                 next;
             }
 
