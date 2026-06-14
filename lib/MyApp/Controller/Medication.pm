@@ -4,6 +4,7 @@ package MyApp::Controller::Medication;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::JSON qw(decode_json);
 use Mojo::Util qw(trim);
+use DateTime;
 
 # Controller for AJAX-driven Medication Tracker.
 # Manages medication logging, registry maintenance, and historical tracking.
