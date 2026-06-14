@@ -943,6 +943,121 @@ CREATE TABLE `todo_list` (
   KEY `idx_todo_emoji` (`has_emoji`),
   CONSTRAINT `todo_list_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `trakt_assignments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `list_item_id` int(11) NOT NULL,
+  `assigned_to_user_id` int(11) NOT NULL,
+  `status` enum('assigned','watching','done','skipped') NOT NULL DEFAULT 'assigned',
+  `note` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_trakt_assignment_item` (`user_id`,`list_item_id`),
+  KEY `idx_trakt_assignment_assignee` (`assigned_to_user_id`),
+  KEY `idx_trakt_assignment_item` (`list_item_id`),
+  CONSTRAINT `trakt_assignments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `trakt_assignments_ibfk_2` FOREIGN KEY (`assigned_to_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `trakt_assignments_ibfk_3` FOREIGN KEY (`list_item_id`) REFERENCES `trakt_list_items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `trakt_connections` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `trakt_user_id` varchar(100) DEFAULT NULL,
+  `trakt_username` varchar(255) DEFAULT NULL,
+  `access_token` text DEFAULT NULL,
+  `refresh_token` text DEFAULT NULL,
+  `token_type` varchar(50) DEFAULT 'bearer',
+  `expires_at` datetime DEFAULT NULL,
+  `scope` text DEFAULT NULL,
+  `status` enum('connected','disconnected') NOT NULL DEFAULT 'connected',
+  `connected_at` datetime DEFAULT NULL,
+  `last_synced_at` datetime DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_trakt_connections_user` (`user_id`),
+  CONSTRAINT `trakt_connections_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `trakt_list_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `list_id` int(11) NOT NULL,
+  `media_type` enum('movie','show','season','episode') NOT NULL,
+  `trakt_id` int(11) NOT NULL,
+  `imdb_id` varchar(50) DEFAULT NULL,
+  `tmdb_id` int(11) DEFAULT NULL,
+  `title` varchar(500) NOT NULL DEFAULT '',
+  `year` int(11) DEFAULT NULL,
+  `season` int(11) NOT NULL DEFAULT 0,
+  `episode` int(11) NOT NULL DEFAULT 0,
+  `watched` tinyint(1) NOT NULL DEFAULT 0,
+  `raw_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`raw_json`)),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_trakt_list_item_media` (`user_id`,`list_id`,`media_type`,`trakt_id`,`season`,`episode`),
+  KEY `idx_trakt_list_items_list` (`list_id`),
+  KEY `idx_trakt_list_items_media` (`media_type`,`trakt_id`),
+  CONSTRAINT `trakt_list_items_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `trakt_list_items_ibfk_2` FOREIGN KEY (`list_id`) REFERENCES `trakt_lists` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `trakt_lists` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `trakt_list_id` int(11) NOT NULL,
+  `trakt_slug` varchar(255) DEFAULT NULL,
+  `name` varchar(255) NOT NULL DEFAULT '',
+  `description` text DEFAULT NULL,
+  `privacy` varchar(50) DEFAULT NULL,
+  `display_numbers` tinyint(1) NOT NULL DEFAULT 0,
+  `allow_comments` tinyint(1) NOT NULL DEFAULT 0,
+  `sort_by` varchar(50) DEFAULT NULL,
+  `sort_how` varchar(50) DEFAULT NULL,
+  `item_count` int(11) NOT NULL DEFAULT 0,
+  `collapsed` tinyint(1) NOT NULL DEFAULT 1,
+  `raw_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`raw_json`)),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_trakt_lists_user_trakt` (`user_id`,`trakt_list_id`),
+  KEY `idx_trakt_lists_user` (`user_id`),
+  CONSTRAINT `trakt_lists_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `trakt_unwatched_cache` (
+  `user_id` int(11) NOT NULL,
+  `data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`data`)),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `trakt_unwatched_cache_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `trakt_upcoming` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `show_trakt_id` int(11) DEFAULT NULL,
+  `episode_trakt_id` int(11) DEFAULT NULL,
+  `title` varchar(500) NOT NULL DEFAULT '',
+  `show_title` varchar(500) NOT NULL DEFAULT '',
+  `season` int(11) DEFAULT NULL,
+  `episode` int(11) DEFAULT NULL,
+  `first_aired` datetime DEFAULT NULL,
+  `network` varchar(255) DEFAULT NULL,
+  `raw_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`raw_json`)),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_trakt_upcoming_user_date` (`user_id`,`first_aired`),
+  KEY `idx_trakt_upcoming_episode` (`episode_trakt_id`),
+  CONSTRAINT `trakt_upcoming_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `trakt_watchlist_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `show_trakt_id` int(11) NOT NULL,
+  `show_title` varchar(500) NOT NULL DEFAULT '',
+  `year` int(11) DEFAULT NULL,
+  `raw_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`raw_json`)),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_trakt_watchlist_show` (`user_id`,`show_trakt_id`),
+  CONSTRAINT `trakt_watchlist_items_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `translation_cache` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `text_hash` char(64) NOT NULL,
