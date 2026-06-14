@@ -711,7 +711,9 @@ async function updateStatus(id, status, btn = null) {
     const originalDisabled = btn ? btn.disabled : false;
     if (btn) btn.disabled = true;
 
-    const comment = document.getElementById(`comment-${id}`)?.value || '';
+    const comment = status === 'failed'
+        ? (document.getElementById(`comment-${id}`)?.value || '')
+        : '';
     try {
         const result = await apiPost('/room/api/update_status', new URLSearchParams({
             id: id,
