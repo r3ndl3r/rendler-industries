@@ -453,8 +453,8 @@ function renderSettings() {
         const config = STATE.room_configs.find(c => c.user_id === u.id) || { alert_start_time: '17:00:00', is_active: 0 };
         const statusIcon = config.is_active ? '✅' : '⚠️';
         const statusClass = config.is_active ? 'text-success' : 'text-danger';
-        const formattedTime = formatTimeAMPM(config.alert_start_time);
-        const alertTimeShort = (config.alert_start_time || '17:00').substring(0, 5);
+        const alertTimeShort = normalizeAlertTime(config.alert_start_time);
+        const formattedTime = formatTimeAMPM(alertTimeShort);
         
         return `
             <div class="setting-card glass clickable" data-user-id="${u.id}" data-username="${escapeHtml(u.username)}" data-time="${alertTimeShort}" data-active="${config.is_active ? 1 : 0}" onclick="handleSettingsCardClick(this)">
@@ -519,9 +519,14 @@ function renderBlackouts() {
  * @param {string} time24 - 24h time string.
  * @returns {string} - Formatted time.
  */
+function normalizeAlertTime(timeValue) {
+    const match = String(timeValue || '').match(/^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/);
+    return match ? `${match[1]}:${match[2]}` : '17:00';
+}
+
 function formatTimeAMPM(time24) {
-    if (!time24) return "";
-    let [h, m] = time24.split(':');
+    const normalized = normalizeAlertTime(time24);
+    let [h, m] = normalized.split(':');
     h = parseInt(h);
     const ampm = h >= 12 ? 'PM' : 'AM';
     h = h % 12 || 12;
