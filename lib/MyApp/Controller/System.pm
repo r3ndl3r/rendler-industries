@@ -667,8 +667,10 @@ sub run_calendar_notifications {
                 time_label => $time_label,
                 start      => $formatted_start,
                 end        => $formatted_end,
-                attendees  => $attendees_str
-            }, 0); # caller_id 0 for system
+                attendees  => $attendees_str,
+                id         => $event->{id},
+                date       => substr($event->{start_date} // '', 0, 10)
+            }, $event->{id});
         }
 
         $stats->{notifications_sent}++;
@@ -708,8 +710,10 @@ sub run_calendar_notifications {
                 time_label => $time_label,
                 start      => $formatted_start,
                 end        => $formatted_end,
-                attendees  => $attendees_str
-            }, 0);
+                attendees  => $attendees_str,
+                id         => $event->{id},
+                date       => substr($event->{start_date} // '', 0, 10)
+            }, $event->{id});
         }
 
         $stats->{notifications_sent}++;
