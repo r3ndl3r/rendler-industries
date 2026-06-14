@@ -35,6 +35,24 @@ sub _strip_markdown {
     return trim($text);
 }
 
+sub _calendar_link_date {
+    my $data = shift || {};
+    my $date = $data->{date} // '';
+    return $date if $date =~ /^\d{4}-\d{2}-\d{2}$/;
+
+    my $start = $data->{start_date} // '';
+    return $1 if $start =~ /^(\d{4}-\d{2}-\d{2})/;
+    return '';
+}
+
+sub _append_query_params {
+    my ($url, @params) = @_;
+    return $url unless @params;
+
+    my $sep = index($url, '?') >= 0 ? '&' : '?';
+    return $url . $sep . join('&', @params);
+}
+
 # Obtains a valid FCM OAuth2 access token, refreshing from Google if expired.
 # Synchronous — blocks for ~200ms at most once per hour.
 # Returns: access token string, or undef on failure.
@@ -267,27 +285,27 @@ use constant MANIFEST => {
     # --- CALENDAR (calendar_*) ---
     'calendar_reminder' => {
         desc    => "Upcoming event reminder.",
-        tags    => "title, time_label, start, end, attendees",
+        tags    => "title, time_label, start, end, attendees, id, date",
         url     => '/calendar',
-        sample  => { title => "Family Dinner", time_label => "1 hour", start => "18:00", end => "20:00", attendees => "Everyone" },
+        sample  => { title => "Family Dinner", time_label => "1 hour", start => "18:00", end => "20:00", attendees => "Everyone", id => 1, date => "2026-06-14" },
         default_subject => "Upcoming Event: [title]",
-        default_body    => "🔔 **UPCOMING EVENT** 🔔\n\n**[title]** is starting in [time_label]!\n\n📅 **Start:** [start]\n🏁 **End:** [end]\n👥 **Attendees:** [attendees]\n\n[sys_url /calendar]"
+        default_body    => "🔔 **UPCOMING EVENT** 🔔\n\n**[title]** is starting in [time_label]!\n\n📅 **Start:** [start]\n🏁 **End:** [end]\n👥 **Attendees:** [attendees]\n\n[sys_url /calendar]?event=[id]&date=[date]"
     },
     'calendar_new' => {
         desc    => "Sent to family when a new public event is created.",
-        tags    => "creator, title, description, start, end, category, attendees",
+        tags    => "creator, title, description, start, end, category, attendees, id, date",
         url     => '/calendar',
-        sample  => { creator => "Dad", title => "Museum Trip", description => "Bring masks", start => "10:00", end => "14:00", category => "Trip", attendees => "Everyone" },
+        sample  => { creator => "Dad", title => "Museum Trip", description => "Bring masks", start => "10:00", end => "14:00", category => "Trip", attendees => "Everyone", id => 1, date => "2026-06-14" },
         default_subject => "New Calendar Event: [title]",
-        default_body    => "📅 **NEW EVENT ADDED** 📅\n\n**[creator]** added a new event to the calendar.\n\n**[title]**\n*[description]*\n\n📅 **Start:** [start]\n🏁 **End:** [end]\n🏷️ **Category:** [category]\n👥 **Participants:** [attendees]\n\n[sys_url /calendar]"
+        default_body    => "📅 **NEW EVENT ADDED** 📅\n\n**[creator]** added a new event to the calendar.\n\n**[title]**\n*[description]*\n\n📅 **Start:** [start]\n🏁 **End:** [end]\n🏷️ **Category:** [category]\n👥 **Participants:** [attendees]\n\n[sys_url /calendar]?event=[id]&date=[date]"
     },
     'calendar_update' => {
         desc    => "Sent to family when an existing public event is modified.",
-        tags    => "editor, title, description, start, end, category, attendees",
+        tags    => "editor, title, description, start, end, category, attendees, id, date",
         url     => '/calendar',
-        sample  => { editor => "Mom", title => "Museum Trip (Updated)", description => "Bring masks and lunch", start => "11:00", end => "15:00", category => "Trip", attendees => "Everyone" },
+        sample  => { editor => "Mom", title => "Museum Trip (Updated)", description => "Bring masks and lunch", start => "11:00", end => "15:00", category => "Trip", attendees => "Everyone", id => 1, date => "2026-06-14" },
         default_subject => "Calendar Update: [title]",
-        default_body    => "🔄 **CALENDAR UPDATE** 🔄\n\n**[editor]** updated event details.\n\n**[title]**\n*[description]*\n\n📅 **Start:** [start]\n🏁 **End:** [end]\n🏷️ **Category:** [category]\n👥 **Participants:** [attendees]\n\n[sys_url /calendar]"
+        default_body    => "🔄 **CALENDAR UPDATE** 🔄\n\n**[editor]** updated event details.\n\n**[title]**\n*[description]*\n\n📅 **Start:** [start]\n🏁 **End:** [end]\n🏷️ **Category:** [category]\n👥 **Participants:** [attendees]\n\n[sys_url /calendar]?event=[id]&date=[date]"
     },
 
     # --- TIMERS (timers_*) ---
@@ -748,6 +766,13 @@ sub register {
         }
 
         my $tap_url = MANIFEST->{$key}{url};
+        my $event_id = int($caller_id // 0);
+        if ($event_id > 0 && $key =~ /^calendar_/) {
+            my $date = _calendar_link_date($data);
+            my @params = ("event=$event_id");
+            push @params, "date=$date" if $date;
+            $tap_url = _append_query_params($tap_url, @params);
+        }
 
         # notify_user signature: ($user_id, $message, $subject, $tap_url, $caller_id)
         return $c->notify_user(
