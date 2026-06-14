@@ -417,7 +417,7 @@ function renderReviewQueue() {
                         </div>
                         <div class="photo-controls">
                             <div class="action-buttons">
-                                <button type="button" class="btn-icon-view" onclick="updateStatus(${p.id}, 'passed')" title="Pass">
+                                <button type="button" class="btn-icon-view" onclick="updateStatus(${p.id}, 'passed', this)" title="Pass">
                     ✅
                 </button>
                 <button type="button" class="btn-icon-edit" onclick="showFailComment(${p.id})" title="Fail">
@@ -430,7 +430,7 @@ function renderReviewQueue() {
                         </div>
                         <div id="fail-box-${p.id}" class="${status === 'failed' ? '' : 'hidden'}">
                             <textarea id="comment-${p.id}" class="game-input fail-comment-box" placeholder="Why did it fail?">${escapeHtml(p.admin_comment || '')}</textarea>
-                            <button class="btn-primary btn-small full-width" onclick="updateStatus(${p.id}, 'failed')">Update Feedback</button>
+                            <button class="btn-primary btn-small full-width" onclick="updateStatus(${p.id}, 'failed', this)">Update Feedback</button>
                         </div>
                     </div>
                     `;
@@ -703,20 +703,25 @@ async function handleUpload(event) {
  * @param {string} status - 'passed'|'failed'.
  * @returns {Promise<void>}
  */
-async function updateStatus(id, status) {
+async function updateStatus(id, status, btn = null) {
+    if (btn && btn.disabled) return;
+    const originalDisabled = btn ? btn.disabled : false;
+    if (btn) btn.disabled = true;
+
     const comment = document.getElementById(`comment-${id}`)?.value || '';
-    const result = await apiPost('/room/api/update_status', new URLSearchParams({
-        id: id,
-        status: status,
-        comment: comment
-    }));
-    
-    if (result && result.success) {
-        showToast(`Photo marked as ${status}`, "success");
-        if (status === 'failed') {
-            showFailComment(id); // Toggle visibility to hide
+    try {
+        const result = await apiPost('/room/api/update_status', new URLSearchParams({
+            id: id,
+            status: status,
+            comment: comment
+        }));
+        if (result && result.success) {
+            showToast(`Photo marked as ${status}`, "success");
+            if (status === 'failed') showFailComment(id);
+            loadState();
         }
-        loadState();
+    } finally {
+        if (btn) btn.disabled = originalDisabled;
     }
 }
 
