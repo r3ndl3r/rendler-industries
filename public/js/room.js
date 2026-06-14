@@ -871,6 +871,14 @@ function openRoomFileInput() {
     const input = document.getElementById('roomUploadInput');
     if (!input) return;
     sessionStorage.setItem('room_camera_pending', '1');
+    const clearPendingIfCanceled = () => {
+        setTimeout(() => {
+            if (!input.files || input.files.length === 0) {
+                sessionStorage.removeItem('room_camera_pending');
+            }
+        }, 500);
+    };
+    window.addEventListener('focus', clearPendingIfCanceled, { once: true });
     input.click();
 }
 
