@@ -70,6 +70,11 @@ sub api_upload {
     my $user_id = $c->current_user_id;
     my $username = $c->session('user');
     my $today = $c->now->strftime('%Y-%m-%d');
+    my $config = $c->db->get_room_configs($user_id);
+    return $c->render(json => { success => 0, error => 'Room tracking is not active for this account' }, status => 403)
+        unless $config && $config->{is_active};
+    return $c->render(json => { success => 0, error => 'Room uploads are paused for a blackout day' }, status => 403)
+        if $c->db->is_room_blackout($today);
     my $written = 0;
 
     $c->app->log->info("Room upload started for $username ($user_id). File count: " . scalar(@$uploads));
