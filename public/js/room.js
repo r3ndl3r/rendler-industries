@@ -312,7 +312,7 @@ function confirmTrimData() {
             const result = await apiPost('/room/api/trim');
             if (result && result.success) {
                 showToast(`Trim complete! Deleted ${result.deleted} records.`, "success");
-                loadState();
+                loadState(true);
             }
         }
     });
@@ -584,7 +584,7 @@ async function applySettingsModal() {
     if (result && result.success) {
         closeSettingsModal();
         showToast("Settings saved", "success");
-        loadState();
+        loadState(true);
     }
 }
 
@@ -688,7 +688,7 @@ async function handleUpload(event) {
         const result = await apiPost('/room/api/upload', formData, CONFIG.ROOM_UPLOAD_TIMEOUT_MS);
         if (result && result.success) {
             closeUploadModal();
-            loadState();
+            loadState(true);
         }
     } catch (err) {
         console.error("Upload process failed:", err);
@@ -723,7 +723,7 @@ async function updateStatus(id, status, btn = null) {
         if (result && result.success) {
             showToast(`Photo marked as ${status}`, "success");
             if (status === 'failed') showFailComment(id);
-            loadState();
+            loadState(true);
         }
     } finally {
         if (btn) btn.disabled = originalDisabled;
@@ -748,7 +748,7 @@ async function addBlackout(event) {
     if (result && result.success) {
         form.reset();
         showToast("Blackout date added", "success");
-        loadState();
+        loadState(true);
     }
 }
 
@@ -762,7 +762,7 @@ async function deleteBlackout(id) {
     const result = await apiPost('/room/api/delete_blackout', new URLSearchParams({ id: id }));
     if (result && result.success) {
         showToast("Blackout removed", "success");
-        loadState();
+        loadState(true);
     }
 }
 
@@ -870,7 +870,7 @@ function confirmDeleteSubmission(id) {
             const result = await apiPost(`/room/api/delete/${id}`);
             if (result && result.success) {
                 showToast("Photo removed", "success");
-                loadState();
+                loadState(true);
             }
         }
     });
