@@ -22,6 +22,7 @@ function inlineJsArg(value) {
 }
 
 let rubiksLeaderboardRequestSeq = 0;
+let rubiksLibraryRequestSeq = 0;
 
 let RUBIKS_STATE = {
     sequence: '',
@@ -154,7 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadLibrary() {
     try {
+        const requestSeq = ++rubiksLibraryRequestSeq;
         const data = await apiGet('/rubiks/api/state');
+        if (requestSeq !== rubiksLibraryRequestSeq) return;
         if (data && data.success) {
             RUBIKS_STATE.algorithms = data.algorithms || [];
             RUBIKS_STATE.solves = data.solves || [];
