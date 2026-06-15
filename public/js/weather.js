@@ -522,6 +522,8 @@ function reorderLocation(id, direction) {
     const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     if (newIndex < 0 || newIndex >= STATE.locations.length) return;
 
+    const previousLocations = [...STATE.locations];
+
     // Swap locally
     const temp = STATE.locations[currentIndex];
     STATE.locations[currentIndex] = STATE.locations[newIndex];
@@ -535,7 +537,13 @@ function reorderLocation(id, direction) {
     .then(data => {
         if (data && data.success) {
             loadState();
+        } else {
+            STATE.locations = previousLocations;
+            renderLocationLedger();
         }
+    }).catch(() => {
+        STATE.locations = previousLocations;
+        renderLocationLedger();
     });
 }
 
