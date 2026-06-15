@@ -165,7 +165,7 @@ sub reset {
                     return $c->render(json => { success => 0, error => "Invalid reminder recipients." })
                         unless @uids;
 
-                    $c->db->create_reminder($title, $desc, $trigger_day, $trigger_time, $creator_id, \@uids, 1);
+                    $c->db->create_reminder($title, $desc, 1 << ($trigger_day - 1), $trigger_time, $creator_id, \@uids, 1);
                     $reminder_scheduled = 1;
                 }
             }
@@ -282,18 +282,19 @@ sub save_reminders {
         return $c->render(json => { success => 0, error => 'times must be a JSON array of 1-4 time strings.' });
     }
 
-    my $days_of_week = '1,2,3,4,5,6,7';
+    my $days_of_week = 127;
     if ($days_json) {
         my $days_arr = eval { decode_json($days_json) };
         if ($@ || ref($days_arr) ne 'ARRAY' || @$days_arr < 1) {
             return $c->render(json => { success => 0, error => 'days_of_week must be a JSON array of day numbers (1-7).' });
         }
+        $days_of_week = 0;
         for my $d (@$days_arr) {
             if ($d !~ /^[1-7]$/) {
                 return $c->render(json => { success => 0, error => 'Each day value must be 1-7.' });
             }
+            $days_of_week |= (1 << ($d - 1));
         }
-        $days_of_week = join(',', sort { $a <=> $b } @$days_arr);
     }
 
     eval {

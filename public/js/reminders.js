@@ -154,11 +154,11 @@ function renderReminderCard(r) {
     const displayTime = `${h}:${mRaw || '00'}`;
 
     // Day dots are interactive only for the owner/admin
-    const activeDays = (r.days_of_week || '').split(',').reduce((acc, d) => { if(d) acc[d] = true; return acc; }, {});
+    const daysMask = r.days_of_week || 0;
     const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     const dayDots = dayLabels.map((label, idx) => {
         const dayNum = idx + 1;
-        const active = activeDays[dayNum];
+        const active = (daysMask >> (dayNum - 1)) & 1;
         if (canEdit) {
             return `<span class="day-dot ${active ? 'active' : ''}" onclick="toggleDay(${r.id}, ${dayNum}, ${active ? 0 : 1})" title="${getDayFullName(dayNum)}">${label}</span>`;
         }
@@ -191,7 +191,7 @@ function renderReminderCard(r) {
         <div class="reminder-card ${isActive ? '' : 'paused'}"
              data-id="${r.id}"
              data-time="${reminderTime}"
-             data-days="${r.days_of_week || ''}"
+             data-days="${r.days_of_week || 0}"
              data-one-off="${isOneOff ? '1' : '0'}"
              data-last-run="${r.last_run_at || ''}">
             <div class="reminder-header">
@@ -311,10 +311,12 @@ function openEditModal(id) {
     setChecked('editReminderOneOff', r.is_one_off == 1);
 
     if (r.days_of_week) {
-        r.days_of_week.split(',').forEach(d => {
-            const cb = document.getElementById(`editDay${d}`);
-            if (cb) cb.checked = true;
-        });
+        for (let d = 1; d <= 7; d++) {
+            if ((r.days_of_week >> (d - 1)) & 1) {
+                const cb = document.getElementById(`editDay${d}`);
+                if (cb) cb.checked = true;
+            }
+        }
     }
 
     if (r.recipient_ids) {
@@ -493,14 +495,15 @@ async function toggleDay(reminderId, day, active) {
  * @param {string|null} lastRunAt - Server timestamp of previous execution.
  * @returns {Date|null} - Target date object.
  */
-function getNextOccurrence(timeStr, daysStr, lastRunAt = '') {
-    if (typeof daysStr !== 'string' || typeof timeStr !== 'string' || !daysStr || !timeStr) return null;
+function getNextOccurrence(timeStr, daysMask, lastRunAt = '') {
+    const daysNum = Number(daysMask);
+    if (typeof timeStr !== 'string' || !Number.isInteger(daysNum) || daysNum < 1 || daysNum > 127 || !timeStr) return null;
     const [h, m] = timeStr.split(':').map(Number);
     if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
-    const days = daysStr
-        .split(',')
-        .map(Number)
-        .filter(day => Number.isInteger(day) && day >= 1 && day <= 7);
+    const days = [];
+    for (let d = 1; d <= 7; d++) {
+        if ((daysNum >> (d - 1)) & 1) days.push(d);
+    }
     if (days.length === 0) return null;
 
     const now = new Date();

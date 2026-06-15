@@ -57,8 +57,8 @@ sub api_state {
     my $today_dow     = $now->day_of_week; # 1=Mon, 7=Sun
     my $all_reminders = $c->db->get_all_reminders();
     my @reminders = grep {
-        my $days       = $_->{days_of_week} // '';
-        my $active_day = grep { $_ == $today_dow } split(/,/, $days);
+        my $days       = $_->{days_of_week} // 0;
+        my $active_day = ($days >> ($today_dow - 1)) & 1;
         my $recipient  = $is_admin || grep { $_ == $user_id } split(/,/, $_->{recipient_ids} // '');
         $active_day && $recipient;
     } @$all_reminders;
@@ -68,8 +68,8 @@ sub api_state {
     if ($c->is_family) {
         my $all_medication_reminders = $c->db->get_medication_reminders_for_member($user_id);
         my @filtered_medication_reminders = grep {
-            my $days = $_->{days_of_week} // '';
-            grep { $_ == $today_dow } split(/,/, $days);
+            my $days = $_->{days_of_week} // 0;
+            ($days >> ($today_dow - 1)) & 1;
         } @$all_medication_reminders;
         $medication_reminders = \@filtered_medication_reminders;
     }

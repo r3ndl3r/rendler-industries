@@ -356,7 +356,7 @@ sub DB::get_medication_reminders_for_member {
 #   family_member_id : Integer user ID
 #   dosage           : Integer mg
 #   times            : ArrayRef of time strings ("HH:MM" or "HH:MM:SS")
-#   days_of_week     : String of comma-separated day numbers e.g. "1,2,3,4,5" (default "1,2,3,4,5,6,7")
+#   days_of_week     : Integer bitmask (1=Mon, 2=Tue, 4=Wed, 8=Thu, 16=Fri, 32=Sat, 64=Sun)
 #   created_by       : Integer user ID
 #   source_log_id    : Required medication_logs.id to update on confirm
 # Returns: Integer count of reminders created
@@ -364,7 +364,7 @@ sub DB::save_medication_reminders {
     my ($self, $medication_id, $family_member_id, $dosage, $times, $days_of_week, $created_by, $source_log_id) = @_;
     $self->ensure_connection;
 
-    $days_of_week = '1,2,3,4,5,6,7' unless defined $days_of_week && $days_of_week ne '';
+    $days_of_week //= 127;
     my $times_ref = ref($times) eq 'ARRAY' ? $times : [$times];
 
     $self->{dbh}->begin_work;
@@ -434,7 +434,7 @@ sub DB::get_due_medication_reminders {
         JOIN users u ON r.family_member_id = u.id
         WHERE r.is_active = 1
           AND r.reminder_time LIKE ?
-          AND FIND_IN_SET(?, r.days_of_week)
+          AND (r.days_of_week >> (? - 1)) & 1
           AND NOT EXISTS (
               SELECT 1 FROM medication_reminder_events e
               WHERE e.reminder_id = r.id

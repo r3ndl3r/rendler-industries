@@ -76,7 +76,7 @@ sub api_add {
     # Standardize time format to HH:MM:SS for database compatibility
     $time .= ":00" if $time =~ /^\d{2}:\d{2}$/;
     
-    my $days_str = join(',', @days);
+    my $days_mask = _compute_day_mask(@days);
     my $user_id = $c->current_user_id;
     my $is_one_off = $c->param('is_one_off') ? 1 : 0;
     
@@ -85,7 +85,7 @@ sub api_add {
     my $chore_points = ($c->is_admin && $is_chore) ? int($c->param('chore_points') // 0) : undef;
     
     eval {
-        $c->db->create_reminder($title, $desc, $days_str, $time, $user_id, \@uids, $is_one_off, $chore_points);
+        $c->db->create_reminder($title, $desc, $days_mask, $time, $user_id, \@uids, $is_one_off, $chore_points);
     };
     
     if ($@) {
@@ -130,7 +130,7 @@ sub api_update {
     # Standardize time format
     $time .= ":00" if $time =~ /^\d{2}:\d{2}$/;
     
-    my $days_str = join(',', @days);
+    my $days_mask = _compute_day_mask(@days);
     my $is_one_off = $c->param('is_one_off') ? 1 : 0;
 
     # Chore Integration (Admin Only)
@@ -138,7 +138,7 @@ sub api_update {
     my $chore_points = ($c->is_admin && $is_chore) ? int($c->param('chore_points') // 0) : undef;
     
     eval {
-        $c->db->update_reminder($id, $title, $desc, $days_str, $time, \@uids, $is_one_off, $chore_points);
+        $c->db->update_reminder($id, $title, $desc, $days_mask, $time, \@uids, $is_one_off, $chore_points);
     };
     
     if ($@) {
@@ -249,6 +249,15 @@ sub api_toggle_day {
     return $c->render(json => { success => 0, error => 'Invalid parameters' });
 }
 
+
+sub _compute_day_mask {
+    my $mask = 0;
+    for my $d (@_) {
+        next unless defined $d && $d =~ /^[1-7]$/;
+        $mask |= (1 << ($d - 1));
+    }
+    return $mask;
+}
 
 sub register_routes {
     my ($class, $r) = @_;

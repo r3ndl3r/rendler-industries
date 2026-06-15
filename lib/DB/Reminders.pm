@@ -59,7 +59,7 @@ sub DB::get_all_reminders {
 # Parameters:
 #   title        : Reminder heading
 #   desc         : Detailed notes
-#   days         : String of active days (e.g. "1,2,3")
+#   days         : Integer bitmask of active days (1=Mon, 2=Tue, 4=Wed, 8=Thu, 16=Fri, 32=Sat, 64=Sun)
 #   time         : HH:MM:SS trigger time
 #   user_id      : Creator ID
 #   recipient_ids: ArrayRef of user IDs to notify
@@ -70,12 +70,8 @@ sub DB::create_reminder {
     my ($self, $title, $desc, $days, $time, $user_id, $recipient_ids, $is_one_off, $chore_points) = @_;
     $self->ensure_connection;
     
-    # Ensure days is a scalar string (flattens accidental array refs from controller)
-    my $clean_days = ref($days) eq 'ARRAY' ? join(',', @$days) : $days;
-    
-    # 1. Insert main reminder rule
     my $sth = $self->{dbh}->prepare("INSERT INTO reminders (title, description, days_of_week, reminder_time, created_by, is_one_off, chore_points) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $sth->execute($title, $desc, $clean_days, $time, $user_id, $is_one_off // 0, $chore_points);
+    $sth->execute($title, $desc, $days // 0, $time, $user_id, $is_one_off // 0, $chore_points);
     my $reminder_id = $self->{dbh}->last_insert_id();
     
     # 2. Map recipients
@@ -101,12 +97,8 @@ sub DB::update_reminder {
     my ($self, $id, $title, $desc, $days, $time, $recipient_ids, $is_one_off, $chore_points) = @_;
     $self->ensure_connection;
     
-    # Ensure days is a scalar string
-    my $clean_days = ref($days) eq 'ARRAY' ? join(',', @$days) : $days;
-    
-    # 1. Update main attributes
     my $sth = $self->{dbh}->prepare("UPDATE reminders SET title = ?, description = ?, days_of_week = ?, reminder_time = ?, is_one_off = ?, chore_points = ? WHERE id = ?");
-    $sth->execute($title, $desc, $clean_days, $time, $is_one_off // 0, $chore_points, $id);
+    $sth->execute($title, $desc, $days // 0, $time, $is_one_off // 0, $chore_points, $id);
     
     # 2. Refresh recipients (Delete and Re-insert)
     $self->{dbh}->do("DELETE FROM reminder_recipients WHERE reminder_id = ?", undef, $id);
@@ -149,7 +141,8 @@ sub DB::toggle_reminder_status {
     return $self->{dbh}->do("UPDATE reminders SET is_active = ? WHERE id = ?", undef, $active, $id);
 }
 
-# Toggles a specific day within the days_of_week string.
+# Toggles a specific day within the days_of_week bitmask.
+# Uses an atomic bitwise UPDATE — no read-modify-write race.
 # Parameters:
 #   id, day, active : Reminder ID, Day number (1-7), and status flag.
 # Returns:
@@ -157,23 +150,11 @@ sub DB::toggle_reminder_status {
 sub DB::toggle_reminder_day {
     my ($self, $id, $day, $active) = @_;
     $self->ensure_connection;
-    
-    # 1. Fetch current string
-    my $sth = $self->{dbh}->prepare("SELECT days_of_week FROM reminders WHERE id = ?");
-    $sth->execute($id);
-    my ($days_str) = $sth->fetchrow_array();
-    
-    # 2. Parse and update
-    my %days = map { $_ => 1 } split(',', $days_str // '');
-    if ($active) {
-        $days{$day} = 1;
-    } else {
-        delete $days{$day};
-    }
-    
-    # 3. Join back and save
-    my $new_days = join(',', sort keys %days);
-    return $self->{dbh}->do("UPDATE reminders SET days_of_week = ? WHERE id = ?", undef, $new_days, $id);
+
+    my $sql = $active
+        ? "UPDATE reminders SET days_of_week = days_of_week | (1 << (? - 1)) WHERE id = ?"
+        : "UPDATE reminders SET days_of_week = days_of_week & ~(1 << (? - 1)) WHERE id = ?";
+    return $self->{dbh}->do($sql, undef, $day, $id) ? 1 : 0;
 }
 
 # Retrieves reminders that are due to fire in the current minute.
@@ -188,7 +169,7 @@ sub DB::get_due_reminders {
     
     # Logic: 
     # - Must be active
-    # - Current day must be in days_of_week string
+    # - Current day must be set in days_of_week bitmask
     # - reminder_time must match current minute
     # - last_run_at must NOT be today (prevents duplicate triggers if maintenance runs twice)
     my $sql = q{
@@ -197,7 +178,7 @@ sub DB::get_due_reminders {
         JOIN reminder_recipients rr ON r.id = rr.reminder_id
         JOIN users u ON rr.user_id = u.id
         WHERE r.is_active = 1
-          AND FIND_IN_SET(?, r.days_of_week)
+          AND (r.days_of_week >> (? - 1)) & 1
           AND r.reminder_time LIKE ?
           AND (r.last_run_at IS NULL OR r.last_run_at < DATE_SUB(NOW(), INTERVAL 12 HOUR))
     };

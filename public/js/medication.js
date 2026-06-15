@@ -563,7 +563,12 @@ function renderReminderItem(r) {
  * @returns {string} Day labels.
  */
 function formatReminderDays(daysOfWeek) {
-    return (daysOfWeek || '').split(',').filter(Boolean).map(d => DAY_LABELS[d]).filter(Boolean).join(' ');
+    const mask = Number(daysOfWeek) || 0;
+    const labels = [];
+    for (let d = 1; d <= 7; d++) {
+        if ((mask >> (d - 1)) & 1) labels.push(DAY_LABELS[d]);
+    }
+    return labels.join(' ');
 }
 
 /**
@@ -699,9 +704,9 @@ function openReminderScheduler(data) {
         }
 
         // Pre-fill days of week
-        const dayNums = (data.days_of_week || '').split(',').filter(Boolean);
+        const daysMask = Number(data.days_of_week) || 0;
         document.querySelectorAll('#reminderDaysSelector input[type="checkbox"]').forEach(cb => {
-            cb.checked = dayNums.includes(cb.value);
+            cb.checked = ((daysMask >> (Number(cb.value) - 1)) & 1) === 1;
         });
     } else {
         // New: all days checked by default
