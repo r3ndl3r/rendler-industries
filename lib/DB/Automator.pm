@@ -607,11 +607,14 @@ sub DB::delete_automator_secret {
 }
 
 sub DB::get_automator_secret_plaintext {
-    my ($self, $id_or_name) = @_;
+    my ($self, $id_or_name, $user_id) = @_;
     $self->ensure_connection;
-    my $sql = $id_or_name =~ /^\d+$/ ? "SELECT * FROM automator_secrets WHERE id = ?" : "SELECT * FROM automator_secrets WHERE name = ?";
+    die "Secret owner is required" unless defined $user_id && $user_id =~ /\A[1-9]\d*\z/;
+    my $sql = $id_or_name =~ /^\d+$/
+        ? "SELECT * FROM automator_secrets WHERE id = ? AND user_id = ?"
+        : "SELECT * FROM automator_secrets WHERE name = ? AND user_id = ?";
     my $sth = $self->{dbh}->prepare($sql);
-    $sth->execute($id_or_name);
+    $sth->execute($id_or_name, $user_id);
     my $row = $sth->fetchrow_hashref;
     die "Secret not found" unless $row;
     return $self->_automator_decrypt_secret(@$row{qw(value_encrypted iv tag salt)});

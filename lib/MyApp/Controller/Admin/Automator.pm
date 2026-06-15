@@ -764,6 +764,7 @@ sub _build_command {
 sub _load_run_payload {
     my ($db, $playbook_id) = @_;
     my $playbook = $db->get_automator_playbook($playbook_id) || die "Playbook not found";
+    my $owner_id = $playbook->{user_id} || die "Playbook owner missing";
     my $inventory = $playbook->{inventory_id} ? $db->get_automator_inventory($playbook->{inventory_id}) : undef;
     my $secrets = $db->list_automator_playbook_secrets($playbook_id);
     if (!@$secrets && $playbook->{playbook_secret_id}) {
@@ -775,7 +776,7 @@ sub _load_run_payload {
         };
     }
     for my $secret (@$secrets) {
-        $secret->{value} = $db->get_automator_secret_plaintext($secret->{secret_id});
+        $secret->{value} = $db->get_automator_secret_plaintext($secret->{secret_id}, $owner_id);
     }
     return {
         playbook  => $playbook,
