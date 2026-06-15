@@ -104,11 +104,12 @@ const NoteParser = (() => {
      * @param {string} language - Optional fence language label.
      * @returns {string} Sanitized code block HTML.
      */
-    const renderCodeBlock = (code, language = '') => {
+    const renderCodeBlock = (code, language = '', lineStart, lineEnd) => {
         const lang = language.trim().toLowerCase().replace(/[^a-z0-9_+.#-]/g, '');
         const langAttr = lang ? ` data-language="${window.escapeHtml(lang)}"` : '';
+        const lineAttr = (lineStart !== undefined && lineEnd !== undefined) ? ` data-line-start="${lineStart}" data-line-end="${lineEnd}"` : '';
         const label = lang ? `<span class="note-code-block-lang">${window.escapeHtml(lang)}</span>` : '';
-        return `<pre class="note-code-block" title="Click to copy"${langAttr}>${label}<code>${window.escapeHtml(code)}</code></pre>`;
+        return `<pre class="note-code-block" title="Click to copy"${langAttr}${lineAttr}>${label}<code>${window.escapeHtml(code)}</code></pre>`;
     };
 
     /**
@@ -923,6 +924,7 @@ const NoteParser = (() => {
         let isLineStart = true;
         let inCheckboxRow = false;
         let inBulletRow = false;
+        let inNoteLine = false;
         let textBuffer = '';
         let currentLine = lineOffset;
 
@@ -931,6 +933,14 @@ const NoteParser = (() => {
                 output += renderInline(textBuffer);
                 textBuffer = '';
             }
+        };
+
+        const openNoteLine = (displayContents = false) => {
+            if (inNoteLine || inCheckboxRow || inBulletRow) return;
+            const classes = displayContents ? 'note-line note-line-block' : 'note-line';
+            const style = displayContents ? ' style="display:contents"' : '';
+            output += `<span class="${classes}"${style} data-line="${currentLine}">`;
+            inNoteLine = true;
         };
 
         while (cursor < text.length) {
@@ -949,8 +959,12 @@ const NoteParser = (() => {
                         flushBuffer();
                         const codeEnd = bodyStart + closeMatch.index;
                         const fenceEnd = bodyStart + closeMatch.index + closeMatch[0].length;
-                        output += renderCodeBlock(text.substring(bodyStart, codeEnd), codeFence[1] || '');
-                        currentLine += (text.substring(cursor, fenceEnd).match(/\n/g) || []).length;
+                        const fenceStartLine = currentLine;
+                        const consumedText = text.substring(cursor, fenceEnd);
+                        const consumedNL = (consumedText.match(/\n/g) || []).length;
+                        const fenceEndLine = fenceStartLine + consumedNL - (consumedText.endsWith('\n') ? 1 : 0);
+                        output += renderCodeBlock(text.substring(bodyStart, codeEnd), codeFence[1] || '', fenceStartLine, fenceEndLine);
+                        currentLine += consumedNL;
                         cursor = fenceEnd;
                         isLineStart = true;
                         continue;
@@ -964,7 +978,7 @@ const NoteParser = (() => {
                     const level = hMatch[2].length;
                     const content = hMatch[3];
                     const indent = hMatch[1] ? `<span class="note-indent">${window.escapeHtml(hMatch[1])}</span>` : '';
-                    output += `${indent}<h${level + 2} class="note-h${level}">${renderHeadingInline(content, noteId)}</h${level + 2}>`;
+                    output += `${indent}<h${level + 2} class="note-h${level}" data-line="${currentLine}">${renderHeadingInline(content, noteId)}</h${level + 2}>`;
                     currentLine += (hMatch[0].match(/\n/g) || []).length;
                     cursor += hMatch[0].length;
                     isLineStart = true;
@@ -976,7 +990,7 @@ const NoteParser = (() => {
                 if (hrMatch) {
                     flushBuffer();
                     const indent = hrMatch[1] ? `<span class="note-indent">${window.escapeHtml(hrMatch[1])}</span>` : '';
-                    output += `${indent}<hr class="note-hr">`;
+                    output += `${indent}<hr class="note-hr" data-line="${currentLine}">`;
                     currentLine += (hrMatch[0].match(/\n/g) || []).length;
                     cursor += hrMatch[0].length;
                     isLineStart = true;
@@ -995,7 +1009,7 @@ const NoteParser = (() => {
 
                     const lineIndex = currentLine;
                     const indent = prefix ? `<span class="note-indent">${window.escapeHtml(prefix)}</span>` : '';
-                    output += `${indent}<span class="checkbox-row-inline note-check-trigger ${checkedClass}" data-note-id="${noteId}" data-index="${lineIndex}"><span class="cb ${checkedClass}"></span>`;
+                    output += `${indent}<span class="checkbox-row-inline note-check-trigger ${checkedClass}" data-note-id="${noteId}" data-index="${lineIndex}" data-line="${lineIndex}"><span class="cb ${checkedClass}"></span>`;
 
                     inCheckboxRow = true;
                     isLineStart = false;
@@ -1008,7 +1022,8 @@ const NoteParser = (() => {
                 if (numMatch) {
                     flushBuffer();
                     const indent = numMatch[1] ? `<span class="note-indent">${window.escapeHtml(numMatch[1])}</span>` : '';
-                    output += `${indent}<span class="note-number">${numMatch[2]}.</span> `;
+                    output += `<span class="note-line" data-line="${currentLine}">${indent}<span class="note-number">${numMatch[2]}.</span> `;
+                    inNoteLine = true;
                     cursor += numMatch[0].length;
                     isLineStart = false;
                     continue;
@@ -1019,7 +1034,7 @@ const NoteParser = (() => {
                 if (bulletMatch) {
                     flushBuffer();
                     const indent = bulletMatch[1] ? `<span class="note-indent">${window.escapeHtml(bulletMatch[1])}</span>` : '';
-                    output += `<span class="note-bullet-row">${indent}<span class="note-bullet">•</span><span class="note-bullet-text">`;
+                    output += `<span class="note-bullet-row" data-line="${currentLine}">${indent}<span class="note-bullet">•</span><span class="note-bullet-text">`;
                     inBulletRow = true;
                     cursor += bulletMatch[0].length;
                     isLineStart = false;
@@ -1030,6 +1045,7 @@ const NoteParser = (() => {
                 const calloutMatch = lineRemainder.match(/^> \[!([\w-]+)\]([^\n]*)(\n|$)/);
                 if (calloutMatch) {
                     flushBuffer();
+                    const calloutStartLine = currentLine;
                     const calloutStartCursor = cursor;
                     const type  = calloutMatch[1].toLowerCase().replace(/[^a-z0-9-]/g, '');
                     const title = calloutMatch[2].trim();
@@ -1057,7 +1073,8 @@ const NoteParser = (() => {
                     const meta      = CALLOUT_META[type] || { icon: '📌', label: type };
                     const safeTitle = title ? window.escapeHtml(title) : meta.label;
                     const bodyHtml  = parseNote(bodyLines.join('\n'), noteId, depth + 1, calloutBodyOffset);
-                    output += `<div class="note-callout note-callout--${type}"><div class="note-callout-header"><span class="note-callout-icon">${meta.icon}</span><span class="note-callout-title">${safeTitle}</span></div><div class="note-callout-body">${bodyHtml}</div></div>`;
+                    const calloutEndLine = Math.max(calloutStartLine, calloutStartLine + consumedNewlines - 1);
+                    output += `<div class="note-callout note-callout--${type}" data-line-start="${calloutStartLine}" data-line-end="${calloutEndLine}"><div class="note-callout-header"><span class="note-callout-icon">${meta.icon}</span><span class="note-callout-title">${safeTitle}</span></div><div class="note-callout-body">${bodyHtml}</div></div>`;
                     currentLine += consumedNewlines;
                     isLineStart = true;
                     continue;
@@ -1070,6 +1087,7 @@ const NoteParser = (() => {
                 if (closeIdx !== -1) {
                     const title = text.substring(cursor + 2, closeIdx);
                     if (title.length > 0 && !title.includes('[') && !title.includes(']') && !title.includes('\n')) {
+                        openNoteLine();
                         flushBuffer();
                         output += renderWikilink(title);
                         cursor = closeIdx + 2;
@@ -1084,6 +1102,7 @@ const NoteParser = (() => {
                 const endIdx = bracketIndex.get(cursor) ?? -1;
 
                 if (endIdx === -1) {
+                    openNoteLine();
                     flushBuffer();
                     output += window.escapeHtml('[');
                     cursor++;
@@ -1100,21 +1119,33 @@ const NoteParser = (() => {
                     for (let i = 0; i <= endIdx; i++) if (text[i] === '\n') startLine++;
                     const result = renderer(pos, noteId, text.substring(endIdx + 1), depth, startLine);
                     if (result !== null) {
-                        flushBuffer();
                         const html = typeof result === 'string' ? result : result.html;
+                        const isBlock = /^<(div|details)/.test(html);
                         if (typeof result === 'string') {
+                            openNoteLine(isBlock);
+                            flushBuffer();
                             output += result;
                             currentLine += (text.substring(cursor, endIdx + 1).match(/\n/g) || []).length;
                             cursor = endIdx + 1;
                         } else {
-                            // Complex renderer (e.g. color) that handles own internal content
-                            output += result.html;
-                            currentLine += (text.substring(cursor, endIdx + 1 + result.consumed).match(/\n/g) || []).length;
+                            // Complex renderer (e.g. table) that handles own internal content
+                            const consumedText = text.substring(cursor, endIdx + 1 + result.consumed);
+                            const newlinesInBlock = (consumedText.match(/\n/g) || []).length;
+                            const isMultilineBlock = isBlock && newlinesInBlock > 0;
+                            if (!isMultilineBlock) openNoteLine(isBlock);
+                            flushBuffer();
+                            output += isMultilineBlock
+                                ? `<span class="note-line-block" style="display:contents" data-line-start="${currentLine}">${result.html}</span>`
+                                : result.html;
+                            currentLine += newlinesInBlock;
                             cursor = endIdx + 1 + result.consumed;
                         }
                         // Block-level components consume their trailing \n to prevent a
                         // spurious <br> from appearing after every div/details/hr element.
-                        const isBlock = /^<(div|details)/.test(html);
+                        if (isBlock && inNoteLine) {
+                            output += '</span>';
+                            inNoteLine = false;
+                        }
                         if (isBlock && text[cursor] === '\n') {
                             currentLine++;
                             cursor++;
@@ -1129,6 +1160,7 @@ const NoteParser = (() => {
                 if (linkMatch) {
                     const url = getSafeUrl(linkMatch[1]);
                     if (url) {
+                        openNoteLine();
                         flushBuffer();
                         output += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" data-action="stop-propagation">${renderInline(rawTag)}</a>`;
                         currentLine += (text.substring(cursor, endIdx + 1 + linkMatch[0].length).match(/\n/g) || []).length;
@@ -1138,6 +1170,7 @@ const NoteParser = (() => {
                     }
                 }
 
+                openNoteLine();
                 flushBuffer();
                 output += window.escapeHtml(text.substring(cursor, endIdx + 1));
                 currentLine += (text.substring(cursor, endIdx + 1).match(/\n/g) || []).length;
@@ -1152,6 +1185,7 @@ const NoteParser = (() => {
             if (urlMatch) {
                 const url = getSafeUrl(urlMatch[1]);
                 if (url) {
+                    openNoteLine();
                     flushBuffer();
                     output += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="note-external-link" data-action="stop-propagation">${window.escapeHtml(urlMatch[1])}</a>`;
                     cursor += urlMatch[1].length;
@@ -1171,6 +1205,10 @@ const NoteParser = (() => {
                     output += '</span></span>';
                     inBulletRow = false;
                 }
+                if (inNoteLine) {
+                    output += '</span>';
+                    inNoteLine = false;
+                }
                 output += '<br>';
                 currentLine++;
                 cursor++;
@@ -1178,6 +1216,7 @@ const NoteParser = (() => {
                 continue;
             }
 
+            if (isLineStart) openNoteLine();
             textBuffer += char;
             cursor++;
             isLineStart = false;
@@ -1186,6 +1225,7 @@ const NoteParser = (() => {
         flushBuffer();
         if (inCheckboxRow) output += '</span>';
         if (inBulletRow) output += '</span></span>';
+        if (inNoteLine) output += '</span>';
         return output;
     };
 
