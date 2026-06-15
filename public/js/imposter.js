@@ -22,6 +22,7 @@ let STATE = {
 };
 
 let TIMER_INTERVAL = null;
+let imposterStateRequestSeq = 0;
 
 /**
  * Lifecycle: Initialize application state on DOM load.
@@ -44,7 +45,9 @@ async function loadState(force = false) {
     }
 
     try {
+        const requestSeq = ++imposterStateRequestSeq;
         const data = await apiGet('/imposter/api/state');
+        if (requestSeq !== imposterStateRequestSeq) return;
         if (data && data.success) {
             STATE.game = data.game;
             STATE.lobby = data.lobby;
