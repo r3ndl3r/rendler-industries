@@ -227,7 +227,7 @@ const SwearModule = {
                     <br>
                     <span class="member-default-fine">Default: $${parseFloat(m.default_fine).toFixed(2)}</span>
                 </div>
-                <button class="btn-icon-delete" onclick="confirmDeleteMember(${m.id}, '${escapeHtml(m.name)}')" title="Delete">🗑️</button>
+                <button class="btn-icon-delete" onclick="confirmDeleteMember(${Number(m.id)}, ${escapeHtml(JSON.stringify(m.name || ''))})" title="Delete">🗑️</button>
             </div>
         `).join('');
     },
