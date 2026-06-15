@@ -119,6 +119,51 @@ sub _expand_recurring {
     return @instances;
 }
 
+# Sorts expanded event results consistently, supporting ASC, DESC, and NEAR modes.
+# NEAR sorting scores events by proximity to now, with active/ongoing events first.
+# Parameters:
+#   events : ArrayRef of event hashrefs (base + expanded recurrence instances)
+#   sort   : Sort direction string — 'ASC', 'DESC', or 'NEAR'
+# Returns:
+#   Sorted list of event hashrefs
+sub _sort_calendar_event_results {
+    my ($events, $sort) = @_;
+    if (($sort // '') eq 'NEAR') {
+        my $now = Time::Piece->new;
+        return sort {
+            _calendar_near_score($a, $now) <=> _calendar_near_score($b, $now)
+                || (($a->{start_date} // '') cmp ($b->{start_date} // ''))
+                || (($b->{all_day} // 0) <=> ($a->{all_day} // 0))
+                || (($a->{title} // '') cmp ($b->{title} // ''))
+        } @$events;
+    }
+
+    my @sorted = sort {
+        ($a->{start_date} // '') cmp ($b->{start_date} // '')
+            || (($b->{all_day} // 0) <=> ($a->{all_day} // 0))
+            || (($a->{title} // '') cmp ($b->{title} // ''))
+    } @$events;
+    @sorted = reverse @sorted if ($sort // '') eq 'DESC';
+    return @sorted;
+}
+
+# Computes a proximity score for NEAR sorting.
+# Active events (now within start/end) score 0.
+# Future events score seconds until start; past events score seconds since end.
+# Parameters:
+#   event : Event hashref with start_date and end_date
+#   now   : Time::Piece object for the comparison point
+# Returns:
+#   Integer score (lower = nearer)
+sub _calendar_near_score {
+    my ($event, $now) = @_;
+    my $start = eval { Time::Piece->strptime($event->{start_date}, '%Y-%m-%d %H:%M:%S') };
+    my $end   = eval { Time::Piece->strptime($event->{end_date},   '%Y-%m-%d %H:%M:%S') };
+    return 0 unless $start && $end;
+    return 0 if $start <= $now && $end >= $now;
+    return $start > $now ? ($start - $now) : ($now - $end);
+}
+
 # Retrieves calendar events with optional server-side search, category filter,
 # sort direction, and pagination. Returns a two-element list so callers MUST
 # use list destructuring: my ($events, $has_more) = $self->get_calendar_events(...)
@@ -269,6 +314,12 @@ sub DB::get_calendar_events {
         } else {
             push @result, $event;
         }
+    }
+
+    @result = _sort_calendar_event_results(\@result, $sort);
+    if ($limit > 0 && scalar(@result) > $limit) {
+        $has_more = 1;
+        splice @result, $limit;
     }
 
     return (\@result, $has_more);
