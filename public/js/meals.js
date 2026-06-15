@@ -34,6 +34,7 @@ let STATE = {
     isAdmin: false,                 // Authorization gate for destructive actions
     currentUserId: 0                // Owner identification for ACL logic
 };
+let latestMealsStateRequest = 0;
 
 /**
  * Bootstraps the module state and establishes global event handlers.
@@ -88,7 +89,9 @@ async function loadState(force = false) {
     }
 
     try {
+        const requestSeq = ++latestMealsStateRequest;
         const data = await apiGet('/meals/api/state');
+        if (requestSeq !== latestMealsStateRequest) return;
         
         if (data && data.success) {
             STATE.plan = data.plan;
