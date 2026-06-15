@@ -1413,6 +1413,11 @@ function solveReviewedState() {
         showToast('A 3x3 cube needs exactly 9 stickers for each face/color.', 'warning');
         return;
     }
+    if (RUBIKS_STATE.solverDimension === 4) {
+        showToast('4x4 solving is still under development. Displaying reviewed state.', 'info');
+        display4x4State(state);
+        return;
+    }
     computeLocalSolution(state);
 }
 
