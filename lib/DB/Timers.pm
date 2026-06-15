@@ -936,20 +936,36 @@ sub DB::redeem_points_for_time {
     my ($self, $user_id, $timer_id, $points) = @_;
     $self->ensure_connection();
 
+    return (0, "Invalid redemption parameters")
+        unless defined $user_id && $user_id =~ /\A[1-9][0-9]*\z/
+        && defined $timer_id && $timer_id =~ /\A[1-9][0-9]*\z/
+        && defined $points && $points =~ /\A[1-9][0-9]*\z/
+        && $points <= 100;
+
     my $today = $self->_get_current_date();
     my $bonus_seconds = $points * 10 * 60; # 1pt = 10m
 
     # Start atomic transaction
     $self->{dbh}->begin_work;
     eval {
+        # 0. Lock the child user row to serialize balance checks
+        my ($locked_user_id) = $self->{dbh}->selectrow_array(
+            "SELECT id FROM users WHERE id = ? AND is_child = 1 AND status = 'approved' FOR UPDATE",
+            undef, $user_id
+        );
+        die "Invalid child account" unless $locked_user_id;
+
         # 1. Check Point Balance
         my $balance = $self->get_user_points($user_id);
         if ($balance < $points) {
             die "Insufficient point balance (Required: $points, Balance: $balance)";
         }
 
-        # 2. Verify Timer Ownership and Category
-        my $timer = $self->_get_timer_by_id($timer_id);
+        # 2. Verify Timer Ownership and Category (active only)
+        my $timer = $self->{dbh}->selectrow_hashref(
+            "SELECT * FROM timers WHERE id = ? AND is_active = 1",
+            undef, $timer_id
+        );
         if (!$timer || $timer->{user_id} != $user_id) {
             die "Invalid timer identification or ownership mismatch";
         }
