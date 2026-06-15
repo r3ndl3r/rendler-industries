@@ -504,7 +504,7 @@ function renderLocationLedger() {
                 <td data-label="Actions" class="text-right">
                     <div class="action-buttons">
                         <button type="button" class="btn-icon-edit" onclick="editLocation(${l.id})" title="Edit">✎</button>
-                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteLocation(${l.id}, '${escapeHtml(l.name)}')" title="Delete Forever">🗑️</button>
+                        <button type="button" class="btn-icon-delete" onclick="confirmDeleteLocation(${l.id}, ${escapeHtml(JSON.stringify(l.name || ''))})" title="Delete Forever">🗑️</button>
                     </div>
                 </td>
             </tr>`;
@@ -1041,7 +1041,7 @@ async function confirmDeleteLocation(id, name) {
 
     window.showConfirmModal({
         title: 'Stop Tracking',
-        message: `Permanently delete weather data for <strong>${name}</strong>?`,
+        message: `Permanently delete weather data for <strong>${escapeHtml(name)}</strong>?`,
         danger: true,
         confirmText: 'Delete Forever',
         onConfirm: async () => {
