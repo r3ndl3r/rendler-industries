@@ -83,6 +83,7 @@ const CONFIG = {
     SYNC_INTERVAL_MS: 30000,
     MAX_ROOM_UPLOADS: 8,
     ROOM_UPLOAD_JPEG_QUALITY: 0.82,
+    ROOM_UPLOAD_MAX_BYTES: 5 * 1024 * 1024,
     ROOM_UPLOAD_TIMEOUT_MS: 90000
 };
 
@@ -974,6 +975,12 @@ async function addRoomUploadFiles(files) {
         try {
             const prepared = await prepareRoomUploadImage(file);
             if (resetToken !== UPLOAD_TOKEN || !UPLOAD_QUEUE.some(queueItem => queueItem.id === item.id)) return;
+            if (prepared.size > CONFIG.ROOM_UPLOAD_MAX_BYTES) {
+                item.processing = false;
+                removeQueueItem(item.id, false);
+                showToast(`${file.name || 'This photo'} is larger than 5 MB after processing.`, 'error');
+                return;
+            }
             item.blob = prepared;
             item.processing = false;
             item.previewUrl = URL.createObjectURL(prepared);
