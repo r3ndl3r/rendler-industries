@@ -29,6 +29,7 @@ const CONFIG = {
 
 let weatherClockInterval = null;
 let weatherStateRequestSeq = 0;
+let geocodeRequestSeq = 0;
 
 let STATE = {
     observations: [],           // Raw OWM results from DB
@@ -957,9 +958,11 @@ async function handleGeocode() {
     if (!query || query.length < 3) return;
 
     tray.innerHTML = `⌛ Searching coordinates...`;
+    const requestSeq = ++geocodeRequestSeq;
     
     try {
         const res = await apiPost('/weather/api/geocode', { q: query });
+        if (requestSeq !== geocodeRequestSeq) return;
         if (res && res.success && res.results) {
             if (res.results.length === 0) {
                 tray.innerHTML = '<div class="search-no-results">No cities found.</div>';
