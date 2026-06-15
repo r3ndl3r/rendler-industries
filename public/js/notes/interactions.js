@@ -1079,7 +1079,7 @@ function handleGlobalKeydown(e) {
         if (targetId) {
             const btn = document.querySelector(`#note-${targetId} .btn-icon-edit`);
             if (btn && typeof toggleInlineEdit === 'function') {
-                toggleInlineEdit(btn, targetId);
+                toggleInlineEdit(btn, targetId, false, e.shiftKey);
             }
         }
         return;
@@ -1681,6 +1681,7 @@ function handleCanvasMouseDown(e) {
     // 1. Note Header Actions: Centralized delegation for all note-level buttons
     const hashBtn    = e.target.closest('.note-id-hash');
     const editBtn     = e.target.closest('.btn-icon-edit');
+    const rawEditBtn  = e.target.closest('.btn-icon-raw-edit');
     const aiFormatBtn = e.target.closest('.btn-icon-ai-format');
     const linkBtn     = e.target.closest('.btn-icon-link');
     const uploadBtn   = e.target.closest('.btn-icon-upload');
@@ -1727,6 +1728,9 @@ function handleCanvasMouseDown(e) {
                 if (editBtn && typeof toggleInlineEdit === 'function') {
                     toggleInlineEdit(editBtn, id); return;
                 }
+                if (rawEditBtn && typeof toggleInlineEdit === 'function') {
+                    toggleInlineEdit(noteEl.querySelector('.btn-icon-edit') || rawEditBtn, id, false, true); return;
+                }
                 if (aiFormatBtn && typeof aiFormatNote === 'function') {
                     aiFormatNote(id, aiFormatBtn); return;
                 }
@@ -1754,6 +1758,12 @@ function handleCanvasMouseDown(e) {
     if (handle && !isAction && !isTitle && e.button === 0) {
         const noteId = handle.closest('.sticky-note')?.dataset.id;
         if (noteId) {
+            const currentCanvas = STATE.canvases.find(c => c.id == STATE.canvas_id);
+            const canEdit = currentCanvas ? Number(currentCanvas.can_edit) === 1 : true;
+            if (!canEdit) {
+                showToast('This board is read-only.', 'warning');
+                return;
+            }
             toggleStickyMove(e, noteId);
             return;
         }
@@ -2332,10 +2342,12 @@ async function saveNoteInline(id, stayInEditMode = false) {
     const note = STATE.notes.find(n => n.id == id);
     if (!el || !note) return;
 
+    flushActiveClickToEditEditor(el);
+
     const titleInput = el.querySelector('.inline-title-input');
     const title      = titleInput ? titleInput.value : (note.title || 'Untitled Note');
     
-    const textarea = el.querySelector('textarea');
+    const textarea = el.querySelector('.note-text-section > textarea[data-action="note-keydown"]');
     // Logic: If the editor is active (not readonly), prioritize the DOM. 
     // Otherwise (e.g. for checkbox toggles), use the RAM state (SSO).
     const isLiveEditor = textarea && !textarea.readOnly;
@@ -2381,7 +2393,7 @@ async function saveNoteInline(id, stayInEditMode = false) {
                 delete el.dataset.lockHeld;
                 STATE.isEditingNote = null;
                 
-                el.classList.remove('is-editing');
+                el.classList.remove('is-editing', 'is-raw-editing');
                 if (textarea) textarea.readOnly = true;
                 if (getNoteFind().noteId && String(getNoteFind().noteId) === String(id)) closeNoteFindBar(false);
                 
@@ -2700,6 +2712,51 @@ function editNote(id) {
     }
 }
 
+function flushActiveClickToEditEditor(el) {
+    const activeEditor = el?.querySelector('.note-line-editor, .note-block-editor');
+    if (!activeEditor) return false;
+    activeEditor.blur();
+    return true;
+}
+
+function configureNoteTextEditMode(el, note, textarea, useRawEditor) {
+    if (useRawEditor) {
+        flushActiveClickToEditEditor(el);
+    }
+
+    el.classList.toggle('is-raw-editing', !!useRawEditor);
+
+    const ribbon = document.getElementById('notes-edit-ribbon');
+    if (!textarea) {
+        if (ribbon && !useRawEditor) {
+            _ribbonTextarea = null;
+            ribbon.classList.remove('show');
+        }
+        return;
+    }
+
+    textarea.value = note.content || '';
+    textarea.readOnly = !useRawEditor;
+
+    if (ribbon) {
+        _ribbonTextarea = useRawEditor ? textarea : null;
+        ribbon.classList.toggle('show', !!useRawEditor);
+    }
+
+    if (textarea._adaptNoteHeight) {
+        textarea.removeEventListener('input', textarea._adaptNoteHeight);
+        textarea._adaptNoteHeight = null;
+    }
+
+    if (useRawEditor) {
+        try {
+            textarea.focus({ preventScroll: true });
+        } catch (_) {
+            textarea.focus();
+        }
+    }
+}
+
 /**
  * Transitions a note between 'display' and 'edit' modes.
  * Full Parity Implementation: Handles collation expansion, title/filename editing, 
@@ -2707,13 +2764,14 @@ function editNote(id) {
  * @param {HTMLElement} btn - The trigger button.
  * @param {number|string} id - The note ID.
  * @param {boolean} isAbort - Optional flag to revert changes without saving.
+ * @param {boolean} useRawEditor - Optional flag to use the full raw textarea editor.
  */
-async function toggleInlineEdit(btn, id, isAbort = false) {
+async function toggleInlineEdit(btn, id, isAbort = false, useRawEditor = false) {
     const el   = document.getElementById(`note-${id}`);
     const note = STATE.notes.find(n => n.id == id);
     if (!el || !note) return;
 
-    const textarea  = el.querySelector('textarea');
+    const textarea  = el.querySelector('.note-text-section > textarea[data-action="note-keydown"]');
     
     let lockAcquired = false;
 
@@ -2765,11 +2823,30 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
         }
     }
 
+    if (el.classList.contains('is-editing') && useRawEditor && !el.classList.contains('is-raw-editing')) {
+        configureNoteTextEditMode(el, note, textarea, true);
+        return;
+    }
+
+    if (el.classList.contains('is-editing') && !isAbort) {
+        flushActiveClickToEditEditor(el);
+    }
+
     const isEditing = el.classList.toggle('is-editing');
 
     if (isEditing) {
         // UI Logic: Unified termination reset
         STATE.isEditingNote  = id;
+
+        // Snapshot original content so Abort can discard local click-to-edit commits.
+        el.dataset.originalContent = note.content || '';
+        if (STATE.note_map && STATE.note_map[id]) {
+            el.dataset.originalMapContent = STATE.note_map[id].content || '';
+        }
+
+        if (typeof initClickToEdit === 'function') {
+            initClickToEdit(el, id);
+        }
         
         btn.innerHTML = '💾';
         btn.title     = 'Save';
@@ -2793,20 +2870,7 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
         });
 
         if (textarea) {
-            textarea.readOnly = false;
-            textarea.focus();
-
-            // Activate the formatting ribbon and bind it to this note's textarea
-            const ribbon = document.getElementById('notes-edit-ribbon');
-            if (ribbon) {
-                _ribbonTextarea = textarea;
-                ribbon.classList.add('show');
-            }
-
-            if (textarea._adaptNoteHeight) {
-                textarea.removeEventListener('input', textarea._adaptNoteHeight);
-                textarea._adaptNoteHeight = null;
-            }
+            configureNoteTextEditMode(el, note, textarea, useRawEditor);
         }
     } else {
         // Mode Termination: Atomic Persistence
@@ -2814,13 +2878,28 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
         delete el.dataset.lockHeld;
         if (isAbort) {
             // UI State: Restore content from local state
-            const txtArea = el.querySelector('textarea');
+            const txtArea = el.querySelector('.note-text-section > textarea[data-action="note-keydown"]');
+            if (note && el.dataset.originalContent !== undefined) {
+                note.content = el.dataset.originalContent;
+                if (STATE.note_map && STATE.note_map[id]) {
+                    STATE.note_map[id].content = el.dataset.originalMapContent !== undefined
+                        ? el.dataset.originalMapContent
+                        : note.content;
+                }
+                delete el.dataset.originalContent;
+                delete el.dataset.originalMapContent;
+            }
             if (txtArea && note) txtArea.value = note.content || '';
+            const viewer = el.querySelector('.note-text-viewer');
+            if (viewer && note) viewer.innerHTML = formatNoteContent(note.content || '', id);
+            el.dataset.lastContent = note.content || '';
             
             STATE.isEditingNote = null;
         } else if (typeof saveNoteInline === 'function') {
             // Sequential Lifecycle: Await the save to ensure lock release doesn't race
             await saveNoteInline(id);
+            delete el.dataset.originalContent;
+            delete el.dataset.originalMapContent;
         }
 
         // Restore initial collapsed state if editing began in a collapsed view.
@@ -2839,8 +2918,9 @@ async function toggleInlineEdit(btn, id, isAbort = false) {
         }
 
         // UI Logic: Unified termination reset
-        const txtArea = el.querySelector('textarea');
+        const txtArea = el.querySelector('.note-text-section > textarea[data-action="note-keydown"]');
         if (txtArea) txtArea.readOnly = true;
+        el.classList.remove('is-raw-editing');
         
         btn.innerHTML = '✏️';
         btn.title     = 'Edit Content';
@@ -3326,7 +3406,16 @@ async function handleNoteKeydown(e, id) {
         }
     }
     // Ctrl + E: Exit/Save Edit Mode
-    else if (e.ctrlKey && e.key === 'e') {
+    else if (e.ctrlKey && e.shiftKey && key === 'e') {
+        const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
+        if (btn && document.getElementById(`note-${id}`).classList.contains('is-editing')) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleInlineEdit(btn, id, false, true);
+        }
+    }
+    // Ctrl + E: Exit/Save Edit Mode
+    else if (e.ctrlKey && key === 'e') {
         const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
         if (btn && document.getElementById(`note-${id}`).classList.contains('is-editing')) {
             e.preventDefault();
@@ -3487,7 +3576,7 @@ async function toggleNoteCheckbox(event, id, lineIndex) {
     const el = document.getElementById(`note-${id}`);
     if (el) {
         const viewer   = el.querySelector('.note-text-viewer');
-        const textarea = el.querySelector('textarea');
+        const textarea = el.querySelector('.note-text-section > textarea[data-action="note-keydown"]');
         if (viewer)   viewer.innerHTML = formatNoteContent(note.content, id);
         if (textarea) textarea.value   = note.content;
     }
@@ -3496,6 +3585,266 @@ async function toggleNoteCheckbox(event, id, lineIndex) {
     if (typeof saveNoteInline === 'function') {
         await saveNoteInline(id);
     }
+}
+
+/**
+ * Click-to-Edit: binds line/block editing to a note's rendered viewer.
+ * The listener is attached to the stable text section so viewer re-renders survive.
+ */
+function initClickToEdit(el, noteId) {
+    const section = el.querySelector('.note-text-section');
+    if (!section || section.dataset.clickToEditBound === 'true') return;
+    section.dataset.clickToEditBound = 'true';
+
+    section.addEventListener('click', function onSectionClick(e) {
+        if (!el.classList.contains('is-editing')) return;
+        if (e.target.closest('.note-header, .btn-icon, .note-title-slot, .inline-title-input, .file-name-display')) return;
+
+        const viewer = e.target.closest('.note-text-viewer');
+        if (!viewer || !section.contains(viewer)) return;
+        if (e.target.closest('.note-line-editor, .note-block-editor')) return;
+
+        const blockEl = e.target.closest('[data-line-start]');
+        if (blockEl && viewer.contains(blockEl)) {
+            e.stopPropagation();
+            e.preventDefault();
+            editBlock(blockEl, noteId);
+            return;
+        }
+
+        const lineEl = e.target.closest('[data-line]');
+        if (!lineEl || !viewer.contains(lineEl)) return;
+
+        e.stopPropagation();
+        e.preventDefault();
+        editLine(lineEl, noteId);
+    });
+}
+
+function focusInlineEditor(editor, selectText = false) {
+    try {
+        editor.focus({ preventScroll: true });
+    } catch (_) {
+        editor.focus();
+    }
+    if (selectText && typeof editor.select === 'function') editor.select();
+}
+
+function resizeBlockEditorToContent(textarea) {
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight + 2}px`;
+}
+
+function restoreInlineEditElement(editor, originalEl) {
+    if (editor && editor.isConnected && originalEl) editor.replaceWith(originalEl);
+}
+
+function refreshClickToEditViewer(noteId, note, viewer) {
+    const el = document.getElementById('note-' + noteId);
+    const targetViewer = viewer || el?.querySelector('.note-text-viewer');
+    if (!targetViewer) return false;
+
+    const scrollTop = targetViewer.scrollTop;
+    targetViewer.innerHTML = formatNoteContent(note.content || '', noteId);
+    targetViewer.scrollTop = scrollTop;
+
+    const textarea = el?.querySelector('.note-text-section > textarea[data-action="note-keydown"]');
+    if (textarea) textarea.value = note.content || '';
+    if (el) el.dataset.lastContent = note.content || '';
+    return true;
+}
+
+function editLine(lineEl, noteId) {
+    const note = STATE.notes.find(n => n.id == noteId);
+    if (!note) return;
+
+    const lineIndex = parseInt(lineEl.dataset.line, 10);
+    const lines = (note.content || '').split('\n');
+    if (isNaN(lineIndex) || lineIndex < 0 || lineIndex >= lines.length) return;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'note-line-editor';
+    input.value = lines[lineIndex];
+    input.dataset.lineIndex = lineIndex;
+    input.dataset.noteId = noteId;
+
+    lineEl.replaceWith(input);
+    focusInlineEditor(input, true);
+
+    const viewer = document.getElementById('note-' + noteId)?.querySelector('.note-text-viewer');
+    let finished = false;
+
+    const cleanup = () => {
+        input.removeEventListener('blur', handleCommit);
+        input.removeEventListener('keydown', handleKey);
+    };
+    const finish = (shouldCommit) => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        if (shouldCommit) {
+            commitLineEdit(input, noteId, viewer, lineEl);
+        } else {
+            restoreInlineEditElement(input, lineEl);
+        }
+    };
+    const handleCommit = () => finish(true);
+    const handleKey = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            finish(true);
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            finish(false);
+        }
+    };
+
+    input.addEventListener('blur', handleCommit);
+    input.addEventListener('keydown', handleKey);
+}
+
+function editBlock(blockEl, noteId) {
+    const note = STATE.notes.find(n => n.id == noteId);
+    if (!note) return;
+
+    const rawLines = (note.content || '').split('\n');
+    const startLine = parseInt(blockEl.dataset.lineStart, 10);
+    if (isNaN(startLine) || startLine < 0 || startLine >= rawLines.length) return;
+
+    let endLine = blockEl.dataset.lineEnd !== undefined
+        ? parseInt(blockEl.dataset.lineEnd, 10)
+        : findBlockEndLine(note.content || '', startLine);
+    if (isNaN(endLine) || endLine < startLine) return;
+    endLine = Math.min(endLine, rawLines.length - 1);
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'note-block-editor';
+    textarea.value = rawLines.slice(startLine, endLine + 1).join('\n');
+    textarea.dataset.lineStart = startLine;
+    textarea.dataset.lineEnd = endLine;
+    textarea.dataset.noteId = noteId;
+    textarea.rows = Math.max(endLine - startLine + 1, 3);
+
+    blockEl.replaceWith(textarea);
+    focusInlineEditor(textarea);
+    resizeBlockEditorToContent(textarea);
+    requestAnimationFrame(() => resizeBlockEditorToContent(textarea));
+
+    const viewer = document.getElementById('note-' + noteId)?.querySelector('.note-text-viewer');
+    let finished = false;
+
+    const handleInput = () => resizeBlockEditorToContent(textarea);
+    const cleanup = () => {
+        textarea.removeEventListener('blur', handleCommit);
+        textarea.removeEventListener('keydown', handleKey);
+        textarea.removeEventListener('input', handleInput);
+    };
+    const finish = (shouldCommit) => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        if (shouldCommit) {
+            commitBlockEdit(textarea, noteId, viewer, blockEl);
+        } else {
+            restoreInlineEditElement(textarea, blockEl);
+        }
+    };
+    const handleCommit = () => finish(true);
+    const handleKey = (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            finish(true);
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            finish(false);
+        }
+    };
+
+    textarea.addEventListener('blur', handleCommit);
+    textarea.addEventListener('keydown', handleKey);
+    textarea.addEventListener('input', handleInput);
+}
+
+function commitLineEdit(input, noteId, viewer, originalEl) {
+    const note = STATE.notes.find(n => n.id == noteId);
+    if (!note) {
+        restoreInlineEditElement(input, originalEl);
+        return;
+    }
+
+    const lineIndex = parseInt(input.dataset.lineIndex, 10);
+    const lines = (note.content || '').split('\n');
+    if (isNaN(lineIndex) || lineIndex < 0 || lineIndex >= lines.length) {
+        restoreInlineEditElement(input, originalEl);
+        return;
+    }
+
+    const newText = input.value;
+    if (lines[lineIndex] === newText) {
+        restoreInlineEditElement(input, originalEl);
+        return;
+    }
+
+    lines[lineIndex] = newText;
+    note.content = lines.join('\n');
+    if (STATE.note_map && STATE.note_map[noteId]) STATE.note_map[noteId].content = note.content;
+    if (!refreshClickToEditViewer(noteId, note, viewer)) restoreInlineEditElement(input, originalEl);
+}
+
+function commitBlockEdit(textarea, noteId, viewer, originalEl) {
+    const note = STATE.notes.find(n => n.id == noteId);
+    if (!note) {
+        restoreInlineEditElement(textarea, originalEl);
+        return;
+    }
+
+    const startLine = parseInt(textarea.dataset.lineStart, 10);
+    const endLine = parseInt(textarea.dataset.lineEnd, 10);
+    const lines = (note.content || '').split('\n');
+    if (isNaN(startLine) || isNaN(endLine) || startLine < 0 || endLine < startLine || startLine >= lines.length) {
+        restoreInlineEditElement(textarea, originalEl);
+        return;
+    }
+
+    const boundedEndLine = Math.min(endLine, lines.length - 1);
+    const newText = textarea.value;
+    const originalRaw = lines.slice(startLine, boundedEndLine + 1).join('\n');
+    if (originalRaw === newText) {
+        restoreInlineEditElement(textarea, originalEl);
+        return;
+    }
+
+    const before = lines.slice(0, startLine);
+    const after = lines.slice(boundedEndLine + 1);
+    note.content = before.concat(newText.split('\n'), after).join('\n');
+    if (STATE.note_map && STATE.note_map[noteId]) STATE.note_map[noteId].content = note.content;
+    if (!refreshClickToEditViewer(noteId, note, viewer)) restoreInlineEditElement(textarea, originalEl);
+}
+
+function findBlockEndLine(content, startLine) {
+    const lines = content.split('\n');
+    if (startLine >= lines.length) return startLine;
+
+    const openMatch = lines[startLine].match(/\[(\w+)(?::|\])/);
+    if (!openMatch) return startLine;
+
+    const tagName = openMatch[1].toLowerCase();
+    const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const openRegex = new RegExp('\\[' + escapeRegExp(tagName) + '(?::|\\])', 'gi');
+    const closeRegex = new RegExp('\\[\\/' + escapeRegExp(tagName) + '\\]', 'gi');
+
+    let nesting = 1;
+    for (let i = startLine + 1; i < lines.length; i++) {
+        const line = lines[i];
+        nesting += (line.match(openRegex) || []).length;
+        nesting -= (line.match(closeRegex) || []).length;
+        if (nesting <= 0) return i;
+    }
+    return lines.length - 1;
 }
 /**
  * System Clipboard Interface: Synchronizes text and optionally image data to the local OS.
@@ -3750,7 +4099,8 @@ function handleCanvasTouchStart(e) {
             '.note-check-trigger, .note-link-trigger, .reel-action-btn, .hero-action-btn, ' +
             'input, textarea, select, [contenteditable], ' +
             'button:not([data-pan-passthrough]), a[href], a[data-action], ' +
-            '[data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn'
+            '[data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn' +
+            (STATE.isEditingNote != null ? ', [data-line], [data-line-start]' : '')
         );
 
         // Targeted Dispatch: Handle Resize on Touch
