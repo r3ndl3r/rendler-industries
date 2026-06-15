@@ -31,6 +31,7 @@ let STATE = {
     links: [],                      // Collection of all menu records
     isAdmin: false                  // Administrative authorization flag
 };
+let latestAdminMenuStateRequest = 0;
 
 const MenuMgmt = {
     _groupSortable:  null,          // SortableJS instance for parent-group ordering
@@ -66,7 +67,10 @@ const MenuMgmt = {
         if (!force && (anyModalOpen || inputFocused) && STATE.links.length > 0) return;
 
         try {
+            const requestSeq = ++latestAdminMenuStateRequest;
             const data = await apiGet('/admin/menu/api/state');
+
+            if (requestSeq !== latestAdminMenuStateRequest) return;
 
             if (data && data.success) {
                 STATE.links  = data.links;
