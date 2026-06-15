@@ -72,10 +72,17 @@ sub api_toggle {
     return $c->render(json => { success => 0, error => "Unauthorized" }, status => 403) unless $c->is_family;
 
     my $id = $c->param('id');
-    
+    my $is_checked = $c->param('is_checked');
+    return $c->render(json => { success => 0, error => 'Invalid checked state' }, status => 400)
+        unless defined $is_checked && $is_checked =~ /\A[01]\z/;
+
     eval {
-        $c->db->toggle_shopping_item($id);
-        $c->render(json => { success => 1, message => "Item status synchronized." });
+        my $res = $c->db->set_shopping_item_checked($id, $is_checked);
+        return $c->render(json => $res, status => ($res->{status} || 200)) unless $res->{success};
+        $c->render(json => {
+            success => 1, is_checked => $res->{is_checked},
+            message => "Item status synchronized."
+        });
     };
     if ($@) {
         $c->render(json => { success => 0, error => 'Database integrity error' });

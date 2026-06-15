@@ -67,24 +67,45 @@ sub DB::add_shopping_item {
 # Parameters:
 #   id : Unique ID of the item
 # Returns:
-#   Result of execute() (true on success)
-# Behavior:
-#   - Flips the 'is_checked' boolean
-#   - Updates 'checked_at' timestamp based on the new state
-sub DB::toggle_shopping_item {
-    my ($self, $id) = @_;
-    
-    # Verify database connectivity
+# Sets an explicit target checked state for a shopping item.
+# This is idempotent — setting is_checked=1 twice leaves it checked.
+# Parameters:
+#   id         : Unique item ID (Integer)
+#   is_checked : Desired state (0 or 1)
+# Returns:
+#   HashRef { success => 1, is_checked => $is_checked }
+sub DB::set_shopping_item_checked {
+    my ($self, $id, $is_checked) = @_;
+    $is_checked = $is_checked ? 1 : 0;
+
     $self->ensure_connection;
-    
-    # Perform atomic toggle and timestamp update
+
     my $sth = $self->{dbh}->prepare("
         UPDATE shopping_list 
-        SET is_checked = NOT is_checked,
-            checked_at = IF(is_checked = 0, NOW(), NULL)
+        SET is_checked = ?,
+            checked_at = CASE WHEN ? = 1 THEN COALESCE(checked_at, NOW()) ELSE NULL END
         WHERE id = ?
     ");
-    $sth->execute($id);
+    $sth->execute($is_checked, $is_checked, $id);
+    return { success => 1, is_checked => $is_checked };
+}
+
+# Flips the checked state by reading the current value and delegating to set_shopping_item_checked.
+# Kept for backward compatibility with any external callers.
+# Parameters:
+#   id : Unique item ID (Integer)
+# Returns:
+#   HashRef { success, is_checked, error?, status? }
+sub DB::toggle_shopping_item {
+    my ($self, $id) = @_;
+    $self->ensure_connection;
+    my ($current) = $self->{dbh}->selectrow_array(
+        "SELECT is_checked FROM shopping_list WHERE id = ?",
+        undef, $id
+    );
+    return { success => 0, error => 'Item not found', status => 404 }
+        unless defined $current;
+    return $self->set_shopping_item_checked($id, $current ? 0 : 1);
 }
 
 # Removes a single item from the list.

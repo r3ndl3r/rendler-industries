@@ -244,12 +244,13 @@ async function toggleItem(id) {
 
     let rendered = false;
     try {
-        const result = await apiPost(`/shopping/api/toggle/${id}`);
+        const item = STATE.items.find(i => i.id == id);
+        const desired = item && item.is_checked ? 0 : 1;
+        const result = await apiPost(`/shopping/api/toggle/${id}`, { is_checked: desired });
         if (result && result.success) {
             latestMutationSeq = latestRefreshSeq + 1;
-            const item = STATE.items.find(i => i.id == id);
             if (item) {
-                item.is_checked = !item.is_checked;
+                item.is_checked = !!result.is_checked;
                 renderTable();
                 rendered = true;
             }
