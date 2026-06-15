@@ -362,13 +362,22 @@ CREATE TABLE `files` (
   `uploaded_by` varchar(50) NOT NULL,
   `uploaded_at` timestamp NULL DEFAULT current_timestamp(),
   `admin_only` tinyint(1) DEFAULT 0,
-  `allowed_users` text DEFAULT NULL,
   `description` text DEFAULT NULL,
   `download_count` int(11) DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `filename` (`filename`),
   KEY `idx_filename` (`filename`),
   KEY `idx_uploaded_by` (`uploaded_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `file_acls` (
+  `file_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `granted_by` varchar(50) DEFAULT NULL,
+  `granted_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`file_id`, `user_id`),
+  KEY `idx_file_acls_user` (`user_id`),
+  CONSTRAINT `fk_file_acls_file` FOREIGN KEY (`file_id`) REFERENCES `files` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_file_acls_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `fuel_logs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,

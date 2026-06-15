@@ -55,7 +55,7 @@ sub api_state {
 #   file          : The multipart binary object (max 1GB)
 #   description   : Optional context string (String)
 #   admin_only    : Restriction flag (Boolean)
-#   allowed_users : Whitelisted usernames (ArrayRef[String])
+#   allowed_users : Whitelisted user IDs (ArrayRef[Int])
 # Returns: JSON object { success, message }
 sub api_upload {
     my $c = shift;
@@ -85,30 +85,32 @@ sub api_upload {
     $ext = lc($ext || '');
     my $safe_filename = sha256_hex($original_filename . time . int(rand(1000))) . $ext;
     
-    # Process ACL parameters
+    # Process ACL user IDs
     my $admin_only = $c->param('admin_only') ? 1 : 0;
     my $description = trim($c->param('description') || '');
-    
-    # Filter whitelisted users
-    my @allowed_users = $c->every_param('allowed_users[]');
-    @allowed_users = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @allowed_users;
-    @allowed_users = grep { defined $_ && $_ =~ /^[a-zA-Z0-9_-]+$/ } @allowed_users;
-    
-    my $allowed_users_str = @allowed_users ? join(',', @allowed_users) : undef;
+
+    my @allowed_user_ids = $c->every_param('allowed_users[]');
+    @allowed_user_ids = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @allowed_user_ids;
+    @allowed_user_ids = grep { defined $_ && $_ =~ /^\d+$/ } @allowed_user_ids;
+
     my $username = $c->session('user');
-    
+
     # Persist to vault
-    eval {
+    my $file_id = eval {
         $c->db->store_file(
             $safe_filename, $original_filename, $mime_type, $file_size,
-            $file_data, $username, $admin_only, $allowed_users_str, $description
+            $file_data, $username, $admin_only, $description
         );
     };
     if (my $err = $@) {
         $c->app->log->error("Vault storage failure: $err");
         return $c->render(json => { success => 0, error => 'Database integrity error' });
     }
-    
+
+    if (@allowed_user_ids) {
+        eval { $c->db->sync_file_acls($file_id, \@allowed_user_ids); };
+    }
+
     $c->app->log->info("File stored: $original_filename ($file_size bytes) by $username");
     return $c->render(json => { success => 1, message => "File uploaded successfully." });
 }
@@ -129,19 +131,17 @@ sub serve {
         return $c->render_error('Resource not found', 404);
     }
     
-    # Access Control Logic (Admin | Whitelist | Public)
+    # Access Control: Admin always; non-admin checked via file_acls junction table
     my $has_access = 0;
     my $current_user = $c->session('user') // '';
-    
+
     if ($c->is_admin) {
         $has_access = 1;
     } elsif ($file->{admin_only}) {
         $has_access = 0;
-    } elsif ($file->{allowed_users}) {
-        my @allowed = split(',', $file->{allowed_users});
-        $has_access = grep { $_ eq $current_user } @allowed;
     } else {
-        $has_access = 1;
+        my $current_user_id = $c->session('user_id');
+        $has_access = $c->db->file_is_accessible_by($id, $current_user_id);
     }
     
     unless ($has_access) {
@@ -197,7 +197,7 @@ sub api_delete {
 # Parameters:
 #   id            : Unique File ID (Integer)
 #   admin_only    : Restriction flag (Boolean)
-#   allowed_users : Whitelisted usernames (ArrayRef[String])
+#   allowed_users : Whitelisted user IDs (ArrayRef[Int])
 # Returns: JSON object { success, message }
 sub api_permissions {
     my $c = shift;
@@ -209,13 +209,13 @@ sub api_permissions {
     }
 
     my $admin_only = $c->param('admin_only') ? 1 : 0;
-    my @allowed_users = $c->every_param('allowed_users[]');
-    @allowed_users = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @allowed_users;
-
-    my $allowed_users_str = @allowed_users ? join(',', @allowed_users) : undef;
+    my @allowed_user_ids = $c->every_param('allowed_users[]');
+    @allowed_user_ids = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @allowed_user_ids;
+    @allowed_user_ids = grep { defined $_ && $_ =~ /^\d+$/ } @allowed_user_ids;
 
     eval {
-        $c->db->update_file_permissions($id, $admin_only, $allowed_users_str);
+        $c->db->sync_file_acls($id, \@allowed_user_ids);
+        $c->db->update_file_admin_only($id, $admin_only);
     };
     if ($@) {
         return $c->render(json => { success => 0, error => 'Failed to update ACL' });

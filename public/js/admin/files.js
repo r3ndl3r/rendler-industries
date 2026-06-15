@@ -116,7 +116,7 @@ function renderTable() {
             <td data-label="Access">
                 ${file.admin_only 
                     ? `<span class="badge badge-admin">Admin</span>` 
-                    : (file.allowed_users 
+                    : (file.allowed_user_ids 
                         ? `<span class="badge badge-restricted">Restricted</span>` 
                         : `<span class="badge badge-public">Public</span>`)
                 }
@@ -146,7 +146,7 @@ function renderTable() {
  */
 function renderRecipientSelectors() {
     const approvedUsers = moduleState.users.filter(u => u.status === 'approved');
-    const recipients = approvedUsers.map(u => ({ id: u.username, label: u.username }));
+    const recipients = approvedUsers.map(u => ({ id: u.id, label: u.username }));
     
     // Render recipient grids for both Upload and Permission modals
     renderSelectorGrid('uploadRecipientsList', recipients, { name: 'allowed_users[]', prefix: 'uploadUser' });
@@ -202,7 +202,7 @@ function openPermissionModal(id) {
     document.getElementById('permissionAdminOnly').checked = file.admin_only == 1;
 
     // Logic: Sync whitelisted user checkboxes
-    const allowed = file.allowed_users ? file.allowed_users.split(',') : [];
+    const allowed = file.allowed_user_ids ? file.allowed_user_ids.split(',') : [];
     
     // Reset all checkboxes first (Form.reset handles most but explicit sync is safer)
     document.querySelectorAll('#permissionRecipientsList input[type="checkbox"]').forEach(cb => {
