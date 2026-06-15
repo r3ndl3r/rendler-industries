@@ -296,6 +296,7 @@ window.toggleSubmenu = toggleSubmenu;
 window.startRestartSequence = startRestartSequence;
 window.closeRestartModal = closeRestartModal;
 window.submitLogout = submitLogout;
+window.loadMenu = loadMenu;
 
 /**
  * Quick Search: Toggle between emoji and input
