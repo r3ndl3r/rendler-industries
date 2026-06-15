@@ -31,6 +31,8 @@ let STATE = {
     items: [],                      // Collection of {id, item_name, added_by, is_checked}
     isAdmin: false                  // Permission gate for destructive actions
 };
+let latestRefreshSeq = 0;
+let latestMutationSeq = 0;
 
 /**
  * Bootstraps the module state and establishes event delegation.
@@ -71,8 +73,10 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.items.length > 0) return;
 
     try {
+        const refreshSeq = ++latestRefreshSeq;
         const data = await apiGet('/shopping/api/state');
-        
+        if (refreshSeq < latestMutationSeq || refreshSeq < latestRefreshSeq) return;
+
         if (data && data.success) {
             STATE.isAdmin = !!data.is_admin;
             if (JSON.stringify(data.items) !== JSON.stringify(STATE.items)) {
@@ -209,6 +213,7 @@ async function handleAddItem(event) {
     try {
         const result = await apiPost('/shopping/api/add', { item_name: name });
         if (result && result.success) {
+            latestMutationSeq = latestRefreshSeq + 1;
             form.reset(); 
             // Optimistic update
             STATE.items.unshift({
@@ -241,6 +246,7 @@ async function toggleItem(id) {
     try {
         const result = await apiPost(`/shopping/api/toggle/${id}`);
         if (result && result.success) {
+            latestMutationSeq = latestRefreshSeq + 1;
             const item = STATE.items.find(i => i.id == id);
             if (item) {
                 item.is_checked = !item.is_checked;
@@ -313,6 +319,7 @@ async function handleEditSubmit(event) {
     try {
         const result = await apiPost(`/shopping/api/edit/${id}`, { item_name: name });
         if (result && result.success) {
+            latestMutationSeq = latestRefreshSeq + 1;
             const item = STATE.items.find(i => i.id == id);
             if (item) item.item_name = name;
             renderTable();
@@ -342,6 +349,7 @@ function confirmDeleteItem(id, itemName) {
         onConfirm: async () => {
             const result = await apiPost(`/shopping/api/delete/${id}`);
             if (result && result.success) {
+                latestMutationSeq = latestRefreshSeq + 1;
                 STATE.items = STATE.items.filter(i => i.id != id);
                 renderTable();
             }
@@ -365,6 +373,7 @@ function openClearAllModal() {
         onConfirm: async () => {
             const result = await apiPost('/shopping/api/clear');
             if (result && result.success) {
+                latestMutationSeq = latestRefreshSeq + 1;
                 STATE.items = STATE.items.filter(i => !i.is_checked);
                 renderTable();
             }
