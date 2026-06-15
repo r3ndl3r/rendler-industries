@@ -151,10 +151,10 @@ function renderWeatherDashboard() {
         try {
             data = JSON.parse(obs.data_json || '{}');
         } catch (e) {
-            return `<div class="error-card glass-card">Parse Error: ${obs.name}</div>`;
+            return `<div class="error-card glass-card">Parse Error: ${escapeHtml(obs.name || '')}</div>`;
         }
 
-        if (!data.current) return `<div class="error-card glass-card">Waiting for sync: ${obs.name}</div>`;
+        if (!data.current) return `<div class="error-card glass-card">Waiting for sync: ${escapeHtml(obs.name || '')}</div>`;
 
         const current = data.current;
         const nowSec = Math.floor(Date.now() / 1000);
