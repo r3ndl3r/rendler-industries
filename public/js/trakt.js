@@ -369,6 +369,55 @@ function renderSearchEmptyState() {
 }
 
 /**
+ * Builds card attributes for show rows that can open the details modal.
+ * @param {number|string} traktId - Trakt show ID to open.
+ * @returns {{className: string, attrs: string}} CSS class and HTML attributes.
+ */
+function openableCardAttributes(traktId) {
+    const id = Number(traktId || 0);
+    if (!id) return { className: '', attrs: '' };
+    return {
+        className: ' trakt-openable-card',
+        attrs: ` role="button" tabindex="0" onclick="handleTraktCardPress(event, ${id})" onkeydown="handleTraktCardKeydown(event, ${id})"`
+    };
+}
+
+/**
+ * Opens show details when a card surface is pressed.
+ * @param {MouseEvent|PointerEvent} event - Card click event.
+ * @param {number|string} traktId - Trakt show ID.
+ * @returns {void}
+ */
+function handleTraktCardPress(event, traktId) {
+    if (shouldIgnoreCardPress(event)) return;
+    openShowDetails(Number(traktId));
+}
+
+/**
+ * Opens show details when an enterable card is activated by keyboard.
+ * @param {KeyboardEvent} event - Card keydown event.
+ * @param {number|string} traktId - Trakt show ID.
+ * @returns {void}
+ */
+function handleTraktCardKeydown(event, traktId) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (shouldIgnoreCardPress(event)) return;
+    event.preventDefault();
+    openShowDetails(Number(traktId));
+}
+
+/**
+ * Returns whether a card press originated from a nested control.
+ * @param {Event} event - Card activation event.
+ * @returns {boolean} True when a nested control should own the event.
+ */
+function shouldIgnoreCardPress(event) {
+    const target = event.target;
+    return target instanceof Element
+        && !!target.closest('button, a, input, select, textarea, label, .trakt-item-actions, .trakt-mobile-card-actions');
+}
+
+/**
  * Renders a media item row inside a Trakt list.
  * @param {Object} item - Media item with media_type, trakt_id, title, year.
  * @param {Object} list - The containing Trakt list.
@@ -378,8 +427,9 @@ function renderListItem(item, list) {
     const payload = itemPayload(item);
     const watched = !!item.watched;
     const removeTitle = Number(list.is_watchlist) === 1 ? 'Remove from Watchlist' : 'Remove from List';
+    const openable = openableCardAttributes(item.media_type === 'show' ? item.trakt_id : 0);
     return `
-        <div class="trakt-item" data-trakt-item="${payload}">
+        <div class="trakt-item${openable.className}" data-trakt-item="${payload}"${openable.attrs}>
             ${renderItemContent(item)}
             <div class="trakt-item-actions">
                 <button type="button" class="btn-icon-delete trakt-item-action" onclick="removeListItem(${Number(list.id)}, '${payload}', this)" title="${removeTitle}">🗑️</button>
@@ -401,8 +451,9 @@ function renderSearchItem(item) {
     const listActionTitle = listCount
         ? `Manage Lists (${listCount})`
         : 'Add to List';
+    const openable = openableCardAttributes(item.media_type === 'show' ? item.trakt_id : 0);
     return `
-        <div class="trakt-item" data-trakt-item="${payload}">
+        <div class="trakt-item${openable.className}" data-trakt-item="${payload}"${openable.attrs}>
             ${renderItemContent(item)}
             <div class="trakt-item-actions">
                 <button type="button" class="btn-icon-edit trakt-item-action" onclick="openSearchListModal('${payload}', this)" title="${escapeHtml(listActionTitle)}">➕</button>
@@ -1596,8 +1647,9 @@ function renderShowCell(label, traktId, images) {
  */
 function renderUpcomingCompactCard(row) {
     const showTitle = row.show_title || 'Unknown show';
+    const openable = openableCardAttributes(row.show_trakt_id);
     return `
-        <article class="trakt-mobile-card">
+        <article class="trakt-mobile-card${openable.className}"${openable.attrs}>
             <div class="trakt-mobile-card-header">
                 ${renderPosterArt(showTitle, row.show_images, 'trakt-mobile-art', 'trakt-mobile-art-placeholder')}
                 <div class="trakt-mobile-card-copy">
@@ -1616,8 +1668,9 @@ function renderUpcomingCompactCard(row) {
  */
 function renderUnwatchedCompactCard(item) {
     const showTitle = item.show_title || 'Unknown show';
+    const openable = openableCardAttributes(item.show_trakt_id);
     return `
-        <article class="trakt-mobile-card">
+        <article class="trakt-mobile-card${openable.className}"${openable.attrs}>
             <div class="trakt-mobile-card-header">
                 ${renderPosterArt(showTitle, item.show_images, 'trakt-mobile-art', 'trakt-mobile-art-placeholder')}
                 <div class="trakt-mobile-card-copy">
