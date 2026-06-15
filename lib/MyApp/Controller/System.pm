@@ -1124,6 +1124,105 @@ sub run_brief_notification {
     }
 }
 
+# Internal helper to notify users when Trakt watchlist episodes have aired.
+# Queries trakt_upcoming for episodes with first_aired in the last 48 hours that
+# have not yet been logged in trakt_episode_notifications, atomically inserts
+# a row to prevent double-firing, then dispatches via notify_templated. Notification
+# log rows older than 14 days are removed on each run.
+#
+# Parameters:
+#   - now : DateTime object representing the current execution minute.
+# Returns:
+#   Stats HashRef { checked_time, cleanup_deleted, rows_found, notifications_sent, already_notified, errors }
+sub run_trakt_episode_notifications {
+    my ($c, $now) = @_;
+
+    my $stats = {
+        checked_time       => $now->strftime('%Y-%m-%d %H:%M'),
+        cleanup_deleted    => 0,
+        rows_found         => 0,
+        notifications_sent => 0,
+        already_notified   => 0,
+        errors             => 0,
+    };
+
+    my $now_utc = $now->clone;
+    $now_utc->set_time_zone('UTC');
+
+    my $now_str          = $now_utc->strftime('%Y-%m-%d %H:%M:%S');
+    my $cutoff           = $now_utc->clone()->subtract(hours => 48)->strftime('%Y-%m-%d %H:%M:%S');
+    my $retention_cutoff = $now_utc->clone()->subtract(days => 14)->strftime('%Y-%m-%d %H:%M:%S');
+
+    my $cleanup_rv = $c->db->{dbh}->do(
+        "DELETE FROM trakt_episode_notifications WHERE notified_at < ?",
+        undef,
+        $retention_cutoff
+    );
+    $stats->{cleanup_deleted} = 0 + ($cleanup_rv || 0);
+
+    my $sql = qq{
+        SELECT u.user_id, u.episode_trakt_id, u.show_title, u.season, u.episode,
+               u.title, u.first_aired, u.network
+        FROM trakt_upcoming u
+        WHERE u.first_aired <= ?
+          AND u.first_aired >= ?
+          AND u.episode_trakt_id IS NOT NULL
+    };
+
+    my $sth = $c->db->{dbh}->prepare($sql);
+    $sth->execute($now_str, $cutoff);
+    my $rows = $sth->fetchall_arrayref({});
+    $stats->{rows_found} = scalar @$rows;
+
+    foreach my $row (@$rows) {
+        my $episode_label = sprintf("S%02dE%02d", $row->{season} // 0, $row->{episode} // 0);
+
+        # 1. ATOMIC MARK: INSERT IGNORE to prevent double-firing.
+        #    If the row already exists, affected_rows is 0 and we skip.
+        my $rv = $c->db->{dbh}->do(
+            "INSERT IGNORE INTO trakt_episode_notifications
+             (user_id, episode_trakt_id, show_title, episode_label, title, first_aired, notified_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            undef,
+            $row->{user_id},
+            $row->{episode_trakt_id},
+            $row->{show_title}   || '',
+            $episode_label,
+            $row->{title}        || '',
+            $row->{first_aired},
+            $now_str,
+        );
+
+        unless ($rv && $rv > 0) {
+            $stats->{already_notified}++;
+            next;
+        }
+
+        # 2. DISPATCH via Templated System
+        eval {
+            $c->notify_templated(
+                $row->{user_id},
+                'trakt_episode_airing',
+                {
+                    show_title    => $row->{show_title} || '',
+                    episode_label => $episode_label,
+                    title         => $row->{title}      || '',
+                    network       => $row->{network}    || '',
+                },
+                0  # caller_id: system-originated notification
+            );
+        };
+        if ($@) {
+            $c->app->log->error("Trakt notification dispatch failed for user_id=$row->{user_id} episode_trakt_id=$row->{episode_trakt_id}: $@");
+            $stats->{errors}++;
+        } else {
+            $stats->{notifications_sent}++;
+        }
+    }
+
+    return $stats;
+}
+
 # Internal helper to remove expired UNO sessions: finished games (>1h), abandoned lobbies (>2h), and stale active games (>4h).
 # Parameters: None
 # Returns: None
