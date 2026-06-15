@@ -25,7 +25,8 @@ let STATE = {
     dictionary: [],
     offset: 0,
     search: '',
-    isLoading: false
+    isLoading: false,
+    pendingStateReload: false
 };
 
 /**
@@ -92,13 +93,21 @@ async function loadState(force = false) {
     const inputFocused = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA';
     if (!force && (anyModalOpen || inputFocused)) return;
 
-    if (STATE.isLoading) return;
+    if (STATE.isLoading) {
+        STATE.pendingStateReload = true;
+        return;
+    }
     STATE.isLoading = true;
+    const requestSearch = STATE.search;
 
     try {
-        const data = await apiGet(`/admin/emojis/api/state?search=${encodeURIComponent(STATE.search)}`);
+        const data = await apiGet(`/admin/emojis/api/state?search=${encodeURIComponent(requestSearch)}`);
 
         if (data && data.success) {
+            if (requestSearch !== STATE.search) {
+                STATE.pendingStateReload = true;
+                return;
+            }
             STATE.stats = data.stats;
             STATE.dictionary = data.dictionary;
             STATE.offset = STATE.dictionary.length;
@@ -123,6 +132,10 @@ async function loadState(force = false) {
         console.error("loadState failed:", err);
     } finally {
         STATE.isLoading = false;
+        if (STATE.pendingStateReload) {
+            STATE.pendingStateReload = false;
+            loadState(true);
+        }
     }
 }
 
@@ -140,16 +153,21 @@ async function loadMore() {
     btn.disabled = true;
     btn.innerHTML = `⌛ Synchronizing...`;
     STATE.isLoading = true;
+    const requestSearch = STATE.search;
 
     try {
         const params = new URLSearchParams({
             offset: STATE.offset,
             limit: CONFIG.LIMIT,
-            search: STATE.search
+            search: requestSearch
         });
         const data = await apiGet(`/admin/emojis/api/list?${params.toString()}`);
 
         if (data && data.success) {
+            if (requestSearch !== STATE.search) {
+                STATE.pendingStateReload = true;
+                return;
+            }
             STATE.dictionary = [...STATE.dictionary, ...data.dictionary];
             renderDictionary(true, data.dictionary);
             STATE.offset = STATE.dictionary.length;
@@ -163,6 +181,10 @@ async function loadMore() {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
         STATE.isLoading = false;
+        if (STATE.pendingStateReload) {
+            STATE.pendingStateReload = false;
+            loadState(true);
+        }
     }
 }
 
