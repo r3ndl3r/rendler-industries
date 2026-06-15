@@ -59,6 +59,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
 });
 
+function updateMealsBodyModalLock() {
+    const activeModal = document.querySelector(
+        '#suggestModal.active, #blackoutModal.active, #editSuggestionModal.active, #manageVaultModal.active, #addEditMealModal.active'
+    );
+    document.body.classList.toggle('modal-open', !!activeModal);
+}
+
 /**
  * --- Core Data Management ---
  */
@@ -131,8 +138,9 @@ async function openManageVaultModal() {
     if (modal) {
         modal.classList.add('active');
         document.body.classList.add('modal-open');
+        updateMealsBodyModalLock();
     }
-    
+
     try {
         const data = await apiGet('/meals/api/vault');
         if (data && data.meals) {
@@ -153,6 +161,7 @@ function closeManageVaultModal() {
     if (modal) {
         modal.classList.remove('active');
         document.body.classList.remove('modal-open');
+        updateMealsBodyModalLock();
     }
 }
 
@@ -211,6 +220,7 @@ function openAddEditMealModal(id = null, name = null) {
     if (modal) {
         modal.classList.add('active');
         document.body.classList.add('modal-open');
+        updateMealsBodyModalLock();
     }
 }
 
@@ -224,6 +234,7 @@ function closeAddEditMealModal() {
     if (modal) {
         modal.classList.remove('active');
         document.body.classList.remove('modal-open');
+        updateMealsBodyModalLock();
     }
 }
 
@@ -674,6 +685,7 @@ function openSuggestModal(id, date) {
     if (m) {
         m.classList.add('active');
         document.body.classList.add('modal-open');
+        updateMealsBodyModalLock();
     }
 }
 
@@ -683,6 +695,7 @@ function closeSuggestModal() {
     if (m) {
         m.classList.remove('active');
         document.body.classList.remove('modal-open');
+        updateMealsBodyModalLock();
     }
 }
 
@@ -698,6 +711,7 @@ function openEditSuggestionModal(id, name) {
     if (m) {
         m.classList.add('active');
         document.body.classList.add('modal-open');
+        updateMealsBodyModalLock();
     }
 }
 
@@ -707,6 +721,7 @@ function closeEditSuggestionModal() {
     if (m) {
         m.classList.remove('active');
         document.body.classList.remove('modal-open');
+        updateMealsBodyModalLock();
     }
 }
 
@@ -717,6 +732,7 @@ function openBlackoutModal(id) {
     if (m) {
         m.classList.add('active');
         document.body.classList.add('modal-open');
+        updateMealsBodyModalLock();
     }
 }
 
@@ -726,6 +742,7 @@ function closeBlackoutModal() {
     if (m) {
         m.classList.remove('active');
         document.body.classList.remove('modal-open');
+        updateMealsBodyModalLock();
     }
 }
 
