@@ -418,6 +418,14 @@ use constant MANIFEST => {
         default_subject => "Daily Brief",
         default_body    => "📰 **Daily Brief** 📰\n\nYour daily overview is ready. Check your calendar, chores, weather, and more.\n\n[sys_url /brief]"
     },
+    'trakt_episode_airing' => {
+        desc    => "Sent when a watchlist episode airs.",
+        tags    => "show_title, episode_label, title, network",
+        url     => '/trakt',
+        sample  => { show_title => "Severance", episode_label => "S01E03", title => "In Perpetuity", network => "Apple TV+" },
+        default_subject => "[show_title] [episode_label] aired",
+        default_body    => "📺 **[show_title]** [episode_label] — [title] ([network])\n\n[sys_url /trakt]"
+    },
 };
 
 sub register {
