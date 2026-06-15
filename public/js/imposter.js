@@ -385,7 +385,7 @@ function editPlayer(oldName) {
             placeholder: 'New player name...',
             value: oldName,
             requiredText: '',
-            max: 40
+            maxLength: 40
         },
         onConfirm: async (newName) => {
             const trimmed = (newName || "").trim();
