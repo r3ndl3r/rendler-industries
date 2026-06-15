@@ -214,8 +214,6 @@
 }
 
 .trakt-show-link strong {
-    text-decoration: underline;
-    text-underline-offset: 0.15rem;
     display: block;
     white-space: normal;
 }
