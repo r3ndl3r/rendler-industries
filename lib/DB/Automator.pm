@@ -574,6 +574,7 @@ sub DB::save_automator_secret {
         $sth->bind_param(7, $id);
         $sth->bind_param(8, $user_id);
         $sth->execute;
+        return undef unless $sth->rows;
         return { id => $id, name => $name, category => $category || 'General' };
     }
     my $sth = $self->{dbh}->prepare(q{
@@ -585,8 +586,7 @@ sub DB::save_automator_secret {
             value_encrypted = VALUES(value_encrypted),
             iv = VALUES(iv),
             tag = VALUES(tag),
-            salt = VALUES(salt),
-            user_id = VALUES(user_id)
+            salt = VALUES(salt)
     });
     $sth->bind_param(1, $name);
     $sth->bind_param(2, $category || 'General');
