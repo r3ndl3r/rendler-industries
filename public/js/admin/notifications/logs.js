@@ -30,6 +30,7 @@ let STATE = {
     users: [],
     isAdmin: false
 };
+let latestNotificationLogsRequest = 0;
 
 /**
  * Bootstraps the module state and establishes event delegation.
@@ -92,9 +93,12 @@ async function loadState(force = false) {
 
     const filters = getActiveFilters();
     const params = new URLSearchParams(filters);
+    const requestSeq = ++latestNotificationLogsRequest;
 
     try {
         const data = await apiGet(`/admin/notifications/logs/api/state?${params.toString()}`);
+
+        if (requestSeq !== latestNotificationLogsRequest) return;
 
         if (data && data.success) {
             STATE.logs = data.logs;
