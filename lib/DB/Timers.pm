@@ -276,6 +276,13 @@ sub DB::delete_timer {
     my $rows = $self->{dbh}->do($sql, undef, $timer_id);
     
     if ($rows > 0) {
+        my $today = $self->_get_current_date();
+        $self->{dbh}->do(
+            "UPDATE timer_sessions
+             SET is_running = 0, is_paused = 0, started_at = NULL, paused_at = NULL
+             WHERE timer_id = ? AND session_date = ?",
+            undef, $timer_id, $today
+        );
         $self->_log_timer_action($timer_id, $admin_id, 'deleted', "Timer deactivated");
         return 1;
     }
@@ -522,11 +529,12 @@ sub DB::update_running_timers {
     my $today = $self->_get_current_date();
     my $now   = $self->_get_current_datetime();
     
-    # Get all running timers
+    # Get all running timers for active timer definitions
     my $sql = q{
-        SELECT timer_id, elapsed_seconds, started_at
-        FROM timer_sessions
-        WHERE session_date = ? AND is_running = 1
+        SELECT ts.timer_id, ts.elapsed_seconds, ts.started_at
+        FROM timer_sessions ts
+        JOIN timers t ON t.id = ts.timer_id
+        WHERE ts.session_date = ? AND ts.is_running = 1 AND t.is_active = 1
     };
     
     my $sth = $self->{dbh}->prepare($sql);
@@ -597,6 +605,7 @@ sub DB::get_timers_needing_warning {
         JOIN timers t ON ts.timer_id = t.id
         JOIN users u ON t.user_id = u.id
         WHERE ts.session_date = ?
+          AND t.is_active = 1
           AND ts.warning_sent = 0
           AND ts.is_running = 1
           AND (CASE 
@@ -656,6 +665,7 @@ sub DB::get_expired_timers {
         JOIN timers t ON ts.timer_id = t.id
         JOIN users u ON t.user_id = u.id
         WHERE ts.session_date = ?
+          AND t.is_active = 1
           AND ts.expired_sent = 0
           AND (CASE 
                 WHEN DAYOFWEEK(?) IN (1, 7) THEN t.weekend_minutes
