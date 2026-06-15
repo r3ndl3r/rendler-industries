@@ -727,6 +727,8 @@ async function updateStatus(id, status, btn = null) {
             showToast(`Photo marked as ${status}`, "success");
             if (status === 'failed') showFailComment(id);
             loadState(true);
+        } else {
+            await loadState(true);
         }
     } finally {
         if (btn) btn.disabled = originalDisabled;
@@ -874,6 +876,8 @@ function confirmDeleteSubmission(id) {
             if (result && result.success) {
                 showToast("Photo removed", "success");
                 loadState(true);
+            } else {
+                await loadState(true);
             }
         }
     });
