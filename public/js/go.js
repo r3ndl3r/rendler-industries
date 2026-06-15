@@ -27,6 +27,7 @@ const CONFIG = {
 let STATE = {
     items: [] 
 };
+let latestGoStateRequest = 0;
 
 /**
  * Initializes the module state and establishes global event behaviors.
@@ -79,8 +80,10 @@ async function loadState(force = false) {
     }
 
     try {
+        const requestSeq = ++latestGoStateRequest;
         const data = await apiGet('/go/api/state');
-        
+        if (requestSeq !== latestGoStateRequest) return;
+
         if (data && data.success) {
             STATE.items = data.items;
             renderList();
