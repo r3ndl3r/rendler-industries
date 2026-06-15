@@ -21,12 +21,17 @@ let attemptedInitialSync = false;
 let autoRefreshed = false;
 let SHOW_DETAILS = null;
 let SHOW_DETAILS_OPEN_SEASONS = {};
+let SHOW_DETAILS_REQUEST_ID = 0;
 let traktHistoryActionInFlight = false;
-let traktListCollapseNonce = 0;
+let traktListCollapseNonce = {};
 let SEARCH_QUERY = '';
 let SEARCH_TYPE = 'movie,show';
 let SEARCH_DEBOUNCE_TIMER = null;
+let SEARCH_REQUEST_ID = 0;
 let UNWATCHED_LOADING = false;
+let UNWATCHED_LOADED = false;
+let UNWATCHED_VERSION = 0;
+let UNWATCHED_REQUEST_ID = 0;
 let SEARCH_LIST_MODAL_ITEM = null;
 let SEARCH_LIST_MODAL_TRIGGER = null;
 let ITEM_MOVE_SOURCE_ITEM = null;
@@ -66,21 +71,22 @@ async function loadState() {
         const data = await apiGet('/trakt/api/state?skip_unwatched=1', 30000);
         if (data && data.success) {
             STATE = { ...STATE, ...data };
+            if (!STATE.connection?.connected) {
+                UNWATCHED_LOADING = false;
+                UNWATCHED_LOADED = false;
+                UNWATCHED_VERSION += 1;
+                UNWATCHED_REQUEST_ID += 1;
+                STATE.unwatched = [];
+            }
             renderTrakt();
             if (STATE.connection?.connected && !STATE.connection.last_synced_at && !attemptedInitialSync) {
                 attemptedInitialSync = true;
-                syncTrakt();
-            } else {
-                UNWATCHED_LOADING = true;
-                const stateData = await apiGet('/trakt/api/state', 90000);
-                if (stateData && stateData.success) {
-                    STATE.unwatched = stateData.unwatched || [];
-                    if (activeTab === 'unwatched') renderTrakt();
-                }
-                UNWATCHED_LOADING = false;
+                syncTrakt().catch(err => console.error('Trakt initial sync failed:', err));
+            } else if (STATE.connection?.connected) {
+                await loadUnwatchedState(true);
                 if (STATE.connection?.last_synced_at && !autoRefreshed && Date.now() - Date.parse(STATE.connection.last_synced_at) > 3600000) {
                     autoRefreshed = true;
-                    syncTrakt();
+                    syncTrakt().catch(err => console.error('Trakt auto refresh failed:', err));
                 }
             }
         } else {
@@ -250,7 +256,7 @@ function renderUpcoming() {
  * @returns {string} HTML string.
  */
 function renderUnwatched() {
-    if (UNWATCHED_LOADING) {
+    if (UNWATCHED_LOADING && !UNWATCHED_LOADED) {
         return `<div class="empty-state trakt-loading"><div class="trakt-spinner"></div><p>Computing unwatched episodes...</p><p class="empty-hint">Gathering data from Trakt for each show in your watchlist</p></div>`;
     }
 
@@ -440,13 +446,72 @@ async function syncTrakt() {
             if (!result.message && typeof showToast === 'function') showToast('Trakt synced', 'success');
         }
     });
-    UNWATCHED_LOADING = true;
-    const stateData = await apiGet('/trakt/api/state', 90000);
-    if (stateData && stateData.success) {
-        STATE.unwatched = stateData.unwatched || [];
+    await loadUnwatchedState(!UNWATCHED_LOADED);
+}
+
+/**
+ * Refreshes the full unwatched episode payload after the lightweight dashboard state.
+ * @async
+ * @param {boolean} showInitialLoading - Whether the first load should show the loading panel.
+ * @returns {Promise<void>}
+ */
+async function loadUnwatchedState(showInitialLoading = false) {
+    const requestVersion = UNWATCHED_VERSION;
+    const requestId = ++UNWATCHED_REQUEST_ID;
+    const showLoading = !!showInitialLoading && !UNWATCHED_LOADED;
+    let changed = false;
+    if (showLoading) {
+        UNWATCHED_LOADING = true;
         if (activeTab === 'unwatched') renderTrakt();
     }
-    UNWATCHED_LOADING = false;
+
+    try {
+        const stateData = await apiGet('/trakt/api/state', 90000);
+        if (requestVersion !== UNWATCHED_VERSION || requestId !== UNWATCHED_REQUEST_ID) return;
+        if (stateData && stateData.success) {
+            hydrateUnwatchedState(stateData);
+            UNWATCHED_LOADED = true;
+            changed = true;
+        }
+    } catch (err) {
+        console.error('Trakt unwatched state load failed:', err);
+    } finally {
+        if (requestId === UNWATCHED_REQUEST_ID) {
+            UNWATCHED_LOADING = false;
+            if (activeTab === 'unwatched' && (showLoading || changed)) renderTrakt();
+        }
+    }
+}
+
+/**
+ * Invalidates any in-flight unwatched payload and starts a quiet refresh.
+ * @returns {void}
+ */
+function refreshUnwatchedAfterMutation() {
+    invalidateUnwatchedStateLoads();
+    loadUnwatchedState(false).catch(err => {
+        console.error('Trakt unwatched refresh failed:', err);
+    });
+}
+
+/**
+ * Prevents older full-state hydration responses from overwriting newer mutations.
+ * @returns {void}
+ */
+function invalidateUnwatchedStateLoads() {
+    UNWATCHED_VERSION += 1;
+}
+
+/**
+ * Merges the full unwatched response fields that are derived from the same recompute.
+ * @param {Object} stateData - Full Trakt state response.
+ * @returns {void}
+ */
+function hydrateUnwatchedState(stateData) {
+    STATE.unwatched = stateData.unwatched || [];
+    if (stateData.lists) STATE.lists = stateData.lists;
+    if (stateData.upcoming) STATE.upcoming = stateData.upcoming;
+    if (stateData.connection) STATE.connection = stateData.connection;
 }
 
 /**
@@ -617,20 +682,41 @@ async function executeItemMove(targetListId) {
 
     const targetList = STATE.lists.find(row => Number(row.id) === Number(targetListId));
     if (!targetList) return;
+    const touchesWatchlist = isWatchlistListId(sourceId) || isWatchlistListId(targetListId);
 
     const runAction = async () => {
-        const removeResult = await apiPost(`/trakt/api/lists/${sourceId}/items/remove`, { items: JSON.stringify([item]) });
-        if (!(removeResult && removeResult.success)) {
-            if (typeof showToast === 'function') showToast('Unable to remove from current list', 'error');
-            return;
-        }
-        removeCachedListItemLocally(sourceId, item);
+        let removeResult = null;
+        try {
+            removeResult = await apiPost(`/trakt/api/lists/${sourceId}/items/remove`, { items: JSON.stringify([item]) });
+            if (!(removeResult && removeResult.success)) {
+                if (typeof showToast === 'function') showToast('Unable to remove from current list', 'error');
+                return;
+            }
+            removeCachedListItemLocally(sourceId, item);
 
-        const addResult = await apiPost(`/trakt/api/lists/${targetListId}/items/add`, { items: JSON.stringify([item]) });
-        if (addResult && addResult.success && addResult.state) {
-            applyResultState(addResult);
+            const addResult = await apiPost(`/trakt/api/lists/${targetListId}/items/add`, { items: JSON.stringify([item]) });
+            if (addResult && addResult.success && addResult.state) {
+                applyResultState(addResult);
+                if (touchesWatchlist) refreshUnwatchedAfterMutation();
+                closeSearchListModal();
+                if (typeof showToast === 'function') showToast(`Moved to ${targetList.name || 'list'}`, 'success');
+                return;
+            }
+
+            if (removeResult.state) applyResultState(removeResult);
+            if (touchesWatchlist) refreshUnwatchedAfterMutation();
             closeSearchListModal();
-            if (typeof showToast === 'function') showToast(`Moved to ${targetList.name || 'list'}`, 'success');
+            if (typeof showToast === 'function') showToast('Removed from current list, but unable to add to target list', 'error');
+        } catch (err) {
+            console.error('Trakt item move failed:', err);
+            if (removeResult && removeResult.success && removeResult.state) {
+                applyResultState(removeResult);
+                if (touchesWatchlist) refreshUnwatchedAfterMutation();
+                closeSearchListModal();
+                if (typeof showToast === 'function') showToast('Removed from current list, but unable to add to target list', 'error');
+                return;
+            }
+            if (typeof showToast === 'function') showToast('Unable to move item', 'error');
         }
     };
 
@@ -717,21 +803,41 @@ async function toggleListCollapsed(id, collapsed) {
     const nextCollapsed = Number(collapsed) ? 1 : 0;
     const previous = STATE.lists.find(list => Number(list.id) === listId);
     if (!previous) return;
+    const reloadInitialUnwatched = UNWATCHED_LOADING && !UNWATCHED_LOADED;
 
-    const nonce = ++traktListCollapseNonce;
+    invalidateUnwatchedStateLoads();
+    const nonce = (traktListCollapseNonce[listId] || 0) + 1;
+    traktListCollapseNonce[listId] = nonce;
     STATE.lists = STATE.lists.map(list =>
         Number(list.id) === listId ? { ...list, collapsed: nextCollapsed } : list
     );
     renderTrakt();
+    if (reloadInitialUnwatched) {
+        loadUnwatchedState(false).catch(err => {
+            console.error('Trakt unwatched reload failed:', err);
+        });
+    }
 
-    const result = await apiPost(`/trakt/api/lists/${listId}/collapse`, { collapsed: nextCollapsed });
-    if (nonce !== traktListCollapseNonce) return;
+    try {
+        const result = await apiPost(`/trakt/api/lists/${listId}/collapse`, { collapsed: nextCollapsed });
+        if (nonce !== traktListCollapseNonce[listId]) return;
 
-    if (!(result && result.success)) {
+        if (!(result && result.success)) {
+            STATE.lists = STATE.lists.map(list =>
+                Number(list.id) === listId ? { ...list, collapsed: previous.collapsed } : list
+            );
+            renderTrakt();
+        }
+    } catch (err) {
+        console.error('Trakt list collapse save failed:', err);
+        if (nonce !== traktListCollapseNonce[listId]) return;
         STATE.lists = STATE.lists.map(list =>
             Number(list.id) === listId ? { ...list, collapsed: previous.collapsed } : list
         );
         renderTrakt();
+        if (typeof showToast === 'function') showToast('Unable to save list collapse state', 'error');
+    } finally {
+        if (nonce === traktListCollapseNonce[listId]) delete traktListCollapseNonce[listId];
     }
 }
 
@@ -745,19 +851,32 @@ async function searchTrakt(event) {
     event.preventDefault();
     const q = document.getElementById('searchQuery')?.value.trim() || '';
     const type = document.getElementById('searchType')?.value || 'movie,show';
-    if (q.length < 2) return;
     SEARCH_QUERY = q;
     SEARCH_TYPE = type;
+    if (q.length < 2) {
+        SEARCH_REQUEST_ID += 1;
+        STATE.search_results = [];
+        renderTrakt();
+        return;
+    }
+    const requestId = ++SEARCH_REQUEST_ID;
     const button = actionButton(event.submitter);
     await withBusyButton(button, 'Searching...', async () => {
-        const data = await apiGet(`/trakt/api/search?type=${encodeURIComponent(type)}&q=${encodeURIComponent(q)}`, 15000);
-        if (data && data.success) {
-            STATE.search_results = data.results || [];
-            renderTrakt();
-            if (typeof showToast === 'function') showToast(`${STATE.search_results.length} result${STATE.search_results.length === 1 ? '' : 's'} loaded`, 'success');
-        } else if (data && data.error) {
-            if (typeof showToast === 'function') showToast(data.error, 'error');
-            else alert(data.error);
+        try {
+            const data = await apiGet(`/trakt/api/search?type=${encodeURIComponent(type)}&q=${encodeURIComponent(q)}`, 15000);
+            if (requestId !== SEARCH_REQUEST_ID || q !== SEARCH_QUERY || type !== SEARCH_TYPE) return;
+            if (data && data.success) {
+                STATE.search_results = data.results || [];
+                renderTrakt();
+                if (typeof showToast === 'function') showToast(`${STATE.search_results.length} result${STATE.search_results.length === 1 ? '' : 's'} loaded`, 'success');
+            } else if (data && data.error) {
+                if (typeof showToast === 'function') showToast(data.error, 'error');
+                else alert(data.error);
+            }
+        } catch (err) {
+            if (requestId !== SEARCH_REQUEST_ID) return;
+            console.error('Trakt search failed:', err);
+            if (typeof showToast === 'function') showToast('Search failed', 'error');
         }
     });
 }
@@ -786,6 +905,7 @@ async function removeListItem(listId, payload, button) {
                 if (result && result.success && result.state) {
                     removeCachedListItemLocally(listId, item);
                     applyResultState(result);
+                    if (isWatchlistListId(listId)) refreshUnwatchedAfterMutation();
                     if (!result.message && typeof showToast === 'function') showToast('Removed from list', 'success');
                 }
             });
@@ -882,6 +1002,7 @@ async function toggleSearchItemListMembership(listId, button) {
             if (result && result.success && result.state) {
                 if (inList) removeCachedListItemLocally(list.id, item);
                 applyResultState(result);
+                if (Number(list.is_watchlist) === 1) refreshUnwatchedAfterMutation();
                 renderSearchListModalBody();
                 if (!result.message && typeof showToast === 'function') {
                     showToast(inList ? 'Removed from list' : 'Added to list', 'success');
@@ -971,6 +1092,7 @@ async function toggleUnwatchedItemState(traktId, watched, button) {
  */
 async function openShowDetails(traktId) {
     if (!traktId) return;
+    const requestId = ++SHOW_DETAILS_REQUEST_ID;
     const modal = document.getElementById('showDetailsModal');
     const title = document.getElementById('showDetailsTitle');
     const body = document.getElementById('showDetailsBody');
@@ -986,13 +1108,20 @@ async function openShowDetails(traktId) {
     modal.classList.add('show');
     document.body.classList.add('modal-open');
 
-    const data = await apiGet(`/trakt/api/shows/${traktId}`, 30000);
-    if (data && data.success) {
-        SHOW_DETAILS = data.show || null;
-        SHOW_DETAILS_OPEN_SEASONS = {};
-        renderShowDetailsModal();
-    } else {
-        body.innerHTML = `<p>${escapeHtml(data?.error || 'Unable to load show details')}</p>`;
+    try {
+        const data = await apiGet(`/trakt/api/shows/${traktId}`, 30000);
+        if (requestId !== SHOW_DETAILS_REQUEST_ID || !modal.classList.contains('show')) return;
+        if (data && data.success) {
+            SHOW_DETAILS = data.show || null;
+            SHOW_DETAILS_OPEN_SEASONS = {};
+            renderShowDetailsModal();
+        } else {
+            body.innerHTML = `<p>${escapeHtml(data?.error || 'Unable to load show details')}</p>`;
+        }
+    } catch (err) {
+        if (requestId !== SHOW_DETAILS_REQUEST_ID || !modal.classList.contains('show')) return;
+        console.error('Trakt show details load failed:', err);
+        body.innerHTML = '<p>Unable to load show details</p>';
     }
 }
 
@@ -1003,6 +1132,7 @@ async function openShowDetails(traktId) {
 function closeShowDetailsModal() {
     const modal = document.getElementById('showDetailsModal');
     if (!modal) return;
+    SHOW_DETAILS_REQUEST_ID += 1;
     modal.classList.remove('show');
     SHOW_DETAILS = null;
     SHOW_DETAILS_OPEN_SEASONS = {};
@@ -1146,6 +1276,7 @@ async function submitHistoryAction(items, watched, button, watchlistShowIds = []
             if (result && result.success && result.state) {
                 setMediaItemsWatchedState(items, watched);
                 applyResultState(result);
+                refreshUnwatchedAfterMutation();
                 ok = true;
                 if (!result.message && typeof showToast === 'function') {
                     showToast(watched ? 'Marked watched' : 'Marked unwatched', 'success');
@@ -1265,8 +1396,25 @@ async function mutateAndRefresh(url, payload, successMessage = '') {
  * @returns {void}
  */
 function applyResultState(result) {
+    const reloadInitialUnwatched = UNWATCHED_LOADING && !UNWATCHED_LOADED;
+    invalidateUnwatchedStateLoads();
     STATE = { ...STATE, ...(result?.state || {}) };
     renderTrakt();
+    if (reloadInitialUnwatched) {
+        loadUnwatchedState(false).catch(err => {
+            console.error('Trakt unwatched reload failed:', err);
+        });
+    }
+}
+
+/**
+ * Returns whether the list ID belongs to the built-in Trakt watchlist.
+ * @param {number|string} listId - List database ID.
+ * @returns {boolean} True when the list is the built-in watchlist.
+ */
+function isWatchlistListId(listId) {
+    const list = STATE.lists.find(row => Number(row.id) === Number(listId));
+    return Number(list?.is_watchlist) === 1;
 }
 
 /**
