@@ -171,6 +171,15 @@ use constant MANIFEST => {
         is_enabled       => 1,
         interval_minutes => 1,
     },
+    trakt_episode_notifications => {
+        label            => 'Trakt Episode Notifications',
+        description      => 'Notifies users when watchlist episodes have aired (48-hour window).',
+        function_name    => 'run_trakt_episode_notifications',
+        is_async         => 0,
+        run_last         => 0,
+        is_enabled       => 1,
+        interval_minutes => 60,
+    },
 };
 
 sub register {
