@@ -1227,6 +1227,13 @@ function renderSolverPreview(inputId) {
 async function handleSolverUpload(e) {
     e.preventDefault();
     const form = e.target;
+    const btn = document.getElementById('uploadSubmitBtn');
+    if (btn && btn.disabled) return;
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⌛ Analyzing...';
+    }
 
     if (typeof showLoadingOverlay === 'function') {
         showLoadingOverlay('Analyzing Cube State...', 'AI is parsing stickers from your photos.');
@@ -1260,6 +1267,10 @@ async function handleSolverUpload(e) {
         showToast('Server error during analysis.', 'error');
     } finally {
         if (typeof hideLoadingOverlay === 'function') hideLoadingOverlay();
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     }
 }
 
