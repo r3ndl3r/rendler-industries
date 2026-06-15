@@ -44,6 +44,7 @@ let STATE = {
 
 let loadStateRequestSeq = 0;
 let loadPendingRequestSeq = 0;
+let reminderMutationSeq = 0;
 
 /**
  * Bootstraps the module state and establishes background lifecycles.
@@ -119,8 +120,10 @@ async function loadPending() {
 
     try {
         const requestSeq = ++loadPendingRequestSeq;
+        const mutationSeq = reminderMutationSeq;
         const data = await apiGet('/medication/api/reminders');
         if (requestSeq !== loadPendingRequestSeq) return;
+        if (mutationSeq !== reminderMutationSeq) return;
         if (data && data.success) {
             STATE.reminders = data.reminders || [];
             STATE.pendingEvents = data.pending_events || [];
@@ -861,6 +864,7 @@ async function handleReminderSave(event) {
     const btn = document.getElementById('reminderSaveBtn');
     const originalHtml = btn.innerHTML;
     STATE.reminderSaving = true;
+    reminderMutationSeq++;
     btn.disabled = true;
     btn.innerHTML = '⌛ Saving...';
 
@@ -904,6 +908,7 @@ function closeReminderScheduler() {
  * @returns {Promise<void>}
  */
 async function toggleReminderActive(id, active, checkbox = null) {
+    reminderMutationSeq++;
     const result = await apiPost(`/medication/api/reminders/toggle/${id}`, { active: active ? 1 : 0 });
     if (result && result.success) {
         const reminder = STATE.reminders.find(r => r.id == id);
@@ -932,6 +937,7 @@ function deleteReminderSchedule(id) {
         confirmText: 'Delete',
         alignment: 'center',
         onConfirm: async () => {
+            reminderMutationSeq++;
             const result = await apiPost(`/medication/api/reminders/delete/${id}`);
             if (result && result.success) {
                 STATE.reminders = STATE.reminders.filter(r => r.id != id);
@@ -958,6 +964,7 @@ async function confirmReminderEvent(eventId, btn) {
         btn.innerHTML = '⌛ Confirming...';
     }
 
+    reminderMutationSeq++;
     const result = await apiPost(`/medication/api/reminders/confirm/${eventId}`);
     if (result && result.success) {
         STATE.pendingEvents = STATE.pendingEvents.filter(e => e.event_id != eventId);
