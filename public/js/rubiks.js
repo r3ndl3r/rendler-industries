@@ -1064,7 +1064,7 @@ function rollingAverageSeries(solves, size) {
     return durations.map((_, i) => {
         if (i + 1 < size) return null;
         const window = durations.slice(i + 1 - size, i + 1);
-        return { label: `#${i + 1}`, value: window.reduce((a, b) => a + b, 0) / size };
+        return { label: `#${i + 1}`, value: speedcubeAverage(window) };
     }).filter(Boolean).slice(-30);
 }
 
@@ -1074,10 +1074,16 @@ function rollingAverageSeries(solves, size) {
  * @param {number} size - Number of solves.
  * @returns {number}
  */
+function speedcubeAverage(values) {
+    if (!values.length) return 0;
+    const sorted = values.slice().sort((a, b) => a - b);
+    const trimmed = sorted.length >= 3 ? sorted.slice(1, -1) : sorted;
+    return trimmed.reduce((sum, ms) => sum + ms, 0) / trimmed.length;
+}
+
 function averageOfLast(durations, size) {
     if (durations.length < size) return 0;
-    const last = durations.slice(-size);
-    return last.reduce((sum, ms) => sum + ms, 0) / last.length;
+    return speedcubeAverage(durations.slice(-size));
 }
 
 /**
