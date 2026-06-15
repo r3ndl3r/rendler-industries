@@ -552,12 +552,15 @@ sub DB::update_running_timers {
         my $update_sql = q{
             UPDATE timer_sessions 
             SET elapsed_seconds = ?, started_at = ?
-            WHERE timer_id = ? AND session_date = ?
+            WHERE timer_id = ?
+              AND session_date = ?
+              AND is_running = 1
+              AND started_at = ?
         };
 
-        $self->{dbh}->do($update_sql, undef, $new_elapsed, $now, $row->{timer_id}, $today);
+        my $rows = $self->{dbh}->do($update_sql, undef, $new_elapsed, $now, $row->{timer_id}, $today, $row->{started_at});
 
-        $updated++;
+        $updated++ if $rows && $rows ne '0E0';
     }
     
     return $updated;
