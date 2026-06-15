@@ -28,6 +28,7 @@ const CONFIG = {
 };
 
 let weatherClockInterval = null;
+let weatherStateRequestSeq = 0;
 
 let STATE = {
     observations: [],           // Raw OWM results from DB
@@ -95,7 +96,9 @@ async function loadState(force = false) {
     if (!force && (isModalOpen || isInputFocused)) return;
 
     try {
+        const requestSeq = ++weatherStateRequestSeq;
         const res = await apiGet('/weather/api/state');
+        if (requestSeq !== weatherStateRequestSeq) return;
         if (res && res.success) {
             STATE.observations = res.observations || [];
             STATE.isAdmin = !!res.is_admin;
