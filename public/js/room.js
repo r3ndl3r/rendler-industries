@@ -81,6 +81,7 @@ function hasOpenRoomModal() {
 
 const CONFIG = {
     SYNC_INTERVAL_MS: 30000,
+    MAX_ROOM_UPLOADS: 8,
     ROOM_UPLOAD_JPEG_QUALITY: 0.82,
     ROOM_UPLOAD_TIMEOUT_MS: 90000
 };
@@ -944,8 +945,17 @@ async function addRoomUploadFiles(files) {
         showToast('One or more selected files were empty or not images.', 'error');
     }
     if (validFiles.length === 0) return;
+    const remainingSlots = CONFIG.MAX_ROOM_UPLOADS - UPLOAD_QUEUE.length;
+    if (remainingSlots <= 0) {
+        showToast(`You can upload up to ${CONFIG.MAX_ROOM_UPLOADS} room photos at a time.`, 'error');
+        return;
+    }
+    const filesToQueue = validFiles.slice(0, remainingSlots);
+    if (filesToQueue.length < validFiles.length) {
+        showToast(`Only ${remainingSlots} more photo(s) can be added before submitting.`, 'error');
+    }
 
-    const queueItems = validFiles.map((file, index) => ({
+    const queueItems = filesToQueue.map((file, index) => ({
         id: `${Date.now()}-${token}-${index}`,
         name: file.name || `room-photo-${UPLOAD_QUEUE.length + index + 1}`,
         uploadName: normalizedUploadName(file.name, token, index),
@@ -958,7 +968,7 @@ async function addRoomUploadFiles(files) {
     renderUploadPreviews();
 
     await Promise.all(queueItems.map(async (item, index) => {
-        const file = validFiles[index];
+        const file = filesToQueue[index];
         if (!file) return;
 
         try {
