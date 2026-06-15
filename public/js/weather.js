@@ -604,15 +604,17 @@ function renderHourlyTrendline(hourly, selectedDate, cityTz = APP_TZ) {
     if (!hourly || !hourly.length) return '';
 
     // Project the selected day's boundaries into the city's local timezone
-    const dayStart = new Date(selectedDate);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    const dataPoints = hourly.filter(h => {
-        const hDt = h.dt * 1000;
-        return hDt >= dayStart.getTime() && hDt <= dayEnd.getTime();
+    const dateKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: cityTz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
     });
+    const selectedKey = dateKeyFormatter.format(selectedDate);
+
+    const dataPoints = hourly.filter(h =>
+        dateKeyFormatter.format(new Date(h.dt * 1000)) === selectedKey
+    );
 
     if (dataPoints.length < 3) return '';
 
