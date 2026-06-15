@@ -152,7 +152,7 @@ const SwearModule = {
                             <form class="pay-debt-form" onsubmit="SwearModule.handlePaymentSubmit(event)">
                                 <input type="hidden" name="perpetrator" value="${escapeHtml(row.perpetrator)}">
                                 <input type="number" name="amount" value="${parseFloat(row.total).toFixed(2)}" step="0.50" min="0" class="game-input small-input">
-                                <button class="btn-icon-edit" onclick="openEditModal(${row.id})" title="Edit">✏️</button>
+                                <button type="submit" class="btn-icon-edit" title="Record payment">💸</button>
                             </form>
                         ` : ''}
                     </div>
