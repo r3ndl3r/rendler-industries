@@ -41,6 +41,7 @@ let historyPlaybookId = null;
 let historyPlaybookName = '';
 let ACE_EDITORS = {};
 let CONSOLE_EVENTS = null;
+let latestAutomatorStateRequest = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
     bindAutomatorEvents();
@@ -271,7 +272,9 @@ async function lockVault() {
  */
 async function refreshState(force = false) {
     if (!force && shouldInhibitSync()) return;
+    const requestSeq = ++latestAutomatorStateRequest;
     const data = await apiGet(`/admin/automator/api/state?${new URLSearchParams(getActiveFilters()).toString()}`, 6000);
+    if (requestSeq !== latestAutomatorStateRequest) return;
     if (!data) return;
     if (data.locked) {
         showVaultGate(false);
