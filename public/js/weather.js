@@ -27,6 +27,8 @@ const CONFIG = {
     SCROLL_VELOCITY: 1.5        // Drag sensitivity multiplier
 };
 
+let weatherClockInterval = null;
+
 let STATE = {
     observations: [],           // Raw OWM results from DB
     locations: [],              // Managed location metadata
@@ -311,7 +313,8 @@ function renderWeatherDashboard() {
         };
 
         updateTick();
-        setInterval(updateTick, 1000); // 1s sync-heartbeat
+        if (weatherClockInterval) clearInterval(weatherClockInterval);
+        weatherClockInterval = setInterval(updateTick, 1000); // 1s sync-heartbeat
     };
 
     initWeatherClock();
@@ -355,7 +358,10 @@ function renderWeatherDashboard() {
             }
         };
 
-        grid.addEventListener('scroll', updateScrollState, { passive: true });
+        if (!grid.dataset.scrollBound) {
+            grid.addEventListener('scroll', updateScrollState, { passive: true });
+            grid.dataset.scrollBound = '1';
+        }
         
         // Immediate check and delayed checks for layout stabilization
         updateScrollState();
