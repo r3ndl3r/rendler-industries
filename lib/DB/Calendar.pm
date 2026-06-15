@@ -404,16 +404,42 @@ sub DB::update_calendar_event {
 sub DB::add_recurrence_exception {
     my ($self, $id, $date_str) = @_;
     $self->ensure_connection;
+    my $dbh = $self->{dbh};
+    my $updated = 0;
 
-    my $sth = $self->{dbh}->prepare("SELECT recurrence_exceptions FROM calendar_events WHERE id = ?");
-    $sth->execute($id);
-    my ($raw) = $sth->fetchrow_array;
+    eval {
+        $dbh->begin_work;
 
-    my $exceptions = $raw ? decode_json($raw) : [];
-    push @$exceptions, $date_str unless grep { $_ eq $date_str } @$exceptions;
+        my $sth = $dbh->prepare(
+            "SELECT recurrence_exceptions
+             FROM calendar_events
+             WHERE id = ? AND recurrence_rule IS NOT NULL
+             FOR UPDATE"
+        );
+        $sth->execute($id);
+        my $row = $sth->fetchrow_arrayref;
+        unless ($row) {
+            $dbh->commit;
+            return 0;
+        }
+        my ($raw) = @$row;
 
-    my $upd = $self->{dbh}->prepare("UPDATE calendar_events SET recurrence_exceptions = ? WHERE id = ?");
-    $upd->execute(encode_json($exceptions), $id);
+        my $exceptions = $raw ? (eval { decode_json($raw) } || []) : [];
+        $exceptions = [] unless ref $exceptions eq 'ARRAY';
+        push @$exceptions, $date_str unless grep { $_ eq $date_str } @$exceptions;
+
+        my $upd = $dbh->prepare("UPDATE calendar_events SET recurrence_exceptions = ? WHERE id = ?");
+        $upd->execute(encode_json($exceptions), $id);
+        $updated = $upd->rows;
+        $dbh->commit;
+    };
+    if ($@) {
+        my $err = $@;
+        eval { $dbh->rollback };
+        die $err;
+    }
+
+    return $updated;
 }
 
 # Deletes a calendar event.
