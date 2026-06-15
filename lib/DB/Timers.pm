@@ -320,6 +320,9 @@ sub DB::start_timer {
     # Prevent starting if paused
     return 0 if $session->{is_paused};
     
+    # Already running — preserve the original started_at
+    return 1 if $session->{is_running};
+    
     # Verify ownership
     my $timer = $self->_get_timer_by_id($timer_id);
     return 0 unless $timer && $timer->{user_id} == $user_id;
@@ -327,7 +330,7 @@ sub DB::start_timer {
     my $sql = q{
         UPDATE timer_sessions 
         SET is_running = 1, started_at = ?
-        WHERE timer_id = ? AND session_date = ?
+        WHERE timer_id = ? AND session_date = ? AND is_running = 0
     };
     
     return $self->{dbh}->do($sql, undef, $now, $timer_id, $today) > 0;
