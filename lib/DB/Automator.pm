@@ -455,9 +455,14 @@ sub DB::save_automator_inventory {
 }
 
 sub DB::delete_automator_inventory {
-    my ($self, $id) = @_;
+    my ($self, $id, $user_id) = @_;
     $self->ensure_connection;
-    $self->{dbh}->do("DELETE FROM automator_inventories WHERE id = ?", undef, $id);
+    my ($refs) = $self->{dbh}->selectrow_array(
+        "SELECT COUNT(*) FROM automator_playbooks WHERE inventory_id = ? AND user_id = ? AND deleted_at IS NULL",
+        undef, $id, $user_id
+    );
+    die "Inventory is still used by active playbooks" if $refs;
+    return $self->{dbh}->do("DELETE FROM automator_inventories WHERE id = ? AND user_id = ?", undef, $id, $user_id);
 }
 
 sub DB::save_automator_schedule {

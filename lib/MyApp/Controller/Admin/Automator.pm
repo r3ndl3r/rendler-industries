@@ -286,7 +286,11 @@ sub api_delete_inventory {
     my $inventory = $c->db->get_automator_inventory($id);
     return $c->render(json => { success => 0, error => 'Inventory not found' }, status => 404)
         unless _owned_record($c, $inventory);
-    $c->db->delete_automator_inventory($id);
+    eval { $c->db->delete_automator_inventory($id, $c->current_user_id); 1 }
+        or return $c->render(
+            json   => { success => 0, error => "$@" =~ /still used/ ? 'Inventory is still used by active playbooks' : 'Database error' },
+            status => "$@" =~ /still used/ ? 409 : 500
+        );
     $c->db->automator_log_audit($c->current_user_id, 'delete_inventory', 'inventory', $id, {});
     $c->render(json => { success => 1, message => 'Inventory deleted', state => $c->db->get_automator_state(_state_filters($c)) });
 }
