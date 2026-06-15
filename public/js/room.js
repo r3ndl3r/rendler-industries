@@ -21,6 +21,7 @@ let STATE = {
 // Persistent queue for prepared multi-photo uploads
 let UPLOAD_QUEUE = [];
 let UPLOAD_TOKEN = 0;
+let UPLOAD_SELECTION_TOKEN = 0;
 let roomStateRequestSeq = 0;
 let hasLoadedRoomState = false;
 
@@ -934,7 +935,8 @@ function isRoomImageFile(file) {
 }
 
 async function addRoomUploadFiles(files) {
-    const token = ++UPLOAD_TOKEN;
+    const resetToken = UPLOAD_TOKEN;
+    const token = ++UPLOAD_SELECTION_TOKEN;
     const validFiles = files.filter(file => file && file.size > 0 && isRoomImageFile(file));
     const badCount = files.length - validFiles.length;
 
@@ -961,7 +963,7 @@ async function addRoomUploadFiles(files) {
 
         try {
             const prepared = await prepareRoomUploadImage(file);
-            if (token !== UPLOAD_TOKEN || !UPLOAD_QUEUE.some(queueItem => queueItem.id === item.id)) return;
+            if (resetToken !== UPLOAD_TOKEN || !UPLOAD_QUEUE.some(queueItem => queueItem.id === item.id)) return;
             item.blob = prepared;
             item.processing = false;
             item.previewUrl = URL.createObjectURL(prepared);
