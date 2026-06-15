@@ -178,6 +178,8 @@ sub DB::get_due_reminders {
         JOIN reminder_recipients rr ON r.id = rr.reminder_id
         JOIN users u ON rr.user_id = u.id
         WHERE r.is_active = 1
+          AND u.status = 'approved'
+          AND u.is_family = 1
           AND (r.days_of_week >> (? - 1)) & 1
           AND r.reminder_time LIKE ?
           AND (r.last_run_at IS NULL OR r.last_run_at < DATE_SUB(NOW(), INTERVAL 12 HOUR))
