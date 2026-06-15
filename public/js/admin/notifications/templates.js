@@ -21,6 +21,7 @@ let state = {
     templates: [],
     base_url: null
 };
+let lastTemplateEditField = null;
 
 /**
  * Escapes a string for safe insertion into an HTML context.
@@ -51,6 +52,8 @@ function setupEventListeners() {
 
     if (bodyInput) bodyInput.addEventListener('input', updatePreview);
     if (subjInput) subjInput.addEventListener('input', updatePreview);
+    if (bodyInput) bodyInput.addEventListener('focus', () => { lastTemplateEditField = bodyInput; });
+    if (subjInput) subjInput.addEventListener('focus', () => { lastTemplateEditField = subjInput; });
 
     const saveBtn = document.getElementById('saveTemplateBtn');
     if (saveBtn) saveBtn.addEventListener('click', saveTemplate);
@@ -264,7 +267,11 @@ window.openEditor = function(id) {
 function insertTag(tag) {
     const subjInput = document.getElementById('edit-subject');
     const bodyInput = document.getElementById('edit-body');
-    const target    = (document.activeElement === subjInput) ? subjInput : bodyInput;
+    const target    = [subjInput, bodyInput].includes(lastTemplateEditField)
+        ? lastTemplateEditField
+        : bodyInput;
+
+    if (!target) return;
 
     const start  = target.selectionStart;
     const end    = target.selectionEnd;
