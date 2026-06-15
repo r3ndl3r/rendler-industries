@@ -626,12 +626,14 @@ window.showConfirmModal = function(options) {
             promptInput.removeAttribute('min');
             promptInput.removeAttribute('max');
             promptInput.removeAttribute('step');
+            promptInput.removeAttribute('maxlength');
             promptInput.type = options.input.type || 'text';
             promptInput.placeholder = options.input.placeholder || '';
             promptInput.value = options.input.value || '';
             if (options.input.min !== undefined) promptInput.min = options.input.min;
             if (options.input.max !== undefined) promptInput.max = options.input.max;
             if (options.input.step !== undefined) promptInput.step = options.input.step;
+            if (options.input.maxLength !== undefined) promptInput.maxLength = options.input.maxLength;
 
             // Suppression opt-out for specialized modals
             if (options.noEmoji) promptInput.classList.add('no-emoji');

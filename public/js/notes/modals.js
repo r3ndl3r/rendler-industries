@@ -269,7 +269,7 @@ function renameCurrentLevel() {
             type: 'text',
             placeholder: 'Level Name (e.g. Household Admin)',
             value: currentAlias,
-            maxLength: 100
+            maxLength: 50
         },
         confirmText: 'Save',
         onConfirm: async (newName) => {
