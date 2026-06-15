@@ -32,6 +32,7 @@ let STATE = {
     isAdmin: false,                 // Authorization gate for administrative actions
     manageMode: false               // Interface toggle (Countdown vs Management)
 };
+let latestBirthdayStateRequest = 0;
 
 /**
  * Bootstraps the module state and establishes background lifecycles.
@@ -71,8 +72,10 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.birthdays.length > 0) return;
 
     try {
+        const requestSeq = ++latestBirthdayStateRequest;
         const data = await apiGet('/birthdays/api/state');
-        
+        if (requestSeq !== latestBirthdayStateRequest) return;
+
         if (data && data.success) {
             STATE.birthdays = data.birthdays;
             STATE.isAdmin = !!data.is_admin;
