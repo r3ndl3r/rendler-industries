@@ -359,14 +359,25 @@ sub DB::save_automator_playbook_secrets {
         die "Only one SSH key secret is allowed" if $s->{usage_type} eq 'ssh_key' && $single_use{ssh_key}++;
         die "Only one vault password secret is allowed" if $s->{usage_type} eq 'vault_password' && $single_use{vault_password}++;
     }
-    $self->{dbh}->do("DELETE FROM automator_playbook_secrets WHERE playbook_id = ?", undef, $playbook_id);
-    my $sort = 0;
-    for my $s (@$secrets) {
-        $self->{dbh}->do(q{
-            INSERT INTO automator_playbook_secrets (playbook_id, secret_id, alias, usage_type, sort_order)
-            VALUES (?, ?, ?, ?, ?)
-        }, undef, $playbook_id, $s->{secret_id}, $s->{alias}, $s->{usage_type}, $sort++);
-    }
+    my $dbh = $self->{dbh};
+    my $started_txn = $dbh->{AutoCommit} ? 1 : 0;
+    eval {
+        $dbh->begin_work if $started_txn;
+        $dbh->do("DELETE FROM automator_playbook_secrets WHERE playbook_id = ?", undef, $playbook_id);
+        my $sort = 0;
+        for my $s (@$secrets) {
+            $dbh->do(q{
+                INSERT INTO automator_playbook_secrets (playbook_id, secret_id, alias, usage_type, sort_order)
+                VALUES (?, ?, ?, ?, ?)
+            }, undef, $playbook_id, $s->{secret_id}, $s->{alias}, $s->{usage_type}, $sort++);
+        }
+        $dbh->commit if $started_txn;
+        1;
+    } or do {
+        my $err = $@ || 'secret binding save failed';
+        eval { $dbh->rollback } if $started_txn;
+        die $err;
+    };
     return 1;
 }
 
@@ -396,13 +407,24 @@ sub DB::save_automator_playbook_notifications {
         die "Invalid notification trigger" unless $allowed_notify{$n->{notify_on} || ''};
         die "Invalid notification channel" unless $allowed_channel{$n->{channel} || ''};
     }
-    $self->{dbh}->do("DELETE FROM automator_notifications WHERE playbook_id = ?", undef, $playbook_id);
-    for my $n (@$notifications) {
-        $self->{dbh}->do(q{
-            INSERT INTO automator_notifications (playbook_id, user_id, notify_on, channel, endpoint)
-            VALUES (?, ?, ?, ?, ?)
-        }, undef, $playbook_id, $n->{user_id}, $n->{notify_on}, $n->{channel}, $n->{endpoint});
-    }
+    my $dbh = $self->{dbh};
+    my $started_txn = $dbh->{AutoCommit} ? 1 : 0;
+    eval {
+        $dbh->begin_work if $started_txn;
+        $dbh->do("DELETE FROM automator_notifications WHERE playbook_id = ?", undef, $playbook_id);
+        for my $n (@$notifications) {
+            $dbh->do(q{
+                INSERT INTO automator_notifications (playbook_id, user_id, notify_on, channel, endpoint)
+                VALUES (?, ?, ?, ?, ?)
+            }, undef, $playbook_id, $n->{user_id}, $n->{notify_on}, $n->{channel}, $n->{endpoint});
+        }
+        $dbh->commit if $started_txn;
+        1;
+    } or do {
+        my $err = $@ || 'notification rule save failed';
+        eval { $dbh->rollback } if $started_txn;
+        die $err;
+    };
     return 1;
 }
 
