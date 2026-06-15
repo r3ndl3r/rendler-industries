@@ -576,8 +576,17 @@ const NoteParser = (() => {
         },
         'date': (data) => {
             const val = data.value.trim();
-            const d   = new Date(val + 'T00:00:00');
-            if (isNaN(d.getTime())) return `<span class="note-date-tag">📅 ${window.escapeHtml(val)}</span>`;
+            const match = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!match) return `<span class="note-date-tag">📅 ${window.escapeHtml(val)}</span>`;
+
+            const year  = Number(match[1]);
+            const month = Number(match[2]);
+            const day   = Number(match[3]);
+            const d     = new Date(year, month - 1, day);
+            const valid = d.getFullYear() === year
+                && d.getMonth() === month - 1
+                && d.getDate() === day;
+            if (!valid) return `<span class="note-date-tag">📅 ${window.escapeHtml(val)}</span>`;
 
             const formatted = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
