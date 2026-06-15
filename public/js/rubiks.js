@@ -561,9 +561,13 @@ function downloadSVG() {
     const container = document.getElementById('cube-diagram-container');
     const svgs = container.querySelectorAll('svg');
     if (svgs.length === 0) return;
-    let combinedSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1500" viewBox="0 0 1000 1500">`;
+    const columns = 5;
+    const cell = 200;
+    const width = columns * cell;
+    const height = Math.max(cell, Math.ceil(svgs.length / columns) * cell);
+    let combinedSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
     svgs.forEach((svg, i) => {
-        const x = (i % 5) * 200, y = Math.floor(i / 5) * 200;
+        const x = (i % columns) * cell, y = Math.floor(i / columns) * cell;
         combinedSVG += `<g transform="translate(${x}, ${y})">${svg.innerHTML}</g>`;
     });
     combinedSVG += `</svg>`;
