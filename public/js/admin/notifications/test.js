@@ -8,7 +8,7 @@
  * Features:
  *   - User selector with per-user channel availability indicators.
  *   - Channel cards hidden when the selected user lacks the required credential.
- *   - Gotify and Pushover are admin-scoped — only shown when the selected user is an admin.
+ *   - Gotify and Pushover are admin-scoped system channels.
  *   - Fire-and-forget dispatch; results appear in /admin/notifications/logs.
  * Dependencies:
  *   - default.js: apiPost, showToast, escapeHtml
@@ -70,7 +70,7 @@ function renderForm() {
         <form id="testForm" class="test-form" onsubmit="handleSend(event)">
             <div class="form-section">
                 <h3 class="section-title">Target User</h3>
-                <p class="section-hint">Select a user to see their available channels. Gotify and Pushover are only available for admin users.</p>
+                <p class="section-hint">Select a user to see their available user channels. Gotify and Pushover are system-wide admin tests.</p>
                 <select id="userSelect" class="game-input" onchange="updateChannelStates()">
                     <option value="">— Select a user —</option>
                     ${userOptions}
@@ -123,8 +123,8 @@ function renderChannelCards() {
 
 /**
  * Updates channel card visibility and state based on the selected user's credentials.
- * Only channels available to the selected user are shown; others are hidden entirely.
- * Gotify and Pushover are admin-only channels — shown only when the selected user is an admin.
+ * Only user channels available to the selected user are shown; others are hidden entirely.
+ * Gotify and Pushover are admin-only system channels and do not require a target user.
  * @returns {void}
  */
 function updateChannelStates() {
@@ -139,7 +139,7 @@ function updateChannelStates() {
         let available = false;
 
         if (ch.scope === 'admin') {
-            available = !!(user && user.is_admin);
+            available = true;
         } else if (user) {
             if (ch.id === 'discord')  available = !!user.discord_id;
             if (ch.id === 'email')    available = !!user.email;
