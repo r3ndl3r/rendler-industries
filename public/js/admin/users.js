@@ -29,6 +29,7 @@ let STATE = {
     isAdmin: false,  // Authorization flag for administrative actions
     currentUserId: 0 // ID of the currently logged-in admin
 };
+let latestUsersStateRequest = 0;
 
 /**
  * Bootstraps the module state and establishes event delegation.
@@ -133,7 +134,10 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused) && STATE.users.length > 0) return;
 
     try {
+        const requestSeq = ++latestUsersStateRequest;
         const data = await apiGet('/admin/users/api/state');
+
+        if (requestSeq !== latestUsersStateRequest) return;
 
         if (data && data.success) {
             STATE.users = data.users;
@@ -336,6 +340,7 @@ async function approveUser(userId, checkbox) {
 
     const result = await apiPost(`/admin/users/approve/${userId}`);
     if (result && result.success) {
+        latestUsersStateRequest++;
         const u = STATE.users.find(item => item.id == userId);
         if (u) u.status = 'approved';
         renderTable();
@@ -365,6 +370,7 @@ async function toggleRole(userId, role, value) {
 
     const result = await apiPost('/admin/users/toggle_role', { id: userId, role, value: value ? 1 : 0 });
     if (result && result.success) {
+        latestUsersStateRequest++;
         const u = STATE.users.find(item => item.id == userId);
         if (u) {
             if (role === 'admin')  u.is_admin  = value ? 1 : 0;
@@ -406,6 +412,7 @@ function confirmDeleteUser(id, username) {
                 if (row) {
                     row.classList.add('row-fade-out');
                     setTimeout(() => {
+                        latestUsersStateRequest++;
                         STATE.users = STATE.users.filter(u => u.id != id);
                         renderTable();
                     }, 500);
