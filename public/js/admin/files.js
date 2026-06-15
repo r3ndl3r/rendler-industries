@@ -30,6 +30,7 @@ let moduleState = {
     users: [],      // Full roster for permission whitelisting
     isAdmin: false   // Authorization gate for administrative actions
 };
+let latestFilesStateRequest = 0;
 
 /**
  * --- Initialization ---
@@ -64,7 +65,9 @@ async function loadState(force = false) {
     if (!force && (anyModalOpen || inputFocused)) return;
 
     try {
+        const requestSeq = ++latestFilesStateRequest;
         const data = await apiGet('/admin/files/api/state');
+        if (requestSeq !== latestFilesStateRequest) return;
         
         if (data && data.success) {
             moduleState.files = data.files;
