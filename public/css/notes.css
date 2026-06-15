@@ -1425,6 +1425,116 @@ pre code {
     display: none !important;
 }
 
+/* Click-to-edit mode: the rendered viewer is the editing surface. */
+.sticky-note.is-editing .note-text-section > textarea[data-action="note-keydown"] {
+    display: none !important;
+}
+
+.sticky-note.is-editing .note-text-viewer {
+    display: block !important;
+}
+
+.sticky-note.is-editing.is-raw-editing .note-text-section > textarea[data-action="note-keydown"] {
+    display: block !important;
+}
+
+.sticky-note.is-editing.is-raw-editing .note-text-viewer {
+    display: none !important;
+}
+
+.sticky-note.is-editing [data-line],
+.sticky-note.is-editing [data-line-start] {
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background-color 0.12s ease, outline-color 0.12s ease;
+}
+
+.sticky-note.is-editing .note-text-viewer > .note-line:not(.note-line-block) {
+    display: inline-block;
+    min-width: 100%;
+}
+
+.sticky-note.is-editing .note-text-viewer > .note-bullet-row,
+.sticky-note.is-editing .note-text-viewer > .checkbox-row-inline {
+    min-width: 100%;
+}
+
+.sticky-note.is-editing [data-line]:hover {
+    background: rgba(59, 130, 246, 0.06);
+    outline: 2px dashed rgba(59, 130, 246, 0.3);
+    outline-offset: -2px;
+}
+
+.note-line-block {
+    display: contents;
+}
+
+.sticky-note.is-editing [data-line-start]:hover,
+.sticky-note.is-editing .note-line-block:hover > * {
+    background: rgba(59, 130, 246, 0.06);
+    outline: 2px dashed rgba(59, 130, 246, 0.3);
+    outline-offset: -2px;
+}
+
+/* Disable nested rendered controls so edit-mode clicks reach the editable line/block. */
+.sticky-note.is-editing .note-text-viewer .note-link-trigger,
+.sticky-note.is-editing .note-text-viewer .note-copy-trigger,
+.sticky-note.is-editing .note-text-viewer .note-inline-copy,
+.sticky-note.is-editing .note-text-viewer .note-code-inline,
+.sticky-note.is-editing .note-text-viewer .note-embed-content,
+.sticky-note.is-editing .note-text-viewer a[href],
+.sticky-note.is-editing .note-text-viewer [data-action] {
+    pointer-events: none !important;
+}
+
+.note-line-editor {
+    display: inline-block;
+    width: 100%;
+    vertical-align: baseline;
+    font: inherit;
+    line-height: inherit;
+    color: #e5e7eb;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    border-radius: 4px;
+    padding: 0 6px;
+    margin: 0;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.note-line-editor:focus {
+    border-color: rgba(59, 130, 246, 0.7);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.sticky-note.is-editing .note-block-editor {
+    display: block !important;
+    width: 100%;
+    min-height: 80px;
+    height: auto;
+    flex-grow: 0;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85em;
+    line-height: 1.55;
+    color: #e5e7eb;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin: 0;
+    tab-size: 2;
+    outline: none;
+    overflow-y: hidden;
+    resize: none;
+    box-sizing: border-box;
+}
+
+.sticky-note.is-editing .note-block-editor:focus {
+    border-color: rgba(59, 130, 246, 0.7);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
 .todo-inline-wrap {
     display: inline-flex;
     align-items: flex-start; /* Pin checkbox to top of wrapped text */
@@ -2740,7 +2850,7 @@ pre code {
     margin-bottom: 0.5em;
 }
 
-.btn-icon-ai-format, .btn-icon-sticky, .btn-icon-link, .btn-icon-upload {
+.btn-icon-ai-format, .btn-icon-raw-edit, .btn-icon-sticky, .btn-icon-link, .btn-icon-upload {
     width: 32px;
     height: 32px;
     display: inline-flex;
@@ -2756,7 +2866,7 @@ pre code {
     box-shadow: 0 0 8px rgba(99, 102, 241, 0.15);
 }
 
-.btn-icon-ai-format:hover, .btn-icon-sticky:hover, .btn-icon-link:hover, .btn-icon-upload:hover {
+.btn-icon-ai-format:hover, .btn-icon-raw-edit:hover, .btn-icon-sticky:hover, .btn-icon-link:hover, .btn-icon-upload:hover {
     background: rgba(99, 102, 241, 0.5);
     border-color: rgba(99, 102, 241, 0.5);
     box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
@@ -2765,6 +2875,9 @@ pre code {
 
 .btn-icon-sticky { background: rgba(20, 184, 166, 0.35); border-color: rgba(20, 184, 166, 0.3); box-shadow: 0 0 8px rgba(20, 184, 166, 0.15); }
 .btn-icon-sticky:hover { background: rgba(20, 184, 166, 0.5); border-color: rgba(20, 184, 166, 0.5); box-shadow: 0 0 12px rgba(20, 184, 166, 0.3); }
+
+.btn-icon-raw-edit { background: rgba(14, 165, 233, 0.35); border-color: rgba(14, 165, 233, 0.3); box-shadow: 0 0 8px rgba(14, 165, 233, 0.15); }
+.btn-icon-raw-edit:hover { background: rgba(14, 165, 233, 0.5); border-color: rgba(14, 165, 233, 0.5); box-shadow: 0 0 12px rgba(14, 165, 233, 0.3); }
 
 .btn-icon-link { background: rgba(236, 72, 153, 0.35); border-color: rgba(236, 72, 153, 0.3); box-shadow: 0 0 8px rgba(236, 72, 153, 0.15); }
 .btn-icon-link:hover { background: rgba(236, 72, 153, 0.5); border-color: rgba(236, 72, 153, 0.5); box-shadow: 0 0 12px rgba(236, 72, 153, 0.3); }
