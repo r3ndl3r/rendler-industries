@@ -19,6 +19,7 @@ let STATE = {
     history: [],
     is_parent: false
 };
+let latestPointsStateRequest = 0;
 
 /**
  * Bootstrap module initialization.
@@ -49,7 +50,10 @@ async function loadState(force = false) {
     }
 
     try {
+        const requestSeq = ++latestPointsStateRequest;
         const data = await apiGet('/points/api/state');
+
+        if (requestSeq !== latestPointsStateRequest) return;
 
         if (data && data.success) {
             STATE = data;
@@ -252,6 +256,7 @@ async function submitTransaction(event) {
         if (!data) return; // Error handled by apiPost
 
         showToast('Points adjusted successfully!', 'success');
+        latestPointsStateRequest++;
         STATE.balances = data.balances;
         STATE.history = data.history;
         renderUI();
