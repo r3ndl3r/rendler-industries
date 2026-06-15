@@ -142,6 +142,7 @@ sub api_save {
         canvas_id           => $canvas_id,
         id                  => $id,
         source_id           => $c->param('source_id'),
+        unlocked_ids        => $c->_get_unlocked_ids,
         layer_id            => int($c->param('layer_id') // 1),
         type                => $c->param('type') // 'text',
         title               => trim($c->param('title') // 'Untitled Note'),

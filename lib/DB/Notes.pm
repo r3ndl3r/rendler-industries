@@ -231,6 +231,17 @@ sub DB::save_note {
 
         # Binary Deep-Copy Logic: Replicate the blob association for binary types
         if ((($p->{type} // '') eq 'image' || ($p->{type} // '') eq 'file') && $p->{source_id} && $id) {
+            my ($source_cid) = $self->{dbh}->selectrow_array(
+                "SELECT canvas_id FROM notes WHERE id = ? AND is_deleted = 0",
+                undef, $p->{source_id}
+            );
+            return undef unless $source_cid && $self->check_canvas_access($source_cid, $p->{user_id}, 0);
+
+            if ($self->is_canvas_protected($source_cid)) {
+                my $is_unlocked = grep { $_ == $source_cid } @{$p->{unlocked_ids} // []};
+                return undef unless $is_unlocked;
+            }
+
             my $sql_b = "INSERT INTO note_blobs (note_id, file_data, mime_type, file_size, filename) 
                          SELECT ?, file_data, mime_type, file_size, filename FROM note_blobs WHERE note_id = ?";
             my $sth_b = $self->{dbh}->prepare($sql_b);
