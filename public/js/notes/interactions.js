@@ -1,5 +1,12 @@
 // /public/js/notes/interactions.js
 
+/**
+ * Interactions Module: Physics engines (Drag/Resize/Sticky), navigation, and grid snapping.
+ * Handles all user interactions including click-to-edit, inline editing,
+ * keyboard shortcuts, save/abort lifecycle, and mode switching between
+ * click-to-edit and raw textarea editors.
+ */
+
 // --- Wikilink Autocomplete ---
 
 (function () {
@@ -402,26 +409,36 @@ function initResizable(el, note) {
 let resizeFrame = null;
 let _noteContextMenuTimer = null;
 let _ribbonTextarea = null;
+const pendingNoteHeightFits = new Set();
+let noteHeightFitFrame = null;
 
 /**
- * Resolves the handle orientation string from class list.
- * Corners: 'nw', 'ne', 'sw', 'se'. Edges: 'n', 's', 'e', 'w'.
+ * Resolves the edge orientation string from a resize handle.
  */
 function resolveDirection(handle) {
-    const classes = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'];
+    const classes = ['n', 's', 'e', 'w'];
     for (const c of classes) if (handle.classList.contains(c)) return c;
-    return 'se';
+    return 'w';
 }
 
 /**
  * Initiates the resizing state machine via delegated interaction.
  */
+function isTouchInteraction(e) {
+    return !!(e && (e.touches || e.changedTouches || e.pointerType === 'touch'));
+}
+
+function getTouchById(touches, touchId) {
+    if (!touches || touches.length === 0) return null;
+    if (touchId === null || touchId === undefined) return touches[0];
+    return Array.from(touches).find(touch => touch.identifier === touchId) || null;
+}
+
 function handleResizeStart(e, handle) {
     if (STATE.isInitializing || !STATE.editMode) return;
     
     // Safety: Prevent multiple dispatch if touch and synthesized mouse events fire in sequence
     if (STATE.isResizing) return;
-    STATE.isResizing = true;
 
     const noteEl = handle.closest('.sticky-note');
     if (!noteEl) return;
@@ -430,8 +447,12 @@ function handleResizeStart(e, handle) {
     const note = STATE.notes.find(n => n.id == id);
     if (!note) return;
 
+    // Touch resize is intentionally gated by note edit mode; mouse behavior is unchanged.
+    if (isTouchInteraction(e) && !noteEl.classList.contains('is-editing')) return;
+
     // Normalization: Capture precise start point regardless of input type
-    const pointer = e.touches ? e.touches[0] : e;
+    const pointer = e.touches ? getTouchById(e.touches, null) : e;
+    if (!pointer) return;
     const resizeTouchId = pointer.identifier !== undefined ? pointer.identifier : null;
     
     // Critical: Stop bubble and prevent default browser behaviors (scrolling/selection)
@@ -472,7 +493,10 @@ function handleResizeStart(e, handle) {
  */
 function handleResizeMove(e) {
     // Normalization: Extract primary pointer data
-    const pointer = e.touches ? e.touches[0] : e;
+    const pointer = e.touches
+        ? getTouchById(e.touches, STATE.resizingContext?.touchId)
+        : e;
+    if (!pointer) return;
 
     // Safety: Prevent board scrolling on mobile during active resize
     if (e.touches && e.cancelable) e.preventDefault();
@@ -521,38 +545,15 @@ function executeResizeMath(e) {
     const fixedRight  = ctx.startLeft + ctx.startWidth;
     const fixedBottom = ctx.startTop  + ctx.startHeight;
 
+    var isFence = window.isFenceNote ? window.isFenceNote(ctx.note) : false;
+
     switch (ctx.direction) {
-        case 'se': 
-            newW = Math.round((ctx.startWidth + deltaX) / snap) * snap;
-            newH = Math.round((ctx.startHeight + deltaY) / snap) * snap;
-            break;
-        case 'sw': {
-            const snpL = Math.round((ctx.startLeft + deltaX) / snap) * snap;
-            newW = fixedRight - snpL;
-            newH = Math.round((ctx.startHeight + deltaY) / snap) * snap;
-            newX = newW < minW ? fixedRight - minW : snpL;
-            break;
-        }
-        case 'ne': {
-            const snpT = Math.round((ctx.startTop + deltaY) / snap) * snap;
-            newW = Math.round((ctx.startWidth + deltaX) / snap) * snap;
-            newH = fixedBottom - snpT;
-            newY = newH < minH ? fixedBottom - minH : snpT;
-            break;
-        }
-        case 'nw': {
-            const snpL = Math.round((ctx.startLeft + deltaX) / snap) * snap;
-            const snpT = Math.round((ctx.startTop  + deltaY) / snap) * snap;
-            newW = fixedRight - snpL;
-            newH = fixedBottom - snpT;
-            newX = newW < minW ? fixedRight - minW : snpL;
-            newY = newH < minH ? fixedBottom - minH : snpT;
-            break;
-        }
         case 's':
+            if (!isFence) return;
             newH = Math.round((ctx.startHeight + deltaY) / snap) * snap;
             break;
         case 'n': {
+            if (!isFence) return;
             const snpT = Math.round((ctx.startTop + deltaY) / snap) * snap;
             newH = fixedBottom - snpT;
             newY = newH < minH ? fixedBottom - minH : snpT;
@@ -614,15 +615,13 @@ function handleResizeEnd(e) {
     document.removeEventListener('touchcancel', handleResizeEnd);
 
     ctx.el.classList.remove('resizing');
-    STATE.isResizing = null; 
-    STATE.resizingContext = null;
-    
     if (resizeFrame) cancelAnimationFrame(resizeFrame);
     resizeFrame = null;
 
     STATE.isResizing = null;
     STATE.resizingContext = null;
     
+    if (typeof fitNoteHeight === 'function') fitNoteHeight(id);
     if (typeof syncNotePosition === 'function') syncNotePosition(id, 'normal', 300);
 }
 
@@ -638,8 +637,13 @@ function toggleStickyMove(e, id) {
     const el = document.getElementById(`note-${id}`);
     const intId = parseInt(id);
     
-    // Safety Guard: Disable Pick and Place if the note is in Active Edit Mode
-    if (el && el.classList.contains('is-editing')) return;
+    // Mouse drag is blocked while editing; touch drag requires edit mode.
+    const touchInteraction = isTouchInteraction(e);
+    if (el && el.classList.contains('is-editing')) {
+        if (!touchInteraction) return;
+    } else if (touchInteraction) {
+        return;
+    }
 
     if (STATE.pickedNoteId) {
         dropStickyNote();
@@ -648,15 +652,16 @@ function toggleStickyMove(e, id) {
 
     const note = STATE.notes.find(n => n.id == intId);
     if (!note || !el) return;
-
     // Capture moving baseline: Viewport and Canvas metrics
     const wrapper = STATE.wrapperEl;
     const rect    = wrapper?.getBoundingClientRect();
     STATE.activeRectBaseline = rect;
     
     // Logic: (Current Cursor Position on Canvas) - (Note Origin)
-    const cursorX = (e.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
-    const cursorY = (e.clientY - rect.top  + wrapper.scrollTop)  / STATE.scale;
+    var pointer = e.touches ? getTouchById(e.touches, null) : e;
+    if (!pointer) return;
+    const cursorX = (pointer.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
+    const cursorY = (pointer.clientY - rect.top  + wrapper.scrollTop)  / STATE.scale;
     
     STATE.dragOffset = {
         x: cursorX - note.x,
@@ -677,6 +682,7 @@ function toggleStickyMove(e, id) {
     STATE.pickedNoteId = intId;
     STATE.pickedWidth  = el.offsetWidth;
     STATE.pickedHeight = el.offsetHeight;
+    STATE.pickedTouchId = pointer.identifier !== undefined ? pointer.identifier : null;
     STATE.lastPickTime = Date.now();
     STATE.originalPos  = { x: note.x, y: note.y, z: window.getNoteZIndex?.(note) || el.style.zIndex };
     
@@ -715,6 +721,9 @@ function toggleStickyMove(e, id) {
     el.classList.add('note-picked');
     
     document.addEventListener('mousemove', updateStickyMove);
+    document.addEventListener('touchmove', updateStickyMove, { passive: false });
+    document.addEventListener('touchend', handleStickyMoveTouchEnd);
+    document.addEventListener('touchcancel', handleStickyMoveTouchEnd);
     showToast(STATE.groupBaseline ? `Moving ${STATE.selectedNoteIds.size} notes` : 'Note picked up', 'info');
 }
 
@@ -727,8 +736,11 @@ function toggleStickyMove(e, id) {
 function updateStickyMove(e) {
     if (!STATE.pickedNoteId) return;
     
-    STATE.autoScroll.lastEvent = e;
-    if (typeof checkAutoScrollProximity === 'function') checkAutoScrollProximity(e);
+    var pointer = e.touches ? getTouchById(e.touches, STATE.pickedTouchId) : e;
+    if (!pointer) return;
+    if (e.touches && e.cancelable) e.preventDefault();
+    STATE.autoScroll.lastEvent = pointer;
+    if (typeof checkAutoScrollProximity === 'function') checkAutoScrollProximity(pointer);
 
     const el = document.getElementById(`note-${STATE.pickedNoteId}`);
     if (!el) return;
@@ -737,8 +749,8 @@ function updateStickyMove(e) {
     const rect    = STATE.activeRectBaseline;
     if (!rect) return;
     
-    let newX = (e.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
-    let newY = (e.clientY - rect.top  + wrapper.scrollTop)  / STATE.scale;
+    let newX = (pointer.clientX - rect.left + wrapper.scrollLeft) / STATE.scale;
+    let newY = (pointer.clientY - rect.top  + wrapper.scrollTop)  / STATE.scale;
 
     newX -= STATE.dragOffset.x;
     newY -= STATE.dragOffset.y;
@@ -781,6 +793,15 @@ function updateStickyMove(e) {
     }
 
     if (typeof updateRadar === 'function') updateRadar();
+}
+
+function handleStickyMoveTouchEnd(e) {
+    if (!STATE.pickedNoteId) return;
+    if (STATE.pickedTouchId !== null && STATE.pickedTouchId !== undefined) {
+        const lifted = getTouchById(e.changedTouches, STATE.pickedTouchId);
+        if (!lifted) return;
+    }
+    dropStickyNote();
 }
 
 /**
@@ -917,6 +938,7 @@ function dropStickyNote() {
     const selection   = isGroupMove ? Array.from(STATE.selectedNoteIds) : null;
 
     STATE.pickedNoteId      = null;
+    STATE.pickedTouchId     = null;
     STATE.activeRectBaseline = null;
     STATE.originalPos        = null;
 
@@ -945,6 +967,9 @@ function dropStickyNote() {
     }
 
     document.removeEventListener('mousemove', updateStickyMove);
+    document.removeEventListener('touchmove', updateStickyMove);
+    document.removeEventListener('touchend', handleStickyMoveTouchEnd);
+    document.removeEventListener('touchcancel', handleStickyMoveTouchEnd);
     showToast(isGroupMove ? 'Group placed' : 'Note placed', 'success');
 }
 
@@ -1010,10 +1035,14 @@ function cancelStickyMove() {
     }
 
     STATE.pickedNoteId       = null;
+    STATE.pickedTouchId      = null;
     STATE.activeRectBaseline = null;
     STATE.originalPos        = null;
 
     document.removeEventListener('mousemove', updateStickyMove);
+    document.removeEventListener('touchmove', updateStickyMove);
+    document.removeEventListener('touchend', handleStickyMoveTouchEnd);
+    document.removeEventListener('touchcancel', handleStickyMoveTouchEnd);
     showToast('Move cancelled', 'info');
 }
 
@@ -1060,7 +1089,10 @@ function handleGlobalClick(e) {
 }
 
 /**
- * Global Keyboard Interface.
+ * Global keyboard shortcut dispatcher.
+ * Handles Ctrl+E (toggle edit mode, Shift for raw), Escape (abort edit, close modals,
+ * clear selection, cancel move), Ctrl+A (select all notes), Ctrl+S (suppress browser
+ * save dialog), Ctrl+F (find), and Ctrl+I (open in iframe).
  * @param {KeyboardEvent} e - The keydown event.
  * @returns {void}
  */
@@ -1088,6 +1120,22 @@ function handleGlobalKeydown(e) {
     if (STATE.isInitializing) return;
 
     if (e.key === 'Escape') {
+        const openNoteModal = [
+            ['note-view-modal', typeof closeViewModal === 'function' ? closeViewModal : null],
+            ['note-create-modal', typeof closeCreateModal === 'function' ? closeCreateModal : null],
+            ['note-search-modal', typeof closeSearchModal === 'function' ? closeSearchModal : null]
+        ].find(([modalId]) => {
+            const modal = document.getElementById(modalId);
+            return modal && (modal.classList.contains('show') || modal.classList.contains('active'));
+        });
+        if (openNoteModal?.[1]) {
+            e.preventDefault();
+            e.stopPropagation();
+            openNoteModal[1]();
+            return;
+        }
+        if (document.body.classList.contains('modal-open')) return;
+
         const hasSelection = STATE.selectedNoteIds && STATE.selectedNoteIds.size > 0;
         
         if (STATE.pickedNoteId) {
@@ -1115,10 +1163,15 @@ function handleGlobalKeydown(e) {
             return;
         }
 
-        // Also close any active modals
-        if (typeof closeViewModal === 'function') closeViewModal();
-        if (typeof closeCreateModal === 'function') closeCreateModal();
-        if (typeof closeSearchModal === 'function') closeSearchModal();
+        // Exit note edit mode when no inline editor is active
+        if (STATE.isEditingNote) {
+            e.preventDefault();
+            e.stopPropagation();
+            var editBtn = document.querySelector('#note-' + STATE.isEditingNote + ' .btn-icon-edit');
+            if (editBtn && typeof toggleInlineEdit === 'function') {
+                toggleInlineEdit(editBtn, STATE.isEditingNote, true);
+            }
+        }
     }
     
     // Ctrl + A: Select All Notes on current isolation level
@@ -1151,18 +1204,6 @@ function handleGlobalKeydown(e) {
         }
     }
     
-    // Ctrl + Z: Fit the hovered saved note to its rendered content.
-    if (e.ctrlKey && key === 'z') {
-        const isEntry = e.target.closest('input, textarea, [contenteditable="true"]');
-        if (isEntry) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (typeof fitHoveredNoteToContent === 'function') fitHoveredNoteToContent();
-        return;
-    }
-
     // Ctrl + S: Board-wide Save Interception
     // Prevents the annoying browser "Save Page" dialog from appearing while on the whiteboard.
     if (e.ctrlKey && key === 's') {
@@ -1671,8 +1712,10 @@ async function saveViewportImmediate() {
 }
 
 /**
- * Universal Entry Point: Dispatches focus, lasso selection, and panning based on target context.
- * Identifies if the user is clicking the background (pan/lasso) vs a note handle.
+ * Universal mouse-down entry point on the canvas.
+ * Dispatches to note-header button actions (edit, raw-edit, delete, link, upload, view),
+ * resize handles, shift-click selection management, Pick & Place drag initiation,
+ * marquee/lasso selection on background, and canvas panning.
  * @param {MouseEvent} e - The raw trigger event.
  */
 function handleCanvasMouseDown(e) {
@@ -1726,10 +1769,12 @@ function handleCanvasMouseDown(e) {
                     copyNoteToClipboard(id); return;
                 }
                 if (editBtn && typeof toggleInlineEdit === 'function') {
-                    toggleInlineEdit(editBtn, id); return;
+                    toggleInlineEdit(editBtn, id, false, noteEl.classList.contains('is-raw-editing'));
+                    return;
                 }
                 if (rawEditBtn && typeof toggleInlineEdit === 'function') {
-                    toggleInlineEdit(noteEl.querySelector('.btn-icon-edit') || rawEditBtn, id, false, true); return;
+                    toggleInlineEdit(noteEl.querySelector('.btn-icon-edit') || rawEditBtn, id, false, true);
+                    return;
                 }
                 if (aiFormatBtn && typeof aiFormatNote === 'function') {
                     aiFormatNote(id, aiFormatBtn); return;
@@ -2075,6 +2120,8 @@ function handleCanvasWheel(e) {
 function handleCanvasDoubleClick(e) {
     if (STATE.isInitializing) return;
 
+    if (e.target.closest('.note-floating-actions-rail')) return;
+
     // 1. Note Detection: Resolve identity via standard 'id' or user-specified 'noteId'
     const noteEl = e.target.closest('.sticky-note, [data-note-id], [data-id]');
     if (!noteEl) {
@@ -2103,6 +2150,140 @@ function handleCanvasDoubleClick(e) {
         return;
     }
 
+    // --- Path B: Floating Actions Rail Toggle ---
+    var actionable = e.target.closest('.btn-icon, .note-resize-handle, .note-drag-handle-container, .note-header-tab, .note-check-trigger, .note-link-trigger, .note-id-hash, .inline-title-input, .reel-action-btn, .hero-action-btn, .btn-icon-drawer');
+    if (actionable) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (STATE.floatingRailNoteId == id) {
+        hideFloatingActionsRail();
+    } else {
+        showFloatingActionsRail(e, id);
+    }
+}
+/*
+ * Floating Actions Rail: shared element appended to body, toggled by
+ * double-clicking an unactionable area of a note body. Uses position:fixed
+ * at the double-click coordinates.
+ */
+function ensureFloatingActionsRail() {
+    var existing = document.querySelector('.note-floating-actions-rail');
+    if (existing) return existing;
+
+    var rail = document.createElement('div');
+    rail.className = 'note-floating-actions-rail';
+    rail.setAttribute('role', 'toolbar');
+    rail.setAttribute('aria-label', 'Note actions');
+    rail.setAttribute('aria-hidden', 'true');
+    rail.innerHTML =
+        '<button type="button" class="btn-icon btn-icon-edit" title="Edit Content" aria-label="Edit content">✏️</button>' +
+        '<button type="button" class="btn-icon btn-icon-raw-edit" title="Raw Edit Content" aria-label="Raw edit content">📝</button>' +
+        '<button type="button" class="btn-icon btn-icon-ai-format" title="Clone and AI Format" aria-label="Clone and AI format">✨</button>' +
+        '<button type="button" class="btn-icon btn-icon-link" title="Copy Direct Link" aria-label="Copy direct link">🔗</button>' +
+        '<button type="button" class="btn-icon btn-icon-upload note-inline-upload-btn" title="Add Attachment" aria-label="Add attachment">📎</button>' +
+        '<button type="button" class="btn-icon btn-icon-view" title="Quick View" aria-label="Quick view">👁️</button>' +
+        '<button type="button" class="btn-icon btn-icon-delete" title="Delete Note" aria-label="Delete note">🗑️</button>' +
+        '<button type="button" class="btn-icon btn-icon-close" title="Close and Discard Changes" aria-label="Close and discard changes">×</button>';
+    rail.querySelectorAll('button').forEach(button => { button.tabIndex = -1; });
+
+    rail.addEventListener('click', function (ev) {
+        var btn = ev.target.closest('button');
+        if (!btn) return;
+        var id = rail.dataset.noteId;
+        if (!id) return;
+
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const noteEl = document.getElementById(`note-${id}`);
+        const editBtn = noteEl?.querySelector('.btn-icon-edit');
+
+        if (btn.classList.contains('btn-icon-close')) {
+            hideFloatingActionsRail();
+            if (noteEl?.classList.contains('is-editing') && editBtn && typeof toggleInlineEdit === 'function') {
+                toggleInlineEdit(editBtn, id, true);
+            }
+        } else if (btn.classList.contains('btn-icon-edit')) {
+            if (editBtn && typeof toggleInlineEdit === 'function') {
+                toggleInlineEdit(editBtn, id);
+            }
+        } else if (btn.classList.contains('btn-icon-raw-edit')) {
+            if (editBtn && typeof toggleInlineEdit === 'function') {
+                toggleInlineEdit(editBtn, id, false, true);
+            }
+        } else if (btn.classList.contains('btn-icon-ai-format')) {
+            if (typeof aiFormatNote === 'function') aiFormatNote(id, btn);
+        } else if (btn.classList.contains('btn-icon-link')) {
+            if (typeof copyNoteLink === 'function') copyNoteLink(id);
+        } else if (btn.classList.contains('btn-icon-upload')) {
+            if (typeof triggerInlineUpload === 'function') triggerInlineUpload(id);
+        } else if (btn.classList.contains('btn-icon-view')) {
+            if (typeof viewNote === 'function') viewNote(id);
+        } else if (btn.classList.contains('btn-icon-delete')) {
+            if (typeof deleteNote === 'function') deleteNote(id);
+        }
+    });
+
+    document.body.appendChild(rail);
+    return rail;
+}
+
+function showFloatingActionsRail(e, noteId) {
+    var rail = ensureFloatingActionsRail();
+    rail.dataset.noteId = noteId;
+    STATE.floatingRailNoteId = noteId;
+    rail.setAttribute('aria-hidden', 'false');
+    rail.querySelectorAll('button').forEach(button => { button.tabIndex = 0; });
+    updateEditModeIndicators(noteId);
+
+    var x = e.clientX;
+    var y = e.clientY;
+    rail.style.left = x + 'px';
+
+    // Prefer above the cursor; flip below if it would overflow the viewport
+    rail.classList.add('show');
+    var rect = rail.getBoundingClientRect();
+    var placedY = y - rect.height - 8;
+    if (placedY < 4) placedY = y + 12;
+    const maxY = Math.max(4, window.innerHeight - rect.height - 4);
+    rail.style.top = Math.max(4, Math.min(placedY, maxY)) + 'px';
+
+    var maxX = Math.max(4, window.innerWidth - rect.width - 4);
+    if (x > maxX) rail.style.left = maxX + 'px';
+    if (x < 4) rail.style.left = '4px';
+}
+
+function hideFloatingActionsRail() {
+    var rail = document.querySelector('.note-floating-actions-rail');
+    STATE.floatingRailNoteId = null;
+    if (!rail) return;
+    rail.classList.remove('show');
+    rail.setAttribute('aria-hidden', 'true');
+    rail.querySelectorAll('button').forEach(button => { button.tabIndex = -1; });
+    if (rail.contains(document.activeElement)) document.activeElement.blur();
+    delete rail.dataset.noteId;
+}
+
+function updateEditModeIndicators(noteId) {
+    const noteEl = document.getElementById(`note-${noteId}`);
+    const editing = !!noteEl?.classList.contains('is-editing');
+    const rawEditing = editing && noteEl.classList.contains('is-raw-editing');
+    const targets = [];
+
+    if (noteEl) targets.push(noteEl);
+    const rail = document.querySelector('.note-floating-actions-rail');
+    if (rail && String(rail.dataset.noteId) === String(noteId)) targets.push(rail);
+
+    targets.forEach(target => {
+        const editButton = target.querySelector('.btn-icon-edit');
+        const rawEditButton = target.querySelector('.btn-icon-raw-edit');
+        editButton?.classList.toggle('edit-mode-active', editing && !rawEditing);
+        rawEditButton?.classList.toggle('edit-mode-active', rawEditing);
+        editButton?.setAttribute('aria-pressed', editing && !rawEditing ? 'true' : 'false');
+        rawEditButton?.setAttribute('aria-pressed', rawEditing ? 'true' : 'false');
+    });
 }
 
 /**
@@ -2111,71 +2292,92 @@ function handleCanvasDoubleClick(e) {
  * @param {number|string} id - The note ID.
  * @returns {Promise<void>}
  */
-function measureSavedNoteHeight(el) {
-    if (!el || !el.parentNode) return null;
+function applyMeasuredNoteHeight(el, height) {
+    if (!el || !height) return;
 
-    const clone = el.cloneNode(true);
-    clone.removeAttribute('id');
-    clone.classList.remove('is-editing', 'pending', 'dragging', 'resizing');
-    clone.style.position = 'absolute';
-    clone.style.left = '-100000px';
-    clone.style.top = '0';
-    clone.style.visibility = 'hidden';
-    clone.style.pointerEvents = 'none';
-    clone.style.transform = 'none';
-    clone.style.width = `${el.offsetWidth}px`;
-    clone.style.height = 'auto';
-    clone.style.zIndex = '-1';
+    const id = el.dataset.id;
+    const note = STATE.notes.find(n => n.id == id);
+    const alreadyFitted = el.dataset.heightFitted === '1';
+    const savedTransition = el.style.transition;
 
-    el.parentNode.appendChild(clone);
-    const measured = Math.ceil(clone.scrollHeight) + 6;
-    const minHeight = parseFloat(getComputedStyle(el).minHeight) || 0;
-    clone.remove();
+    if (!alreadyFitted) el.style.transition = 'none';
+    el.style.height = `${height}px`;
+    el.dataset.heightFitted = '1';
 
-    return Math.max(measured, minHeight);
+    if (note) note.height = height;
+    if (STATE.note_map && STATE.note_map[id]) STATE.note_map[id].height = height;
+
+    if (!alreadyFitted) {
+        void el.offsetHeight;
+        el.style.transition = savedTransition;
+    }
 }
 
-async function fitHoveredNoteToContent() {
-    const id = STATE.hoveredNoteId;
-    if (!id) {
-        if (typeof showToast === 'function') showToast('Hover a note first, then press Ctrl+Z', 'info');
-        return;
-    }
+function flushNoteHeightFits() {
+    const targets = [];
 
-    const el = document.getElementById(`note-${id}`);
-    const note = STATE.notes.find(n => n.id == id);
-    if (!el || !note) return;
+    pendingNoteHeightFits.forEach(id => {
+        const el = document.getElementById(`note-${id}`);
+        if (!el || el.classList.contains('collapsed') || el.classList.contains('is-fence-note')) return;
 
-    if (el.classList.contains('is-editing')) {
-        if (typeof showToast === 'function') showToast('Exit edit mode before fitting note height', 'info');
-        return;
-    }
-
-    if (note.is_collapsed) {
-        if (typeof showToast === 'function') showToast('Expand the note before fitting height', 'info');
-        return;
-    }
-
-    if (typeof showToast === 'function') showToast('Ctrl+Z: fitting hovered note...', 'info');
-
-    const fittedHeight = measureSavedNoteHeight(el);
-    if (!fittedHeight) return;
-
-    el.style.height = `${fittedHeight}px`;
-    try {
-        const res = typeof syncNotePosition === 'function'
-            ? await syncNotePosition(id)
-            : { success: 0, error: 'Geometry sync unavailable' };
-
-        if (res && res.success) {
-            if (typeof showToast === 'function') showToast('Note height fitted to content', 'success');
-        } else if (typeof showToast === 'function') {
-            showToast(res?.error || 'Could not save fitted height', 'error');
+        const rawTextarea = el.classList.contains('is-raw-editing')
+            ? el.querySelector('.note-text-section > textarea[data-action="note-keydown"]:not([readonly])')
+            : null;
+        const savedTextareaHeight = rawTextarea ? rawTextarea.style.height : '';
+        if (rawTextarea) {
+            rawTextarea.style.height = 'auto';
+            rawTextarea.style.height = `${rawTextarea.scrollHeight}px`;
         }
-    } catch (err) {
-        console.error('[fitHoveredNoteToContent] Failed:', err);
-        if (typeof showToast === 'function') showToast('Could not save fitted height', 'error');
+
+        el.classList.add('note-height-measuring');
+        targets.push({ el, rawTextarea, savedTextareaHeight });
+    });
+    pendingNoteHeightFits.clear();
+
+    if (targets.length === 0) {
+        noteHeightFitFrame = null;
+        return;
     }
+
+    requestAnimationFrame(() => {
+        const measurements = targets.map(target => ({
+            ...target,
+            height: target.el.isConnected
+                && !target.el.classList.contains('collapsed')
+                && !target.el.classList.contains('is-fence-note')
+                ? Math.max(120, Math.ceil(target.el.offsetHeight) + 2)
+                : null
+        }));
+
+        measurements.forEach(({ el, rawTextarea, savedTextareaHeight, height }) => {
+            el.classList.remove('note-height-measuring');
+            if (rawTextarea) rawTextarea.style.height = savedTextareaHeight;
+            if (height) applyMeasuredNoteHeight(el, height);
+        });
+
+        noteHeightFitFrame = null;
+        if (pendingNoteHeightFits.size > 0) {
+            noteHeightFitFrame = requestAnimationFrame(flushNoteHeightFits);
+        }
+    });
+}
+
+function fitNoteHeight(id) {
+    if (id === null || id === undefined) return;
+    pendingNoteHeightFits.add(String(id));
+    if (!noteHeightFitFrame) noteHeightFitFrame = requestAnimationFrame(flushNoteHeightFits);
+}
+
+function handleNoteContentLoad(e) {
+    if (!e.target.matches('img')) return;
+    const noteEl = e.target.closest('.sticky-note');
+    if (noteEl) fitNoteHeight(noteEl.dataset.id);
+}
+
+function handleNoteContentToggle(e) {
+    if (!e.target.matches('details')) return;
+    const noteEl = e.target.closest('.sticky-note');
+    if (noteEl) fitNoteHeight(noteEl.dataset.id);
 }
 
 async function moveNotesToCanvasCenter(ids) {
@@ -2292,7 +2494,7 @@ async function runAiFormatNote(id, button, customPrompt = '') {
     if (typeof showToast === 'function') showToast('Cloning note for AI formatting...', 'info');
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 300000);
+    const timeoutId = setTimeout(() => controller.abort(), 315000);
 
     try {
         const res = await NoteAPI.post('/notes/api/notes/ai-format', {
@@ -2335,12 +2537,12 @@ async function runAiFormatNote(id, button, customPrompt = '') {
  * Handles UI state transitions and error feedback.
  * @param {number|string} id - The note ID.
  * @param {boolean} [stayInEditMode=false] - Whether to remain in edit mode after saving.
- * @returns {Promise<void>}
+ * @returns {Promise<boolean>} Whether the save completed successfully.
  */
 async function saveNoteInline(id, stayInEditMode = false) {
     const el   = document.getElementById(`note-${id}`);
     const note = STATE.notes.find(n => n.id == id);
-    if (!el || !note) return;
+    if (!el || !note) return false;
 
     flushActiveClickToEditEditor(el);
 
@@ -2384,9 +2586,11 @@ async function saveNoteInline(id, stayInEditMode = false) {
         is_options_expanded: note.is_options_expanded ?? 0
     };
 
+    let saveCommitted = false;
     try {
         const res = await NoteAPI.post('/notes/api/save', params);
         if (res && res.success) {
+            saveCommitted = true;
             // State: Finalize UI before record merge
             if (!stayInEditMode && String(STATE.isEditingNote) === String(id)) {
                 // Collaborative Locking: Clear state FIRST to block teardown races
@@ -2429,6 +2633,7 @@ async function saveNoteInline(id, stayInEditMode = false) {
                 ? window.displayNoteTitle(updatedNote)
                 : (title || 'Untitled Note');
             if (viewer) viewer.innerHTML = formatNoteContent(content, id);
+            if (typeof fitNoteHeight === 'function') fitNoteHeight(id);
             if (slot) {
                 const isDashboardNote = el.classList.contains('is-dashboard-note');
                 if (isDashboardNote && typeof NoteParser !== 'undefined') {
@@ -2492,7 +2697,18 @@ async function saveNoteInline(id, stayInEditMode = false) {
             refreshEmbedsOf(id, title, content);
 
             showToast('Note Saved', 'success');
+            return true;
         }
+        showToast(res?.error || 'Failed to save note', 'error');
+        return false;
+    } catch (error) {
+        console.error('[Notes] Inline save failed:', error);
+        if (saveCommitted) {
+            showToast('Note saved, but some follow-up updates failed', 'warning');
+            return true;
+        }
+        showToast('Failed to save note', 'error');
+        return false;
     } finally {
         el.classList.remove('pending');
         if (typeof window.removeActiveSync === 'function') window.removeActiveSync(id);
@@ -2529,6 +2745,7 @@ function refreshEmbedsOf(savedId, savedTitle, savedContent) {
         if (!viewer) return;
 
         viewer.innerHTML = formatNoteContent(content, note.id);
+        if (typeof fitNoteHeight === 'function') fitNoteHeight(note.id);
         noteEl.dataset.lastContent = content;
     });
 }
@@ -2656,6 +2873,7 @@ async function toggleCollapse(id) {
     }
 
     el.classList.toggle('collapsed', !!note.is_collapsed);
+    if (!note.is_collapsed && typeof fitNoteHeight === 'function') fitNoteHeight(id);
 
     el.classList.add('pending');
     
@@ -2708,10 +2926,16 @@ function editNote(id) {
 
     const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
     if (btn && typeof toggleInlineEdit === 'function') {
-        toggleInlineEdit(btn, id);
+        const el = document.getElementById(`note-${id}`);
+        toggleInlineEdit(btn, id, false, !!el?.classList.contains('is-raw-editing'));
     }
 }
 
+/**
+ * Flushes any active click-to-edit inline editor (line or block) by blurring it.
+ * @param {HTMLElement} el - The note element.
+ * @returns {boolean} True if an active editor was found and blurred.
+ */
 function flushActiveClickToEditEditor(el) {
     const activeEditor = el?.querySelector('.note-line-editor, .note-block-editor');
     if (!activeEditor) return false;
@@ -2719,7 +2943,26 @@ function flushActiveClickToEditEditor(el) {
     return true;
 }
 
+/**
+ * Configures the note's editing surface between click-to-edit and raw textarea modes.
+ * Toggles the .is-raw-editing class, manages the edit ribbon visibility, sets the
+ * textarea value/readOnly state, and wires up auto-height adaptation for raw mode.
+ * @param {HTMLElement} el - The note element.
+ * @param {Object} note - The note data object.
+ * @param {HTMLTextAreaElement|null} textarea - The note's textarea element.
+ * @param {boolean} useRawEditor - Whether to switch to raw textarea mode.
+ */
 function configureNoteTextEditMode(el, note, textarea, useRawEditor) {
+    const wasRawEditor = el.classList.contains('is-raw-editing');
+
+    if (!useRawEditor && wasRawEditor && textarea && !textarea.readOnly) {
+        note.content = textarea.value;
+        if (STATE.note_map && STATE.note_map[note.id]) {
+            STATE.note_map[note.id].content = note.content;
+        }
+        refreshClickToEditViewer(note.id, note);
+    }
+
     if (useRawEditor) {
         flushActiveClickToEditEditor(el);
     }
@@ -2749,18 +2992,28 @@ function configureNoteTextEditMode(el, note, textarea, useRawEditor) {
     }
 
     if (useRawEditor) {
+        textarea._adaptNoteHeight = function() {
+            var _id = note.id;
+            requestAnimationFrame(function() {
+                if (typeof fitNoteHeight === 'function') fitNoteHeight(_id);
+            });
+        };
+        textarea.addEventListener('input', textarea._adaptNoteHeight);
+        textarea._adaptNoteHeight();
         try {
             textarea.focus({ preventScroll: true });
         } catch (_) {
             textarea.focus();
         }
     }
+    updateEditModeIndicators(note.id);
 }
 
 /**
  * Transitions a note between 'display' and 'edit' modes.
- * Full Parity Implementation: Handles collation expansion, title/filename editing, 
- * and dynamic resizing.
+ * Handles collaborative lock acquisition, collapsed note expansion, content snapshot
+ * for abort, click-to-edit initialization, and mode switching between click-to-edit
+ * and raw textarea editors. On exit, saves or aborts based on the isAbort flag.
  * @param {HTMLElement} btn - The trigger button.
  * @param {number|string} id - The note ID.
  * @param {boolean} isAbort - Optional flag to revert changes without saving.
@@ -2823,16 +3076,32 @@ async function toggleInlineEdit(btn, id, isAbort = false, useRawEditor = false) 
         }
     }
 
-    if (el.classList.contains('is-editing') && useRawEditor && !el.classList.contains('is-raw-editing')) {
-        configureNoteTextEditMode(el, note, textarea, true);
-        return;
+    if (el.classList.contains('is-editing') && !isAbort) {
+        const isRawEditor = el.classList.contains('is-raw-editing');
+        if (isRawEditor !== !!useRawEditor) {
+            configureNoteTextEditMode(el, note, textarea, useRawEditor);
+            return;
+        }
     }
 
     if (el.classList.contains('is-editing') && !isAbort) {
         flushActiveClickToEditEditor(el);
     }
 
+    const actionsRail = el.querySelector('.note-actions-rail');
+    const suppressRailCollapse = el.classList.contains('is-editing')
+        && actionsRail
+        && !actionsRail.classList.contains('expanded');
+    if (suppressRailCollapse) actionsRail.classList.add('suppress-collapse-transition');
+
     const isEditing = el.classList.toggle('is-editing');
+
+    if (!isEditing && suppressRailCollapse) {
+        void actionsRail.offsetWidth;
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => actionsRail.classList.remove('suppress-collapse-transition'));
+        });
+    }
 
     if (isEditing) {
         // UI Logic: Unified termination reset
@@ -2843,6 +3112,11 @@ async function toggleInlineEdit(btn, id, isAbort = false, useRawEditor = false) 
         if (STATE.note_map && STATE.note_map[id]) {
             el.dataset.originalMapContent = STATE.note_map[id].content || '';
         }
+        el._editFieldSnapshot = {
+            title: el.querySelector('.inline-title-input')?.value || note.title || '',
+            color: el.querySelector('.inline-color-input')?.value || note.color || '',
+            filenames: Array.from(el.querySelectorAll('.file-name-display')).map(display => display.textContent)
+        };
 
         if (typeof initClickToEdit === 'function') {
             initClickToEdit(el, id);
@@ -2875,8 +3149,8 @@ async function toggleInlineEdit(btn, id, isAbort = false, useRawEditor = false) 
     } else {
         // Mode Termination: Atomic Persistence
         if (getNoteFind().noteId && String(getNoteFind().noteId) === String(id)) closeNoteFindBar(false);
-        delete el.dataset.lockHeld;
         if (isAbort) {
+            delete el.dataset.lockHeld;
             // UI State: Restore content from local state
             const txtArea = el.querySelector('.note-text-section > textarea[data-action="note-keydown"]');
             if (note && el.dataset.originalContent !== undefined) {
@@ -2892,29 +3166,48 @@ async function toggleInlineEdit(btn, id, isAbort = false, useRawEditor = false) 
             if (txtArea && note) txtArea.value = note.content || '';
             const viewer = el.querySelector('.note-text-viewer');
             if (viewer && note) viewer.innerHTML = formatNoteContent(note.content || '', id);
+            if (typeof fitNoteHeight === 'function') fitNoteHeight(id);
             el.dataset.lastContent = note.content || '';
+
+            const fieldSnapshot = el._editFieldSnapshot;
+            if (fieldSnapshot) {
+                const titleInput = el.querySelector('.inline-title-input');
+                if (titleInput) titleInput.value = fieldSnapshot.title;
+                note.title = fieldSnapshot.title;
+                if (STATE.note_map && STATE.note_map[id]) STATE.note_map[id].title = fieldSnapshot.title;
+
+                el.querySelectorAll('.file-name-display').forEach((display, index) => {
+                    if (fieldSnapshot.filenames[index] !== undefined) {
+                        display.textContent = fieldSnapshot.filenames[index];
+                    }
+                });
+
+                const colorInput = el.querySelector('.inline-color-input');
+                if (colorInput && fieldSnapshot.color && colorInput.value !== fieldSnapshot.color) {
+                    colorInput.value = fieldSnapshot.color;
+                    updateNoteAccent(colorInput, id);
+                }
+                delete el._editFieldSnapshot;
+            }
             
             STATE.isEditingNote = null;
         } else if (typeof saveNoteInline === 'function') {
             // Sequential Lifecycle: Await the save to ensure lock release doesn't race
-            await saveNoteInline(id);
+            const saved = await saveNoteInline(id);
+            if (!saved) {
+                el.classList.add('is-editing');
+                updateEditModeIndicators(id);
+                return;
+            }
             delete el.dataset.originalContent;
             delete el.dataset.originalMapContent;
+            delete el._editFieldSnapshot;
         }
 
         // Restore initial collapsed state if editing began in a collapsed view.
         if (el.dataset.wasCollapsed === 'true') {
             delete el.dataset.wasCollapsed;
             await toggleCollapse(id);
-        }
-
-        // Failure Recovery: If saveNoteInline failed, STATE.isEditingNote was not cleared
-        // inside its success block. Clear it here unconditionally to prevent heartbeat suppression
-        // and mergeNoteState lockout from persisting after UI has exited edit mode.
-        if (STATE.isEditingNote == id) {
-            STATE.isEditingNote = null;
-            // Release the collaborative lock that saveNoteInline was unable to release on failure.
-            NoteAPI.unlock(id).catch(e => console.warn('[unlock] Post-save-failure unlock failed:', e));
         }
 
         // UI Logic: Unified termination reset
@@ -2957,6 +3250,7 @@ async function toggleInlineEdit(btn, id, isAbort = false, useRawEditor = false) 
             }
         }
     }
+    updateEditModeIndicators(id);
 }
 
 /**
@@ -3368,8 +3662,11 @@ function openNoteFindBar(id, textarea) {
 }
 
 /**
- * Keyboard Interface for Inline Editor.
- * Facilitates rapid 'Ctrl+Enter' commits and 'Esc' aborts.
+ * Keyboard interface for the note textarea and inline editor.
+ * Handles Ctrl+Enter (save & close), Ctrl+S (save, stay in editor),
+ * Ctrl+E (toggle edit mode / switch between click-to-edit and raw),
+ * Ctrl+Shift+E (switch to raw editor), Ctrl+F (open find bar),
+ * Escape (close find bar or abort editing), and Ctrl+Backspace (delete line).
  * @param {KeyboardEvent} e - The keydown event.
  * @param {number|string} id - The note ID.
  */
@@ -3390,10 +3687,12 @@ async function handleNoteKeydown(e, id) {
 
     // Ctrl + Enter: Instant Save & Close
     if (e.ctrlKey && e.key === 'Enter') {
-        const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
-        if (btn && document.getElementById(`note-${id}`).classList.contains('is-editing')) {
+        const el = document.getElementById(`note-${id}`);
+        const btn = el?.querySelector('.btn-icon-edit');
+        if (btn && el?.classList.contains('is-editing')) {
             e.preventDefault();
-            toggleInlineEdit(btn, id);
+            e.stopPropagation();
+            await toggleInlineEdit(btn, id, false, el.classList.contains('is-raw-editing'));
         }
     } 
     // Ctrl + S: Incremental Save (Stay in Editor)
@@ -3405,22 +3704,23 @@ async function handleNoteKeydown(e, id) {
             saveNoteInline(id, true);
         }
     }
-    // Ctrl + E: Exit/Save Edit Mode
+    // Ctrl + Shift + E: Toggle raw edit mode
     else if (e.ctrlKey && e.shiftKey && key === 'e') {
         const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
         if (btn && document.getElementById(`note-${id}`).classList.contains('is-editing')) {
             e.preventDefault();
             e.stopPropagation();
-            toggleInlineEdit(btn, id, false, true);
+            await toggleInlineEdit(btn, id, false, true);
         }
     }
-    // Ctrl + E: Exit/Save Edit Mode
+    // Ctrl + E: Toggle between edit modes, or exit if already in click-to-edit
     else if (e.ctrlKey && key === 'e') {
-        const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
-        if (btn && document.getElementById(`note-${id}`).classList.contains('is-editing')) {
+        const el = document.getElementById(`note-${id}`);
+        const btn = el?.querySelector('.btn-icon-edit');
+        if (btn && el?.classList.contains('is-editing')) {
             e.preventDefault();
             e.stopPropagation();
-            toggleInlineEdit(btn, id);
+            await toggleInlineEdit(btn, id);
         }
     }
     else if (e.key === 'Escape') {
@@ -3433,6 +3733,8 @@ async function handleNoteKeydown(e, id) {
 
         const btn = document.querySelector(`#note-${id} .btn-icon-edit`);
         if (btn && document.getElementById(`note-${id}`).classList.contains('is-editing')) {
+            e.preventDefault();
+            e.stopPropagation();
             await toggleInlineEdit(btn, id, true);
         }
     }
@@ -3578,6 +3880,7 @@ async function toggleNoteCheckbox(event, id, lineIndex) {
         const viewer   = el.querySelector('.note-text-viewer');
         const textarea = el.querySelector('.note-text-section > textarea[data-action="note-keydown"]');
         if (viewer)   viewer.innerHTML = formatNoteContent(note.content, id);
+        if (typeof fitNoteHeight === 'function') fitNoteHeight(id);
         if (textarea) textarea.value   = note.content;
     }
 
@@ -3608,7 +3911,7 @@ function initClickToEdit(el, noteId) {
         if (blockEl && viewer.contains(blockEl)) {
             e.stopPropagation();
             e.preventDefault();
-            editBlock(blockEl, noteId);
+            editBlock(blockEl, noteId, e);
             return;
         }
 
@@ -3617,8 +3920,664 @@ function initClickToEdit(el, noteId) {
 
         e.stopPropagation();
         e.preventDefault();
-        editLine(lineEl, noteId);
+        editLine(lineEl, noteId, e);
     });
+}
+
+/**
+ * Resolves a mouse event's client coordinates to a DOM Range at that point.
+ * Uses the standard caretRangeFromPoint API with a caretPositionFromPoint fallback.
+ * @param {MouseEvent} e - The click event with clientX/clientY.
+ * @returns {Range|null} A collapsed Range at the click point, or null if unavailable.
+ */
+function getCaretRangeAtPoint(e) {
+    try {
+        if (typeof document.caretRangeFromPoint === 'function') {
+            var range = document.caretRangeFromPoint(e.clientX, e.clientY);
+            if (range && range.startContainer) return range;
+        }
+        if (typeof document.caretPositionFromPoint === 'function') {
+            var pos = document.caretPositionFromPoint(e.clientX, e.clientY);
+            if (pos && pos.offsetNode) {
+                var r = document.createRange();
+                r.setStart(pos.offsetNode, pos.offset);
+                r.collapse(true);
+                return r;
+            }
+        }
+    } catch (_) {}
+    return null;
+}
+
+/**
+ * Walks text nodes inside an element and computes the cumulative character offset
+ * up to the text node and position referenced by a DOM Range.
+ * @param {HTMLElement} el - The container element.
+ * @param {Range} range - A DOM Range whose startContainer is a text node inside el.
+ * @returns {number|null} The character offset within el.textContent, or null if the range is not inside el.
+ */
+function getTextOffsetInElement(el, range) {
+    if (!range || !el) return null;
+    var startNode = range.startContainer;
+    if (!startNode || !el.contains(startNode)) return null;
+    var startOffset = range.startOffset;
+    if (startNode.nodeType !== 3) return null;
+
+    var offset = 0;
+    var walker = document.createTreeWalker(el, 4, null, false);
+    var node;
+    while ((node = walker.nextNode())) {
+        if (node === startNode) return offset + startOffset;
+        offset += node.textContent.length;
+    }
+    return null;
+}
+
+/**
+ * Builds a positional mapping from raw note text to rendered character positions.
+ * Skips markdown syntax (**, *, ~~, `), wikilinks ([[title]]), markdown links
+ * ([text](url)), inline components ([tag:...], [color:...]...[/color], [size:...],
+ * [progress:...], [divider:...], [link:...]), and rendered dynamic components.
+ * Wrapping components are processed recursively so nested markup is preserved.
+ * @param {string} rawText - The raw note text to map.
+ * @param {number} depth - Current recursive wrapper depth.
+ * @param {Object|null} componentState - Rendered dynamic components in DOM order.
+ * @returns {Array<number>} An array where index = raw position and
+ *   value = rendered position (-1 means the character is not rendered).
+ */
+function findPositionMapWrapperEnd(text, openToken, closeToken, scanStart) {
+    let nesting = 1;
+    let cursor = scanStart;
+    while (cursor < text.length) {
+        const nextOpen = text.indexOf(openToken, cursor);
+        const nextClose = text.indexOf(closeToken, cursor);
+        if (nextClose === -1) return -1;
+        if (nextOpen !== -1 && nextOpen < nextClose) {
+            nesting++;
+            cursor = nextOpen + openToken.length;
+        } else {
+            nesting--;
+            if (nesting === 0) return nextClose;
+            cursor = nextClose + closeToken.length;
+        }
+    }
+    return -1;
+}
+
+function buildPositionMap(rawText, depth = 0, componentState = null) {
+    var len = rawText.length;
+    var map = [];
+    map.componentRanges = [];
+
+    if (depth > 12) {
+        for (var fallbackIndex = 0; fallbackIndex < len; fallbackIndex++) map[fallbackIndex] = fallbackIndex;
+        map.renderedLength = len;
+        return map;
+    }
+
+    var renderedPos = 0;
+    var i = 0;
+
+    function consumeRenderedComponent(type, rawStart, rawLength, sourceValue = '') {
+        if (!componentState || !componentState.components) return false;
+        const component = componentState.components[componentState.index];
+        if (!component || component.type !== type) return false;
+
+        if ((type === 'note' || type === 'copy') && component.targetId) {
+            const parsedId = parseInt(sourceValue, 10);
+            if (!isNaN(parsedId) && String(parsedId) !== String(component.targetId)) return false;
+            if (isNaN(parsedId)) {
+                const target = Object.values(STATE.note_map || {}).find(note =>
+                    note.title && note.title.toLowerCase() === sourceValue.toLowerCase()
+                );
+                if (!target || String(target.id) !== String(component.targetId)) return false;
+            }
+        }
+        if (type === 'file') {
+            const parsedId = parseInt(sourceValue, 10);
+            const target = !isNaN(parsedId)
+                ? STATE.note_map?.[parsedId]
+                : Object.values(STATE.note_map || {}).find(note =>
+                    note.title && note.title.toLowerCase() === sourceValue.toLowerCase()
+                );
+            const expectedLabel = target
+                ? String(target.title || target.id)
+                : (!isNaN(parsedId) ? `File #${parsedId}` : '');
+            if (!expectedLabel || !component.text.toLowerCase().includes(expectedLabel.toLowerCase())) {
+                return false;
+            }
+        }
+
+        componentState.index++;
+        map[rawStart] = renderedPos;
+        for (var j = rawStart + 1; j < rawStart + rawLength; j++) map[j] = -1;
+        map.componentRanges.push({
+            renderedStart: renderedPos,
+            renderedEnd: renderedPos + component.length,
+            rawStart
+        });
+        renderedPos += component.length;
+        return true;
+    }
+
+    function mergeInnerMap(innerMap, rawStart, rawLength) {
+        for (var j = 0; j < rawLength; j++) {
+            map[rawStart + j] = innerMap[j] >= 0 ? renderedPos + innerMap[j] : -1;
+        }
+        (innerMap.componentRanges || []).forEach(range => {
+            map.componentRanges.push({
+                renderedStart: renderedPos + range.renderedStart,
+                renderedEnd: renderedPos + range.renderedEnd,
+                rawStart: rawStart + range.rawStart
+            });
+        });
+        renderedPos += innerMap.renderedLength || 0;
+    }
+
+    while (i < len) {
+        const current = rawText.charAt(i);
+        var rest = (current === '[' || current === '*' || current === '~' || current === '`')
+            ? rawText.substring(i)
+            : '';
+        var match, content, contentStart, closePos, fullLen, c, visible, visStart;
+
+        // 1. Wikilink: [[title]] (parser priority: before components and markdown)
+        if (rest.charAt(0) === '[' && rest.charAt(1) === '[') {
+            match = rest.match(/^\[\[([^\[\]\n]+)\]\]/);
+            if (match) {
+                fullLen = match[0].length;
+                const renderedWiki = componentState?.components?.[componentState.index];
+                const wikiTarget = Object.values(STATE.note_map || {}).find(note =>
+                    note.title && note.title.toLowerCase() === match[1].toLowerCase()
+                );
+                if (wikiTarget && renderedWiki?.type === 'wikilink' && renderedWiki.text !== match[1]) {
+                    consumeRenderedComponent('wikilink', i, fullLen);
+                    i += fullLen;
+                    continue;
+                }
+                if (wikiTarget && renderedWiki?.type === 'wikilink') componentState.index++;
+                map[i] = -1; map[i + 1] = -1;
+                content = match[1];
+                contentStart = i + 2;
+                closePos = contentStart + content.length;
+                map[closePos] = -1; map[closePos + 1] = -1;
+                for (c = 0; c < content.length; c++) map[contentStart + c] = renderedPos++;
+                i = closePos + 2;
+                continue;
+            }
+        }
+
+        // 2. Markdown link: [text](url)
+        if (rest.charAt(0) === '[') {
+            match = rest.match(/^\[([^\[\]\n]+)\]\((https?:\/\/[^\s\)]+)\)/);
+            if (match) {
+                fullLen = match[0].length;
+                content = match[1];
+                map[i] = -1;
+                mergeInnerMap(buildPositionMap(content, depth + 1), i + 1, content.length);
+                var postContentStart = i + 1 + content.length;
+                for (c = postContentStart; c < i + fullLen; c++) map[c] = -1;
+                i = i + fullLen;
+                continue;
+            }
+        }
+
+        // 3. Wrapping components: recursively process inner content
+        // [copy]inner[/copy] (valueless wrapping)
+        if (rest.startsWith('[copy]')) {
+            const openLength = '[copy]'.length;
+            const closeTag = '[/copy]';
+            const closeIndex = findPositionMapWrapperEnd(rest, '[copy]', closeTag, openLength);
+            if (closeIndex !== -1) {
+                fullLen = closeIndex + closeTag.length;
+                content = rest.substring(openLength, closeIndex);
+                contentStart = i + openLength;
+                for (c = i; c < contentStart; c++) map[c] = -1;
+                var innerMap = buildPositionMap(content, depth + 1, componentState);
+                mergeInnerMap(innerMap, contentStart, content.length);
+                for (c = contentStart + content.length; c < i + fullLen; c++) map[c] = -1;
+                i = i + fullLen;
+                continue;
+            }
+        }
+
+        // [color:value]inner[/color], [size:value]inner[/size], [bg:value]inner[/bg]
+        match = rest.match(/^\[(color|colour|size|bg):([^\]\n]+)\]/);
+        if (match) {
+            const wrapperType = match[1];
+            const closeTag = `[/${wrapperType}]`;
+            const closeIndex = findPositionMapWrapperEnd(
+                rest,
+                `[${wrapperType}:`,
+                closeTag,
+                match[0].length
+            );
+            if (closeIndex !== -1) {
+                fullLen = closeIndex + closeTag.length;
+                content = rest.substring(match[0].length, closeIndex);
+                contentStart = i + match[0].length;
+                for (c = i; c < contentStart; c++) map[c] = -1;
+                var innerMap2 = buildPositionMap(content, depth + 1, componentState);
+                mergeInnerMap(innerMap2, contentStart, content.length);
+                for (c = contentStart + content.length; c < i + fullLen; c++) map[c] = -1;
+                i = i + fullLen;
+                continue;
+            }
+        }
+
+        // 4. Self-closing components whose visible content is a substring of the raw tag
+        // [tag:value|color] -> value
+        match = rest.match(/^\[tag:([^|\]\n]+)(?:\|[^|\]\n]+)?\]/);
+        if (match) {
+            fullLen = match[0].length;
+            visible = match[1];
+            visStart = match[0].indexOf(visible);
+            if (visStart === -1) visStart = 5; // after "[tag:"
+            for (c = i; c < i + visStart; c++) map[c] = -1;
+            mergeInnerMap(buildPositionMap(visible, depth + 1), i + visStart, visible.length);
+            for (c = i + visStart + visible.length; c < i + fullLen; c++) map[c] = -1;
+            i = i + fullLen;
+            continue;
+        }
+
+        // [progress:value|label] -> label
+        match = rest.match(/^\[progress:([^|\]\n]+)\|([^\]\n]+)\]/);
+        if (match) {
+            fullLen = match[0].length;
+            visible = match[2];
+            visStart = match[0].indexOf(visible);
+            if (visStart === -1) visStart = match[0].indexOf('|') + 1;
+            for (c = i; c < i + visStart; c++) map[c] = -1;
+            mergeInnerMap(buildPositionMap(visible, depth + 1), i + visStart, visible.length);
+            for (c = i + visStart + visible.length; c < i + fullLen; c++) map[c] = -1;
+            i = i + fullLen;
+            continue;
+        }
+
+        // [divider:label] -> label
+        match = rest.match(/^\[divider:([^\]\n]+)\]/);
+        if (match) {
+            fullLen = match[0].length;
+            visible = match[1];
+            visStart = match[0].indexOf(visible);
+            if (visStart === -1) visStart = 9; // after "[divider:"
+            for (c = i; c < i + visStart; c++) map[c] = -1;
+            mergeInnerMap(buildPositionMap(visible, depth + 1), i + visStart, visible.length);
+            for (c = i + visStart + visible.length; c < i + fullLen; c++) map[c] = -1;
+            i = i + fullLen;
+            continue;
+        }
+
+        // [link:url|label] -> label, or url if no label
+        match = rest.match(/^\[link:([^\|\]\n]+)(?:\|([^\]\n]+))?\]/);
+        if (match) {
+            fullLen = match[0].length;
+            visible = match[2] || match[1];
+            visStart = match[0].indexOf(visible);
+            if (visStart === -1) visStart = match[2] ? match[0].indexOf('|') + 1 : 6; // after "[link:" or after "|"
+            for (c = i; c < i + visStart; c++) map[c] = -1;
+            mergeInnerMap(buildPositionMap(visible, depth + 1), i + visStart, visible.length);
+            for (c = i + visStart + visible.length; c < i + fullLen; c++) map[c] = -1;
+            i = i + fullLen;
+            continue;
+        }
+
+        // 5. Dynamic components use their actual rendered text length. Clicks within
+        // the generated label resolve to the opening bracket of the source tag.
+        match = rest.match(/^\[(date|note|copy|file|image|embed|bookmarks|iframe):([^\]\n]*)\]/);
+        if (match) {
+            fullLen = match[0].length;
+            const sourceValue = match[2].split('|')[0].trim();
+            if (consumeRenderedComponent(match[1], i, fullLen, sourceValue)) {
+                i = i + fullLen;
+                continue;
+            }
+        }
+
+        // 6. Markdown: bold, strikethrough, italic, inline code
+        // Bold: **content**
+        match = rest.match(/^\*\*(.*?)\*\*/);
+        if (match) {
+            map[i] = -1; map[i + 1] = -1;
+            content = match[1];
+            contentStart = i + 2;
+            closePos = contentStart + content.length;
+            map[closePos] = -1; map[closePos + 1] = -1;
+            for (c = 0; c < content.length; c++) map[contentStart + c] = renderedPos++;
+            i = closePos + 2;
+            continue;
+        }
+
+        // Strikethrough: ~~content~~
+        match = rest.match(/^~~(.*?)~~/);
+        if (match) {
+            map[i] = -1; map[i + 1] = -1;
+            content = match[1];
+            contentStart = i + 2;
+            closePos = contentStart + content.length;
+            map[closePos] = -1; map[closePos + 1] = -1;
+            for (c = 0; c < content.length; c++) map[contentStart + c] = renderedPos++;
+            i = closePos + 2;
+            continue;
+        }
+
+        // Italic: *content* (single asterisk)
+        match = rest.match(/^\*(.*?)\*/);
+        if (match) {
+            map[i] = -1;
+            content = match[1];
+            contentStart = i + 1;
+            closePos = contentStart + content.length;
+            map[closePos] = -1;
+            for (c = 0; c < content.length; c++) map[contentStart + c] = renderedPos++;
+            i = closePos + 1;
+            continue;
+        }
+
+        // Inline code: `content`
+        match = rest.match(/^`(.*?)`/);
+        if (match) {
+            map[i] = -1;
+            content = match[1];
+            contentStart = i + 1;
+            closePos = contentStart + content.length;
+            map[closePos] = -1;
+            for (c = 0; c < content.length; c++) map[contentStart + c] = renderedPos++;
+            i = closePos + 1;
+            continue;
+        }
+
+        // Regular character: 1:1
+        map[i] = renderedPos++;
+        i++;
+    }
+
+    map.renderedLength = renderedPos;
+    return map;
+}
+
+function createRenderedComponentState(renderedEl) {
+    const selector = [
+        '.note-date-tag',
+        '.note-copy-trigger',
+        'a.note-ref[download]',
+        '.note-link-trigger'
+    ].join(',');
+
+    const components = Array.from(renderedEl.querySelectorAll(selector)).map(el => {
+        let type = null;
+        if (el.classList.contains('note-date-tag')) type = 'date';
+        else if (el.classList.contains('note-copy-trigger')) type = 'copy';
+        else if (el.matches('a.note-ref[download]')) type = 'file';
+        else if ((el.getAttribute('title') || '').startsWith('Jump to Note:')) type = 'note';
+        else if (el.classList.contains('note-link-trigger')) type = 'wikilink';
+        return {
+            type,
+            length: (el.textContent || '').length,
+            text: el.textContent || '',
+            targetId: el.dataset.targetId || null
+        };
+    }).filter(component => component.type);
+
+    return { components, index: 0 };
+}
+
+/**
+ * Looks up a rendered character offset in a position map and returns the
+ * corresponding raw text offset.
+ * @param {Array<number>} map - The position map from buildPositionMap.
+ * @param {number} renderedOffset - A character offset within the rendered text.
+ * @returns {number} The corresponding character offset in the raw text.
+ */
+function mapRenderedToRawOffset(map, renderedOffset) {
+    const componentRange = (map.componentRanges || []).find(range =>
+        renderedOffset >= range.renderedStart && renderedOffset < range.renderedEnd
+    );
+    if (componentRange) return componentRange.rawStart;
+
+    if (renderedOffset <= 0) {
+        for (var i = 0; i < map.length; i++) {
+            if (map[i] >= 0) return i;
+        }
+        return 0;
+    }
+    for (var i = 0; i < map.length; i++) {
+        if (map[i] >= renderedOffset) return i;
+    }
+    return map.length;
+}
+
+/**
+ * Determines the structural prefix lengths for a line element (heading, bullet,
+ * checkbox) where the raw text includes syntax markers absent from the rendered
+ * element's text content.
+ * @param {HTMLElement} lineEl - The DOM element with [data-line] attribute.
+ * @param {string} rawText - The raw line text including structural syntax.
+ * @returns {{rawPrefix: number, renderedPrefix: number}} Prefix lengths in raw
+ *   and rendered text respectively.
+ */
+function getStructuralPrefix(lineEl, rawText) {
+    if (lineEl.classList.contains('note-h1') || lineEl.classList.contains('note-h2') || lineEl.classList.contains('note-h3')) {
+        var m = rawText.match(/^(\s*#{1,3} +)/);
+        return { rawPrefix: m ? m[0].length : 0, renderedPrefix: 0 };
+    }
+    if (lineEl.classList.contains('note-bullet-row')) {
+        var indMatch = rawText.match(/^(\s*)/);
+        var rawIndent = indMatch ? indMatch[1].length : 0;
+        var m = rawText.match(/^\s*[-*•] +/);
+        return { rawPrefix: m ? m[0].length : rawIndent + 2, renderedPrefix: 1 };
+    }
+    if (lineEl.classList.contains('checkbox-row-inline')) {
+        var m = rawText.match(/^(\s*(?:[-*]\s+|\d+\.\s+)?\[[\sxX]?\]\s*)/);
+        return { rawPrefix: m ? m[0].length : 0, renderedPrefix: 0 };
+    }
+    if (lineEl.querySelector('.note-number')) {
+        var numberMatch = rawText.match(/^(\s*)(\d+)\.\s+/);
+        const renderedPrefix = numberMatch
+            ? numberMatch[1].length + numberMatch[2].length + 2
+            : 0;
+        return { rawPrefix: numberMatch ? numberMatch[0].length : 0, renderedPrefix };
+    }
+    return { rawPrefix: 0, renderedPrefix: 0 };
+}
+
+/**
+ * Computes the raw-text cursor position corresponding to a mouse click on a
+ * single-line rendered element. Used by editLine for precise inline editing.
+ * Handles structural prefixes, inline markdown, wikilinks, markdown links, and
+ * inline components ([tag:], [color:]...[/color], [size:], [progress:], [divider:],
+ * [link:]). Falls back to proportional mapping when caretRangeFromPoint is unavailable.
+ * @param {MouseEvent} e - The click event.
+ * @param {HTMLElement} renderedEl - The clicked rendered element with [data-line].
+ * @param {string} rawText - The raw text value for the line.
+ * @returns {number} The cursor offset to use with setSelectionRange.
+ */
+function computeCursorOffset(e, renderedEl, rawText) {
+    var renderedText = renderedEl.textContent || '';
+
+    var range = getCaretRangeAtPoint(e);
+    if (!range) {
+        if (renderedText.length > 0) {
+            var rect = renderedEl.getBoundingClientRect();
+            var ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
+            return Math.round(ratio * rawText.length);
+        }
+        return rawText.length;
+    }
+
+    var renderedOffset = getTextOffsetInElement(renderedEl, range);
+    if (renderedOffset === null) {
+        if (renderedText.length > 0) {
+            var rect = renderedEl.getBoundingClientRect();
+            var ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
+            return Math.round(ratio * rawText.length);
+        }
+        return rawText.length;
+    }
+
+    var prefix = getStructuralPrefix(renderedEl, rawText);
+
+    if (renderedOffset < prefix.renderedPrefix && prefix.renderedPrefix > 0) {
+        return Math.round(renderedOffset * prefix.rawPrefix / prefix.renderedPrefix);
+    }
+
+    var contentRenderedOffset = renderedOffset - prefix.renderedPrefix;
+    var contentRaw = rawText.substring(prefix.rawPrefix);
+    var map = buildPositionMap(contentRaw, 0, createRenderedComponentState(renderedEl));
+    var contentMapped = mapRenderedToRawOffset(map, contentRenderedOffset);
+
+    return prefix.rawPrefix + Math.min(contentMapped, contentRaw.length);
+}
+
+/**
+ * Computes the raw-text cursor position for a multi-line block element (table,
+ * code fence, callout, etc.). Table clicks resolve through the rendered row/cell
+ * coordinates and then use the inline position map within that exact source cell.
+ * Other block types fall back to proportional mapping.
+ * @param {MouseEvent} e - The click event.
+ * @param {HTMLElement} renderedEl - The clicked rendered element with [data-line-start].
+ * @param {string} rawText - The raw block text for the textarea.
+ * @returns {number|null} The cursor offset, or null if the position cannot be determined.
+ */
+function computeBlockCursorOffset(e, renderedEl, rawText) {
+    var range = getCaretRangeAtPoint(e);
+    if (!range) return null;
+
+    var renderedText = renderedEl.textContent || '';
+    var proportionalPos = null;
+    var renderedOffset = getTextOffsetInElement(renderedEl, range);
+    if (renderedOffset !== null && renderedText.length > 0) {
+        proportionalPos = Math.round(renderedOffset * rawText.length / renderedText.length);
+    }
+
+    var cell = range.startContainer;
+    if (cell && cell.nodeType === 3) cell = cell.parentElement;
+    var clickedEl = cell;
+    cell = cell ? cell.closest('th, td') : null;
+
+    function splitTableCells(line) {
+        const segments = [];
+        let depth = 0;
+        let start = 0;
+        for (let index = 0; index <= line.length; index++) {
+            const char = line[index];
+            if (char === '[') depth++;
+            else if (char === ']') depth = Math.max(0, depth - 1);
+            if (index === line.length || (char === '|' && depth === 0)) {
+                const rawCell = line.substring(start, index);
+                const leading = rawCell.search(/\S|$/);
+                segments.push({
+                    text: rawCell.trim(),
+                    start: start + leading
+                });
+                start = index + 1;
+            }
+        }
+        if (segments[0]?.text === '') segments.shift();
+        if (segments[segments.length - 1]?.text === '') segments.pop();
+        return segments;
+    }
+
+    function resolveTableCellOffset() {
+        if (!cell || !/^\s*\[table(?::[^\]]*)?\]\s*(?:\n|$)/i.test(rawText)) return null;
+
+        const lines = rawText.split('\n');
+        const lineOffsets = [];
+        let sourceOffset = 0;
+        lines.forEach(line => {
+            lineOffsets.push(sourceOffset);
+            sourceOffset += line.length + 1;
+        });
+
+        const closeLine = lines.findIndex((line, index) => index > 0 && /^\s*\[\/table\]\s*$/i.test(line));
+        const contentEnd = closeLine === -1 ? lines.length : closeLine;
+        const records = [];
+        for (let lineIndex = 1; lineIndex < contentEnd; lineIndex++) {
+            const text = lines[lineIndex].trim();
+            if (!text) continue;
+            records.push({
+                lineIndex,
+                text,
+                trimStart: lines[lineIndex].indexOf(text)
+            });
+        }
+
+        const separatorIndex = records.findIndex(record => /^[\-|: ]+$/.test(record.text));
+        const header = separatorIndex !== -1 ? records.slice(0, separatorIndex) : [];
+        const body = separatorIndex !== -1 ? records.slice(separatorIndex + 1) : records;
+        const row = cell.closest('tr');
+        const section = row?.parentElement;
+        const rowIndex = row && section ? Array.from(section.rows).indexOf(row) : -1;
+        const record = cell.closest('thead')
+            ? header[0]
+            : body[rowIndex];
+        if (!record) return null;
+
+        const cellIndex = row ? Array.from(row.cells).indexOf(cell) : -1;
+        const sourceCell = splitTableCells(record.text)[cellIndex];
+        if (!sourceCell) return null;
+
+        const structuralEl = cell.querySelector?.('[data-line]') || null;
+        const mappingEl = structuralEl && structuralEl.contains(range.startContainer)
+            ? structuralEl
+            : cell;
+        const localRenderedOffset = getTextOffsetInElement(mappingEl, range);
+        if (localRenderedOffset === null) return null;
+
+        const prefix = structuralEl
+            ? getStructuralPrefix(structuralEl, sourceCell.text)
+            : { rawPrefix: 0, renderedPrefix: 0 };
+        const contentRaw = sourceCell.text.substring(prefix.rawPrefix);
+        const cellMap = buildPositionMap(
+            contentRaw,
+            0,
+            createRenderedComponentState(mappingEl)
+        );
+        const contentRenderedOffset = Math.max(0, localRenderedOffset - prefix.renderedPrefix);
+        const localRawOffset = prefix.rawPrefix
+            + mapRenderedToRawOffset(cellMap, contentRenderedOffset);
+        return lineOffsets[record.lineIndex]
+            + record.trimStart
+            + sourceCell.start
+            + Math.min(localRawOffset, sourceCell.text.length);
+    }
+
+    const tableCellOffset = resolveTableCellOffset();
+    if (tableCellOffset !== null) return tableCellOffset;
+
+    function findBestMatch(text, minLen) {
+        if (!text || text.length < minLen) return -1;
+        var bestIdx = -1;
+        var bestDist = Infinity;
+        var searchFrom = 0;
+        while (searchFrom < rawText.length) {
+            var idx = rawText.indexOf(text, searchFrom);
+            if (idx === -1) break;
+            var dist = proportionalPos !== null ? Math.abs(idx - proportionalPos) : idx;
+            if (dist < bestDist) { bestIdx = idx; bestDist = dist; }
+            searchFrom = idx + 1;
+        }
+        return bestIdx;
+    }
+
+    // Prefer the text of the exact clicked sub-element (e.g. a tag span inside a cell).
+    if (clickedEl && clickedEl !== cell) {
+        var clickedText = clickedEl.textContent.trim();
+        // For very short text (single char), only use it when we have a proportional hint.
+        var minLen = (proportionalPos !== null) ? 1 : 2;
+        var idx = findBestMatch(clickedText, minLen);
+        if (idx !== -1) return idx;
+    }
+
+    // Fall back to the full cell text.
+    if (cell) {
+        var cellText = cell.textContent.trim();
+        var idx = findBestMatch(cellText, 2);
+        if (idx !== -1) return idx;
+    }
+
+    if (proportionalPos !== null) return proportionalPos;
+    return null;
 }
 
 function focusInlineEditor(editor, selectText = false) {
@@ -3647,6 +4606,7 @@ function refreshClickToEditViewer(noteId, note, viewer) {
 
     const scrollTop = targetViewer.scrollTop;
     targetViewer.innerHTML = formatNoteContent(note.content || '', noteId);
+    if (typeof fitNoteHeight === 'function') fitNoteHeight(noteId);
     targetViewer.scrollTop = scrollTop;
 
     const textarea = el?.querySelector('.note-text-section > textarea[data-action="note-keydown"]');
@@ -3655,7 +4615,15 @@ function refreshClickToEditViewer(noteId, note, viewer) {
     return true;
 }
 
-function editLine(lineEl, noteId) {
+/**
+ * Enters inline edit mode for a single line by replacing the rendered element
+ * with an input. Positions the cursor at the click point using the
+ * computeCursorOffset helper when a click event is provided.
+ * @param {HTMLElement} lineEl - The rendered line element with [data-line].
+ * @param {number|string} noteId - The note's id.
+ * @param {MouseEvent} [clickEvent] - The click event that triggered editing.
+ */
+function editLine(lineEl, noteId, clickEvent) {
     const note = STATE.notes.find(n => n.id == noteId);
     if (!note) return;
 
@@ -3663,15 +4631,27 @@ function editLine(lineEl, noteId) {
     const lines = (note.content || '').split('\n');
     if (isNaN(lineIndex) || lineIndex < 0 || lineIndex >= lines.length) return;
 
+    const rawText = lines[lineIndex];
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'note-line-editor';
-    input.value = lines[lineIndex];
+    input.value = rawText;
     input.dataset.lineIndex = lineIndex;
     input.dataset.noteId = noteId;
 
+    var cursorPos = null;
+    if (clickEvent) {
+        cursorPos = computeCursorOffset(clickEvent, lineEl, rawText);
+    }
+
     lineEl.replaceWith(input);
-    focusInlineEditor(input, true);
+
+    if (cursorPos !== null && cursorPos >= 0) {
+        try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
+        input.setSelectionRange(cursorPos, cursorPos);
+    } else {
+        focusInlineEditor(input, true);
+    }
 
     const viewer = document.getElementById('note-' + noteId)?.querySelector('.note-text-viewer');
     let finished = false;
@@ -3698,7 +4678,15 @@ function editLine(lineEl, noteId) {
         }
         if (e.key === 'Escape') {
             e.preventDefault();
-            finish(false);
+            e.stopPropagation();
+            var editBtn = document.querySelector('#note-' + noteId + ' .btn-icon-edit');
+            if (editBtn && typeof toggleInlineEdit === 'function') {
+                cleanup();
+                finished = true;
+                toggleInlineEdit(editBtn, noteId, true);
+            } else {
+                finish(false);
+            }
         }
     };
 
@@ -3706,7 +4694,15 @@ function editLine(lineEl, noteId) {
     input.addEventListener('keydown', handleKey);
 }
 
-function editBlock(blockEl, noteId) {
+/**
+ * Enters edit mode for a multi-line block (table, code fence, callout, etc.)
+ * by replacing the rendered element with a textarea. Uses proportional cursor
+ * positioning via computeBlockCursorOffset when a click event is provided.
+ * @param {HTMLElement} blockEl - The rendered block element with [data-line-start].
+ * @param {number|string} noteId - The note's id.
+ * @param {MouseEvent} [clickEvent] - The click event that triggered editing.
+ */
+function editBlock(blockEl, noteId, clickEvent) {
     const note = STATE.notes.find(n => n.id == noteId);
     if (!note) return;
 
@@ -3720,23 +4716,41 @@ function editBlock(blockEl, noteId) {
     if (isNaN(endLine) || endLine < startLine) return;
     endLine = Math.min(endLine, rawLines.length - 1);
 
+    const rawText = rawLines.slice(startLine, endLine + 1).join('\n');
     const textarea = document.createElement('textarea');
     textarea.className = 'note-block-editor';
-    textarea.value = rawLines.slice(startLine, endLine + 1).join('\n');
+    textarea.value = rawText;
     textarea.dataset.lineStart = startLine;
     textarea.dataset.lineEnd = endLine;
     textarea.dataset.noteId = noteId;
     textarea.rows = Math.max(endLine - startLine + 1, 3);
 
+    var cursorPos = null;
+    if (clickEvent) {
+        cursorPos = computeBlockCursorOffset(clickEvent, blockEl, rawText);
+    }
+
     blockEl.replaceWith(textarea);
-    focusInlineEditor(textarea);
+
+    if (cursorPos !== null && cursorPos >= 0) {
+        try { textarea.focus({ preventScroll: true }); } catch (_) { textarea.focus(); }
+        textarea.setSelectionRange(cursorPos, cursorPos);
+    } else {
+        focusInlineEditor(textarea);
+    }
     resizeBlockEditorToContent(textarea);
-    requestAnimationFrame(() => resizeBlockEditorToContent(textarea));
+    requestAnimationFrame(() => {
+        resizeBlockEditorToContent(textarea);
+        fitNoteHeight(noteId);
+    });
 
     const viewer = document.getElementById('note-' + noteId)?.querySelector('.note-text-viewer');
     let finished = false;
 
-    const handleInput = () => resizeBlockEditorToContent(textarea);
+    const handleInput = () => {
+        resizeBlockEditorToContent(textarea);
+        fitNoteHeight(noteId);
+    };
     const cleanup = () => {
         textarea.removeEventListener('blur', handleCommit);
         textarea.removeEventListener('keydown', handleKey);
@@ -3760,7 +4774,15 @@ function editBlock(blockEl, noteId) {
         }
         if (e.key === 'Escape') {
             e.preventDefault();
-            finish(false);
+            e.stopPropagation();
+            var editBtn = document.querySelector('#note-' + noteId + ' .btn-icon-edit');
+            if (editBtn && typeof toggleInlineEdit === 'function') {
+                cleanup();
+                finished = true;
+                toggleInlineEdit(editBtn, noteId, true);
+            } else {
+                finish(false);
+            }
         }
     };
 
@@ -4086,6 +5108,10 @@ async function copyNoteLink(id) {
 function handleCanvasTouchStart(e) {
     const wrapper = STATE.wrapperEl;
     if (!wrapper) return;
+    if ((STATE.pickedNoteId || STATE.resizingContext) && e.touches.length > 1) {
+        if (e.cancelable) e.preventDefault();
+        return;
+    }
 
     if (e.touches.length === 1) {
         // Single Finger: Panning (Matches handleCanvasMouseDown)
@@ -4108,6 +5134,17 @@ function handleCanvasTouchStart(e) {
         if (resizeHandle) {
             handleResizeStart(e, resizeHandle);
             return;
+        }
+
+        // Touch edit-mode drag: allow drag handles through the interactive guard.
+        const noteEl = e.target.closest('.sticky-note');
+        if (noteEl && noteEl.classList.contains('is-editing')) {
+            const dragHandle = e.target.closest('.note-drag-handle-container');
+            if (dragHandle) {
+                e.preventDefault();
+                if (typeof toggleStickyMove === 'function') toggleStickyMove(e, noteEl.dataset.id);
+                return;
+            }
         }
 
         if (isInteractive) return;
@@ -4600,6 +5637,10 @@ window.handleCanvasTouchStart  = handleCanvasTouchStart;
 window.handleCanvasTouchMove   = handleCanvasTouchMove;
 window.handleCanvasTouchEnd    = handleCanvasTouchEnd;
 window.handleGlobalKeydown     = handleGlobalKeydown;
+window.fitNoteHeight           = fitNoteHeight;
+window.handleNoteContentLoad   = handleNoteContentLoad;
+window.handleNoteContentToggle = handleNoteContentToggle;
+window.hideFloatingActionsRail = hideFloatingActionsRail;
 
 // ── Edit Ribbon ──────────────────────────────────────────────────────────────
 
