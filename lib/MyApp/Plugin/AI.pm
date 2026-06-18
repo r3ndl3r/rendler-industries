@@ -69,15 +69,18 @@ sub _opencode_messages {
 
 sub _opencode_payload {
     my (%args) = @_;
-    my $max_tokens = $args{max_tokens} // 2048;
-    $max_tokens = 128 if $max_tokens < 128;
 
     my $payload = {
         model       => $args{model},
         messages    => _opencode_messages(%args),
         temperature => $args{temp} // 0.7,
-        max_tokens  => $max_tokens
     };
+
+    if (defined $args{max_tokens}) {
+        my $max_tokens = $args{max_tokens};
+        $max_tokens = 128 if $max_tokens < 128;
+        $payload->{max_tokens} = $max_tokens;
+    }
 
     if (($args{response_format} // '') eq 'application/json') {
         $payload->{response_format} = { type => 'json_object' };
@@ -310,10 +313,12 @@ sub ai_prompt_sync {
         contents => $args{contents} || [],
         generationConfig => {
             temperature        => $args{temp} // 0.7,
-            maxOutputTokens    => $args{max_tokens} // 2048,
             response_mime_type => $args{response_format} // 'text/plain'
         }
     };
+    if (defined $args{max_tokens}) {
+        $payload->{generationConfig}{maxOutputTokens} = $args{max_tokens};
+    }
     $payload->{tools} = [{ google_search => {} }] if $args{web_search};
     $payload->{tools} = $args{tools} if $args{tools};
     $payload->{system_instruction} = { parts => [{ text => $args{system} }] } if $args{system};
@@ -351,10 +356,12 @@ sub _gemini_prompt {
         contents => $args{contents} || [],
         generationConfig => {
             temperature        => $args{temp} // 0.7,
-            maxOutputTokens    => $args{max_tokens} // 2048,
             response_mime_type => $args{response_format} // 'text/plain'
         }
     };
+    if (defined $args{max_tokens}) {
+        $payload->{generationConfig}{maxOutputTokens} = $args{max_tokens};
+    }
 
     $payload->{tools} = $args{tools} if $args{tools};
     $payload->{tools} = [{ google_search => {} }] if $args{web_search};
