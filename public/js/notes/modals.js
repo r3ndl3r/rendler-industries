@@ -1,7 +1,13 @@
 // /public/js/notes/modals.js
 
 /**
- * View Note Modal Lifecycle.
+ * Modals Module: Lifecycle management for all overlays and form population.
+ * Handles create, view, search, and settings modals including draft management,
+ * clipboard paste handling, and keyboard shortcut registration.
+ */
+
+/**
+ * Populates and opens the view-note modal with the note's title and rendered content.
  * @param {number|string} id - The note ID.
  * @returns {void}
  */
@@ -173,7 +179,9 @@ function closeCreateModal() {
 }
 
 /**
- * PDF Viewer Logic
+ * Sets the PDF viewer iframe source to the given blob and opens the modal.
+ * @param {string} blobId - The blob identifier.
+ * @param {string} filename - The display filename.
  */
 function openPDFViewer(blobId, filename) {
     if (STATE.isInitializing) return;
@@ -1589,7 +1597,8 @@ async function handleSearchResultClick(id) {
 
 
 /**
- * ACL Discovery Engine: Facilitates adding new collaborators to a board.
+ * Sets up the user-search input with debounced autocomplete for finding
+ * and adding board collaborators.
  */
 function setupUserSearch() {
     const input = document.getElementById('user-search-input');
@@ -1697,8 +1706,11 @@ async function renderBinList() {
         container.innerHTML = '<div class="bin-error">Failed to load recycle bin</div>';
     }
 }
+
 /**
- * Unified Creation Modal
+ * Populates and opens the create/edit note modal.
+ * Handles new notes, existing note edits, and clipboard-paste content.
+ * Sets up the elastic textarea, attachment footer, and title input focus.
  * @param {string} type - Note type.
  * @param {string|null} data - Initial content or data URL.
  * @param {number|string|null} editId - Optional ID if editing.
@@ -1869,10 +1881,6 @@ async function restoreNote(id) {
 }
 
 /**
- * Confirmation logic for permanent deletion of a specific archived note.
- * @param {number} id - Target note ID.
- */
-/**
  * Prompts the user to permanently delete every note in their recycle bin.
  * Reads the current rendered item count to include in the confirmation message.
  * @returns {void}
@@ -1898,6 +1906,10 @@ function confirmEmptyBin() {
     });
 }
 
+/**
+ * Confirmation logic for permanent deletion of a specific archived note.
+ * @param {number} id - Target note ID.
+ */
 function confirmNotePurge(id) {
     window.showConfirmModal({
         title: 'Permanent Delete',
@@ -2091,8 +2103,8 @@ function closeCanvasQuickSwitch() {
 }
 
 /**
- * Header Interactions Initializer.
- * Binds all header-level actions to prevent legacy inline onclick hooks.
+ * Binds click listeners for header-level controls: canvas switcher,
+ * close button, level-up/level-down navigation, and level display click.
  */
 function setupHeaderInteractions() {
     // 1. Branding Pill (Canvas Switcher)
