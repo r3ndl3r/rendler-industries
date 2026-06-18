@@ -168,7 +168,7 @@
     backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     border-radius: 20px;
-    padding: 1.25rem 0.75rem 0rem; /* Zero bottom padding for maximum card density */
+    padding: 1.5rem 1rem 1rem;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -188,7 +188,7 @@
     .weather-card {
         flex: 0 0 calc(100vw - 1rem);
         margin-left: 0.5rem;
-        padding: 1.5rem 0.5rem 0; /* Anchor footer to bottom of card */
+        padding: 1.5rem 0.75rem 1rem;
         scroll-snap-align: center;
         min-height: auto; /* Dynamic height based on content density */
         margin-bottom: 0.5rem;
@@ -638,7 +638,7 @@
     }
 
     .weather-card {
-        padding: 1.5rem 0.5rem 0; /* Anchor footer to bottom of card */
+        padding: 1.5rem 0.75rem 1rem;
     }
 
     .weather-stats {
