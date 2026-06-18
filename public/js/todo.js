@@ -25,7 +25,8 @@ const CONFIG = {
 };
 
 let STATE = {
-    todos: []
+    todos: [],
+    initialized: false
 };
 
 /**
@@ -90,8 +91,9 @@ async function loadState(force = false) {
         const data = await apiGet('/todo/api/state');
         
         if (data && data.success) {
-            if (JSON.stringify(data.todos) !== JSON.stringify(STATE.todos)) {
+            if (!STATE.initialized || JSON.stringify(data.todos) !== JSON.stringify(STATE.todos)) {
                 STATE.todos = data.todos;
+                STATE.initialized = true;
                 renderTable();
             }
         } else if (data && data.error) {
