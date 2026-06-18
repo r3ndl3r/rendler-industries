@@ -957,7 +957,6 @@ STYLE_GUIDE
     $c->ai_prompt(
         contents        => [{ role => 'user', parts => [{ text => $prompt }] }],
         system          => 'You are a senior dashboard architect formatting notes for a personal Rendler dashboard. Return only the formatted note body, never JSON.',
-        max_tokens      => 8192,
         timeout         => 300,
         app_profile     => 'notes_format'
     )->then(sub {
