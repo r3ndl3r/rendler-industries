@@ -1,5 +1,11 @@
 // /public/js/notes/rendering.js
 
+/**
+ * Rendering Module: DOM generation, markdown parsing, and UI refresh orchestration.
+ * Responsible for creating note DOM elements, rendering formatted note content,
+ * and managing display updates including attachment reels and hero images.
+ */
+
 // Persistence Layer for Error Reporting: Prevents console spam during heartbeat cycles
 window._renderErrors = new Set();
 
@@ -84,18 +90,25 @@ function renderUI() {
                 const curX = parseInt(existing.style.left);
                 const curY = parseInt(existing.style.top);
                 const curW = parseInt(existing.style.width);
-                const curH = parseInt(existing.style.height);
                 const curZ = parseInt(existing.style.zIndex);
                 const curD = existing.classList.contains('is-externally-locked');
                 const isLocked = !!(note.locked_by_session_id && note.locked_by_session_id !== STATE.sessionId);
+                const wasFenceNote = existing.classList.contains('is-fence-note');
+                const fenceNote = isFenceNote(note);
+                const widthChanged = !!(note.width && curW != note.width);
 
                 if (curX != note.x) existing.style.left = `${note.x}px`;
                 if (curY != note.y) existing.style.top = `${note.y}px`;
-                if (note.width  && curW != note.width)  existing.style.width  = `${note.width}px`;
-                if (note.height && curH != note.height) existing.style.height = `${note.height}px`;
+                if (widthChanged) existing.style.width = `${note.width}px`;
+                if (fenceNote && note.height && parseInt(existing.style.height) != note.height) {
+                    existing.style.height = `${note.height}px`;
+                }
                 const zIndex = getNoteZIndex(note);
-                existing.classList.toggle('is-fence-note', isFenceNote(note));
+                existing.classList.toggle('is-fence-note', fenceNote);
                 if (curZ != zIndex) existing.style.zIndex = zIndex;
+                if ((widthChanged || (wasFenceNote && !fenceNote)) && !fenceNote && typeof fitNoteHeight === 'function') {
+                    fitNoteHeight(note.id);
+                }
 
                 // --- Bulk Selection Persistence ---
                 // Re-apply visual selection markers lost during surgical reconciliation.
@@ -197,6 +210,7 @@ function renderUI() {
                         existing.dataset.lastContent = note.content;
                         // State Synchronization: root element dashboard classes based on current content
                         existing.classList.toggle('is-dashboard-note', isDashboard);
+                        if (typeof fitNoteHeight === 'function') fitNoteHeight(note.id);
                     }
                 } 
                 // --- Content & Identity Reconciliation (Priority 2) ---
@@ -206,7 +220,9 @@ function renderUI() {
                     const textarea = existing.querySelector('textarea');
                     if (textarea) textarea.value = note.content || '';
                     existing.dataset.lastContent = note.content;
-                    
+
+                    if (typeof fitNoteHeight === 'function') fitNoteHeight(note.id);
+
                     // Synchronize state-driven classes across the root and child segments
                     existing.classList.toggle('is-dashboard-note', isDashboard);
                 }
@@ -243,6 +259,8 @@ function renderUI() {
                 const noteEl = createNoteElement(note, canEdit);
                 canvas.appendChild(noteEl);
 
+                if (typeof fitNoteHeight === 'function') fitNoteHeight(note.id);
+
                 if (STATE.editMode && canEdit) {
                     // Resizing is now handled via centralized delegation in interactions.js
                 }
@@ -273,6 +291,10 @@ function renderUI() {
             }, 500);
         }
     });
+
+    if (STATE.floatingRailNoteId && !activeIds.has(String(STATE.floatingRailNoteId))) {
+        if (typeof hideFloatingActionsRail === 'function') hideFloatingActionsRail();
+    }
 
     // Radar Integration: Update the Birds-Eye perspective in atomic sync
     if (typeof updateRadar === 'function') updateRadar();
@@ -353,7 +375,7 @@ function createNoteElement(note, canEdit = true) {
     div.style.left = `${note.x}px`;
     div.style.top = `${note.y}px`;
     if (note.width)  div.style.width = `${note.width}px`;
-    if (note.height) div.style.height = `${note.height}px`;
+    if (note.height && isFenceNote(note)) div.style.height = `${note.height}px`;
     div.style.zIndex = getNoteZIndex(note);
 
     const contentHtml = generateNoteContentHtml(note, canEdit, isDashboard);
@@ -409,12 +431,7 @@ function createNoteElement(note, canEdit = true) {
         <div class="note-content">
             ${contentHtml}
         </div>
-        <div class="note-resize-handle nw" ${canEdit ? '' : 'style="display:none;"'}></div>
-        <div class="note-resize-handle ne" ${canEdit ? '' : 'style="display:none;"'}></div>
-        <div class="note-resize-handle sw" ${canEdit ? '' : 'style="display:none;"'}></div>
-        <div class="note-resize-handle se" ${canEdit ? '' : 'style="display:none;"'}></div>
-        <div class="note-resize-handle n"  ${canEdit ? '' : 'style="display:none;"'}></div>
-        <div class="note-resize-handle s"  ${canEdit ? '' : 'style="display:none;"'}></div>
+        ${isFenceNote(note) ? '<div class="note-resize-handle n" ' + (canEdit ? '' : 'style="display:none;"') + '></div><div class="note-resize-handle s" ' + (canEdit ? '' : 'style="display:none;"') + '></div>' : ''}
         <div class="note-resize-handle w"  ${canEdit ? '' : 'style="display:none;"'}></div>
         <div class="note-resize-handle e"  ${canEdit ? '' : 'style="display:none;"'}></div>
     `;
