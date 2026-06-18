@@ -1265,9 +1265,23 @@ pre code {
 .sticky-note.is-editing {
     border-color: var(--note-accent, #3b82f6) !important;
     border-width: 2px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 
-                0 0 30px var(--note-accent, rgba(59, 130, 246, 0.4));
-    transform: scale(1.02);
+}
+
+.sticky-note.note-height-measuring {
+    height: auto !important;
+    max-height: none !important;
+    transition: none !important;
+}
+
+.sticky-note.note-height-measuring .note-content,
+.sticky-note.note-height-measuring .note-text-section:not(.hidden) {
+    flex: none;
+    min-height: 0;
+    overflow: visible;
+}
+
+.sticky-note.note-height-measuring .note-text-viewer {
+    overflow: visible;
 }
 
 .sticky-note.is-editing .note-header {
@@ -1320,11 +1334,6 @@ pre code {
     background: transparent;
 }
 
-.note-resize-handle.nw { top: 0; left: 0; cursor: nw-resize; }
-.note-resize-handle.ne { top: 0; right: 0; cursor: ne-resize; }
-.note-resize-handle.sw { bottom: 0; left: 0; cursor: sw-resize; }
-.note-resize-handle.se { bottom: 0; right: 0; cursor: se-resize; }
-
 /* Edge resize handles — thin strips centered on each border */
 .note-resize-handle.n  { top: 0; left: 14px; right: 14px; width: auto; height: 6px; cursor: n-resize; }
 .note-resize-handle.s  { bottom: 0; left: 14px; right: 14px; width: auto; height: 6px; cursor: s-resize; }
@@ -1337,6 +1346,26 @@ pre code {
 
 .note-resize-handle:hover {
     opacity: 1 !important;
+}
+
+/* Mobile: dashed borders on note edges + invisible touch targets for resize */
+@media (pointer: coarse) {
+    .sticky-note.is-editing {
+        border-left: 2px dashed rgba(59, 130, 246, 0.3);
+        border-right: 2px dashed rgba(59, 130, 246, 0.3);
+    }
+    .sticky-note.is-editing .note-resize-handle.w,
+    .sticky-note.is-editing .note-resize-handle.e {
+        opacity: 0;
+        width: 8px;
+        height: auto;
+        top: 0;
+        bottom: 0;
+        background: transparent;
+        border: none;
+    }
+    .sticky-note.is-editing .note-resize-handle.w { left: 0; }
+    .sticky-note.is-editing .note-resize-handle.e { right: 0; }
 }
 
 .sticky-note.dragging {
@@ -1400,6 +1429,11 @@ pre code {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
     user-select: text;
+}
+
+.sticky-note:not(.is-fence-note) .note-text-viewer,
+.sticky-note:not(.is-fence-note) .note-content textarea {
+    overflow-y: hidden;
 }
 
 .note-text-section:not(.hidden) {
@@ -2758,6 +2792,38 @@ pre code {
     transition: none;
 }
 
+/* Prevent only the edit-exit collapse from animating */
+.note-actions-rail.suppress-collapse-transition {
+    transition: none;
+}
+
+/* Floating Actions Rail — double-click on an unactionable area of a note body */
+.note-floating-actions-rail {
+    position: fixed;
+    display: flex;
+    align-items: center;
+    gap: 0.3125em;
+    padding: 4px 6px;
+    background: rgba(15, 23, 42, 0.92);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.2);
+    z-index: 10000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+}
+
+.note-floating-actions-rail.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .note-floating-actions-rail {
+        transition: none;
+    }
+}
+
 /* Operational Suppression: Hide tools while dragging or settling to prevent accidental activation */
 .sticky-note.note-picked .note-actions,
 .sticky-note.dragging .note-actions,
@@ -2850,7 +2916,7 @@ pre code {
     margin-bottom: 0.5em;
 }
 
-.btn-icon-ai-format, .btn-icon-raw-edit, .btn-icon-sticky, .btn-icon-link, .btn-icon-upload {
+.btn-icon-ai-format, .btn-icon-raw-edit, .btn-icon-sticky, .btn-icon-link, .btn-icon-upload, .btn-icon-close {
     width: 32px;
     height: 32px;
     display: inline-flex;
@@ -2866,7 +2932,7 @@ pre code {
     box-shadow: 0 0 8px rgba(99, 102, 241, 0.15);
 }
 
-.btn-icon-ai-format:hover, .btn-icon-raw-edit:hover, .btn-icon-sticky:hover, .btn-icon-link:hover, .btn-icon-upload:hover {
+.btn-icon-ai-format:hover, .btn-icon-raw-edit:hover, .btn-icon-sticky:hover, .btn-icon-link:hover, .btn-icon-upload:hover, .btn-icon-close:hover {
     background: rgba(99, 102, 241, 0.5);
     border-color: rgba(99, 102, 241, 0.5);
     box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
@@ -2884,6 +2950,19 @@ pre code {
 
 .btn-icon-upload { background: rgba(139, 92, 246, 0.35); border-color: rgba(139, 92, 246, 0.3); box-shadow: 0 0 8px rgba(139, 92, 246, 0.15); }
 .btn-icon-upload:hover { background: rgba(139, 92, 246, 0.5); border-color: rgba(139, 92, 246, 0.5); box-shadow: 0 0 12px rgba(139, 92, 246, 0.3); }
+
+.btn-icon-close { background: rgba(245, 158, 11, 0.35); border-color: rgba(245, 158, 11, 0.3); box-shadow: 0 0 8px rgba(245, 158, 11, 0.15); color: #fef3c7; }
+.btn-icon-close:hover { background: rgba(245, 158, 11, 0.55); border-color: rgba(251, 191, 36, 0.6); box-shadow: 0 0 12px rgba(245, 158, 11, 0.35); color: #fff; }
+
+.btn-icon-edit.edit-mode-active {
+    border-color: #60a5fa !important;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.65), 0 0 18px rgba(59, 130, 246, 0.85) !important;
+}
+
+.btn-icon-raw-edit.edit-mode-active {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.7), 0 0 18px rgba(14, 165, 233, 0.9) !important;
+}
 
 /* --- Paste Modal Centering --- */
 .create-modal-footer-right {
@@ -5611,8 +5690,13 @@ input:checked + .switch-sm .slider:before {
 
 .note-table {
     border-collapse: collapse;
-    width: 100%;
+    width: fit-content;
+    max-width: 100%;
     font-size: 0.78rem;
+}
+
+.note-table-wrap.wide .note-table {
+    width: 100%;
 }
 
 .note-table th,
