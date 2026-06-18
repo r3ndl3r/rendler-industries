@@ -1,6 +1,11 @@
 // /public/js/notes/radar.js
 
 /**
+ * Radar Module: Renders simplified note "pings" onto the minimap canvas.
+ * Now features 'Linked Magnification': The radar zooms as you zoom into the main board.
+ */
+
+/**
  * Radar Engine: Renders simplified note "pings" onto the minimap canvas.
  * Now features 'Linked Magnification': The radar zooms as you zoom into the main board.
  */
