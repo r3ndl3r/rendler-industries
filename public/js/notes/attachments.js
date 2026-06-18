@@ -1,6 +1,12 @@
 // /public/js/notes/attachments.js
 
 /**
+ * Attachments Module: Binary file operations and multi-file management interface.
+ * Handles file selection, upload, rename, and deletion for note attachments
+ * including image previews and generic file entries.
+ */
+
+/**
  * Handle local file selection for note attachments.
  * @param {Event} e - The change event from the file input.
  */
