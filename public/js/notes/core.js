@@ -35,6 +35,8 @@ const STATE = {
     selectedNoteIds: new Set(), // Bulk Operations: Tracks notes captured by the Marquee/Lasso
     lassoNoteCache:  null,      // Performance: Cached note rects for marquee hit-testing
     pickedNoteId:   null,  // Active 'Pick & Place' record
+    pickedTouchId:  null,  // Touch identifier that owns the active note move
+    floatingRailNoteId: null,  // Note ID for floating actions rail (double-click toggle)
     lastPickTime:   null,  // Interaction Guard: Prevent immediate drop re-triggering
     originalPos:    null,  // Restore-point for 'Escape-to-Cancel'
     groupBaseline:  null,  // Snapshot of positions for bulk dragging
@@ -424,6 +426,8 @@ async function initNotes() {
     if (canvas && wrapper) {
         if (typeof handleCanvasDoubleClick === 'function') canvas.addEventListener('dblclick', handleCanvasDoubleClick);
         if (typeof handleCanvasMouseDown === 'function') canvas.addEventListener('mousedown', handleCanvasMouseDown);
+        if (typeof handleNoteContentLoad === 'function') canvas.addEventListener('load', handleNoteContentLoad, true);
+        if (typeof handleNoteContentToggle === 'function') canvas.addEventListener('toggle', handleNoteContentToggle, true);
         // Intercept right-clicks on notes to show the context menu; suppress on canvas background.
         // Editable targets and any active text selection keep the native menu for copy/paste/spell-check.
         canvas.addEventListener('contextmenu', e => {
@@ -924,6 +928,12 @@ async function initNotes() {
 
     // Global Interface: Keydown Listeners (ESC/Arrows)
     if (typeof handleGlobalKeydown === 'function') document.addEventListener('keydown', handleGlobalKeydown);
+
+    if (document.fonts?.ready && typeof fitNoteHeight === 'function') {
+        document.fonts.ready.then(() => {
+            document.querySelectorAll('.sticky-note:not(.is-fence-note)').forEach(el => fitNoteHeight(el.dataset.id));
+        });
+    }
     
     // Global Click Listener for 'Pick & Place' Drop Conclusion
     if (typeof handleGlobalClick === 'function') document.addEventListener('click', handleGlobalClick, true);
@@ -1349,7 +1359,13 @@ function mergeNoteState(incomingNotes, forceUpdateId = null) {
 
         const existing = STATE.notes.find(n => n.id == incoming.id);
         if (existing) {
+            const noteEl = document.getElementById(`note-${incoming.id}`);
+            const preserveDerivedHeight = noteEl?.dataset.heightFitted === '1'
+                && !window.isFenceNote?.(incoming)
+                ? existing.height
+                : null;
             Object.assign(existing, incoming);
+            if (preserveDerivedHeight !== null) existing.height = preserveDerivedHeight;
         } else {
             STATE.notes.push(incoming);
         }
