@@ -649,7 +649,8 @@ const NoteParser = (() => {
             // rowLine: absolute line index in the full note for this table row
             const parseCell = (cell, rowLine) => parseNote(cell, noteId, depth + 1, rowLine);
 
-            let html = '<div class="note-table-wrap"><table class="note-table">';
+            const isWide = data.value.trim().toLowerCase() === 'wide';
+            let html = '<div class="note-table-wrap' + (isWide ? ' wide' : '') + '"><table class="note-table">';
 
             if (headerObjs.length) {
                 html += '<thead><tr>';
