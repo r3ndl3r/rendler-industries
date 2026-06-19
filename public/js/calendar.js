@@ -1025,7 +1025,6 @@ function resetAIParser() {
     const toggle = document.getElementById('aiParseToggle');
     const prompt = document.getElementById('aiEventPrompt');
     const error = document.getElementById('aiParseError');
-    const loading = document.getElementById('aiParseLoading');
     const btn = document.getElementById('aiParseBtn');
 
     if (panel) panel.classList.add('hidden');
@@ -1035,8 +1034,11 @@ function resetAIParser() {
         error.textContent = '';
         error.classList.add('hidden');
     }
-    if (loading) loading.classList.add('hidden');
-    if (btn && !_aiParsing) btn.disabled = false;
+    if (btn && !_aiParsing) {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        btn.textContent = '✨ Fill Form';
+    }
 }
 
 function toggleAIParser() {
@@ -1063,7 +1065,6 @@ async function submitAIParse() {
 
     const promptEl = document.getElementById('aiEventPrompt');
     const errorEl = document.getElementById('aiParseError');
-    const loading = document.getElementById('aiParseLoading');
     const btn = document.getElementById('aiParseBtn');
     const prompt = (promptEl?.value || '').trim();
 
@@ -1073,15 +1074,18 @@ async function submitAIParse() {
     }
 
     _aiParsing = true;
-    if (btn) btn.disabled = true;
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('loading');
+        btn.textContent = '✨ Building';
+    }
     if (errorEl) {
         errorEl.textContent = '';
         errorEl.classList.add('hidden');
     }
-    if (loading) loading.classList.remove('hidden');
 
     try {
-        const result = await window.apiPost('/calendar/api/ai_parse', { prompt }, 45000);
+        const result = await window.apiPost('/calendar/api/ai_parse', { prompt }, 65000);
         if (!result || !result.success) {
             showAIParseError(errorEl, result?.error || 'Could not parse that input. Try being more specific.');
             return;
@@ -1099,8 +1103,11 @@ async function submitAIParse() {
         showAIParseError(errorEl, 'Failed to contact AI service. Please try again.');
     } finally {
         _aiParsing = false;
-        if (btn) btn.disabled = false;
-        if (loading) loading.classList.add('hidden');
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            btn.textContent = '✨ Fill Form';
+        }
     }
 }
 
