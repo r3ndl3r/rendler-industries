@@ -90,12 +90,13 @@ sub _covers_root {
 # Parameters:
 #   slug : Book directory slug.
 #   meta : HashRef with title, author, narrator, description, cover, chapters.
-#   prog : HashRef with chapter_idx, position_sec, completed (may be undef).
+#   prog : HashRef with chapter_idx, position_sec, completed, bookmarks (may be undef).
 # Returns:
 #   HashRef ready for JSON serialisation.
 sub _format_book_entry {
     my ($slug, $meta, $prog) = @_;
     $prog //= { chapter_idx => 0, position_sec => 0, completed => 0 };
+    $prog->{bookmarks} = [] unless ref $prog->{bookmarks} eq 'ARRAY';
 
     my $chapters = (ref $meta->{chapters} eq 'ARRAY') ? $meta->{chapters} : [];
     return undef unless @$chapters;
@@ -859,6 +860,56 @@ sub api_delete_progress {
     $c->render(json => { success => 1 });
 }
 
+# Toggles a chapter bookmark for the current user and returns the full bookmark list.
+# Route: POST /audiobooks/api/bookmark/toggle
+# Parameters: book_slug, chapter_idx
+# Returns: JSON { success: 1, bookmarked: 1|0, bookmarks: [...], message: "Bookmarked"|"Bookmark removed" }
+sub api_toggle_bookmark {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_family;
+
+    my $user_id     = $c->current_user_id;
+    my $book_slug   = trim($c->param('book_slug') // '');
+    my $chapter_raw = trim($c->param('chapter_idx') // '');
+
+    unless (length($book_slug) && _safe_component($book_slug)) {
+        return $c->render(json => { success => 0, error => 'Invalid book' }, status => 400);
+    }
+    unless ($chapter_raw =~ /\A\d{1,5}\z/) {
+        return $c->render(json => { success => 0, error => 'Invalid chapter index' }, status => 400);
+    }
+
+    my $chapter_idx = $chapter_raw + 0;
+    my $meta = $c->db->get_audiobook_meta($book_slug);
+    my $chapters = $meta && ref $meta->{chapters} eq 'ARRAY' ? $meta->{chapters} : [];
+    unless (@$chapters && $chapter_idx < @$chapters) {
+        return $c->render(json => { success => 0, error => 'Invalid chapter index' }, status => 400);
+    }
+
+    my @bookmarks;
+    my $ok = eval {
+        $c->db->toggle_audiobook_bookmark($user_id, $book_slug, $chapter_idx);
+        my $prog = $c->db->get_audiobook_book_progress($user_id, $book_slug);
+        @bookmarks = $prog && ref $prog->{bookmarks} eq 'ARRAY'
+            ? @{ $prog->{bookmarks} }
+            : ();
+        1;
+    };
+    unless ($ok) {
+        $c->app->log->error("Failed to toggle audiobook bookmark for user $user_id: $@");
+        return $c->render(json => { success => 0, error => 'Database error' }, status => 500);
+    }
+
+    my $bookmarked = grep { $_ == $chapter_idx } @bookmarks;
+    $c->render(json => {
+        success    => 1,
+        bookmarked => $bookmarked ? 1 : 0,
+        bookmarks  => \@bookmarks,
+        message    => $bookmarked ? 'Bookmarked' : 'Bookmark removed',
+    });
+}
+
 # Saves edited book metadata to the DB.
 # Route: POST /audiobooks/api/meta/:slug
 # Restricted to admin users.
@@ -1210,6 +1261,7 @@ sub register_routes {
     $r->{r}->get('/audiobooks/api/cover/#slug')->to('Audiobooks#api_cover');
     $r->{family}->post('/audiobooks/api/progress')->to('Audiobooks#api_save_progress');
     $r->{family}->post('/audiobooks/api/progress/delete')->to('Audiobooks#api_delete_progress');
+    $r->{family}->post('/audiobooks/api/bookmark/toggle')->to('Audiobooks#api_toggle_bookmark');
     $r->{admin}->post('/audiobooks/api/meta/#slug')->to('Audiobooks#api_save_meta');
     $r->{admin}->get('/audiobooks/admin')->to('Audiobooks#admin_index');
     $r->{admin}->get('/audiobooks/admin/api/state')->to('Audiobooks#api_admin_state');
