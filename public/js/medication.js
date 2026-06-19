@@ -302,7 +302,7 @@ function renderParentTally() {
     body.innerHTML = allLogs.map(log => `
         <tr>
             <td>${escapeHtml(formatTakenAtLabel(log.taken_at || ''))}</td>
-            <td>${escapeHtml(log.family_member || '')}</td>
+            <td><span class="user-icon">${window.getUserIcon(log.family_member || '')}</span> ${escapeHtml(log.family_member || '')}</td>
             <td>${escapeHtml(log.medication_name || '')}</td>
             <td>${escapeHtml(String(log.dosage || ''))} mg</td>
         </tr>
