@@ -1649,16 +1649,23 @@ function _renderPlayerChapterList() {
         return;
     }
 
+    const bookmarks = Array.isArray(book.progress && book.progress.bookmarks)
+        ? book.progress.bookmarks
+        : [];
     list.innerHTML = chapters.map((ch, i) => {
         const isCurrent = i === PLAYER.chapter_idx;
+        const isBookmarked = bookmarks.includes(i);
         const dur = ch.duration > 0 ? _formatDuration(ch.duration) : '';
         const cls = isCurrent ? 'chapter-item current' : 'chapter-item';
+        const bookmarkCls = isBookmarked ? 'bookmark-icon active' : 'bookmark-icon';
         return `<li class="${cls}">
             <button type="button" class="chapter-item-btn"
                 onclick="jumpToChapter(${i})">
                 <span class="ch-num">${i + 1}</span>
                 <span class="ch-title">${escapeHtml(ch.title || `Chapter ${i + 1}`)}</span>
                 <span class="ch-dur">${escapeHtml(dur)}</span>
+                <span class="${bookmarkCls}" data-bm-idx="${i}"
+                    onclick="toggleBookmark(event, ${i})">&#x1F516;</span>
             </button>
         </li>`;
     }).join('');
@@ -2370,6 +2377,72 @@ function _saveProgress(completed) {
             // Buffer to localStorage so progress survives app kill while offline.
             _setPendingProgress(payload);
         });
+}
+
+const _bookmarkInFlight = new Set();
+const _bookmarkQueues = new Map();
+
+/**
+ * Toggles a chapter bookmark without changing the active chapter.
+ * @param {MouseEvent} event - Bookmark click event.
+ * @param {number} idx - Zero-based chapter index.
+ * @returns {Promise<void>}
+ */
+async function toggleBookmark(event, idx) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const slug = PLAYER.slug;
+    if (!slug || !Number.isInteger(idx) || idx < 0) return;
+
+    const requestKey = `${slug}:${idx}`;
+    if (_bookmarkInFlight.has(requestKey)) return;
+    _bookmarkInFlight.add(requestKey);
+
+    let request;
+    try {
+        const previous = _bookmarkQueues.get(slug) || Promise.resolve();
+        request = previous.catch(() => null).then(
+            () => apiPost('/audiobooks/api/bookmark/toggle', {
+                book_slug: slug,
+                chapter_idx: idx,
+            })
+        );
+        _bookmarkQueues.set(slug, request);
+
+        const result = await request;
+        if (!result) return;
+
+        const bookmarks = Array.isArray(result.bookmarks) ? result.bookmarks : [];
+        const book = STATE.books.find(item => item.slug === slug)
+            || (PLAYER.slug === slug ? PLAYER.book : null);
+        if (book) {
+            book.progress = book.progress || {};
+            book.progress.bookmarks = bookmarks;
+        }
+
+        if (PLAYER.slug === slug) {
+            _updateBookmarkIcon(idx, bookmarks.includes(idx));
+        }
+    } finally {
+        if (_bookmarkQueues.get(slug) === request) {
+            _bookmarkQueues.delete(slug);
+        }
+        _bookmarkInFlight.delete(requestKey);
+    }
+}
+
+/**
+ * Updates one bookmark icon without re-rendering the chapter drawer.
+ * @param {number} idx - Zero-based chapter index.
+ * @param {boolean} bookmarked - Whether the chapter is bookmarked.
+ * @returns {void}
+ */
+function _updateBookmarkIcon(idx, bookmarked) {
+    const icon = document.querySelector(
+        `#playerChapterList .bookmark-icon[data-bm-idx="${idx}"]`
+    );
+    if (icon) icon.classList.toggle('active', bookmarked);
 }
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
