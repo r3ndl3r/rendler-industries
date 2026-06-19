@@ -22,14 +22,14 @@ use Mojo::JSON qw(encode_json decode_json);
 # Parameters:
 #   user_id : Integer ID of the current user.
 # Returns:
-#   HashRef: { book_slug => { chapter_idx, position_sec, completed, updated_at }, ... }
+#   HashRef: { book_slug => { chapter_idx, position_sec, completed, updated_at, bookmarks }, ... }
 #   Returns an empty hashref when no records exist.
 sub DB::get_audiobook_progress_all {
     my ($self, $user_id) = @_;
     $self->ensure_connection;
 
     my $sth = $self->{dbh}->prepare(
-        "SELECT book_slug, chapter_idx, position_sec, completed,
+        "SELECT book_slug, chapter_idx, position_sec, completed, bookmarked_chapters,
                 DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
          FROM audiobook_progress
          WHERE user_id = ?"
@@ -43,6 +43,7 @@ sub DB::get_audiobook_progress_all {
             position_sec => $row->{position_sec} + 0,
             completed    => $row->{completed}    + 0,
             updated_at   => $row->{updated_at}   // '',
+            bookmarks    => _decode_bookmarks($row->{bookmarked_chapters}),
         };
     }
     return \%map;
@@ -53,14 +54,14 @@ sub DB::get_audiobook_progress_all {
 #   user_id   : Integer ID of the current user.
 #   book_slug : String identifier for the book directory.
 # Returns:
-#   HashRef with keys { chapter_idx, position_sec, completed, updated_at },
+#   HashRef with keys { chapter_idx, position_sec, completed, updated_at, bookmarks },
 #   or undef if no record exists.
 sub DB::get_audiobook_book_progress {
     my ($self, $user_id, $book_slug) = @_;
     $self->ensure_connection;
 
     my $sth = $self->{dbh}->prepare(
-        "SELECT chapter_idx, position_sec, completed,
+        "SELECT chapter_idx, position_sec, completed, bookmarked_chapters,
                 DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
          FROM audiobook_progress
          WHERE user_id = ? AND book_slug = ?"
@@ -74,6 +75,7 @@ sub DB::get_audiobook_book_progress {
         position_sec => $row->{position_sec} + 0,
         completed    => $row->{completed}    + 0,
         updated_at   => $row->{updated_at}   // '',
+        bookmarks    => _decode_bookmarks($row->{bookmarked_chapters}),
     };
 }
 
@@ -321,6 +323,89 @@ sub DB::delete_all_audiobook_meta {
     my $sth = $self->{dbh}->prepare("DELETE FROM audiobooks");
     $sth->execute();
     return $sth->rows;
+}
+
+# Decodes the bookmarked_chapters JSON column into sorted, unique, non-negative
+# chapter indices. Non-numeric, negative, and duplicate values are discarded.
+# Parameters:
+#   json : Raw TEXT from the database (undef or '[]' treated as empty).
+# Returns:
+#   ArrayRef of integer chapter indices, sorted ascending (may be empty).
+sub _decode_bookmarks {
+    my ($json) = @_;
+    return [] unless defined $json && length $json;
+
+    my $arr = eval { decode_json($json) };
+    return [] unless ref $arr eq 'ARRAY';
+
+    my %seen;
+    my @clean = sort { $a <=> $b } grep {
+        my $encoded = defined $_ && !ref $_ ? encode_json($_) : '';
+        $encoded =~ /^\d+$/ && !$seen{$_}++
+    } @$arr;
+    return \@clean;
+}
+
+# Atomically toggles a chapter index in/out of the user's bookmarked_chapters
+# array for a given book. Creates a progress row with defaults if none exists.
+# Parameters:
+#   user_id     : Integer ID of the current user.
+#   book_slug   : String identifier for the book directory.
+#   chapter_idx : Zero-based chapter index to toggle.
+# Returns:
+#   1 if the chapter is now bookmarked, 0 if it was removed.
+sub DB::toggle_audiobook_bookmark {
+    my ($self, $user_id, $book_slug, $chapter_idx) = @_;
+    $self->ensure_connection;
+
+    my $dbh = $self->{dbh};
+    my $bookmarked;
+
+    eval {
+        $dbh->begin_work;
+
+        $dbh->do(
+            "INSERT INTO audiobook_progress
+                 (user_id, book_slug, chapter_idx, position_sec, completed, client_updated_ms, bookmarked_chapters)
+             VALUES (?, ?, 0, 0, 0, 0, '[]')
+             ON DUPLICATE KEY UPDATE id = id",
+            undef, $user_id, $book_slug
+        );
+
+        my $json = $dbh->selectrow_array(
+            "SELECT bookmarked_chapters
+             FROM audiobook_progress
+             WHERE user_id = ? AND book_slug = ?
+             FOR UPDATE",
+            undef, $user_id, $book_slug
+        );
+
+        my @indices = @{ _decode_bookmarks($json) };
+        if (grep { $_ == $chapter_idx } @indices) {
+            @indices = grep { $_ != $chapter_idx } @indices;
+            $bookmarked = 0;
+        } else {
+            push @indices, $chapter_idx;
+            @indices = sort { $a <=> $b } @indices;
+            $bookmarked = 1;
+        }
+
+        $dbh->do(
+            "UPDATE audiobook_progress
+             SET bookmarked_chapters = ?
+             WHERE user_id = ? AND book_slug = ?",
+            undef, encode_json(\@indices), $user_id, $book_slug
+        );
+
+        $dbh->commit;
+    };
+    if ($@) {
+        my $err = $@;
+        eval { $dbh->rollback };
+        die $err;
+    }
+
+    return $bookmarked;
 }
 
 1;
