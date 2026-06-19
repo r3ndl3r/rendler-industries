@@ -492,6 +492,7 @@ function renderItemContent(item) {
  * @returns {Promise<void>}
  */
 async function syncTrakt() {
+    if (REFRESH_IN_PROGRESS) return;
     REFRESH_IN_PROGRESS = true;
     renderHeaderActions();
     try {
