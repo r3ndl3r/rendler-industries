@@ -33,6 +33,7 @@ let STATE = {
 };
 let latestRefreshSeq = 0;
 let latestMutationSeq = 0;
+let shoppingFirstLoad = true;
 
 /**
  * Bootstraps the module state and establishes event delegation.
@@ -79,7 +80,8 @@ async function loadState(force = false) {
 
         if (data && data.success) {
             STATE.isAdmin = !!data.is_admin;
-            if (JSON.stringify(data.items) !== JSON.stringify(STATE.items)) {
+            if (shoppingFirstLoad || JSON.stringify(data.items) !== JSON.stringify(STATE.items)) {
+                shoppingFirstLoad = false;
                 STATE.items = data.items;
                 renderTable();
             }
