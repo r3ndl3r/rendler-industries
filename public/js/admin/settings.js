@@ -31,6 +31,7 @@ const CONFIG = {
 const AI_FEATURES = [
     { key: 'ai_chat', label: '/ai Chat', desc: 'Family Pulse chat responses and current-info lookups.', defaultProvider: '' },
     { key: 'notes_format', label: 'Notes AI Formatting', desc: 'Reformats note bodies into Rendler dashboard markup.', defaultProvider: '' },
+    { key: 'calendar_ai_parse', label: 'Calendar AI Parser', desc: 'Natural-language parsing for Family Calendar add-event drafts.', defaultProvider: '' },
     { key: 'emoji_lookup', label: 'Emoji Lookup System', desc: 'Background emoji generation for todo, shopping, reminders, calendar, and meals text.', defaultProvider: '' },
     { key: 'receipts', label: 'Receipts AI Scan', desc: 'Receipt image digitization. Image input requires Gemini.', defaultProvider: 'gemini' },
     { key: 'fuel', label: 'Fuel AI Scan', desc: 'Fuel receipt, pump, and odometer image extraction. Image input requires Gemini.', defaultProvider: 'gemini' },
