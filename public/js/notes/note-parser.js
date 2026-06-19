@@ -1207,9 +1207,11 @@ const NoteParser = (() => {
             // 4. Formatting & Newlines
             if (char === '\n') {
                 flushBuffer();
+                let wasBlockRow = false;
                 if (inCheckboxRow) {
                     output += '</span>';
                     inCheckboxRow = false;
+                    wasBlockRow = true;
                 }
                 if (inBulletRow) {
                     output += '</span></span>';
@@ -1219,7 +1221,7 @@ const NoteParser = (() => {
                     output += '</span>';
                     inNoteLine = false;
                 }
-                output += '<br>';
+                if (!wasBlockRow) output += '<br>';
                 currentLine++;
                 cursor++;
                 isLineStart = true;
