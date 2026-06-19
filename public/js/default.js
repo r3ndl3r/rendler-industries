@@ -682,6 +682,25 @@ window.showConfirmModal = function(options) {
     if (options.autoFocus) {
         setTimeout(() => (options.input ? promptInput : newBtn).focus(), 50);
     }
+
+    // 7. Keyboard handling (ENTER / ESC)
+    const keyHandler = (e) => {
+        if (!modal.classList.contains('show')) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            handleCancel();
+        } else if (e.key === 'Enter' && !e.target.closest('textarea')) {
+            if (e.target.closest('#globalConfirmCancelBtn')) return;
+            if (e.target.closest('.modal-prompt-row')) return;
+            e.preventDefault();
+            newBtn.click();
+        }
+    };
+    if (modal._confirmKeyHandler) {
+        document.removeEventListener('keydown', modal._confirmKeyHandler);
+    }
+    modal._confirmKeyHandler = keyHandler;
+    document.addEventListener('keydown', keyHandler);
 };
 
 /**
@@ -690,6 +709,11 @@ window.showConfirmModal = function(options) {
 window.closeConfirmModal = function() {
     const modal = document.getElementById('globalConfirmActionModal');
     if (!modal || !modal.classList.contains('show')) return;
+
+    if (modal._confirmKeyHandler) {
+        document.removeEventListener('keydown', modal._confirmKeyHandler);
+        delete modal._confirmKeyHandler;
+    }
 
     if (confirmModalCloseTimer) {
         clearTimeout(confirmModalCloseTimer);
