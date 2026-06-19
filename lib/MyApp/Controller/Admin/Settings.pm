@@ -327,6 +327,7 @@ sub _valid_ai_app_key {
     return scalar grep { $_ eq $key } qw(
         ai_chat
         notes_format
+        calendar_ai_parse
         emoji_lookup
         receipts
         fuel
