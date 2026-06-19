@@ -32,6 +32,7 @@ let UNWATCHED_LOADING = false;
 let UNWATCHED_LOADED = false;
 let UNWATCHED_VERSION = 0;
 let UNWATCHED_REQUEST_ID = 0;
+let REFRESH_IN_PROGRESS = false;
 let SEARCH_LIST_MODAL_ITEM = null;
 let SEARCH_LIST_MODAL_TRIGGER = null;
 let ITEM_MOVE_SOURCE_ITEM = null;
@@ -154,8 +155,11 @@ function renderHeaderActions() {
         return;
     }
 
+    const refreshHtml = REFRESH_IN_PROGRESS
+        ? `<button type="button" class="btn-primary" disabled>Refreshing...</button>`
+        : `<button type="button" class="btn-primary" onclick="syncTrakt()">🔄 Refresh</button>`;
     actions.innerHTML = `
-        <button type="button" class="btn-primary" onclick="syncTrakt()">🔄 Refresh</button>
+        ${refreshHtml}
         <button type="button" class="btn-danger" onclick="disconnectTrakt()">⛓️‍💥 Disconnect</button>`;
 }
 
@@ -488,16 +492,20 @@ function renderItemContent(item) {
  * @returns {Promise<void>}
  */
 async function syncTrakt() {
-    const button = actionButton() || document.querySelector('#traktHeaderActions .btn-primary');
-    await withBusyButton(button, 'Refreshing...', async () => {
+    REFRESH_IN_PROGRESS = true;
+    renderHeaderActions();
+    try {
         const result = await apiPost('/trakt/api/sync', {});
         if (result && result.success) {
             STATE = { ...STATE, ...result.state };
             renderTrakt();
             if (!result.message && typeof showToast === 'function') showToast('Trakt synced', 'success');
         }
-    });
-    await loadUnwatchedState(!UNWATCHED_LOADED);
+        await loadUnwatchedState(!UNWATCHED_LOADED);
+    } finally {
+        REFRESH_IN_PROGRESS = false;
+        renderHeaderActions();
+    }
 }
 
 /**
