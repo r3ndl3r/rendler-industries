@@ -538,6 +538,122 @@
 
 .checkbox-group { margin-bottom: 10px; }
 .checkbox-group label { display: flex; align-items: center; gap: 8px; }
+
+.ai-parse-section {
+    margin-bottom: 12px;
+}
+
+.ai-parse-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid rgba(59, 130, 246, 0.28);
+    border-radius: 10px;
+    background: rgba(59, 130, 246, 0.08);
+    color: #e5e7eb;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ai-parse-toggle:hover,
+.ai-parse-toggle.active {
+    border-color: rgba(124, 58, 237, 0.65);
+    background: rgba(59, 130, 246, 0.13);
+}
+
+.ai-parse-toggle strong {
+    display: block;
+    font-size: 15px;
+    line-height: 1.2;
+}
+
+.ai-parse-toggle small {
+    display: block;
+    margin-top: 3px;
+    color: #94a3b8;
+    font-size: 12px;
+    line-height: 1.25;
+}
+
+.ai-parse-chevron {
+    color: #93c5fd;
+    font-size: 22px;
+    line-height: 1;
+    transition: transform 0.2s ease;
+}
+
+.ai-parse-toggle.active .ai-parse-chevron {
+    transform: rotate(180deg);
+}
+
+.ai-parse-panel {
+    margin-top: 10px;
+}
+
+.ai-parse-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.ai-prompt-textarea {
+    flex: 1;
+    min-height: 50px;
+    font-size: 13px;
+}
+
+.btn-ai-submit {
+    align-self: stretch;
+    min-width: 120px;
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0 16px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.btn-ai-submit:hover {
+    background: #2563eb;
+}
+
+.btn-ai-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+    .ai-parse-input-row {
+        flex-direction: column;
+    }
+
+    .btn-ai-submit {
+        min-height: 42px;
+        width: 100%;
+    }
+}
+
+.ai-parse-loading {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #94a3b8;
+}
+
+.ai-parse-error {
+    margin-top: 8px;
+    padding: 8px 12px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    font-size: 13px;
+    line-height: 1.4;
+}
 .checkbox-group input[type="checkbox"] { 
     width: auto; 
     cursor: pointer;
