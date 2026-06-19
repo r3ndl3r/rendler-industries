@@ -318,6 +318,8 @@ $category_context
 Rules:
 - Return {"success":false,"error":"..."} when the text is too vague to determine an event title and start date.
 - Return success true with keys: title, description, start_date, end_date, all_day, category, color, attendee_ids, notification_minutes, is_private, recurrence_rule, recurrence_interval, recurrence_end_date.
+- Set description to an empty string unless the user includes notes that are not already represented by title, date/time, location, attendees, reminders, privacy, recurrence, category, or all-day status.
+- Never copy the user's whole prompt into description.
 - Dates must be absolute local times in YYYY-MM-DD HH:MM:SS.
 - Missing non-all-day end_date should be start_date plus 1 hour.
 - All-day events use start 00:00:00 and end 23:59:59.
@@ -335,7 +337,7 @@ PROMPT
         $c->ai_prompt(
             contents        => [{ role => 'user', parts => [{ text => $prompt }] }],
             system          => $system,
-            timeout         => 30,
+            timeout         => 60,
             response_format => 'application/json',
             app_profile     => 'calendar_ai_parse'
         );
