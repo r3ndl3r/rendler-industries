@@ -92,7 +92,6 @@
                             <textarea id="aiEventPrompt" class="game-input ai-prompt-textarea" rows="2" placeholder="football game on 3rd july at 5pm with nicky remind 1h before"></textarea>
                             <button type="button" id="aiParseBtn" class="btn-ai-submit" onclick="submitAIParse()">✨ Fill Form</button>
                         </div>
-                        <div id="aiParseLoading" class="ai-parse-loading hidden">Parsing event...</div>
                         <div id="aiParseError" class="ai-parse-error hidden"></div>
                     </div>
                 </div>
