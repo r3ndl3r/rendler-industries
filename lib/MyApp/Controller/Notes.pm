@@ -4,6 +4,7 @@ package MyApp::Controller::Notes;
 
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
+use DB;
 
 sub _is_fence_note_title {
     my ($title) = @_;
@@ -886,12 +887,12 @@ sub api_copy_note {
     }
 }
 
-# Clones a note, asks AI to reformat the clone, and returns refreshed board state.
+# Clones a note, schedules AI to reformat the clone in the background, and returns immediately.
+# The cloned note starts as a placeholder and is updated when AI finishes.
 # Route: POST /notes/api/notes/ai-format
 sub api_ai_format_note {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
-    $c->inactivity_timeout(300);
 
     my $user_id = $c->current_user_id();
     my $note_id = $c->param('id');
@@ -909,39 +910,113 @@ sub api_ai_format_note {
     my $clone = $c->db->get_note_for_ai_format($clone_id, $user_id);
     return $c->render(json => { success => 0, error => 'Could not load cloned note' }) unless $clone;
 
+    # Immediately write placeholder content to the clone and touch canvas.
+    my $pending = $c->db->mark_ai_format_note_pending(
+        note_id => $clone_id,
+        user_id => $user_id,
+        title   => $source->{title},
+    );
+    return $c->render(json => {
+        success  => 0,
+        error    => 'Could not prepare cloned note',
+        clone_id => int($clone_id),
+    }) unless $pending;
+
     my $custom_prompt = trim($c->param('custom_prompt') // '');
     $custom_prompt = substr($custom_prompt, 0, 4000) if length($custom_prompt) > 4000;
 
     my $style_guide = <<'STYLE_GUIDE';
-Available Rendler note formatting. Use only these supported syntaxes:
-If a formatting pattern is not listed below, keep it as plain text and do not invent a new tag.
-- Headings: # H1, ## H2, ### H3
-- Text: **Bold**, *Italic*, ~~Strikethrough~~, `Inline Code`
-- Code blocks: ```lang for multi-line blocks
-- Lists: - Bullet, * Bullet, 1. Numbered, [ ] Task, [x] Completed (do not put anything before [ ], if found remove them)
-- Horizontal rule: --- (must have NO blank lines above or below it, if found remove them)
-- Callouts: > [!note] Title, > [!tip] Title, > [!info] Title, > [!success] Title, > [!warning] Title, > [!danger] Title, > [!question] Title
-  > Body lines must also start with >
-- Dividers: [divider:Section Title]
-- Colors: [color:name|#hex]Text[/color] or [colour:name|#hex]Text[/colour]
-  Names: yellow, orange, red, pink, green, blue, indigo, violet, slate, accent, info, success, warning, danger
-- Sizes: [size:xs|sm|md|lg|xl|2xl]Text[/size]
-- Highlights: [bg:name|#hex]Text[/bg]
-- Tags: [tag:label] or [tag:label|color] using the same named colors
-- Dates: [date:YYYY-MM-DD]
-- Progress: [progress:percent|label]
-- Spoilers: [spoiler:Title]Content[/spoiler] or [spoiler]Content[/spoiler]
-- Tables: [table:]
-  Name | Role
-  --- | ---
-  Data | Data
+Available Rendler note formatting. Use only these supported syntaxes.
+If a tag or syntax is not listed below, leave that content as plain text and do not invent a new tag.
+Use the exact forms shown. Text such as "or" and comma-separated choices describes alternatives; never copy those alternatives into one tag value.
+
+--- TEXT FORMATTING ---
+* **Bold**, *Italic*, ~~Strikethrough~~, `Inline Code`
+* Fenced code block (language optional):
+  ```python
+  print("Hello")
+  ```
+
+--- HEADINGS ---
+# H1, ## H2, ### H3
+
+--- LISTS ---
+* - Bullet, * Bullet, • Bullet, 1. Numbered
+* [ ] Task, [x] Completed — do not put anything before [ ]
+* Canonical task examples:
+  [ ] Pending task
+  [x] Completed task
+
+--- HORIZONTAL RULE ---
+* --- on its own line (no blank lines above or below)
+
+--- CALLOUTS ---
+* > [!note] Title, > [!tip] Title, > [!info] Title
+* > [!success] Title, > [!warning] Title, > [!danger] Title, > [!question] Title
+* Body continuation lines must also start with >
+* Canonical example:
+  > [!warning] Important
+  > This is the callout body.
+
+--- LINKS & NAVIGATION ---
+* [link:https://url|label] — external link with label
+* [label](https://url) — inline markdown link
+* Raw https://url — auto-linked
+* [iframe:https://url|height] — embedded iframe (height optional, 120-1200px)
+* [[Note Title]] — wiki link to another note by title
+* [note:Note Title] or [note:123] — link to note by title or ID
+* [embed:Note Title] or [embed:123] — embed full note content inline
+
+--- TABLES ---
+* Use [table] for normal width or [table:wide] for wide layout.
+* Canonical example:
+  [table]
+  | Name     | Role    |
+  | :------- | :-----: |
+  | Data     | Data    |
   [/table]
-- Links: [link:https://url|label], [Visit](https://url), raw https://url
-- Iframes: [iframe:https://url|height]
-- Wikilinks: [[Note Title]], [note:Note Title], [note:123]
-- Embeds: [file:Name], [file:123], [image:Name|scale], [img:Name|scale]
-- Copy helpers: [copy:Name], [copy:123], [copy]Text to copy[/copy]
-- Bookmark lists: [bookmarks] or [bookmarks:list:sort=title:type=text:tag=label:filter=text]
+* Columns are pipe-delimited. The first row is the header when followed by a separator row.
+* Separator alignment forms: :--- is left, ---: is right, :---: is center.
+
+--- WIDGET TAGS ---
+* [divider:Section Title] — section divider with label
+* [date:YYYY-MM-DD] — renders formatted date with relative time
+* [progress:75|label] — progress bar 0-100 with optional label
+* [tag:label] or [tag:label|named-color] — badge/pill; tag colors must be named colors, not hex
+* Canonical titled spoiler: [spoiler:Details]Hidden content[/spoiler]
+* Canonical default spoiler: [spoiler]Hidden content[/spoiler]
+
+--- FILE & MEDIA ---
+* [file:Name] or [file:123] — file attachment by title or ID
+* [image:Name|scale] or [img:Name|scale] — image embed with scale 0.1-1.0
+* [img:Name] — image at default scale
+
+--- COLOR & STYLE WRAPPERS ---
+* [color:named-color]text[/color] or [color:#hex]text[/color]
+* [colour:named-color]text[/colour] or [colour:#hex]text[/colour]
+* [size:VALUE]text[/size] — VALUE must be one of the size values listed below
+* [bg:named-color]text[/bg] or [bg:#hex]text[/bg] — background highlight
+
+--- COPY HELPERS ---
+* [copy:Name] or [copy:123] — click copies note reference
+* [copy]Text to copy[/copy] — click copies the inner text
+
+--- BOOKMARK LISTS ---
+* [bookmarks] — auto-list notes on the current level
+* Optional parameters: sort=title, sort=x, sort=y, sort=created, or sort=id; type=TYPE; color=COLOR; tag=TAG; filter=TEXT
+* Optional display flag (choose one): list, compact, or title
+* Optional link flag (choose one): copy or copylink
+* Combine selected options with colons.
+* Canonical example: [bookmarks:sort=title:type=text:compact]
+
+--- NAMED COLORS ---
+* Standard: yellow, blue, pink, orange, violet, indigo, slate, green, red
+* Semantic: accent, info, success, danger, warning
+* These named colors work with color, colour, bg, and tag.
+* Hex forms #RGB, #RRGGBB, and #RRGGBBAA work with color, colour, and bg only.
+
+--- SIZE VALUES (for size tag) ---
+xs, sm, md, lg, xl, 2xl
 STYLE_GUIDE
 
     my $custom_block = length($custom_prompt)
@@ -951,48 +1026,90 @@ STYLE_GUIDE
     my $now_context = $c->now->strftime('%Y-%m-%d %H:%M:%S %Z');
     my $date_context = "Current system date/time: $now_context. DATE YEAR RULES: If source content has dates without an explicit year, you MUST infer the year from the strongest surrounding context before emitting any [date:YYYY-MM-DD] tags. Strong context includes the note title, unit/semester labels, nearby headings, and current academic period. If the title contains a year such as '2026' or a semester marker such as '2026-1', that year applies to all yearless due dates in the note unless the source explicitly says otherwise. For example, in a note titled 'Swinburne Due Dates 2026-1', 'Due 3 Jun at 23:59' MUST become [date:2026-06-03]. Do NOT default to old/past years like 2021 or 2024. Do NOT invent a year that is not supported by title/content/current period context. Do NOT change years that are explicit in the source.";
 
-    my $prompt = "Reformat the provided note body into a polished Rendler dashboard note. Preserve all factual content, dates, tasks, links, filenames, code, and meaning. Do not invent new facts or unsupported tags. If a tag or syntax is not listed in the style guide, leave that content as plain text. Use one consistent structure for comparable sections. Return ONLY the formatted note body. Do not return JSON. Do not include the note title unless it was already part of the original content.\n\n$date_context$custom_block\n\n$style_guide\n\nOriginal title for context only, do not rewrite it:\n$clone->{title}\n\nOriginal content:\n$clone->{content}";
+    my $prompt = "Reformat the provided note body into a polished Rendler dashboard note. Preserve all factual content, dates, tasks, links, filenames, code, and meaning. Do not invent new facts or unsupported tags. If a tag or syntax is not listed in the style guide, leave that content as plain text. Use one consistent structure for comparable sections. Return ONLY the formatted note body. Do not return JSON. Do not include the note title unless it was already part of the original content.\n\n$date_context$custom_block\n\n$style_guide\n\nOriginal title for context only, do not rewrite it:\n$source->{title}\n\nOriginal content:\n$source->{content}";
 
-    $c->render_later;
-    $c->ai_prompt(
-        contents        => [{ role => 'user', parts => [{ text => $prompt }] }],
-        system          => 'You are a senior dashboard architect formatting notes for a personal Rendler dashboard. Return only the formatted note body, never JSON.',
-        timeout         => 300,
-        app_profile     => 'notes_format'
-    )->then(sub {
+    # Extract plain primitive data for the background job.
+    # Do NOT capture $c or transaction-related objects.
+    my $app = $c->app;
+    my $bg_clone_id = int($clone_id);
+    my $bg_source_id = int($note_id);
+    my $bg_user_id  = int($user_id);
+    my $bg_title    = trim($source->{title} // 'Untitled Note');
+    my $bg_timezone  = $app->config->{timezone} || 'UTC';
+
+    # Start the AI HTTP request (uses $c during setup, safe before render).
+    my $ai_promise;
+    my $setup_ok = eval {
+        $ai_promise = $c->ai_prompt(
+            contents        => [{ role => 'user', parts => [{ text => $prompt }] }],
+            system          => 'You are a senior dashboard architect formatting notes for a personal Rendler dashboard. Return only the formatted note body, never JSON.',
+            timeout         => 300,
+            app_profile     => 'notes_format'
+        );
+        1;
+    };
+    unless ($setup_ok && $ai_promise) {
+        my $error = $@ || 'AI request setup failed';
+        $app->log->error("AI formatting setup failed for clone $bg_clone_id: $error");
+        eval {
+            my $failed = $c->db->fail_ai_format_note(
+                note_id => $bg_clone_id,
+                user_id => $bg_user_id,
+                title   => $bg_title,
+                error   => 'The AI provider request could not be started. Check the server log for details.',
+            );
+            die "Could not mark AI formatting setup failure" unless $failed;
+        };
+        $app->log->error("Could not mark AI formatting setup failure for clone $bg_clone_id: $@") if $@;
+        return $c->render(json => {
+            success  => 0,
+            error    => 'AI formatting could not be started',
+            clone_id => $bg_clone_id,
+        });
+    }
+
+    # Attach background handlers that use only the captured app and scalar identifiers.
+    $ai_promise->then(sub {
         my $data = shift;
         my $content = $data->{candidates}[0]{content}{parts}[0]{text} // '';
-        my $new_title = trim($clone->{title} // 'Untitled Note');
         $content =~ s/^\s*```(?:markdown|md|text)?\s*//i;
         $content =~ s/\s*```\s*$//;
+        die "AI returned empty content" unless $content =~ /\S/;
 
-        unless (defined $content && !ref $content && length trim($content)) {
-            $c->app->log->error('AI note format returned empty content');
-            return $c->render(json => { success => 0, error => 'AI returned invalid note content', clone_id => int($clone_id) });
-        }
-
-        my $updated = $c->db->update_ai_formatted_note($clone_id, $user_id, $new_title, $content);
-        unless ($updated) {
-            return $c->render(json => { success => 0, error => 'Could not update cloned note', clone_id => int($clone_id) });
-        }
-
-        $c->db->sync_note_links($clone_id, $content, $user_id);
-        $c->db->sync_bookmark_links($clone_id, $content, $user_id);
-        $c->db->reconcile_bookmark_links($updated->{canvas_id}, $updated->{layer_id}, $user_id);
-
-        my $unlocked_ids = $c->_get_unlocked_ids;
-        $c->render(json => {
-            success       => 1,
-            id            => int($clone_id),
-            canvas_id     => int($updated->{canvas_id}),
-            layer_id      => int($updated->{layer_id} // 1),
-            notes         => $c->db->get_user_notes($user_id, $updated->{canvas_id}, $unlocked_ids),
-            note_map      => $c->db->get_all_accessible_note_metadata($user_id, $unlocked_ids),
-            last_mutation => $c->db->get_board_mutation_time($updated->{canvas_id})
-        });
+        my $bg_db = DB->new(app => $app, timezone => $bg_timezone);
+        my $updated = $bg_db->complete_ai_format_note(
+            note_id => $bg_clone_id,
+            user_id => $bg_user_id,
+            title   => $bg_title,
+            content => $content,
+        );
+        die "Could not complete AI formatted note" unless $updated;
+        $app->log->info("AI formatting completed for clone $bg_clone_id (source $bg_source_id)");
     })->catch(sub {
         my $err = shift;
-        $c->render(json => { success => 0, error => "AI format failed: $err", clone_id => int($clone_id) });
+        my $safe = (defined $err && length "$err") ? substr("$err", 0, 500) : 'Unknown error';
+        $app->log->error("AI formatting failed for clone $bg_clone_id: $safe");
+        eval {
+            my $bg_db = DB->new(app => $app, timezone => $bg_timezone);
+            my $failed = $bg_db->fail_ai_format_note(
+                note_id => $bg_clone_id,
+                user_id => $bg_user_id,
+                title   => $bg_title,
+                error   => 'The AI provider request failed. Check the server log for details.',
+            );
+            die "Could not mark AI formatted note as failed" unless $failed;
+        };
+        if (my $exception = $@) {
+            $app->log->error("Background AI formatting catch-block error for clone $bg_clone_id: $exception");
+        }
+    });
+
+    # Return immediately while the AI request continues on the worker event loop.
+    $c->render(json => {
+        success => 1,
+        status  => 'started',
+        note_id => $bg_clone_id,
+        message => 'AI formatting started'
     });
 }
 # Renames a board record (Owner only).
