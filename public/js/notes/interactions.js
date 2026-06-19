@@ -5157,8 +5157,7 @@ function handleCanvasTouchStart(e) {
             '.note-check-trigger, .note-link-trigger, .reel-action-btn, .hero-action-btn, ' +
             'input, textarea, select, [contenteditable], ' +
             'button:not([data-pan-passthrough]), a[href], a[data-action], ' +
-            '[data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn' +
-            (STATE.isEditingNote != null ? ', [data-line], [data-line-start]' : '')
+             '[data-action].btn-icon, [data-action].reel-action-btn, [data-action].hero-action-btn'
         );
 
         // Targeted Dispatch: Handle Resize on Touch
