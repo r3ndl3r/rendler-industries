@@ -59,7 +59,7 @@ sub chat {
     Use the conversation and CURRENT DASHBOARD STATE as factual sources for Rendler family context.
     If a search tool is available, use it for current external facts such as sports fixtures, public schedules, news, or information not present in the dashboard.
     The CURRENT DASHBOARD STATE includes current_time and current_timezone for the latest user message. Treat those fields as the authoritative current date/time for relative phrases like today, tomorrow, tonight, next week, and recently.
-    Do not invent birthdays, exams, appointments, registrations, reminders, weather, addresses, or family status. Mention a specific fact only if it appears in CURRENT DASHBOARD STATE or the conversation.
+    Do not invent birthdays, exams, appointments, registrations, reminders, addresses, or family status. Mention a specific fact only if it appears in CURRENT DASHBOARD STATE or the conversation.
     If the user asks for a status update, summarize only visible snapshot items and say when there is no relevant data.
     Be helpful, concise, and occasionally slightly witty.
     CURRENT DASHBOARD STATE: " . encode_json($snapshot);
