@@ -1698,6 +1698,91 @@ sub DB::get_note_for_ai_format {
     return $sth->fetchrow_hashref();
 }
 
+# Updates a note's title and content without changing position or z_index.
+# Used as a building block for placeholder/error content.
+# Re-fetches the note after update so callers get current data.
+# Parameters: positional (note_id, user_id, title, content)
+# Returns: HashRef of the updated note, or undef on failure.
+sub DB::set_note_in_place {
+    my ($self, $note_id, $user_id, $title, $content) = @_;
+    $self->ensure_connection;
+    my $note = $self->get_note_for_ai_format($note_id, $user_id);
+    return undef unless $note;
+    my $sth = $self->{dbh}->prepare(
+        "UPDATE notes
+         SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND canvas_id = ? AND is_deleted = 0"
+    );
+    $sth->execute($title, $content, $note_id, $note->{canvas_id});
+    return undef unless $sth->rows;
+    return $self->get_note_for_ai_format($note_id, $user_id);
+}
+
+# Writes the yellow placeholder content into a freshly cloned note.
+# Called during the request lifecycle ($c available).
+# Parameters: named (note_id, user_id, title)
+# Returns: HashRef of the pending note, or undef on failure.
+sub DB::mark_ai_format_note_pending {
+    my ($self, %args) = @_;
+    $self->ensure_connection;
+    my $placeholder = "[table:wide]\n:---:\n[size:2xl]\x{23F3} AI formatting in progress...[/size]\n[size:lg]\x{1F916} This note will update automatically when formatting finishes.[/size]\n\x{1F6E1}\x{FE0F} The original note was not changed.\n[/table]";
+    my $note = $self->set_note_in_place($args{note_id}, $args{user_id}, $args{title}, $placeholder);
+    return undef unless $note;
+    $self->touch_canvas($note->{canvas_id});
+    return $note;
+}
+
+# Applies the AI-formatted content to a cloned note.
+# Offsets position, syncs all note/bookmark links using the clone's own canvas/layer.
+# Called from background promise handlers (no $c available).
+# Parameters: named (note_id, user_id, title, content)
+# Returns: HashRef of the final note, or undef on failure.
+sub DB::complete_ai_format_note {
+    my ($self, %args) = @_;
+    $self->ensure_connection;
+    my $started_transaction = $self->{dbh}->{AutoCommit};
+    my $note;
+
+    eval {
+        $self->{dbh}->begin_work if $started_transaction;
+        $note = $self->update_ai_formatted_note(
+            $args{note_id},
+            $args{user_id},
+            $args{title},
+            $args{content}
+        );
+        die "Could not update AI formatted note" unless $note;
+        $self->sync_note_links($args{note_id}, $args{content}, $args{user_id});
+        $self->sync_bookmark_links($args{note_id}, $args{content}, $args{user_id});
+        $self->reconcile_bookmark_links($note->{canvas_id}, $note->{layer_id}, $args{user_id});
+        $self->{dbh}->commit if $started_transaction;
+        1;
+    } or do {
+        my $error = $@ || 'Unknown AI format completion error';
+        eval { $self->{dbh}->rollback if $started_transaction };
+        die $error;
+    };
+
+    return $note;
+}
+
+# Writes a safe red error message into the cloned placeholder note.
+# Called from background promise handlers (no $c available).
+# Parameters: named (note_id, user_id, title, error)
+# Returns: HashRef of the error note, or undef on failure.
+sub DB::fail_ai_format_note {
+    my ($self, %args) = @_;
+    $self->ensure_connection;
+    my $safe = (defined $args{error} && length $args{error}) ? substr($args{error}, 0, 500) : 'Unknown error';
+    $safe =~ s/[^\x20-\x7E\x0A\x0D\x80-\xFF]//g;
+    $safe =~ tr/[]/()/;
+    my $content = "[bg:red]AI formatting failed[/bg]\n\nThe original note was not changed.\n\nError:\n$safe";
+    my $note = $self->set_note_in_place($args{note_id}, $args{user_id}, $args{title}, $content);
+    return undef unless $note;
+    $self->touch_canvas($note->{canvas_id});
+    return $note;
+}
+
 # Replaces the cloned note title/content after AI formatting.
 sub DB::update_ai_formatted_note {
     my ($self, $note_id, $user_id, $title, $content) = @_;
@@ -1714,11 +1799,12 @@ sub DB::update_ai_formatted_note {
     my $sth = $self->{dbh}->prepare(
         "UPDATE notes
          SET title = ?, content = ?, x = x + 24, y = y + 24, z_index = ?, updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?"
+         WHERE id = ? AND canvas_id = ? AND is_deleted = 0"
     );
-    $sth->execute($title, $content, int($max_z || 1) + 1, $note_id);
+    $sth->execute($title, $content, int($max_z || 1) + 1, $note_id, $note->{canvas_id});
+    return undef unless $sth->rows;
     $self->touch_canvas($note->{canvas_id});
-    return $note;
+    return $self->get_note_for_ai_format($note_id, $user_id);
 }
 
 # Retrieves both canvas_id and layer_id for a note, enforcing canvas visibility.
