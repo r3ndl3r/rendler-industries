@@ -76,7 +76,7 @@ sub DB::clear_ai_history {
 }
 
 # Generates a comprehensive snapshot of the family dashboard state.
-# Aggregates: Medication logs, Shopping items, Calendar events, Swear Jar, Timers, and Reminders.
+# Aggregates: Medication logs, Shopping items, Calendar events, Swear Jar, Timers, Reminders, and Weather.
 # Returns:
 #   HashRef containing deep-context for Gemini system prompting
 sub DB::get_dashboard_snapshot {
@@ -95,6 +95,28 @@ sub DB::get_dashboard_snapshot {
     my $tz = $self->{timezone} || 'UTC';
     my $request_time = DateTime->now(time_zone => $tz);
 
+    my $weather = {};
+    my $raw_weather = $self->get_latest_weather_data();
+    if (my $loc = $raw_weather->[0]) {
+        my $data = decode_json($loc->{data_json});
+        my $cur = $data->{current} // {};
+        $weather = {
+            name       => $loc->{name},
+            observed_at => $loc->{observed_at},
+            temp_c     => $cur->{temp},
+            feels_like => $cur->{feels_like},
+            humidity   => $cur->{humidity},
+            wind_speed => $cur->{wind_speed},
+            conditions => ($cur->{weather}[0]{description} // ''),
+            forecast   => [ map {{
+                dt         => $_->{dt},
+                high_c     => $_->{temp}{max},
+                low_c      => $_->{temp}{min},
+                conditions => ($_->{weather}[0]{description} // ''),
+            }} @{$data->{daily}} ],
+        };
+    }
+
     my $snapshot = {
         current_time => $request_time->strftime('%Y-%m-%d %H:%M:%S %Z'),
         current_timezone => $tz,
@@ -107,7 +129,8 @@ sub DB::get_dashboard_snapshot {
             unpaid_fines  => $self->get_swear_leaderboard()
         },
         timers       => $self->get_all_timers(),
-        reminders    => $self->get_all_reminders()
+        reminders    => $self->get_all_reminders(),
+        weather      => $weather,
     };
     
     return $snapshot;
