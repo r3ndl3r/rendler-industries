@@ -78,6 +78,25 @@
         <form id="eventForm" onsubmit="handleEventSubmit(event)">
             <input type="hidden" id="eventId" name="id">
             <div class="modal-body">
+                <div class="ai-parse-section">
+                    <button type="button" id="aiParseToggle" class="ai-parse-toggle" onclick="toggleAIParser()" aria-expanded="false" aria-controls="aiParserPanel">
+                        <span>
+                            <strong>✨ AI Assist</strong>
+                            <small>Describe an event and fill the form for review</small>
+                        </span>
+                        <span class="ai-parse-chevron" aria-hidden="true">⌄</span>
+                    </button>
+                    <div id="aiParserPanel" class="ai-parse-panel hidden">
+                        <label for="aiEventPrompt">Describe the event</label>
+                        <div class="ai-parse-input-row">
+                            <textarea id="aiEventPrompt" class="game-input ai-prompt-textarea" rows="2" placeholder="football game on 3rd july at 5pm with nicky remind 1h before"></textarea>
+                            <button type="button" id="aiParseBtn" class="btn-ai-submit" onclick="submitAIParse()">✨ Fill Form</button>
+                        </div>
+                        <div id="aiParseLoading" class="ai-parse-loading hidden">Parsing event...</div>
+                        <div id="aiParseError" class="ai-parse-error hidden"></div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="eventTitle">Title *</label>
                     <input type="text" id="eventTitle" name="title" class="game-input" required>
