@@ -2486,15 +2486,16 @@ async function aiFormatNote(id, button) {
 async function runAiFormatNote(id, button, customPrompt = '') {
     const note = STATE.notes.find(n => n.id == id);
     if (!note || !button || button.disabled) return;
+    if (button.dataset.aiFormatLoading === '1') return;
 
+    button.dataset.aiFormatLoading = '1';
     button.disabled = true;
     button.classList.add('pulse-glow');
     const originalText = button.innerHTML;
     button.innerHTML = '...';
-    if (typeof showToast === 'function') showToast('Cloning note for AI formatting...', 'info');
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 315000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
         const res = await NoteAPI.post('/notes/api/notes/ai-format', {
@@ -2507,25 +2508,31 @@ async function runAiFormatNote(id, button, customPrompt = '') {
         clearTimeout(timeoutId);
 
         if (!res || !res.success) {
-            const cloneMsg = res?.clone_id ? ` Clone ${res.clone_id} was left intact.` : '';
-            if (typeof showToast === 'function') showToast(`${res?.error || 'AI format failed.'}${cloneMsg}`, 'error');
+            const cloneMsg = res?.clone_id ? ` Clone ${res.clone_id} was retained.` : '';
+            const error = res?.error || (controller.signal.aborted
+                ? 'AI format start request timed out.'
+                : 'AI format failed to start.');
+            if (typeof showToast === 'function') showToast(`${error}${cloneMsg}`, 'error');
             return;
         }
 
-        if (res.notes && typeof window.mergeNoteState === 'function') {
-            window.mergeNoteState(res.notes, res.id);
-        } else if (res.notes) {
-            STATE.notes = res.notes;
+        if (typeof showToast === 'function') showToast('AI formatting started. A cloned note will update when ready.', 'success');
+
+        if (typeof window.loadState === 'function') {
+            try {
+                await window.loadState(false, STATE.canvas_id, res.note_id || null, STATE.activeLayerId);
+            } catch (error) {
+                console.error('Could not refresh AI formatting placeholder:', error);
+            }
         }
-        if (res.note_map) STATE.note_map = res.note_map;
-        STATE.last_mutation = res.last_mutation;
-        if (typeof renderUI === 'function') renderUI();
-        if (typeof centerOnNote === 'function') await centerOnNote(res.id);
-        if (typeof showToast === 'function') showToast('AI formatted clone created', 'success');
     } catch (_) {
-        if (typeof showToast === 'function') showToast('AI format timed out or failed', 'error');
+        const error = controller.signal.aborted
+            ? 'AI format start request timed out.'
+            : 'AI format request failed.';
+        if (typeof showToast === 'function') showToast(error, 'error');
     } finally {
         clearTimeout(timeoutId);
+        delete button.dataset.aiFormatLoading;
         button.disabled = false;
         button.classList.remove('pulse-glow');
         button.innerHTML = originalText;
