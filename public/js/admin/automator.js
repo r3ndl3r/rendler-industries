@@ -2167,7 +2167,7 @@ async function showConsoleReport() {
 
     if (!reportView.dataset.loaded && currentConsoleHistoryId) {
         let h = STATE.history.find(row => Number(row.id) === Number(currentConsoleHistoryId));
-        if (!h || (!h.json_result && !h.output)) {
+        if (!h || !h.json_result) {
             try {
                 const data = await apiGet(`/admin/automator/api/report/${currentConsoleHistoryId}`, 6000);
                 if (data && data.success && data.history) {
