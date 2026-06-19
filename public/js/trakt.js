@@ -232,7 +232,7 @@ function renderUpcoming() {
 
     return `
         <div class="trakt-list-table">
-            <table class="data-table">
+            <table class="data-table trakt-schedule-table">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -274,21 +274,21 @@ function renderUnwatched() {
 
     return `
         <div class="trakt-list-table">
-            <table class="data-table">
+            <table class="data-table trakt-schedule-table">
                 <thead>
                     <tr>
+                        <th>Aired</th>
                         <th>Show</th>
                         <th>Episode</th>
-                        <th>Aired</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${STATE.unwatched.map(item => `
                         <tr>
+                            <td>${escapeHtml(formatAirCountdown(item.first_aired, true))}</td>
                             <td>${renderShowCell(item.show_title || 'Unknown show', item.show_trakt_id, item.show_images)}</td>
                             <td><span class="trakt-episode-badge">${escapeHtml(episodeLabel(item))}</span> ${escapeHtml(item.title || '')}</td>
-                            <td>${escapeHtml(formatAirCountdown(item.first_aired, false))}</td>
                             <td><button type="button" class="trakt-pill-button unwatched" onclick="toggleUnwatchedItemState(${Number(item.trakt_id)}, false, this)">Unwatched</button></td>
                         </tr>
                     `).join('')}
@@ -1685,7 +1685,7 @@ function renderUnwatchedCompactCard(item) {
                 <div class="trakt-mobile-card-copy">
                     ${renderShowLink(showTitle, item.show_trakt_id)}
                     <div class="trakt-mobile-card-date-row">
-                        <small>${escapeHtml(formatAirCountdown(item.first_aired, false))}</small>
+                        <small>${escapeHtml(formatAirCountdown(item.first_aired, true))}</small>
                         <button type="button" class="trakt-pill-button unwatched" onclick="toggleUnwatchedItemState(${Number(item.trakt_id)}, false, this)">Unwatched</button>
                     </div>
                     <strong><span class="trakt-episode-badge">${escapeHtml(episodeLabel(item))}</span> ${escapeHtml(item.title || '')}</strong>
@@ -1909,8 +1909,10 @@ function formatAirCountdown(value, includeCountdown = true) {
     const absHours = Math.max(1, Math.ceil(Math.abs(diffMs) / 36e5));
     const absDays = Math.max(1, Math.ceil(Math.abs(diffMs) / 864e5));
     const countdown = sameDay
-        ? `${future ? 'in' : 'about'} ${absHours} hour${absHours === 1 ? '' : 's'}`
-        : `${future ? 'in' : 'about'} ${absDays} day${absDays === 1 ? '' : 's'}`;
+        ? future ? `in ${absHours} hour${absHours === 1 ? '' : 's'}`
+                 : `${absHours} hour${absHours === 1 ? '' : 's'} ago`
+        : future ? `in ${absDays} day${absDays === 1 ? '' : 's'}`
+                 : `${absDays} day${absDays === 1 ? '' : 's'} ago`;
     return `${weekday} ${datePart} · ${countdown}`;
 }
 

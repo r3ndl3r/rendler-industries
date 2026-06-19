@@ -85,6 +85,31 @@
     overflow-x: auto;
 }
 
+.trakt-schedule-table {
+    table-layout: fixed;
+    min-width: 820px;
+}
+
+.trakt-schedule-table th:nth-child(1),
+.trakt-schedule-table td:nth-child(1) {
+    width: 21%;
+}
+
+.trakt-schedule-table th:nth-child(2),
+.trakt-schedule-table td:nth-child(2) {
+    width: 39%;
+}
+
+.trakt-schedule-table th:nth-child(3),
+.trakt-schedule-table td:nth-child(3) {
+    width: 29%;
+}
+
+.trakt-schedule-table th:nth-child(4),
+.trakt-schedule-table td:nth-child(4) {
+    width: 11%;
+}
+
 .trakt-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -379,7 +404,7 @@
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 0.85rem;
-    align-items: start;
+    align-items: center;
 }
 
 .trakt-mobile-card-date-row {
@@ -576,6 +601,10 @@
     background: rgba(59, 130, 246, 0.15);
     color: #bfdbfe;
     border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.trakt-schedule-table td:last-child {
+    vertical-align: middle;
 }
 
 .trakt-episode-row p {
