@@ -411,6 +411,8 @@ let _noteContextMenuTimer = null;
 let _ribbonTextarea = null;
 const pendingNoteHeightFits = new Set();
 let noteHeightFitFrame = null;
+let rawSelectionAutoScrollActive = false;
+let rawSelectionDragTextarea = null;
 
 /**
  * Resolves the edge orientation string from a resize handle.
@@ -844,6 +846,19 @@ function checkAutoScrollProximity(e) {
     }
 
     const isNearEdge = (velX !== 0 || velY !== 0);
+    const rawSelectionDrag = !!rawSelectionDragTextarea
+        && rawSelectionDragTextarea.isConnected
+        && document.activeElement === rawSelectionDragTextarea
+        && (e.buttons & 1);
+
+    if (rawSelectionDrag) {
+        rawSelectionAutoScrollActive = isNearEdge;
+        if (isNearEdge) startAutoScroll(velX, velY);
+        else stopAutoScroll(true);
+        return;
+    }
+
+    if (rawSelectionDragTextarea || rawSelectionAutoScrollActive) stopAutoScroll();
     const shouldBypass = STATE.autoScroll.active || STATE.isResizing;
 
     if (shouldBypass) {
@@ -909,10 +924,13 @@ function startAutoScroll(vx, vy) {
 
 /**
  * Terminates the auto-scroll animation loop and resets temporal triggers.
+ * @param {boolean} preserveRawSelectionDrag - Keep the active textarea drag origin.
  * @returns {void}
  */
-function stopAutoScroll() {
+function stopAutoScroll(preserveRawSelectionDrag = false) {
     STATE.autoScroll.startTime = null;
+    rawSelectionAutoScrollActive = false;
+    if (!preserveRawSelectionDrag) rawSelectionDragTextarea = null;
     if (!STATE.autoScroll.active) return;
     STATE.autoScroll.active = false;
     if (STATE.autoScroll.frame) {
@@ -1721,6 +1739,11 @@ async function saveViewportImmediate() {
 function handleCanvasMouseDown(e) {
     if (STATE.isInitializing) return;
 
+    if (rawSelectionDragTextarea || rawSelectionAutoScrollActive) stopAutoScroll();
+    rawSelectionDragTextarea = e.button === 0 && !e.shiftKey
+        ? e.target.closest('.sticky-note.is-editing.is-raw-editing:not(.is-fence-note) textarea:not([readonly])')
+        : null;
+
     // 1. Note Header Actions: Centralized delegation for all note-level buttons
     const hashBtn    = e.target.closest('.note-id-hash');
     const editBtn     = e.target.closest('.btn-icon-edit');
@@ -1967,6 +1990,8 @@ function handleCanvasMouseMove(e) {
  * @returns {void}
  */
 function handleCanvasMouseUp(e) {
+    if (rawSelectionDragTextarea || rawSelectionAutoScrollActive) stopAutoScroll();
+
     if (STATE.isLassoing) {
         const count = STATE.selectedNoteIds.size;
         resetLasso(false); // Finish selection without purging state
