@@ -3,6 +3,8 @@
 package MyApp::Controller::Calendar;
 use Mojo::Base 'Mojolicious::Controller';
 use DateTime;
+use Encode qw(FB_CROAK encode);
+use Mojo::JSON qw(false true);
 use Mojo::Util qw(trim);
 use utf8;
 
@@ -19,6 +21,229 @@ use utf8;
 #   - DB::Calendar for all persistence and category management.
 #   - MyApp::Plugin::Email for automated notification delivery.
 #   - FullCalendar-style data architecture via JSON state-driven handshakes.
+
+# Helper: Normalises scalar AI/prompt context text for safe reuse.
+# Parameters:
+#   value : Candidate scalar value.
+#   max   : Optional maximum character length.
+# Returns:
+#   Trimmed plain string with control whitespace collapsed.
+sub _ai_plain {
+    my ($value, $max) = @_;
+    return '' if !defined $value || ref $value;
+    $value = trim("$value");
+    $value =~ s/[\r\n\t]+/ /g;
+    $value =~ s/\s{2,}/ /g;
+    return defined $max && length($value) > $max ? substr($value, 0, $max) : $value;
+}
+
+# Helper: Decodes an AI JSON response and requires a top-level object.
+# Parameters:
+#   c    : Mojolicious controller, used for the shared ai_decode_json helper.
+#   text : Raw provider text, possibly already decoded with wide characters.
+# Returns:
+#   HashRef on success, undef on invalid/non-object JSON.
+sub _decode_ai_calendar_json {
+    my ($c, $text) = @_;
+    my $parsed = $c->ai_decode_json($text);
+    return $parsed if ref $parsed eq 'HASH';
+
+    my $bytes = eval { encode('UTF-8', $text, FB_CROAK) };
+    $parsed = $@ ? undef : $c->ai_decode_json($bytes);
+    return ref $parsed eq 'HASH' ? $parsed : undef;
+}
+
+# Helper: Extracts text from the provider-neutral AI response envelope.
+# Parameters:
+#   data : AI provider response hash.
+# Returns:
+#   First text part string, or an empty string for malformed responses.
+sub _extract_ai_calendar_text {
+    my ($data) = @_;
+    return '' unless ref $data eq 'HASH';
+
+    my $candidates = $data->{candidates};
+    return '' unless ref $candidates eq 'ARRAY' && @$candidates;
+
+    my $candidate = $candidates->[0];
+    return '' unless ref $candidate eq 'HASH';
+
+    my $content = $candidate->{content};
+    return '' unless ref $content eq 'HASH';
+
+    my $parts = $content->{parts};
+    return '' unless ref $parts eq 'ARRAY' && @$parts;
+
+    my $part = $parts->[0];
+    return ref $part eq 'HASH' ? ($part->{text} // '') : '';
+}
+
+# Helper: Parses a calendar datetime string using DateTime validation.
+# Parameters:
+#   value    : Datetime string in YYYY-MM-DD HH:MM:SS format.
+#   timezone : IANA timezone name for local calendar interpretation.
+# Returns:
+#   DateTime object, or undef for malformed/impossible dates.
+sub _parse_ai_datetime {
+    my ($value, $timezone) = @_;
+    return undef if !defined $value || ref $value;
+    return undef unless $value =~ /\A(\d{4})-(\d{2})-(\d{2}) ([0-2]\d):([0-5]\d):([0-5]\d)\z/;
+    my $dt = eval {
+        DateTime->new(
+            year      => $1,
+            month     => $2,
+            day       => $3,
+            hour      => $4,
+            minute    => $5,
+            second    => $6,
+            time_zone => $timezone || 'UTC'
+        );
+    };
+    return $@ ? undef : $dt;
+}
+
+# Helper: Parses a calendar date string using DateTime validation.
+# Parameters:
+#   value    : Date string in YYYY-MM-DD format.
+#   timezone : IANA timezone name for local calendar interpretation.
+# Returns:
+#   DateTime object, or undef for malformed/impossible dates.
+sub _parse_ai_date {
+    my ($value, $timezone) = @_;
+    return undef if !defined $value || ref $value || $value eq '';
+    return undef unless $value =~ /\A(\d{4})-(\d{2})-(\d{2})\z/;
+    my $dt = eval {
+        DateTime->new(
+            year      => $1,
+            month     => $2,
+            day       => $3,
+            time_zone => $timezone || 'UTC'
+        );
+    };
+    return $@ ? undef : $dt;
+}
+
+# Helper: Formats a DateTime for Calendar DB/API form values.
+# Parameters:
+#   dt : DateTime object.
+# Returns:
+#   Datetime string in YYYY-MM-DD HH:MM:SS format.
+sub _format_ai_datetime {
+    my ($dt) = @_;
+    return $dt->strftime('%F %T');
+}
+
+# Helper: Validates and normalises AI-parsed calendar fields.
+# Parameters:
+#   parsed     : Decoded AI response hash.
+#   users      : Family user rows used to whitelist attendee IDs.
+#   categories : Existing category names used to whitelist category.
+#   timezone   : Calendar timezone for date parsing.
+# Returns:
+#   Sanitised API response hash with success true/false.
+sub _normalise_ai_calendar_parse {
+    my ($parsed, $users, $categories, $timezone) = @_;
+
+    return { success => false, error => 'AI returned invalid data. Try again.' }
+        unless ref $parsed eq 'HASH';
+
+    if (!$parsed->{success}) {
+        my $error = _ai_plain($parsed->{error}, 200);
+        $error ||= 'Could not parse that description. Try being more specific.';
+        return { success => false, error => $error };
+    }
+
+    my $title = _ai_plain($parsed->{title}, 255);
+    return { success => false, error => 'Could not find an event title. Try being more specific.' }
+        unless length $title;
+
+    my $all_day = $parsed->{all_day} ? 1 : 0;
+    my $start_dt = _parse_ai_datetime($parsed->{start_date}, $timezone);
+    return { success => false, error => 'Could not find a valid start date and time.' }
+        unless $start_dt;
+
+    my $end_dt;
+    if (defined $parsed->{end_date} && length "$parsed->{end_date}") {
+        $end_dt = _parse_ai_datetime($parsed->{end_date}, $timezone);
+        return { success => false, error => 'AI returned an invalid end date.' }
+            unless $end_dt;
+    }
+
+    if ($all_day) {
+        $start_dt = $start_dt->clone->set(hour => 0, minute => 0, second => 0);
+        $end_dt = $end_dt && DateTime->compare($end_dt, $start_dt) > 0 ? $end_dt : $start_dt->clone;
+        $end_dt = $end_dt->clone->set(hour => 23, minute => 59, second => 59);
+    } else {
+        $end_dt ||= $start_dt->clone->add(hours => 1);
+        $end_dt = $start_dt->clone->add(hours => 1)
+            if DateTime->compare($end_dt, $start_dt) <= 0;
+    }
+
+    my %valid_user_ids = map { int($_->{id} || 0) => 1 } @{$users || []};
+    my %seen_attendees;
+    my @attendee_ids;
+    if (ref $parsed->{attendee_ids} eq 'ARRAY') {
+        for my $id (@{$parsed->{attendee_ids}}) {
+            next unless defined $id && !ref $id && "$id" =~ /\A\d+\z/;
+            $id = int($id);
+            next unless $valid_user_ids{$id} && !$seen_attendees{$id}++;
+            push @attendee_ids, $id;
+        }
+    }
+
+    my %category_by_lc = map { lc($_) => $_ } grep { defined $_ && !ref $_ } @{$categories || []};
+    my $category = _ai_plain($parsed->{category}, 100);
+    $category = length $category && exists $category_by_lc{lc $category} ? $category_by_lc{lc $category} : '';
+
+    my $color = _ai_plain($parsed->{color}, 7);
+    $color = '#3788d8' unless $color =~ /\A#[0-9A-Fa-f]{6}\z/;
+
+    my $notification_minutes = 0;
+    if (defined $parsed->{notification_minutes} && !ref $parsed->{notification_minutes}
+        && "$parsed->{notification_minutes}" =~ /\A\d+\z/) {
+        $notification_minutes = int($parsed->{notification_minutes});
+        $notification_minutes = 11519 if $notification_minutes > 11519;
+    }
+
+    my $rule = _ai_plain($parsed->{recurrence_rule}, 20);
+    my $interval = 1;
+    if ($rule eq 'biweekly') {
+        $rule = 'weekly';
+        $interval = 2;
+    } elsif ($rule =~ /\A(?:daily|weekly|monthly|yearly)\z/) {
+        if (defined $parsed->{recurrence_interval} && !ref $parsed->{recurrence_interval}
+            && "$parsed->{recurrence_interval}" =~ /\A\d+\z/) {
+            $interval = int($parsed->{recurrence_interval});
+            $interval = 1 if $interval < 1;
+            $interval = 99 if $interval > 99;
+        }
+    } else {
+        $rule = '';
+    }
+
+    my $recurrence_end_date = '';
+    if ($rule && defined $parsed->{recurrence_end_date} && length "$parsed->{recurrence_end_date}") {
+        my $end_date_dt = _parse_ai_date($parsed->{recurrence_end_date}, $timezone);
+        $recurrence_end_date = $end_date_dt ? $end_date_dt->strftime('%F') : '';
+    }
+
+    return {
+        success              => true,
+        title                => $title,
+        description          => _ai_plain($parsed->{description}, 2000),
+        start_date           => _format_ai_datetime($start_dt),
+        end_date             => _format_ai_datetime($end_dt),
+        all_day              => $all_day ? true : false,
+        category             => $category,
+        color                => $color,
+        attendee_ids         => \@attendee_ids,
+        notification_minutes => $notification_minutes,
+        is_private           => $parsed->{is_private} ? true : false,
+        recurrence_rule      => $rule,
+        recurrence_interval  => $rule ? $interval : 1,
+        recurrence_end_date  => $recurrence_end_date
+    };
+}
 
 # Renders the main calendar interface.
 # Route: GET /calendar
@@ -47,6 +272,100 @@ sub api_state {
         is_admin        => $c->is_admin ? 1 : 0,
         current_user_id => $c->current_user_id
     });
+}
+
+# API Endpoint: Parses a natural-language event description into unsaved form data.
+# Route: POST /calendar/api/ai_parse
+# Params:
+#   prompt : Natural-language event description, capped at 2000 characters.
+# Returns:
+#   Sanitised event fields for client-side form fill; never persists the event.
+sub api_ai_parse {
+    my $c = shift;
+    return $c->render(json => { success => false, error => 'Unauthorized' }, status => 403) unless $c->is_family;
+
+    my $prompt = _ai_plain($c->param('prompt') // '', 2000);
+    return $c->render(json => { success => false, error => 'Describe the event first.' })
+        unless length $prompt;
+
+    my $now = $c->now;
+    my $timezone = eval { $now->time_zone->name } || $c->app->config->{timezone} || 'UTC';
+    my $users = $c->db->get_family_users();
+    my $categories = $c->db->get_calendar_categories();
+    my $requester_id = int($c->current_user_id || 0);
+    my $requester_name = _ai_plain($c->session('user') || 'Unknown', 80);
+
+    my $user_context = join "\n", map {
+        sprintf '- id: %d, username: %s', int($_->{id} || 0), _ai_plain($_->{username}, 80)
+    } @{$users || []};
+    $user_context ||= '- none';
+
+    my $category_context = join "\n", map { '- ' . _ai_plain($_, 100) } @{$categories || []};
+    $category_context ||= '- none';
+
+    my $system = <<"PROMPT";
+You parse family calendar event text into JSON for a review form. Return only valid JSON.
+Current datetime: @{[$now->strftime('%F %T')]}
+Timezone: $timezone
+Requester: id $requester_id, username: $requester_name
+
+Family users:
+$user_context
+
+Existing categories:
+$category_context
+
+Rules:
+- Return {"success":false,"error":"..."} when the text is too vague to determine an event title and start date.
+- Return success true with keys: title, description, start_date, end_date, all_day, category, color, attendee_ids, notification_minutes, is_private, recurrence_rule, recurrence_interval, recurrence_end_date.
+- Dates must be absolute local times in YYYY-MM-DD HH:MM:SS.
+- Missing non-all-day end_date should be start_date plus 1 hour.
+- All-day events use start 00:00:00 and end 23:59:59.
+- Title should start with one appropriate emoji.
+- Use attendee_ids only from the Family users list. "with Nicky" means requester plus Nicky; "for Nicky" means Nicky only.
+- Use category only when it exactly matches an Existing category; otherwise use an empty string.
+- Use a #RRGGBB color.
+- notification_minutes is an integer number of minutes before the event, or 0.
+- recurrence_rule is "", daily, weekly, monthly, or yearly. For biweekly use recurrence_rule weekly and recurrence_interval 2.
+- recurrence_end_date is YYYY-MM-DD or an empty string.
+PROMPT
+
+    $c->render_later;
+    my $promise = eval {
+        $c->ai_prompt(
+            contents        => [{ role => 'user', parts => [{ text => $prompt }] }],
+            system          => $system,
+            timeout         => 30,
+            response_format => 'application/json',
+            app_profile     => 'calendar_ai_parse'
+        );
+    };
+
+    unless ($promise) {
+        my $err = $@ || 'AI request setup failed';
+        $c->app->log->error("Calendar AI parse setup failed: $err");
+        return $c->render(json => { success => false, error => 'AI parsing could not be started.' });
+    }
+
+    $promise->then(sub {
+        my $data = shift;
+        my $json_text = _extract_ai_calendar_text($data);
+        my $response = eval {
+            my $parsed = _decode_ai_calendar_json($c, $json_text);
+            _normalise_ai_calendar_parse($parsed, $users, $categories, $timezone);
+        };
+        if ($@) {
+            $c->app->log->error("Calendar AI parse normalization failed: $@");
+            return $c->render(json => { success => false, error => 'AI returned invalid calendar data.' });
+        }
+        return $c->render(json => $response);
+    })->catch(sub {
+        my $err = shift;
+        $c->app->log->error("Calendar AI parse failed: $err");
+        return $c->render(json => { success => false, error => 'AI processing timed out or failed. Please try again.' });
+    });
+
+    return;
 }
 
 # API Endpoint: Retrieves events with optional server-side search and pagination.
@@ -347,6 +666,7 @@ sub register_routes {
     $r->{family}->get('/calendar')->to('calendar#index');
     $r->{family}->get('/calendar/api/state')->to('calendar#api_state');
     $r->{family}->get('/calendar/api/events')->to('calendar#api_events');
+    $r->{family}->post('/calendar/api/ai_parse')->to('calendar#api_ai_parse');
     $r->{family}->post('/calendar/api/add')->to('calendar#api_add');
     $r->{family}->post('/calendar/api/edit')->to('calendar#api_edit');
     $r->{family}->post('/calendar/api/delete')->to('calendar#api_delete');
