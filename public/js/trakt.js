@@ -488,7 +488,7 @@ function renderItemContent(item) {
  * @returns {Promise<void>}
  */
 async function syncTrakt() {
-    const button = actionButton();
+    const button = actionButton() || document.querySelector('#traktHeaderActions .btn-primary');
     await withBusyButton(button, 'Refreshing...', async () => {
         const result = await apiPost('/trakt/api/sync', {});
         if (result && result.success) {
