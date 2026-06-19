@@ -32,6 +32,7 @@ CREATE TABLE `audiobook_progress` (
   `completed` tinyint(1) NOT NULL DEFAULT 0,
   `client_updated_ms` bigint(20) unsigned NOT NULL DEFAULT 0,
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `bookmarked_chapters` longtext NOT NULL DEFAULT '[]',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_user_book` (`user_id`,`book_slug`),
   KEY `idx_user` (`user_id`)
@@ -168,7 +169,7 @@ CREATE TABLE `automator_secrets` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `user_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `name` (`name`)
+  UNIQUE KEY `uniq_automator_secret_owner_name` (`user_id`,`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 CREATE TABLE `birthdays` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -352,6 +353,15 @@ CREATE TABLE `fcm_tokens` (
   KEY `idx_user_id` (`user_id`),
   KEY `idx_fcm_tokens_user_platform` (`user_id`,`platform`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+CREATE TABLE `file_acls` (
+  `file_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `granted_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`file_id`,`user_id`),
+  KEY `idx_file_acls_user` (`user_id`),
+  CONSTRAINT `fk_file_acls_file` FOREIGN KEY (`file_id`) REFERENCES `files` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_file_acls_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `files` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `filename` varchar(255) NOT NULL,
@@ -368,16 +378,6 @@ CREATE TABLE `files` (
   UNIQUE KEY `filename` (`filename`),
   KEY `idx_filename` (`filename`),
   KEY `idx_uploaded_by` (`uploaded_by`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-CREATE TABLE `file_acls` (
-  `file_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `granted_by` varchar(50) DEFAULT NULL,
-  `granted_at` timestamp NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`file_id`, `user_id`),
-  KEY `idx_file_acls_user` (`user_id`),
-  CONSTRAINT `fk_file_acls_file` FOREIGN KEY (`file_id`) REFERENCES `files` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_file_acls_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `fuel_logs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -986,6 +986,18 @@ CREATE TABLE `trakt_connections` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_trakt_connections_user` (`user_id`),
   CONSTRAINT `trakt_connections_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `trakt_episode_notifications` (
+  `user_id` int(11) NOT NULL,
+  `episode_trakt_id` int(11) NOT NULL,
+  `show_title` varchar(500) NOT NULL DEFAULT '',
+  `episode_label` varchar(100) NOT NULL DEFAULT '',
+  `title` varchar(500) NOT NULL DEFAULT '',
+  `first_aired` datetime DEFAULT NULL,
+  `notified_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`user_id`,`episode_trakt_id`),
+  KEY `idx_notifications_user` (`user_id`),
+  CONSTRAINT `trakt_episode_notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `trakt_list_items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
