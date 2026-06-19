@@ -60,6 +60,7 @@ let historyGeneration    = 0;
 let searchGeneration     = 0;
 let eventsGeneration     = 0;
 let searchDebounceTimer  = null;
+let _aiParsing           = false;
 
 /**
  * Bootstraps the module state and establishes background lifecycles.
@@ -1019,6 +1020,171 @@ function _populateReminderDropdowns(totalMins) {
     nEl.value = clampedDays * 1440 + hours * 60 + mins;
 }
 
+function resetAIParser() {
+    const panel = document.getElementById('aiParserPanel');
+    const toggle = document.getElementById('aiParseToggle');
+    const prompt = document.getElementById('aiEventPrompt');
+    const error = document.getElementById('aiParseError');
+    const loading = document.getElementById('aiParseLoading');
+    const btn = document.getElementById('aiParseBtn');
+
+    if (panel) panel.classList.add('hidden');
+    if (toggle) toggle.classList.remove('active');
+    if (prompt) prompt.value = '';
+    if (error) {
+        error.textContent = '';
+        error.classList.add('hidden');
+    }
+    if (loading) loading.classList.add('hidden');
+    if (btn && !_aiParsing) btn.disabled = false;
+}
+
+function toggleAIParser() {
+    const panel = document.getElementById('aiParserPanel');
+    const toggle = document.getElementById('aiParseToggle');
+    if (!panel) return;
+
+    const isOpen = panel.classList.toggle('hidden') === false;
+    if (toggle) {
+        toggle.classList.toggle('active', isOpen);
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+    if (isOpen) document.getElementById('aiEventPrompt')?.focus();
+}
+
+function showAIParseError(el, msg) {
+    if (!el) return;
+    el.textContent = `❌ ${msg}`;
+    el.classList.remove('hidden');
+}
+
+async function submitAIParse() {
+    if (_aiParsing) return;
+
+    const promptEl = document.getElementById('aiEventPrompt');
+    const errorEl = document.getElementById('aiParseError');
+    const loading = document.getElementById('aiParseLoading');
+    const btn = document.getElementById('aiParseBtn');
+    const prompt = (promptEl?.value || '').trim();
+
+    if (!prompt) {
+        showAIParseError(errorEl, 'Describe the event first.');
+        return;
+    }
+
+    _aiParsing = true;
+    if (btn) btn.disabled = true;
+    if (errorEl) {
+        errorEl.textContent = '';
+        errorEl.classList.add('hidden');
+    }
+    if (loading) loading.classList.remove('hidden');
+
+    try {
+        const result = await window.apiPost('/calendar/api/ai_parse', { prompt }, 45000);
+        if (!result || !result.success) {
+            showAIParseError(errorEl, result?.error || 'Could not parse that input. Try being more specific.');
+            return;
+        }
+
+        const modal = document.getElementById('eventModal');
+        if (!modal || !modal.classList.contains('show')) return;
+
+        _fillModalFromAI(result);
+        const panel = document.getElementById('aiParserPanel');
+        if (panel && !panel.classList.contains('hidden')) toggleAIParser();
+        window.showToast('AI parsed your event. Review and save when ready.', 'success');
+    } catch (err) {
+        console.error('AI parse failed:', err);
+        showAIParseError(errorEl, 'Failed to contact AI service. Please try again.');
+    } finally {
+        _aiParsing = false;
+        if (btn) btn.disabled = false;
+        if (loading) loading.classList.add('hidden');
+    }
+}
+
+function _fillModalFromAI(data) {
+    const modal = document.getElementById('eventModal');
+    if (!modal || !data) return;
+
+    const idEl = document.getElementById('eventId');
+    if (idEl) idEl.value = '';
+
+    const titleEl = document.getElementById('modalTitle');
+    if (titleEl) titleEl.textContent = 'Add Event (AI Parsed)';
+
+    resetAnnouncementCheckbox();
+
+    ['deleteEventBtn', 'cloneEventBtn', 'skipOccurrenceBtn'].forEach(id => {
+        document.getElementById(id)?.classList.add('hidden');
+    });
+
+    const eventTitle = document.getElementById('eventTitle');
+    if (eventTitle) eventTitle.value = data.title || '';
+
+    const descEl = document.getElementById('eventDescription');
+    if (descEl) descEl.value = data.description || '';
+
+    const [startDate, startTime] = String(data.start_date || '').split(' ');
+    const [endDate, endTime] = String(data.end_date || '').split(' ');
+    const startDateEl = document.getElementById('eventStartDate');
+    const startTimeEl = document.getElementById('eventStartTime');
+    const endDateEl = document.getElementById('eventEndDate');
+    const endTimeEl = document.getElementById('eventEndTime');
+    if (startDateEl) startDateEl.value = startDate || '';
+    if (startTimeEl) startTimeEl.value = (startTime || '').substring(0, 5);
+    if (endDateEl) endDateEl.value = endDate || '';
+    if (endTimeEl) endTimeEl.value = (endTime || '').substring(0, 5);
+
+    const allDayCb = document.getElementById('eventAllDay');
+    if (allDayCb) {
+        allDayCb.checked = !!data.all_day;
+        syncAllDayTimeGroups();
+    }
+
+    const privateCb = document.getElementById('eventIsPrivate');
+    if (privateCb) privateCb.checked = !!data.is_private;
+
+    const catEl = document.getElementById('eventCategory');
+    if (catEl) catEl.value = data.category || '';
+
+    const colorEl = document.getElementById('eventColor');
+    if (colorEl) colorEl.value = data.color || '#3788d8';
+
+    const attendeeIds = Array.isArray(data.attendee_ids) ? data.attendee_ids.map(Number) : [];
+    document.querySelectorAll('#attendees-container input[type="checkbox"]').forEach(cb => {
+        cb.checked = attendeeIds.includes(Number(cb.value));
+    });
+
+    const mins = Number.parseInt(data.notification_minutes || 0, 10) || 0;
+    const notifyCb = document.getElementById('eventNotify');
+    const reminderGroup = document.getElementById('reminderPresetsGroup');
+    if (notifyCb) notifyCb.checked = mins > 0;
+    if (reminderGroup) reminderGroup.classList.toggle('hidden', mins <= 0);
+    if (mins > 0) {
+        _populateReminderDropdowns(mins);
+    } else {
+        _populateReminderDropdowns(0);
+    }
+
+    const ruleEl = document.getElementById('recurrenceRule');
+    if (ruleEl) {
+        const interval = Number.parseInt(data.recurrence_interval || 1, 10) || 1;
+        const isBiweekly = data.recurrence_rule === 'weekly' && interval === 2;
+        ruleEl.value = data.recurrence_rule ? (isBiweekly ? 'biweekly' : data.recurrence_rule) : '';
+        ruleEl.dispatchEvent(new Event('change'));
+
+        const ri = document.getElementById('recurrenceInterval');
+        const re = document.getElementById('recurrenceEndDate');
+        if (ri && !isBiweekly) ri.value = interval;
+        if (re) re.value = data.recurrence_end_date || '';
+    }
+
+    modal.classList.add('show');
+    syncCalendarModalLock();
+}
+
 /**
  * Resets the admin announcement checkbox to unchecked.
  * Prevents stale notification state from a previous modal affecting the next save.
@@ -1159,6 +1325,7 @@ function openAddEventModal(dateStr) {
     if (!modal || !form) return;
 
     form.reset();
+    resetAIParser();
     syncAllDayTimeGroups();
     resetAnnouncementCheckbox();
     document.getElementById('eventId').value = '';
@@ -1555,6 +1722,7 @@ function closeEventModal() {
     const modal = document.getElementById('eventModal');
     if (modal) {
         modal.classList.remove('show');
+        resetAIParser();
         syncCalendarModalLock();
     }
 }
@@ -1979,6 +2147,8 @@ function initializeViewFromUrl() {
 
 window.handleEventSubmit  = handleEventSubmit;
 window.openAddEventModal  = openAddEventModal;
+window.toggleAIParser     = toggleAIParser;
+window.submitAIParse      = submitAIParse;
 window.openEditModalById  = openEditModalById;
 window.openEditModalByUid = openEditModalByUid;
 window.confirmDeleteEvent = confirmDeleteEvent;
