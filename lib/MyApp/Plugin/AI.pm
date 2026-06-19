@@ -276,7 +276,7 @@ sub ai_prompt_sync {
     my $debug = $args{debug};
     my $log = sub { warn "[AI] @_\n" if $debug };
 
-    $log->("Sync request provider=$provider model=$model system=" . ($args{system} // '') . " contents=" . substr(($args{contents}[0]{parts}[0]{text} // ''), 0, 200));
+    $log->("Sync request provider=$provider model=$model system=" . ($args{system} // '') . " contents=" . substr(($args{contents}[0]{parts}[0]{text} // ''), 0, 2000));
 
     if (($engine->{type} || '') eq 'openai_compatible' && !_has_gemini_only_parts(\%args)) {
         my $endpoint = $engine->{chat_endpoint} || '';
@@ -517,7 +517,7 @@ sub register {
         $args{engine} = $engine;
         $args{web_search} = 0 unless _engine_supports($engine, 'web_search');
         $c->ai_debug("Request provider=$provider model=", $model,
-            " system=", ($args{system} // ''), " contents=", substr(($args{contents}[0]{parts}[0]{text} // ''), 0, 200));
+            " system=", ($args{system} // ''), " contents=", substr(($args{contents}[0]{parts}[0]{text} // ''), 0, 2000));
 
         my $promise;
         if (($engine->{type} || '') eq 'openai_compatible' && !$requires_gemini) {
@@ -529,7 +529,7 @@ sub register {
         return $promise->then(sub {
             my $data = shift;
             my $text = $data->{candidates}[0]{content}{parts}[0]{text} // '';
-            $c->ai_debug("Response text=", substr($text, 0, 500));
+            $c->ai_debug("Response text=", $text);
             return $data;
         })->catch(sub {
             my $err = shift;
