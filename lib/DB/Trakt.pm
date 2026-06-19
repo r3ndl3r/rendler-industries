@@ -348,7 +348,7 @@ sub DB::get_trakt_unwatched_cache {
     );
     $sth->execute($user_id);
     my $row = $sth->fetchrow_hashref;
-    return undef unless $row && $row->{data} && $row->{updated_at} ge $row->{last_synced_at};
+    return undef unless $row && $row->{data};
 
     return $row->{data};
 }
