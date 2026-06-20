@@ -1489,7 +1489,7 @@ sub DB::delete_layer_alias {
 # Migrates all notes from one layer to another within a canvas.
 # Features:
 #   - Atomic update of layer_id for all non-deleted notes.
-#   - Merges content if the target layer is already populated.
+#   - Notes are reassigned to the target layer unconditionally.
 #   - Returns the number of notes migrated.
 sub DB::move_layer_content {
     my ($self, $canvas_id, $from_id, $to_id) = @_;
