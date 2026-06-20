@@ -26,6 +26,10 @@ const CONFIG = {
     SCROLL_DELAY_MS: 100             // UI timing for vertical alignment
 };
 
+/**
+ * Trims the conversation history to the configured maximum.
+ * @returns {void}
+ */
 function trimHistory() {
     if (STATE.history.length > CONFIG.MAX_HISTORY) {
         STATE.history = STATE.history.slice(-CONFIG.MAX_HISTORY);
