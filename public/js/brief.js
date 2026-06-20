@@ -156,6 +156,10 @@ function parseWeatherData(raw) {
     }
 }
 
+/**
+ * Renders the weather tile with current conditions and forecast.
+ * @returns {void}
+ */
 function renderWeather() {
     const tile = document.getElementById('tile-weather');
     const w = STATE.weather ?? null;
