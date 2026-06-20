@@ -328,6 +328,10 @@ function hasOpenChoresModal() {
     ].join(', '));
 }
 
+/**
+ * Closes the add chore modal and updates body class.
+ * @returns {void}
+ */
 function closeAddModal() {
     const modal = document.getElementById('addChoreModal');
     if (modal) {
