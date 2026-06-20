@@ -35,6 +35,7 @@ sub _strip_markdown {
     return trim($text);
 }
 
+# Extracts the calendar date from event data, preferring a direct date field.
 sub _calendar_link_date {
     my $data = shift || {};
     my $date = $data->{date} // '';
@@ -45,6 +46,7 @@ sub _calendar_link_date {
     return '';
 }
 
+# Appends query parameters to a URL, detecting whether to use ? or & separator.
 sub _append_query_params {
     my ($url, @params) = @_;
     return $url unless @params;
@@ -437,7 +439,7 @@ sub register {
     });
 
     # --- EMAIL (GMAIL SMTP) ---
-    # Parameters: to (string or arrayref), subject, body, user_id (opt)
+    # Parameters: to (string or arrayref), subject, body, user_id (opt), caller_id (opt)
     $app->helper(send_email_via_gmail => sub {
         my ($c, $to, $subject, $body, $user_id, $caller_id) = @_;
         my $settings = $c->db->get_email_settings();
@@ -512,7 +514,7 @@ sub register {
     });
 
     # --- PUSHOVER ---
-    # Parameters: message, user_id (opt)
+    # Parameters: message, user_id (opt), caller_id (opt)
     $app->helper(push_pushover => sub {
         my ($c, $message, $user_id, $caller_id) = @_;
         my $creds = $c->db->{dbh}->selectrow_hashref("SELECT * FROM pushover LIMIT 1");
@@ -566,7 +568,7 @@ sub register {
     });
 
     # --- GOTIFY ---
-    # Parameters: message, title (opt), priority (opt), user_id (opt)
+    # Parameters: message, title (opt), priority (opt), user_id (opt), caller_id (opt)
     $app->helper(push_gotify => sub {
         my ($c, $message, $title, $priority, $user_id, $caller_id) = @_;
         my $creds = $c->db->{dbh}->selectrow_hashref("SELECT * FROM gotify LIMIT 1");
