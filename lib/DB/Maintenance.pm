@@ -301,7 +301,7 @@ sub DB::try_set_brief_sent_date {
 # Returns all maintenance task rows as an ordered arrayref for the maintenance loop.
 # Ordered by id ASC so execution sequence matches insertion order.
 # Returns:
-#   ArrayRef of hashrefs: { id, name, label, function_name, is_async,
+#   ArrayRef of hashrefs: { id, name, label, function_name, is_async, run_last,
 #                           is_enabled, interval_minutes, last_run_epoch }
 sub DB::get_maintenance_task_configs {
     my ($self) = @_;
@@ -384,7 +384,7 @@ sub DB::sync_maintenance_manifest {
 
 # Inserts a new maintenance task record.
 # Parameters:
-#   $name, $label, $description, $function_name, $is_async, $is_enabled, $interval_minutes
+#   $name, $label, $description, $function_name, $is_async, $run_last, $is_enabled, $interval_minutes
 # Returns: new row ID
 sub DB::create_maintenance_task {
     my ($self, $name, $label, $description, $function_name, $is_async, $run_last, $is_enabled, $interval_minutes) = @_;
@@ -400,7 +400,7 @@ sub DB::create_maintenance_task {
 
 # Updates all editable fields for a single task (full record edit).
 # Parameters:
-#   $name, $label, $description, $function_name, $is_async, $is_enabled, $interval_minutes
+#   $name, $label, $description, $function_name, $is_async, $run_last, $is_enabled, $interval_minutes
 # Returns: 1
 sub DB::edit_maintenance_task {
     my ($self, $name, $label, $description, $function_name, $is_async, $run_last, $is_enabled, $interval_minutes) = @_;
