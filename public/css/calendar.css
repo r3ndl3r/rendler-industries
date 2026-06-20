@@ -715,6 +715,7 @@
 .event-detail-row:last-child { border-bottom: none; }
 .event-detail-row strong { min-width: 140px; color: #94a3b8; font-size: 0.95em; }
 .event-detail-row span { flex: 1; color: #ffffff; font-size: 0.95em; }
+.event-description-text { white-space: pre-line; }
 
 .event-detail-attendees { display: block !important; width: auto; }
 .event-detail-attendees .attendee-pill { display: inline-block !important; width: auto !important; margin-right: 5px; margin-bottom: 2px; }
