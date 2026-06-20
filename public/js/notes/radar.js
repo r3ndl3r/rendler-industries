@@ -14,6 +14,10 @@ function updateRadar() {
     syncRadarViewport();
 }
 
+/**
+ * Draws minimap radar pings on the canvas overlay.
+ * @returns {void}
+ */
 function drawRadarPings() {
     const canvas = document.getElementById('radar-pings');
     if (!canvas) return;
