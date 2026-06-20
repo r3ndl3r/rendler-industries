@@ -71,7 +71,7 @@ sub api_update {
 # Saves all editable fields for an existing task (full record edit from modal).
 # Route: POST /admin/maintenance/api/edit
 # Parameters: name, label, function_name, description, is_async (0|1),
-#             is_enabled (0|1), interval_minutes (int >= 1)
+#             run_last (0|1), is_enabled (0|1), interval_minutes (int >= 1)
 # Returns: JSON { success, error }
 sub api_edit {
     my $c = shift;
@@ -104,7 +104,7 @@ sub api_edit {
 # Creates a new maintenance task record.
 # Route: POST /admin/maintenance/api/add
 # Parameters: name, label, function_name, description, is_async (0|1),
-#             is_enabled (0|1), interval_minutes (int >= 1)
+#             run_last (0|1), is_enabled (0|1), interval_minutes (int >= 1)
 # Returns: JSON { success, error }
 sub api_add {
     my $c = shift;
