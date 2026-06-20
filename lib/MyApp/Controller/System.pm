@@ -394,7 +394,7 @@ sub run_room_reminders {
 # Parameters:
 #   - now : DateTime object representing the current execution minute.
 # Returns:
-#   Stats HashRef { checked_minute, due_found, notified, errors }
+#   Stats HashRef { checked_minute, day_number, due_found, notified, errors }
 sub run_reminder_maintenance {
     my ($c, $now) = @_;
     
@@ -727,7 +727,7 @@ sub run_calendar_notifications {
 # Returns:
 #   Stats HashRef { processed, ai_calls, dict_hits, fallback_hits }
 # Behavior:
-#   - Iterates supported tables (batch of 5 per table to prevent API rate limits).
+#   - Iterates supported tables (batch of 10 per table to prevent API rate limits).
 #   - Skips texts that already begin with an Emoji sequence.
 #   - Fallback 1: Isolated AI Dictionary (ai_emoji_dictionary).
 #   - Fallback 2: Standard UI Dictionary (emojis).
