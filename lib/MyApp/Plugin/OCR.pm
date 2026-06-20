@@ -76,6 +76,7 @@ sub register {
     });
 }
 
+# Runs ImageMagick preprocessing and Tesseract OCR on an image file, returning parsed data.
 sub _execute_ocr {
     my ($self, $c, $fname_in, $fname_out, $ocr_base, $flags) = @_;
     
@@ -103,6 +104,10 @@ sub _execute_ocr {
     return $data;
 }
 
+# Parses raw OCR text to extract store name, receipt date, and total amount.
+# Parameters:
+#   text : Raw OCR output string.
+# Returns: HashRef { store_name, receipt_date, total_amount, raw_text }
 sub parse_text {
     my ($self, $text) = @_;
     my @lines = grep { trim($_) ne '' } split(/
