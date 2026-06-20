@@ -35,9 +35,17 @@ let currentPage = 0;
 /** @type {number} Questions rendered per page. */
 const ITEMS_PER_PAGE = 10;
 
+/**
+ * Returns total pages for custom study pagination.
+ * @returns {number}
+ */
 function getTotalPages() {
     return Math.max(1, Math.ceil(STATE.study_questions.length / ITEMS_PER_PAGE));
 }
+/**
+ * Clamps current page within valid bounds.
+ * @returns {void}
+ */
 function clampCurrentPage() {
     currentPage = Math.min(Math.max(currentPage, 0), getTotalPages() - 1);
 }
@@ -196,6 +204,11 @@ function updateControls() {
     if (pageIndicator) pageIndicator.textContent = `Page ${currentPage + 1} of ${totalPages}`;
 }
 
+/**
+ * Sanitizes a filename to prevent path traversal in asset URLs.
+ * @param {string} filename - Raw filename.
+ * @returns {string} - Sanitized and encoded filename, or empty string.
+ */
 function safeAssetFilename(filename) {
     const value = String(filename || '').trim();
     return /^[A-Za-z0-9._-]+$/.test(value) ? encodeURIComponent(value) : '';
