@@ -16,6 +16,13 @@
 
     let _insertTemplate = (title) => `[[${title}]]`;
 
+    /**
+     * Creates the wikilink autocomplete dropdown with matched items.
+     *
+     * @param {Array} matches - List of matched items with id, title, canvas_name.
+     * @param {HTMLTextAreaElement} textarea - The target textarea.
+     * @param {Function} [template] - Custom template function for insertion.
+     */
     function buildDropdown(matches, textarea, template) {
         removeDropdown();
         if (template) _insertTemplate = template;
@@ -38,6 +45,11 @@
         positionDropdown(textarea);
     }
 
+    /**
+     * Positions the dropdown element relative to the textarea cursor.
+     *
+     * @param {HTMLTextAreaElement} textarea - The target textarea.
+     */
     function positionDropdown(textarea) {
         const rect       = textarea.getBoundingClientRect();
         const scale      = (typeof STATE !== 'undefined' && STATE.scale) || 1;
@@ -62,6 +74,9 @@
         _dropdown.style.top  = `${top + window.scrollY}px`;
     }
 
+    /**
+     * Removes the dropdown from the DOM and resets autocomplete state.
+     */
     function removeDropdown() {
         if (_dropdown) { _dropdown.remove(); _dropdown = null; }
         _triggerStart = -1;
@@ -69,6 +84,12 @@
         _insertTemplate = (title) => `[[${title}]]`;
     }
 
+    /**
+     * Inserts a wikilink or template result at the cursor position.
+     *
+     * @param {HTMLTextAreaElement} textarea - The target textarea.
+     * @param {string} title - The selected item title.
+     */
     function insertWikilink(textarea, title) {
         const val    = textarea.value;
         const cursor = textarea.selectionStart;
@@ -83,6 +104,12 @@
         removeDropdown();
     }
 
+    /**
+     * Searches STATE notes for [tag:] values matching the query.
+     *
+     * @param {string} query - The partial tag name to match.
+     * @returns {Array} Matched tag items with id, title, canvas_name.
+     */
     function getTagMatches(query) {
         const lq = query.toLowerCase();
         const seen = new Set();
@@ -97,6 +124,13 @@
             .map(t => ({ id: null, title: t, canvas_name: null }));
     }
 
+    /**
+     * Filters a static options array by the query string.
+     *
+     * @param {string} query - The partial match query.
+     * @param {string[]} options - The static list to filter.
+     * @returns {Array} Matched items with id, title, canvas_name.
+     */
     function getStaticMatches(query, options) {
         const lq = query.toLowerCase();
         return options
@@ -105,6 +139,11 @@
             .map(o => ({ id: null, title: o, canvas_name: null }));
     }
 
+    /**
+     * Builds a date picker calendar dropdown for [date:] insertion.
+     *
+     * @param {HTMLTextAreaElement} textarea - The target textarea.
+     */
     function buildCalendar(textarea) {
         removeDropdown();
         _insertTemplate = (dateStr) => `[date:${dateStr}]`;
@@ -115,6 +154,9 @@
         _dropdown = document.createElement('div');
         _dropdown.className = 'wikilink-calendar';
 
+        /**
+         * Renders the calendar grid for the current month/year.
+         */
         function renderCalGrid() {
             const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
             const firstDay    = new Date(calYear, calMonth, 1).getDay();
@@ -172,6 +214,12 @@
         positionDropdown(textarea);
     }
 
+    /**
+     * Searches notes with attachments (blob_id) matching the query.
+     *
+     * @param {string} query - The partial title query.
+     * @returns {Array} Matched blob note items.
+     */
     function getBlobMatches(query) {
         const lq = query.toLowerCase();
         const map = STATE.note_map || {};
@@ -194,6 +242,12 @@
             .slice(0, 8);
     }
 
+    /**
+     * Searches all STATE note titles matching the query.
+     *
+     * @param {string} query - The partial title query.
+     * @returns {Array} Matched note items.
+     */
     function getSortedMatches(query) {
         const lq = query.toLowerCase();
         const map = STATE.note_map || {};
@@ -236,6 +290,12 @@
             'list', 'compact', 'title'
         ];
 
+        /**
+         * Matches bookmark flag options against the typed query.
+         *
+         * @param {string} query - The partial flag query (e.g. "copy", "sort=id").
+         * @returns {Array} Matched flag items.
+         */
         function getBookmarkFlagMatches(query) {
             const parts = query.split(':');
             const lastPart = parts[parts.length - 1].toLowerCase();
@@ -424,18 +484,34 @@ function resolveDirection(handle) {
 }
 
 /**
- * Initiates the resizing state machine via delegated interaction.
+ * Determines whether a browser event originates from a touch or pointer interaction.
+ *
+ * @param {Event} e - The browser event to inspect.
+ * @returns {boolean} True if the event is a touch or touch-like pointer interaction.
  */
 function isTouchInteraction(e) {
     return !!(e && (e.touches || e.changedTouches || e.pointerType === 'touch'));
 }
 
+/**
+ * Gets a specific touch from a TouchList by identifier.
+ *
+ * @param {TouchList} touches - The touch list.
+ * @param {number|null} touchId - The touch identifier to find, or null for the first.
+ * @returns {Touch|null} The matching touch or null.
+ */
 function getTouchById(touches, touchId) {
     if (!touches || touches.length === 0) return null;
     if (touchId === null || touchId === undefined) return touches[0];
     return Array.from(touches).find(touch => touch.identifier === touchId) || null;
 }
 
+/**
+ * Initiates the note resize state machine from a resize handle interaction.
+ *
+ * @param {MouseEvent|TouchEvent} e - The start event.
+ * @param {HTMLElement} handle - The resize handle element.
+ */
 function handleResizeStart(e, handle) {
     if (STATE.isInitializing || !STATE.editMode) return;
     
@@ -797,6 +873,11 @@ function updateStickyMove(e) {
     if (typeof updateRadar === 'function') updateRadar();
 }
 
+/**
+ * Handles the touch end event during sticky note movement.
+ *
+ * @param {TouchEvent} e - The touch end event.
+ */
 function handleStickyMoveTouchEnd(e) {
     if (!STATE.pickedNoteId) return;
     if (STATE.pickedTouchId !== null && STATE.pickedTouchId !== undefined) {
@@ -1064,6 +1145,9 @@ function cancelStickyMove() {
     showToast('Move cancelled', 'info');
 }
 
+/**
+ * Releases the active edit lock on page unload via sendBeacon.
+ */
 function releaseActiveEditLock() {
     if (!STATE.isEditingNote) return;
 
@@ -2193,6 +2277,11 @@ function handleCanvasDoubleClick(e) {
  * double-clicking an unactionable area of a note body. Uses position:fixed
  * at the double-click coordinates.
  */
+/**
+ * Ensures the floating actions rail element exists, creating it if needed.
+ *
+ * @returns {HTMLElement} The floating actions rail element.
+ */
 function ensureFloatingActionsRail() {
     var existing = document.querySelector('.note-floating-actions-rail');
     if (existing) return existing;
@@ -2255,6 +2344,12 @@ function ensureFloatingActionsRail() {
     return rail;
 }
 
+/**
+ * Shows the floating actions rail at the given mouse coordinates.
+ *
+ * @param {MouseEvent} e - The triggering mouse event.
+ * @param {number|string} noteId - The note ID.
+ */
 function showFloatingActionsRail(e, noteId) {
     var rail = ensureFloatingActionsRail();
     rail.dataset.noteId = noteId;
@@ -2280,6 +2375,9 @@ function showFloatingActionsRail(e, noteId) {
     if (x < 4) rail.style.left = '4px';
 }
 
+/**
+ * Hides the floating actions rail and resets its state.
+ */
 function hideFloatingActionsRail() {
     var rail = document.querySelector('.note-floating-actions-rail');
     STATE.floatingRailNoteId = null;
@@ -2291,6 +2389,11 @@ function hideFloatingActionsRail() {
     delete rail.dataset.noteId;
 }
 
+/**
+ * Updates edit mode indicators (button states) for a given note.
+ *
+ * @param {number|string} noteId - The note ID.
+ */
 function updateEditModeIndicators(noteId) {
     const noteEl = document.getElementById(`note-${noteId}`);
     const editing = !!noteEl?.classList.contains('is-editing');
@@ -2338,6 +2441,9 @@ function applyMeasuredNoteHeight(el, height) {
     }
 }
 
+/**
+ * Flushes all pending note height fits in an animation frame.
+ */
 function flushNoteHeightFits() {
     const targets = [];
 
@@ -2387,24 +2493,44 @@ function flushNoteHeightFits() {
     });
 }
 
+/**
+ * Schedules a note height fit measurement.
+ *
+ * @param {number|string|null} id - The note ID.
+ */
 function fitNoteHeight(id) {
     if (id === null || id === undefined) return;
     pendingNoteHeightFits.add(String(id));
     if (!noteHeightFitFrame) noteHeightFitFrame = requestAnimationFrame(flushNoteHeightFits);
 }
 
+/**
+ * Handles image content load events to trigger note height fitting.
+ *
+ * @param {Event} e - The load event.
+ */
 function handleNoteContentLoad(e) {
     if (!e.target.matches('img')) return;
     const noteEl = e.target.closest('.sticky-note');
     if (noteEl) fitNoteHeight(noteEl.dataset.id);
 }
 
+/**
+ * Handles details/summary toggle events to trigger note height fitting.
+ *
+ * @param {Event} e - The toggle event.
+ */
 function handleNoteContentToggle(e) {
     if (!e.target.matches('details')) return;
     const noteEl = e.target.closest('.sticky-note');
     if (noteEl) fitNoteHeight(noteEl.dataset.id);
 }
 
+/**
+ * Moves the specified notes to the center of the canvas.
+ *
+ * @param {number[]|string[]} ids - The note IDs to center.
+ */
 async function moveNotesToCanvasCenter(ids) {
     if (!ids || ids.length === 0) return;
 
@@ -3800,6 +3926,12 @@ async function handleNoteLinkClick(id) {
     }
 }
 
+/**
+ * Resolves an embed target ID from a numeric string or note title.
+ *
+ * @param {string} value - The embed target value (ID or title).
+ * @returns {number|null} The resolved note ID or null.
+ */
 function resolveNoteEmbedTargetId(value) {
     const targetId = parseInt(value, 10);
     if (!isNaN(targetId)) return targetId;
@@ -3811,6 +3943,14 @@ function resolveNoteEmbedTargetId(value) {
     return match ? match.id : null;
 }
 
+/**
+ * Recursively resolves [embed:] references to their note content.
+ *
+ * @param {string} content - The content to process.
+ * @param {number} depth - Current recursion depth.
+ * @param {Set} seen - Set of already-resolved note IDs.
+ * @returns {string} Content with embeds resolved.
+ */
 function resolveNoteEmbeddedText(content, depth = 0, seen = new Set()) {
     if (!content || !content.includes('[embed:')) return content || '';
     if (depth > 2) return 'Embed depth limit reached';
@@ -4036,6 +4176,13 @@ function findPositionMapWrapperEnd(text, openToken, closeToken, scanStart) {
     return -1;
 }
 
+/**
+ * Builds a position map tracking raw-to-rendered text positions.
+ * @param {string} rawText - Raw source text.
+ * @param {number} [depth=0] - Recursion depth guard.
+ * @param {Object|null} [componentState=null] - Dynamic component state.
+ * @returns {Array} - Position map array.
+ */
 function buildPositionMap(rawText, depth = 0, componentState = null) {
     var len = rawText.length;
     var map = [];
@@ -4050,6 +4197,15 @@ function buildPositionMap(rawText, depth = 0, componentState = null) {
     var renderedPos = 0;
     var i = 0;
 
+    /**
+     * Consumes a rendered dynamic component and maps it in the position map.
+     *
+     * @param {string} type - The component type (note, copy, file, date).
+     * @param {number} rawStart - Raw text start offset.
+     * @param {number} rawLength - Raw text length to skip.
+     * @param {string} [sourceValue] - The source value for matching.
+     * @returns {boolean} True if a component was consumed.
+     */
     function consumeRenderedComponent(type, rawStart, rawLength, sourceValue = '') {
         if (!componentState || !componentState.components) return false;
         const component = componentState.components[componentState.index];
@@ -4092,6 +4248,13 @@ function buildPositionMap(rawText, depth = 0, componentState = null) {
         return true;
     }
 
+    /**
+     * Merges a nested position map from a sub-block into the parent map.
+     *
+     * @param {Array} innerMap - The nested position map.
+     * @param {number} rawStart - Raw start offset of the sub-block.
+     * @param {number} rawLength - Raw length of the sub-block.
+     */
     function mergeInnerMap(innerMap, rawStart, rawLength) {
         for (var j = 0; j < rawLength; j++) {
             map[rawStart + j] = innerMap[j] >= 0 ? renderedPos + innerMap[j] : -1;
@@ -4328,6 +4491,12 @@ function buildPositionMap(rawText, depth = 0, componentState = null) {
     return map;
 }
 
+/**
+ * Creates a component state object from the rendered DOM elements.
+ *
+ * @param {HTMLElement} renderedEl - The rendered content element.
+ * @returns {Object} Component state with components array and index.
+ */
 function createRenderedComponentState(renderedEl) {
     const selector = [
         '.note-date-tag',
@@ -4487,6 +4656,12 @@ function computeBlockCursorOffset(e, renderedEl, rawText) {
     var clickedEl = cell;
     cell = cell ? cell.closest('th, td') : null;
 
+    /**
+     * Splits a table row into individual cell segments by pipe delimiters.
+     *
+     * @param {string} line - The raw table row text.
+     * @returns {Array} Segments with text and start offset.
+     */
     function splitTableCells(line) {
         const segments = [];
         let depth = 0;
@@ -4510,6 +4685,11 @@ function computeBlockCursorOffset(e, renderedEl, rawText) {
         return segments;
     }
 
+    /**
+     * Resolves a table cell click to the corresponding raw text offset.
+     *
+     * @returns {number|null} The raw offset or null.
+     */
     function resolveTableCellOffset() {
         if (!cell || !/^\s*\[table(?::[^\]]*)?\]\s*(?:\n|$)/i.test(rawText)) return null;
 
@@ -4577,6 +4757,13 @@ function computeBlockCursorOffset(e, renderedEl, rawText) {
     const tableCellOffset = resolveTableCellOffset();
     if (tableCellOffset !== null) return tableCellOffset;
 
+    /**
+     * Finds the closest index of text in rawText by proportional position.
+     *
+     * @param {string} text - The text to search for.
+     * @param {number} minLen - Minimum text length for matching.
+     * @returns {number} The best match index or -1.
+     */
     function findBestMatch(text, minLen) {
         if (!text || text.length < minLen) return -1;
         var bestIdx = -1;
@@ -4612,6 +4799,12 @@ function computeBlockCursorOffset(e, renderedEl, rawText) {
     return null;
 }
 
+/**
+ * Focuses the inline editor, optionally selecting all text.
+ *
+ * @param {HTMLElement} editor - The editor element to focus.
+ * @param {boolean} [selectText] - Whether to select all text.
+ */
 function focusInlineEditor(editor, selectText = false) {
     try {
         editor.focus({ preventScroll: true });
@@ -4621,16 +4814,35 @@ function focusInlineEditor(editor, selectText = false) {
     if (selectText && typeof editor.select === 'function') editor.select();
 }
 
+/**
+ * Resizes a block editor textarea to fit its content.
+ *
+ * @param {HTMLTextAreaElement} textarea - The textarea to resize.
+ */
 function resizeBlockEditorToContent(textarea) {
     if (!textarea) return;
     textarea.style.height = 'auto';
     textarea.style.height = `${textarea.scrollHeight + 2}px`;
 }
 
+/**
+ * Restores the original element after inline editing is complete.
+ *
+ * @param {HTMLElement} editor - The editor element to remove.
+ * @param {HTMLElement} originalEl - The original element to restore.
+ */
 function restoreInlineEditElement(editor, originalEl) {
     if (editor && editor.isConnected && originalEl) editor.replaceWith(originalEl);
 }
 
+/**
+ * Refreshes the rendered note viewer with current note content.
+ *
+ * @param {number|string} noteId - The note ID.
+ * @param {Object} note - The note data object.
+ * @param {HTMLElement} [viewer] - Optional viewer element to refresh.
+ * @returns {boolean} True if the viewer was refreshed.
+ */
 function refreshClickToEditViewer(noteId, note, viewer) {
     const el = document.getElementById('note-' + noteId);
     const targetViewer = viewer || el?.querySelector('.note-text-viewer');
@@ -4823,6 +5035,14 @@ function editBlock(blockEl, noteId, clickEvent) {
     textarea.addEventListener('input', handleInput);
 }
 
+/**
+ * Commits a single-line inline edit by updating the note content.
+ *
+ * @param {HTMLInputElement} input - The line editor input element.
+ * @param {number|string} noteId - The note ID.
+ * @param {HTMLElement} viewer - The note text viewer element.
+ * @param {HTMLElement} originalEl - The original rendered element.
+ */
 function commitLineEdit(input, noteId, viewer, originalEl) {
     const note = STATE.notes.find(n => n.id == noteId);
     if (!note) {
@@ -4849,6 +5069,14 @@ function commitLineEdit(input, noteId, viewer, originalEl) {
     if (!refreshClickToEditViewer(noteId, note, viewer)) restoreInlineEditElement(input, originalEl);
 }
 
+/**
+ * Commits a block-level inline edit by updating the note content.
+ *
+ * @param {HTMLTextAreaElement} textarea - The block editor textarea.
+ * @param {number|string} noteId - The note ID.
+ * @param {HTMLElement} viewer - The note text viewer element.
+ * @param {HTMLElement} originalEl - The original rendered element.
+ */
 function commitBlockEdit(textarea, noteId, viewer, originalEl) {
     const note = STATE.notes.find(n => n.id == noteId);
     if (!note) {
@@ -4879,6 +5107,13 @@ function commitBlockEdit(textarea, noteId, viewer, originalEl) {
     if (!refreshClickToEditViewer(noteId, note, viewer)) restoreInlineEditElement(textarea, originalEl);
 }
 
+/**
+ * Finds the closing line of a block-level tag (e.g., [table:], [color:]).
+ *
+ * @param {string} content - The full note content.
+ * @param {number} startLine - The line index of the opening tag.
+ * @returns {number} The line index of the closing tag.
+ */
 function findBlockEndLine(content, startLine) {
     const lines = content.split('\n');
     if (startLine >= lines.length) return startLine;
@@ -5732,11 +5967,20 @@ window.initRibbon = function() {
     const ribbon = document.getElementById('notes-edit-ribbon');
     if (!ribbon) return;
 
+    /**
+     * Closes all open ribbon dropdown menus.
+     */
     function closeAllDropdowns() {
         ribbon.querySelectorAll('.ribbon-dropdown-menu.open').forEach((m) => m.classList.remove('open'));
         ribbon.querySelectorAll('.ribbon-dropdown-trigger.open').forEach((t) => t.classList.remove('open'));
     }
 
+    /**
+     * Opens a ribbon dropdown menu positioned relative to the trigger.
+     *
+     * @param {HTMLElement} menuEl - The dropdown menu element.
+     * @param {HTMLElement} trigger - The trigger button element.
+     */
     function openDropdown(menuEl, trigger) {
         const ribbonRect = ribbon.getBoundingClientRect();
         const trigRect   = trigger.getBoundingClientRect();
