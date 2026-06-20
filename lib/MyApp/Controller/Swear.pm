@@ -25,7 +25,7 @@ sub index {
 }
 
 # API Endpoint: Returns the full synchronized state for the module.
-# Route: GET /api/swear/state
+# Route: GET /swear/api/state
 # Returns: JSON object { success, leaderboard, balance, history, members, is_admin, current_user }
 sub api_state {
     my $c = shift;
@@ -48,7 +48,7 @@ sub api_state {
 }
 
 # API Endpoint: Records a new fine against a user.
-# Route: POST /api/swear/add
+# Route: POST /swear/api/add
 sub add_fine {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
@@ -73,7 +73,7 @@ sub add_fine {
 }
 
 # API Endpoint: Records a payment or deposit made by a user.
-# Route: POST /api/swear/pay
+# Route: POST /swear/api/pay
 sub pay_debt {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
@@ -103,7 +103,7 @@ sub pay_debt {
 }
 
 # API Endpoint: Records a withdrawal from the jar.
-# Route: POST /api/swear/spend
+# Route: POST /swear/api/spend
 sub spend {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
@@ -127,7 +127,7 @@ sub spend {
 }
 
 # API Endpoint: Registers a new family member to the roster.
-# Route: POST /api/swear/member/add
+# Route: POST /swear/api/member/add
 sub add_member {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
@@ -151,7 +151,7 @@ sub add_member {
 }
 
 # API Endpoint: Removes a family member from the roster.
-# Route: POST /api/swear/member/delete
+# Route: POST /swear/api/member/delete
 sub delete_member {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
