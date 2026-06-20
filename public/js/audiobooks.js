@@ -566,6 +566,12 @@ function _applyPendingProgressToState() {
     }
 }
 
+/**
+ * Checks if pending progress matches the given payload.
+ * @param {string|null} current - JSON string from localStorage.
+ * @param {Object} payload - Progress payload to compare.
+ * @returns {boolean}
+ */
 function _pendingProgressMatches(current, payload) {
     if (!current) return false;
     try {
@@ -579,6 +585,12 @@ function _pendingProgressMatches(current, payload) {
     }
 }
 
+/**
+ * Checks if pending progress is not newer than the given payload.
+ * @param {string|null} current - JSON string from localStorage.
+ * @param {Object} payload - Progress payload to compare.
+ * @returns {boolean}
+ */
 function _pendingProgressIsNotNewerThan(current, payload) {
     if (!current) return false;
     try {
