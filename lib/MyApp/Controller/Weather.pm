@@ -17,7 +17,7 @@ sub index {
 }
 
 # The single-source-of-truth state generator for weather data.
-# Route: POST /weather/api/state
+# Route: GET or POST /weather/api/state
 sub api_state {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
