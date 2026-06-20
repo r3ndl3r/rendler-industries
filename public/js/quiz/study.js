@@ -26,9 +26,17 @@ let questions = [];                 // Master collection from server
 let currentPage = 0;                // Pagination pointer
 const ITEMS_PER_PAGE = 10;          // View threshold
 
+/**
+ * Returns total pages for paginated study mode.
+ * @returns {number}
+ */
 function getTotalPages() {
     return Math.max(1, Math.ceil(questions.length / ITEMS_PER_PAGE));
 }
+/**
+ * Clamps current page within valid bounds.
+ * @returns {void}
+ */
 function clampCurrentPage() {
     currentPage = Math.min(Math.max(currentPage, 0), getTotalPages() - 1);
 }
