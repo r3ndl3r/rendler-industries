@@ -720,6 +720,11 @@ async function openHistoryModal() {
     await loadHistoryPage(false);
 }
 
+/**
+ * Closes the history audit modal and cleans up the scroll observer.
+ *
+ * @returns {void}
+ */
 function closeHistoryModal() {
     const modal = document.getElementById('historyModal');
     if (!modal) return;
@@ -731,6 +736,11 @@ function closeHistoryModal() {
     syncCalendarModalLock();
 }
 
+/**
+ * Debounced history filter that resets state and triggers a fresh load.
+ *
+ * @returns {void}
+ */
 function filterHistory() {
     clearTimeout(filterDebounceTimer);
     filterDebounceTimer = setTimeout(() => {
@@ -992,6 +1002,11 @@ function setupEventListeners() {
     }
 }
 
+/**
+ * Synchronizes days/hours/minutes dropdowns into the hidden total-minutes field.
+ *
+ * @returns {void}
+ */
 function _syncReminderMinutes() {
     const dEl = document.getElementById('reminderDays');
     const hEl = document.getElementById('reminderHours');
@@ -1004,6 +1019,12 @@ function _syncReminderMinutes() {
     nEl.value = days * 1440 + hours * 60 + mins;
 }
 
+/**
+ * Populates reminder dropdowns from a total-minutes value, clamping days to 7.
+ *
+ * @param {number} totalMins - Total notification minutes.
+ * @returns {void}
+ */
 function _populateReminderDropdowns(totalMins) {
     const days  = Math.floor(totalMins / 1440);
     const hours = Math.floor((totalMins % 1440) / 60);
@@ -1020,6 +1041,11 @@ function _populateReminderDropdowns(totalMins) {
     nEl.value = clampedDays * 1440 + hours * 60 + mins;
 }
 
+/**
+ * Resets the AI parser panel and button to their default closed state.
+ *
+ * @returns {void}
+ */
 function resetAIParser() {
     const panel = document.getElementById('aiParserPanel');
     const toggle = document.getElementById('aiParseToggle');
@@ -1041,6 +1067,11 @@ function resetAIParser() {
     }
 }
 
+/**
+ * Toggles the AI parser panel visibility and manages focus.
+ *
+ * @returns {void}
+ */
 function toggleAIParser() {
     const panel = document.getElementById('aiParserPanel');
     const toggle = document.getElementById('aiParseToggle');
@@ -1054,12 +1085,25 @@ function toggleAIParser() {
     if (isOpen) document.getElementById('aiEventPrompt')?.focus();
 }
 
+/**
+ * Displays an error message in the AI parser output element.
+ *
+ * @param {HTMLElement} el - The error display element.
+ * @param {string} msg - The error message text.
+ * @returns {void}
+ */
 function showAIParseError(el, msg) {
     if (!el) return;
     el.textContent = `❌ ${msg}`;
     el.classList.remove('hidden');
 }
 
+/**
+ * Sends the natural-language prompt to the AI parse endpoint and fills the form.
+ *
+ * @async
+ * @returns {Promise<void>}
+ */
 async function submitAIParse() {
     if (_aiParsing) return;
 
@@ -1111,6 +1155,12 @@ async function submitAIParse() {
     }
 }
 
+/**
+ * Populates the event modal form fields with AI-parsed event data.
+ *
+ * @param {Object} data - AI-parsed event fields.
+ * @returns {void}
+ */
 function _fillModalFromAI(data) {
     const modal = document.getElementById('eventModal');
     if (!modal || !data) return;
@@ -1900,16 +1950,35 @@ function formatDate(date) {
     return `${y}-${m}-${d}`;
 }
 
+/**
+ * Parses a YYYY-MM-DD string into a Date object.
+ *
+ * @param {string} dateStr - Date string in YYYY-MM-DD format.
+ * @returns {Date|null} - Parsed Date or null if invalid.
+ */
 function parseUrlDate(dateStr) {
     if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
     const [year, month, day] = dateStr.split('-').map(Number);
     return new Date(year, month - 1, day);
 }
 
+/**
+ * Extracts the date portion (YYYY-MM-DD) from an event's start or instance date.
+ *
+ * @param {Object} event - Event object.
+ * @returns {string} - Date string.
+ */
 function eventDatePart(event) {
     return String(event?.instance_date || event?.start_date || '').split(' ')[0];
 }
 
+/**
+ * Locates an event in STATE.events by uid or recurrence source id.
+ *
+ * @param {number|string} eventId - Target event identifier.
+ * @param {string} [eventDate] - Optional YYYY-MM-DD date filter.
+ * @returns {Object|undefined} - Matching event or undefined.
+ */
 function findDeepLinkedEvent(eventId, eventDate) {
     return STATE.events.find(e => {
         if (String(e.uid) === String(eventId)) return true;
@@ -1918,6 +1987,12 @@ function findDeepLinkedEvent(eventId, eventDate) {
     });
 }
 
+/**
+ * Opens the deep-linked event details modal if a pending event exists.
+ *
+ * @async
+ * @returns {Promise<void>}
+ */
 async function openPendingEventDeepLink() {
     const pending = STATE.pendingEvent;
     if (!pending || STATE.deepLinkHandled) return;
