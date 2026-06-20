@@ -532,6 +532,11 @@ function renderReminderList() {
  */
 const DAY_LABELS = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun' };
 
+/**
+ * Renders HTML for a reminder schedule item.
+ * @param {Object} r - Reminder schedule record.
+ * @returns {string} - HTML string.
+ */
 function renderReminderItem(r) {
     const timeDisplay = formatTimeAmPm(r.reminder_time);
     const active = r.is_active ? 1 : 0;
@@ -1078,6 +1083,10 @@ function hasOpenMedicationModal() {
     ].join(', '));
 }
 
+/**
+ * Closes the dose logging modal and updates body class.
+ * @returns {void}
+ */
 function closeDoseModal() { 
     const modal = document.getElementById('doseModal');
     if (modal) {
@@ -1098,6 +1107,11 @@ function openEditModalById(id) {
     if (log) openEditModal(log);
 }
 
+/**
+ * Pre-fills and displays the medication record editor.
+ * @param {Object} data - Source record metadata.
+ * @returns {void}
+ */
 function openEditModal(data) {
     const form = document.getElementById('editForm');
     if (!form) return;
