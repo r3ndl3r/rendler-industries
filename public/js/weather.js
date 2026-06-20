@@ -437,6 +437,13 @@ function setupForecastGridScroll(grid) {
     }, { passive: false });
 }
 
+/**
+ * Renders 7-day forecast HTML from daily weather data.
+ * @param {Array} daily - Array of daily forecast objects.
+ * @param {number} locationId - Location ID for detail click.
+ * @param {string} [cityTz=APP_TZ] - IANA timezone string.
+ * @returns {string} HTML string of forecast days.
+ */
 function renderForecastDays(daily = [], locationId, cityTz = APP_TZ) {
     if (!daily || daily.length === 0) return '<p>Forecast unavailable.</p>';
 
@@ -468,6 +475,9 @@ function renderForecastDays(daily = [], locationId, cityTz = APP_TZ) {
     }).join('');
 }
 
+/**
+ * Renders the location ledger table body from STATE.locations.
+ */
 function renderLocationLedger() {
     const tbody = document.getElementById('locationLedger');
     const container = document.querySelector('.weather-container');
@@ -936,6 +946,9 @@ function showForecastDetail(locationId, dayIndex) {
     document.body.classList.add('modal-open');
 }
 
+/**
+ * Closes the weather detail modal.
+ */
 function closeDetailModal() {
     const modal = document.getElementById('detailModal');
     if (modal) {
@@ -983,6 +996,14 @@ async function handleGeocode() {
     }
 }
 
+/**
+ * Fills location form fields from a geocode result.
+ * @param {string} name - City name.
+ * @param {string} state - State or region.
+ * @param {string} country - Country name.
+ * @param {number} lat - Latitude.
+ * @param {number} lon - Longitude.
+ */
 function selectGeoCity(name, state, country, lat, lon) {
     const fullName = `${name}${state ? ', ' + state : ''} (${country})`;
     document.getElementById('locationName').value = name;
@@ -992,6 +1013,10 @@ function selectGeoCity(name, state, country, lat, lon) {
     document.getElementById('citySearchInput').value = fullName;
 }
 
+/**
+ * Opens the location add/edit modal, optionally populating for edit.
+ * @param {number|null} id - Location ID to edit, or null for new.
+ */
 function openLocationModal(id = null) {
     const modal = document.getElementById('locationModal');
     const form = document.getElementById('locationForm');
@@ -1020,6 +1045,9 @@ function openLocationModal(id = null) {
     document.body.classList.add('modal-open');
 }
 
+/**
+ * Closes the location modal and removes body scroll lock.
+ */
 function closeLocationModal() {
     const modal = document.getElementById('locationModal');
     if (modal) modal.classList.remove('show');
@@ -1028,6 +1056,10 @@ function closeLocationModal() {
 
 window.editLocation = (id) => openLocationModal(id);
 
+/**
+ * Saves a location (add or update) via API and refreshes state.
+ * @param {Event} e - Form submit event.
+ */
 async function saveLocation(e) {
     e.preventDefault();
     const btn = document.getElementById('btnSaveLocation');
@@ -1052,6 +1084,11 @@ async function saveLocation(e) {
     }
 }
 
+/**
+ * Shows a confirmation dialog and deletes a location on confirm.
+ * @param {number} id - Location ID.
+ * @param {string} name - Location display name.
+ */
 async function confirmDeleteLocation(id, name) {
     if (!window.showConfirmModal) return;
 
