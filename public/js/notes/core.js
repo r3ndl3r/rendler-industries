@@ -1422,6 +1422,10 @@ window.setupHeartbeat = function setupHeartbeat() {
     // Lifecycle Management: Session-based signal for background polling
     STATE.heartbeatController = new AbortController();
 
+    /**
+     * Heartbeat polling loop for real-time collaboration sync.
+     * @returns {Promise<void>}
+     */
     async function poll() {
         // Inner Guard: Protect against mid-teardown ticks or race conditions
         if (!STATE.canvas_id || STATE.isInitializing) {
