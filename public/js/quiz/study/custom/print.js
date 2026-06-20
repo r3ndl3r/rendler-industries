@@ -48,6 +48,11 @@ async function loadPrintContent() {
  * @param {Array} questions - Array of question objects from the state payload
  * @returns {void}
  */
+/**
+ * Renders all questions into the print content area.
+ * @param {Array} questions - Array of question objects.
+ * @returns {void}
+ */
 function renderQuestions(questions) {
     const list     = document.getElementById('questions-list');
     const subtitle = document.getElementById('print-subtitle');
