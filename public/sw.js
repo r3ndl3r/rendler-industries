@@ -1,6 +1,21 @@
 // /public/sw.js
 
-const CACHE_NAME = 'rendler-offline-v140';
+/**
+ * Service Worker for Offline and Cache Management
+ *
+ * Implements cache-first strategies for static assets, network-first with
+ * timeout for navigation requests, and runtime image caching with size limits.
+ * Serves an offline fallback HTML page when network is unavailable.
+ *
+ * Features:
+ *   - Cache-first strategy for static assets (js, css, fonts, images, wav)
+ *   - Network-first navigation with 1.5s timeout
+ *   - Runtime image caching with 50MB size cap
+ *   - Offline fallback HTML for uncached navigation requests
+ *   - Periodic cache cleanup and versioned cache naming
+ */
+
+const CACHE_NAME = 'rendler-offline-v142';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 const OFFLINE_CACHE_PREFIX = 'rendler-offline-';
 const NAVIGATION_NETWORK_TIMEOUT_MS = 1500;
