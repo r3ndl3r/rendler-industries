@@ -250,6 +250,10 @@ sub api_toggle_day {
 }
 
 
+# Computes a bitmask from an array of day-of-week numbers (1=Mon..7=Sun).
+# Parameters:
+#   @_ : List of day numbers (1-7).
+# Returns: Integer bitmask.
 sub _compute_day_mask {
     my $mask = 0;
     for my $d (@_) {
