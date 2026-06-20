@@ -630,6 +630,13 @@ sub DB::play_uno_card {
     return 1;
 }
 
+# Draws N cards from the deck for a specific player by user ID.
+# Parameters:
+#   game_id    : UNO game session ID.
+#   target_uid : Target user ID.
+#   count      : Number of cards to draw.
+#   game       : Current game state hashref.
+# Returns: Updated game state hashref.
 sub _add_cards_to_player_by_id {
     my ($self, $game_id, $target_uid, $count, $game) = @_;
     my $slot;
@@ -657,6 +664,11 @@ sub _add_cards_to_player_by_id {
     return $game;
 }
 
+# Toggles a player's ready status in a UNO game lobby.
+# Parameters:
+#   game_id : UNO game session ID.
+#   user_id : Player's user ID.
+# Returns: 'waiting' on success, 0 if player not found.
 sub DB::toggle_ready {
     my ($self, $game_id, $user_id) = @_;
     $self->ensure_connection;
@@ -678,6 +690,12 @@ sub DB::toggle_ready {
     return 'waiting';
 }
 
+# Starts an UNO game when the host confirms all players are ready.
+# Deals 7 cards each, applies first-card action rules, and sets initial turn.
+# Parameters:
+#   game_id : UNO game session ID.
+#   user_id : Host user ID.
+# Returns: (1, "Game started") on success, (0, error_message) on failure.
 sub DB::start_uno_game {
     my ($self, $game_id, $user_id) = @_;
     $self->ensure_connection;
@@ -757,6 +775,11 @@ sub DB::start_uno_game {
     return (1, "Game started");
 }
 
+# Records a player's UNO shout when they have 1-2 cards remaining.
+# Parameters:
+#   game_id : UNO game session ID.
+#   user_id : Player's user ID.
+# Returns: 1 on success, 0 if conditions not met.
 sub DB::shout_uno {
     my ($self, $game_id, $user_id) = @_;
     $self->ensure_connection;
