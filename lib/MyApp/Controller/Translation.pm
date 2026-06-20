@@ -21,7 +21,7 @@ use utf8;
 #   source : (Optional) Source BCP-47 code (detected if omitted)
 # 
 # Returns:
-#   - 200 OK: JSON { translated_text, detected_source_lang, cached }
+#   - 200 OK: JSON { success, translated_text, detected_source_lang, cached }
 #   - 400/500 Error: JSON object with error message
 sub translate {
     my $c = shift;
