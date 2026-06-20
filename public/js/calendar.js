@@ -1749,7 +1749,7 @@ function showEventDetails(uid) {
             ${event.category ? `<div class="event-detail-row"><strong>ℹ️ Category:</strong> <span>${escapeHtml(event.category)}</span></div>` : ''}
             ${recurrenceSummary ? `<div class="event-detail-row"><strong>🔁 Repeat:</strong> <span>${escapeHtml(recurrenceSummary)}</span></div>` : ''}
             ${event.notification_minutes && event.notification_minutes > 0 ? `<div class="event-detail-row"><strong>🔔 Reminder:</strong> <span>${formatReminderMinutes(event.notification_minutes)} before</span></div>` : ''}
-            ${event.description ? `<div class="event-detail-row"><strong>📋 Description:</strong> <span>${escapeHtml(event.description)}</span></div>` : ''}
+            ${event.description ? `<div class="event-detail-row"><strong>📋 Description:</strong> <span class="event-description-text">${escapeHtml(event.description)}</span></div>` : ''}
             ${event.attendee_names ? `<div class="event-detail-row"><strong>👨‍👩‍👧‍👦 Attendees:</strong> <span>${renderAttendeePills(event.attendee_names, true)}</span></div>` : ''}
             <div class="event-detail-row"><strong>👤 Created By:</strong> <span>${escapeHtml(event.creator_name || 'Unknown')}</span></div>
         </div>
