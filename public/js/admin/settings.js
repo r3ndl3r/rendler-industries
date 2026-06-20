@@ -57,6 +57,8 @@ let STATE = {
     }
 };
 
+let loadStateRequestId = 0;
+
 /**
  * Bootstraps the module state and establishes event delegation.
  * 
@@ -82,8 +84,14 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>}
  */
 async function loadState() {
+    const requestId = ++loadStateRequestId;
+    const retryButton = document.getElementById('settingsRetryButton');
+    if (retryButton) retryButton.disabled = true;
+
     try {
         const data = await apiGet('/admin/settings/api/state');
+
+        if (requestId !== loadStateRequestId) return;
         
         if (data && data.success) {
             STATE.settings = data.settings;
@@ -97,10 +105,34 @@ async function loadState() {
             
             renderSettings();
             restoreUIState();
+        } else {
+            showLoadError();
         }
     } catch (err) {
         console.error('loadState failed:', err);
+        if (requestId === loadStateRequestId) showLoadError();
     }
+}
+
+/**
+ * Replaces the loading skeleton with a retryable error state.
+ *
+ * @returns {void}
+ */
+function showLoadError() {
+    const container = document.getElementById('settingsPanelsContainer');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="component-loading">
+            <span class="loading-icon-pulse" style="animation:none;filter:none;">⚠️</span>
+            <p class="loading-label">Unable to synchronize configuration</p>
+            <p class="loading-sub">The settings service is temporarily unavailable. Check your connection and try again.</p>
+            <div style="margin-top:20px;">
+                <button id="settingsRetryButton" class="btn-primary" onclick="loadState()">Retry</button>
+            </div>
+        </div>
+    `;
 }
 
 /**
