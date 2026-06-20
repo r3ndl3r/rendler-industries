@@ -45,6 +45,10 @@ let STATE = {
  */
 const AudioEngine = (() => {
     let audioCtx = null;
+    /**
+     * Gets or creates the AudioContext, resuming if suspended.
+     * @returns {AudioContext|null}
+     */
     function getCtx() {
         const AudioCtor = window.AudioContext || window.webkitAudioContext;
         if (!AudioCtor) return null;
@@ -53,6 +57,14 @@ const AudioEngine = (() => {
         return audioCtx;
     }
     
+    /**
+     * Plays a synthesized tone through the audio engine.
+     * @param {number} freq - Frequency in Hz.
+     * @param {string} type - Oscillator type (sine, square, etc.).
+     * @param {number} duration - Duration in seconds.
+     * @param {number} [volume=0.1] - Gain volume.
+     * @returns {void}
+     */
     function playTone(freq, type, duration, volume = 0.1) {
         try {
             const ctx = getCtx();
