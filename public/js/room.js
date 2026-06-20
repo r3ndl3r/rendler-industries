@@ -530,6 +530,11 @@ function normalizeAlertTime(timeValue) {
     return match ? `${match[1]}:${match[2]}` : '17:00';
 }
 
+/**
+ * Formats a 24-hour time string to 12-hour AM/PM format.
+ * @param {string} time24 - Time in HH:MM 24-hour format.
+ * @returns {string} - Formatted time with AM/PM.
+ */
 function formatTimeAMPM(time24) {
     const normalized = normalizeAlertTime(time24);
     let [h, m] = normalized.split(':');
@@ -940,6 +945,12 @@ function isRoomImageFile(file) {
     );
 }
 
+/**
+ * Queues valid image files for room photo upload.
+ * @async
+ * @param {File[]} files - Selected files to upload.
+ * @returns {Promise<void>}
+ */
 async function addRoomUploadFiles(files) {
     const resetToken = UPLOAD_TOKEN;
     const token = ++UPLOAD_SELECTION_TOKEN;
