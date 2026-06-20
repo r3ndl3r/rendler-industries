@@ -50,10 +50,9 @@ window.NoteAPI = {
     },
 
     /**
-     * Builds a stable local cache key for a notes state request.
-     * @param {string} url - Target endpoint.
-     * @param {string|null} userId - User ID to scope the cache key.
-     * @returns {string|null} Cache key scoped to user, board, and layer.
+     * Resolves the current user ID from the provided data or global STATE.
+     * @param {Object|null} data - Optional data object that may contain a user_id.
+     * @returns {string|null} The resolved user ID, or null if unavailable.
      */
     stateCacheUserId(data = null) {
         return data?.user_id || (typeof STATE !== 'undefined' ? STATE.user_id : null) || null;
@@ -961,6 +960,12 @@ async function renameCanvas(canvas_id, name) {
     return await NoteAPI.post('/notes/api/canvases/rename', { canvas_id, name });
 }
 
+/**
+ * Deletes a canvas via the API.
+ * @async
+ * @param {number} canvas_id - Canvas ID to delete.
+ * @returns {Promise<Object>} - API response.
+ */
 async function deleteCanvasApi(canvas_id) {
     return await NoteAPI.post('/notes/api/canvases/delete', { canvas_id });
 }
@@ -983,6 +988,13 @@ async function addShare(canvas_id, username) {
     return res;
 }
 
+/**
+ * Revokes a user's access to a canvas.
+ * @async
+ * @param {number} canvasId - Canvas ID.
+ * @param {string} username - User to revoke.
+ * @returns {Promise<Object>} - API response.
+ */
 async function revokeShare(canvasId, username) {
     const res = await NoteAPI.post('/notes/api/canvases/share', { canvas_id: canvasId, username, revoke: 1 });
     if (res && res.success) {
