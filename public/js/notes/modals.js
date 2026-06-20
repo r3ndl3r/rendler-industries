@@ -203,6 +203,9 @@ function openPDFViewer(blobId, filename) {
     }
 }
 
+/**
+ * Closes the PDF viewer modal and stops resource playback.
+ */
 function closePDFViewer() {
     const modal = document.getElementById('pdf-viewer-modal');
     const frame = document.getElementById('pdf-frame');
@@ -244,6 +247,9 @@ function viewNoteImage(noteId, blobId) {
     }
 }
 
+/**
+ * Closes the image viewer modal.
+ */
 function closeImageViewer() {
     const modal = document.getElementById('image-viewer-modal');
     if (modal) {
@@ -325,6 +331,9 @@ function openSearchModal() {
     setTimeout(() => input.focus(), 100);
 }
 
+/**
+ * Closes the search modal.
+ */
 function closeSearchModal() {
     const modal = document.getElementById('note-search-modal');
     if (modal) {
@@ -333,6 +342,9 @@ function closeSearchModal() {
     }
 }
 
+/**
+ * Opens the canvas manager modal and renders the board list.
+ */
 function openCanvasManager() {
     if (STATE.isInitializing) return;
     const modal = document.getElementById('canvas-manager-modal');
@@ -593,6 +605,9 @@ async function deleteCanvas(e, id) {
     });
 }
 
+/**
+ * Closes the canvas manager modal.
+ */
 function closeCanvasManager() {
     const modal = document.getElementById('canvas-manager-modal');
     if (modal) {
@@ -755,6 +770,9 @@ function openMoveModal(e, id, opts = {}) {
     document.body.classList.add('modal-open');
 }
 
+/**
+ * Closes the move/copy note modal.
+ */
 function closeMoveModal() {
     const modal = document.getElementById('move-note-modal');
     if (modal) {
@@ -879,6 +897,12 @@ function handleSecurityPanelClick(e) {
     else if (action === 'clear')  clearBoardPassword(canvasId);
 }
 
+/**
+ * Sets or updates the password protection on a board.
+ * @param {number} canvasId - Board ID.
+ * @param {boolean} [isUpdate] - Whether this is an update to an existing password.
+ * @returns {Promise<void>}
+ */
 async function setBoardPassword(canvasId, isUpdate = false) {
     const newPass = document.getElementById('new-security-pass')?.value;
     const confirm = document.getElementById('confirm-security-pass')?.value;
@@ -917,6 +941,11 @@ async function setBoardPassword(canvasId, isUpdate = false) {
     }
 }
 
+/**
+ * Removes password protection from a board.
+ * @param {number} canvasId - Board ID.
+ * @returns {Promise<void>}
+ */
 async function clearBoardPassword(canvasId) {
     const pass = document.getElementById('clear-security-pass')?.value;
     if (!pass) return showToast('Password required to verify intent', 'error');
@@ -970,6 +999,13 @@ async function addUserToBoard(canvasId, username) {
     }
 }
 
+/**
+ * Updates a collaborator's edit permission on a board.
+ * @param {number} canvasId - Board ID.
+ * @param {string} username - Collaborator username.
+ * @param {number} canEdit - Whether the user can edit (1 or 0).
+ * @returns {Promise<void>}
+ */
 async function updateSharePermission(canvasId, username, canEdit) {
     const res = await NoteAPI.post('/notes/api/canvases/share', { canvas_id: canvasId, username, can_edit: canEdit });
     if (res && res.success) {
@@ -978,6 +1014,11 @@ async function updateSharePermission(canvasId, username, canEdit) {
     }
 }
 
+/**
+ * Prompts confirmation before revoking a user's board access.
+ * @param {number} canvasId - Board ID.
+ * @param {string} username - Username to revoke.
+ */
 function confirmRevoke(canvasId, username) {
     window.showConfirmModal({
         title: 'Revoke Access',
@@ -999,6 +1040,9 @@ function confirmRevoke(canvasId, username) {
     });
 }
 
+/**
+ * Closes the board settings modal and returns to the canvas manager.
+ */
 function closeBoardSettings() {
     const modal = document.getElementById('canvas-settings-modal');
     if (modal && (modal.classList.contains('show') || modal.classList.contains('active'))) {
@@ -1010,6 +1054,9 @@ function closeBoardSettings() {
     }
 }
 
+/**
+ * Opens the recycle bin modal and renders the deleted notes list.
+ */
 function openBinModal() {
     if (STATE.isInitializing) return;
     const modal = document.getElementById('note-bin-modal');
@@ -1021,6 +1068,9 @@ function openBinModal() {
     }
 }
 
+/**
+ * Closes the recycle bin modal.
+ */
 function closeBinModal() {
     const modal = document.getElementById('note-bin-modal');
     if (modal) {
@@ -1030,6 +1080,10 @@ function closeBinModal() {
     }
 }
 
+/**
+ * Copies the resolved content from the view-note modal to the clipboard.
+ * @returns {Promise<void>}
+ */
 async function copyViewContent() {
     const content = document.getElementById('note-view-content')?.textContent;
     if (content) {
@@ -1564,6 +1618,11 @@ function renderSearchResults(results, isGlobal) {
     }).join('');
 }
 
+/**
+ * Copies a search result note's content to the clipboard.
+ * @param {Event} event - The click event.
+ * @param {number} id - Note ID.
+ */
 function copySearchResultContent(event, id) {
     event.stopPropagation();
     const note = (CURRENT_SEARCH_RESULTS || []).find(n => n.id == id);
