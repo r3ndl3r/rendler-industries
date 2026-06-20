@@ -5,10 +5,11 @@ package MyApp::Controller::Room;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 use Digest::SHA qw(sha256_hex);
+use DBI qw(:sql_types);
 use DateTime;
 use constant {
     ROOM_MAX_UPLOADS   => 8,
-    ROOM_MAX_FILE_SIZE => 5 * 1024 * 1024,
+    ROOM_MAX_FILE_SIZE => 50 * 1024 * 1024,
 };
 
 # Controller for the Room Cleaning Tracker.
@@ -87,16 +88,35 @@ sub api_upload {
     my $user_id = $c->current_user_id;
     my $username = $c->session('user');
     my $today = $c->now->strftime('%Y-%m-%d');
-    my $config = $c->db->get_room_configs($user_id);
+    my $db = $c->db;
+    my $config = $db->get_room_configs($user_id);
     return $c->render(json => { success => 0, error => 'Room tracking is not active for this account' }, status => 403)
         unless $config && $config->{is_active};
     return $c->render(json => { success => 0, error => 'Room uploads are paused for a blackout day' }, status => 403)
-        if $c->db->is_room_blackout($today);
+        if $db->is_room_blackout($today);
+
+    my $dbh = $db->{dbh};
     my $written = 0;
+    my $dup_skipped = 0;
 
     $c->app->log->info("Room upload started for $username ($user_id). File count: " . scalar(@$uploads));
 
-    eval {
+    my $started_txn = 0;
+    my $ok = eval {
+        $started_txn = $dbh->{AutoCommit} ? 1 : 0;
+        $dbh->begin_work if $started_txn;
+
+        my $existing_filenames = $dbh->selectcol_arrayref(
+            "SELECT original_filename FROM room_submissions WHERE user_id = ? AND submission_date = ? AND original_filename IS NOT NULL",
+            undef, $user_id, $today
+        );
+        my %seen = map { $_ => 1 } @$existing_filenames;
+
+        my $insert_sth = $dbh->prepare(
+            "INSERT INTO room_submissions (user_id, filename, original_filename, mime_type, file_size, file_data, submission_date, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')"
+        );
+
         foreach my $upload (@$uploads) {
             my $file_size = $upload->size;
             my $original_filename = $upload->filename;
@@ -109,6 +129,11 @@ sub api_upload {
             }
             if ($file_size > ROOM_MAX_FILE_SIZE) {
                 $c->app->log->warn("Skipping oversized room upload: $original_filename ($file_size bytes)");
+                next;
+            }
+            if ($seen{$original_filename}) {
+                $c->app->log->info("Skipping duplicate room upload: $original_filename already submitted for $today");
+                $dup_skipped++;
                 next;
             }
 
@@ -128,28 +153,52 @@ sub api_upload {
             my $safe_filename = sha256_hex($original_filename . time . int(rand(1000))) . lc($ext || '');
 
             $c->app->log->info("Attempting DB insert for $original_filename ($file_size bytes)");
-            my $rows = $c->db->submit_room_photo($user_id, $safe_filename, $original_filename, $mime_type, $file_size, $file_data, $today);
+            $insert_sth->bind_param(1, $user_id);
+            $insert_sth->bind_param(2, $safe_filename);
+            $insert_sth->bind_param(3, $original_filename);
+            $insert_sth->bind_param(4, $mime_type);
+            $insert_sth->bind_param(5, $file_size);
+            $insert_sth->bind_param(6, $file_data, SQL_BLOB);
+            $insert_sth->bind_param(7, $today);
+            my $rows = $insert_sth->execute();
             $c->app->log->info("DB insert finished. Rows affected: " . ($rows // 'undef'));
             
-            $written++;
-        }
-
-        if ($written) {
-            my $admins = $c->db->get_admins();
-            foreach my $admin (@$admins) {
-                $c->notify_templated($admin->{id}, 'room_review_needed', {
-                    user => $username
-                }, $c->current_user_id);
+            if ($rows && $rows > 0) {
+                $written++;
+                $seen{$original_filename} = 1;
             }
         }
+
+        $dbh->commit if $started_txn;
+        1;
     };
-    if ($@) {
-        $c->app->log->error("Room upload failed: $@");
+    unless ($ok) {
+        my $err = $@ || 'Unknown upload transaction error';
+        eval { $dbh->rollback } if $started_txn;
+        $c->app->log->error("Room upload failed: $err");
         return $c->render(json => { success => 0, error => 'Database error during upload' });
     }
 
-    return $c->render(json => { success => 0, error => 'No valid photos received' }) unless $written;
-    $c->render(json => { success => 1, message => 'Photos submitted for review' });
+    if ($written) {
+        my $admins = eval { $db->get_admins() };
+        if (my $err = $@) {
+            $c->app->log->error("Room upload notification lookup failed: $err");
+        } elsif ($admins && ref $admins eq 'ARRAY') {
+            foreach my $admin (@$admins) {
+                my $notify_ok = eval {
+                    $c->notify_templated($admin->{id}, 'room_review_needed', {
+                        user => $username
+                    }, $c->current_user_id);
+                    1;
+                };
+                $c->app->log->error("Room upload notification failed for admin $admin->{id}: $@") unless $notify_ok;
+            }
+        }
+    }
+
+    return $c->render(json => { success => 0, error => 'No valid photos received' }) unless $written || $dup_skipped;
+    my $message = $written ? 'Photos submitted for review' : 'Photos already submitted for review';
+    $c->render(json => { success => 1, message => $message });
 }
 
 # Serves raw binary binary content for rendering.
