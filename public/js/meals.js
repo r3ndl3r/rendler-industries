@@ -59,6 +59,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(loadState, CONFIG.SYNC_INTERVAL_MS);
 });
 
+/**
+ * Toggles modal-open body class based on active modals.
+ * @returns {void}
+ */
 function updateMealsBodyModalLock() {
     const activeModal = document.querySelector(
         '#suggestModal.active, #blackoutModal.active, #editSuggestionModal.active, #manageVaultModal.active, #addEditMealModal.active'
