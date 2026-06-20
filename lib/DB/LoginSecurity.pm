@@ -158,11 +158,13 @@ sub DB::prune_login_security {
     return 1;
 }
 
+# Returns the current datetime string in the configured timezone.
 sub _login_security_now {
     my ($self) = @_;
     return DateTime->now(time_zone => $self->{timezone} || 'UTC')->strftime('%Y-%m-%d %H:%M:%S');
 }
 
+# Returns a datetime offset by the given number of seconds from now.
 sub _login_security_offset {
     my ($self, $seconds) = @_;
     my $dt = DateTime->now(time_zone => $self->{timezone} || 'UTC');
