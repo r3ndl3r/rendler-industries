@@ -312,6 +312,8 @@ sub _public_ai_engine_registry {
     };
 }
 
+# Strips sensitive values from Trakt credentials for safe API responses.
+# Returns: HashRef { client_id_configured, client_secret_configured }
 sub _public_trakt_credentials {
     my ($creds) = @_;
     $creds ||= {};
