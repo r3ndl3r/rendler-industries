@@ -7,6 +7,16 @@ use Mojo::Base 'Mojolicious::Controller';
 use strict;
 use warnings;
 
+# Controller for User Profile and Notification Settings.
+#
+# Features:
+#   - View and edit profile fields (email, discord, emoji, password)
+#   - Toggle notification channel preferences (discord, email, fcm)
+#   - FCM push notification token registration
+#
+# Integration Points:
+#   - DB::User::Settings for profile and preference storage
+
 sub trim { my $s = shift // ''; $s =~ s/^\s+|\s+$//g; $s }
 
 # Renders the user settings shell template.
