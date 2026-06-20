@@ -236,11 +236,11 @@ async function apiPost(url, data = {}, timeout = 30000) {
 }
 
 /**
- * Standard AJAX GET wrapper with automatic state caching and network timeout.
- * 
- * @param {string} url - Target API endpoint.
- * @param {number} timeout - Request timeout in ms (default 3s).
- * @returns {Promise<Object|null>} - Parsed JSON response or null on failure.
+ * Checks whether a given API URL is eligible for response caching.
+ * Excludes status endpoints that must remain fresh.
+ *
+ * @param {string} url - The request URL to evaluate.
+ * @returns {boolean} - True if the response should be cached, false otherwise.
  */
 function shouldCacheApiGet(url) {
     try {
@@ -253,6 +253,13 @@ function shouldCacheApiGet(url) {
     }
 }
 
+/**
+ * Performs a GET request with response caching and abort support.
+ * @async
+ * @param {string} url - Request URL.
+ * @param {number} [timeout=3000] - Abort timeout in ms.
+ * @returns {Promise<*>} - Response data.
+ */
 async function apiGet(url, timeout = 3000) {
     const cacheKey = `api_cache:${url}`;
     const cacheable = shouldCacheApiGet(url);
