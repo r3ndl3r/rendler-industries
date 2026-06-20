@@ -66,7 +66,7 @@ sub register {
         return qq{<span title="$z->{label}">$z->{icon}</span>};
     });
 
-    # --- Age Calculator (howOld) ---
+    # --- Age Calculator (how_old) ---
     $app->helper(how_old => sub {
         my ($c, $date_str) = @_;
         my ($date, $time) = split ' ', $date_str;
