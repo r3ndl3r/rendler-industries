@@ -231,6 +231,9 @@ function renderCreateFooterReel(attachments) {
 
 }
 
+/**
+ * Renders the attachment reel for the current draft note in the footer.
+ */
 function renderDraftReel() {
     if (!DRAFT_NOTE) return;
     const wrap = document.getElementById('footer-attachment-preview');
@@ -240,11 +243,20 @@ function renderDraftReel() {
     renderCreateFooterReel(note ? note.attachments : []);
 }
 
+/**
+ * Triggers click on the hidden file input for inline upload.
+ * @param {number|string} id - Note ID.
+ */
 function triggerInlineUpload(id) {
     const fileInput = document.getElementById(`inline-file-${id}`);
     if (fileInput) fileInput.click();
 }
 
+/**
+ * Handles file selection from an inline upload input, uploads to API.
+ * @param {Event} e - File input change event.
+ * @param {number|string} id - Note ID.
+ */
 async function handleInlineFileSelection(e, id) {
     const file = e.target.files[0];
     if (!file) return;
@@ -349,6 +361,9 @@ function refreshNoteContentPrecise(id) {
 }
 
 
+/**
+ * Initializes drag-and-drop zones on the notes canvas (one-time bind).
+ */
 function initDropZones() {
     const canvas = document.getElementById('notes-canvas');
     if (!canvas) return;
@@ -440,6 +455,13 @@ function initDropZones() {
     });
 }
 
+/**
+ * Handles a file dropped on the canvas: uploads via API and updates state.
+ * @param {File} file - The dropped file.
+ * @param {number} x - Drop X coordinate.
+ * @param {number} y - Drop Y coordinate.
+ * @param {string|null} [customTitle] - Optional custom title for the attachment.
+ */
 async function handleFileDrop(file, x, y, customTitle = null) {
     if (!file) return;
 
