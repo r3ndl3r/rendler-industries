@@ -17,6 +17,11 @@ const RUBIKS_CONFIG = {
     fontFamily: 'Inter, sans-serif'
 };
 
+/**
+ * Escapes and JSON-stringifies a value for safe inline JS embedding.
+ * @param {*} value - Value to serialize.
+ * @returns {string} - Escaped JSON string.
+ */
 function inlineJsArg(value) {
     return escapeHtml(JSON.stringify(value));
 }
@@ -1085,6 +1090,12 @@ function speedcubeAverage(values) {
     return trimmed.reduce((sum, ms) => sum + ms, 0) / trimmed.length;
 }
 
+/**
+ * Computes the trimmed average of the last N solve durations.
+ * @param {number[]} durations - Array of solve durations in ms.
+ * @param {number} size - Number of recent solves to average.
+ * @returns {number} - Average duration, or 0 if insufficient data.
+ */
 function averageOfLast(durations, size) {
     if (durations.length < size) return 0;
     return speedcubeAverage(durations.slice(-size));
