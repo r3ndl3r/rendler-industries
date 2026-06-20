@@ -38,6 +38,7 @@ sub ai_decode_json_text {
     return undef;
 }
 
+# Checks if the request args include Gemini-only features (tools or inlineData).
 sub _has_gemini_only_parts {
     my ($args) = @_;
     return 1 if $args->{tools};
@@ -51,11 +52,13 @@ sub _has_gemini_only_parts {
     return 0;
 }
 
+# Joins all text parts from a Gemini content parts array into a single string.
 sub _extract_text {
     my ($parts) = @_;
     return join "\n", map { $_->{text} // '' } grep { exists $_->{text} } @{$parts || []};
 }
 
+# Converts Gemini contents format to OpenCode messages format.
 sub _opencode_messages {
     my (%args) = @_;
     my @messages;
@@ -67,6 +70,7 @@ sub _opencode_messages {
     return \@messages;
 }
 
+# Builds an OpenCode API payload from Gemini request arguments.
 sub _opencode_payload {
     my (%args) = @_;
 
@@ -90,6 +94,7 @@ sub _opencode_payload {
     return $payload;
 }
 
+# Strips JSON mode from the payload and injects JSON instruction as system message.
 sub _opencode_payload_without_json_mode {
     my ($payload) = @_;
     my %copy = %$payload;
@@ -105,6 +110,7 @@ sub _opencode_payload_without_json_mode {
     return \%copy;
 }
 
+# Strips web search options from the payload for providers that do not support it.
 sub _opencode_payload_without_web_search {
     my ($payload) = @_;
     my %copy = %$payload;
@@ -112,6 +118,7 @@ sub _opencode_payload_without_web_search {
     return \%copy;
 }
 
+# Extracts the response text from an OpenCode API JSON response.
 sub _opencode_text {
     my ($json) = @_;
     return '' unless ref $json eq 'HASH';
@@ -124,6 +131,7 @@ sub _opencode_text {
     return $choice->{text} // '';
 }
 
+# Extracts a human-readable error message from an API response, falling back to a default.
 sub _api_error_message {
     my ($res, $fallback) = @_;
     return $fallback unless $res;
