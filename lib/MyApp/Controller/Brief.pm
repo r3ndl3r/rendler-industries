@@ -2,6 +2,7 @@
 
 package MyApp::Controller::Brief;
 use Mojo::Base 'Mojolicious::Controller';
+
 # Controller for the personal daily brief dashboard.
 #
 # Features:
@@ -22,7 +23,7 @@ sub index {
 
 # Returns consolidated state for all brief data sources.
 # Route: GET /brief/api/state
-# Returns: JSON { weather, calendar, chores, reminders, medication_reminders, points, birthdays, is_admin, success }
+# Returns: JSON { weather, calendar_today, calendar_tomorrow, chores, reminders, medication_reminders, points, birthdays, is_admin, success }
 sub api_state {
     my $c = shift;
 
