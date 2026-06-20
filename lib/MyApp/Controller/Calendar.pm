@@ -37,6 +37,23 @@ sub _ai_plain {
     return defined $max && length($value) > $max ? substr($value, 0, $max) : $value;
 }
 
+# Helper: Normalises AI descriptions while preserving intentional line breaks.
+# Parameters:
+#   value : Candidate description scalar.
+#   max   : Optional maximum character length.
+# Returns:
+#   Trimmed description string with compacted per-line whitespace.
+sub _ai_description {
+    my ($value, $max) = @_;
+    return '' if !defined $value || ref $value;
+    $value = trim("$value");
+    $value =~ s/\r\n?/\n/g;
+    $value =~ s/[ \t]+/ /g;
+    $value =~ s/[ \t]*\n[ \t]*/\n/g;
+    $value =~ s/\n{3,}/\n\n/g;
+    return defined $max && length($value) > $max ? substr($value, 0, $max) : $value;
+}
+
 # Helper: Decodes an AI JSON response and requires a top-level object.
 # Parameters:
 #   c    : Mojolicious controller, used for the shared ai_decode_json helper.
@@ -147,7 +164,7 @@ sub _normalise_ai_calendar_parse {
     return { success => false, error => 'AI returned invalid data. Try again.' }
         unless ref $parsed eq 'HASH';
 
-    if (!$parsed->{success}) {
+    if (exists $parsed->{success} && !$parsed->{success}) {
         my $error = _ai_plain($parsed->{error}, 200);
         $error ||= 'Could not parse that description. Try being more specific.';
         return { success => false, error => $error };
@@ -230,7 +247,7 @@ sub _normalise_ai_calendar_parse {
     return {
         success              => true,
         title                => $title,
-        description          => _ai_plain($parsed->{description}, 2000),
+        description          => _ai_description($parsed->{description}, 2000),
         start_date           => _format_ai_datetime($start_dt),
         end_date             => _format_ai_datetime($end_dt),
         all_day              => $all_day ? true : false,
@@ -317,8 +334,11 @@ $category_context
 
 Rules:
 - Return {"success":false,"error":"..."} when the text is too vague to determine an event title and start date.
-- Return success true with keys: title, description, start_date, end_date, all_day, category, color, attendee_ids, notification_minutes, is_private, recurrence_rule, recurrence_interval, recurrence_end_date.
-- Set description to an empty string unless the user includes notes that are not already represented by title, date/time, location, attendees, reminders, privacy, recurrence, category, or all-day status.
+- For parseable events, return success true plus keys: title, description, start_date, end_date, all_day, category, color, attendee_ids, notification_minutes, is_private, recurrence_rule, recurrence_interval, recurrence_end_date.
+- Set description to an empty string unless the user includes a location or notes that are not already represented by title, date/time, attendees, reminders, privacy, recurrence, category, or all-day status.
+- If the user provides a location, include it in description as "Location: <place>" because there is no separate location field.
+- If the user provides notes, include them in description as "Notes: <notes>".
+- Put Location and Notes on separate lines when both are present.
 - Never copy the user's whole prompt into description.
 - Dates must be absolute local times in YYYY-MM-DD HH:MM:SS.
 - Missing non-all-day end_date should be start_date plus 1 hour.
