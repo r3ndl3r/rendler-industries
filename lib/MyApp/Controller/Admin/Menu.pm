@@ -1,4 +1,4 @@
-# /lib/MyApp/Controller/Admin/Users.pm
+# /lib/MyApp/Controller/Admin/Menu.pm
 
 package MyApp::Controller::Admin::Menu;
 use Mojo::Base 'Mojolicious::Controller';
