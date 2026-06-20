@@ -331,6 +331,11 @@ function copyToClipboard(base64Raw) {
     }
 }
 
+/**
+ * Copies text to clipboard using legacy document.execCommand.
+ * @param {string} text - Text to copy.
+ * @returns {boolean}
+ */
 function fallbackCopyText(text) {
     const textarea = document.createElement('textarea');
     textarea.value = text;
