@@ -259,6 +259,9 @@ function getActiveFilters() {
     };
 }
 
+/**
+ * Re-populates the user filter dropdown from STATE.users, preserving selection.
+ */
 function updateFilterDropdowns() {
     const userSel = document.getElementById('filterUser');
     if (!userSel) return;
@@ -268,16 +271,25 @@ function updateFilterDropdowns() {
         STATE.users.map(u => `<option value="${u.id}" ${u.id == currentVal ? 'selected' : ''}>${escapeHtml(u.username)}</option>`).join('');
 }
 
+/**
+ * Closes the notification detail modal.
+ */
 function closeDetailModal() {
     document.getElementById('detailModal').classList.remove('show');
     document.body.classList.remove('modal-open');
 }
 
+/**
+ * Opens the prune (bulk-delete) modal.
+ */
 function openPruneModal() {
     document.getElementById('pruneModal').classList.add('show');
     document.body.classList.add('modal-open');
 }
 
+/**
+ * Closes the prune modal.
+ */
 function closePruneModal() {
     document.getElementById('pruneModal').classList.remove('show');
     document.body.classList.remove('modal-open');
