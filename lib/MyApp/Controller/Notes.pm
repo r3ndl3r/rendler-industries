@@ -6,6 +6,8 @@ use Mojo::Base 'Mojolicious::Controller';
 use Mojo::Util qw(trim);
 use DB;
 
+# Checks if a note title indicates a FENCE-type note.
+# Returns: Boolean (1 if title starts with 'FENCE:')
 sub _is_fence_note_title {
     my ($title) = @_;
     return defined $title && $title =~ /\AFENCE:/;
