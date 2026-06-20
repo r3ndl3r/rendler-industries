@@ -63,11 +63,7 @@ sub DB::add_shopping_item {
     return $self->{dbh}->last_insert_id();
 }
 
-# Toggles the completion status of a shopping item.
-# Parameters:
-#   id : Unique ID of the item
-# Returns:
-# Sets an explicit target checked state for a shopping item.
+# Sets an explicit target checked state for a shopping item (idempotent).
 # This is idempotent — setting is_checked=1 twice leaves it checked.
 # Parameters:
 #   id         : Unique item ID (Integer)
