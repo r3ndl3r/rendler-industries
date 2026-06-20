@@ -7,6 +7,12 @@ use Mojo::Base 'Mojolicious::Plugin';
 use DB;
 use DateTime;
 
+# Central Helper Registration Plugin.
+#
+# Registers reusable Mojolicious controller helpers for authentication checks
+# (is_logged_in, is_admin, is_family, is_parent, is_child), current user
+# resolution, and preference lookups used across all controllers.
+
 sub register {
     my (undef, $self) = @_;
 
@@ -59,7 +65,7 @@ sub register {
         }
     );
 
-    # Helper: Get Current User ID from session
+    # Helper: Check if current user has Child privileges
     # Parameters: None (Uses session)
     # Returns: Boolean (1 if child, 0 otherwise)
     $self->helper(
