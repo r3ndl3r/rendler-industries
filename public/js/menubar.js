@@ -264,6 +264,11 @@ document.addEventListener('click', function(event) {
     }
 });
 
+/**
+ * Submits the logout form programmatically.
+ * @param {Event} event - Click event to prevent default.
+ * @returns {void}
+ */
 function submitLogout(event) {
     event.preventDefault();
 
