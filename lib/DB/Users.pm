@@ -234,8 +234,7 @@ sub DB::get_admins {
     return $sth->fetchall_arrayref({});
 }
 
-# Retrieves specific user details by ID.
-# Fetches a single user row matched by their Discord snowflake ID.
+# Retrieves specific user details by Discord snowflake ID.
 # Parameters:
 #   discord_id : Discord user snowflake string.
 # Returns:
