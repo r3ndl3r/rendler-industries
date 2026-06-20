@@ -107,8 +107,11 @@ sub age {
 }
 
 # Static Page Renders
+# Renders the T-page template.
 sub t_page { shift->render('t') }
+# Renders the P-page template.
 sub p_page { shift->render('p') }
+# Renders the SUS page template.
 sub sus { shift->render('sus') }
 
 # Renders the Quick Access dashboard with dynamic tiles from DB
@@ -123,6 +126,8 @@ sub quick {
     $c->render('quick', tiles => $tiles);
 }
 
+# Persists the user's custom quick-tile sort order.
+# Route: POST /quick/save-order
 sub quick_save_order {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_logged_in;
@@ -147,6 +152,7 @@ sub quick_save_order {
     return $c->render(json => { success => 1, order => \@filtered });
 }
 
+# Collects all quick-access tiles from the menu tree, adding action tiles for admin/logout.
 sub _quick_tiles {
     my ($c, $menu_tree) = @_;
     my @tiles;
@@ -172,6 +178,7 @@ sub _quick_tiles {
     return \@tiles;
 }
 
+# Recursively walks the menu tree to collect navigable tiles with permission levels.
 sub _collect_quick_tiles {
     my ($items, $path, $out) = @_;
     for my $item (@$items) {
@@ -190,6 +197,7 @@ sub _collect_quick_tiles {
     }
 }
 
+# Merges the user's saved tile order with the current menu tree, inserting new tiles at group positions.
 sub _merge_quick_tiles {
     my ($c, $tiles) = @_;
     my @saved_order = $c->is_logged_in ? @{ $c->db->get_quick_sort_order($c->current_user_id) } : ();
@@ -224,6 +232,7 @@ sub _merge_quick_tiles {
     return \@merged;
 }
 
+# Inserts a tile into the array at the end of its group section.
 sub _insert_quick_tile_in_group {
     my ($tiles, $tile) = @_;
     my $group = $tile->{quick_group_id} // '';
@@ -235,11 +244,13 @@ sub _insert_quick_tile_in_group {
     push @$tiles, $tile;
 }
 
+# Sets the is_new flag on a tile if it was created within the last 48 hours.
 sub _mark_quick_tile_new {
     my ($tile) = @_;
     $tile->{is_new} = _is_recent_quick_tile($tile->{created_at}) ? 1 : 0;
 }
 
+# Returns true if the given creation timestamp is within the last 48 hours.
 sub _is_recent_quick_tile {
     my ($created_at) = @_;
     return 0 unless $created_at;
