@@ -396,6 +396,7 @@ sub api_history_remove {
     return $c->render(json => { success => 1, message => 'Marked unwatched', state => _dashboard_state($c, { skip_unwatched => 1 }) });
 }
 
+# Fetches all Trakt data (watchlist, lists, watched history, calendar) and replaces the local DB cache.
 sub _sync_user {
     my ($c) = @_;
     return (0, 'Connect Trakt first') unless _ensure_token($c);
@@ -459,6 +460,7 @@ sub _sync_user {
     return (1, undef);
 }
 
+# Builds the dashboard state hash from DB cache, optionally computing unwatched episode data.
 sub _dashboard_state {
     my ($c, $opts) = @_;
     $opts ||= {};
@@ -483,6 +485,7 @@ sub _dashboard_state {
     return _normalize_dashboard_state($state);
 }
 
+# Computes the list of unwatched episodes for all watchlist shows via the Trakt API.
 sub _watchlist_unwatched_state {
     my ($c, $lists) = @_;
     $lists ||= [];
@@ -552,6 +555,7 @@ sub _watchlist_unwatched_state {
     return \@items;
 }
 
+# Builds a lookup hash of watched movies, shows, and episodes from Trakt API data.
 sub _watched_lookup {
     my ($movies, $shows) = @_;
     my %watched = (
@@ -595,6 +599,7 @@ sub _watched_lookup {
     return \%watched;
 }
 
+# Builds a lookup hash of watched episodes from Trakt progress data.
 sub _show_progress_lookup {
     my ($progress) = @_;
     my %watched;
@@ -611,6 +616,7 @@ sub _show_progress_lookup {
     return \%watched;
 }
 
+# Fetches extended details for watchlist rows missing poster images.
 sub _enrich_watchlist_rows {
     my ($c, $rows, $type) = @_;
     return unless ref $rows eq 'ARRAY' && @$rows;
@@ -632,6 +638,7 @@ sub _enrich_watchlist_rows {
     }
 }
 
+# Checks if an episode has already aired by comparing its first_aired timestamp to now.
 sub _episode_is_aired {
     my ($c, $first_aired) = @_;
     return 0 unless $first_aired;
@@ -642,6 +649,7 @@ sub _episode_is_aired {
     return $episode_time le $now_utc ? 1 : 0;
 }
 
+# Normalizes show details including seasons, episodes, and watched status.
 sub _normalize_show_details {
     my ($show, $seasons, $watched) = @_;
     $show ||= {};
@@ -688,6 +696,7 @@ sub _normalize_show_details {
     };
 }
 
+# Returns a valid access token for the current user, refreshing via OAuth if expired.
 sub _ensure_token {
     my ($c) = @_;
     my $conn = $c->db->get_trakt_connection($c->current_user_id);
@@ -714,6 +723,7 @@ sub _ensure_token {
     return $res->{access_token};
 }
 
+# Makes an authenticated HTTP request to the Trakt API and returns { success, data/error }.
 sub _trakt_request {
     my ($c, $method, $path, $payload, $override_token) = @_;
     my $creds = $c->db->get_trakt_app_credentials();
@@ -765,6 +775,7 @@ sub _trakt_request {
     return { success => 0, error => 'Trakt API error: ' . $message };
 }
 
+# Exchanges an OAuth authorization code for Trakt access and refresh tokens.
 sub _token_exchange {
     my ($c, $args) = @_;
     my $tx = eval {
@@ -782,6 +793,7 @@ sub _token_exchange {
     return { success => 0, error => 'Unable to connect Trakt account' };
 }
 
+# Refreshes an expired Trakt OAuth token using the stored refresh token.
 sub _token_refresh {
     my ($c, $conn, $creds) = @_;
     my $tx = eval {
@@ -803,11 +815,13 @@ sub _token_refresh {
     return { success => 0, error => 'Unable to refresh Trakt token', reason => $reason };
 }
 
+# Builds a Trakt sync payload from items in the request params.
 sub _sync_payload_from_param {
     my ($c) = @_;
     return _sync_payload_from_items(_items_from_param($c));
 }
 
+# Parses and returns the items JSON array from the request params.
 sub _items_from_param {
     my ($c) = @_;
     my $items = eval { from_json($c->param('items') || '[]') };
@@ -815,6 +829,7 @@ sub _items_from_param {
     return $items;
 }
 
+# Builds a Trakt sync payload hash from a list of items with media type and trakt_id.
 sub _sync_payload_from_items {
     my ($items) = @_;
     return undef unless ref $items eq 'ARRAY' && @$items;
@@ -838,6 +853,7 @@ sub _sync_payload_from_items {
     return keys %payload ? \%payload : undef;
 }
 
+# Validates that a Trakt sync history response accepted the expected items.
 sub _history_response_accepted {
     my ($data, $payload, $action) = @_;
     $data ||= {};
@@ -853,6 +869,7 @@ sub _history_response_accepted {
     return (0, 'Trakt did not mark the selected items as watched');
 }
 
+# Counts the total number of movies, episodes, and shows in a sync payload.
 sub _history_payload_count {
     my ($payload) = @_;
     return 0 unless ref $payload eq 'HASH';
@@ -870,6 +887,7 @@ sub _history_payload_count {
     return $count;
 }
 
+# Recursively counts items from a Trakt response node (scalar, array, or hash).
 sub _history_response_count {
     my ($node) = @_;
     return 0 unless defined $node;
@@ -883,6 +901,7 @@ sub _history_response_count {
     return 0;
 }
 
+# Parses and validates watchlist show IDs from request params against the user's lists.
 sub _watchlist_show_ids_from_param {
     my ($c) = @_;
     my $ids = eval { decode_json($c->param('watchlist_show_ids') || '[]') };
@@ -909,6 +928,7 @@ sub _watchlist_show_ids_from_param {
     return \@out;
 }
 
+# Re-adds specified shows back to the Trakt watchlist (used after a clear operation).
 sub _preserve_watchlist_shows {
     my ($c, $show_ids) = @_;
     $show_ids ||= [];
@@ -919,6 +939,7 @@ sub _preserve_watchlist_shows {
     return $res->{success} ? { success => 1 } : $res;
 }
 
+# Normalizes Trakt search results into a consistent format with watched status.
 sub _normalize_search {
     my ($rows, $watched) = @_;
     $watched ||= {};
@@ -944,6 +965,7 @@ sub _normalize_search {
     return \@out;
 }
 
+# Normalizes the dashboard state by decoding cached JSON and enriching items.
 sub _normalize_dashboard_state {
     my ($state) = @_;
     $state ||= {};
@@ -978,6 +1000,7 @@ sub _normalize_dashboard_state {
     return $state;
 }
 
+# Safely decodes a raw JSON string into a hashref, returning an empty hash on failure.
 sub _decode_raw_json {
     my ($raw) = @_;
     return {} unless defined $raw && length $raw;
@@ -985,6 +1008,7 @@ sub _decode_raw_json {
     return ref $data eq 'HASH' ? $data : {};
 }
 
+# Extracts the media type and data hash from a cached row by checking known types.
 sub _media_from_cached_row {
     my ($row) = @_;
     $row ||= {};
@@ -994,6 +1018,7 @@ sub _media_from_cached_row {
     return (undef, {});
 }
 
+# Normalizes Trakt image data into a flat hash of known image keys with URLs.
 sub _normalize_images {
     my ($images) = @_;
     $images ||= {};
@@ -1008,6 +1033,7 @@ sub _normalize_images {
     return \%out;
 }
 
+# Recursively extracts the first valid image URL from a Trakt image node.
 sub _first_image_url {
     my ($node) = @_;
     return undef unless defined $node;
@@ -1034,17 +1060,20 @@ sub _first_image_url {
     return undef;
 }
 
+# Checks whether Trakt app credentials (client_id and client_secret) are configured.
 sub _trakt_configured {
     my ($c) = @_;
     my $creds = $c->db->get_trakt_app_credentials();
     return $creds->{client_id} && $creds->{client_secret};
 }
 
+# Builds the absolute URL for the Trakt OAuth redirect endpoint.
 sub _redirect_uri {
     my ($c) = @_;
     return $c->url_for('/trakt/oauth')->to_abs->to_string;
 }
 
+# Returns the current datetime in MySQL format with an optional offset in seconds.
 sub _mysql_time {
     my ($c, $offset_seconds) = @_;
     my $dt = $c->now->clone;
@@ -1052,16 +1081,19 @@ sub _mysql_time {
     return $dt->strftime('%Y-%m-%d %H:%M:%S');
 }
 
+# Renders a 403 Unauthorized JSON response.
 sub _unauthorized {
     my ($c) = @_;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403);
 }
 
+# Checks that the current user is logged in and a family member.
 sub _authorized {
     my ($c) = @_;
     return $c->is_logged_in && $c->is_family;
 }
 
+# Renders a JSON error response with the given error message.
 sub _json_error {
     my ($c, $error) = @_;
     return $c->render(json => { success => 0, error => $error || 'Trakt request failed' });
