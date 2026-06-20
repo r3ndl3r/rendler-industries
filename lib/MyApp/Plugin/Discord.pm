@@ -25,6 +25,7 @@ sub register {
     #   discord_id : Target user's Discord snowflake ID
     #   text       : Message content string
     #   user_id    : Internal user ID for notification log (optional)
+    #   caller_id  : Internal ID of the caller for audit logging (optional)
     # Returns: 1 (fire-and-forget; actual result lands in the promise chain)
     $app->helper(send_discord_dm => sub {
         my ($c, $discord_id, $text, $user_id, $caller_id) = @_;
