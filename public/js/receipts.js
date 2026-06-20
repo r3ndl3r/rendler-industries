@@ -485,6 +485,12 @@ function toggleStatTile(el) {
     if (icon && getComputedStyle(icon).display !== 'none') el.classList.toggle('expanded');
 }
 
+/**
+ * Sets a modal's visibility and syncs the body lock.
+ * @param {string} id - Modal element ID.
+ * @param {boolean} visible - Whether to show or hide.
+ * @returns {Element|null}
+ */
 function setReceiptModalVisible(id, visible) {
     const modal = document.getElementById(id);
     if (!modal) return null;
@@ -493,6 +499,10 @@ function setReceiptModalVisible(id, visible) {
     return modal;
 }
 
+/**
+ * Syncs modal-open body class with current modal state.
+ * @returns {void}
+ */
 function syncReceiptModalLock() {
     const openModal = document.querySelector('.modal-overlay.show, .delete-modal-overlay.show');
     document.body.classList.toggle('modal-open', !!openModal);
