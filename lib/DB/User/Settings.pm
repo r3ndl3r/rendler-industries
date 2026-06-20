@@ -8,6 +8,16 @@ use Mojo::JSON qw(decode_json encode_json);
 
 use constant MAX_NOTIFICATION_CHANNELS => 3;
 
+# Database Library for User Profile and Notification Preferences.
+#
+# Features:
+#   - Single-query user settings retrieval (profile + prefs)
+#   - Per-channel notification preference upsert
+#   - Preference fallback to all-enabled for new users
+#
+# Integration Points:
+#   - Used by MyApp::Controller::User::Settings
+
 # Retrieves a user's full profile and notification preferences in one query.
 # Parameters:
 #   user_id : Target user ID.
