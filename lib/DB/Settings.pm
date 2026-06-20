@@ -98,6 +98,8 @@ sub DB::get_all_settings {
     return $settings;
 }
 
+# Retrieves the stored Trakt OAuth client ID and secret from app_secrets.
+# Returns: HashRef { client_id, client_secret }
 sub DB::get_trakt_app_credentials {
     my ($self) = @_;
     $self->ensure_connection;
@@ -119,6 +121,11 @@ sub DB::get_trakt_app_credentials {
     return $creds;
 }
 
+# Upserts the Trakt OAuth client ID and secret into app_secrets.
+# Parameters:
+#   client_id     : New Trakt client ID.
+#   client_secret : New Trakt client secret.
+# Returns: Void.
 sub DB::update_trakt_app_credentials {
     my ($self, $client_id, $client_secret) = @_;
     $self->ensure_connection;
