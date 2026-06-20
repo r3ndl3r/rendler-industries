@@ -679,6 +679,10 @@ function openEditModal(id) {
     const editLitres = document.getElementById('editLitres');
     const editTotal = document.getElementById('editTotal');
     const editPrice = document.getElementById('editPrice');
+    /**
+     * Calculates price per litre from litres and total fields.
+     * @returns {void}
+     */
     function recalcPrice() {
         const l = parseFloat(editLitres?.value) || 0;
         const t = parseFloat(editTotal?.value) || 0;
