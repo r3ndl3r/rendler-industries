@@ -83,7 +83,7 @@ const CONFIG = {
     SYNC_INTERVAL_MS: 30000,
     MAX_ROOM_UPLOADS: 8,
     ROOM_UPLOAD_JPEG_QUALITY: 0.82,
-    ROOM_UPLOAD_MAX_BYTES: 5 * 1024 * 1024,
+    ROOM_UPLOAD_MAX_BYTES: 50 * 1024 * 1024,
     ROOM_UPLOAD_TIMEOUT_MS: 90000
 };
 
@@ -954,9 +954,16 @@ function isRoomImageFile(file) {
 async function addRoomUploadFiles(files) {
     const resetToken = UPLOAD_TOKEN;
     const token = ++UPLOAD_SELECTION_TOKEN;
-    const validFiles = files.filter(file => file && file.size > 0 && isRoomImageFile(file));
-    const badCount = files.length - validFiles.length;
+    const selectedFiles = Array.from(files || []);
+    const maxUploadMb = CONFIG.ROOM_UPLOAD_MAX_BYTES / (1024 * 1024);
+    const maxUploadLabel = Number.isInteger(maxUploadMb) ? String(maxUploadMb) : maxUploadMb.toFixed(1);
+    const oversizedCount = selectedFiles.filter(file => file && file.size > CONFIG.ROOM_UPLOAD_MAX_BYTES).length;
+    const validFiles = selectedFiles.filter(file => file && file.size > 0 && file.size <= CONFIG.ROOM_UPLOAD_MAX_BYTES && isRoomImageFile(file));
+    const badCount = selectedFiles.length - validFiles.length - oversizedCount;
 
+    if (oversizedCount > 0) {
+        showToast(`One or more selected files are larger than ${maxUploadLabel} MB.`, 'error');
+    }
     if (badCount > 0) {
         showToast('One or more selected files were empty or not images.', 'error');
     }
@@ -993,7 +1000,7 @@ async function addRoomUploadFiles(files) {
             if (prepared.size > CONFIG.ROOM_UPLOAD_MAX_BYTES) {
                 item.processing = false;
                 removeQueueItem(item.id, false);
-                showToast(`${file.name || 'This photo'} is larger than 5 MB after processing.`, 'error');
+                showToast(`${file.name || 'This photo'} is larger than ${maxUploadLabel} MB after processing.`, 'error');
                 return;
             }
             item.blob = prepared;
