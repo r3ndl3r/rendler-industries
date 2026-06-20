@@ -1,5 +1,21 @@
 // /public/js/quick.js
 
+/**
+ * Quick Edit Tile Controller
+ *
+ * Manages the quick-edit dashboard tile sorting interface with SortableJS,
+ * providing drag-and-drop tile reordering and mobile scroll support.
+ *
+ * Features:
+ *   - Drag-and-drop tile reordering via SortableJS
+ *   - Mobile scroll handle for drag-scrolling long tile lists
+ *   - Auto-scroll during tile drag near viewport edges
+ *   - Toggle between view and edit modes
+ *
+ * Dependencies:
+ *   - SortableJS: For drag-and-drop functionality
+ */
+
 document.addEventListener('DOMContentLoaded', () => {
     const toggleBtn = document.getElementById('quick-edit-toggle');
     const tilesContainer = document.getElementById('quick-tiles');
@@ -20,10 +36,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const AUTO_SCROLL_SPEED = 12;
     const AUTO_SCROLL_THRESHOLD = 80;
 
+    /**
+     * Checks if the viewport is at mobile width.
+     *
+     * @returns {boolean} - True if viewport width <= 768px.
+     */
     function isMobileView() {
         return window.innerWidth <= 768;
     }
 
+    /**
+     * Creates the scroll handle for mobile drag-scrolling.
+     */
     function createScrollHandle() {
         if (scrollHandle || !isMobileView()) return;
         scrollHandle = document.createElement('div');
@@ -33,6 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollHandle.addEventListener('pointerdown', onHandlePointerDown);
     }
 
+    /**
+     * Removes the mobile scroll handle from the DOM.
+     */
     function removeScrollHandle() {
         if (scrollHandle) {
             scrollHandle.removeEventListener('pointerdown', onHandlePointerDown);
@@ -41,6 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Handles pointerdown on the scroll handle to start dragging.
+     *
+     * @param {PointerEvent} e - The pointer event.
+     */
     function onHandlePointerDown(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -53,12 +85,22 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollHandle.addEventListener('pointercancel', onHandlePointerUp);
     }
 
+    /**
+     * Handles pointermove to scroll the page while dragging the handle.
+     *
+     * @param {PointerEvent} e - The pointer event.
+     */
     function onHandlePointerMove(e) {
         if (!isDraggingHandle) return;
         const deltaY = e.clientY - handleStartY;
         window.scrollTo(0, handleStartScroll + deltaY);
     }
 
+    /**
+     * Handles pointerup/cancel to end scroll handle dragging.
+     *
+     * @param {PointerEvent} e - The pointer event.
+     */
     function onHandlePointerUp(e) {
         isDraggingHandle = false;
         if (!scrollHandle) return;
@@ -70,8 +112,15 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollHandle.removeEventListener('pointercancel', onHandlePointerUp);
     }
 
+    /**
+     * Starts the auto-scroll animation loop.
+     */
     function startAutoScroll() {
         if (autoScrollRAF) return;
+
+        /**
+         * Applies a single auto-scroll step by direction.
+         */
         function tick() {
             if (autoScrollDirection !== 0) {
                 window.scrollBy(0, autoScrollDirection * AUTO_SCROLL_SPEED);
@@ -81,6 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
         autoScrollRAF = requestAnimationFrame(tick);
     }
 
+    /**
+     * Stops the auto-scroll animation loop.
+     */
     function stopAutoScroll() {
         if (autoScrollRAF) {
             cancelAnimationFrame(autoScrollRAF);
@@ -92,6 +144,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Checks if a dragged tile is near a viewport edge and triggers auto-scroll.
+     */
     function checkAutoScroll() {
         if (!isDraggingTile) {
             stopAutoScroll();
@@ -127,6 +182,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Main auto-scroll loop that runs each frame while in edit mode.
+     */
     function autoScrollLoop() {
         if (!isEditing || !sortable) return;
         checkAutoScroll();
@@ -150,6 +208,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    /**
+     * Activates sort/edit mode with SortableJS and optional scroll handle.
+     */
     function enterSortMode() {
         isEditing = true;
         toggleBtn.dataset.editing = 'true';
@@ -185,6 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Deactivates sort/edit mode and cleans up SortableJS.
+     */
     function exitSortMode() {
         stopAutoScroll();
         isDraggingTile = false;
@@ -206,6 +270,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Persists the current tile order via the PATCH API.
+     *
+     * @returns {Promise<boolean>} - True if the order was saved successfully.
+     */
     async function saveOrder() {
         const order = Array.from(tilesContainer.querySelectorAll('.quick-tile-card'))
             .map(card => card.dataset.id)
