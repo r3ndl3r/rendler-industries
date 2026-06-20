@@ -56,6 +56,7 @@ sub stopwatch_redirect {
     return $c->redirect_to('/rubiks');
 }
 
+# Redirects to the main Rubiks page.
 sub solve_redirect {
     my $c = shift;
     return $c->redirect_to('/rubiks');
