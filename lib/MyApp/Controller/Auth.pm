@@ -100,12 +100,15 @@ sub login {
     }
 }
 
+# Normalizes a username to a lowercase lookup key for login security checks.
 sub _login_username_key {
     my ($username) = @_;
     $username = trim($username // '');
     return lc $username;
 }
 
+# Records a login failure and applies lockout if threshold is exceeded.
+# Notifies admins if a new lockout alert is warranted.
 sub _handle_login_failure {
     my ($c, $username, $login_key) = @_;
     return unless $login_key;
@@ -124,6 +127,7 @@ sub _handle_login_failure {
     $c->db->mark_login_lockout_alerted($login_key);
 }
 
+# Sends login lockout alert notifications to all admin users.
 sub _notify_admins_login_lockout {
     my ($c, $username, $count, $ip, $ua) = @_;
 
@@ -142,6 +146,7 @@ sub _notify_admins_login_lockout {
     }
 }
 
+# Formats a duration in seconds into a human-readable minute label.
 sub _duration_label {
     my ($seconds) = @_;
     my $minutes = int($seconds / 60);
