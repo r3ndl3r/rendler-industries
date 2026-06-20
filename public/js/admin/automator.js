@@ -1457,6 +1457,12 @@ function statusLabel(status, changed) {
     return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+/**
+ * Normalizes a console status string to a safe lowercase slug.
+ * @param {string} status - Raw status string.
+ * @param {string} [fallback='pending'] - Fallback value if status is empty.
+ * @returns {string}
+ */
 function normalizeConsoleStatus(status, fallback = 'pending') {
     const normalized = String(status || fallback).toLowerCase().replace(/[^a-z0-9_-]/g, '_');
     return normalized || fallback;
@@ -1671,6 +1677,10 @@ function closeAutomatorWebSocket() {
     wsRetries = 0;
 }
 
+/**
+ * Toggles visibility of locked header action buttons.
+ * @param {boolean} visible - Whether actions should be visible.
+ */
 function setLockedHeaderActionsVisible(visible) {
     document.querySelectorAll('[data-automator-action="open-playbook"], [data-automator-action="open-inventory-manage"], [data-automator-action="open-secret"], [data-automator-action="lock-vault"]').forEach(action => {
         action.classList.toggle('hidden', !visible);
@@ -1786,6 +1796,9 @@ function parseRawTaskOutputs(output) {
     let inJsonBlock = false;
     let braceDepth = 0;
 
+    /**
+     * Flushes accumulated message lines into the current task's host entry.
+     */
     function flushMsg() {
         if (currentTask && currentHost && msgLines.length) {
             const entry = { host: currentHost, status: 'ok', msg: msgLines.join('\n') };
@@ -1797,6 +1810,9 @@ function parseRawTaskOutputs(output) {
         currentItem = null;
     }
 
+    /**
+     * Pushes the current completed task onto the tasks list and resets state.
+     */
     function flushTask() {
         if (currentTask && currentTask.hosts.length) {
             tasks.push(currentTask);
