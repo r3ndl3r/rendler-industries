@@ -424,6 +424,12 @@ sub api_abort_all {
     $c->render(json => { success => 1, message => 'Global abort requested', state => $c->db->get_automator_state(_state_filters($c)) });
 }
 
+# Streams live playbook output to connected WebSocket clients with status polling.
+# Route: GET /admin/automator/ws/:history_id
+# Parameters:
+#   history_id : History record ID to tail
+# Returns:
+#   WebSocket stream of output lines and ###STATUS:...### markers
 sub ws {
     my $c = shift;
     return $c->finish(1008) unless _api_allowed($c);
@@ -464,6 +470,7 @@ sub ws {
     });
 }
 
+# Forks a background subprocess to execute ansible-playbook, streaming output via progress events.
 sub _spawn_run {
     my ($app, $history_id, $mode, $vars, $payload, $depth) = @_;
     $depth //= 0;
@@ -508,6 +515,7 @@ sub _spawn_run {
     );
 }
 
+# Sends channel notifications (Discord, email, Pushover, FCM, Gotify) for completed automated runs.
 sub _trigger_automated_notifications {
     my ($app, $history_id) = @_;
     my $db = DB->new(timezone => $app->config->{timezone} || 'UTC');
@@ -582,6 +590,7 @@ sub _trigger_automated_notifications {
     }
 }
 
+# Recursively triggers the success-chain playbook if the current run succeeded and depth < 10.
 sub _maybe_trigger_chain {
     my ($app, $history_id, $depth) = @_;
     $depth //= 0;
@@ -611,6 +620,7 @@ sub _maybe_trigger_chain {
     _spawn_run($app, $new_history_id, 'run', {}, $payload, $depth + 1);
 }
 
+# Executes ansible-playbook in a forked process and streams output back via subprocess progress.
 sub _run_automator_job {
     my ($app, $home, $staging_root, $ansible_bin, $history_id, $mode, $vars, $payload, $subprocess) = @_;
     setsid();
@@ -662,6 +672,7 @@ sub _run_automator_job {
     return { status => $status, output => $output, json_result => $json_result };
 }
 
+# Writes playbook, inventory, vars, secrets, and callback plugin into the staging directory.
 sub _prepare_staging {
     my ($home, $payload, $vars, $staging_root, $staging) = @_;
     $vars ||= {};
@@ -722,6 +733,7 @@ sub _prepare_staging {
     copy($plugin, "$staging/callback_plugins/json_to_file.py") if -f $plugin;
 }
 
+# Returns available disk space (KB) on the staging filesystem via df -Pk.
 sub _staging_available_kb {
     my ($staging_root) = @_;
     open my $df, '-|', 'df', '-Pk', $staging_root or die "Cannot inspect Automator staging capacity: $!";
@@ -732,6 +744,7 @@ sub _staging_available_kb {
     return $fields[3];
 }
 
+# Sends SIGTERM to a process group if its command name matches the expected ansible binary.
 sub _terminate_ansible_group {
     my ($pgid, $command_name) = @_;
     return unless $pgid;
@@ -743,6 +756,7 @@ sub _terminate_ansible_group {
     kill 'TERM', -$pgid;
 }
 
+# Assembles the ansible-playbook command-line arguments from the payload and staging directory.
 sub _build_command {
     my ($payload, $mode, $staging, $ansible_bin, $worker_key) = @_;
     my $playbook = $payload->{playbook} || die "Playbook not found";
@@ -765,6 +779,7 @@ sub _build_command {
     return \@cmd;
 }
 
+# Loads playbook, inventory, and decrypted secrets from the database for execution.
 sub _load_run_payload {
     my ($db, $playbook_id) = @_;
     my $playbook = $db->get_automator_playbook($playbook_id) || die "Playbook not found";
@@ -789,17 +804,20 @@ sub _load_run_payload {
     };
 }
 
+# Returns the automator section of the application configuration.
 sub _automator_config {
     my ($app) = @_;
     return $app->config->{automator} || {};
 }
 
+# Returns the staging root directory path for run artifacts.
 sub _automator_staging_root {
     my ($app) = @_;
     my $config = _automator_config($app);
     return $config->{staging_root} || $ENV{AUTOMATOR_STAGING_ROOT} || '/dev/shm';
 }
 
+# Returns the SSH worker key file path for playbook execution.
 sub _automator_worker_key {
     my ($app) = @_;
     my $config = _automator_config($app);
@@ -807,12 +825,14 @@ sub _automator_worker_key {
     return $config->{worker_key} || $ENV{AUTOMATOR_WORKER_KEY} || "$ENV{HOME}/.ssh/ansible_worker";
 }
 
+# Returns the ansible-playbook binary path from config, env, or default.
 sub _automator_ansible_bin {
     my ($app) = @_;
     my $config = _automator_config($app);
     return $config->{ansible_playbook} || $ENV{AUTOMATOR_ANSIBLE_PLAYBOOK} || 'ansible-playbook';
 }
 
+# Returns the basename of the ansible-playbook binary (for process-name matching).
 sub _automator_ansible_command_name {
     my ($app) = @_;
     my $bin = _automator_ansible_bin($app);
@@ -820,6 +840,7 @@ sub _automator_ansible_command_name {
     return $bin;
 }
 
+# Writes a file with restrictive 0600 permissions; dies on failure.
 sub _write_private {
     my ($path, $content) = @_;
     open my $fh, '>', $path or die "Cannot write $path: $!";
@@ -828,6 +849,7 @@ sub _write_private {
     chmod 0600, $path;
 }
 
+# Validates YAML content using YAML::XS or YAML::PP; returns undef if valid, error string otherwise.
 sub _validate_yaml {
     my ($text) = @_;
     return 'Content is required' unless defined $text && length $text;
@@ -848,6 +870,7 @@ sub _validate_yaml {
     return "Invalid YAML: $@";
 }
 
+# Validates Ansible inventory content (INI or YAML format).
 sub _validate_inventory {
     my ($text) = @_;
     return 'Inventory content is required' unless defined $text && $text =~ /\S/;
@@ -863,24 +886,28 @@ sub _validate_inventory {
     return 'Inventory must be valid Ansible INI or YAML';
 }
 
+# Returns true if the user is an admin with an unlocked vault session.
 sub _api_allowed {
     my ($c) = @_;
     return 0 unless $c->is_admin;
     return _vault_unlocked($c, 1);
 }
 
+# Renders a 401 Vault locked response and returns undef.
 sub _locked {
     my ($c) = @_;
     $c->render(json => { success => 0, error => 'Vault locked', locked => 1 }, status => 401);
     return undef;
 }
 
+# Sets session flags to mark the vault as unlocked with current activity timestamp.
 sub _unlock_session {
     my ($c) = @_;
     $c->session(automator_unlocked => 1);
     $c->session(automator_last_activity => time);
 }
 
+# Checks if the vault session is still valid (within 15-minute inactivity timeout).
 sub _vault_unlocked {
     my ($c, $refresh_activity) = @_;
     return 0 unless $c->session('automator_unlocked');
@@ -896,6 +923,7 @@ sub _vault_unlocked {
     return 1;
 }
 
+# Extracts search/filter parameters from the request into a hashref.
 sub _filters {
     my ($c) = @_;
     return {
@@ -907,6 +935,7 @@ sub _filters {
     };
 }
 
+# Returns search filters scoped to the current user's ownership.
 sub _state_filters {
     my ($c) = @_;
     my $filters = _filters($c);
@@ -914,6 +943,7 @@ sub _state_filters {
     return $filters;
 }
 
+# Returns true if the DB record belongs to the current user or has no owner constraint.
 sub _owned_record {
     my ($c, $row) = @_;
     return 0 unless $row;
@@ -921,6 +951,7 @@ sub _owned_record {
     return int($row->{user_id}) == int($c->current_user_id);
 }
 
+# Returns true if the history record belongs to the current user (by triggered_by or playbook_user_id).
 sub _owned_history {
     my ($c, $row) = @_;
     return 0 unless $row;
@@ -931,6 +962,7 @@ sub _owned_history {
     return 0;
 }
 
+# Returns true if the secret ID belongs to the current user via direct DB lookup.
 sub _owned_secret {
     my ($c, $id) = @_;
     return 0 unless defined $id && $id =~ /\A\d+\z/;
@@ -942,6 +974,7 @@ sub _owned_secret {
     return defined $owner_id && int($owner_id) == int($c->current_user_id);
 }
 
+# Removes or validates run_id references in AI report issues against the user's accessible records.
 sub _sanitize_ai_report_run_ids {
     my ($c, $report, $valid_ids) = @_;
     return $report unless ref $report eq 'HASH';
@@ -967,16 +1000,19 @@ sub _sanitize_ai_report_run_ids {
     return $report;
 }
 
+# Formats a DateTime object as 'YYYY-MM-DD HH:MM:SS'.
 sub _db_timestamp {
     my ($dt) = @_;
     return $dt->strftime('%Y-%m-%d %H:%M:%S');
 }
 
+# Returns the configured maximum concurrent run limit from config or default of 10.
 sub _max_runs {
     my ($c) = @_;
     return int($c->app->config->{automator}{max_concurrent_runs} || 10);
 }
 
+# Sends a line of text to all WebSocket clients subscribed to the given history_id.
 sub _broadcast {
     my ($history_id, $line) = @_;
     for my $tx (keys %{ $CLIENTS{$history_id} || {} }) {
