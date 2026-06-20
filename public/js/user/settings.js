@@ -1,5 +1,22 @@
 // /public/js/user/settings.js
 
+/**
+ * User Settings Controller
+ *
+ * Manages the user profile editor and notification preference toggles.
+ * Provides API-driven state loading, profile updates (email, password,
+ * discord, emoji), and FCM push notification registration.
+ *
+ * Features:
+ *   - Profile field editing (username, email, discord, emoji, password)
+ *   - Notification channel toggles (discord, email, fcm)
+ *   - FCM push token registration via Firebase
+ *   - Password change with current password verification
+ *
+ * Dependencies:
+ *   - default.js: For apiPost helper and toast notifications
+ */
+
 const STATE = { profile: null, prefs: null, has_fcm: false };
 const FIREBASE_APP_MODULE = '/js/vendor/firebase/firebase-app-10.12.4.js';
 const FIREBASE_MESSAGING_MODULE = '/js/vendor/firebase/firebase-messaging-10.12.4.js';
@@ -99,6 +116,10 @@ function renderPrefs() {
     document.getElementById('prefsBody').style.display     = 'block';
 }
 
+/**
+ * Checks whether the browser supports PWA push notifications.
+ * @returns {boolean}
+ */
 function pwaPushSupported() {
     return window.isSecureContext &&
         'serviceWorker' in navigator &&
@@ -106,6 +127,9 @@ function pwaPushSupported() {
         'PushManager' in window;
 }
 
+/**
+ * Renders the PWA push setup UI: enables/disables button and shows status.
+ */
 function renderPwaPushSetup() {
     const box = document.getElementById('pwaPushBox');
     const btn = document.getElementById('pwaPushBtn');
@@ -130,6 +154,13 @@ function renderPwaPushSetup() {
         : 'Register this installed web app to receive push notifications.';
 }
 
+/**
+ * Wraps a promise with a timeout that rejects if it doesn't settle in time.
+ * @param {Promise} promise - The promise to race.
+ * @param {number} ms - Timeout in milliseconds.
+ * @param {string} message - Timeout error message.
+ * @returns {Promise}
+ */
 function withTimeout(promise, ms, message) {
     let timer;
     const timeout = new Promise(function(_, reject) {
@@ -140,6 +171,10 @@ function withTimeout(promise, ms, message) {
     });
 }
 
+/**
+ * Registers the PWA service worker.
+ * @returns {Promise<ServiceWorkerRegistration>}
+ */
 async function getPwaServiceWorkerRegistration() {
     return navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
 }
@@ -269,6 +304,10 @@ async function togglePref(channel, checkbox) {
     }
 }
 
+/**
+ * Full PWA push enrollment flow: checks support, requests permission,
+ * registers SW, gets Firebase token, and saves it server-side.
+ */
 async function enablePwaPush() {
     const btn = document.getElementById('pwaPushBtn');
     const status = document.getElementById('pwaPushStatus');
