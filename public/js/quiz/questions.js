@@ -34,14 +34,29 @@ let isAnswered = false;             // Interaction semaphore
 let currentAudio = null;            // Global Audio element reference
 let currentPlayingFile = null;      // Identifier for smart-toggle logic
 
+/**
+ * Ensures a value is an array; returns empty array if not.
+ * @param {*} value - Value to coerce.
+ * @returns {Array}
+ */
 function asArray(value) {
     return Array.isArray(value) ? value : [];
 }
 
+/**
+ * Checks if a value represents a "correct" answer (true, 1, '1', 'true').
+ * @param {*} value
+ * @returns {boolean}
+ */
 function isCorrectValue(value) {
     return value === true || value === 1 || value === '1' || value === 'true';
 }
 
+/**
+ * Normalizes a question object with defaults and normalised answers.
+ * @param {Object} question - Raw question data.
+ * @returns {Object}
+ */
 function normalizeQuestion(question) {
     return {
         ...question,
@@ -52,6 +67,11 @@ function normalizeQuestion(question) {
     };
 }
 
+/**
+ * Sanitizes a filename to safe characters, returning empty string if invalid.
+ * @param {string} filename - Raw filename.
+ * @returns {string}
+ */
 function safeAssetFilename(filename) {
     const value = String(filename || '').trim();
     return /^[A-Za-z0-9._-]+$/.test(value) ? encodeURIComponent(value) : '';
