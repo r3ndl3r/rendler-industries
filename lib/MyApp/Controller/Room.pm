@@ -11,17 +11,6 @@ use constant {
     ROOM_MAX_FILE_SIZE => 5 * 1024 * 1024,
 };
 
-sub _detect_room_image_mime {
-    my ($data) = @_;
-    return undef unless defined $data && length($data) >= 8;
-    return 'image/jpeg' if $data =~ /^\xFF\xD8\xFF/s;
-    return 'image/png'  if $data =~ /^\x89PNG\r\n\x1A\n/s;
-    return 'image/gif'  if $data =~ /^GIF8[79]a/s;
-    return 'image/webp' if $data =~ /^RIFF.{4}WEBP/s;
-    return 'image/heic' if substr($data, 4, 8) =~ /^ftyp(heic|heix|hevc|hevx|mif1|msf1)/;
-    return undef;
-}
-
 # Controller for the Room Cleaning Tracker.
 #
 # Features:
@@ -33,6 +22,17 @@ sub _detect_room_image_mime {
 # Integration Points:
 #   - Restricted to family members via family bridge.
 #   - Leverages DB::Room for storage and state.
+
+sub _detect_room_image_mime {
+    my ($data) = @_;
+    return undef unless defined $data && length($data) >= 8;
+    return 'image/jpeg' if $data =~ /^\xFF\xD8\xFF/s;
+    return 'image/png'  if $data =~ /^\x89PNG\r\n\x1A\n/s;
+    return 'image/gif'  if $data =~ /^GIF8[79]a/s;
+    return 'image/webp' if $data =~ /^RIFF.{4}WEBP/s;
+    return 'image/heic' if substr($data, 4, 8) =~ /^ftyp(heic|heix|hevc|hevx|mif1|msf1)/;
+    return undef;
+}
 
 # Renders the main room tracker interface (Teen/Reviewer context).
 sub index {
@@ -271,6 +271,8 @@ sub api_add_blackout {
     $c->render(json => { success => 1 });
 }
 
+# Deletes a room blackout date entry (admin only).
+# Route: POST /room/api/blackout/delete/:id
 sub api_delete_blackout {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
