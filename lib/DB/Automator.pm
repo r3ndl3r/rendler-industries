@@ -35,6 +35,11 @@ sub DB::automator_master_exists {
     return $count ? 1 : 0;
 }
 
+# Sets the bcrypt-hashed master password for the orchestration vault.
+# Parameters:
+#   password : Plaintext master password (min 8 chars)
+# Returns:
+#   1 on success
 sub DB::automator_set_master_password {
     my ($self, $password) = @_;
     die "Master password is required" unless defined $password && length $password >= 8;
@@ -53,6 +58,11 @@ sub DB::automator_set_master_password {
     return 1;
 }
 
+# Verifies a password against the stored bcrypt master password hash.
+# Parameters:
+#   password : Plaintext password to check
+# Returns:
+#   Boolean (1 if valid, 0 otherwise)
 sub DB::automator_verify_master_password {
     my ($self, $password) = @_;
     return 0 unless defined $password && length $password;
@@ -85,6 +95,11 @@ sub DB::get_automator_state {
     };
 }
 
+# Lists all non-deleted playbooks with joined inventory, schedule, last-run history, and notifications.
+# Parameters:
+#   filters : HashRef with optional user_id, search, category, inventory
+# Returns:
+#   ArrayRef of HashRefs containing playbook records with nested notifications and secrets
 sub DB::list_automator_playbooks {
     my ($self, $filters) = @_;
     $filters ||= {};
@@ -265,6 +280,11 @@ sub DB::get_automator_history {
     return $sth->fetchrow_hashref;
 }
 
+# Lists automator inventories with optional user filtering.
+# Parameters:
+#   filters : HashRef with optional user_id
+# Returns:
+#   ArrayRef of HashRefs of inventory records
 sub DB::list_automator_inventories {
     my ($self, $filters) = @_;
     $filters ||= {};
@@ -280,6 +300,11 @@ sub DB::list_automator_inventories {
     return $sth->fetchall_arrayref({});
 }
 
+# Lists automator secrets (name/category only; plaintext never returned).
+# Parameters:
+#   filters : HashRef with optional user_id
+# Returns:
+#   ArrayRef of HashRefs containing id, name, category, created_at
 sub DB::list_automator_secrets {
     my ($self, $filters) = @_;
     $filters ||= {};
@@ -295,6 +320,11 @@ sub DB::list_automator_secrets {
     return $sth->fetchall_arrayref({});
 }
 
+# Lists distinct playbook categories.
+# Parameters:
+#   filters : HashRef with optional user_id
+# Returns:
+#   ArrayRef of category strings
 sub DB::list_automator_categories {
     my ($self, $filters) = @_;
     $filters ||= {};
@@ -314,6 +344,11 @@ sub DB::list_automator_categories {
     return [ map { $_->[0] } @{$sth->fetchall_arrayref} ];
 }
 
+# Retrieves a single playbook by ID with decoded dynamic_vars, notifications, and secrets.
+# Parameters:
+#   id : Playbook ID
+# Returns:
+#   HashRef of the playbook record, or undef
 sub DB::get_automator_playbook {
     my ($self, $id) = @_;
     $self->ensure_connection;
@@ -328,6 +363,11 @@ sub DB::get_automator_playbook {
     return $row;
 }
 
+# Lists secrets bound to a playbook with alias and usage type.
+# Parameters:
+#   playbook_id : ID of the playbook
+# Returns:
+#   ArrayRef of HashRefs of playbook-secret bindings
 sub DB::list_automator_playbook_secrets {
     my ($self, $playbook_id) = @_;
     $self->ensure_connection;
@@ -342,6 +382,12 @@ sub DB::list_automator_playbook_secrets {
     return $sth->fetchall_arrayref({});
 }
 
+# Replaces all secret bindings for a playbook within a transaction.
+# Parameters:
+#   playbook_id : ID of the playbook
+#   secrets     : ArrayRef of HashRefs with secret_id, alias, usage_type
+# Returns:
+#   1 on success
 sub DB::save_automator_playbook_secrets {
     my ($self, $playbook_id, $secrets) = @_;
     $self->ensure_connection;
@@ -381,6 +427,11 @@ sub DB::save_automator_playbook_secrets {
     return 1;
 }
 
+# Lists notification rules for a playbook.
+# Parameters:
+#   playbook_id : ID of the playbook
+# Returns:
+#   ArrayRef of HashRefs of notification records
 sub DB::list_automator_playbook_notifications {
     my ($self, $playbook_id) = @_;
     $self->ensure_connection;
@@ -394,6 +445,12 @@ sub DB::list_automator_playbook_notifications {
     return $sth->fetchall_arrayref({});
 }
 
+# Replaces all notification rules for a playbook within a transaction.
+# Parameters:
+#   playbook_id   : ID of the playbook
+#   notifications : ArrayRef of HashRefs with user_id, notify_on, channel, endpoint
+# Returns:
+#   1 on success
 sub DB::save_automator_playbook_notifications {
     my ($self, $playbook_id, $notifications) = @_;
     $self->ensure_connection;
@@ -428,6 +485,11 @@ sub DB::save_automator_playbook_notifications {
     return 1;
 }
 
+# Retrieves a single inventory record by ID.
+# Parameters:
+#   id : Inventory ID
+# Returns:
+#   HashRef of the inventory record, or undef
 sub DB::get_automator_inventory {
     my ($self, $id) = @_;
     return undef unless $id;
@@ -437,6 +499,11 @@ sub DB::get_automator_inventory {
     return $sth->fetchrow_hashref;
 }
 
+# Creates or updates an automator inventory record.
+# Parameters:
+#   data : HashRef with name, category, hosts, ssh_key_path, user_id (and id for update)
+# Returns:
+#   Inventory ID (new or existing)
 sub DB::save_automator_inventory {
     my ($self, $data) = @_;
     $self->ensure_connection;
@@ -454,6 +521,12 @@ sub DB::save_automator_inventory {
     return $self->{dbh}->last_insert_id(undef, undef, 'automator_inventories', 'id');
 }
 
+# Deletes an inventory record if no active playbooks reference it.
+# Parameters:
+#   id      : Inventory ID
+#   user_id : Owner user ID
+# Returns:
+#   Number of rows deleted
 sub DB::delete_automator_inventory {
     my ($self, $id, $user_id) = @_;
     $self->ensure_connection;
@@ -465,6 +538,12 @@ sub DB::delete_automator_inventory {
     return $self->{dbh}->do("DELETE FROM automator_inventories WHERE id = ? AND user_id = ?", undef, $id, $user_id);
 }
 
+# Creates or updates a schedule for a playbook (upsert).
+# Parameters:
+#   playbook_id : ID of the playbook
+#   data        : HashRef with schedule_type, interval_hours, daily_time
+# Returns:
+#   1 on success
 sub DB::save_automator_schedule {
     my ($self, $playbook_id, $data) = @_;
     $self->ensure_connection;
@@ -497,6 +576,11 @@ sub DB::save_automator_schedule {
     return 1;
 }
 
+# Fetches active schedules whose next_run time has passed.
+# Parameters:
+#   limit : Max rows to return (default 10, capped at 50)
+# Returns:
+#   ArrayRef of HashRefs of due schedule records
 sub DB::get_due_automator_schedules {
     my ($self, $limit) = @_;
     $self->ensure_connection;
@@ -517,6 +601,12 @@ sub DB::get_due_automator_schedules {
     return $sth->fetchall_arrayref({});
 }
 
+# Updates a schedule after a run has been dispatched, setting next_run and last_run_at.
+# Parameters:
+#   schedule   : HashRef of the schedule record
+#   history_id : History ID of the dispatched run
+# Returns:
+#   1 on success
 sub DB::mark_automator_schedule_dispatched {
     my ($self, $schedule, $history_id) = @_;
     $self->ensure_connection;
@@ -533,6 +623,11 @@ sub DB::mark_automator_schedule_dispatched {
     return 1;
 }
 
+# Creates or updates a playbook record with dynamic_vars JSON encoding.
+# Parameters:
+#   data : HashRef with playbook fields (and id for update)
+# Returns:
+#   Playbook ID (new or existing)
 sub DB::save_automator_playbook {
     my ($self, $data) = @_;
     $self->ensure_connection;
@@ -557,6 +652,12 @@ sub DB::save_automator_playbook {
     return $self->{dbh}->last_insert_id(undef, undef, 'automator_playbooks', 'id');
 }
 
+# Checks whether chaining playbook->success_chain_id creates a cycle.
+# Parameters:
+#   id      : Playbook ID to check from
+#   next_id : success_chain_id to follow
+# Returns:
+#   Boolean (1 if cycle detected, 0 otherwise)
 sub DB::automator_chain_has_cycle {
     my ($self, $id, $next_id) = @_;
     return 0 unless $id && $next_id;
@@ -575,12 +676,26 @@ sub DB::automator_chain_has_cycle {
     return 0;
 }
 
+# Soft-deletes a playbook by setting deleted_at.
+# Parameters:
+#   id : Playbook ID
+# Returns:
+#   1 on success
 sub DB::soft_delete_automator_playbook {
     my ($self, $id) = @_;
     $self->ensure_connection;
     $self->{dbh}->do("UPDATE automator_playbooks SET deleted_at = NOW() WHERE id = ?", undef, $id);
 }
 
+# Creates or updates an encrypted automator secret with AES-GCM.
+# Parameters:
+#   id        : Secret ID (undef for create)
+#   name      : Secret name
+#   category  : Secret category
+#   plaintext : Plaintext value to encrypt
+#   user_id   : Owner user ID
+# Returns:
+#   HashRef with id, name, category
 sub DB::save_automator_secret {
     my ($self, $id, $name, $category, $plaintext, $user_id) = @_;
     die "Secret name and value are required" unless length($name // '') && length($plaintext // '');
@@ -627,12 +742,24 @@ sub DB::save_automator_secret {
     return { id => $saved_id, name => $name, category => $category || 'General' };
 }
 
+# Deletes an automator secret by ID and owner.
+# Parameters:
+#   id      : Secret ID
+#   user_id : Owner user ID
+# Returns:
+#   Number of rows deleted
 sub DB::delete_automator_secret {
     my ($self, $id, $user_id) = @_;
     $self->ensure_connection;
     return $self->{dbh}->do("DELETE FROM automator_secrets WHERE id = ? AND user_id = ?", undef, $id, $user_id);
 }
 
+# Retrieves and decrypts an automator secret by ID or name.
+# Parameters:
+#   id_or_name : Secret ID (numeric) or name
+#   user_id    : Owner user ID
+# Returns:
+#   Plaintext secret value
 sub DB::get_automator_secret_plaintext {
     my ($self, $id_or_name, $user_id) = @_;
     $self->ensure_connection;
@@ -647,6 +774,14 @@ sub DB::get_automator_secret_plaintext {
     return $self->_automator_decrypt_secret(@$row{qw(value_encrypted iv tag salt)});
 }
 
+# Inserts a new automator history record with 'running' status.
+# Parameters:
+#   playbook_id : Playbook ID
+#   mode        : Run mode (run, check, etc.)
+#   vars        : HashRef of applied variables
+#   user_id     : Triggering user ID
+# Returns:
+#   New history record ID
 sub DB::create_automator_history {
     my ($self, $playbook_id, $mode, $vars, $user_id) = @_;
     $self->ensure_connection;
@@ -658,12 +793,26 @@ sub DB::create_automator_history {
     return $self->{dbh}->last_insert_id(undef, undef, 'automator_history', 'id');
 }
 
+# Stores the process group ID (PGID) for a running history record.
+# Parameters:
+#   id   : History record ID
+#   pgid : Process group ID
+# Returns:
+#   undef
 sub DB::update_automator_history_pgid {
     my ($self, $id, $pgid) = @_;
     $self->ensure_connection;
     $self->{dbh}->do("UPDATE automator_history SET pgid = ? WHERE id = ?", undef, $pgid, $id);
 }
 
+# Finalizes a history record with completion status, output, and JSON result.
+# Parameters:
+#   id          : History record ID
+#   status      : Final status (success, failure, etc.)
+#   output      : Run output text
+#   json_result : HashRef of structured result data
+# Returns:
+#   undef
 sub DB::finish_automator_history {
     my ($self, $id, $status, $output, $json_result) = @_;
     $self->ensure_connection;
@@ -674,6 +823,12 @@ sub DB::finish_automator_history {
     );
 }
 
+# Appends a line of output to an automator history record.
+# Parameters:
+#   id   : History record ID
+#   line : Text to append
+# Returns:
+#   undef
 sub DB::append_automator_history_output {
     my ($self, $id, $line) = @_;
     $self->ensure_connection;
@@ -683,6 +838,10 @@ sub DB::append_automator_history_output {
     );
 }
 
+# Counts the number of currently running playbook executions.
+# Parameters: None
+# Returns:
+#   Integer count
 sub DB::automator_active_run_count {
     my ($self) = @_;
     $self->ensure_connection;
@@ -690,6 +849,15 @@ sub DB::automator_active_run_count {
     return int($count || 0);
 }
 
+# Inserts an audit log entry into automator_audit.
+# Parameters:
+#   user_id     : User who performed the action
+#   action      : Action name
+#   target_type : Type of target (playbook, secret, etc.)
+#   target_id   : ID of the target
+#   details     : HashRef of additional details (JSON-encoded)
+# Returns:
+#   undef
 sub DB::automator_log_audit {
     my ($self, $user_id, $action, $target_type, $target_id, $details) = @_;
     $self->ensure_connection;
@@ -700,6 +868,11 @@ sub DB::automator_log_audit {
     );
 }
 
+# Aborts a running playbook execution by setting status to 'aborted'.
+# Parameters:
+#   id : History record ID
+# Returns:
+#   undef
 sub DB::abort_automator_history {
     my ($self, $id) = @_;
     $self->ensure_connection;
@@ -709,6 +882,11 @@ sub DB::abort_automator_history {
     );
 }
 
+# Deletes a history record that is not currently running.
+# Parameters:
+#   id : History record ID
+# Returns:
+#   undef
 sub DB::delete_automator_history {
     my ($self, $id) = @_;
     $self->ensure_connection;
@@ -718,6 +896,10 @@ sub DB::delete_automator_history {
     );
 }
 
+# Heartbeat check: marks stale running processes as timed_out and cleans up staging directories.
+# Parameters: None
+# Returns:
+#   undef
 sub DB::automator_heartbeat {
     my ($self) = @_;
     $self->ensure_connection;
@@ -740,6 +922,7 @@ sub DB::automator_heartbeat {
     }
 }
 
+# Returns the staging root path for automator temp files.
 sub DB::_automator_staging_root {
     my ($self) = @_;
     return $ENV{AUTOMATOR_STAGING_ROOT} if $ENV{AUTOMATOR_STAGING_ROOT};
@@ -748,6 +931,7 @@ sub DB::_automator_staging_root {
     return '/dev/shm';
 }
 
+# Calculates the next scheduled run time based on schedule type.
 sub DB::_automator_next_run {
     my ($self, $type, $interval_hours, $daily_time) = @_;
     my $tz = $self->{timezone} || 'UTC';
@@ -767,6 +951,7 @@ sub DB::_automator_next_run {
     return $next->strftime('%F %T');
 }
 
+# Safely decodes a JSON string with a fallback default.
 sub DB::_json_decode {
     my ($self, $json, $fallback) = @_;
     return $fallback unless defined $json && length $json;
@@ -774,12 +959,14 @@ sub DB::_json_decode {
     eval { $out = decode_json($json); 1 } ? $out : $fallback;
 }
 
+# Returns the application secret used for key derivation.
 sub DB::_automator_app_secret {
     my ($self) = @_;
     return $ENV{APP_SECRET} if $ENV{APP_SECRET};
     return $self->get_app_secret || die "Application secret is not configured";
 }
 
+# Derives a 32-byte AES key from the app secret using PBKDF2.
 sub DB::_automator_derive_key {
     my ($self, $salt) = @_;
     return Crypt::PBKDF2->new(
@@ -789,6 +976,7 @@ sub DB::_automator_derive_key {
     )->PBKDF2($self->_automator_app_secret, $salt);
 }
 
+# Encrypts plaintext with AES-256-GCM using a PBKDF2-derived key.
 sub DB::_automator_encrypt_secret {
     my ($self, $plaintext) = @_;
     my $salt = urandom(32);
@@ -802,6 +990,7 @@ sub DB::_automator_encrypt_secret {
     return ($ciphertext, $iv, $tag, $salt);
 }
 
+# Decrypts AES-256-GCM ciphertext with PBKDF2-derived key and verifies the GCM tag.
 sub DB::_automator_decrypt_secret {
     my ($self, $ciphertext, $iv, $tag, $salt) = @_;
     my $key = $self->_automator_derive_key($salt);
