@@ -64,6 +64,7 @@ sub DB::get_all_reminders {
 #   user_id      : Creator ID
 #   recipient_ids: ArrayRef of user IDs to notify
 #   is_one_off   : Boolean flag
+#   chore_points : Points awarded for completing this chore (optional)
 # Returns:
 #   Integer ID of the new reminder
 sub DB::create_reminder {
@@ -90,7 +91,7 @@ sub DB::create_reminder {
 
 # Updates an existing reminder and its recipient list.
 # Parameters:
-#   id, title, desc, days, time, recipient_ids, is_one_off : Attributes.
+#   id, title, desc, days, time, recipient_ids, is_one_off, chore_points : Attributes.
 # Returns:
 #   Integer: 1 on success.
 sub DB::update_reminder {
