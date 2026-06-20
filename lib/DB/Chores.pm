@@ -268,7 +268,7 @@ sub DB::get_pending_chore_submissions {
 #   $self : DB instance
 #   $id   : chore_submissions row ID
 # Returns:
-#   HashRef including 'photos' ArrayRef of {id, photo_type}
+#   HashRef with submission columns joined with username
 sub DB::get_chore_submission_by_id {
     my ($self, $id) = @_;
     $self->ensure_connection();
