@@ -20,7 +20,7 @@ use warnings;
 #   - Provides data source for global Dashboard upcoming alerts.
 
 # Retrieves all birthday records sorted by the nearest upcoming date.
-# Returns: ArrayRef of HashRefs [ {id, name, birth_date}, ... ]
+# Returns: List of HashRefs [ {id, name, birth_date}, ... ]
 sub DB::get_all_birthdays {
     my $self = shift;
     
