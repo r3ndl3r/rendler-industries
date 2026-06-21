@@ -242,6 +242,23 @@ sub api_submit {
     return $c->render(json => { success => 0, error => "The before photo is empty or invalid" }) unless $before->size;
     return $c->render(json => { success => 0, error => "The after photo is empty or invalid" }) unless $after->size;
 
+    return $c->render(json => { success => 0, error => "The before photo is too large (max 50MB)" })
+        if $before->size > 50 * 1024 * 1024;
+    return $c->render(json => { success => 0, error => "The after photo is too large (max 50MB)" })
+        if $after->size > 50 * 1024 * 1024;
+
+    # Slurp both files early so we can validate magic bytes before touching the DB.
+    my $before_data = $before->asset->slurp;
+    my $after_data  = $after->asset->slurp;
+
+    my $before_mime = $before->headers->content_type || 'application/octet-stream';
+    my $after_mime  = $after->headers->content_type || 'application/octet-stream';
+
+    return $c->render(json => { success => 0, error => "The before photo is not a valid image" })
+        unless _looks_like_image($before_data, $before_mime);
+    return $c->render(json => { success => 0, error => "The after photo is not a valid image" })
+        unless _looks_like_image($after_data, $after_mime);
+
     my $user_id  = $c->current_user_id;
     my $username = $c->session('user');
 
@@ -249,13 +266,14 @@ sub api_submit {
     eval {
         $submission_id = $c->db->add_chore_submission($user_id, $description);
 
-        for my $pair ([$before, 'before'], [$after, 'after']) {
-            my ($upload, $type) = @$pair;
+        for my $pair (
+            [$before, 'before', $before_data, $before_mime],
+            [$after,  'after',  $after_data,  $after_mime],
+        ) {
+            my ($upload, $type, $data, $mime) = @$pair;
             my $original = $upload->filename;
-            my $mime     = $upload->headers->content_type || 'application/octet-stream';
             my $size     = $upload->size;
 
-            my $data     = $upload->asset->slurp;
             my ($ext)    = $original =~ /(\.[^.]+)$/;
             my $safe     = sha256_hex($original . time . int(rand(1000))) . lc($ext || '');
             $c->db->add_chore_submission_photo($submission_id, $type, $safe, $original, $mime, $size, $data);
@@ -386,6 +404,18 @@ sub api_reject {
     }, $c->current_user_id);
 
     $c->render(json => { success => 1 });
+}
+
+# Checks common image signatures before storing user-provided binary data.
+sub _looks_like_image {
+    my ($data, $mime) = @_;
+    return 0 unless defined $data && length($data) >= 8;
+    return 1 if $data =~ /^\xFF\xD8\xFF/s;
+    return 1 if $data =~ /^\x89PNG\r\n\x1A\n/s;
+    return 1 if $data =~ /^GIF8[79]a/s;
+    return 1 if $data =~ /^RIFF.{4}WEBP/s;
+    return 1 if substr($data, 4, 8) =~ /^ftyp(heic|heix|hevc|hevx|mif1|msf1)/;
+    return (($mime // '') =~ m{^image/}) ? 1 : 0;
 }
 
 sub register_routes {
