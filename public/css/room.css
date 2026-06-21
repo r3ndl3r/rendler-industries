@@ -585,3 +585,75 @@
 @media (max-width: 600px) {
     .app-container { padding: 0 1rem; }
 }
+
+/* Reward Tier Buttons */
+.reward-tier-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.reward-tier-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 1rem 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(8px);
+    color: #f8fafc;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1.4;
+}
+
+.reward-tier-btn:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+}
+
+.reward-tier-btn:active {
+    transform: translateY(0);
+}
+
+.reward-tier-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+    transform: none;
+}
+
+.reward-tier-btn .tier-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.reward-tier-btn .tier-label-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.reward-tier-btn .tier-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #f8fafc;
+}
+
+.reward-tier-btn .tier-points {
+    font-size: 0.85rem;
+    color: #10b981;
+}
+
+.reward-tier-btn .tier-desc {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}

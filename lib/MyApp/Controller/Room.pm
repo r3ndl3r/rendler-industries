@@ -225,6 +225,11 @@ sub api_update_status {
     my $status  = $c->param('status'); # passed / failed
     my $comment = trim($c->param('comment') || '');
 
+    my $reward_available = 0;
+    my $child_id = 0;
+    my $child_username = '';
+    my $submission_date = '';
+
     eval {
         $c->db->update_room_photo_status($id, $status, $comment);
         
@@ -237,6 +242,15 @@ sub api_update_status {
         if ($pending_count == 0) {
             # All items reviewed! Auto-dispatch the consolidated report.
             $c->app->log->info("All room items reviewed for user $sub->{user_id} for date $sub->{submission_date}. Auto-sending feedback.");
+
+            my $failed_count = grep { ($_->{status} || '') eq 'failed' } @$all_on_date;
+            if ($failed_count == 0) {
+                $reward_available = 1;
+                $child_id = $sub->{user_id};
+                $submission_date = $sub->{submission_date};
+                my $child_user = $c->db->get_user_by_id($child_id);
+                $child_username = $child_user->{username} // '' if $child_user;
+            }
             
             # Dispatch feedback asynchronously using the submission's specific date
             Mojo::IOLoop->next_tick(sub {
@@ -249,7 +263,13 @@ sub api_update_status {
         return $c->render(json => { success => 0, error => 'Update failed' });
     }
 
-    $c->render(json => { success => 1 });
+    $c->render(json => {
+        success          => 1,
+        reward_available => $reward_available ? 1 : 0,
+        child_id         => $child_id,
+        child_username   => $child_username,
+        submission_date  => $submission_date,
+    });
 }
 
 # Internal helper to format and send the Discord feedback report.
@@ -353,6 +373,83 @@ sub api_delete {
     $c->render(json => { success => 1 });
 }
 
+# Admin: Awards points for a successfully cleaned room.
+sub api_award_points {
+    my $c = shift;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+
+    my $user_id         = $c->param('user_id');
+    my $submission_date = $c->param('submission_date');
+    my $tier            = int($c->param('tier') // 0);
+
+    unless ($tier >= 1 && $tier <= 3) {
+        return $c->render(json => { success => 0, error => 'Invalid tier' }, status => 400);
+    }
+
+    unless ($user_id && $submission_date && $submission_date =~ /^\d{4}-\d{2}-\d{2}$/) {
+        return $c->render(json => { success => 0, error => 'Missing or invalid parameters' }, status => 400);
+    }
+
+    eval {
+        my $child_user = $c->db->get_user_by_id($user_id);
+        unless ($child_user && $child_user->{is_child}) {
+            return $c->render(json => { success => 0, error => 'Child not found' }, status => 404);
+        }
+
+        my $all_on_date = $c->db->get_room_status_for_date($user_id, $submission_date);
+        unless (@$all_on_date) {
+            return $c->render(json => { success => 0, error => 'No submissions found for this date' }, status => 400);
+        }
+
+        my $pending_count = grep { ($_->{status} || '') eq 'pending' } @$all_on_date;
+        my $failed_count  = grep { ($_->{status} || '') eq 'failed' } @$all_on_date;
+
+        if ($pending_count > 0) {
+            return $c->render(json => { success => 0, error => 'Submissions are still pending review' }, status => 400);
+        }
+        if ($failed_count > 0) {
+            return $c->render(json => { success => 0, error => 'Some submissions failed review' }, status => 400);
+        }
+
+        my %messages = (
+            1 => "Your room submission for $submission_date was average.",
+            2 => "Your room submission for $submission_date was good.",
+            3 => "Your room submission for $submission_date was excellent.",
+        );
+        my $message = $messages{$tier};
+        my @reasons = @messages{1, 2, 3};
+
+        my ($already_awarded) = $c->db->{dbh}->selectrow_array(
+            "SELECT 1 FROM point_ledger WHERE user_id = ? AND reason IN (?, ?, ?) LIMIT 1",
+            undef, $user_id, @reasons
+        );
+        if ($already_awarded) {
+            return $c->render(json => { success => 1, already_awarded => 1 });
+        }
+
+        if ($c->add_points($user_id, $tier, $message)) {
+            my $notify_ok = $c->notify_templated($user_id, 'points_adjustment', {
+                header   => "✨ **Points Reward** ✨",
+                amount   => "+" . $tier,
+                reason   => $message,
+                adjuster => $c->session('user') // 'System',
+            }, $c->current_user_id);
+
+            unless ($notify_ok) {
+                $c->app->log->warn("Room reward notification failed for user $user_id (points awarded)");
+            }
+
+            return $c->render(json => { success => 1 });
+        }
+
+        return $c->render(json => { success => 0, error => 'Database error' }, status => 500);
+    };
+    if ($@) {
+        $c->app->log->error("Room reward award failure: $@");
+        return $c->render(json => { success => 0, error => 'Award failed' }, status => 500);
+    }
+}
+
 
 sub register_routes {
     my ($class, $r) = @_;
@@ -366,6 +463,7 @@ sub register_routes {
     $r->{admin}->post('/room/api/trim')->to('room#api_trim');
     $r->{admin}->post('/room/api/add_blackout')->to('room#api_add_blackout');
     $r->{admin}->post('/room/api/delete_blackout')->to('room#api_delete_blackout');
+    $r->{admin}->post('/room/api/award_points')->to('room#api_award_points');
 }
 
 1;

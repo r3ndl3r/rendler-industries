@@ -162,3 +162,44 @@
         <img id="modalImg" src="" class="room-modal-img">
     </div>
 </div>
+
+<%# Reward Points Modal %>
+<div id="rewardModal" class="modal-overlay">
+    <div class="modal-content modal-sm">
+        <div class="modal-header">
+            <h3 id="rewardTitle">🏆 Award Points</h3>
+            <span class="close-btn" onclick="closeRewardModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="reward-tier-grid">
+                <button type="button" class="reward-tier-btn" data-tier="1" onclick="awardPoints(1)">
+                    <span class="tier-icon">📋</span>
+                    <span class="tier-label-group">
+                        <span class="tier-name">Average</span>
+                        <span class="tier-points">+1 🪙</span>
+                        <span class="tier-desc">Your room submission today was average.</span>
+                    </span>
+                </button>
+                <button type="button" class="reward-tier-btn" data-tier="2" onclick="awardPoints(2)">
+                    <span class="tier-icon">👍</span>
+                    <span class="tier-label-group">
+                        <span class="tier-name">Good</span>
+                        <span class="tier-points">+2 🪙</span>
+                        <span class="tier-desc">Your room submission today was good.</span>
+                    </span>
+                </button>
+                <button type="button" class="reward-tier-btn" data-tier="3" onclick="awardPoints(3)">
+                    <span class="tier-icon">⭐</span>
+                    <span class="tier-label-group">
+                        <span class="tier-name">Excellent</span>
+                        <span class="tier-points">+3 🪙</span>
+                        <span class="tier-desc">Your room submission today was excellent.</span>
+                    </span>
+                </button>
+            </div>
+            <div class="modal-actions modal-actions-center">
+                <button type="button" class="btn-secondary full-width" onclick="closeRewardModal()">⏭️ Skip — No Points</button>
+            </div>
+        </div>
+    </div>
+</div>

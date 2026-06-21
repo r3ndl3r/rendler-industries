@@ -24,6 +24,7 @@ let UPLOAD_TOKEN = 0;
 let UPLOAD_SELECTION_TOKEN = 0;
 let roomStateRequestSeq = 0;
 let hasLoadedRoomState = false;
+let rewardAwardInProgress = false;
 
 /**
  * Normalizes a room submission status to a known safe value.
@@ -75,6 +76,7 @@ function hasOpenRoomModal() {
         '#uploadModal.show',
         '#photoModal.show',
         '#userSettingsModal.show',
+        '#rewardModal.show',
         '#globalConfirmActionModal.show'
     ].join(', '));
 }
@@ -93,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupUploadInput();
 
     // Global modal closure integration
-    setupGlobalModalClosing(['modal-overlay'], [closeUploadModal, closePhotoModal, closeSettingsModal]);
+    setupGlobalModalClosing(['modal-overlay'], [closeUploadModal, closePhotoModal, closeSettingsModal, closeRewardModal]);
 
     if (sessionStorage.getItem('room_camera_pending')) {
         sessionStorage.removeItem('room_camera_pending');
@@ -731,6 +733,9 @@ async function updateStatus(id, status, btn = null) {
         if (result && result.success) {
             showToast(`Photo marked as ${status}`, "success");
             if (status === 'failed') showFailComment(id);
+            if (result.reward_available && result.child_id) {
+                openRewardModal(result.child_id, result.child_username || '', result.submission_date || '');
+            }
             loadState(true);
         } else {
             await loadState(true);
@@ -1072,4 +1077,85 @@ function removeQueueItem(id, rerender = true) {
 function normalizedUploadName(name, token, index) {
     const base = (name || `room-photo-${token}-${index + 1}`).replace(/\.[^.]*$/, '').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'room-photo';
     return `${base}-${token}-${index + 1}.jpg`;
+}
+
+/**
+ * Opens the reward modal for a child whose room photos all passed review.
+ *
+ * @param {number} childId - Target child user ID.
+ * @param {string} childUsername - Display name for the modal title.
+ * @param {string} submissionDate - YYYY-MM-DD date of the completed review.
+ * @returns {void}
+ */
+function openRewardModal(childId, childUsername, submissionDate) {
+    const modal = document.getElementById('rewardModal');
+    if (!modal) return;
+    const title = document.getElementById('rewardTitle');
+    if (title) title.textContent = `🏆 Award Points for ${childUsername || 'Child'}`;
+    modal.dataset.childId = String(childId);
+    modal.dataset.submissionDate = submissionDate;
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+}
+
+/**
+ * Closes the reward modal.
+ *
+ * @returns {void}
+ */
+function closeRewardModal() {
+    const modal = document.getElementById('rewardModal');
+    if (modal) {
+        modal.classList.remove('show');
+        delete modal.dataset.childId;
+        delete modal.dataset.submissionDate;
+    }
+    if (!hasOpenRoomModal()) document.body.classList.remove('modal-open');
+}
+
+/**
+ * Awards points for a room cleaning tier.
+ *
+ * @param {number} tier - 1 (Average), 2 (Good), or 3 (Excellent).
+ * @returns {Promise<void>}
+ */
+async function awardPoints(tier) {
+    if (rewardAwardInProgress) return;
+    rewardAwardInProgress = true;
+
+    const modal = document.getElementById('rewardModal');
+    if (!modal) {
+        rewardAwardInProgress = false;
+        return;
+    }
+
+    const childId = modal.dataset.childId;
+    const submissionDate = modal.dataset.submissionDate;
+    if (!childId || !submissionDate) {
+        rewardAwardInProgress = false;
+        return;
+    }
+
+    const tierBtns = document.querySelectorAll('.reward-tier-btn');
+    tierBtns.forEach(btn => { btn.disabled = true; });
+
+    try {
+        const result = await apiPost('/room/api/award_points', new URLSearchParams({
+            user_id: childId,
+            submission_date: submissionDate,
+            tier: tier
+        }));
+        if (result && result.success) {
+            if (result.already_awarded) {
+                showToast('Points were already awarded for this submission', 'success');
+            } else {
+                showToast(`🎉 Awarded ${tier} point${tier === 1 ? '' : 's'}!`, 'success');
+            }
+            closeRewardModal();
+            loadState(true);
+        }
+    } finally {
+        tierBtns.forEach(btn => { btn.disabled = false; });
+        rewardAwardInProgress = false;
+    }
 }
