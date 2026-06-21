@@ -385,7 +385,50 @@ async function submitWork(e) {
     btn.innerHTML = '⌛ Submitting...';
 
     try {
-        const formData = new FormData(form);
+        const description = form.querySelector('textarea[name="description"]').value;
+        const beforeFile = form.querySelector('input[name="before"]').files[0];
+        const afterFile  = form.querySelector('input[name="after"]').files[0];
+
+        /**
+         * Converts HEIC/HEIF files to JPEG; passes others through unchanged.
+         *
+         * @param {File|null} file - Selected file.
+         * @param {string} fallbackName - Filename to use for converted blobs.
+         * @returns {Promise<{blob: Blob|File, filename: string}|null>}
+         */
+        const processFile = async (file, fallbackName) => {
+            if (!file) return null;
+            const low = (file.name || '').toLowerCase();
+            if (low.endsWith('.heic') || low.endsWith('.heif')) {
+                if (typeof heic2any !== 'function') {
+                    throw new Error('heic2any is not available');
+                }
+                if (typeof showToast === 'function') {
+                    showToast('Processing modern image format...', 'info');
+                }
+                const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+                const blob = Array.isArray(converted) ? converted[0] : converted;
+                return { blob, filename: fallbackName };
+            }
+            return { blob: file, filename: file.name || fallbackName };
+        };
+
+        let beforePrepared;
+        let afterPrepared;
+        try {
+            beforePrepared = await processFile(beforeFile, 'before.jpg');
+            afterPrepared  = await processFile(afterFile, 'after.jpg');
+        } catch (err) {
+            console.error('Chore image preparation failed', err);
+            showToast('Could not process photos. Please try again.', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('description', description);
+        if (beforePrepared) formData.append('before', beforePrepared.blob, beforePrepared.filename);
+        if (afterPrepared)  formData.append('after', afterPrepared.blob, afterPrepared.filename);
+
         const res = await apiPost('/chores/api/submit', formData);
         if (res && res.success) {
             closeSubmitModal();
