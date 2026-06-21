@@ -500,9 +500,11 @@ async function syncTrakt() {
         if (result && result.success) {
             STATE = { ...STATE, ...result.state };
             renderTrakt();
-            if (!result.message && typeof showToast === 'function') showToast('Trakt synced', 'success');
         }
         await loadUnwatchedState(!UNWATCHED_LOADED);
+        if (result?.success && !result.message && typeof showToast === 'function') {
+            showToast('Trakt synced', 'success');
+        }
     } finally {
         REFRESH_IN_PROGRESS = false;
         renderHeaderActions();
