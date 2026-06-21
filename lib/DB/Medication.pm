@@ -368,7 +368,7 @@ sub DB::save_medication_reminders {
     my $times_ref = ref($times) eq 'ARRAY' ? $times : [$times];
 
     $self->{dbh}->begin_work;
-    eval {
+    my $result = eval {
         my $sth_del = $self->{dbh}->prepare("DELETE FROM medication_reminders WHERE medication_id = ? AND family_member_id = ?");
         $sth_del->execute($medication_id, $family_member_id);
 
@@ -388,6 +388,7 @@ sub DB::save_medication_reminders {
         $self->{dbh}->rollback;
         die "save_medication_reminders failed: $@";
     }
+    return $result;
 }
 
 # Toggles the is_active flag on a reminder schedule.
@@ -522,7 +523,7 @@ sub DB::confirm_medication_reminder {
     $self->ensure_connection;
 
     $self->{dbh}->begin_work;
-    eval {
+    my $result = eval {
         # Only the family member attached to the reminder can confirm it.
         my $sth = $self->{dbh}->prepare("
             UPDATE medication_reminder_events e
@@ -585,6 +586,7 @@ sub DB::confirm_medication_reminder {
         $self->{dbh}->rollback;
         die $@;
     }
+    return $result;
 }
 
 # Retrieves today's pending (unconfirmed) reminder events for a family member.
