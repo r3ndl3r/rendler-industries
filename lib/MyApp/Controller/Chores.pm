@@ -158,9 +158,56 @@ sub api_add {
 # Administrative hook revoking a completion status, docking any rewarded points.
 sub api_revoke {
     my $c = shift;
-    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_admin;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_admin;
 
     my $chore_id = $c->param('id');
+    my $source   = $c->param('source') // 'chore';
+    $source = 'chore' unless $source eq 'submission';
+
+    if ($source eq 'submission') {
+        my $sub = $c->db->get_chore_submission_by_id($chore_id);
+        return $c->render(json => { success => 0, error => 'Not found' }) unless $sub;
+        return $c->render(json => { success => 0, error => 'Submission is not approved' })
+            unless $sub->{status} eq 'approved';
+
+        my $points = $sub->{points_awarded} || 0;
+        return $c->render(json => { success => 0, error => 'Nothing to revoke' })
+            unless $points > 0;
+
+        my $revoked = 0;
+        my $ok = eval {
+            $c->db->{dbh}->begin_work;
+            $revoked = $c->db->revoke_chore_submission($chore_id);
+            if ($revoked > 0) {
+                my $reason = "Revoked Submission: " . $sub->{description};
+                $c->add_points($sub->{user_id}, -$points, $reason);
+                $c->db->{dbh}->commit;
+            } else {
+                $c->db->{dbh}->rollback;
+            }
+            1;
+        };
+        if (!$ok) {
+            $c->db->{dbh}->rollback if $c->db->{dbh}->{Active};
+            $c->app->log->error("Chore submission revoke failed: $@");
+            return $c->render(json => { success => 0, error => 'Revocation failed' });
+        }
+        return $c->render(json => { success => 0, error => 'Submission is not approved' })
+            unless $revoked > 0;
+
+        my $excerpt = length($sub->{description}) > 60
+            ? substr($sub->{description}, 0, 57) . '...'
+            : $sub->{description};
+        $c->notify_templated($sub->{user_id}, 'chore_revoked', {
+            icon   => '👤',
+            task   => $excerpt,
+            points => $points
+        }, $c->current_user_id);
+
+        return $c->render(json => { success => 1 });
+    }
+
     my $chore = $c->db->get_chore_by_id($chore_id);
     
     return $c->render(json => { success => 0, error => 'Not found' }) unless $chore;
