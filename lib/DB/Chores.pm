@@ -315,6 +315,20 @@ sub DB::purge_chore_submission_photos {
     return 1;
 }
 
+# Reverses an approved submission back to rejected status and clears awarded points.
+# Returns rows affected, so callers can avoid duplicate revocation side effects.
+sub DB::revoke_chore_submission {
+    my ($self, $submission_id) = @_;
+    $self->ensure_connection();
+    my $sth = $self->{dbh}->prepare(
+        "UPDATE chore_submissions
+         SET status = 'rejected', points_awarded = NULL, reviewed_at = NULL
+         WHERE id = ? AND status = 'approved'"
+    );
+    $sth->execute($submission_id);
+    return $sth->rows;
+}
+
 # Deletes a submission record entirely (called after rejection).
 # Parameters:
 #   $self          : DB instance
