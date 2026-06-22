@@ -797,6 +797,7 @@ function renderHistory() {
 
     tbody.innerHTML = STATE.history.map(h => {
         const userIcon = window.getUserIcon(h.completed_by_name?.toLowerCase());
+        const source = h.source === 'submission' ? 'submission' : 'chore';
         return `
             <tr id="history-row-${h.id}" class="history-row">
                 <td data-label="User" class="col-user">
@@ -808,7 +809,7 @@ function renderHistory() {
                     <strong>${h.points > 0 ? `+${h.points}` : '0'}</strong>
                 </td>
                 <td class="text-right col-actions">
-                    ${h.source !== 'submission' ? `<button class="btn-icon-delete" title="Revoke Completion" onclick="confirmRevoke(${h.id})">🗑️</button>` : ''}
+                    <button class="btn-icon-delete" title="Revoke Completion" onclick="confirmRevoke(${h.id}, '${source}')">🗑️</button>
                 </td>
             </tr>
         `;
@@ -818,21 +819,25 @@ function renderHistory() {
 /**
  * Prompts admin reversal of a completed task.
  * 
- * @param {number} choreId - Completed chore identifier
+ * @param {number} id - Completed chore or submission identifier
+ * @param {string} source - 'chore' or 'submission'
  * @returns {void}
  */
-function confirmRevoke(choreId) {
+function confirmRevoke(id, source) {
+    const isSubmission = source === 'submission';
     showConfirmModal({
         title: 'Revoke Completion',
-        message: 'This will return the chore to the grid and dock points from the child. Proceed?',
+        message: isSubmission
+            ? 'This will reject the submission and dock points from the child. Proceed?'
+            : 'This will return the chore to the grid and dock points from the child. Proceed?',
         confirmText: 'REVOKE',
         hideCancel: true,
         danger: true,
         onConfirm: async () => {
-            const row = document.getElementById(`history-row-${choreId}`);
+            const row = document.getElementById(`history-row-${id}`);
             if (row) row.classList.add('pending');
 
-            const res = await apiPost('/chores/api/revoke', { id: choreId });
+            const res = await apiPost('/chores/api/revoke', { id, source: source || 'chore' });
             if (res && res.success) {
                 showToast('Chore status revoked.', 'success');
                 loadState(true);
