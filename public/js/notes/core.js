@@ -1118,7 +1118,7 @@ async function loadState(initial = false, canvas_id = null, targetNoteId = null,
                 STATE.note_map = {};
                 STATE.note_map_hash = null;
                 STATE.embed_cache = {};
-                if (typeof showLockedOverlay === 'function') showLockedOverlay(false);
+                if (typeof showLockedOverlay === 'function') showLockedOverlay(true);
             } else {
                 if (typeof hideLockedOverlay === 'function') hideLockedOverlay();
                 if (typeof mergeNoteState === 'function') {
