@@ -221,41 +221,22 @@ function closePDFViewer() {
  */
 function viewNoteImage(noteId, blobId) {
     if (STATE.isInitializing) return;
-    const modal = document.getElementById('image-viewer-modal');
-    const img   = document.getElementById('image-viewer-display');
-    const title = document.getElementById('image-viewer-title');
-    const dl    = document.getElementById('image-download-link');
+    if (typeof openImageViewer !== 'function') return;
 
-    if (modal && img) {
-        const url = blobId ? `/notes/attachment/serve/${blobId}` : `/notes/serve/${noteId}`;
-        img.src   = url;
-        
-        const note = STATE.notes.find(n => n.id == noteId);
-        let filename = (note && note.title) ? note.title : 'Image Preview';
-        
-        // If we are viewing a specific blob, find its actual filename
-        if (blobId && note && note.attachments) {
-            const att = note.attachments.find(a => a.blob_id == blobId);
-            if (att && att.filename) filename = att.filename;
-        }
+    const url = blobId ? `/notes/attachment/serve/${blobId}` : `/notes/serve/${noteId}`;
+    const note = STATE.notes.find(n => n.id == noteId);
+    let filename = (note && note.title) ? note.title : 'Image Preview';
 
-        if (title) title.textContent = `🖼️ ${filename}`;
-        if (dl) dl.href = url;
-
-        modal.classList.add('show');
-        document.body.classList.add('modal-open');
+    if (blobId && note && note.attachments) {
+        const att = note.attachments.find(a => a.blob_id == blobId);
+        if (att && att.filename) filename = att.filename;
     }
-}
 
-/**
- * Closes the image viewer modal.
- */
-function closeImageViewer() {
-    const modal = document.getElementById('image-viewer-modal');
-    if (modal) {
-        modal.classList.remove('show');
-        document.body.classList.remove('modal-open');
-    }
+    openImageViewer({
+        src: url,
+        title: filename,
+        downloadUrl: url
+    });
 }
 
 /**

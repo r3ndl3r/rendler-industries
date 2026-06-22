@@ -1361,3 +1361,375 @@ window.isValidSingleEmoji = function(value) {
     if (segments.length !== 1) return false;
     return /\p{Emoji}/u.test(value) && !/^[0-9#*]$/.test(value);
 };
+
+/**
+ * --- Universal Image Viewer ---
+ *
+ * Full-screen image viewer with pinch-zoom, pan, double-tap, HEIC conversion,
+ * title bar, and download link. Injects its own modal HTML and CSS on first use.
+ *
+ * Usage:
+ *   openImageViewer({ src: '/room/serve/42' })
+ *   openImageViewer({ src: function() { return fetch('/fuel/serve/1/2').then(function(r) { return r.blob(); }); } })
+ *   openImageViewer({ src: url, title: 'photo.jpg', downloadUrl: url })
+ *
+ * Close programmatically:
+ *   openImageViewer({ ... }).close()
+ *   closeImageViewer()
+ */
+
+var _ivObjectUrl = null;
+var _ivScale = 1;
+var _ivTx = 0;
+var _ivTy = 0;
+var _ivPinching = false;
+var _ivLastDist = 0;
+var _ivPanning = false;
+var _ivLastTx = 0;
+var _ivLastTy = 0;
+var _ivLastTap = 0;
+var _ivDragging = false;
+var _ivDidDrag = false;
+var _ivLoadSeq = 0;
+var _ivActiveModalId = null;
+
+function _ivSafeId(value, fallback) {
+    if (typeof value === 'string' && /^[A-Za-z][A-Za-z0-9_-]*$/.test(value)) {
+        return value;
+    }
+    return fallback;
+}
+
+function _ivResetZoom() {
+    _ivScale = 1;
+    _ivTx = 0;
+    _ivTy = 0;
+    _ivPinching = false;
+    _ivPanning = false;
+    _ivLastTap = 0;
+    _ivDragging = false;
+    _ivDidDrag = false;
+}
+
+function _ivApplyTransform(img) {
+    if (!img) return;
+    img.style.transform = 'translate(' + _ivTx + 'px, ' + _ivTy + 'px) scale(' + _ivScale + ')';
+    img.style.cursor = _ivDragging ? 'grabbing' : (_ivScale > 1 ? 'grab' : 'zoom-in');
+}
+
+function _ivSetScale(scale, img) {
+    _ivScale = Math.max(1, Math.min(5, scale));
+    if (_ivScale === 1) {
+        _ivTx = 0;
+        _ivTy = 0;
+    }
+    _ivApplyTransform(img);
+}
+
+function _ivTouchDist(t1, t2) {
+    return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+}
+
+function _ivSetupTouch(container, img) {
+    if (!container || container._ivTouchAttached) return;
+    container._ivTouchAttached = true;
+
+    container.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            _ivPinching = true;
+            _ivLastDist = _ivTouchDist(e.touches[0], e.touches[1]);
+        } else if (e.touches.length === 1 && _ivScale > 1) {
+            _ivPanning = true;
+            _ivLastTx = e.touches[0].clientX;
+            _ivLastTy = e.touches[0].clientY;
+        }
+    }, { passive: false });
+
+    container.addEventListener('touchmove', function(e) {
+        if (_ivPinching && e.touches.length === 2) {
+            e.preventDefault();
+            var dist = _ivTouchDist(e.touches[0], e.touches[1]);
+            var newScale = _ivScale * (dist / _ivLastDist);
+            _ivLastDist = dist;
+            _ivSetScale(newScale, img);
+        } else if (_ivPanning && e.touches.length === 1) {
+            e.preventDefault();
+            _ivTx += e.touches[0].clientX - _ivLastTx;
+            _ivTy += e.touches[0].clientY - _ivLastTy;
+            _ivLastTx = e.touches[0].clientX;
+            _ivLastTy = e.touches[0].clientY;
+            _ivApplyTransform(img);
+        }
+    }, { passive: false });
+
+    container.addEventListener('touchend', function() {
+        _ivPinching = false;
+        _ivPanning = false;
+    });
+
+    container.addEventListener('touchcancel', function() {
+        _ivPinching = false;
+        _ivPanning = false;
+    });
+
+    container.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        _ivSetScale(_ivScale * (e.deltaY < 0 ? 1.12 : 0.88), img);
+    }, { passive: false });
+
+    container.addEventListener('mousedown', function(e) {
+        if (e.button !== 0 || _ivScale <= 1) return;
+        e.preventDefault();
+        _ivDragging = true;
+        _ivDidDrag = false;
+        _ivLastTx = e.clientX;
+        _ivLastTy = e.clientY;
+        _ivApplyTransform(img);
+    });
+
+    container.addEventListener('mousemove', function(e) {
+        if (!_ivDragging) return;
+        e.preventDefault();
+        _ivTx += e.clientX - _ivLastTx;
+        _ivTy += e.clientY - _ivLastTy;
+        _ivLastTx = e.clientX;
+        _ivLastTy = e.clientY;
+        _ivDidDrag = true;
+        _ivApplyTransform(img);
+    });
+
+    function endMouseDrag() {
+        if (!_ivDragging) return;
+        _ivDragging = false;
+        _ivApplyTransform(img);
+    }
+
+    container.addEventListener('mouseup', endMouseDrag);
+    container.addEventListener('mouseleave', endMouseDrag);
+
+    container.addEventListener('click', function(e) {
+        if (_ivDidDrag) {
+            _ivDidDrag = false;
+            _ivLastTap = 0;
+            return;
+        }
+        var now = Date.now();
+        if (now - _ivLastTap < 300) {
+            e.preventDefault();
+            if (_ivScale > 1.5) {
+                _ivResetZoom();
+                _ivApplyTransform(img);
+            } else {
+                _ivSetScale(2.5, img);
+            }
+        }
+        _ivLastTap = now;
+    });
+}
+
+/**
+ * Opens the universal image viewer modal.
+ *
+ * @param {Object} options
+ * @param {string|function():Promise<Blob>} options.src - Direct URL string, or async function that returns a Blob.
+ * @param {string} [options.fallbackSrc] - Direct URL to use if async src throws.
+ * @param {string} [options.title] - Optional title displayed in the viewer header.
+ * @param {string} [options.downloadUrl] - Optional URL for the download button.
+ * @param {boolean} [options.showDownload=true] - Set to false to hide the download button even when a URL is available.
+ * @param {string} [options.modalId='image-viewer-modal'] - ID for the modal element.
+ * @returns {{close: function}} Control handle.
+ */
+window.openImageViewer = function(options) {
+    if (!options || !options.src) return { close: function() {} };
+
+    var modalId = _ivSafeId(options.modalId, 'image-viewer-modal');
+    var imgId = modalId + '-img';
+
+    if (_ivActiveModalId && _ivActiveModalId !== modalId) {
+        window.closeImageViewer(_ivActiveModalId);
+    }
+
+    var seq = ++_ivLoadSeq;
+
+    var modal = document.getElementById(modalId);
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'modal-overlay universal-image-viewer-modal';
+        modal.innerHTML =
+            '<div class="universal-image-viewer-content">' +
+                '<span class="close-btn" id="' + modalId + '-close">&times;</span>' +
+                '<div class="universal-image-viewer-header" id="' + modalId + '-header" style="display:none">' +
+                    '<h3 id="' + modalId + '-title"></h3>' +
+                '</div>' +
+                '<div class="universal-image-viewer-body" id="' + modalId + '-body">' +
+                    '<img id="' + imgId + '" src="" alt="">' +
+                '</div>' +
+                '<div class="universal-image-viewer-footer" id="' + modalId + '-footer" style="display:none">' +
+                    '<a id="' + modalId + '-download" class="universal-image-viewer-btn" download>📥 Download Original</a>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(modal);
+    }
+    modal.classList.add('universal-image-viewer-modal');
+
+    var style = document.getElementById('iv-style');
+    if (!style) {
+        style = document.createElement('style');
+        style.id = 'iv-style';
+        document.head.appendChild(style);
+    }
+    style.textContent =
+        '.universal-image-viewer-modal{padding:1rem;align-items:center;overflow:hidden;background:rgba(0,0,0,0.86);}' +
+        '.universal-image-viewer-content{position:relative;width:min(96vw,1600px);height:92vh;max-height:calc(100vh - 2rem);display:flex;flex-direction:column;background:rgba(15,23,42,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;overflow:hidden;}' +
+        '.universal-image-viewer-content .close-btn{position:absolute;top:4px;right:10px;z-index:10;color:#fff;font-size:1.5rem;line-height:1;cursor:pointer;background:rgba(0,0,0,0.5);width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background 0.2s;}' +
+        '.universal-image-viewer-content .close-btn:hover{background:rgba(0,0,0,0.8);}' +
+        '.universal-image-viewer-header{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:1rem 3.5rem 1rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.08);}' +
+        '.universal-image-viewer-header h3{margin:0;font-size:1.1rem;font-weight:300;color:#fff;}' +
+        '.universal-image-viewer-body{flex:1 1 auto;min-height:0;width:100%;display:flex;justify-content:center;align-items:center;background:#000;overflow:hidden;touch-action:none;}' +
+        '.universal-image-viewer-body img{width:100%;height:100%;max-width:none;max-height:none;object-fit:contain;transform-origin:center center;user-select:none;-webkit-user-drag:none;will-change:transform;}' +
+        '.universal-image-viewer-footer{flex:0 0 auto;display:flex;justify-content:center;padding:1rem 1.5rem;border-top:1px solid rgba(255,255,255,0.08);}' +
+        '.universal-image-viewer-btn{display:inline-block;padding:0.6rem 1.5rem;background:#3b82f6;color:#fff;border-radius:0.5rem;text-decoration:none;font-size:0.9rem;transition:background 0.2s;}' +
+        '.universal-image-viewer-btn:hover{background:#2563eb;color:#fff;}' +
+        '@media (max-width:640px){.universal-image-viewer-modal{padding:0.5rem;}.universal-image-viewer-content{width:calc(100vw - 1rem);height:calc(100dvh - 1rem);max-height:calc(100vh - 1rem);border-radius:0.5rem;}.universal-image-viewer-header{padding:0.75rem 3rem 0.75rem 1rem;}.universal-image-viewer-footer{padding:0.75rem 1rem;}}';
+
+    var img = document.getElementById(imgId);
+    var titleEl = document.getElementById(modalId + '-title');
+    var headerEl = document.getElementById(modalId + '-header');
+    var footerEl = document.getElementById(modalId + '-footer');
+    var downloadEl = document.getElementById(modalId + '-download');
+    var closeBtn = document.getElementById(modalId + '-close');
+    var bodyEl = document.getElementById(modalId + '-body');
+
+    if (!img) return { close: function() {} };
+
+    var doClose = function() {
+        window.closeImageViewer(modalId);
+    };
+
+    if (closeBtn) closeBtn.onclick = doClose;
+    modal.onclick = function(e) {
+        if (e.target === modal) doClose();
+    };
+
+    if (modal._ivKeyHandler) {
+        document.removeEventListener('keydown', modal._ivKeyHandler);
+    }
+    modal._ivKeyHandler = function(e) {
+        if (!modal.classList.contains('show')) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            doClose();
+        }
+    };
+    document.addEventListener('keydown', modal._ivKeyHandler);
+
+    if (options.title) {
+        if (titleEl) titleEl.textContent = '🖼️ ' + options.title;
+        if (headerEl) headerEl.style.display = '';
+    } else {
+        if (headerEl) headerEl.style.display = 'none';
+    }
+
+    var downloadUrl = options.showDownload === false
+        ? null
+        : (options.downloadUrl || (typeof options.src === 'string' ? options.src : options.fallbackSrc));
+    if (downloadUrl) {
+        if (downloadEl) downloadEl.href = downloadUrl;
+        if (footerEl) footerEl.style.display = '';
+    } else {
+        if (downloadEl) downloadEl.removeAttribute('href');
+        if (footerEl) footerEl.style.display = 'none';
+    }
+
+    _ivResetZoom();
+    _ivApplyTransform(img);
+    img.draggable = false;
+    if (_ivObjectUrl) {
+        URL.revokeObjectURL(_ivObjectUrl);
+        _ivObjectUrl = null;
+    }
+
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+    _ivActiveModalId = modalId;
+
+    function loadSrc(url) {
+        if (seq !== _ivLoadSeq) return;
+        img.src = url;
+        _ivSetupTouch(bodyEl || img, img);
+    }
+
+    if (typeof options.src === 'function') {
+        img.src = '';
+        Promise.resolve().then(function() {
+            return options.src();
+        }).then(function(blob) {
+            if (seq !== _ivLoadSeq) return;
+            if (!blob) {
+                if (options.fallbackSrc) loadSrc(options.fallbackSrc);
+                return;
+            }
+            var prom = Promise.resolve(blob);
+            if ((blob.type === 'image/heic' || blob.type === 'image/heif') && typeof heic2any === 'function') {
+                prom = heic2any({ blob: blob, toType: 'image/jpeg', quality: 0.8 }).then(function(conv) {
+                    return Array.isArray(conv) ? conv[0] : conv;
+                });
+            }
+            return prom.then(function(displayBlob) {
+                if (seq !== _ivLoadSeq) return;
+                _ivObjectUrl = URL.createObjectURL(displayBlob);
+                img.src = _ivObjectUrl;
+                _ivSetupTouch(bodyEl || img, img);
+            });
+        }).catch(function(err) {
+            if (seq !== _ivLoadSeq) return;
+            console.error('Image viewer blob fetch failed:', err);
+            if (options.fallbackSrc) loadSrc(options.fallbackSrc);
+        });
+    } else {
+        loadSrc(options.src);
+    }
+
+    return { close: doClose };
+};
+
+/**
+ * Closes the universal image viewer modal.
+ *
+ * @param {string} [modalId='image-viewer-modal'] - Modal element ID to close.
+ * @returns {void}
+ */
+window.closeImageViewer = function(modalId) {
+    modalId = _ivSafeId(modalId, 'image-viewer-modal');
+    var modal = document.getElementById(modalId);
+    if (!modal) return;
+
+    if (_ivActiveModalId === modalId) _ivActiveModalId = null;
+    _ivLoadSeq++;
+
+    if (modal._ivKeyHandler) {
+        document.removeEventListener('keydown', modal._ivKeyHandler);
+        delete modal._ivKeyHandler;
+    }
+
+    modal.classList.remove('show');
+
+    var img = modal.querySelector('img');
+    if (img) {
+        img.src = '';
+        img.style.transform = '';
+    }
+
+    if (_ivObjectUrl) {
+        URL.revokeObjectURL(_ivObjectUrl);
+        _ivObjectUrl = null;
+    }
+
+    _ivResetZoom();
+
+    if (!hasVisibleModalOverlay()) {
+        document.body.classList.remove('modal-open');
+    }
+};

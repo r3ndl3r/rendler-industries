@@ -378,19 +378,4 @@
         </div>
     </div>
 </div>
-<div id="image-viewer-modal" class="modal-overlay">
-    <div class="note-modal-content image-viewer-content">
-        <div class="note-modal-header">
-            <h3 id="image-viewer-title">🖼️ Image Viewer</h3>
-            <span class="close-btn note-modal-close" data-close="modal">&times;</span>
-        </div>
-        <div class="note-modal-body no-padding image-body">
-            <img id="image-viewer-display" src="" alt="Full View">
-        </div>
-        <div class="note-modal-footer modal-actions-center">
-            <a id="image-download-link" href="#" class="btn-primary" download>📥 Download Original</a>
-        </div>
-    </div>
-</div>
-
 

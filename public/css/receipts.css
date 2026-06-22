@@ -211,21 +211,6 @@
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
-/* Image Viewer Modal Specifics */
-.image-modal-content {
-    position: relative;
-    max-width: 90vw;
-    max-height: 90vh;
-    display: inline-block;
-}
-
-#receiptModal .close-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 1;
-}
-
 /* Upload Progress Overlay */
 /* Covers the full viewport while the server runs ImageMagick + Tesseract.    */
 /* z-index 99998 sits below the toast container (99999) so toasts still show. */
@@ -466,11 +451,6 @@
     background: #3730a3;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(67, 56, 202, 0.3);
-}
-
-.receipt-modal-img {
-    max-width: 100%; 
-    border-radius: 8px;
 }
 
 .ereceipt-item-content {

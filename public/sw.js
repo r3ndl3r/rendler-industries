@@ -15,7 +15,7 @@
  *   - Periodic cache cleanup and versioned cache naming
  */
 
-const CACHE_NAME = 'rendler-offline-v144';
+const CACHE_NAME = 'rendler-offline-v147';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 const OFFLINE_CACHE_PREFIX = 'rendler-offline-';
 const NAVIGATION_NETWORK_TIMEOUT_MS = 1500;
@@ -261,6 +261,7 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (event.request.mode === 'navigate') {
+        if (url.pathname.startsWith('/files/serve/')) return;
         event.respondWith(
             matchCachedNavigation(event.request, url).then(cached => {
                 if (cached) {

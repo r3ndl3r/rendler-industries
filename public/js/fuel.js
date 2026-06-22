@@ -46,7 +46,6 @@ let UPLOAD_PREVIEW_URLS = {
     image1: null,
     image2: null
 };
-let MODAL_IMAGE_URL = null;
 
 const MANUAL_UPLOAD_FIELDS = ['uploadOdometer', 'uploadLitres', 'uploadTotal', 'uploadStation'];
 
@@ -815,39 +814,20 @@ function confirmDeleteFuel(id, label) {
  *
  * @param {number} id - Fuel log identifier.
  * @param {number} image - Image slot number.
- * @returns {Promise<void>}
+ * @returns {void}
  */
-async function openImageModal(id, image) {
+function openImageModal(id, image) {
     const log = STATE.logs.find(item => Number(item.id) === Number(id));
     if (log && !hasFuelPhotos(log)) return;
+    if (typeof openImageViewer !== 'function') return;
 
-    const modal = document.getElementById('imageModal');
-    const img = document.getElementById('modalImg');
-    if (!modal || !img) return;
-
-    modal.classList.add('show');
-    document.body.classList.add('modal-open');
-    img.src = ''; // Clear previous
-
-    try {
-        const response = await fetch(`/fuel/serve/${id}/${image}`);
-        const blob = await response.blob();
-        let displayBlob = blob;
-
-        if (blob.type === 'image/heic' || blob.type === 'image/heif') {
-            if (typeof heic2any === 'function') {
-                const conv = await heic2any({ blob: blob, toType: 'image/jpeg', quality: 0.8 });
-                displayBlob = Array.isArray(conv) ? conv[0] : conv;
-            }
-        }
-
-        if (MODAL_IMAGE_URL) URL.revokeObjectURL(MODAL_IMAGE_URL);
-        MODAL_IMAGE_URL = URL.createObjectURL(displayBlob);
-        img.src = MODAL_IMAGE_URL;
-    } catch (err) {
-        console.error("Failed to load/convert image", err);
-        img.src = `/fuel/serve/${id}/${image}`; // Fallback to raw
-    }
+    const url = `/fuel/serve/${id}/${image}`;
+    openImageViewer({
+        src: function() {
+            return fetch(url).then(function(response) { return response.blob(); });
+        },
+        fallbackSrc: url
+    });
 }
 
 /**
@@ -856,15 +836,7 @@ async function openImageModal(id, image) {
  * @returns {void}
  */
 function closeImageModal() {
-    const modal = document.getElementById('imageModal');
-    const img = document.getElementById('modalImg');
-    if (modal) modal.classList.remove('show');
-    document.body.classList.remove('modal-open');
-    if (img) img.src = '';
-    if (MODAL_IMAGE_URL) {
-        URL.revokeObjectURL(MODAL_IMAGE_URL);
-        MODAL_IMAGE_URL = null;
-    }
+    if (typeof closeImageViewer === 'function') closeImageViewer();
 }
 
 /**

@@ -456,13 +456,7 @@ const SwearModule = {
      * @returns {void}
      */
     openImageModal: function(src) {
-        const modal = document.getElementById('imageModal');
-        const img = document.getElementById('modalImage');
-        if (img) img.src = src;
-        if (modal) {
-            modal.style.display = 'flex';
-            document.body.classList.add('modal-open');
-        }
+        if (typeof openImageViewer === 'function') openImageViewer({ src });
     },
 
     /**
@@ -471,11 +465,7 @@ const SwearModule = {
      * @returns {void}
      */
     closeImageModal: function() {
-        const modal = document.getElementById('imageModal');
-        if (modal) {
-            modal.style.display = 'none';
-            document.body.classList.remove('modal-open');
-        }
+        if (typeof closeImageViewer === 'function') closeImageViewer();
     }
 };
 

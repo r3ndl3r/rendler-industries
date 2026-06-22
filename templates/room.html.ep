@@ -155,13 +155,6 @@
     </div>
 </div>
 
-<%# Photo Review Modal %>
-<div id="photoModal" class="modal-overlay" onclick="closePhotoModal()">
-    <div class="image-modal-content" onclick="event.stopPropagation()">
-        <span class="close-btn" onclick="closePhotoModal()">×</span>
-        <img id="modalImg" src="" class="room-modal-img">
-    </div>
-</div>
 
 <%# Reward Points Modal %>
 <div id="rewardModal" class="modal-overlay">

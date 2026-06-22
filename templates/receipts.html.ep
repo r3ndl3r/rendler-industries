@@ -209,14 +209,6 @@
     </div>
 </div>
 
-<%# Receipt Modal %>
-<div id="receiptModal" class="modal-overlay">
-    <div class="image-modal-content">
-        <span class="close-btn" onclick="closeReceiptModal()">×</span>
-        <img id="modalImg" src="" class="receipt-modal-img">
-    </div>
-</div>
-
 <%# Upload Receipt Modal %>
 <div id="uploadModal" class="modal-overlay receipt-upload-modal">
     <div class="modal-content">

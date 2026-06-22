@@ -351,26 +351,6 @@
     font-size: 0.82rem;
 }
 
-.image-modal-content {
-    position: relative;
-    max-width: 90vw;
-    max-height: 90vh;
-    display: inline-block;
-}
-
-#imageModal .close-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 1;
-}
-
-.receipt-modal-img {
-    max-width: 90vw;
-    max-height: 90vh;
-    object-fit: contain;
-}
-
 .fuel-empty-ledger {
     text-align: center;
     padding: 30px !important;

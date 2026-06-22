@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupUploadOrchestration();
 
     // Modal: Global Closure Logic
-    setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay', 'image-modal-overlay'], [
+    setupGlobalModalClosing(['modal-overlay', 'delete-modal-overlay'], [
         closeReceiptModal, closeEditModal, closeCropModal, closePreUploadCropModal, closeEReceiptModal, closeConfirmModal, closeUploadModal
     ]);
 });
@@ -752,9 +752,8 @@ function updateFileName(name) {
  * @returns {void}
  */
 function openReceiptModal(id) {
-    const img = document.getElementById('modalImg');
-    const modal = setReceiptModalVisible('receiptModal', true);
-    if (img && modal) img.src = '/receipts/serve/' + id;
+    if (typeof openImageViewer !== 'function') return;
+    openImageViewer({ src: '/receipts/serve/' + id });
 }
 
 /**
@@ -1114,7 +1113,9 @@ async function reScanReceipt() {
  * 
  * @returns {void}
  */
-function closeReceiptModal() { setReceiptModalVisible('receiptModal', false); }
+function closeReceiptModal() {
+    if (typeof closeImageViewer === 'function') closeImageViewer();
+}
 
 /**
  * Hides the metadata editor.

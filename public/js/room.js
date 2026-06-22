@@ -74,7 +74,7 @@ function normalizeRoomState(data) {
 function hasOpenRoomModal() {
     return !!document.querySelector([
         '#uploadModal.show',
-        '#photoModal.show',
+        '#image-viewer-modal.show',
         '#userSettingsModal.show',
         '#rewardModal.show',
         '#globalConfirmActionModal.show'
@@ -848,24 +848,15 @@ function closeUploadModal() {
  * @param {number} id - Record ID.
  */
 function openPhotoModal(id) {
-    const modal = document.getElementById('photoModal');
-    const img = document.getElementById('modalImg');
-    if (modal && img) {
-        img.src = `/room/serve/${id}`;
-        modal.classList.add('show');
-        document.body.classList.add('modal-open');
-    }
+    if (typeof openImageViewer !== 'function') return;
+    openImageViewer({ src: `/room/serve/${id}` });
 }
 
 /**
  * Hides the photo modal.
  */
 function closePhotoModal() {
-    const modal = document.getElementById('photoModal');
-    if (modal) modal.classList.remove('show');
-    const img = document.getElementById('modalImg');
-    if (img) img.removeAttribute('src');
-    if (!hasOpenRoomModal()) document.body.classList.remove('modal-open');
+    if (typeof closeImageViewer === 'function') closeImageViewer();
 }
 
 /**
