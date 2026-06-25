@@ -364,9 +364,9 @@ sub DB::get_my_chore_submissions {
     return $sth->fetchall_arrayref({});
 }
 
-# Identifies chores older than 1 hour without a recent reminder. 
-# Touches last_reminded_at for standard Mojo idempotency.
-sub DB::get_stale_chores_and_mark {
+# Identifies chores older than 1 hour without a recent reminder.
+# Returns: ArrayRef of chore rows eligible for automated reminder notification.
+sub DB::get_stale_chores {
     my $self = shift;
     $self->ensure_connection();
 
@@ -379,21 +379,22 @@ sub DB::get_stale_chores_and_mark {
            AND (c.last_reminded_at IS NULL OR c.last_reminded_at <= (NOW() - INTERVAL 1 HOUR))"
     );
     $sth->execute();
-    
-    my @stale_chores;
-    my @ids;
-    while (my $row = $sth->fetchrow_hashref()) {
-        push @stale_chores, $row;
-        push @ids, $row->{id};
-    }
+    return $sth->fetchall_arrayref({});
+}
 
-    if (@ids) {
-        my $placeholders = join(',', ('?') x @ids);
-        my $upd = $self->{dbh}->prepare("UPDATE chores SET last_reminded_at = NOW() WHERE id IN ($placeholders)");
-        $upd->execute(@ids);
-    }
-    
-    return \@stale_chores;
+# Marks stale chores as reminded after notification work has been queued.
+# Parameters:
+#   ids : ArrayRef or list of chore IDs
+# Returns: Number of rows updated.
+sub DB::mark_stale_chores_reminded {
+    my ($self, @ids) = @_;
+    $self->ensure_connection();
+    @ids = @{ $ids[0] } if @ids == 1 && ref($ids[0]) eq 'ARRAY';
+    return 0 unless @ids;
+
+    my $placeholders = join(',', ('?') x @ids);
+    my $upd = $self->{dbh}->prepare("UPDATE chores SET last_reminded_at = NOW() WHERE id IN ($placeholders)");
+    return $upd->execute(@ids);
 }
 
 1;

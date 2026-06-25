@@ -98,20 +98,28 @@ sub DB::prune_notification_logs {
 # Inserts a new item into the delivery queue.
 # Parameters (named):
 #   user_id   : Internal user ID (optional)
-#   type      : 'discord' or 'email'
-#   recipient : Discord snowflake ID or email address
-#   subject   : Subject line (email only, optional)
+#   type      : 'discord', 'email', or 'fcm'
+#   recipient : Discord snowflake ID, email address, or FCM token
+#   platform  : FCM platform identifier (optional)
+#   subject   : Subject/title line (optional)
 #   message   : Message body
+#   tap_url   : FCM deep-link URL (optional)
 # Returns: New row ID or 0 on failure
 sub DB::enqueue_notification {
     my ($self, %args) = @_;
     $self->ensure_connection();
     eval {
         $self->{dbh}->do(
-            "INSERT INTO notifications_queue (user_id, type, recipient, subject, message)
-             VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO notifications_queue (user_id, type, recipient, platform, subject, message, tap_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
             undef,
-            $args{user_id}, $args{type}, $args{recipient}, $args{subject}, $args{message}
+            $args{user_id},
+            $args{type},
+            $args{recipient},
+            $args{platform},
+            $args{subject},
+            $args{message},
+            $args{tap_url}
         );
     };
     return $@ ? 0 : $self->{dbh}->last_insert_id(undef, undef, undef, undef);
@@ -122,18 +130,53 @@ sub DB::enqueue_notification {
 sub DB::get_pending_queue_items {
     my ($self) = @_;
     $self->ensure_connection();
-    # Atomically claim pending items by transitioning to 'processing' before
-    # returning them. Prevents concurrent timer ticks from picking up the same rows.
-    $self->{dbh}->do(
-        "UPDATE notifications_queue SET status = 'processing'
-         WHERE status = 'pending'
-         ORDER BY created_at ASC
-         LIMIT 50"
-    );
-    return $self->{dbh}->selectall_arrayref(
-        "SELECT * FROM notifications_queue WHERE status = 'processing' ORDER BY created_at ASC",
-        { Slice => {} }
-    );
+
+    my $dbh = $self->{dbh};
+    my $items = [];
+
+    eval {
+        $dbh->begin_work;
+
+        my $claim_rows = $dbh->selectall_arrayref(
+            "SELECT id
+             FROM notifications_queue
+             WHERE status = 'pending'
+             ORDER BY created_at ASC, id ASC
+             LIMIT 50
+             FOR UPDATE",
+            { Slice => {} }
+        );
+
+        my @ids = map { $_->{id} } @$claim_rows;
+        if (@ids) {
+            my $placeholders = join ',', ('?') x @ids;
+            $dbh->do(
+                "UPDATE notifications_queue
+                 SET status = 'processing'
+                 WHERE id IN ($placeholders)",
+                undef,
+                @ids
+            );
+
+            $items = $dbh->selectall_arrayref(
+                "SELECT *
+                 FROM notifications_queue
+                 WHERE id IN ($placeholders)
+                 ORDER BY created_at ASC, id ASC",
+                { Slice => {} },
+                @ids
+            );
+        }
+
+        $dbh->commit;
+    };
+
+    if ($@) {
+        eval { $dbh->rollback unless $dbh->{AutoCommit} };
+        die $@;
+    }
+
+    return $items;
 }
 
 # Increments retry_count and records the latest error on a queue item.

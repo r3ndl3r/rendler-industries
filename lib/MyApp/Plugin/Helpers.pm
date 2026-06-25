@@ -189,10 +189,22 @@ sub register {
             my ($lock) = $c->db->{dbh}->selectrow_array("SELECT GET_LOCK('mojo_maintenance', 0)");
             return unless $lock;
 
+            my $release_maintenance_lock = sub {
+                eval { $c->db->{dbh}->do("SELECT RELEASE_LOCK('mojo_maintenance')") };
+                if ($@) {
+                    $c->log->error("Background maintenance: failed to release lock: $@");
+                } else {
+                    $c->log->info("Background maintenance: Lock released.");
+                }
+            };
+
             # Level 2: Sequential/Minute Lock (Timestamp-based)
             # Ensures the task runs exactly once per minute across all workers
             my $epoch_min = int(time / 60);
-            return unless $c->db->try_acquire_maintenance_lock($epoch_min);
+            unless ($c->db->try_acquire_maintenance_lock($epoch_min)) {
+                $release_maintenance_lock->();
+                return;
+            }
 
             eval {
                 my $now   = $c->now;
@@ -249,18 +261,16 @@ sub register {
 
                 if (@async_promises) {
                     Mojo::Promise->all(@async_promises)->finally(sub {
-                        $c->db->{dbh}->do("SELECT RELEASE_LOCK('mojo_maintenance')");
-                        $c->log->info("Background maintenance: Lock released.");
+                        $release_maintenance_lock->();
                     });
                 } else {
-                    $c->db->{dbh}->do("SELECT RELEASE_LOCK('mojo_maintenance')");
-                    $c->log->info("Background maintenance: Lock released.");
+                    $release_maintenance_lock->();
                 }
             };
 
             if ($@) {
                 $c->log->error("Background maintenance critical failure: $@");
-                $c->db->{dbh}->do("SELECT RELEASE_LOCK('mojo_maintenance')");
+                $release_maintenance_lock->();
             }
         }
     );

@@ -119,9 +119,9 @@ use constant MANIFEST => {
     },
     notification_queue => {
         label            => 'Notification Queue',
-        description      => 'Processes queued Discord/Email deliveries with 3-retry fallback and admin alert on failure.',
+        description      => 'Processes queued Discord, Email, and FCM deliveries with channel-specific retries and admin alerts.',
         function_name    => 'run_notification_queue',
-        is_async         => 0,
+        is_async         => 1,
         run_last         => 1,
         is_enabled       => 1,
         interval_minutes => 1,

@@ -3,6 +3,7 @@
 package MyApp::Plugin::Notifications;
 
 use Mojo::Base 'Mojolicious::Plugin';
+use Mojo::Promise;
 use Mojo::Util qw(b64_encode trim);
 use Mojo::JSON qw(from_json encode_json);
 use Encode qw(encode);
@@ -624,85 +625,110 @@ sub register {
         return 1;
     });
 
-    # --- FCM PUSH ---
-    # Sends a native Android push notification to all registered devices for a user.
-    # Fire-and-forget — non-blocking via Mojo promises.
-    # Stale tokens (FCM 404) are automatically pruned from the DB.
-    # Parameters: user_id, title, body, tap_url (opt path to navigate on tap), caller_id (opt)
+    # Sends one FCM notification to one registered device.
+    # Parameters:
+    #   user_id : Owning user ID
+    #   token   : FCM registration token
+    #   platform: android_native or pwa_web
+    #   title   : Notification title
+    #   body    : Notification body
+    #   tap_url : Relative path to navigate on tap (optional)
+    # Returns: Mojo::Promise resolving to { status => 'delivered'|'stale' };
+    #          rejects for retryable configuration, network, or provider failures.
+    $app->helper(send_fcm_device_p => sub {
+        my ($c, $user_id, $token, $platform, $title, $body, $tap_url) = @_;
+        $platform ||= 'android_native';
+
+        return Mojo::Promise->reject('FCM token missing') unless $token;
+        my $access_token = _fcm_access_token($c->app);
+        return Mojo::Promise->reject("FCM access token unavailable for user $user_id")
+            unless $access_token;
+
+        my $clean_body  = _strip_markdown($body);
+        my $project_id  = $c->app->config->{fcm_project_id};
+        return Mojo::Promise->reject('FCM project ID missing') unless $project_id;
+
+        my $fcm_url     = "https://fcm.googleapis.com/v1/projects/$project_id/messages:send";
+        my $base_url = $c->app->config->{url} || '';
+        my $link = $tap_url || '/quick';
+        $link = "$base_url$link" if $base_url && $link =~ m{^/};
+
+        my $payload = {
+            notification => { title => $title, body => $clean_body },
+            data         => { url => ($tap_url || '/quick'), title => $title, body => $clean_body },
+        };
+        if ($platform eq 'pwa_web') {
+            $payload->{webpush} = {
+                fcm_options => { link => $link },
+                notification => {
+                    icon  => '/images/pwa/icon-192.png',
+                    badge => '/images/pwa/icon-192.png',
+                },
+            };
+        }
+
+        return $c->app->ua->post_p(
+            $fcm_url,
+            { Authorization => "Bearer $access_token", 'Content-Type' => 'application/json' },
+            json => { message => { token => $token, %$payload } }
+        )->then(sub {
+            my $tx = shift;
+            my $res = $tx->result;
+            return { status => 'delivered' } if $res->is_success;
+
+            my $err_json = $res->json || {};
+            my $err_data = ref $err_json->{error} eq 'HASH' ? $err_json->{error} : {};
+            my $err_status = $err_data->{status} // '';
+            if ($res->code == 404 || $err_status eq 'NOT_FOUND' || $err_status eq 'UNREGISTERED') {
+                return { status => 'stale' };
+            }
+
+            my $err = $res->body // '';
+            return Mojo::Promise->reject("FCM HTTP " . $res->code . ": $err");
+        });
+    });
+
+    # Sends an FCM notification to all registered devices for a user.
+    # Fire-and-forget — non-blocking via per-device Mojo promises.
+    # Parameters:
+    #   user_id  : Target user ID
+    #   title    : Notification title
+    #   body     : Notification body
+    #   tap_url  : Relative path to navigate on tap (optional)
+    #   caller_id: Internal caller ID for audit logging (optional)
+    # Returns: 1 when at least one device delivery was started, otherwise 0.
     $app->helper(push_fcm => sub {
         my ($c, $user_id, $title, $body, $tap_url, $caller_id) = @_;
 
         my $tokens = $c->db->get_fcm_tokens_for_user($user_id);
         return 0 unless $tokens && @$tokens;
+        return 0 unless $c->app->config->{fcm_project_id};
+        return 0 unless _fcm_access_token($c->app);
 
-        my $access_token = _fcm_access_token($c->app);
-        unless ($access_token) {
-            $c->app->log->error("push_fcm: could not obtain access token for user $user_id");
-            return 0;
-        }
-
-        my $clean_body  = _strip_markdown($body);
-        my $project_id  = $c->app->config->{fcm_project_id};
-        my $fcm_url     = "https://fcm.googleapis.com/v1/projects/$project_id/messages:send";
-
-        my $base_url = $c->app->config->{url} || '';
-        my $link = $tap_url || '/quick';
-        $link = "$base_url$link" if $base_url && $link =~ m{^/};
-
+        my $clean_body = _strip_markdown($body);
         for my $device (@$tokens) {
             my $token    = ref $device eq 'HASH' ? $device->{token} : $device;
             my $platform = ref $device eq 'HASH' ? ($device->{platform} || 'android_native') : 'android_native';
-            my $payload  = { notification => { title => $title, body => $clean_body } };
-            $payload->{data} = { url => ($tap_url || '/quick'), title => $title, body => $clean_body };
-            if ($platform eq 'pwa_web') {
-                $payload->{webpush} = {
-                    fcm_options => { link => $link },
-                    notification => {
-                        icon  => '/images/pwa/icon-192.png',
-                        badge => '/images/pwa/icon-192.png',
-                    },
-                };
-            }
+            my $recipient_label = $platform eq 'pwa_web' ? 'PWA Web App' : 'Mobile Device';
 
-            $c->app->ua->post_p(
-                $fcm_url,
-                { Authorization => "Bearer $access_token", 'Content-Type' => 'application/json' },
-                json => { message => { token => $token, %$payload } }
-            )->then(sub {
-                my $tx = shift;
-                if ($tx->result->is_success) {
-                    $c->app->log->info("push_fcm: delivered to user $user_id");
-                    $c->db->log_notification(
-                        user_id   => $user_id,
-                        caller_id => $caller_id,
-                        type      => 'fcm',
-                        recipient => $platform eq 'pwa_web' ? 'PWA Web App' : 'Mobile Device',
-                        subject   => $title,
-                        message   => $clean_body,
-                        status    => 'success'
-                    );
-                } else {
-                    my $err_json = $tx->result->json || {};
-                    my $err_data = ref $err_json->{error} eq 'HASH' ? $err_json->{error} : {};
-                    my $err_status = $err_data->{status} // '';
-                    if ($tx->result->code == 404 || $err_status eq 'NOT_FOUND' || $err_status eq 'UNREGISTERED') {
-                        $c->db->delete_fcm_token($token);
-                        $c->app->log->info("push_fcm: removed stale token for user $user_id");
-                    } else {
-                        my $err = $tx->result->body // '';
-                        $c->app->log->error("push_fcm: error " . $tx->result->code . " for user $user_id: $err");
-                        $c->db->log_notification(
-                            user_id       => $user_id,
-                            caller_id     => $caller_id,
-                            type          => 'fcm',
-                            recipient     => $platform eq 'pwa_web' ? 'PWA Web App' : 'Mobile Device',
-                            subject       => $title,
-                            message       => $clean_body,
-                            status        => 'failed',
-                            error_details => "HTTP " . $tx->result->code . ": $err"
-                        );
-                    }
+            $c->send_fcm_device_p($user_id, $token, $platform, $title, $body, $tap_url)->then(sub {
+                my $result = shift;
+                if ($result->{status} eq 'stale') {
+                    $c->db->delete_fcm_token($token);
+                    $c->app->log->info("push_fcm: removed stale token for user $user_id");
+                    return;
                 }
+
+                $c->app->log->info("push_fcm: delivered to user $user_id");
+                $c->db->log_notification(
+                    user_id   => $user_id,
+                    caller_id => $caller_id,
+                    type      => 'fcm',
+                    recipient => $recipient_label,
+                    subject   => $title,
+                    message   => $clean_body,
+                    status    => 'success'
+                );
             })->catch(sub {
                 my $err = shift;
                 $c->app->log->error("push_fcm: exception for user $user_id: $err");
@@ -710,11 +736,11 @@ sub register {
                     user_id       => $user_id,
                     caller_id     => $caller_id,
                     type          => 'fcm',
-                    recipient     => $platform eq 'pwa_web' ? 'PWA Web App' : 'Mobile Device',
+                    recipient     => $recipient_label,
                     subject       => $title,
                     message       => $clean_body,
                     status        => 'failed',
-                    error_details => "Exception: $err"
+                    error_details => "$err"
                 );
             });
         }
@@ -732,19 +758,25 @@ sub register {
         return 0 unless $user;
 
         my $prefs = $c->db->get_user_notification_prefs($user_id);
+        my $any_success = 0;
 
         # FCM: Fire and forget — only when user has opted in
-        $c->push_fcm($user_id, $subject, $message, $tap_url, $caller_id) if $prefs->{fcm};
+        if ($prefs->{fcm}) {
+            $any_success = 1
+                if $c->push_fcm($user_id, $subject, $message, $tap_url, $caller_id);
+        }
 
-        # Try Discord first (if opted in and linked)
         if ($prefs->{discord} && $user->{discord_id}) {
-            return 1 if $c->send_discord_dm($user->{discord_id}, $message, $user_id, $caller_id) >= 1;
+            $any_success = 1
+                if $c->send_discord_dm($user->{discord_id}, $message, $user_id, $caller_id) >= 1;
         }
 
-        # Fallback to Email (if opted in)
         if ($prefs->{email} && $user->{email}) {
-            return $c->send_email_via_gmail($user->{email}, $subject, $message, $user_id, $caller_id);
+            $any_success = 1
+                if $c->send_email_via_gmail($user->{email}, $subject, $message, $user_id, $caller_id);
         }
+
+        return 1 if $any_success;
 
         $c->app->log->warn("No notification channels available for user $user_id");
         $c->db->log_notification(
@@ -757,6 +789,142 @@ sub register {
             error_details => 'No notification channels available or all disabled for user'
         );
         return 0;
+    });
+
+    # --- QUEUED DISPATCHER ---
+    # Queues a rendered notification through every enabled durable channel.
+    # Parameters:
+    #   user_id   : Target recipient user ID
+    #   message   : Rendered notification body
+    #   subject   : Rendered notification subject
+    #   caller_id : Internal ID of the caller for audit context (optional)
+    #   tap_url   : Deep-link URL for FCM tap-to-navigate (optional)
+    # Returns: 1 when all applicable channel rows are queued or no usable channel exists;
+    #          0 when any required queue insert fails.
+    $app->helper(queue_notification => sub {
+        my ($c, $user_id, $message, $subject, $caller_id, $tap_url) = @_;
+        $subject //= "System Notification";
+
+        my $user = $c->db->get_user_by_id($user_id);
+        unless ($user) {
+            $c->app->log->warn("queue_notification: user $user_id not found");
+            return 1;
+        }
+
+        my $prefs = $c->db->get_user_notification_prefs($user_id);
+        my @deliveries;
+
+        if ($prefs->{discord} && $user->{discord_id}) {
+            push @deliveries, {
+                user_id   => $user_id,
+                type      => 'discord',
+                recipient => $user->{discord_id},
+                subject   => $subject,
+                message   => $message,
+            };
+        }
+
+        if ($prefs->{email} && $user->{email}) {
+            push @deliveries, {
+                user_id   => $user_id,
+                type      => 'email',
+                recipient => $user->{email},
+                subject   => $subject,
+                message   => $message,
+            };
+        }
+
+        if ($prefs->{fcm}) {
+            my $tokens = $c->db->get_fcm_tokens_for_user($user_id) || [];
+            for my $device (@$tokens) {
+                my $token    = ref $device eq 'HASH' ? $device->{token} : $device;
+                my $platform = ref $device eq 'HASH' ? ($device->{platform} || 'android_native') : 'android_native';
+                next unless $token;
+
+                push @deliveries, {
+                    user_id   => $user_id,
+                    type      => 'fcm',
+                    recipient => $token,
+                    platform  => $platform,
+                    subject   => $subject,
+                    message   => $message,
+                    tap_url   => $tap_url,
+                };
+            }
+        }
+
+        unless (@deliveries) {
+            $c->app->log->warn("No durable notification channels available for user $user_id");
+            $c->db->log_notification(
+                user_id       => $user_id,
+                caller_id     => $caller_id,
+                type          => 'email',
+                recipient     => 'None',
+                subject       => $subject,
+                message       => $message,
+                status        => 'failed',
+                error_details => 'No durable notification channels available or all disabled for user'
+            );
+            return 1;
+        }
+
+        my $dbh = $c->db->{dbh};
+        my $started_txn = $dbh->{AutoCommit};
+        my $queued = eval {
+            $dbh->begin_work if $started_txn;
+            for my $delivery (@deliveries) {
+                my $queue_id = $c->db->enqueue_notification(%$delivery);
+                die "failed to enqueue $delivery->{type} notification for user $user_id"
+                    unless $queue_id;
+            }
+            $dbh->commit if $started_txn;
+            1;
+        };
+
+        unless ($queued) {
+            my $err = $@ || 'unknown queue persistence failure';
+            eval { $dbh->rollback if $started_txn };
+            $c->app->log->error("queue_notification: $err");
+            return 0;
+        }
+
+        return 1;
+    });
+
+    # --- QUEUED TEMPLATED NOTIFICATION ---
+    # Renders a DB-stored template and queues it through the durable notification queue.
+    # Parameters:
+    #   user_id   : Target recipient user ID
+    #   key       : MANIFEST template key (e.g., 'chore_complete')
+    #   data      : HashRef of substitution values
+    #   caller_id : Internal ID of the caller for audit context (optional)
+    # Returns: 1 when handled or durably queued; 0 on render/queue persistence failure.
+    $app->helper(queue_templated_notification => sub {
+        my ($c, $user_id, $key, $data, $caller_id) = @_;
+
+        my $rendered = $c->db->render_template($key, $data, $c->app->config->{url});
+
+        unless ($rendered && ref($rendered) eq 'HASH' && defined $rendered->{body} && defined $rendered->{subject}) {
+            $c->app->log->error("queue_templated_notification: render_template returned invalid result for key '$key'");
+            return 0;
+        }
+
+        my $tap_url = MANIFEST->{$key}{url};
+        my $event_id = int($caller_id // 0);
+        if ($event_id > 0 && $key =~ /^calendar_/) {
+            my $date = _calendar_link_date($data);
+            my @params = ("event=$event_id");
+            push @params, "date=$date" if $date;
+            $tap_url = _append_query_params($tap_url, @params);
+        }
+
+        return $c->queue_notification(
+            $user_id,
+            $rendered->{body},
+            $rendered->{subject},
+            $caller_id,
+            $tap_url
+        );
     });
 
     # --- TEMPLATED NOTIFICATION ---

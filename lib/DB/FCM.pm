@@ -10,7 +10,7 @@ use warnings;
 # Tokens are upserted on registration and pruned on FCM 404 (unregistered device).
 
 # Stores or refreshes a device token for a user.
-# Upserts on the unique token index; on conflict updates the timestamp only.
+# Upserts on the unique token index; on conflict refreshes ownership and device metadata.
 # Parameters:
 #   user_id : Integer — owning user.
 #   token      : String — FCM registration token for the device.
@@ -40,6 +40,25 @@ sub DB::get_fcm_tokens_for_user {
     my $sth = $self->{dbh}->prepare("SELECT token, platform FROM fcm_tokens WHERE user_id = ?");
     $sth->execute($user_id);
     return $sth->fetchall_arrayref({});
+}
+
+# Checks that a queued FCM token still belongs to the expected user.
+# Parameters:
+#   token   : FCM registration token.
+#   user_id : Expected owning user ID.
+# Returns: Boolean ownership result.
+sub DB::fcm_token_belongs_to_user {
+    my ($self, $token, $user_id) = @_;
+    return 0 unless defined $token && defined $user_id;
+
+    $self->ensure_connection;
+    my ($owned) = $self->{dbh}->selectrow_array(
+        "SELECT 1 FROM fcm_tokens WHERE token = ? AND user_id = ? LIMIT 1",
+        undef,
+        $token,
+        $user_id
+    );
+    return $owned ? 1 : 0;
 }
 
 # Removes a specific token — called when FCM returns 404 (device unregistered).

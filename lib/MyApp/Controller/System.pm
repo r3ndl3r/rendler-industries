@@ -2,6 +2,7 @@
 
 package MyApp::Controller::System;
 use Mojo::Base 'Mojolicious::Controller';
+use Mojo::Promise;
 use Mojo::Util qw(trim);
 
 # Controller for System-level operations and maintenance.
@@ -17,6 +18,46 @@ use Mojo::Util qw(trim);
 #   - Restricted to 'admin' bridge via router.
 
 use DateTime;
+
+# Runs maintenance notification queue writes and their idempotency markers in one transaction.
+# Parameters:
+#   code : CodeRef that queues notification work and advances the matching marker.
+# Returns: The CodeRef return value.
+sub _with_maintenance_notification_txn {
+    my ($c, $code) = @_;
+    my $dbh = $c->db->{dbh};
+    my $started_txn = $dbh->{AutoCommit};
+    my $result;
+
+    my $ok = eval {
+        $dbh->begin_work if $started_txn;
+        $result = $code->();
+        $dbh->commit if $started_txn;
+        1;
+    };
+
+    unless ($ok) {
+        my $err = $@ || 'unknown transaction failure';
+        eval { $dbh->rollback if $started_txn };
+        die $err;
+    }
+
+    return $result;
+}
+
+# Queues a maintenance notification or throws so the paired marker is not advanced.
+# Parameters:
+#   user_id   : Target recipient user ID
+#   key       : Notification template key
+#   data      : Template substitution data
+#   caller_id : Internal caller/audit ID
+# Returns: 1 on success.
+sub _queue_maintenance_notification_or_die {
+    my ($c, $user_id, $key, $data, $caller_id) = @_;
+
+    return 1 if $c->queue_templated_notification($user_id, $key, $data, $caller_id);
+    die "Failed to queue maintenance notification '$key' for user $user_id";
+}
 
 # Returns public Firebase Web Messaging configuration for PWA push.
 # Route: GET /api/fcm/web-config
@@ -111,7 +152,7 @@ sub restart {
 sub run_chore_reminders {
     my ($c, $now) = @_;
     
-    my $stale_chores = $c->db->get_stale_chores_and_mark();
+    my $stale_chores = $c->db->get_stale_chores();
     return unless @$stale_chores;
 
     my $kids = $c->db->get_child_users() || [];
@@ -120,24 +161,24 @@ sub run_chore_reminders {
         my $target_name  = $chore->{target_user} // 'Everyone';
         my $target_emoji = $chore->{target_emoji} // '🌍';
 
-        if ($chore->{assigned_to}) {
-            $c->notify_templated($chore->{assigned_to}, 'chore_stale_reminder', { 
-                icon   => $target_emoji, 
-                task   => $chore->{title}, 
-                points => $chore->{points} || 0, 
-                target => $target_name 
-            }, 0);
-        } else {
-            for my $k (@$kids) {
-                $c->notify_templated($k->{id}, 'chore_stale_reminder', { 
-                    icon   => $target_emoji, 
-                    task   => $chore->{title}, 
-                    points => $chore->{points} || 0, 
-                    target => $target_name 
-                }, 0);
-            }
+        my @recipients = $chore->{assigned_to} ? ($chore->{assigned_to}) : map { $_->{id} } @$kids;
+        eval {
+            $c->_with_maintenance_notification_txn(sub {
+                for my $user_id (@recipients) {
+                    $c->_queue_maintenance_notification_or_die($user_id, 'chore_stale_reminder', {
+                        icon   => $target_emoji,
+                        task   => $chore->{title},
+                        points => $chore->{points} || 0,
+                        target => $target_name
+                    }, 0);
+                }
+                $c->db->mark_stale_chores_reminded($chore->{id});
+            });
+            $c->app->log->info("Chores: Automated nag queued for chore $chore->{id}.");
+        };
+        if ($@) {
+            $c->app->log->error("Chores: failed to queue automated nag for chore $chore->{id}: $@");
         }
-        $c->app->log->info("Chores: Automated nag dispatched for chore $chore->{id}.");
     }
 }
 
@@ -195,31 +236,43 @@ sub run_meals_maintenance {
     if ($minute == 0 && ($hour == 8 || $hour == 12)) {
         # Check if today's plan is still open
         my $today_plan = $c->db->get_active_plan(0)->[0]; # user_id=0 (system context)
-        
-        # Check if we already sent this specific hourly reminder
-        my $flag_col = $hour == 8 ? 'reminder_8am_sent' : 'reminder_12pm_sent';
-        my ($already_sent) = $c->db->{dbh}->selectrow_array("SELECT $flag_col FROM meal_plan WHERE id = ?", undef, $today_plan->{id});
 
-        if ($today_plan && $today_plan->{status} eq 'open' && !$already_sent) {
-            # Mark as sent immediately to prevent other workers from firing
-            $c->db->{dbh}->do("UPDATE meal_plan SET $flag_col = 1 WHERE id = ?", undef, $today_plan->{id});
+        if ($today_plan) {
+            # Check if we already sent this specific hourly reminder
+            my $flag_col = $hour == 8 ? 'reminder_8am_sent' : 'reminder_12pm_sent';
+            my ($already_sent) = $c->db->{dbh}->selectrow_array("SELECT $flag_col FROM meal_plan WHERE id = ?", undef, $today_plan->{id});
 
-            my $participation = $c->db->get_plan_participation($today_plan->{id});
-            my %has_suggested = map { $_ => 1 } @{$participation->{suggested_ids}};
-            my %has_voted     = map { $_ => 1 } @{$participation->{voted_ids}};
-            
-            # Find all family members
-            my $users = $c->db->get_family_users();
-            foreach my $u (@$users) {
-                # Target family/admins who have NOT suggested AND have NOT voted
-                if (!$has_suggested{$u->{id}} && !$has_voted{$u->{id}}) {
-                    $c->notify_templated($u->{id}, 'meals_reminder', { 
-                        user     => $u->{username}, 
-                        deadline => '2:00 PM' 
-                    }, 0);
+            if ($today_plan->{status} eq 'open' && !$already_sent) {
+                my @targets;
+                my $participation = $c->db->get_plan_participation($today_plan->{id});
+                my %has_suggested = map { $_ => 1 } @{$participation->{suggested_ids}};
+                my %has_voted     = map { $_ => 1 } @{$participation->{voted_ids}};
+
+                # Find all family members
+                my $users = $c->db->get_family_users();
+                foreach my $u (@$users) {
+                    # Target family/admins who have NOT suggested AND have NOT voted
+                    if (!$has_suggested{$u->{id}} && !$has_voted{$u->{id}}) {
+                        push @targets, $u;
+                    }
+                }
+
+                eval {
+                    $c->_with_maintenance_notification_txn(sub {
+                        foreach my $u (@targets) {
+                            $c->_queue_maintenance_notification_or_die($u->{id}, 'meals_reminder', {
+                                user     => $u->{username},
+                                deadline => '2:00 PM'
+                            }, 0);
+                        }
+                        $c->db->{dbh}->do("UPDATE meal_plan SET $flag_col = 1 WHERE id = ?", undef, $today_plan->{id});
+                    });
+                    push @{$stats->{actions}}, "Queued $hour:00 targeted reminders";
+                };
+                if ($@) {
+                    $c->app->log->error("Meals: failed to queue $hour:00 reminders: $@");
                 }
             }
-            push @{$stats->{actions}}, "Sent $hour:00 targeted reminders";
         }
     }
 
@@ -229,8 +282,6 @@ sub run_meals_maintenance {
         
         # Guard Clause: Ensure we only perform 2PM automation once per day across all workers
         if ($today_plan && $today_plan->{status} eq 'open' && !$today_plan->{reminder_2pm_sent}) {
-            # Mark as sent immediately to prevent other workers from firing while we process
-            $c->db->{dbh}->do("UPDATE meal_plan SET reminder_2pm_sent = 1 WHERE id = ?", undef, $today_plan->{id});
             my $suggestions = $today_plan->{suggestions};
             
             if (scalar @$suggestions > 0) {
@@ -243,29 +294,43 @@ sub run_meals_maintenance {
                     
                     # De-duplicate recipients
                     my %seen_users;
-                    foreach my $a (@$admins) {
-                        next if $seen_users{$a->{id}}++;
-                        $c->notify_templated($a->{id}, 'meals_tie', {}, 0);
+                    my @targets = grep { !$seen_users{$_->{id}}++ } @$admins;
+                    eval {
+                        $c->_with_maintenance_notification_txn(sub {
+                            foreach my $a (@targets) {
+                                $c->_queue_maintenance_notification_or_die($a->{id}, 'meals_tie', {}, 0);
+                            }
+                            $c->db->{dbh}->do("UPDATE meal_plan SET reminder_2pm_sent = 1 WHERE id = ?", undef, $today_plan->{id});
+                        });
+                        push @{$stats->{actions}}, "Queued admins of tie";
+                    };
+                    if ($@) {
+                        $c->app->log->error("Meals: failed to queue tie notifications: $@");
                     }
-                    push @{$stats->{actions}}, "Notified admins of tie";
                 } else {
-                    # Auto-lock winner (This updates status to 'locked', stopping other workers)
-                    $c->db->lock_suggestion($today_plan->{id}, $winner->{id});
-                    
                     # Notify everyone of the final choice
                     my $users = $c->db->get_family_users();
                     
                     # De-duplicate recipients
                     my %seen_users;
-                    foreach my $u (@$users) {
-                        next if $seen_users{$u->{id}}++;
-                        $c->notify_templated($u->{id}, 'meals_locked_in', { 
-                            meal_name    => $winner->{meal_name}, 
-                            vote_count   => $winner->{vote_count}, 
-                            suggested_by => $winner->{suggested_by_name} 
-                        }, 0);
+                    my @targets = grep { !$seen_users{$_->{id}}++ } @$users;
+                    eval {
+                        $c->_with_maintenance_notification_txn(sub {
+                            foreach my $u (@targets) {
+                                $c->_queue_maintenance_notification_or_die($u->{id}, 'meals_locked_in', {
+                                    meal_name    => $winner->{meal_name},
+                                    vote_count   => $winner->{vote_count},
+                                    suggested_by => $winner->{suggested_by_name}
+                                }, 0);
+                            }
+                            $c->db->lock_suggestion($today_plan->{id}, $winner->{id});
+                            $c->db->{dbh}->do("UPDATE meal_plan SET reminder_2pm_sent = 1 WHERE id = ?", undef, $today_plan->{id});
+                        });
+                        push @{$stats->{actions}}, "Locked in: $winner->{meal_name}";
+                    };
+                    if ($@) {
+                        $c->app->log->error("Meals: failed to queue lock-in notifications: $@");
                     }
-                    push @{$stats->{actions}}, "Locked in: $winner->{meal_name}";
                 }
             } else {
                 # No suggestions at 2PM? Notify Family (Widened from Admin-only)
@@ -273,11 +338,19 @@ sub run_meals_maintenance {
                 
                 # De-duplicate recipients
                 my %seen_users;
-                foreach my $u (@$users) {
-                    next if $seen_users{$u->{id}}++;
-                    $c->notify_templated($u->{id}, 'meals_empty', {}, 0);
+                my @targets = grep { !$seen_users{$_->{id}}++ } @$users;
+                eval {
+                    $c->_with_maintenance_notification_txn(sub {
+                        foreach my $u (@targets) {
+                            $c->_queue_maintenance_notification_or_die($u->{id}, 'meals_empty', {}, 0);
+                        }
+                        $c->db->{dbh}->do("UPDATE meal_plan SET reminder_2pm_sent = 1 WHERE id = ?", undef, $today_plan->{id});
+                    });
+                    push @{$stats->{actions}}, "Queued family of empty plan";
+                };
+                if ($@) {
+                    $c->app->log->error("Meals: failed to queue empty-plan notifications: $@");
                 }
-                push @{$stats->{actions}}, "Notified family of empty plan";
             }
         }
     }
@@ -376,14 +449,18 @@ sub run_room_reminders {
             }
         }
         
-        # Mark as sent FIRST to prevent double-firing across workers
-        $c->db->update_room_reminder_sent($r->{user_id});
-        
-        if ($c->notify_templated($r->{user_id}, 'room_reminder', { 
-            comments => $comments_str 
-        }, 0)) {
+        eval {
+            $c->_with_maintenance_notification_txn(sub {
+                $c->_queue_maintenance_notification_or_die($r->{user_id}, 'room_reminder', {
+                    comments => $comments_str
+                }, 0);
+                $c->db->update_room_reminder_sent($r->{user_id});
+            });
             $stats->{reminders_sent}++;
-            $c->app->log->info("Room reminder sent to $r->{username}");
+            $c->app->log->info("Room reminder queued for $r->{username}");
+        };
+        if ($@) {
+            $c->app->log->error("Room reminder failed to queue for $r->{username}: $@");
         }
     }
 
@@ -410,53 +487,45 @@ sub run_reminder_maintenance {
     my $due_reminders = $c->db->get_due_reminders($stats->{day_number}, $stats->{checked_minute});
     $stats->{due_found} = scalar @$due_reminders;
 
-    # Track processed reminder IDs to avoid double-marking for multi-recipient rules
-    my %processed_reminder_ids;
+    my %reminders_by_id;
+    push @{ $reminders_by_id{$_->{id}} }, $_ for @$due_reminders;
 
-    foreach my $r (@$due_reminders) {
-        # CRITICAL: Mark as sent BEFORE notifying.
-        # Since notify_user is non-blocking, we must ensure another worker 
-        # doesn't see this reminder as "unsent" while the first worker's 
-        # notification is still "in flight" via async promise.
-        unless ($processed_reminder_ids{$r->{id}}) {
-            if ($r->{is_one_off}) {
-                $c->db->delete_reminder($r->{id});
-            } else {
-                my $today_iso = $now->strftime('%Y-%m-%d');
-                my $intended_at = "$today_iso $r->{reminder_time}";
-                $c->db->mark_reminder_sent($r->{id}, $intended_at);
-            }
-            $processed_reminder_ids{$r->{id}} = 1;
-        }
+    for my $reminder_id (sort { $a <=> $b } keys %reminders_by_id) {
+        my $rows = $reminders_by_id{$reminder_id};
+        my $first = $rows->[0];
 
-        # Dispatch notification to EVERY recipient in the join list
-        if ($c->notify_templated($r->{user_id}, 'reminder_alert', { 
-            title       => $r->{title}, 
-            description => $r->{description} 
-        }, 0)) {
-            $stats->{notified}++;
-            
-            # Automated chore generation for child recipients
-            if (defined $r->{chore_points} && $r->{is_child}) {
-                my $chore_ok = eval {
-                    $c->db->add_chore($r->{title}, $r->{chore_points}, $r->{user_id});
-                    1;
-                };
-
-                if ($chore_ok) {
-                    $c->app->log->info("Chores: Created automatic chore from reminder $r->{id} for user $r->{user_id}.");
-                    $c->notify_templated($r->{user_id}, 'chore_new_linked', { 
-                        user   => $r->{username},
-                        icon   => $c->getUserIcon($r->{username}),
-                        task   => $r->{title}, 
-                        points => $r->{chore_points} 
+        eval {
+            $c->_with_maintenance_notification_txn(sub {
+                for my $r (@$rows) {
+                    $c->_queue_maintenance_notification_or_die($r->{user_id}, 'reminder_alert', {
+                        title       => $r->{title},
+                        description => $r->{description}
                     }, 0);
+
+                    if (defined $r->{chore_points} && $r->{is_child}) {
+                        $c->db->add_chore($r->{title}, $r->{chore_points}, $r->{user_id});
+                        $c->_queue_maintenance_notification_or_die($r->{user_id}, 'chore_new_linked', {
+                            user   => $r->{username},
+                            icon   => $c->getUserIcon($r->{username}),
+                            task   => $r->{title},
+                            points => $r->{chore_points}
+                        }, 0);
+                    }
                 }
- else {
-                    $c->app->log->error("Chores: Failed to create auto-chore from reminder $r->{id}: $@");
+
+                if ($first->{is_one_off}) {
+                    $c->db->delete_reminder($first->{id});
+                } else {
+                    my $today_iso = $now->strftime('%Y-%m-%d');
+                    my $intended_at = "$today_iso $first->{reminder_time}";
+                    $c->db->mark_reminder_sent($first->{id}, $intended_at);
                 }
-            }
-        } else {
+            });
+
+            $stats->{notified} += scalar @$rows;
+        };
+        if ($@) {
+            $c->app->log->error("Reminder maintenance failed to queue reminder $reminder_id: $@");
             $stats->{errors}++;
         }
     }
@@ -488,17 +557,16 @@ sub run_medication_reminder_maintenance {
     my $due = $c->db->get_due_medication_reminders($current_date, $current_time, $stats->{day_number});
     foreach my $r (@$due) {
         eval {
-            # Create event FIRST (marks as "in flight", prevents double-fire)
-            $c->db->create_medication_reminder_event($r->{id}, $current_date, $r->{reminder_time});
-
-            # Notify the family member (the person who needs to take it)
             my $time_display = substr($r->{reminder_time}, 0, 5);
-            $c->notify_templated($r->{family_member_id}, 'medication_dose_reminder', {
-                medication    => $r->{medication_name},
-                dosage        => $r->{dosage},
-                family_member => $r->{family_member_name},
-                time          => $time_display
-            }, 0);
+            $c->_with_maintenance_notification_txn(sub {
+                $c->_queue_maintenance_notification_or_die($r->{family_member_id}, 'medication_dose_reminder', {
+                    medication    => $r->{medication_name},
+                    dosage        => $r->{dosage},
+                    family_member => $r->{family_member_name},
+                    time          => $time_display
+                }, 0);
+                $c->db->create_medication_reminder_event($r->{id}, $current_date, $r->{reminder_time});
+            });
 
             $stats->{initial_fired}++;
         };
@@ -512,17 +580,16 @@ sub run_medication_reminder_maintenance {
     my $overdue = $c->db->get_overdue_medication_confirmations($current_date);
     foreach my $o (@$overdue) {
         eval {
-            # Update last_fired_at to NOW() (prevents re-trigger for another 30 min)
-            $c->db->touch_medication_reminder_event($o->{event_id});
-
-            # Dispatch re-alert notification
             my $time_display = substr($o->{scheduled_time}, 0, 5);
-            $c->notify_templated($o->{family_member_id}, 'medication_dose_overdue', {
-                medication    => $o->{medication_name},
-                dosage        => $o->{dosage},
-                family_member => $o->{family_member_name},
-                time          => $time_display
-            }, 0);
+            $c->_with_maintenance_notification_txn(sub {
+                $c->_queue_maintenance_notification_or_die($o->{family_member_id}, 'medication_dose_overdue', {
+                    medication    => $o->{medication_name},
+                    dosage        => $o->{dosage},
+                    family_member => $o->{family_member_name},
+                    time          => $time_display
+                }, 0);
+                $c->db->touch_medication_reminder_event($o->{event_id});
+            });
 
             $stats->{re_alerts_sent}++;
         };
@@ -560,42 +627,53 @@ sub run_timer_maintenance {
     foreach my $timer (@$warning_timers) {
         my $minutes_remaining = int($timer->{remaining_seconds} / 60);
         next if $minutes_remaining <= 0;
-        
-        if ($c->notify_templated($timer->{user_id}, 'timers_warning', { 
-            name     => $timer->{name}, 
-            category => $timer->{category}, 
-            minutes  => $minutes_remaining 
-        }, 0)) {
-            $c->db->mark_warning_sent($timer->{timer_id});
+
+        eval {
+            $c->_with_maintenance_notification_txn(sub {
+                $c->_queue_maintenance_notification_or_die($timer->{user_id}, 'timers_warning', {
+                    name     => $timer->{name},
+                    category => $timer->{category},
+                    minutes  => $minutes_remaining
+                }, 0);
+                $c->db->mark_warning_sent($timer->{timer_id});
+            });
             $stats->{warnings_sent}++;
+        };
+        if ($@) {
+            $c->app->log->error("Timer warning failed to queue for timer $timer->{timer_id}: $@");
         }
     }
     
     # D. Send expiry notifications
     my $expired_timers = $c->db->get_expired_timers();
     foreach my $timer (@$expired_timers) {
-        # Notify User
-        $c->notify_templated($timer->{user_id}, 'timers_expired_user', { 
-            name     => $timer->{name}, 
-            category => $timer->{category}, 
-            limit    => $timer->{limit_minutes}, 
-            usage    => int($timer->{elapsed_seconds} / 60) 
-        }, 0);
-        
-        # Notify Admins
-        my $admins = $c->db->get_admins();
-        foreach my $admin (@$admins) {
-            $c->notify_templated($admin->{id}, 'timers_expired_admin', { 
-                name     => $timer->{name}, 
-                category => $timer->{category}, 
-                user     => $timer->{username}, 
-                limit    => $timer->{limit_minutes}, 
-                usage    => int($timer->{elapsed_seconds} / 60) 
-            }, 0);
+        eval {
+            $c->_with_maintenance_notification_txn(sub {
+                $c->_queue_maintenance_notification_or_die($timer->{user_id}, 'timers_expired_user', {
+                    name     => $timer->{name},
+                    category => $timer->{category},
+                    limit    => $timer->{limit_minutes},
+                    usage    => int($timer->{elapsed_seconds} / 60)
+                }, 0);
+
+                my $admins = $c->db->get_admins();
+                foreach my $admin (@$admins) {
+                    $c->_queue_maintenance_notification_or_die($admin->{id}, 'timers_expired_admin', {
+                        name     => $timer->{name},
+                        category => $timer->{category},
+                        user     => $timer->{username},
+                        limit    => $timer->{limit_minutes},
+                        usage    => int($timer->{elapsed_seconds} / 60)
+                    }, 0);
+                }
+
+                $c->db->mark_expired_sent($timer->{timer_id});
+            });
+            $stats->{expiry_sent}++;
+        };
+        if ($@) {
+            $c->app->log->error("Timer expiry failed to queue for timer $timer->{timer_id}: $@");
         }
-        
-        $c->db->mark_expired_sent($timer->{timer_id});
-        $stats->{expiry_sent}++;
     }
 
     return $stats;
@@ -633,12 +711,7 @@ sub run_calendar_notifications {
     my $events = $sth->fetchall_arrayref({});
     
     foreach my $event (@$events) {
-        # 1. ATOMIC MARK: Update last_notified_at immediately
-        $c->db->{dbh}->do("UPDATE calendar_events SET last_notified_at = NOW() WHERE id = ?", undef, $event->{id});
-        
-        # 2. RESOLVE RECIPIENTS & DATA
         my $attendee_ids = $event->{attendees} // '';
-        next unless $attendee_ids;
         
         my @uids = split(',', $attendee_ids);
         my @attendee_names;
@@ -660,29 +733,34 @@ sub run_calendar_notifications {
         push @parts, $m == 1 ? '1 minute' : "$m minutes" if $m;
         my $time_label = @parts ? join(' ', @parts) : '0 minutes';
         
-        # 3. DISPATCH via Templated System
-        foreach my $uid (map { trim($_) } @uids) {
-            $c->notify_templated($uid, 'calendar_reminder', {
-                title      => $event->{title},
-                time_label => $time_label,
-                start      => $formatted_start,
-                end        => $formatted_end,
-                attendees  => $attendees_str,
-                id         => $event->{id},
-                date       => substr($event->{start_date} // '', 0, 10)
-            }, $event->{id});
+        eval {
+            $c->_with_maintenance_notification_txn(sub {
+                foreach my $uid (map { trim($_) } @uids) {
+                    next unless $uid;
+                    $c->_queue_maintenance_notification_or_die($uid, 'calendar_reminder', {
+                        title      => $event->{title},
+                        time_label => $time_label,
+                        start      => $formatted_start,
+                        end        => $formatted_end,
+                        attendees  => $attendees_str,
+                        id         => $event->{id},
+                        date       => substr($event->{start_date} // '', 0, 10)
+                    }, $event->{id});
+                }
+                $c->db->{dbh}->do("UPDATE calendar_events SET last_notified_at = NOW() WHERE id = ?", undef, $event->{id});
+            });
+            $stats->{notifications_sent}++;
+        };
+        if ($@) {
+            $c->app->log->error("Calendar notification failed to queue for event $event->{id}: $@");
+            $stats->{errors}++;
         }
-
-        $stats->{notifications_sent}++;
     }
 
     my $recurring = $c->db->get_due_recurring_reminders($query_now);
 
     foreach my $event (@$recurring) {
         my $attendee_ids = $event->{attendees} // '';
-        next unless $attendee_ids;
-
-        $c->db->{dbh}->do("UPDATE calendar_events SET last_notified_at = ? WHERE id = ?", undef, $event->{start_date}, $event->{id});
 
         my @uids = split(',', $attendee_ids);
         my @attendee_names;
@@ -704,19 +782,28 @@ sub run_calendar_notifications {
         push @parts, $m == 1 ? '1 minute' : "$m minutes" if $m;
         my $time_label = @parts ? join(' ', @parts) : '0 minutes';
 
-        foreach my $uid (map { trim($_) } @uids) {
-            $c->notify_templated($uid, 'calendar_reminder', {
-                title      => $event->{title},
-                time_label => $time_label,
-                start      => $formatted_start,
-                end        => $formatted_end,
-                attendees  => $attendees_str,
-                id         => $event->{id},
-                date       => substr($event->{start_date} // '', 0, 10)
-            }, $event->{id});
+        eval {
+            $c->_with_maintenance_notification_txn(sub {
+                foreach my $uid (map { trim($_) } @uids) {
+                    next unless $uid;
+                    $c->_queue_maintenance_notification_or_die($uid, 'calendar_reminder', {
+                        title      => $event->{title},
+                        time_label => $time_label,
+                        start      => $formatted_start,
+                        end        => $formatted_end,
+                        attendees  => $attendees_str,
+                        id         => $event->{id},
+                        date       => substr($event->{start_date} // '', 0, 10)
+                    }, $event->{id});
+                }
+                $c->db->{dbh}->do("UPDATE calendar_events SET last_notified_at = ? WHERE id = ?", undef, $event->{start_date}, $event->{id});
+            });
+            $stats->{notifications_sent}++;
+        };
+        if ($@) {
+            $c->app->log->error("Recurring calendar notification failed to queue for event $event->{id}: $@");
+            $stats->{errors}++;
         }
-
-        $stats->{notifications_sent}++;
     }
 
     return $stats;
@@ -878,9 +965,9 @@ sub run_notes_lock_maintenance {
 }
 
 # Internal helper to process all pending items in the notifications queue.
-# Each item is retried up to 3 times with automated channel fallbacks.
+# Each channel item is retried independently up to 3 times.
 # Parameters: None
-# Returns: None
+# Returns: Mojo::Promise resolving after all claimed queue items finish.
 sub run_notification_queue {
     my ($c) = @_;
 
@@ -898,15 +985,20 @@ sub run_notification_queue {
     );
 
     my $pending = $c->db->get_pending_queue_items();
-    return unless $pending && @$pending;
+    return Mojo::Promise->resolve([]) unless $pending && @$pending;
 
+    my @promises;
     for my $item (@$pending) {
         if ($item->{type} eq 'discord') {
-            $c->_queue_attempt_discord($item);
+            push @promises, $c->_queue_attempt_discord($item);
         } elsif ($item->{type} eq 'email') {
-            $c->_queue_attempt_email($item);
+            push @promises, $c->_queue_attempt_email($item);
+        } elsif ($item->{type} eq 'fcm') {
+            push @promises, $c->_queue_attempt_fcm($item);
         }
     }
+
+    return @promises ? Mojo::Promise->all(@promises) : Mojo::Promise->resolve([]);
 }
 
 # Internal helper to prune expired login failure and lockout records.
@@ -924,13 +1016,13 @@ sub _queue_attempt_discord {
     my $token = $c->db->get_discord_token();
     unless ($token) {
         $c->_handle_queue_failure($item, 'Bot token not configured');
-        return;
+        return Mojo::Promise->resolve(0);
     }
 
     my $api_base = 'https://discord.com/api/v10';
     my $headers  = { Authorization => "Bot $token", 'Content-Type' => 'application/json' };
 
-    $c->app->ua->post_p(
+    return $c->app->ua->post_p(
         "$api_base/users/\@me/channels" => $headers => json => { recipient_id => "$item->{recipient}" }
     )->then(sub {
         my $tx = shift;
@@ -951,8 +1043,10 @@ sub _queue_attempt_discord {
             message   => $item->{message},
             status    => 'success'
         );
+        return 1;
     })->catch(sub {
         $c->_handle_queue_failure($item, shift);
+        return 0;
     });
 }
 
@@ -963,9 +1057,10 @@ sub _queue_attempt_email {
     my $settings = $c->db->get_email_settings();
     unless ($settings->{gmail_email} && $settings->{gmail_app_password}) {
         $c->_handle_queue_failure($item, 'Email credentials not configured');
-        return;
+        return Mojo::Promise->resolve(0);
     }
 
+    my $promise = Mojo::Promise->new;
     Mojo::IOLoop->subprocess(
         sub {
             require Net::SMTP;
@@ -988,10 +1083,11 @@ sub _queue_attempt_email {
             return 1;
         },
         sub {
-            my ($subprocess, @results) = @_;
-            my $err = $subprocess->err;
+            my ($subprocess, $err) = @_;
+            $err //= $subprocess->err;
             if ($err) {
                 $c->_handle_queue_failure($item, $err);
+                $promise->resolve(0);
             } else {
                 $c->db->mark_queue_item_sent($item->{id});
                 $c->db->log_notification(
@@ -1002,13 +1098,82 @@ sub _queue_attempt_email {
                     message   => $item->{message},
                     status    => 'success'
                 );
+                $promise->resolve(1);
             }
         }
     );
+
+    return $promise;
+}
+
+# Attempts an FCM delivery for a single queued device notification.
+# Parameters:
+#   item : notifications_queue row containing token, platform, subject, message, and tap_url.
+# Returns: Mojo::Promise resolving after the queue row is finalized or retry state is recorded.
+sub _queue_attempt_fcm {
+    my ($c, $item) = @_;
+    my $platform = $item->{platform} || 'android_native';
+    my $recipient_label = $platform eq 'pwa_web' ? 'PWA Web App' : 'Mobile Device';
+
+    unless ($c->db->fcm_token_belongs_to_user($item->{recipient}, $item->{user_id})) {
+        my $error = 'FCM token no longer belongs to the queued user';
+        $c->db->mark_queue_item_failed($item->{id}, $error);
+        $c->db->log_notification(
+            user_id       => $item->{user_id},
+            type          => 'fcm',
+            recipient     => $recipient_label,
+            subject       => $item->{subject},
+            message       => $item->{message},
+            status        => 'failed',
+            error_details => $error
+        );
+        return Mojo::Promise->resolve(0);
+    }
+
+    return $c->send_fcm_device_p(
+        $item->{user_id},
+        $item->{recipient},
+        $platform,
+        $item->{subject} || 'Notification',
+        $item->{message},
+        $item->{tap_url}
+    )->then(sub {
+        my $result = shift;
+
+        if ($result->{status} eq 'stale') {
+            my $error = 'FCM token is stale or unregistered';
+            $c->db->delete_fcm_token($item->{recipient});
+            $c->db->mark_queue_item_failed($item->{id}, $error);
+            $c->db->log_notification(
+                user_id       => $item->{user_id},
+                type          => 'fcm',
+                recipient     => $recipient_label,
+                subject       => $item->{subject},
+                message       => $item->{message},
+                status        => 'failed',
+                error_details => $error
+            );
+            return 0;
+        }
+
+        $c->db->mark_queue_item_sent($item->{id});
+        $c->db->log_notification(
+            user_id   => $item->{user_id},
+            type      => 'fcm',
+            recipient => $recipient_label,
+            subject   => $item->{subject},
+            message   => $item->{message},
+            status    => 'success'
+        );
+        return 1;
+    })->catch(sub {
+        $c->_handle_queue_failure($item, shift);
+        return 0;
+    });
 }
 
 # Handles a failed delivery attempt for a queue item.
-# Increments retry_count; on exhaustion escalates to email fallback or admin alert.
+# Increments retry_count; on exhaustion marks that channel failed and alerts admins.
 sub _handle_queue_failure {
     my ($c, $item, $err) = @_;
     $err //= 'unknown error';
@@ -1028,10 +1193,13 @@ sub _handle_queue_failure {
 
     # Exhausted — mark failed
     $c->db->mark_queue_item_failed($item->{id}, "$err");
+    my $log_recipient = $item->{type} eq 'fcm'
+        ? (($item->{platform} || '') eq 'pwa_web' ? 'PWA Web App' : 'Mobile Device')
+        : $item->{recipient};
     $c->db->log_notification(
         user_id       => $item->{user_id},
         type          => $item->{type},
-        recipient     => $item->{recipient},
+        recipient     => $log_recipient,
         subject       => $item->{subject},
         message       => $item->{message},
         status        => 'failed',
@@ -1039,26 +1207,11 @@ sub _handle_queue_failure {
     );
     $c->app->log->error("Queue item $item->{id} ($item->{type}) permanently failed: $err");
 
-    # Discord exhausted — try email fallback
-    if ($item->{type} eq 'discord' && $item->{user_id}) {
-        my $user = $c->db->get_user_by_id($item->{user_id});
-        if ($user && $user->{email}) {
-            $c->db->enqueue_notification(
-                user_id   => $item->{user_id},
-                type      => 'email',
-                recipient => $user->{email},
-                subject   => 'Missed notification',
-                message   => $item->{message},
-            );
-            return;
-        }
-    }
-
-    # No fallback available — alert admins via direct email
+    # Alert admins via direct email without creating another recipient delivery.
     $c->_alert_admins_delivery_failed($item);
 }
 
-# Sends a best-effort direct email to all admin users when all delivery channels fail.
+# Sends a best-effort direct email to all admin users when one queued channel exhausts its retries.
 # Does not queue — avoids recursion.
 sub _alert_admins_delivery_failed {
     my ($c, $item) = @_;
@@ -1112,22 +1265,32 @@ sub run_brief_notification {
     my ($c, $now) = @_;
     return unless $now->hour == 8 && $now->minute == 0;
 
-    # Idempotency: Ensure brief only fires once per day
     my $today = $now->strftime('%Y-%m-%d');
-    return unless $c->db->try_set_brief_sent_date($today);
 
-    $c->app->log->info("Brief: Dispatching daily overview to family.");
+    my $queued = eval {
+        $c->_with_maintenance_notification_txn(sub {
+            # Idempotency: Ensure brief only fires once per day
+            return 0 unless $c->db->try_set_brief_sent_date($today);
 
-    for my $user (@{ $c->db->get_family_users() }) {
-        # caller_id 0 indicates a system-originated notification
-        $c->notify_templated($user->{id}, 'brief_daily', {}, 0);
+            for my $user (@{ $c->db->get_family_users() }) {
+                # caller_id 0 indicates a system-originated notification
+                $c->_queue_maintenance_notification_or_die($user->{id}, 'brief_daily', {}, 0);
+            }
+            return 1;
+        });
+    };
+
+    if ($@) {
+        $c->app->log->error("Brief: failed to queue daily overview: $@");
+    } elsif ($queued) {
+        $c->app->log->info("Brief: Queued daily overview to family.");
     }
 }
 
 # Internal helper to notify users when Trakt watchlist episodes have aired.
 # Queries trakt_upcoming for episodes with first_aired in the last 48 hours that
 # have not yet been logged in trakt_episode_notifications, atomically inserts
-# a row to prevent double-firing, then dispatches via notify_templated. Notification
+# a row to prevent double-firing, then queues the templated notification. Notification
 # log rows older than 14 days are removed on each run.
 #
 # Parameters:
@@ -1177,46 +1340,48 @@ sub run_trakt_episode_notifications {
     foreach my $row (@$rows) {
         my $episode_label = sprintf("S%02dE%02d", $row->{season} // 0, $row->{episode} // 0);
 
-        # 1. ATOMIC MARK: INSERT IGNORE to prevent double-firing.
-        #    If the row already exists, affected_rows is 0 and we skip.
-        my $rv = $c->db->{dbh}->do(
-            "INSERT IGNORE INTO trakt_episode_notifications
-             (user_id, episode_trakt_id, show_title, episode_label, title, first_aired, notified_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
-            undef,
-            $row->{user_id},
-            $row->{episode_trakt_id},
-            $row->{show_title}   || '',
-            $episode_label,
-            $row->{title}        || '',
-            $row->{first_aired},
-            $now_str,
-        );
-
-        unless ($rv && $rv > 0) {
-            $stats->{already_notified}++;
-            next;
-        }
-
-        # 2. DISPATCH via Templated System
         eval {
-            $c->notify_templated(
-                $row->{user_id},
-                'trakt_episode_airing',
-                {
+            my $queued = $c->_with_maintenance_notification_txn(sub {
+                # Claim with INSERT IGNORE to prevent double-firing.
+                my $rv = $c->db->{dbh}->do(
+                    "INSERT IGNORE INTO trakt_episode_notifications
+                     (user_id, episode_trakt_id, show_title, episode_label, title, first_aired, notified_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    undef,
+                    $row->{user_id},
+                    $row->{episode_trakt_id},
+                    $row->{show_title}   || '',
+                    $episode_label,
+                    $row->{title}        || '',
+                    $row->{first_aired},
+                    $now_str,
+                );
+
+                return 0 unless $rv && $rv > 0;
+
+                $c->_queue_maintenance_notification_or_die(
+                    $row->{user_id},
+                    'trakt_episode_airing',
+                    {
                     show_title    => $row->{show_title} || '',
                     episode_label => $episode_label,
                     title         => $row->{title}      || '',
                     network       => $row->{network}    || '',
-                },
-                0  # caller_id: system-originated notification
-            );
+                    },
+                    0  # caller_id: system-originated notification
+                );
+                return 1;
+            });
+
+            if ($queued) {
+                $stats->{notifications_sent}++;
+            } else {
+                $stats->{already_notified}++;
+            }
         };
         if ($@) {
             $c->app->log->error("Trakt notification dispatch failed for user_id=$row->{user_id} episode_trakt_id=$row->{episode_trakt_id}: $@");
             $stats->{errors}++;
-        } else {
-            $stats->{notifications_sent}++;
         }
     }
 
