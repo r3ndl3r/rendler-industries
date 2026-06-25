@@ -301,6 +301,7 @@ sub DB::get_calendar_events {
     my $exp_start   = $start_date || ($near_search ? $near_time->clone->subtract(days => 365)->ymd : '1970-01-01');
     my $exp_end     = $end_date   || ($near_search ? $near_time->clone->add(days => 365)->ymd : '9999-12-31');
     my $recur_limit = $near_search ? 730 : 365;
+    my $history_series_mode = !$start_date && !$end_date && $sort eq 'DESC';
 
     my @result;
     for my $event (@$rows) {
@@ -309,7 +310,7 @@ sub DB::get_calendar_events {
             $event->{attendee_names} = join(', ', @names);
         }
 
-        if ($event->{recurrence_rule}) {
+        if ($event->{recurrence_rule} && !$history_series_mode) {
             push @result, _expand_recurring($event, $exp_start, $exp_end, $recur_limit);
         } else {
             push @result, $event;
