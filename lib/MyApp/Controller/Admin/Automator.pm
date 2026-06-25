@@ -347,8 +347,6 @@ sub api_delete_secret {
 sub api_run {
     my $c = shift;
     return _locked($c) unless _api_allowed($c);
-    return $c->render(json => { success => 0, error => 'Concurrency limit reached' }, status => 429)
-        if $c->db->automator_active_run_count >= _max_runs($c);
 
     my $playbook_id = $c->param('playbook_id');
     my $mode = ($c->param('mode') // 'run') eq 'check' ? 'check' : 'run';
@@ -360,7 +358,15 @@ sub api_run {
     return $c->render(json => { success => 0, error => 'Playbook not found' }, status => 404)
         unless _owned_record($c, $playbook);
 
-    my $history_id = $c->db->create_automator_history($playbook_id, $mode, $vars, $c->current_user_id);
+    my $reservation = $c->db->reserve_automator_run(
+        $playbook_id, $mode, $vars, $c->current_user_id, _max_runs($c)
+    );
+    return $c->render(json => { success => 0, error => 'Run reservation busy; retry shortly' }, status => 503)
+        if $reservation->{status} eq 'busy';
+    return $c->render(json => { success => 0, error => 'Concurrency limit reached' }, status => 429)
+        if $reservation->{status} eq 'limit';
+
+    my $history_id = $reservation->{history_id};
     my $payload;
     eval { $payload = _load_run_payload($c->db, $playbook_id); 1 } or do {
         $c->db->finish_automator_history($history_id, 'failed', "Cannot prepare Automator run: $@", undef);
@@ -590,10 +596,16 @@ sub _trigger_automated_notifications {
     }
 }
 
-# Recursively triggers the success-chain playbook if the current run succeeded and depth < 10.
+# Triggers a successful run's next chain playbook, retrying transient reservation contention.
+# Parameters:
+#   app                 : Mojolicious application instance
+#   history_id          : Completed history record whose chain should continue
+#   depth               : Current chain depth, capped below 10
+#   reservation_attempt : Zero-based retry count for a busy reservation lock
 sub _maybe_trigger_chain {
-    my ($app, $history_id, $depth) = @_;
+    my ($app, $history_id, $depth, $reservation_attempt) = @_;
     $depth //= 0;
+    $reservation_attempt //= 0;
     return if $depth >= 10;
 
     my $db = DB->new(timezone => $app->config->{timezone} || 'UTC');
@@ -603,9 +615,6 @@ sub _maybe_trigger_chain {
     my $pb = $db->get_automator_playbook($h->{playbook_id});
     return unless $pb && $pb->{success_chain_id};
 
-    # Concurrency check
-    return if $db->automator_active_run_count >= _max_runs($app);
-
     # Load payload for next playbook
     my $next_id = $pb->{success_chain_id};
     my $payload = eval { _load_run_payload($db, $next_id) };
@@ -614,8 +623,23 @@ sub _maybe_trigger_chain {
         return;
     }
 
-    # Create history and spawn
-    my $new_history_id = $db->create_automator_history($next_id, 'run', {}, $h->{triggered_by});
+    my $reservation = $db->reserve_automator_run(
+        $next_id, 'run', {}, $h->{triggered_by}, _max_runs($app)
+    );
+    if ($reservation->{status} eq 'busy') {
+        if ($reservation_attempt < 4) {
+            my $delay = 0.05 * (2 ** $reservation_attempt);
+            Mojo::IOLoop->timer($delay => sub {
+                _maybe_trigger_chain($app, $history_id, $depth, $reservation_attempt + 1);
+            });
+        } else {
+            $app->log->error("Automator chain failure: Run reservation remained busy for playbook $next_id");
+        }
+        return;
+    }
+    return if $reservation->{status} eq 'limit';
+
+    my $new_history_id = $reservation->{history_id};
     $app->log->info("Automator: Success chain triggering playbook $next_id (depth " . ($depth + 1) . ")");
     _spawn_run($app, $new_history_id, 'run', {}, $payload, $depth + 1);
 }

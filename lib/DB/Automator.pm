@@ -774,23 +774,67 @@ sub DB::get_automator_secret_plaintext {
     return $self->_automator_decrypt_secret(@$row{qw(value_encrypted iv tag salt)});
 }
 
-# Inserts a new automator history record with 'running' status.
+# Atomically reserves Automator capacity and inserts a 'running' history record.
 # Parameters:
 #   playbook_id : Playbook ID
 #   mode        : Run mode (run, check, etc.)
 #   vars        : HashRef of applied variables
 #   user_id     : Triggering user ID
+#   max_runs    : Maximum number of concurrent running records
 # Returns:
-#   New history record ID
-sub DB::create_automator_history {
-    my ($self, $playbook_id, $mode, $vars, $user_id) = @_;
+#   HashRef with status 'reserved', 'limit', or 'busy'; reserved includes history_id
+sub DB::reserve_automator_run {
+    my ($self, $playbook_id, $mode, $vars, $user_id, $max_runs) = @_;
     $self->ensure_connection;
-    my $json = encode_json($vars || {});
-    $self->{dbh}->do(
-        "INSERT INTO automator_history (playbook_id, status, mode, applied_vars, triggered_by) VALUES (?, 'running', ?, ?, ?)",
-        undef, $playbook_id, $mode || 'run', $json, $user_id
+    die "Automator run limit must be a positive integer"
+        unless defined $max_runs && $max_runs =~ /\A[1-9]\d*\z/;
+    die "Automator run reservation requires AutoCommit"
+        unless $self->{dbh}->{AutoCommit};
+
+    my ($lock_acquired) = $self->{dbh}->selectrow_array(
+        "SELECT GET_LOCK('automator_run_reservation', 0)"
     );
-    return $self->{dbh}->last_insert_id(undef, undef, 'automator_history', 'id');
+    die "Automator run reservation lock failed" unless defined $lock_acquired;
+    return { status => 'busy' } unless $lock_acquired;
+
+    my $json = encode_json($vars || {});
+    my ($result, $operation_error);
+    eval {
+        my ($active_runs) = $self->{dbh}->selectrow_array(
+            "SELECT COUNT(*) FROM automator_history WHERE status = 'running'"
+        );
+        if (int($active_runs || 0) >= int($max_runs)) {
+            $result = { status => 'limit' };
+        } else {
+            $self->{dbh}->do(
+                "INSERT INTO automator_history (playbook_id, status, mode, applied_vars, triggered_by) VALUES (?, 'running', ?, ?, ?)",
+                undef, $playbook_id, $mode || 'run', $json, $user_id
+            );
+            $result = {
+                status     => 'reserved',
+                history_id => $self->{dbh}->last_insert_id(undef, undef, 'automator_history', 'id')
+            };
+        }
+        1;
+    } or $operation_error = $@ || 'Automator run reservation failed';
+
+    my $release_ok = eval {
+        my ($released) = $self->{dbh}->selectrow_array(
+            "SELECT RELEASE_LOCK('automator_run_reservation')"
+        );
+        die "Automator run reservation lock was not released"
+            unless defined $released && $released;
+        1;
+    };
+    unless ($release_ok) {
+        my $release_error = $@ || 'Automator run reservation lock release failed';
+        warn "$release_error\n";
+        eval { $self->{dbh}->disconnect };
+        $self->connect;
+    }
+
+    die $operation_error if $operation_error;
+    return $result;
 }
 
 # Stores the process group ID (PGID) for a running history record.
