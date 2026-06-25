@@ -357,7 +357,11 @@ sub serve {
     return $c->render(text => 'Unauthorized', status => 403) unless $c->is_logged_in;
 
     my $id    = $c->stash('id');
-    my $photo = $c->db->get_chore_submission_photo_by_id($id);
+    my $photo = $c->db->get_chore_submission_photo_by_id(
+        $id,
+        $c->current_user_id,
+        $c->is_admin
+    );
     return $c->render(text => 'Not found', status => 404) unless $photo;
 
     $c->res->headers->content_type($photo->{mime_type});

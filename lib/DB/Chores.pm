@@ -229,17 +229,24 @@ sub DB::add_chore_submission_photo {
     return $sth->execute();
 }
 
-# Retrieves a single photo record including binary data for serving.
+# Retrieves a single photo record when the requester owns its submission or is an admin.
 # Parameters:
-#   $self : DB instance
-#   $id   : chore_submission_photos row ID
+#   $self     : DB instance
+#   $id       : chore_submission_photos row ID
+#   $user_id  : Current user ID
+#   $is_admin : Admin status flag
 # Returns:
 #   HashRef or undef
 sub DB::get_chore_submission_photo_by_id {
-    my ($self, $id) = @_;
+    my ($self, $id, $user_id, $is_admin) = @_;
     $self->ensure_connection();
-    my $sth = $self->{dbh}->prepare("SELECT * FROM chore_submission_photos WHERE id = ?");
-    $sth->execute($id);
+    my $sth = $self->{dbh}->prepare(
+        "SELECT p.*
+         FROM chore_submission_photos p
+         JOIN chore_submissions s ON s.id = p.submission_id
+         WHERE p.id = ? AND (s.user_id = ? OR ? = 1)"
+    );
+    $sth->execute($id, $user_id, $is_admin ? 1 : 0);
     return $sth->fetchrow_hashref();
 }
 
