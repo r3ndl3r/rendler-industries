@@ -42,6 +42,8 @@ let STATE = {
     uploadTokens: { image1: 0, image2: 0 }
 };
 
+let latestFuelStateRequest = 0;
+
 let UPLOAD_PREVIEW_URLS = {
     image1: null,
     image2: null
@@ -83,7 +85,11 @@ async function loadState(force = false) {
     if (!force && typeof navigator !== 'undefined' && navigator.onLine === false) return;
 
     const params = new URLSearchParams(getActiveFilters());
+    const requestKey = params.toString();
+    const requestSeq = ++latestFuelStateRequest;
     const data = await apiGet(`/fuel/api/state?${params.toString()}`);
+    if (requestSeq !== latestFuelStateRequest) return;
+    if (requestKey !== new URLSearchParams(getActiveFilters()).toString()) return;
     if (!data || !data.success) return;
 
     STATE.logs = data.logs || [];

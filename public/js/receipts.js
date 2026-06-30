@@ -41,6 +41,8 @@ let STATE = {
     refinedName: ''                 // Sanitized filename for refined uploads
 };
 
+let latestReceiptsStateRequest = 0;
+
 /**
  * Bootstraps the module state and establishes event delegation.
  * 
@@ -112,9 +114,13 @@ async function loadState(force = false) {
 
     const filters = getActiveFilters();
     const params = new URLSearchParams(filters);
+    const requestKey = params.toString();
+    const requestSeq = ++latestReceiptsStateRequest;
     
     try {
         const data = await apiGet(`/receipts/api/state?${params.toString()}`);
+        if (requestSeq !== latestReceiptsStateRequest) return;
+        if (requestKey !== new URLSearchParams(getActiveFilters()).toString()) return;
 
         if (data && data.success) {
             STATE.receipts = data.receipts;
