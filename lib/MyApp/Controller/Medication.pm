@@ -33,7 +33,7 @@ sub index {
 
 # Returns the consolidated state for the module.
 # Route: GET /medication/api/state
-# Returns: JSON object { logs, registry, members, is_admin, is_parent, success }
+# Returns: JSON object { logs, registry, members, recent_taken, current_user_id, is_admin, is_parent, success }
 sub api_state {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
@@ -41,6 +41,7 @@ sub api_state {
     my $logs     = $c->db->get_medication_logs_by_user();
     my $registry = $c->db->get_registry_with_stats();
     my $members  = $c->db->get_medication_members();
+    my $recent_taken = $c->is_parent ? $c->db->get_recent_medications_taken(10) : [];
     
     my $reminders      = $c->db->get_medication_reminders();
     my $current_date   = $c->now->strftime('%Y-%m-%d');
@@ -52,6 +53,8 @@ sub api_state {
         logs     => $logs,
         registry => $registry,
         members  => $members,
+        recent_taken => $recent_taken,
+        current_user_id => $current_user,
         is_admin      => $c->is_admin ? 1 : 0,
         is_parent     => $c->is_parent ? 1 : 0,
         reminders     => $reminders,
@@ -273,13 +276,21 @@ sub save_reminders {
     my $times_json       = $c->param('times');
     my $days_json        = $c->param('days_of_week');
 
-    unless ($medication_id && $family_member_id && $dosage > 0 && $source_log_id && $times_json) {
+    unless ($medication_id && $family_member_id && $dosage && $source_log_id && $times_json) {
         return $c->render(json => { success => 0, error => 'Missing required fields.' });
+    }
+    unless ($medication_id =~ /^\d+$/ && $family_member_id =~ /^\d+$/ && $source_log_id =~ /^\d+$/ && $dosage =~ /^\d+$/ && $dosage > 0) {
+        return $c->render(json => { success => 0, error => 'Invalid reminder details.' });
     }
 
     my $times = eval { decode_json($times_json) };
     if ($@ || ref($times) ne 'ARRAY' || @$times < 1 || @$times > 4) {
         return $c->render(json => { success => 0, error => 'times must be a JSON array of 1-4 time strings.' });
+    }
+    for my $t (@$times) {
+        unless (defined $t && $t =~ /\A(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?\z/) {
+            return $c->render(json => { success => 0, error => 'Each reminder time must be HH:MM.' });
+        }
     }
 
     my $days_of_week = 127;
@@ -290,11 +301,18 @@ sub save_reminders {
         }
         $days_of_week = 0;
         for my $d (@$days_arr) {
-            if ($d !~ /^[1-7]$/) {
+            if ($d !~ /\A[1-7]\z/) {
                 return $c->render(json => { success => 0, error => 'Each day value must be 1-7.' });
             }
             $days_of_week |= (1 << ($d - 1));
         }
+    }
+
+    unless ($c->is_parent || $family_member_id == $c->current_user_id) {
+        return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403);
+    }
+    unless ($c->db->medication_log_matches_reminder_source($source_log_id, $medication_id, $family_member_id)) {
+        return $c->render(json => { success => 0, error => 'Reminder source log does not match this medication.' });
     }
 
     eval {
@@ -315,6 +333,12 @@ sub toggle_reminder {
 
     my $id     = $c->param('id');
     my $active = $c->param('active') // 0;
+    return $c->render(json => { success => 0, error => 'Reminder not found.' }) unless defined $id && $id =~ /^\d+$/;
+    $active = $active && $active eq '1' ? 1 : 0;
+    my $member_id = $c->db->get_medication_reminder_member_id($id);
+    return $c->render(json => { success => 0, error => 'Reminder not found.' }) unless $member_id;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_parent || $member_id == $c->current_user_id;
 
     eval {
         $c->db->toggle_medication_reminder($id, $active);
@@ -332,6 +356,11 @@ sub delete_reminder_schedule {
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $id = $c->param('id');
+    return $c->render(json => { success => 0, error => 'Reminder not found.' }) unless defined $id && $id =~ /^\d+$/;
+    my $member_id = $c->db->get_medication_reminder_member_id($id);
+    return $c->render(json => { success => 0, error => 'Reminder not found.' }) unless $member_id;
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_parent || $member_id == $c->current_user_id;
 
     eval {
         if ($c->db->delete_medication_reminder($id)) {

@@ -543,10 +543,12 @@ CREATE TABLE `medication_logs` (
   `logged_by_id` int(11) NOT NULL,
   `dosage` int(11) NOT NULL,
   `taken_at` timestamp NULL DEFAULT current_timestamp(),
+  `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `medication_id` (`medication_id`),
   KEY `family_member_id` (`family_member_id`),
   KEY `logged_by_id` (`logged_by_id`),
+  KEY `idx_med_logs_deleted` (`deleted_at`),
   CONSTRAINT `medication_logs_ibfk_1` FOREIGN KEY (`medication_id`) REFERENCES `medication_registry` (`id`),
   CONSTRAINT `medication_logs_ibfk_2` FOREIGN KEY (`family_member_id`) REFERENCES `users` (`id`),
   CONSTRAINT `medication_logs_ibfk_3` FOREIGN KEY (`logged_by_id`) REFERENCES `users` (`id`)
@@ -572,7 +574,7 @@ CREATE TABLE `medication_reminder_events` (
   KEY `idx_pending_confirmations` (`confirmed_at`,`last_fired_at`),
   KEY `fk_med_events_confirmer` (`confirmed_by`),
   CONSTRAINT `fk_med_events_confirmer` FOREIGN KEY (`confirmed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_med_events_reminder` FOREIGN KEY (`reminder_id`) REFERENCES `medication_reminders` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_med_events_reminder` FOREIGN KEY (`reminder_id`) REFERENCES `medication_reminders` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 CREATE TABLE `medication_reminders` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -585,16 +587,18 @@ CREATE TABLE `medication_reminders` (
   `source_log_id` int(11) NOT NULL,
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `medication_id` (`medication_id`),
   KEY `family_member_id` (`family_member_id`),
   KEY `idx_reminder_time` (`reminder_time`),
   KEY `fk_med_reminders_creator` (`created_by`),
   KEY `source_log_id` (`source_log_id`),
+  KEY `idx_med_reminders_deleted` (`deleted_at`),
   CONSTRAINT `fk_med_reminders_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_med_reminders_medication` FOREIGN KEY (`medication_id`) REFERENCES `medication_registry` (`id`),
   CONSTRAINT `fk_med_reminders_member` FOREIGN KEY (`family_member_id`) REFERENCES `users` (`id`),
-  CONSTRAINT `fk_med_reminders_source_log` FOREIGN KEY (`source_log_id`) REFERENCES `medication_logs` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_med_reminders_source_log` FOREIGN KEY (`source_log_id`) REFERENCES `medication_logs` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 CREATE TABLE `menu_links` (
   `id` int(11) NOT NULL AUTO_INCREMENT,

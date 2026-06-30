@@ -31,6 +31,7 @@ sub DB::get_medication_logs_by_user {
     my $sth = $self->{dbh}->prepare("
         SELECT 
             ml.id, 
+            ml.medication_id,
             mr.name as medication_name, 
             u1.id as family_member_id,
             u1.username as family_member, 
@@ -42,6 +43,7 @@ sub DB::get_medication_logs_by_user {
         JOIN medication_registry mr ON ml.medication_id = mr.id
         JOIN users u1 ON ml.family_member_id = u1.id
         JOIN users u2 ON ml.logged_by_id = u2.id
+        WHERE ml.deleted_at IS NULL
         ORDER BY u1.username ASC, ml.taken_at DESC
     ");
     $sth->execute();
@@ -51,6 +53,58 @@ sub DB::get_medication_logs_by_user {
         push @{$grouped{$row->{family_member}}}, $row;
     }
     return \%grouped;
+}
+
+# Retrieves the most recent confirmed medication doses across the family.
+# Reminder confirmations are the history source for scheduled doses; standalone
+# manual logs are included only when they are not a reminder source row.
+sub DB::get_recent_medications_taken {
+    my ($self, $limit) = @_;
+    $self->ensure_connection;
+
+    $limit = 10 unless defined $limit && $limit =~ /^\d+$/ && $limit > 0;
+    $limit = 50 if $limit > 50;
+
+    my $sth = $self->{dbh}->prepare("
+        SELECT id, medication_id, medication_name, family_member_id,
+               family_member, logged_by, dosage, taken_at,
+               UNIX_TIMESTAMP(taken_at) as taken_at_unix
+        FROM (
+            SELECT e.id, r.medication_id, reg.name as medication_name,
+                   r.family_member_id, u.username as family_member,
+                   COALESCE(confirmer.username, '') as logged_by,
+                   r.dosage, e.confirmed_at as taken_at
+            FROM medication_reminder_events e
+            JOIN medication_reminders r ON e.reminder_id = r.id
+            JOIN medication_registry reg ON r.medication_id = reg.id
+            JOIN users u ON r.family_member_id = u.id
+            LEFT JOIN users confirmer ON e.confirmed_by = confirmer.id
+            WHERE e.confirmed_at IS NOT NULL
+
+            UNION ALL
+
+            SELECT ml.id, ml.medication_id, reg.name as medication_name,
+                   ml.family_member_id, u.username as family_member,
+                   logger.username as logged_by,
+                   ml.dosage, ml.taken_at
+            FROM medication_logs ml
+            JOIN medication_registry reg ON ml.medication_id = reg.id
+            JOIN users u ON ml.family_member_id = u.id
+            JOIN users logger ON ml.logged_by_id = logger.id
+            WHERE ml.deleted_at IS NULL
+              AND NOT EXISTS (
+                SELECT 1
+                FROM medication_reminders r
+                JOIN medication_reminder_events e ON e.reminder_id = r.id
+                WHERE r.source_log_id = ml.id
+                  AND e.confirmed_at IS NOT NULL
+            )
+        ) taken
+        ORDER BY taken_at DESC, id DESC
+        LIMIT $limit
+    ");
+    $sth->execute();
+    return $sth->fetchall_arrayref({});
 }
 
 # Logs a new medication dose with an optional custom timestamp.
@@ -92,6 +146,7 @@ sub DB::log_medication_dose {
         JOIN medication_reminders r ON e.reminder_id = r.id
         WHERE r.medication_id = ?
           AND r.family_member_id = ?
+          AND r.deleted_at IS NULL
           AND e.scheduled_date = ?
           AND e.confirmed_at IS NULL
         ORDER BY
@@ -113,6 +168,7 @@ sub DB::log_medication_dose {
                 WHERE id = ?
                   AND medication_id = ?
                   AND family_member_id = ?
+                  AND deleted_at IS NULL
             ");
             my @update_params;
             push @update_params, $taken_at if $taken_at;
@@ -120,7 +176,7 @@ sub DB::log_medication_dose {
             $update_sth->execute(@update_params);
             if ($update_sth->rows <= 0) {
                 my ($exists) = $self->{dbh}->selectrow_array(
-                    "SELECT 1 FROM medication_logs WHERE id = ? AND medication_id = ? AND family_member_id = ?",
+                    "SELECT 1 FROM medication_logs WHERE id = ? AND medication_id = ? AND family_member_id = ? AND deleted_at IS NULL",
                     undef,
                     $event->{source_log_id}, $med_id, $family_member_id
                 );
@@ -177,7 +233,7 @@ sub DB::update_medication_log {
     my ($med_id) = $sth_id->fetchrow_array();
 
     # 2. Log update
-    my $sql = "UPDATE medication_logs SET medication_id = ?, family_member_id = ?, dosage = ?" . (defined $taken_at ? ", taken_at = ?" : "") . " WHERE id = ?";
+    my $sql = "UPDATE medication_logs SET medication_id = ?, family_member_id = ?, dosage = ?" . (defined $taken_at ? ", taken_at = ?" : "") . " WHERE id = ? AND deleted_at IS NULL";
     my $sth = $self->{dbh}->prepare($sql);
 
     my @params = ($med_id, $family_member_id, $dosage);
@@ -191,7 +247,7 @@ sub DB::update_medication_log {
     # existing record returns 0. Treat that as success and reserve false only
     # for genuinely missing IDs.
     my ($exists) = $self->{dbh}->selectrow_array(
-        "SELECT 1 FROM medication_logs WHERE id = ?",
+        "SELECT 1 FROM medication_logs WHERE id = ? AND deleted_at IS NULL",
         undef,
         $id
     );
@@ -208,7 +264,7 @@ sub DB::reset_medication_log {
     my ($self, $id, $taken_at) = @_;
     $self->ensure_connection;
     
-    my $sql = "UPDATE medication_logs SET taken_at = " . ($taken_at ? "?" : "NOW()") . " WHERE id = ?";
+    my $sql = "UPDATE medication_logs SET taken_at = " . ($taken_at ? "?" : "NOW()") . " WHERE id = ? AND deleted_at IS NULL";
     my $sth = $self->{dbh}->prepare($sql);
     
     my @params;
@@ -226,9 +282,33 @@ sub DB::reset_medication_log {
 sub DB::delete_medication_log {
     my ($self, $id) = @_;
     $self->ensure_connection;
-    
-    my $sth = $self->{dbh}->prepare("DELETE FROM medication_logs WHERE id = ?");
-    return $sth->execute($id) > 0;
+
+    $self->{dbh}->begin_work;
+    my $deleted = eval {
+        my $sth_retire = $self->{dbh}->prepare("
+            UPDATE medication_reminders
+            SET is_active = 0, deleted_at = COALESCE(deleted_at, NOW())
+            WHERE source_log_id = ?
+              AND deleted_at IS NULL
+        ");
+        $sth_retire->execute($id);
+
+        my $sth = $self->{dbh}->prepare("
+            UPDATE medication_logs
+            SET deleted_at = COALESCE(deleted_at, NOW())
+            WHERE id = ?
+              AND deleted_at IS NULL
+        ");
+        $sth->execute($id);
+        my $rows = $sth->rows > 0 ? 1 : 0;
+        $self->{dbh}->commit;
+        return $rows;
+    };
+    if ($@) {
+        $self->{dbh}->rollback;
+        die $@;
+    }
+    return $deleted;
 }
 
 # Retrieves the registry with usage counts.
@@ -317,12 +397,13 @@ sub DB::get_medication_reminders {
     my $sth = $self->{dbh}->prepare("
         SELECT mr.id, mr.medication_id, mr.family_member_id, mr.dosage,
                mr.reminder_time, mr.days_of_week, mr.is_active, mr.source_log_id,
-               mr.created_by, mr.created_at,
+               mr.created_by, mr.created_at, mr.deleted_at,
                reg.name as medication_name,
                u.username as family_member_name
         FROM medication_reminders mr
         JOIN medication_registry reg ON mr.medication_id = reg.id
         JOIN users u ON mr.family_member_id = u.id
+        WHERE mr.deleted_at IS NULL
         ORDER BY u.username ASC, mr.reminder_time ASC
     ");
     $sth->execute();
@@ -343,14 +424,15 @@ sub DB::get_medication_reminders_for_member {
         FROM medication_reminders mr
         JOIN medication_registry reg ON mr.medication_id = reg.id
         WHERE mr.family_member_id = ?
+          AND mr.deleted_at IS NULL
         ORDER BY mr.reminder_time ASC
     ");
     $sth->execute($member_id);
     return $sth->fetchall_arrayref({});
 }
 
-# Saves (replaces) the set of reminder times for a medication + family member combo.
-# Deletes all existing reminders for that combination and inserts the new set.
+# Saves the set of reminder times for a medication + family member combo.
+# Reconciles schedules in place so historical confirmation events remain intact.
 # Parameters:
 #   medication_id    : Integer
 #   family_member_id : Integer user ID
@@ -364,21 +446,108 @@ sub DB::save_medication_reminders {
     my ($self, $medication_id, $family_member_id, $dosage, $times, $days_of_week, $created_by, $source_log_id) = @_;
     $self->ensure_connection;
 
+    die "Invalid medication reminder details"
+        unless defined $medication_id && $medication_id =~ /^\d+$/
+            && defined $family_member_id && $family_member_id =~ /^\d+$/
+            && defined $source_log_id && $source_log_id =~ /^\d+$/
+            && defined $dosage && $dosage =~ /^\d+$/ && $dosage > 0;
+
     $days_of_week //= 127;
+    die "Invalid reminder day mask" unless $days_of_week =~ /^\d+$/ && $days_of_week > 0 && $days_of_week <= 127;
     my $times_ref = ref($times) eq 'ARRAY' ? $times : [$times];
+    my @time_strings;
+    my %seen_time;
+    for my $t (@$times_ref) {
+        next unless $t && $t =~ /\A(\d{1,2}):(\d{2})(?::(\d{2}))?/;
+        next if $1 > 23 || $2 > 59 || (defined $3 && $3 > 59);
+        my $time_str = sprintf('%02d:%02d:%02d', $1, $2, $3 // 0);
+        next if $seen_time{$time_str}++;
+        push @time_strings, $time_str;
+    }
+
+    my ($source_ok) = $self->{dbh}->selectrow_array(
+        "SELECT 1 FROM medication_logs WHERE id = ? AND medication_id = ? AND family_member_id = ? AND deleted_at IS NULL",
+        undef,
+        $source_log_id, $medication_id, $family_member_id
+    );
+    die "Invalid medication reminder source log" unless $source_ok;
 
     $self->{dbh}->begin_work;
     my $result = eval {
-        my $sth_del = $self->{dbh}->prepare("DELETE FROM medication_reminders WHERE medication_id = ? AND family_member_id = ?");
-        $sth_del->execute($medication_id, $family_member_id);
+        die "No valid reminder times" unless @time_strings;
+
+        my $placeholders = join(',', ('?') x @time_strings);
+        my $sth_retire = $self->{dbh}->prepare("
+            UPDATE medication_reminders
+            SET is_active = 0, deleted_at = COALESCE(deleted_at, NOW())
+            WHERE medication_id = ?
+              AND family_member_id = ?
+              AND deleted_at IS NULL
+              AND TIME_FORMAT(reminder_time, '%H:%i:%s') NOT IN ($placeholders)
+        ");
+        $sth_retire->execute($medication_id, $family_member_id, @time_strings);
 
         my $sth_ins = $self->{dbh}->prepare("INSERT INTO medication_reminders (medication_id, family_member_id, dosage, reminder_time, days_of_week, source_log_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        my $sth_find = $self->{dbh}->prepare("
+            SELECT id
+            FROM medication_reminders
+            WHERE medication_id = ?
+              AND family_member_id = ?
+              AND TIME_FORMAT(reminder_time, '%H:%i:%s') = ?
+              AND deleted_at IS NULL
+            ORDER BY id ASC
+            LIMIT 1
+        ");
+        my $sth_has_history = $self->{dbh}->prepare("
+            SELECT 1
+            FROM medication_reminder_events
+            WHERE reminder_id = ?
+              AND confirmed_at IS NOT NULL
+            LIMIT 1
+        ");
+        my $sth_update = $self->{dbh}->prepare("
+            UPDATE medication_reminders
+            SET dosage = ?, days_of_week = ?, source_log_id = ?, created_by = ?,
+                is_active = 1, deleted_at = NULL
+            WHERE id = ?
+        ");
+        my $sth_dedupe = $self->{dbh}->prepare("
+            UPDATE medication_reminders
+            SET is_active = 0, deleted_at = COALESCE(deleted_at, NOW())
+            WHERE medication_id = ?
+              AND family_member_id = ?
+              AND TIME_FORMAT(reminder_time, '%H:%i:%s') = ?
+              AND id <> ?
+        ");
         my $count = 0;
-        foreach my $t (@$times_ref) {
-            next unless $t && $t =~ /\A\d{1,2}:\d{2}/;
-            my $time_str = $t =~ /:/ ? $t : "$t:00";
-            $time_str .= ':00' if $time_str =~ /\A\d{2}:\d{2}\z/;
-            $sth_ins->execute($medication_id, $family_member_id, $dosage, $time_str, $days_of_week, $source_log_id, $created_by);
+        foreach my $time_str (@time_strings) {
+            $sth_find->execute($medication_id, $family_member_id, $time_str);
+            my ($existing_id) = $sth_find->fetchrow_array();
+            if ($existing_id) {
+                my $existing = $self->{dbh}->selectrow_hashref(
+                    "SELECT dosage, source_log_id FROM medication_reminders WHERE id = ?",
+                    undef,
+                    $existing_id
+                );
+                $sth_has_history->execute($existing_id);
+                my ($has_history) = $sth_has_history->fetchrow_array();
+                if ($has_history && ($existing->{dosage} != $dosage || $existing->{source_log_id} != $source_log_id)) {
+                    my $sth_soft_del = $self->{dbh}->prepare("
+                        UPDATE medication_reminders
+                        SET is_active = 0, deleted_at = COALESCE(deleted_at, NOW())
+                        WHERE id = ?
+                    ");
+                    $sth_soft_del->execute($existing_id);
+                    $sth_ins->execute($medication_id, $family_member_id, $dosage, $time_str, $days_of_week, $source_log_id, $created_by);
+                    my $new_id = $self->{dbh}->last_insert_id();
+                    $sth_dedupe->execute($medication_id, $family_member_id, $time_str, $new_id);
+                } else {
+                    $sth_update->execute($dosage, $days_of_week, $source_log_id, $created_by, $existing_id);
+                    $sth_dedupe->execute($medication_id, $family_member_id, $time_str, $existing_id);
+                }
+            } else {
+                $sth_ins->execute($medication_id, $family_member_id, $dosage, $time_str, $days_of_week, $source_log_id, $created_by);
+            }
             $count++;
         }
         $self->{dbh}->commit;
@@ -391,6 +560,30 @@ sub DB::save_medication_reminders {
     return $result;
 }
 
+sub DB::get_medication_reminder_member_id {
+    my ($self, $id) = @_;
+    $self->ensure_connection;
+
+    my ($member_id) = $self->{dbh}->selectrow_array(
+        "SELECT family_member_id FROM medication_reminders WHERE id = ? AND deleted_at IS NULL",
+        undef,
+        $id
+    );
+    return $member_id;
+}
+
+sub DB::medication_log_matches_reminder_source {
+    my ($self, $source_log_id, $medication_id, $family_member_id) = @_;
+    $self->ensure_connection;
+
+    my ($exists) = $self->{dbh}->selectrow_array(
+        "SELECT 1 FROM medication_logs WHERE id = ? AND medication_id = ? AND family_member_id = ? AND deleted_at IS NULL",
+        undef,
+        $source_log_id, $medication_id, $family_member_id
+    );
+    return $exists ? 1 : 0;
+}
+
 # Toggles the is_active flag on a reminder schedule.
 # Parameters:
 #   id     : Integer reminder ID
@@ -399,18 +592,18 @@ sub DB::save_medication_reminders {
 sub DB::toggle_medication_reminder {
     my ($self, $id, $active) = @_;
     $self->ensure_connection;
-    my $sth = $self->{dbh}->prepare("UPDATE medication_reminders SET is_active = ? WHERE id = ?");
+    my $sth = $self->{dbh}->prepare("UPDATE medication_reminders SET is_active = ? WHERE id = ? AND deleted_at IS NULL");
     return $sth->execute($active ? 1 : 0, $id);
 }
 
-# Deletes a single reminder schedule (events cascade via FK).
+# Deletes a single reminder schedule without removing historical events.
 # Parameters:
 #   id : Integer reminder ID
 # Returns: Boolean success
 sub DB::delete_medication_reminder {
     my ($self, $id) = @_;
     $self->ensure_connection;
-    my $sth = $self->{dbh}->prepare("DELETE FROM medication_reminders WHERE id = ?");
+    my $sth = $self->{dbh}->prepare("UPDATE medication_reminders SET is_active = 0, deleted_at = COALESCE(deleted_at, NOW()) WHERE id = ? AND deleted_at IS NULL");
     return $sth->execute($id) > 0;
 }
 
@@ -434,6 +627,7 @@ sub DB::get_due_medication_reminders {
         JOIN medication_registry reg ON r.medication_id = reg.id
         JOIN users u ON r.family_member_id = u.id
         WHERE r.is_active = 1
+          AND r.deleted_at IS NULL
           AND r.reminder_time LIKE ?
           AND (r.days_of_week >> (? - 1)) & 1
           AND NOT EXISTS (
@@ -507,6 +701,7 @@ sub DB::get_overdue_medication_confirmations {
         WHERE e.confirmed_at IS NULL
           AND e.scheduled_date = ?
           AND r.is_active = 1
+          AND r.deleted_at IS NULL
           AND (e.last_fired_at IS NULL OR e.last_fired_at < NOW() - INTERVAL 30 MINUTE)
     ");
     $sth->execute($current_date);
@@ -531,6 +726,7 @@ sub DB::confirm_medication_reminder {
             SET e.confirmed_at = NOW(), e.confirmed_by = ?
             WHERE e.id = ? AND e.confirmed_at IS NULL
               AND r.family_member_id = ?
+              AND r.deleted_at IS NULL
         ");
         $sth->execute($confirmed_by, $event_id, $confirmed_by);
         unless ($sth->rows > 0) {
@@ -557,6 +753,7 @@ sub DB::confirm_medication_reminder {
             WHERE id = ?
               AND medication_id = ?
               AND family_member_id = ?
+              AND deleted_at IS NULL
         ");
         $log_sth->execute(
             $confirmed_by,
@@ -568,7 +765,7 @@ sub DB::confirm_medication_reminder {
         my $log_updated = $log_sth->rows > 0;
         unless ($log_updated) {
             my ($exists) = $self->{dbh}->selectrow_array(
-                "SELECT 1 FROM medication_logs WHERE id = ? AND medication_id = ? AND family_member_id = ?",
+                "SELECT 1 FROM medication_logs WHERE id = ? AND medication_id = ? AND family_member_id = ? AND deleted_at IS NULL",
                 undef,
                 $reminder->{source_log_id}, $reminder->{medication_id}, $reminder->{family_member_id}
             );
@@ -608,6 +805,7 @@ sub DB::get_pending_medication_reminders {
         WHERE e.confirmed_at IS NULL
           AND r.family_member_id = ?
           AND e.scheduled_date = ?
+          AND r.deleted_at IS NULL
         ORDER BY e.scheduled_time ASC
     ");
     $sth->execute($member_id, $date);

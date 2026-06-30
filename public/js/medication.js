@@ -31,8 +31,10 @@ const CONFIG = {
 
 let STATE = {
     logs: {},                       // Map of member names to dosage arrays
+    recentTaken: [],                // Parent-only recent family dose confirmations
     registry: [],                   // Global list of available medications
     members: [],                    // List of family members for dropdowns
+    currentUserId: null,            // Current authenticated user id
     isAdmin: false,                 // Authorization gate for administrative actions
     isParent: false,                // Parent-only views
     reminders: [],                  // Medication reminder schedule list
@@ -96,8 +98,10 @@ async function loadState(force = false) {
 
         if (data && data.success) {
             STATE.logs = data.logs;
+            STATE.recentTaken = data.recent_taken || [];
             STATE.registry = data.registry;
             STATE.members = data.members;
+            STATE.currentUserId = data.current_user_id;
             STATE.isAdmin = !!data.is_admin;
             STATE.isParent = !!data.is_parent;
             STATE.reminders = data.reminders || [];
@@ -246,7 +250,11 @@ function renderGrid() {
     if (!grid) return;
 
     const members = Object.keys(STATE.logs).sort();
-    const activeMembers = members.filter(m => STATE.logs[m].length > 0);
+    const displayLogsByMember = {};
+    const activeMembers = members.filter(m => {
+        displayLogsByMember[m] = getDisplayLogsForMember(STATE.logs[m] || []);
+        return displayLogsByMember[m].length > 0;
+    });
 
     if (activeMembers.length === 0) {
         grid.innerHTML = `<div class="empty-state"><p>📭 No active medication logs found.</p></div>`;
@@ -254,7 +262,7 @@ function renderGrid() {
     }
 
     grid.innerHTML = activeMembers.map(member => {
-        const logs = STATE.logs[member];
+        const logs = displayLogsByMember[member];
         return `
             <div class="medication-card glass-panel">
                 <div class="user-header">
@@ -287,10 +295,7 @@ function renderParentTally() {
         return;
     }
 
-    const allLogs = Object.values(STATE.logs || {})
-        .flat()
-        .sort((a, b) => (b.taken_at_unix || 0) - (a.taken_at_unix || 0))
-        .slice(0, 10);
+    const allLogs = (STATE.recentTaken || []).slice(0, 10);
 
     section.hidden = false;
 
@@ -320,6 +325,7 @@ function renderLogItem(l) {
     const reminders = getRemindersForLog(l);
     const displayDt = formatTakenAtLabel(takenAt);
     const deleteLabel = escapeHtml(JSON.stringify(`${l.medication_name || ''} for ${l.family_member || ''}`));
+    const canScheduleReminder = canManageReminderForLog(l);
 
     return `
         <div class="med-item" data-id="${l.id}" onclick="toggleMedExpand(this)">
@@ -341,7 +347,7 @@ function renderLogItem(l) {
                     <span class="taken-at-label">🕒 Last taken: ${displayDt}</span>
                     <div class="med-item-actions" onclick="event.stopPropagation()">
                         <button type="button" class="btn-icon-reset" onclick="confirmResetMedication(${l.id})" title="Reset Time">🔄</button>
-                        <button type="button" class="btn-icon-reset btn-icon-reminder" onclick="openReminderSchedulerFromLog(${l.id})" title="Schedule Dose Reminder">⏰</button>
+                        ${canScheduleReminder ? `<button type="button" class="btn-icon-reset btn-icon-reminder" onclick="openReminderSchedulerFromLog(${l.id})" title="Schedule Dose Reminder">⏰</button>` : ''}
                         <button type="button" class="btn-icon-edit" onclick="openEditModalById(${l.id})" title="Edit Log">✏️</button>
                         <button type="button" class="btn-icon-delete" onclick="confirmDeleteMedication(${l.id}, ${deleteLabel})" title="Delete Log">🗑️</button>
                     </div>
@@ -349,6 +355,49 @@ function renderLogItem(l) {
             </div>
         </div>
     `;
+}
+
+/**
+ * Keeps the main grid focused on current medication rows, not dose history.
+ *
+ * @param {Object[]} logs - Medication rows for one member.
+ * @returns {Object[]} Rows to display in the active medication grid.
+ */
+function getDisplayLogsForMember(logs) {
+    const reminderSourceIds = new Set((STATE.reminders || [])
+        .map(r => String(r.source_log_id || ''))
+        .filter(Boolean));
+    const reminderKeys = new Set((STATE.reminders || []).map(r => reminderLogKey(r)));
+    const selected = new Map();
+
+    logs.forEach(log => {
+        const key = reminderLogKey(log);
+        const isReminderSource = reminderSourceIds.has(String(log.id));
+        if (reminderKeys.has(key) && !isReminderSource) return;
+
+        const existing = selected.get(key);
+        if (!existing || shouldPreferDisplayLog(log, existing, reminderSourceIds)) {
+            selected.set(key, log);
+        }
+    });
+
+    return Array.from(selected.values())
+        .sort((a, b) => (b.taken_at_unix || 0) - (a.taken_at_unix || 0));
+}
+
+function shouldPreferDisplayLog(candidate, existing, reminderSourceIds) {
+    const candidateIsSource = reminderSourceIds.has(String(candidate.id));
+    const existingIsSource = reminderSourceIds.has(String(existing.id));
+    if (candidateIsSource !== existingIsSource) return candidateIsSource;
+    return (candidate.taken_at_unix || 0) > (existing.taken_at_unix || 0);
+}
+
+function canManageReminderForLog(log) {
+    return STATE.isParent || String(log.family_member_id || '') === String(STATE.currentUserId || '');
+}
+
+function canManageReminder(reminder) {
+    return STATE.isParent || String(reminder.family_member_id || '') === String(STATE.currentUserId || '');
 }
 
 /**
@@ -385,8 +434,17 @@ function renderLogReminderSummary(l) {
  */
 function getRemindersForLog(l) {
     return (STATE.reminders || [])
-        .filter(r => r.family_member_id == l.family_member_id && r.medication_name === l.medication_name)
+        .filter(r => r.source_log_id == l.id)
         .sort((a, b) => (a.reminder_time || '').localeCompare(b.reminder_time || ''));
+}
+
+function reminderLogKey(row) {
+    return [
+        row.family_member_id || '',
+        row.medication_id || '',
+        row.medication_name || '',
+        row.dosage || ''
+    ].join('|');
 }
 
 /**
@@ -399,6 +457,15 @@ function renderLogReminderItem(r) {
     const timeDisplay = formatTimeAmPm(r.reminder_time);
     const active = r.is_active ? 1 : 0;
     const days = formatReminderDays(r.days_of_week);
+    const actions = canManageReminder(r) ? `
+        <div class="reminder-item-actions">
+            <label class="reminder-toggle-switch">
+                <input type="checkbox" ${active ? 'checked' : ''} onchange="toggleReminderActive(${r.id}, this.checked, this)">
+                <span class="toggle-slider"></span>
+            </label>
+            <button type="button" class="btn-icon-delete" onclick="deleteReminderSchedule(${r.id})" title="Delete Reminder">🗑️</button>
+        </div>
+    ` : '';
 
     return `
         <div class="med-log-reminder-item ${active ? '' : 'reminder-inactive'}">
@@ -406,13 +473,7 @@ function renderLogReminderItem(r) {
                 <span class="reminder-time-label">⏰ ${timeDisplay}</span>
                 <span class="reminder-days-label">${days}</span>
             </div>
-            <div class="reminder-item-actions">
-                <label class="reminder-toggle-switch">
-                    <input type="checkbox" ${active ? 'checked' : ''} onchange="toggleReminderActive(${r.id}, this.checked, this)">
-                    <span class="toggle-slider"></span>
-                </label>
-                <button type="button" class="btn-icon-delete" onclick="deleteReminderSchedule(${r.id})" title="Delete Reminder">🗑️</button>
-            </div>
+            ${actions}
         </div>
     `;
 }
@@ -541,6 +602,16 @@ function renderReminderItem(r) {
     const timeDisplay = formatTimeAmPm(r.reminder_time);
     const active = r.is_active ? 1 : 0;
     const days = formatReminderDays(r.days_of_week);
+    const actions = canManageReminder(r) ? `
+        <div class="reminder-item-actions">
+            <button type="button" class="btn-icon-edit" onclick="openReminderSchedulerForEdit(${r.id})" title="Edit Reminder">✏️</button>
+            <label class="reminder-toggle-switch">
+                <input type="checkbox" ${active ? 'checked' : ''} onchange="toggleReminderActive(${r.id}, this.checked, this)">
+                <span class="toggle-slider"></span>
+            </label>
+            <button type="button" class="btn-icon-delete" onclick="deleteReminderSchedule(${r.id})" title="Delete Reminder">🗑️</button>
+        </div>
+    ` : '';
     return `
         <div class="reminder-item ${r.is_active ? '' : 'reminder-inactive'}">
             <div class="reminder-item-info">
@@ -549,14 +620,7 @@ function renderReminderItem(r) {
                 <span class="reminder-time-label">⏰ ${timeDisplay}</span>
                 <span class="reminder-days-label">${days}</span>
             </div>
-            <div class="reminder-item-actions">
-                <button type="button" class="btn-icon-edit" onclick="openReminderSchedulerForEdit(${r.id})" title="Edit Reminder">✏️</button>
-                <label class="reminder-toggle-switch">
-                    <input type="checkbox" ${active ? 'checked' : ''} onchange="toggleReminderActive(${r.id}, this.checked, this)">
-                    <span class="toggle-slider"></span>
-                </label>
-                <button type="button" class="btn-icon-delete" onclick="deleteReminderSchedule(${r.id})" title="Delete Reminder">🗑️</button>
-            </div>
+            ${actions}
         </div>
     `;
 }
