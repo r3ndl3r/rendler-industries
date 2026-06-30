@@ -98,7 +98,7 @@ async function startRestartSequence(event) {
     updateModal('Sending restart command to server...');
 
     try {
-        const response = await fetch('/admin/restart');
+        const response = await fetch('/admin/restart', { method: 'POST' });
         if (!response.ok) {
             updateModal(`Restart failed (Status: ${response.status})`, false);
             // Self-dismiss after failure feedback

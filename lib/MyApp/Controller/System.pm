@@ -112,7 +112,7 @@ sub api_fcm_register {
 }
 
 # Initiates a hot restart of the application server.
-# Route: GET /restart
+# Route: POST /admin/restart
 # Parameters: None
 # Returns:
 #   Text confirmation if command initiated successfully.
@@ -1404,7 +1404,7 @@ sub register_routes {
     my ($class, $r) = @_;
     $r->{auth}->get('/api/fcm/web-config')->to('system#api_fcm_web_config');
     $r->{auth}->post('/api/fcm/register')->to('system#api_fcm_register');
-    $r->{admin}->get('/admin/restart')->to('system#restart');
+    $r->{admin}->post('/admin/restart')->to('system#restart');
 }
 
 1;
