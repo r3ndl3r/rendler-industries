@@ -294,17 +294,17 @@ sub DB::get_chore_submission_by_id {
 #   $submission_id  : Row ID
 #   $points_awarded : Integer points
 # Returns:
-#   1
+#   Rows affected
 sub DB::approve_chore_submission {
     my ($self, $submission_id, $points_awarded) = @_;
     $self->ensure_connection();
     my $sth = $self->{dbh}->prepare(
         "UPDATE chore_submissions
          SET status = 'approved', points_awarded = ?, reviewed_at = NOW()
-         WHERE id = ?"
+         WHERE id = ? AND status = 'pending'"
     );
     $sth->execute($points_awarded, $submission_id);
-    return 1;
+    return $sth->rows;
 }
 
 

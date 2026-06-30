@@ -397,19 +397,27 @@ sub api_approve {
     my $sub = $c->db->get_chore_submission_by_id($id);
     return $c->render(json => { success => 0, error => 'Not found' }) unless $sub;
 
-    eval {
+    my $approved = 0;
+    my $ok = eval {
         $c->db->{dbh}->begin_work;
-        $c->db->approve_chore_submission($id, $points);
-        my $reason = "Chore Submission Approved: " . $sub->{description};
-        $c->add_points($sub->{user_id}, $points, $reason);
-        $c->db->purge_chore_submission_photos($id);
-        $c->db->{dbh}->commit;
+        $approved = $c->db->approve_chore_submission($id, $points);
+        if ($approved > 0) {
+            my $reason = "Chore Submission Approved: " . $sub->{description};
+            $c->add_points($sub->{user_id}, $points, $reason);
+            $c->db->purge_chore_submission_photos($id);
+            $c->db->{dbh}->commit;
+        } else {
+            $c->db->{dbh}->rollback;
+        }
+        1;
     };
-    if ($@) {
+    if (!$ok) {
         $c->db->{dbh}->rollback if $c->db->{dbh}->{Active};
         $c->app->log->error("Chore approve failed: $@");
         return $c->render(json => { success => 0, error => 'Approval failed' });
     }
+    return $c->render(json => { success => 0, error => 'Submission is no longer pending' })
+        unless $approved > 0;
 
     my $excerpt = length($sub->{description}) > 60 ? substr($sub->{description}, 0, 57) . '...' : $sub->{description};
     $c->notify_templated($sub->{user_id}, 'chore_submission_approved', {

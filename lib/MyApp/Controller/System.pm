@@ -240,12 +240,12 @@ sub run_meals_maintenance {
         # Check if today's plan is still open
         my $today_plan = $c->db->get_active_plan(0)->[0]; # user_id=0 (system context)
 
-        if ($today_plan) {
+        if ($today_plan && $today_plan->{status} eq 'open') {
             # Check if we already sent this specific hourly reminder
             my $flag_col = $hour == 8 ? 'reminder_8am_sent' : 'reminder_12pm_sent';
             my ($already_sent) = $c->db->{dbh}->selectrow_array("SELECT $flag_col FROM meal_plan WHERE id = ?", undef, $today_plan->{id});
 
-            if ($today_plan->{status} eq 'open' && !$already_sent) {
+            if (!$already_sent) {
                 my @targets;
                 my $participation = $c->db->get_plan_participation($today_plan->{id});
                 my %has_suggested = map { $_ => 1 } @{$participation->{suggested_ids}};
