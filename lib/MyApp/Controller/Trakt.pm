@@ -465,21 +465,31 @@ sub _dashboard_state {
     my ($c, $opts) = @_;
     $opts ||= {};
     my $state = $c->db->get_trakt_dashboard_state($c->current_user_id);
-    $state->{unwatched} = !$opts->{skip_unwatched} && $state->{connection}{connected}
-        ? _watchlist_unwatched_state($c, $state->{lists})
-        : [];
-    delete $state->{unwatched} if $opts->{skip_unwatched};
 
+    my $cached_unwatched;
     my $cached_raw = $c->db->get_trakt_unwatched_cache($c->current_user_id);
     if ($cached_raw) {
         my $cached = eval { decode_json($cached_raw) };
-        if (ref $cached eq 'ARRAY') {
-            my %counts;
-            for my $ep (@$cached) {
-                $counts{0 + ($ep->{show_trakt_id} || 0)}++;
-            }
-            $state->{unwatched_counts} = \%counts;
+        $cached_unwatched = $cached if ref $cached eq 'ARRAY';
+    }
+
+    if ($opts->{skip_unwatched}) {
+        ref $cached_unwatched eq 'ARRAY'
+            ? $state->{unwatched} = $cached_unwatched
+            : delete $state->{unwatched};
+    } else {
+        $state->{unwatched} = $state->{connection}{connected}
+            ? _watchlist_unwatched_state($c, $state->{lists})
+            : [];
+        $cached_unwatched = $state->{unwatched} if ref $state->{unwatched} eq 'ARRAY';
+    }
+
+    if (ref $cached_unwatched eq 'ARRAY') {
+        my %counts;
+        for my $ep (@$cached_unwatched) {
+            $counts{0 + ($ep->{show_trakt_id} || 0)}++;
         }
+        $state->{unwatched_counts} = \%counts;
     }
 
     return _normalize_dashboard_state($state);

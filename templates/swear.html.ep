@@ -28,7 +28,7 @@
 
         <%# Visual Reference: Rules Lightbox %>
         <div class="harmony-jar-header">
-            <a href="javascript:void(0)" onclick="openImageModal('/files/serve/6')" class="harmony-jar-link">
+            <a href="javascript:void(0)" onclick="openImageModal('/files/serve/111')" class="harmony-jar-link">
                 <img src="/files/serve/6" alt="Family Harmony Jar Rules" class="harmony-jar-img">
             </a>
         </div>

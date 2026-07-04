@@ -72,6 +72,10 @@ async function loadState() {
         const data = await apiGet('/trakt/api/state?skip_unwatched=1', 30000);
         if (data && data.success) {
             STATE = { ...STATE, ...data };
+            if (Array.isArray(data.unwatched)) {
+                UNWATCHED_LOADING = false;
+                UNWATCHED_LOADED = true;
+            }
             if (!STATE.connection?.connected) {
                 UNWATCHED_LOADING = false;
                 UNWATCHED_LOADED = false;
@@ -84,10 +88,11 @@ async function loadState() {
                 attemptedInitialSync = true;
                 syncTrakt().catch(err => console.error('Trakt initial sync failed:', err));
             } else if (STATE.connection?.connected) {
-                await loadUnwatchedState(true);
                 if (STATE.connection?.last_synced_at && !autoRefreshed && Date.now() - Date.parse(STATE.connection.last_synced_at) > 3600000) {
                     autoRefreshed = true;
                     syncTrakt().catch(err => console.error('Trakt auto refresh failed:', err));
+                } else if (!UNWATCHED_LOADED) {
+                    refreshUnwatchedStateInBackground();
                 }
             }
         } else {
@@ -501,7 +506,7 @@ async function syncTrakt() {
             STATE = { ...STATE, ...result.state };
             renderTrakt();
         }
-        await loadUnwatchedState(!UNWATCHED_LOADED);
+        await loadUnwatchedState(false);
         if (result?.success && !result.message && typeof showToast === 'function') {
             showToast('Trakt synced', 'success');
         }
@@ -543,6 +548,24 @@ async function loadUnwatchedState(showInitialLoading = false) {
             if (activeTab === 'unwatched' && (showLoading || changed)) renderTrakt();
         }
     }
+}
+
+/**
+ * Refreshes unwatched state without replacing the Unwatched tab with an initial loading panel.
+ * @returns {void}
+ */
+function refreshUnwatchedStateInBackground() {
+    if (REFRESH_IN_PROGRESS) return;
+    REFRESH_IN_PROGRESS = true;
+    renderHeaderActions();
+    loadUnwatchedState(false)
+        .catch(err => {
+            console.error('Trakt unwatched background refresh failed:', err);
+        })
+        .finally(() => {
+            REFRESH_IN_PROGRESS = false;
+            renderHeaderActions();
+        });
 }
 
 /**
@@ -1461,6 +1484,10 @@ function applyResultState(result) {
     const reloadInitialUnwatched = UNWATCHED_LOADING && !UNWATCHED_LOADED;
     invalidateUnwatchedStateLoads();
     STATE = { ...STATE, ...(result?.state || {}) };
+    if (Array.isArray(result?.state?.unwatched)) {
+        UNWATCHED_LOADING = false;
+        UNWATCHED_LOADED = true;
+    }
     renderTrakt();
     if (reloadInitialUnwatched) {
         loadUnwatchedState(false).catch(err => {
