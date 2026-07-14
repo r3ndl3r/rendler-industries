@@ -1327,9 +1327,11 @@ sub run_trakt_episode_notifications {
     $stats->{cleanup_deleted} = 0 + ($cleanup_rv || 0);
 
     my $sql = qq{
-        SELECT u.user_id, u.episode_trakt_id, u.show_title, u.season, u.episode,
+        SELECT u.user_id, u.show_trakt_id, u.episode_trakt_id, u.show_title, u.season, u.episode,
                u.title, u.first_aired, u.network
         FROM trakt_upcoming u
+        INNER JOIN trakt_watchlist_items w
+                ON w.user_id = u.user_id AND w.show_trakt_id = u.show_trakt_id
         WHERE u.first_aired <= ?
           AND u.first_aired >= ?
           AND u.episode_trakt_id IS NOT NULL
@@ -1345,6 +1347,14 @@ sub run_trakt_episode_notifications {
 
         eval {
             my $queued = $c->_with_maintenance_notification_txn(sub {
+                my ($still_watchlisted) = $c->db->{dbh}->selectrow_array(
+                    "SELECT 1 FROM trakt_watchlist_items WHERE user_id = ? AND show_trakt_id = ? FOR UPDATE",
+                    undef,
+                    $row->{user_id},
+                    $row->{show_trakt_id},
+                );
+                return 0 unless $still_watchlisted;
+
                 # Claim with INSERT IGNORE to prevent double-firing.
                 my $rv = $c->db->{dbh}->do(
                     "INSERT IGNORE INTO trakt_episode_notifications
