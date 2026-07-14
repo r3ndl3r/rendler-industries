@@ -227,12 +227,13 @@ function switchTab(tab) {
  * @returns {string} HTML string.
  */
 function renderUpcoming() {
-    if (!STATE.upcoming.length) {
+    const upcomingRows = (STATE.upcoming || []).filter(row => isFutureAirDate(row.first_aired));
+    if (!upcomingRows.length) {
         return `<div class="empty-state"><p>No upcoming watchlist episodes found.</p><p class="empty-hint">Refresh after adding shows to your Trakt watchlist.</p></div>`;
     }
 
     if (IS_COMPACT_LAYOUT) {
-        return `<div class="trakt-mobile-list">${STATE.upcoming.map(renderUpcomingCompactCard).join('')}</div>`;
+        return `<div class="trakt-mobile-list">${upcomingRows.map(renderUpcomingCompactCard).join('')}</div>`;
     }
 
     return `
@@ -247,7 +248,7 @@ function renderUpcoming() {
                     </tr>
                 </thead>
                 <tbody>
-            ${STATE.upcoming.map(row => `
+            ${upcomingRows.map(row => `
                     <tr>
                         <td>${escapeHtml(formatAirCountdown(row.first_aired, true))}</td>
                         <td>${renderShowCell(row.show_title || 'Unknown show', row.show_trakt_id, row.show_images)}</td>
@@ -1910,10 +1911,37 @@ function episodeLabel(row) {
 function formatDate(value) {
     if (!value) return 'Unknown date';
     try {
-        return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+        const date = parseTraktDate(value);
+        if (!date) return value;
+        return date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
     } catch (e) {
         return value;
     }
+}
+
+/**
+ * Parses Trakt/API dates, treating MySQL datetime strings from the DB cache as UTC.
+ * @param {string} value - Date string from Trakt API or local DB cache.
+ * @returns {Date|null} Parsed date or null when invalid.
+ */
+function parseTraktDate(value) {
+    if (!value) return null;
+    const raw = String(value).trim();
+    const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)
+        ? raw.replace(' ', 'T') + 'Z'
+        : raw;
+    const date = new Date(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Returns whether an air date is still in the future.
+ * @param {string} value - Date string from Trakt API or local DB cache.
+ * @returns {boolean} True when the parsed air date is later than now.
+ */
+function isFutureAirDate(value) {
+    const date = parseTraktDate(value);
+    return !!date && date.getTime() > Date.now();
 }
 
 /**
@@ -1924,8 +1952,8 @@ function formatDate(value) {
  */
 function formatAirCountdown(value, includeCountdown = true) {
     if (!value) return 'Unknown date';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
+    const date = parseTraktDate(value);
+    if (!date) return value;
 
     const weekday = date.toLocaleDateString([], { weekday: 'short' });
     const datePart = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
