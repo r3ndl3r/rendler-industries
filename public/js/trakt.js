@@ -33,6 +33,9 @@ let UNWATCHED_LOADED = false;
 let UNWATCHED_VERSION = 0;
 let UNWATCHED_REQUEST_ID = 0;
 let REFRESH_IN_PROGRESS = false;
+let REFRESH_ACTIVITY_COUNT = 0;
+let UPCOMING_REFRESH_IN_PROGRESS = false;
+let UPCOMING_REFRESH_QUEUED = false;
 let SEARCH_LIST_MODAL_ITEM = null;
 let SEARCH_LIST_MODAL_TRIGGER = null;
 let ITEM_MOVE_SOURCE_ITEM = null;
@@ -88,7 +91,11 @@ async function loadState() {
                 attemptedInitialSync = true;
                 syncTrakt().catch(err => console.error('Trakt initial sync failed:', err));
             } else if (STATE.connection?.connected) {
-                if (STATE.connection?.last_synced_at && !autoRefreshed && Date.now() - Date.parse(STATE.connection.last_synced_at) > 3600000) {
+                const serverAgeSeconds = Number(STATE.connection.last_synced_age_seconds);
+                const syncAgeMs = Number.isFinite(serverAgeSeconds)
+                    ? serverAgeSeconds * 1000
+                    : Date.now() - Date.parse(STATE.connection.last_synced_at);
+                if (STATE.connection?.last_synced_at && !autoRefreshed && syncAgeMs > 3600000) {
                     autoRefreshed = true;
                     syncTrakt().catch(err => console.error('Trakt auto refresh failed:', err));
                 } else if (!UNWATCHED_LOADED) {
@@ -499,8 +506,7 @@ function renderItemContent(item) {
  */
 async function syncTrakt() {
     if (REFRESH_IN_PROGRESS) return;
-    REFRESH_IN_PROGRESS = true;
-    renderHeaderActions();
+    beginRefreshActivity();
     try {
         const result = await apiPost('/trakt/api/sync', {});
         if (result && result.success) {
@@ -512,8 +518,7 @@ async function syncTrakt() {
             showToast('Trakt synced', 'success');
         }
     } finally {
-        REFRESH_IN_PROGRESS = false;
-        renderHeaderActions();
+        endRefreshActivity();
     }
 }
 
@@ -557,16 +562,66 @@ async function loadUnwatchedState(showInitialLoading = false) {
  */
 function refreshUnwatchedStateInBackground() {
     if (REFRESH_IN_PROGRESS) return;
-    REFRESH_IN_PROGRESS = true;
-    renderHeaderActions();
+    beginRefreshActivity();
     loadUnwatchedState(false)
         .catch(err => {
             console.error('Trakt unwatched background refresh failed:', err);
         })
         .finally(() => {
-            REFRESH_IN_PROGRESS = false;
-            renderHeaderActions();
+            endRefreshActivity();
         });
+}
+
+/**
+ * Refreshes watchlist calendar rows after a show is added without delaying the add action.
+ * Additional requests are coalesced into one follow-up refresh.
+ * @returns {void}
+ */
+function refreshUpcomingStateInBackground() {
+    if (UPCOMING_REFRESH_IN_PROGRESS) {
+        UPCOMING_REFRESH_QUEUED = true;
+        return;
+    }
+
+    UPCOMING_REFRESH_IN_PROGRESS = true;
+    beginRefreshActivity();
+    apiPost('/trakt/api/upcoming/sync', {}, 30000)
+        .then(result => {
+            if (!result?.success || !Array.isArray(result.upcoming)) return;
+            STATE.upcoming = result.upcoming;
+            renderTrakt();
+        })
+        .catch(err => {
+            console.error('Trakt upcoming background refresh failed:', err);
+        })
+        .finally(() => {
+            UPCOMING_REFRESH_IN_PROGRESS = false;
+            endRefreshActivity();
+            if (UPCOMING_REFRESH_QUEUED) {
+                UPCOMING_REFRESH_QUEUED = false;
+                refreshUpcomingStateInBackground();
+            }
+        });
+}
+
+/**
+ * Marks one foreground or background Trakt refresh as active.
+ * @returns {void}
+ */
+function beginRefreshActivity() {
+    REFRESH_ACTIVITY_COUNT += 1;
+    REFRESH_IN_PROGRESS = true;
+    renderHeaderActions();
+}
+
+/**
+ * Clears one Trakt refresh activity while preserving overlapping busy state.
+ * @returns {void}
+ */
+function endRefreshActivity() {
+    REFRESH_ACTIVITY_COUNT = Math.max(0, REFRESH_ACTIVITY_COUNT - 1);
+    REFRESH_IN_PROGRESS = REFRESH_ACTIVITY_COUNT > 0;
+    renderHeaderActions();
 }
 
 /**
@@ -589,15 +644,21 @@ function invalidateUnwatchedStateLoads() {
 }
 
 /**
- * Merges the full unwatched response fields that are derived from the same recompute.
+ * Applies only unwatched-owned fields so a slow response cannot roll back newer state.
  * @param {Object} stateData - Full Trakt state response.
  * @returns {void}
  */
 function hydrateUnwatchedState(stateData) {
     STATE.unwatched = stateData.unwatched || [];
-    if (stateData.lists) STATE.lists = stateData.lists;
-    if (stateData.upcoming) STATE.upcoming = stateData.upcoming;
-    if (stateData.connection) STATE.connection = stateData.connection;
+    const counts = stateData.unwatched_counts || {};
+    STATE.lists = (STATE.lists || []).map(list => ({
+        ...list,
+        items: (list.items || []).map(item => (
+            item.media_type === 'show'
+                ? { ...item, unwatched_count: Number(counts[Number(item.trakt_id) || 0] || 0) }
+                : item
+        ))
+    }));
 }
 
 /**
@@ -784,6 +845,9 @@ async function executeItemMove(targetListId) {
             if (addResult && addResult.success && addResult.state) {
                 applyResultState(addResult);
                 if (touchesWatchlist) refreshUnwatchedAfterMutation();
+                if (isWatchlistListId(targetListId) && item.media_type === 'show') {
+                    refreshUpcomingStateInBackground();
+                }
                 closeSearchListModal();
                 if (typeof showToast === 'function') showToast(`Moved to ${targetList.name || 'list'}`, 'success');
                 return;
@@ -1088,7 +1152,10 @@ async function toggleSearchItemListMembership(listId, button) {
             if (result && result.success && result.state) {
                 if (inList) removeCachedListItemLocally(list.id, item);
                 applyResultState(result);
-                if (Number(list.is_watchlist) === 1) refreshUnwatchedAfterMutation();
+                if (Number(list.is_watchlist) === 1) {
+                    refreshUnwatchedAfterMutation();
+                    if (!inList && item.media_type === 'show') refreshUpcomingStateInBackground();
+                }
                 renderSearchListModalBody();
                 if (!result.message && typeof showToast === 'function') {
                     showToast(inList ? 'Removed from list' : 'Added to list', 'success');
