@@ -54,14 +54,15 @@ sub api_state {
     # Chores: active chores assigned to this user or unassigned
     my $chores = $c->db->get_active_chores($user_id, $is_admin);
 
-    # Reminders: filtered to today's day-of-week and current user as recipient (all for admins)
+    # Reminders: active, filtered to today's day-of-week and current user as recipient (all for admins)
     my $today_dow     = $now->day_of_week; # 1=Mon, 7=Sun
     my $all_reminders = $c->db->get_all_reminders();
     my @reminders = grep {
+        my $is_active  = $_->{is_active} // 0;
         my $days       = $_->{days_of_week} // 0;
         my $active_day = ($days >> ($today_dow - 1)) & 1;
         my $recipient  = $is_admin || grep { $_ == $user_id } split(/,/, $_->{recipient_ids} // '');
-        $active_day && $recipient;
+        $is_active && $active_day && $recipient;
     } @$all_reminders;
 
     # Medication reminders: today's active reminders for the current family member only
@@ -69,8 +70,9 @@ sub api_state {
     if ($c->is_family) {
         my $all_medication_reminders = $c->db->get_medication_reminders_for_member($user_id);
         my @filtered_medication_reminders = grep {
-            my $days = $_->{days_of_week} // 0;
-            ($days >> ($today_dow - 1)) & 1;
+            my $is_active = $_->{is_active} // 0;
+            my $days      = $_->{days_of_week} // 0;
+            $is_active && (($days >> ($today_dow - 1)) & 1);
         } @$all_medication_reminders;
         $medication_reminders = \@filtered_medication_reminders;
     }
