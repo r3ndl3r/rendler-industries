@@ -1,0 +1,77 @@
+% layout 'default', navbar_title => '🌍 Geography', favicon => '🌍';
+<% title 'Geography Quiz'; %>
+
+% content_for 'head' => begin
+    <link rel="stylesheet" href="/css/geography.css">
+    <script src="/js/geography.js"></script>
+% end
+
+<div id="geography-app" class="geography-container app-container">
+    <div class="header-bar geography-header">
+        <div>
+            <h1>🌍 <span>Geography Quiz</span></h1>
+            <p class="geography-subtitle">Flags, capitals, countries, and regions.</p>
+        </div>
+        <div class="manage-actions">
+            <button type="button" id="geo-home-btn" class="btn-secondary hidden">Modes</button>
+        </div>
+    </div>
+
+    <section id="geo-start-view" class="geo-view">
+        <div class="geo-hero glass-panel">
+            <div class="geo-hero-flag">🇯🇵 🇧🇷 🇪🇬</div>
+            <div>
+                <h2>Choose a mode</h2>
+                <p>Pick a focused challenge, then answer 10 quick questions. Stats stay on this device only.</p>
+            </div>
+            <div id="geo-overall-stats" class="geo-overall-stats">Best: 0/10</div>
+        </div>
+
+        <div id="geo-mode-grid" class="geo-mode-grid"></div>
+    </section>
+
+    <section id="geo-quiz-view" class="geo-view hidden">
+        <div class="geo-quiz-top glass-panel">
+            <div>
+                <div id="geo-mode-label" class="geo-mode-label">Mode</div>
+                <div id="geo-question-count" class="geo-question-count">Question 1 / 10</div>
+            </div>
+            <div id="geo-score-pill" class="geo-score-pill">Score 0</div>
+            <div class="geo-progress-track" aria-hidden="true">
+                <div id="geo-progress-fill" class="geo-progress-fill"></div>
+            </div>
+        </div>
+
+        <div class="geo-prompt-card glass-panel">
+            <div id="geo-prompt-kicker" class="geo-prompt-kicker">Question</div>
+            <div id="geo-prompt-flag" class="geo-prompt-flag"></div>
+            <h2 id="geo-prompt-text">Loading...</h2>
+        </div>
+
+        <div id="geo-answer-area" class="geo-answer-area"></div>
+
+        <div id="geo-feedback" class="geo-feedback glass-panel hidden"></div>
+
+        <div class="geo-controls">
+            <button type="button" id="geo-next-btn" class="btn-primary" disabled>Next</button>
+        </div>
+    </section>
+
+    <section id="geo-results-view" class="geo-view hidden">
+        <div class="geo-results-card glass-panel">
+            <div class="geo-results-icon">🎉</div>
+            <h2>Round complete</h2>
+            <div id="geo-final-score" class="geo-final-score">0/10</div>
+            <p id="geo-result-message" class="geo-result-message"></p>
+
+            <div id="geo-missed-list" class="geo-missed-list"></div>
+
+            <div class="geo-result-actions">
+                <button type="button" id="geo-play-again-btn" class="btn-primary">Play Again</button>
+                <button type="button" id="geo-review-btn" class="btn-secondary">Review Missed</button>
+                <button type="button" id="geo-choose-mode-btn" class="btn-secondary">Choose Another Mode</button>
+                <button type="button" id="geo-reset-btn" class="btn-danger">Reset Local Stats</button>
+            </div>
+        </div>
+    </section>
+</div>
