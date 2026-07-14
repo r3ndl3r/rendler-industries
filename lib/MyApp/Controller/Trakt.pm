@@ -140,6 +140,36 @@ sub api_sync {
     return $c->render(json => { success => 1, state => _dashboard_state($c, { skip_unwatched => 1 }) });
 }
 
+# Refreshes only the cached watchlist calendar without rebuilding lists or watched state.
+# Route: POST /trakt/api/upcoming/sync
+# Returns: JSON { success, upcoming }
+sub api_upcoming_sync {
+    my $c = shift;
+    return _unauthorized($c) unless _authorized($c);
+    return _json_error($c, 'Connect Trakt first') unless _ensure_token($c);
+
+    my $lists = $c->db->get_trakt_lists($c->current_user_id);
+    my ($watchlist) = grep { ($_->{trakt_list_id} || 0) == 0 } @$lists;
+    my @show_ids = map { 0 + ($_->{trakt_id} || 0) }
+        grep { ($_->{media_type} || '') eq 'show' && ($_->{trakt_id} || 0) }
+        @{($watchlist || {})->{items} || []};
+
+    my ($ok, $upcoming, $error) = _watchlist_calendar($c, \@show_ids);
+    return _json_error($c, $error) unless $ok;
+
+    eval { $c->db->replace_trakt_upcoming_cache($c->current_user_id, $upcoming) };
+    if ($@) {
+        $c->app->log->error("Trakt calendar cache refresh failed: $@");
+        return _json_error($c, 'Unable to save Trakt calendar data');
+    }
+
+    my $state = _normalize_dashboard_state({
+        lists    => [],
+        upcoming => $c->db->get_trakt_upcoming($c->current_user_id),
+    });
+    return $c->render(json => { success => 1, upcoming => $state->{upcoming} });
+}
+
 # Searches Trakt for movies and shows.
 # Route: GET /trakt/api/search
 # Parameters: q (query, min 2 chars), type (movie|show|movie,show)
@@ -218,7 +248,7 @@ sub api_list_create {
     });
     return _json_error($c, $res->{error}) unless $res->{success};
 
-    my ($synced, $sync_error) = _sync_user($c);
+    my ($synced, $sync_error) = _sync_user($c, { calendar_optional => 1 });
     return _json_error($c, $sync_error || 'Unable to sync Trakt') unless $synced;
     return $c->render(json => { success => 1, state => _dashboard_state($c, { skip_unwatched => 1 }) });
 }
@@ -246,7 +276,7 @@ sub api_list_update {
     });
     return _json_error($c, $res->{error}) unless $res->{success};
 
-    my ($synced, $sync_error) = _sync_user($c);
+    my ($synced, $sync_error) = _sync_user($c, { calendar_optional => 1 });
     return _json_error($c, $sync_error || 'Unable to sync Trakt') unless $synced;
     return $c->render(json => { success => 1, state => _dashboard_state($c, { skip_unwatched => 1 }) });
 }
@@ -267,7 +297,7 @@ sub api_list_delete {
     my $res = _trakt_request($c, 'DELETE', '/users/me/lists/' . $list->{trakt_list_id});
     return _json_error($c, $res->{error}) unless $res->{success};
 
-    my ($synced, $sync_error) = _sync_user($c);
+    my ($synced, $sync_error) = _sync_user($c, { calendar_optional => 1 });
     return _json_error($c, $sync_error || 'Unable to sync Trakt') unless $synced;
     return $c->render(json => { success => 1, state => _dashboard_state($c, { skip_unwatched => 1 }) });
 }
@@ -396,9 +426,34 @@ sub api_history_remove {
     return $c->render(json => { success => 1, message => 'Marked unwatched', state => _dashboard_state($c, { skip_unwatched => 1 }) });
 }
 
-# Fetches all Trakt data (watchlist, lists, watched history, calendar) and replaces the local DB cache.
+# Fetches the retained watchlist calendar window and filters it to specific shows.
+# Parameters:
+#   $c        : Mojolicious controller
+#   $show_ids : Arrayref of Trakt show IDs
+# Returns:
+#   (success, calendar rows arrayref, error)
+sub _watchlist_calendar {
+    my ($c, $show_ids) = @_;
+    my %show_ids = map { (0 + $_) => 1 } grep { defined $_ && /^\d+$/ && $_ > 0 } @{$show_ids || []};
+    return (1, [], undef) unless %show_ids;
+
+    # Trakt interprets calendar dates in the account timezone; three dates safely cover 48 UTC hours.
+    my $start = $c->now->clone->subtract(days => 3)->ymd;
+    my $calendar = _trakt_request($c, 'GET', "/calendars/my/shows/$start/133?extended=full");
+    return (0, [], $calendar->{error}) unless $calendar->{success};
+
+    my @upcoming = grep {
+        ref $_ eq 'HASH'
+            && $show_ids{0 + ((($_->{show} || {})->{ids} || {})->{trakt} || 0)}
+    } @{$calendar->{data} || []};
+    return (1, \@upcoming, undef);
+}
+
+# Fetches all Trakt data and replaces the local DB cache.
+# Set calendar_optional to preserve existing calendar rows when only list metadata must sync.
 sub _sync_user {
-    my ($c) = @_;
+    my ($c, $opts) = @_;
+    $opts ||= {};
     return (0, 'Connect Trakt first') unless _ensure_token($c);
 
     my $watchlist_shows = _trakt_request($c, 'GET', '/sync/watchlist/shows?extended=full');
@@ -433,23 +488,24 @@ sub _sync_user {
     _enrich_watchlist_rows($c, \@watchlist_show_rows, 'show');
     _enrich_watchlist_rows($c, \@watchlist_movie_rows, 'movie');
     my @watchlist_all_rows = (@watchlist_show_rows, @watchlist_movie_rows);
-    my %watch_show_ids = map { (($_->{show} || {})->{ids} || {})->{trakt} => 1 } @watchlist_show_rows;
-    delete $watch_show_ids{''};
-    my $start = $c->now->ymd;
-    my $calendar = _trakt_request($c, 'GET', "/calendars/my/shows/$start/130?extended=full");
-    my @upcoming = $calendar->{success}
-        ? grep { $watch_show_ids{(($_->{show} || {})->{ids} || {})->{trakt} || ''} } @{$calendar->{data} || []}
-        : ();
+    my @watch_show_ids = map { 0 + ((($_->{show} || {})->{ids} || {})->{trakt} || 0) } @watchlist_show_rows;
+    my ($calendar_ok, $upcoming, $calendar_error) = _watchlist_calendar($c, \@watch_show_ids);
+    unless ($calendar_ok) {
+        return (0, $calendar_error) unless $opts->{calendar_optional};
+        $c->app->log->warn("Trakt calendar refresh skipped during list sync: $calendar_error");
+        $upcoming = undef;
+    }
 
     eval {
         $c->db->replace_trakt_cache(
             $c->current_user_id,
             \@watchlist_show_rows,
             \@watchlist_all_rows,
-            \@upcoming,
+            $upcoming,
             $lists->{data} || [],
             \%items_by_list,
-            $watched
+            $watched,
+            $calendar_ok
         );
     };
     if ($@) {
@@ -1117,6 +1173,7 @@ sub register_routes {
     $r->{family}->get('/trakt/oauth')->to('trakt#oauth_callback');
     $r->{family}->post('/trakt/api/oauth/disconnect')->to('trakt#api_disconnect');
     $r->{family}->post('/trakt/api/sync')->to('trakt#api_sync');
+    $r->{family}->post('/trakt/api/upcoming/sync')->to('trakt#api_upcoming_sync');
     $r->{family}->get('/trakt/api/search')->to('trakt#api_search');
     $r->{family}->get('/trakt/api/shows/:id')->to('trakt#api_show_details');
     $r->{family}->post('/trakt/api/lists/create')->to('trakt#api_list_create');
