@@ -1,0 +1,394 @@
+/* Geography Quiz Container */
+.geography-container {
+    max-width: 1180px;
+}
+
+.geography-header h1 {
+    margin-bottom: 0.25rem;
+}
+
+.geography-subtitle {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.geo-view {
+    animation: geo-fade-in 0.18s ease-out;
+}
+
+.geo-hero {
+    display: grid;
+    gap: 1rem;
+    align-items: center;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.geo-hero h2,
+.geo-results-card h2 {
+    margin: 0 0 0.35rem;
+}
+
+.geo-hero p,
+.geo-result-message {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.geo-hero-flag {
+    font-size: clamp(2rem, 9vw, 4rem);
+    line-height: 1;
+    letter-spacing: -0.3rem;
+}
+
+.geo-overall-stats {
+    display: inline-flex;
+    justify-content: center;
+    padding: 0.7rem 1rem;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.16);
+    border: 1px solid rgba(59, 130, 246, 0.28);
+    font-weight: 800;
+}
+
+/* Mode Cards */
+.geo-mode-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+.geo-mode-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.1rem;
+}
+
+.geo-mode-card-top {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.9rem;
+    align-items: center;
+}
+
+.geo-mode-icon {
+    display: grid;
+    place-items: center;
+    width: 4.25rem;
+    height: 4.25rem;
+    border-radius: 1.25rem;
+    background: rgba(59, 130, 246, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 2.25rem;
+}
+
+.geo-mode-card h3 {
+    margin: 0;
+}
+
+.geo-mode-card p {
+    margin: 0.25rem 0 0;
+    color: var(--text-secondary);
+}
+
+.geo-mode-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    color: #bfdbfe;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.geo-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+/* Chip Buttons */
+.geo-chip {
+    min-height: 2.35rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.64);
+    color: #e5e7eb;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.geo-chip.active {
+    background: rgba(59, 130, 246, 0.35);
+    border-color: rgba(96, 165, 250, 0.65);
+    color: #ffffff;
+}
+
+.geo-mode-actions {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.geo-mode-actions .btn-primary {
+    width: 100%;
+    min-height: 2.8rem;
+}
+
+/* Quiz Top Bar */
+.geo-quiz-top {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.75rem 1rem;
+    align-items: center;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.geo-mode-label {
+    font-weight: 900;
+    color: #ffffff;
+}
+
+.geo-question-count {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.geo-score-pill {
+    padding: 0.5rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(16, 185, 129, 0.16);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #bbf7d0;
+    font-weight: 900;
+}
+
+.geo-progress-track {
+    grid-column: 1 / -1;
+    height: 0.55rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.9);
+}
+
+.geo-progress-fill {
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #3b82f6, #10b981);
+    transition: width 0.25s ease;
+}
+
+/* Question Prompt */
+.geo-prompt-card {
+    padding: 1.4rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.geo-prompt-kicker {
+    margin-bottom: 0.5rem;
+    color: #93c5fd;
+    font-size: 0.85rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.geo-prompt-flag {
+    min-height: 1rem;
+    margin-bottom: 0.6rem;
+    font-size: clamp(4rem, 22vw, 8rem);
+    line-height: 1;
+}
+
+.geo-prompt-card h2 {
+    margin: 0;
+    font-size: clamp(1.6rem, 8vw, 3.1rem);
+    line-height: 1.08;
+}
+
+/* Answer Area */
+.geo-answer-area {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.geo-answer-grid {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.geo-answer-card {
+    width: 100%;
+    min-height: 4rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    background: rgba(30, 41, 59, 0.72);
+    color: #ffffff;
+    font: inherit;
+    font-size: 1.08rem;
+    font-weight: 800;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.geo-answer-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(96, 165, 250, 0.55);
+}
+
+.geo-answer-card.correct {
+    background: rgba(16, 185, 129, 0.26);
+    border-color: rgba(16, 185, 129, 0.75);
+}
+
+.geo-answer-card.incorrect {
+    background: rgba(239, 68, 68, 0.22);
+    border-color: rgba(239, 68, 68, 0.7);
+}
+
+.geo-answer-card:disabled {
+    cursor: default;
+    transform: none;
+}
+
+.geo-flag-option {
+    min-height: 6.2rem;
+    text-align: center;
+    font-size: clamp(3rem, 15vw, 5rem);
+    line-height: 1;
+}
+
+/* Typed Answer Input */
+.geo-typed-card {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.geo-typed-card .game-input {
+    min-height: 3.3rem;
+    font-size: 1.1rem;
+}
+
+/* Feedback */
+.geo-feedback {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-left: 4px solid #3b82f6;
+}
+
+.geo-feedback.correct {
+    border-left-color: #10b981;
+}
+
+.geo-feedback.incorrect {
+    border-left-color: #ef4444;
+}
+
+.geo-feedback-title {
+    margin: 0 0 0.25rem;
+    font-weight: 900;
+}
+
+.geo-feedback-detail {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+/* Quiz Controls */
+.geo-controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+.geo-controls .btn-primary {
+    min-width: 8rem;
+}
+
+/* Results View */
+.geo-results-card {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 1.25rem;
+    text-align: center;
+}
+
+.geo-results-icon {
+    font-size: 3rem;
+}
+
+.geo-final-score {
+    margin: 0.75rem auto;
+    font-size: clamp(2.8rem, 15vw, 5rem);
+    font-weight: 900;
+    color: #ffffff;
+}
+
+.geo-missed-list {
+    display: grid;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    text-align: left;
+}
+
+.geo-missed-item {
+    padding: 0.75rem;
+    border-radius: 0.8rem;
+    background: rgba(15, 23, 42, 0.7);
+    color: #e5e7eb;
+}
+
+.geo-result-actions {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.geo-result-actions button {
+    width: 100%;
+    min-height: 2.8rem;
+}
+
+/* Tablet+ Layout */
+@media (min-width: 720px) {
+/* Hero / Start View */
+.geo-hero {
+        grid-template-columns: auto 1fr auto;
+    }
+
+    .geo-mode-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .geo-answer-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .geo-result-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Desktop Layout */
+@media (min-width: 1040px) {
+    .geo-mode-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* Animations */
+@keyframes geo-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
