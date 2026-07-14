@@ -200,16 +200,7 @@ sub DB::calculate_fuel_economy {
         economy_litres => undef
     } if $distance <= 0;
 
-    my $totals = $self->{dbh}->selectrow_hashref(
-        "SELECT COALESCE(SUM(litres), 0) AS litres, COALESCE(SUM(total_amount), 0) AS total_amount
-         FROM fuel_logs
-         WHERE vehicle_id = ? AND deleted_at IS NULL
-           AND odometer IS NOT NULL AND odometer > ? AND odometer <= ?",
-        undef,
-        $vehicle_id,
-        $prev->{odometer},
-        $current_odometer
-    ) || {};
+    my $totals = _fuel_interval_totals($self, $vehicle_id, $prev->{odometer}, $current_odometer);
 
     my $litres = $totals->{litres} || 0;
     my $amount = $totals->{total_amount} || 0;
@@ -220,6 +211,74 @@ sub DB::calculate_fuel_economy {
         cost_per_km => $amount > 0 ? sprintf('%.3f', ($amount / $distance)) : undef,
         economy_litres => $litres > 0 ? sprintf('%.2f', $litres) : undef
     };
+}
+
+# Calculates all-history economy across completed full-fill intervals.
+# Returns: HashRef with nullable rolling efficiency values.
+sub DB::calculate_rolling_fuel_economy {
+    my ($self, $vehicle_id) = @_;
+    $self->ensure_connection;
+
+    my $sql = "SELECT vehicle_id, odometer
+               FROM fuel_logs
+               WHERE deleted_at IS NULL AND fill_type = 'full' AND odometer IS NOT NULL";
+    my @params;
+    if ($vehicle_id && $vehicle_id =~ /^\d+$/) {
+        $sql .= " AND vehicle_id = ?";
+        push @params, $vehicle_id;
+    }
+    $sql .= " ORDER BY vehicle_id ASC, odometer ASC, id ASC";
+
+    my $fills = $self->{dbh}->selectall_arrayref($sql, { Slice => {} }, @params) || [];
+    my %previous_by_vehicle;
+    my ($total_distance, $total_litres, $total_amount, $interval_count) = (0, 0, 0, 0);
+
+    foreach my $fill (@$fills) {
+        my $vehicle = $fill->{vehicle_id};
+        my $previous = $previous_by_vehicle{$vehicle};
+        if ($previous && $previous->{odometer}) {
+            my $distance = int($fill->{odometer}) - int($previous->{odometer});
+            if ($distance > 0) {
+                my $totals = _fuel_interval_totals($self, $vehicle, $previous->{odometer}, $fill->{odometer});
+                my $litres = $totals->{litres} || 0;
+                my $amount = $totals->{total_amount} || 0;
+                if ($litres > 0) {
+                    $total_distance += $distance;
+                    $total_litres += $litres;
+                    $total_amount += $amount;
+                    $interval_count++;
+                }
+            }
+        }
+        $previous_by_vehicle{$vehicle} = $fill;
+    }
+
+    return {
+        rolling_distance_km => $total_distance || undef,
+        rolling_interval_count => $interval_count,
+        rolling_l_per_100km => ($total_distance > 0 && $total_litres > 0)
+            ? sprintf('%.2f', ($total_litres / $total_distance) * 100)
+            : undef,
+        rolling_cost_per_km => ($total_distance > 0 && $total_amount > 0)
+            ? sprintf('%.3f', $total_amount / $total_distance)
+            : undef
+    };
+}
+
+# Calculates fuel totals within an odometer interval for economy queries.
+# Returns: HashRef with litres and total_amount keys.
+sub _fuel_interval_totals {
+    my ($self, $vehicle_id, $previous_odometer, $current_odometer) = @_;
+    return $self->{dbh}->selectrow_hashref(
+        "SELECT COALESCE(SUM(litres), 0) AS litres, COALESCE(SUM(total_amount), 0) AS total_amount
+         FROM fuel_logs
+         WHERE vehicle_id = ? AND deleted_at IS NULL
+           AND odometer IS NOT NULL AND odometer > ? AND odometer <= ?",
+        undef,
+        $vehicle_id,
+        $previous_odometer,
+        $current_odometer
+    ) || {};
 }
 
 # Updates extracted or manually entered fuel log metadata.
@@ -369,6 +428,12 @@ sub DB::get_fuel_summary {
         $summary->{current_cost_per_km} = $economy->{cost_per_km};
         $summary->{current_distance_km} = $economy->{distance_km};
     }
+
+    my $rolling = $self->calculate_rolling_fuel_economy($vehicle_id);
+    $summary->{rolling_l_per_100km} = $rolling->{rolling_l_per_100km};
+    $summary->{rolling_cost_per_km} = $rolling->{rolling_cost_per_km};
+    $summary->{rolling_distance_km} = $rolling->{rolling_distance_km};
+    $summary->{rolling_interval_count} = $rolling->{rolling_interval_count};
 
     return $summary;
 }
