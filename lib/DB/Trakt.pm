@@ -196,7 +196,7 @@ sub DB::get_trakt_upcoming {
     my $sth = $self->{dbh}->prepare(
         q{SELECT id, show_trakt_id, episode_trakt_id, title, show_title, season, episode, first_aired, network, raw_json
           FROM trakt_upcoming
-          WHERE user_id = ?
+          WHERE user_id = ? AND first_aired > UTC_TIMESTAMP()
           ORDER BY first_aired ASC, show_title ASC
           LIMIT 500}
     );
