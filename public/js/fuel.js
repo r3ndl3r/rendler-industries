@@ -166,12 +166,18 @@ function renderSummary() {
     const priceSub = Number(summary.previous_month_price || 0) > 0
         ? `${priceDelta >= 0 ? '+' : ''}$${priceDelta.toFixed(3)} vs last month`
         : 'No previous month';
+    const rollingIntervals = Number(summary.rolling_interval_count || 0);
+    const rollingDistance = Number(summary.rolling_distance_km || 0);
+    const intervalLabel = rollingIntervals === 1 ? 'interval' : 'intervals';
+    const rollingSub = rollingIntervals > 0
+        ? `${formatOptional(summary.rolling_cost_per_km, ' $/km')} | ${rollingIntervals} ${intervalLabel} over ${rollingDistance.toLocaleString()} km`
+        : 'Need two full fills';
 
     container.innerHTML = `
         <div class="fuel-stat-tile">
-            <span class="fuel-stat-label">Current Efficiency</span>
-            <span class="fuel-stat-value">${formatOptional(summary.current_l_per_100km, ' L/100km')}</span>
-            <span class="fuel-stat-sub">${formatOptional(summary.current_cost_per_km, ' $/km')}</span>
+            <span class="fuel-stat-label">Rolling Efficiency</span>
+            <span class="fuel-stat-value">${formatOptional(summary.rolling_l_per_100km, ' L/100km')}</span>
+            <span class="fuel-stat-sub">${escapeHtml(rollingSub)}</span>
         </div>
         <div class="fuel-stat-tile">
             <span class="fuel-stat-label">Monthly Spend</span>
