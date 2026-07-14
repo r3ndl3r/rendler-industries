@@ -25,7 +25,11 @@ sub DB::get_trakt_connection {
     $self->ensure_connection;
 
     my $sth = $self->{dbh}->prepare(
-        "SELECT * FROM trakt_connections WHERE user_id = ? LIMIT 1"
+        q{SELECT trakt_connections.*,
+                 GREATEST(TIMESTAMPDIFF(SECOND, last_synced_at, NOW()), 0) AS last_synced_age_seconds
+          FROM trakt_connections
+          WHERE user_id = ?
+          LIMIT 1}
     );
     $sth->execute($user_id);
     return $sth->fetchrow_hashref || undef;
@@ -100,8 +104,8 @@ sub DB::clear_trakt_user_cache {
         $dbh->do("DELETE FROM trakt_list_items WHERE user_id = ?", undef, $user_id);
         $dbh->do("DELETE FROM trakt_lists WHERE user_id = ?", undef, $user_id);
         $dbh->do("DELETE FROM trakt_unwatched_cache WHERE user_id = ?", undef, $user_id);
-        $dbh->do("DELETE FROM trakt_upcoming WHERE user_id = ?", undef, $user_id);
         $dbh->do("DELETE FROM trakt_watchlist_items WHERE user_id = ?", undef, $user_id);
+        $dbh->do("DELETE FROM trakt_upcoming WHERE user_id = ?", undef, $user_id);
         $dbh->commit;
     };
     if ($@) {
@@ -144,7 +148,8 @@ sub DB::get_trakt_public_connection {
         connected      => 1,
         trakt_username => $conn->{trakt_username} || '',
         expires_at     => $conn->{expires_at},
-        last_synced_at => $conn->{last_synced_at}
+        last_synced_at => $conn->{last_synced_at},
+        last_synced_age_seconds => $conn->{last_synced_age_seconds}
     };
 }
 
@@ -194,14 +199,54 @@ sub DB::get_trakt_upcoming {
     $self->ensure_connection;
 
     my $sth = $self->{dbh}->prepare(
-        q{SELECT id, show_trakt_id, episode_trakt_id, title, show_title, season, episode, first_aired, network, raw_json
-          FROM trakt_upcoming
-          WHERE user_id = ? AND first_aired > UTC_TIMESTAMP()
-          ORDER BY first_aired ASC, show_title ASC
+        q{SELECT u.id, u.show_trakt_id, u.episode_trakt_id, u.title, u.show_title, u.season, u.episode, u.first_aired, u.network, u.raw_json
+          FROM trakt_upcoming u
+          INNER JOIN trakt_watchlist_items w
+                  ON w.user_id = u.user_id AND w.show_trakt_id = u.show_trakt_id
+          WHERE u.user_id = ? AND u.first_aired > UTC_TIMESTAMP()
+          ORDER BY u.first_aired ASC, u.show_title ASC
           LIMIT 500}
     );
     $sth->execute($user_id);
     return $sth->fetchall_arrayref({});
+}
+
+# Replaces only the cached Trakt calendar rows for a user.
+# Parameters:
+#   $self     : DB instance
+#   $user_id  : User ID
+#   $upcoming : Arrayref of Trakt calendar rows
+# Returns:
+#   1 on success, 0 on invalid input
+sub DB::replace_trakt_upcoming_cache {
+    my ($self, $user_id, $upcoming) = @_;
+    $self->ensure_connection;
+    return 0 unless ref $upcoming eq 'ARRAY';
+
+    my $dbh = $self->{dbh};
+    local $dbh->{AutoCommit} = 0;
+    eval {
+        my $watchlist_ids = $dbh->selectcol_arrayref(
+            "SELECT show_trakt_id FROM trakt_watchlist_items WHERE user_id = ? FOR UPDATE",
+            undef,
+            $user_id
+        );
+        my %watchlist_ids = map { (0 + $_) => 1 } @{$watchlist_ids || []};
+        my @current = grep {
+            ref $_ eq 'HASH'
+                && $watchlist_ids{0 + ((($_->{show} || {})->{ids} || {})->{trakt} || 0)}
+        } @$upcoming;
+
+        $dbh->do("DELETE FROM trakt_upcoming WHERE user_id = ?", undef, $user_id);
+        _insert_upcoming($dbh, $user_id, \@current);
+        $dbh->commit;
+    };
+    if ($@) {
+        my $err = $@;
+        eval { $dbh->rollback };
+        die $err;
+    }
+    return 1;
 }
 
 # Full cache replacement: purges old watchlist/upcoming/data, inserts fresh data from the Trakt API.
@@ -211,22 +256,26 @@ sub DB::get_trakt_upcoming {
 #   $user_id : User ID
 #   $watchlist_shows : Shows for the watchlist summary
 #   $watchlist_all  : All watchlist items (including non-show)
-#   $upcoming       : Upcoming episode data
+#   $upcoming       : Upcoming episode data, or undef to preserve existing rows
 #   $lists          : User list definitions
 #   $items_by_list  : Items grouped by list trakt_id
 #   $watched        : Watched status hashref
+#   $mark_synced    : Whether to advance the full-sync timestamp (defaults true)
 sub DB::replace_trakt_cache {
-    my ($self, $user_id, $watchlist_shows, $watchlist_all, $upcoming, $lists, $items_by_list, $watched) = @_;
+    my ($self, $user_id, $watchlist_shows, $watchlist_all, $upcoming, $lists, $items_by_list, $watched, $mark_synced) = @_;
     $self->ensure_connection;
+    $mark_synced = 1 unless defined $mark_synced;
 
     my $dbh = $self->{dbh};
     local $dbh->{AutoCommit} = 0;
     eval {
         $dbh->do("DELETE FROM trakt_watchlist_items WHERE user_id = ?", undef, $user_id);
-        $dbh->do("DELETE FROM trakt_upcoming WHERE user_id = ?", undef, $user_id);
+        $dbh->do("DELETE FROM trakt_upcoming WHERE user_id = ?", undef, $user_id)
+            if defined $upcoming;
 
         _insert_watchlist($dbh, $user_id, $watchlist_shows || []);
-        _insert_upcoming($dbh, $user_id, $upcoming || []);
+        _insert_upcoming($dbh, $user_id, $upcoming || [])
+            if defined $upcoming;
 
         my %seen_lists;
         my $watchlist_id = _upsert_list($dbh, $user_id, {
@@ -262,7 +311,9 @@ sub DB::replace_trakt_cache {
             $dbh->do("DELETE FROM trakt_lists WHERE user_id = ?", undef, $user_id);
         }
 
-        my $sth = $dbh->prepare("UPDATE trakt_connections SET last_synced_at = NOW(), updated_at = NOW() WHERE user_id = ?");
+        my $sth = $dbh->prepare($mark_synced
+            ? "UPDATE trakt_connections SET last_synced_at = NOW(), updated_at = NOW() WHERE user_id = ?"
+            : "UPDATE trakt_connections SET updated_at = NOW() WHERE user_id = ?");
         $sth->execute($user_id);
         $dbh->commit;
     };
