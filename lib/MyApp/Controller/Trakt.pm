@@ -2,7 +2,8 @@
 
 package MyApp::Controller::Trakt;
 use Mojo::Base 'Mojolicious::Controller';
-use Mojo::JSON qw(decode_json from_json);
+use Mojo::JSON qw(decode_json encode_json from_json);
+use Mojo::Promise;
 use Mojo::Util qw(trim url_escape);
 
 # Controller for Trakt OAuth integration and media management.
@@ -20,6 +21,8 @@ use Mojo::Util qw(trim url_escape);
 
 my $TRAKT_API  = 'https://api.trakt.tv';
 my $TRAKT_AUTH = 'https://trakt.tv/oauth/authorize';
+my $WATCHLIST_NAME = 'Watchlist';
+my $UNWATCHED_CACHE_GENERATION = 0;
 
 # Renders the Trakt dashboard skeleton.
 # Route: GET /trakt
@@ -30,16 +33,14 @@ sub index {
     $c->render('trakt');
 }
 
-# Returns the full Trakt dashboard state for the current user.
+# Returns cached dashboard state; unwatched rebuilding uses its dedicated endpoint.
 # Route: GET /trakt/api/state
-# Returns: JSON { success, configured, connection, lists, upcoming, unwatched }
+# Returns: JSON { success, configured, connection, lists, upcoming, unwatched, unwatched_stale? }
 sub api_state {
     my $c = shift;
     return _unauthorized($c) unless _authorized($c);
 
-    my $opts = {};
-    $opts->{skip_unwatched} = 1 if $c->param('skip_unwatched');
-    my $state = eval { _dashboard_state($c, $opts) };
+    my $state = eval { _dashboard_state($c) };
     if ($@) {
         $c->app->log->error("Trakt state failed: $@");
         return $c->render(json => { success => 0, error => 'Trakt tables are not ready' });
@@ -48,6 +49,104 @@ sub api_state {
     $state->{success} = 1;
     $state->{configured} = _trakt_configured($c) ? 1 : 0;
     return $c->render(json => $state);
+}
+
+# Returns cached unwatched data or rebuilds it with bounded concurrent Trakt requests.
+# Route: GET /trakt/api/unwatched
+# Returns: JSON { success, unwatched, unwatched_counts, stale?, outdated? }
+sub api_unwatched {
+    my $c = shift;
+    return _unauthorized($c) unless _authorized($c);
+
+    my $refresh = _prepare_unwatched_refresh($c);
+    return _json_error($c, $refresh->{error}) if $refresh->{error};
+    return $c->render(json => _unwatched_payload($refresh->{cached}))
+        if ref $refresh->{cached} eq 'ARRAY';
+    my $cache_marker = $refresh->{marker};
+    my $stale = $refresh->{stale};
+
+    my $token = _ensure_token($c);
+    unless ($token) {
+        my $conn = $c->db->get_trakt_connection($c->current_user_id);
+        my $error = $conn && ($conn->{status} || '') eq 'connected'
+            ? 'Unable to refresh the Trakt session; try again'
+            : 'Connect Trakt first';
+        return _json_error($c, $error);
+    }
+
+    my $lists = $c->db->get_trakt_lists($c->current_user_id);
+    my ($watchlist) = grep { $_->{is_watchlist} } @$lists;
+    my $watchlist_media = _watchlist_media_lookup($watchlist);
+    my @show_ids = sort { $a <=> $b } keys %{$watchlist_media->{show} || {}};
+    unless (@show_ids) {
+        my $stored = $c->db->compare_and_set_trakt_unwatched_cache(
+            $c->current_user_id,
+            $cache_marker,
+            [],
+        );
+        my $payload = _unwatched_payload([]);
+        $payload->{outdated} = 1 unless $stored;
+        return $c->render(json => $payload);
+    }
+
+    my $creds = $c->db->get_trakt_app_credentials();
+    my $headers = {
+        'Content-Type'      => 'application/json',
+        'trakt-api-version' => '2',
+        'trakt-api-key'     => $creds->{client_id} || '',
+        Authorization       => "Bearer $token",
+    };
+
+    $c->render_later;
+    Mojo::Promise->map({concurrency => 4}, sub {
+        my ($show_id) = @_;
+        my $seasons = _trakt_get_p($c, '/shows/' . $show_id . '/seasons?extended=full,episodes', $headers);
+        my $progress = _trakt_get_p($c, '/shows/' . $show_id . '/progress/watched?hidden=false&specials=false&count_specials=false', $headers);
+        return Mojo::Promise->all($seasons, $progress)->then(sub {
+            my ($season_result, $progress_result) = @_;
+            my $show = ($watchlist_media->{show} || {})->{$show_id} || {};
+            return _unwatched_items_for_show(
+                $c,
+                $show_id,
+                $show,
+                $season_result->[0] || [],
+                $progress_result->[0] || {},
+            );
+        });
+    }, @show_ids)->then(sub {
+        my @items;
+        for my $result (@_) {
+            push @items, @{$result->[0] || []};
+        }
+        @items = sort { ($b->{first_aired} || '') cmp ($a->{first_aired} || '') } @items;
+        my $stored = $c->db->compare_and_set_trakt_unwatched_cache(
+            $c->current_user_id,
+            $cache_marker,
+            \@items,
+        );
+        my $payload = _unwatched_payload(\@items);
+        $payload->{outdated} = 1 unless $stored;
+        $c->render(json => $payload);
+    })->catch(sub {
+        my ($error) = @_;
+        $c->app->log->warn("Trakt concurrent unwatched refresh failed: $error");
+        my $current_raw = eval {
+            $c->db->get_trakt_unwatched_cache($c->current_user_id, 1);
+        };
+        if (!$@ && (!defined $current_raw || $current_raw ne $cache_marker)) {
+            my $payload = _unwatched_payload($stale || []);
+            $payload->{outdated} = 1;
+            return $c->render(json => $payload);
+        }
+        if ($stale) {
+            my $payload = _unwatched_payload($stale);
+            $payload->{stale} = 1;
+            return $c->render(json => $payload);
+        }
+        return _json_error($c, 'Unable to refresh unwatched episodes');
+    });
+
+    return undef;
 }
 
 # Initiates the Trakt OAuth flow, redirecting the user to Trakt for authorization.
@@ -123,7 +222,6 @@ sub oauth_callback {
 sub api_disconnect {
     my $c = shift;
     return _unauthorized($c) unless _authorized($c);
-    $c->db->delete_trakt_unwatched_cache($c->current_user_id);
     $c->db->disconnect_trakt_connection($c->current_user_id);
     $c->db->clear_trakt_user_cache($c->current_user_id);
     return $c->render(json => { success => 1, message => 'Trakt disconnected' });
@@ -137,7 +235,7 @@ sub api_sync {
     return _unauthorized($c) unless _authorized($c);
     my ($ok, $error) = _sync_user($c);
     return $c->render(json => { success => 0, error => $error }) unless $ok;
-    return $c->render(json => { success => 1, state => _dashboard_state($c, { skip_unwatched => 1 }) });
+    return $c->render(json => { success => 1, state => _dashboard_state($c) });
 }
 
 # Refreshes only the cached watchlist calendar without rebuilding lists or watched state.
@@ -149,7 +247,7 @@ sub api_upcoming_sync {
     return _json_error($c, 'Connect Trakt first') unless _ensure_token($c);
 
     my $lists = $c->db->get_trakt_lists($c->current_user_id);
-    my ($watchlist) = grep { ($_->{trakt_list_id} || 0) == 0 } @$lists;
+    my ($watchlist) = grep { $_->{is_watchlist} } @$lists;
     my @show_ids = map { 0 + ($_->{trakt_id} || 0) }
         grep { ($_->{media_type} || '') eq 'show' && ($_->{trakt_id} || 0) }
         @{($watchlist || {})->{items} || []};
@@ -240,6 +338,10 @@ sub api_list_create {
 
     my $name = trim($c->param('name') // '');
     return _json_error($c, 'List name is required') unless $name;
+    return _json_error($c, 'Watchlist is reserved for the application Watchlist')
+        if lc($name) eq lc($WATCHLIST_NAME);
+    return _json_error($c, 'Unable to prepare the Trakt list update')
+        unless _begin_cache_mutation($c);
 
     my $res = _trakt_request($c, 'POST', '/users/me/lists', {
         name => $name,
@@ -250,7 +352,7 @@ sub api_list_create {
 
     my ($synced, $sync_error) = _sync_user($c, { calendar_optional => 1 });
     return _json_error($c, $sync_error || 'Unable to sync Trakt') unless $synced;
-    return $c->render(json => { success => 1, state => _dashboard_state($c, { skip_unwatched => 1 }) });
+    return $c->render(json => { success => 1, state => _dashboard_state($c) });
 }
 
 # Updates a custom Trakt list name and description.
@@ -264,10 +366,14 @@ sub api_list_update {
 
     my $list = $c->db->get_trakt_list_for_owner($c->current_user_id, $c->param('id'));
     return _json_error($c, 'List not found') unless $list;
-    return _json_error($c, 'Watchlist name cannot be changed') unless ($list->{trakt_list_id} || 0) != 0;
+    return _json_error($c, 'Watchlist name cannot be changed') if $list->{is_watchlist};
 
     my $name = trim($c->param('name') // $list->{name});
     return _json_error($c, 'List name is required') unless $name;
+    return _json_error($c, 'Watchlist is reserved for the application Watchlist')
+        if lc($name) eq lc($WATCHLIST_NAME);
+    return _json_error($c, 'Unable to prepare the Trakt list update')
+        unless _begin_cache_mutation($c);
 
     my $res = _trakt_request($c, 'PUT', '/users/me/lists/' . $list->{trakt_list_id}, {
         name => $name,
@@ -278,7 +384,7 @@ sub api_list_update {
 
     my ($synced, $sync_error) = _sync_user($c, { calendar_optional => 1 });
     return _json_error($c, $sync_error || 'Unable to sync Trakt') unless $synced;
-    return $c->render(json => { success => 1, state => _dashboard_state($c, { skip_unwatched => 1 }) });
+    return $c->render(json => { success => 1, state => _dashboard_state($c) });
 }
 
 # Deletes a custom Trakt list (watchlist cannot be deleted).
@@ -292,20 +398,22 @@ sub api_list_delete {
 
     my $list = $c->db->get_trakt_list_for_owner($c->current_user_id, $c->param('id'));
     return _json_error($c, 'List not found') unless $list;
-    return _json_error($c, 'Watchlist cannot be deleted') unless ($list->{trakt_list_id} || 0) != 0;
+    return _json_error($c, 'Watchlist cannot be deleted') if $list->{is_watchlist};
+    return _json_error($c, 'Unable to prepare the Trakt list update')
+        unless _begin_cache_mutation($c);
 
     my $res = _trakt_request($c, 'DELETE', '/users/me/lists/' . $list->{trakt_list_id});
     return _json_error($c, $res->{error}) unless $res->{success};
 
     my ($synced, $sync_error) = _sync_user($c, { calendar_optional => 1 });
     return _json_error($c, $sync_error || 'Unable to sync Trakt') unless $synced;
-    return $c->render(json => { success => 1, state => _dashboard_state($c, { skip_unwatched => 1 }) });
+    return $c->render(json => { success => 1, state => _dashboard_state($c) });
 }
 
 # Toggles the collapsed state of a list section for the current user.
 # Route: POST /trakt/api/lists/:id/collapse
 # Parameters: id (list DB id), collapsed (0 or 1)
-# Returns: JSON { success, state }
+# Returns: JSON { success }
 sub api_list_collapse {
     my $c = shift;
     return _unauthorized($c) unless _authorized($c);
@@ -315,7 +423,7 @@ sub api_list_collapse {
     my $ok = $c->db->set_trakt_list_collapsed($c->current_user_id, $list_id, $collapsed);
     return _json_error($c, 'List not found') unless $ok;
 
-    return $c->render(json => { success => 1, state => _dashboard_state($c, { skip_unwatched => 1 }) });
+    return $c->render(json => { success => 1 });
 }
 
 # Adds items to a Trakt list from search results.
@@ -334,16 +442,24 @@ sub api_list_items_add {
     my $payload = _sync_payload_from_items($items);
     return _json_error($c, 'Select at least one item') unless $payload;
 
-    my $path = ($list->{trakt_list_id} || 0) == 0
-        ? '/sync/watchlist'
-        : '/users/me/lists/' . $list->{trakt_list_id} . '/items';
-    my $res = _trakt_request($c, 'POST', $path, $payload);
+    my $res = _trakt_request(
+        $c,
+        'POST',
+        '/users/me/lists/' . $list->{trakt_list_id} . '/items',
+        $payload,
+    );
     return _json_error($c, $res->{error}) unless $res->{success};
+
+    if ($list->{is_watchlist}) {
+        my $mirror = _trakt_request($c, 'POST', '/sync/watchlist', $payload);
+        $c->app->log->warn("Trakt Watchlist calendar mirror add failed: $mirror->{error}")
+            unless $mirror->{success};
+    }
 
     eval { $c->db->add_trakt_cached_list_items($c->current_user_id, $list, $items) };
     return _json_error($c, 'Unable to update Trakt cache') if $@;
-    $c->db->delete_trakt_unwatched_cache($c->current_user_id) if ($list->{trakt_list_id} || 0) == 0;
-    return $c->render(json => { success => 1, state => _dashboard_state($c, { skip_unwatched => 1 }) });
+    _invalidate_unwatched_cache($c) if $list->{is_watchlist};
+    return $c->render(json => { success => 1, state => _dashboard_state($c) });
 }
 
 # Removes items from a Trakt list.
@@ -362,21 +478,29 @@ sub api_list_items_remove {
     my $payload = _sync_payload_from_items($items);
     return _json_error($c, 'Select at least one item') unless $payload;
 
-    my $path = ($list->{trakt_list_id} || 0) == 0
-        ? '/sync/watchlist/remove'
-        : '/users/me/lists/' . $list->{trakt_list_id} . '/items/remove';
-    my $res = _trakt_request($c, 'POST', $path, $payload);
+    my $res = _trakt_request(
+        $c,
+        'POST',
+        '/users/me/lists/' . $list->{trakt_list_id} . '/items/remove',
+        $payload,
+    );
     return _json_error($c, $res->{error}) unless $res->{success};
+
+    if ($list->{is_watchlist}) {
+        my $mirror = _trakt_request($c, 'POST', '/sync/watchlist/remove', $payload);
+        $c->app->log->warn("Trakt Watchlist calendar mirror remove failed: $mirror->{error}")
+            unless $mirror->{success};
+    }
 
     eval { $c->db->remove_trakt_cached_list_items($c->current_user_id, $list, $items) };
     return _json_error($c, 'Unable to update Trakt cache') if $@;
-    $c->db->delete_trakt_unwatched_cache($c->current_user_id) if ($list->{trakt_list_id} || 0) == 0;
-    return $c->render(json => { success => 1, state => _dashboard_state($c, { skip_unwatched => 1 }) });
+    _invalidate_unwatched_cache($c) if $list->{is_watchlist};
+    return $c->render(json => { success => 1, state => _dashboard_state($c) });
 }
 
 # Marks items as watched in Trakt history.
 # Route: POST /trakt/api/history/add
-# Parameters: items (JSON array of {media_type, trakt_id}), watchlist_show_ids (JSON array of show trakt_ids)
+# Parameters: items (JSON array of {media_type, trakt_id})
 # Returns: JSON { success, message, state }
 sub api_history_add {
     my $c = shift;
@@ -385,24 +509,24 @@ sub api_history_add {
 
     my $items = _items_from_param($c);
     my $payload = _sync_payload_from_items($items);
-    my $watchlist_shows = _watchlist_show_ids_from_param($c);
     return _json_error($c, 'Select at least one item') unless $payload;
 
     my $res = _trakt_request($c, 'POST', '/sync/history', $payload);
     return _json_error($c, $res->{error}) unless $res->{success};
     my ($accepted, $accept_error) = _history_response_accepted($res->{data}, $payload, 'add');
     return _json_error($c, $accept_error) unless $accepted;
-    my $preserve = _preserve_watchlist_shows($c, $watchlist_shows);
-    return _json_error($c, $preserve->{error}) unless $preserve->{success};
     eval { $c->db->set_trakt_cached_items_watched($c->current_user_id, $items, 1) };
     return _json_error($c, 'Unable to update Trakt cache') if $@;
-    $c->db->delete_trakt_unwatched_cache($c->current_user_id);
-    return $c->render(json => { success => 1, message => 'Marked watched', state => _dashboard_state($c, { skip_unwatched => 1 }) });
+    _invalidate_unwatched_cache($c);
+    my $mirror = _mirror_cached_watchlist($c);
+    $c->app->log->warn("Trakt Watchlist calendar mirror after history add failed: $mirror->{error}")
+        unless $mirror->{success};
+    return $c->render(json => { success => 1, message => 'Marked watched', state => _dashboard_state($c) });
 }
 
 # Marks items as unwatched in Trakt history.
 # Route: POST /trakt/api/history/remove
-# Parameters: items (JSON array of {media_type, trakt_id}), watchlist_show_ids (JSON array of show trakt_ids)
+# Parameters: items (JSON array of {media_type, trakt_id})
 # Returns: JSON { success, message, state }
 sub api_history_remove {
     my $c = shift;
@@ -411,19 +535,136 @@ sub api_history_remove {
 
     my $items = _items_from_param($c);
     my $payload = _sync_payload_from_items($items);
-    my $watchlist_shows = _watchlist_show_ids_from_param($c);
     return _json_error($c, 'Select at least one item') unless $payload;
 
     my $res = _trakt_request($c, 'POST', '/sync/history/remove', $payload);
     return _json_error($c, $res->{error}) unless $res->{success};
     my ($accepted, $accept_error) = _history_response_accepted($res->{data}, $payload, 'remove');
     return _json_error($c, $accept_error) unless $accepted;
-    my $preserve = _preserve_watchlist_shows($c, $watchlist_shows);
-    return _json_error($c, $preserve->{error}) unless $preserve->{success};
     eval { $c->db->set_trakt_cached_items_watched($c->current_user_id, $items, 0) };
     return _json_error($c, 'Unable to update Trakt cache') if $@;
-    $c->db->delete_trakt_unwatched_cache($c->current_user_id);
-    return $c->render(json => { success => 1, message => 'Marked unwatched', state => _dashboard_state($c, { skip_unwatched => 1 }) });
+    _invalidate_unwatched_cache($c);
+    my $mirror = _mirror_cached_watchlist($c);
+    $c->app->log->warn("Trakt Watchlist calendar mirror after history remove failed: $mirror->{error}")
+        unless $mirror->{success};
+    return $c->render(json => { success => 1, message => 'Marked unwatched', state => _dashboard_state($c) });
+}
+
+# Advances the local mutation revision before a remote list operation and full sync.
+# Parameters:
+#   $c : Mojolicious controller
+# Returns:
+#   True when the revision was advanced
+sub _begin_cache_mutation {
+    my ($c) = @_;
+    my $ok = eval {
+        $c->db->bump_trakt_cache_revision($c->current_user_id);
+        1;
+    };
+    $c->app->log->error("Unable to advance Trakt cache revision: $@") if !$ok && $@;
+    return $ok ? 1 : 0;
+}
+
+# Re-registers the authoritative cached Watchlist with Trakt's calendar source.
+# Parameters:
+#   $c : Mojolicious controller
+# Returns:
+#   Trakt request result hashref
+sub _mirror_cached_watchlist {
+    my ($c) = @_;
+
+    my $lists = eval { $c->db->get_trakt_lists($c->current_user_id) };
+    return { success => 0, error => 'Unable to read the application Watchlist' }
+        if $@ || ref $lists ne 'ARRAY';
+
+    my ($watchlist) = grep { $_->{is_watchlist} } @$lists;
+    return { success => 0, error => 'The application Watchlist is unavailable' }
+        unless $watchlist;
+
+    my @items = grep {
+        ($_->{media_type} || '') eq 'show' || ($_->{media_type} || '') eq 'movie'
+    } @{$watchlist->{items} || []};
+    my $payload = _sync_payload_from_items(\@items);
+    return { success => 1 } unless $payload;
+    return _trakt_request($c, 'POST', '/sync/watchlist', $payload);
+}
+
+# Resolves or provisions the authoritative custom Watchlist for a connected user.
+# Parameters:
+#   $c     : Mojolicious controller
+#   $lists : Arrayref of Trakt personal-list rows
+# Returns:
+#   (watchlist row, needs initial built-in import, error)
+sub _resolve_watchlist_list {
+    my ($c, $lists) = @_;
+    $lists = [] unless ref $lists eq 'ARRAY';
+
+    my $conn = $c->db->get_trakt_connection($c->current_user_id) || {};
+    my $stored_id = 0 + ($conn->{watchlist_trakt_list_id} || 0);
+    if ($stored_id) {
+        my ($watchlist) = grep {
+            ref $_ eq 'HASH' && 0 + ((($_->{ids} || {})->{trakt}) || 0) == $stored_id
+        } @$lists;
+        return ($watchlist, 0, undef) if $watchlist;
+        return (undef, 0, 'The application Watchlist no longer exists on Trakt');
+    }
+
+    my @matches = grep {
+        ref $_ eq 'HASH' && lc(trim($_->{name} // '')) eq lc($WATCHLIST_NAME)
+    } @$lists;
+    return (undef, 0, 'Multiple custom Watchlist lists exist on Trakt') if @matches > 1;
+
+    my $watchlist = $matches[0];
+    unless ($watchlist) {
+        my $created = _trakt_request($c, 'POST', '/users/me/lists', {
+            name        => $WATCHLIST_NAME,
+            description => 'Persistent watchlist for Rendler.',
+            privacy     => 'private',
+        });
+        return (undef, 0, $created->{error}) unless $created->{success};
+        $watchlist = $created->{data};
+        return (undef, 0, 'Trakt did not return the created Watchlist')
+            unless ref $watchlist eq 'HASH' && (($watchlist->{ids} || {})->{trakt} || 0);
+        push @$lists, $watchlist;
+    }
+
+    return ($watchlist, 1, undef);
+}
+
+# Adds custom Watchlist shows and movies missing from Trakt's calendar source.
+# Parameters:
+#   $c              : Mojolicious controller
+#   $watchlist_rows : Authoritative custom Watchlist item rows
+#   $built_shows    : Current built-in Watchlist show rows
+#   $built_movies   : Current built-in Watchlist movie rows
+# Returns:
+#   Trakt request result hashref
+sub _mirror_watchlist_items {
+    my ($c, $watchlist_rows, $built_shows, $built_movies) = @_;
+    my %present;
+
+    for my $row (@{$built_shows || []}) {
+        my $id = ((($row->{show} || {})->{ids} || {})->{trakt} || 0);
+        $present{"show:$id"} = 1 if $id;
+    }
+    for my $row (@{$built_movies || []}) {
+        my $id = ((($row->{movie} || {})->{ids} || {})->{trakt} || 0);
+        $present{"movie:$id"} = 1 if $id;
+    }
+
+    my @missing;
+    for my $row (@{$watchlist_rows || []}) {
+        next unless ref $row eq 'HASH';
+        for my $type (qw(show movie)) {
+            my $id = ((($row->{$type} || {})->{ids} || {})->{trakt} || 0);
+            push @missing, $row if $id && !$present{"$type:$id"};
+            last if $id;
+        }
+    }
+
+    my $payload = _sync_payload_from_trakt_rows(\@missing);
+    return { success => 1 } unless $payload;
+    return _trakt_request($c, 'POST', '/sync/watchlist', $payload);
 }
 
 # Fetches the retained watchlist calendar window and filters it to specific shows.
@@ -449,30 +690,111 @@ sub _watchlist_calendar {
     return (1, \@upcoming, undef);
 }
 
-# Fetches all Trakt data and replaces the local DB cache.
-# Set calendar_optional to preserve existing calendar rows when only list metadata must sync.
+# Serializes a user's full Trakt refresh before hydrating the local cache.
+# Parameters:
+#   $c    : Mojolicious controller
+#   $opts : Optional hashref; calendar_optional preserves existing calendar rows on failure
+# Returns:
+#   (success, error)
 sub _sync_user {
     my ($c, $opts) = @_;
     $opts ||= {};
     return (0, 'Connect Trakt first') unless _ensure_token($c);
 
-    my $watchlist_shows = _trakt_request($c, 'GET', '/sync/watchlist/shows?extended=full');
-    return (0, $watchlist_shows->{error}) unless $watchlist_shows->{success};
+    my $user_id = $c->current_user_id;
+    my $lock_name = 'trakt_full_sync_' . $user_id;
+    my $locked = eval {
+        $c->db->{dbh}->selectrow_array("SELECT GET_LOCK(?, 15)", undef, $lock_name);
+    };
+    my $lock_error = $@;
+    unless ($locked) {
+        $c->app->log->warn("Unable to acquire Trakt full-sync lock for user $user_id: $lock_error");
+        return (0, 'Another Trakt refresh is still in progress');
+    }
 
-    my $watchlist_movies = _trakt_request($c, 'GET', '/sync/watchlist/movies?extended=full');
-    return (0, $watchlist_movies->{error}) unless $watchlist_movies->{success};
+    my (@result, $run_ok, $run_error);
+    $run_ok = eval {
+        @result = _sync_user_locked($c, $opts);
+        1;
+    };
+    $run_error = $@;
+    eval { $c->db->{dbh}->selectrow_array("SELECT RELEASE_LOCK(?)", undef, $lock_name) };
+
+    unless ($run_ok) {
+        $c->app->log->error("Trakt full sync failed for user $user_id: $run_error");
+        return (0, 'Unable to refresh Trakt');
+    }
+    return @result;
+}
+
+# Fetches all remote Trakt data while the per-user full-sync lock is held.
+# Parameters:
+#   $c    : Mojolicious controller
+#   $opts : Sync options and internal retry marker
+# Returns:
+#   (success, error)
+sub _sync_user_locked {
+    my ($c, $opts) = @_;
+    $opts ||= {};
+    my $sync_revision = $c->db->get_trakt_cache_revision($c->current_user_id);
+    return (0, 'Connect Trakt first') unless defined $sync_revision;
 
     my $lists = _trakt_request($c, 'GET', '/users/me/lists');
     return (0, $lists->{error}) unless $lists->{success};
+    my $list_rows = $lists->{data} || [];
+    my ($watchlist, $needs_import, $watchlist_error) = _resolve_watchlist_list($c, $list_rows);
+    return (0, $watchlist_error) unless $watchlist;
+    my $watchlist_trakt_id = 0 + (($watchlist->{ids} || {})->{trakt} || 0);
 
     my %items_by_list;
-    for my $list (@{$lists->{data} || []}) {
+    for my $list (@$list_rows) {
         my $trakt_id = $list->{ids}{trakt};
         next unless $trakt_id;
         my $items = _trakt_request($c, 'GET', '/users/me/lists/' . $trakt_id . '/items?extended=full');
         return (0, $items->{error}) unless $items->{success};
         $items_by_list{$trakt_id} = $items->{data} || [];
     }
+
+    my $built_shows = _trakt_request($c, 'GET', '/sync/watchlist/shows');
+    return (0, $built_shows->{error}) unless $built_shows->{success};
+    my $built_movies = _trakt_request($c, 'GET', '/sync/watchlist/movies');
+    return (0, $built_movies->{error}) unless $built_movies->{success};
+
+    if ($needs_import) {
+        my @built_rows = (@{$built_shows->{data} || []}, @{$built_movies->{data} || []});
+        my $payload = _sync_payload_from_trakt_rows(\@built_rows);
+        if ($payload) {
+            my $import = _trakt_request(
+                $c,
+                'POST',
+                '/users/me/lists/' . $watchlist_trakt_id . '/items',
+                $payload,
+            );
+            return (0, $import->{error}) unless $import->{success};
+
+            my $refreshed = _trakt_request(
+                $c,
+                'GET',
+                '/users/me/lists/' . $watchlist_trakt_id . '/items?extended=full',
+            );
+            return (0, $refreshed->{error}) unless $refreshed->{success};
+            $items_by_list{$watchlist_trakt_id} = $refreshed->{data} || [];
+        }
+
+        eval {
+            $c->db->set_trakt_watchlist_list_id($c->current_user_id, $watchlist_trakt_id);
+        };
+        return (0, 'Unable to save the application Watchlist') if $@;
+    }
+
+    my $watchlist_items = $items_by_list{$watchlist_trakt_id} || [];
+    my $mirror = _mirror_watchlist_items(
+        $c,
+        $watchlist_items,
+        $built_shows->{data} || [],
+        $built_movies->{data} || [],
+    );
+    return (0, $mirror->{error}) unless $mirror->{success};
 
     my $watched_movies = _trakt_request($c, 'GET', '/sync/watched/movies?extended=full');
     my $watched_shows = _trakt_request($c, 'GET', '/sync/watched/shows?extended=full');
@@ -483,11 +805,7 @@ sub _sync_user {
         $watched_shows->{data} || []
     );
 
-    my @watchlist_show_rows = @{$watchlist_shows->{data} || []};
-    my @watchlist_movie_rows = @{$watchlist_movies->{data} || []};
-    _enrich_watchlist_rows($c, \@watchlist_show_rows, 'show');
-    _enrich_watchlist_rows($c, \@watchlist_movie_rows, 'movie');
-    my @watchlist_all_rows = (@watchlist_show_rows, @watchlist_movie_rows);
+    my @watchlist_show_rows = grep { ref(($_ || {})->{show}) eq 'HASH' } @$watchlist_items;
     my @watch_show_ids = map { 0 + ((($_->{show} || {})->{ids} || {})->{trakt} || 0) } @watchlist_show_rows;
     my ($calendar_ok, $upcoming, $calendar_error) = _watchlist_calendar($c, \@watch_show_ids);
     unless ($calendar_ok) {
@@ -499,27 +817,33 @@ sub _sync_user {
     eval {
         $c->db->replace_trakt_cache(
             $c->current_user_id,
-            \@watchlist_show_rows,
-            \@watchlist_all_rows,
+            $watchlist_trakt_id,
             $upcoming,
-            $lists->{data} || [],
+            $list_rows,
             \%items_by_list,
             $watched,
-            $calendar_ok
+            $calendar_ok,
+            $sync_revision,
         );
+        _invalidate_unwatched_cache($c);
     };
     if ($@) {
-        $c->app->log->error("Trakt cache sync failed: $@");
+        my $sync_error = $@;
+        if ($sync_error =~ /TRAKT_SYNC_STALE/) {
+            return _sync_user_locked($c, { %$opts, cache_retry => 1 }) unless $opts->{cache_retry};
+            return (0, 'Trakt changed while refreshing; please refresh again');
+        }
+        return (0, 'Connect Trakt first') if $sync_error =~ /TRAKT_SYNC_DISCONNECTED/;
+        $c->app->log->error("Trakt cache sync failed: $sync_error");
         return (0, 'Unable to save Trakt sync data');
     }
 
     return (1, undef);
 }
 
-# Builds the dashboard state hash from DB cache, optionally computing unwatched episode data.
+# Builds the dashboard state hash from the local DB cache.
 sub _dashboard_state {
-    my ($c, $opts) = @_;
-    $opts ||= {};
+    my ($c) = @_;
     my $state = $c->db->get_trakt_dashboard_state($c->current_user_id);
 
     my $cached_unwatched;
@@ -529,16 +853,18 @@ sub _dashboard_state {
         $cached_unwatched = $cached if ref $cached eq 'ARRAY';
     }
 
-    if ($opts->{skip_unwatched}) {
-        ref $cached_unwatched eq 'ARRAY'
-            ? $state->{unwatched} = $cached_unwatched
-            : delete $state->{unwatched};
-    } else {
-        $state->{unwatched} = $state->{connection}{connected}
-            ? _watchlist_unwatched_state($c, $state->{lists})
-            : [];
-        $cached_unwatched = $state->{unwatched} if ref $state->{unwatched} eq 'ARRAY';
+    unless (ref $cached_unwatched eq 'ARRAY') {
+        my $stale_raw = $c->db->get_trakt_unwatched_cache($c->current_user_id, 1);
+        my $stale = _unwatched_cache_stale_items($stale_raw);
+        if (ref $stale eq 'ARRAY') {
+            $cached_unwatched = $stale;
+            $state->{unwatched_stale} = 1;
+        }
     }
+
+    ref $cached_unwatched eq 'ARRAY'
+        ? $state->{unwatched} = $cached_unwatched
+        : delete $state->{unwatched};
 
     if (ref $cached_unwatched eq 'ARRAY') {
         my %counts;
@@ -551,73 +877,156 @@ sub _dashboard_state {
     return _normalize_dashboard_state($state);
 }
 
-# Computes the list of unwatched episodes for all watchlist shows via the Trakt API.
-sub _watchlist_unwatched_state {
-    my ($c, $lists) = @_;
-    $lists ||= [];
-
-    my $cached_raw = $c->db->get_trakt_unwatched_cache($c->current_user_id);
-    if ($cached_raw) {
-        my $cached = eval { decode_json($cached_raw) };
-        return $cached if ref $cached eq 'ARRAY';
+# Builds the lightweight response returned by the dedicated unwatched endpoint.
+# Parameters:
+#   $items : Arrayref of unwatched episode rows
+# Returns:
+#   Hashref containing unwatched rows and per-show counts
+sub _unwatched_payload {
+    my ($items) = @_;
+    $items = [] unless ref $items eq 'ARRAY';
+    my %counts;
+    for my $item (@$items) {
+        next unless ref $item eq 'HASH';
+        $counts{0 + ($item->{show_trakt_id} || 0)}++;
     }
+    return {
+        success          => 1,
+        unwatched        => $items,
+        unwatched_counts => \%counts,
+    };
+}
 
-    my ($watchlist) = grep { ($_->{trakt_list_id} || 0) == 0 } @{$lists};
-    return [] unless $watchlist;
+# Extracts usable stale episode rows from an unwatched cache value or marker.
+# Parameters:
+#   $raw : Raw JSON stored in trakt_unwatched_cache
+# Returns:
+#   Arrayref of episode rows, or undef when no usable rows exist
+sub _unwatched_cache_stale_items {
+    my ($raw) = @_;
+    return undef unless defined $raw && length $raw;
+    my $decoded = eval { decode_json($raw) };
+    return $decoded if ref $decoded eq 'ARRAY';
+    return $decoded->{stale}
+        if ref $decoded eq 'HASH' && ref $decoded->{stale} eq 'ARRAY';
+    return undef;
+}
 
-    my %watchlist_show_ids = map { ($_->{trakt_id} || 0) => 1 }
-        grep { ($_->{media_type} || '') eq 'show' && ($_->{trakt_id} || 0) }
-        @{ $watchlist->{items} || [] };
-    return [] unless %watchlist_show_ids;
+# Builds a unique cache generation marker while retaining last-known episode rows.
+# Parameters:
+#   $c     : Mojolicious controller
+#   $stale : Optional stale episode rows
+# Returns:
+#   Raw JSON generation marker
+sub _unwatched_cache_marker {
+    my ($c, $stale) = @_;
+    $UNWATCHED_CACHE_GENERATION++;
+    return encode_json({
+        generation => join(':', $c->now->epoch, $$, $UNWATCHED_CACHE_GENERATION, int(rand(1_000_000_000))),
+        stale      => ref $stale eq 'ARRAY' ? $stale : [],
+    });
+}
 
-    my @items;
-    for my $show_id (sort { $a <=> $b } keys %watchlist_show_ids) {
-        my $show = _trakt_request($c, 'GET', '/shows/' . $show_id . '?extended=full');
-        next unless $show->{success};
+# Claims the current cache generation before rebuilding unwatched episode data.
+# Parameters:
+#   $c : Mojolicious controller
+# Returns:
+#   Hashref containing cached rows, or a marker and stale fallback rows
+sub _prepare_unwatched_refresh {
+    my ($c) = @_;
+    my $user_id = $c->current_user_id;
 
-        my $seasons = _trakt_request($c, 'GET', '/shows/' . $show_id . '/seasons?extended=full,episodes');
-        next unless $seasons->{success};
+    for (1 .. 3) {
+        my $fresh_raw = $c->db->get_trakt_unwatched_cache($user_id);
+        if (defined $fresh_raw) {
+            my $fresh = eval { decode_json($fresh_raw) };
+            return { cached => $fresh } if ref $fresh eq 'ARRAY';
+        }
 
-        my $progress = _trakt_request($c, 'GET', '/shows/' . $show_id . '/progress/watched?hidden=false&specials=false&count_specials=false');
-        my $watched = _show_progress_lookup($progress->{success} ? $progress->{data} : {});
-        my $show_title = ($show->{data} || {})->{title} || '';
-        my $show_year = ($show->{data} || {})->{year};
+        my $current_raw = defined $fresh_raw
+            ? $fresh_raw
+            : $c->db->get_trakt_unwatched_cache($user_id, 1);
+        my $current = defined $current_raw ? eval { decode_json($current_raw) } : undef;
+        my $stale = _unwatched_cache_stale_items($current_raw);
+        if (ref $current eq 'HASH' && $current->{generation}) {
+            return { marker => $current_raw, stale => $stale };
+        }
 
-        for my $season (@{$seasons->{data} || []}) {
-            next unless ref $season eq 'HASH';
-            next unless ($season->{number} || 0) > 0;
-
-            for my $episode (@{$season->{episodes} || []}) {
-                next unless ref $episode eq 'HASH';
-                my $episode_id = (($episode->{ids} || {})->{trakt} || 0);
-                my $season_num = $season->{number};
-                my $episode_num = $episode->{number};
-                next unless $episode_id && defined $season_num && defined $episode_num;
-                next unless _episode_is_aired($c, $episode->{first_aired});
-
-                my $key = join(':', $season_num, $episode_num);
-                next if $watched->{$key};
-
-                push @items, {
-                    media_type    => 'episode',
-                    trakt_id      => $episode_id,
-                    show_trakt_id => $show_id,
-                    show_title    => $show_title,
-                    show_images   => _normalize_images((($show->{data} || {})->{images} || {})),
-                    title         => $episode->{title} || '',
-                    year          => $show_year,
-                    season        => $season_num,
-                    episode       => $episode_num,
-                    first_aired   => $episode->{first_aired},
-                    list_name     => 'Watchlist'
-                };
-            }
+        my $marker = _unwatched_cache_marker($c, $stale);
+        if ($c->db->compare_and_set_trakt_unwatched_cache(
+            $user_id,
+            $current_raw,
+            $marker,
+        )) {
+            return { marker => $marker, stale => $stale };
         }
     }
 
-    @items = sort { ($b->{first_aired} || '') cmp ($a->{first_aired} || '') } @items;
+    return { error => 'Unable to prepare unwatched episode refresh' };
+}
 
-    $c->db->set_trakt_unwatched_cache($c->current_user_id, \@items);
+# Invalidates current unwatched work without allowing older requests to write afterward.
+# Parameters:
+#   $c : Mojolicious controller
+# Returns:
+#   Raw JSON generation marker
+sub _invalidate_unwatched_cache {
+    my ($c) = @_;
+    my $stale_raw = $c->db->get_trakt_unwatched_cache($c->current_user_id, 1);
+    my $marker = _unwatched_cache_marker(
+        $c,
+        _unwatched_cache_stale_items($stale_raw),
+    );
+    $c->db->set_trakt_unwatched_cache($c->current_user_id, $marker);
+    return $marker;
+}
+
+# Builds unwatched episode rows for one show from its catalogue and watched progress.
+# Parameters:
+#   $c        : Mojolicious controller
+#   $show_id  : Trakt show ID
+#   $show     : Cached show metadata
+#   $seasons  : Trakt season catalogue rows
+#   $progress : Trakt watched-progress response
+# Returns:
+#   Arrayref of normalized unwatched episode rows
+sub _unwatched_items_for_show {
+    my ($c, $show_id, $show, $seasons, $progress) = @_;
+    $show ||= {};
+    my $watched = _show_progress_lookup($progress || {});
+    my @items;
+
+    for my $season (@{$seasons || []}) {
+        next unless ref $season eq 'HASH';
+        next unless ($season->{number} || 0) > 0;
+
+        for my $episode (@{$season->{episodes} || []}) {
+            next unless ref $episode eq 'HASH';
+            my $episode_id = (($episode->{ids} || {})->{trakt} || 0);
+            my $season_num = $season->{number};
+            my $episode_num = $episode->{number};
+            next unless $episode_id && defined $season_num && defined $episode_num;
+            next unless _episode_is_aired($c, $episode->{first_aired});
+
+            my $key = join(':', $season_num, $episode_num);
+            next if $watched->{$key};
+
+            push @items, {
+                media_type    => 'episode',
+                trakt_id      => $episode_id,
+                show_trakt_id => $show_id,
+                show_title    => $show->{title} || '',
+                show_images   => _normalize_images($show->{images}),
+                title         => $episode->{title} || '',
+                year          => $show->{year},
+                season        => $season_num,
+                episode       => $episode_num,
+                first_aired   => $episode->{first_aired},
+                list_name     => 'Watchlist'
+            };
+        }
+    }
+
     return \@items;
 }
 
@@ -682,26 +1091,32 @@ sub _show_progress_lookup {
     return \%watched;
 }
 
-# Fetches extended details for watchlist rows missing poster images.
-sub _enrich_watchlist_rows {
-    my ($c, $rows, $type) = @_;
-    return unless ref $rows eq 'ARRAY' && @$rows;
-    return unless ($type || '') eq 'show' || ($type || '') eq 'movie';
+# Builds cached Watchlist metadata keyed by media type and Trakt ID.
+# Parameters:
+#   $watchlist : Cached custom Watchlist with item rows
+# Returns:
+#   Hashref keyed by media type and Trakt ID
+sub _watchlist_media_lookup {
+    my ($watchlist) = @_;
+    my %lookup;
 
-    my %details;
-    for my $row (@$rows) {
-        next unless ref $row eq 'HASH';
-        my $media = $row->{$type} || next;
-        next if _normalize_images($media->{images})->{poster};
-        my $trakt_id = (($media->{ids} || {})->{trakt} || 0);
-        next unless $trakt_id;
-        if (!$details{$trakt_id}) {
-            my $detail = _trakt_request($c, 'GET', '/' . $type . 's/' . $trakt_id . '?extended=full');
-            $details{$trakt_id} = $detail->{success} && ref $detail->{data} eq 'HASH' ? $detail->{data} : {};
-        }
-        my $fallback = $details{$trakt_id} || {};
-        $media->{images} ||= $fallback->{images} if ref $fallback->{images} eq 'HASH';
+    for my $item (@{($watchlist || {})->{items} || []}) {
+        next unless ref $item eq 'HASH';
+        my $type = $item->{media_type} || '';
+        my $trakt_id = 0 + ($item->{trakt_id} || 0);
+        next unless $type =~ /\A(?:show|movie)\z/ && $trakt_id;
+
+        my $raw = _decode_raw_json($item->{raw_json});
+        my ($raw_type, $raw_media) = _media_from_cached_row($raw);
+        $raw_media = $raw unless $raw_type;
+        $lookup{$type}{$trakt_id} = {
+            title  => $item->{title} || $raw_media->{title} || '',
+            year   => $item->{year} || $raw_media->{year},
+            images => ref $raw_media->{images} eq 'HASH' ? $raw_media->{images} : {},
+        };
     }
+
+    return \%lookup;
 }
 
 # Checks if an episode has already aired by comparing its first_aired timestamp to now.
@@ -765,28 +1180,90 @@ sub _normalize_show_details {
 # Returns a valid access token for the current user, refreshing via OAuth if expired.
 sub _ensure_token {
     my ($c) = @_;
-    my $conn = $c->db->get_trakt_connection($c->current_user_id);
+    my $user_id = $c->current_user_id;
+    my $conn = $c->db->get_trakt_connection($user_id);
     return undef unless $conn && ($conn->{status} || '') eq 'connected' && $conn->{access_token};
     return $conn->{access_token} if ($conn->{expires_at} || '') gt _mysql_time($c, 90);
 
-    my $creds = $c->db->get_trakt_app_credentials();
-    my $res = _token_refresh($c, $conn, $creds);
-    unless ($res->{success}) {
-        $c->app->log->warn("Trakt token refresh failed for user " . $c->current_user_id . ", disconnecting");
-        eval { $c->db->disconnect_trakt_connection($c->current_user_id) };
+    my $lock_name = 'trakt_token_refresh_' . $user_id;
+    my $locked = eval {
+        $c->db->{dbh}->selectrow_array("SELECT GET_LOCK(?, 15)", undef, $lock_name);
+    };
+    my $lock_error = $@;
+    unless ($locked) {
+        $c->app->log->warn("Unable to acquire Trakt token refresh lock for user $user_id: $lock_error");
         return undef;
     }
 
-    $c->db->upsert_trakt_connection($c->current_user_id, {
-        trakt_user_id  => $conn->{trakt_user_id},
-        trakt_username => $conn->{trakt_username},
-        access_token   => $res->{access_token},
-        refresh_token  => $res->{refresh_token},
-        token_type     => $res->{token_type},
-        expires_at     => _mysql_time($c, $res->{expires_in} || 0),
-        scope          => $res->{scope}
+    my $token;
+    my $refresh_ok = eval {
+        $conn = $c->db->get_trakt_connection($user_id);
+        if ($conn && ($conn->{status} || '') eq 'connected' && $conn->{access_token}) {
+            if (($conn->{expires_at} || '') gt _mysql_time($c, 90)) {
+                $token = $conn->{access_token};
+            } else {
+                my $creds = $c->db->get_trakt_app_credentials();
+                my $res = _token_refresh($c, $conn, $creds);
+                if ($res->{success}) {
+                    my $updated = $c->db->update_trakt_refreshed_connection(
+                        $user_id,
+                        $conn->{refresh_token},
+                        {
+                            access_token  => $res->{access_token},
+                            refresh_token => $res->{refresh_token} || $conn->{refresh_token},
+                            token_type    => $res->{token_type} || $conn->{token_type},
+                            expires_at    => _mysql_time($c, $res->{expires_in} || 0),
+                            scope         => defined $res->{scope} ? $res->{scope} : $conn->{scope}
+                        },
+                    );
+                    if ($updated) {
+                        $token = $res->{access_token};
+                    } else {
+                        $c->app->log->info("Discarded refreshed Trakt token for changed connection user $user_id");
+                    }
+                } else {
+                    my $reason = lc($res->{reason} || 'temporary_failure');
+                    if ($reason eq 'invalid_grant' || $reason eq 'revoked_token') {
+                        my $disconnected = $c->db->disconnect_trakt_connection_for_refresh_token(
+                            $user_id,
+                            $conn->{refresh_token},
+                        );
+                        if ($disconnected) {
+                            $c->app->log->warn("Trakt token was rejected for user $user_id; disconnected");
+                        } else {
+                            $c->app->log->info("Ignored rejected Trakt token for changed connection user $user_id");
+                        }
+                    } else {
+                        $c->app->log->warn("Trakt token refresh temporarily failed for user $user_id: $reason");
+                    }
+                }
+            }
+        }
+        1;
+    };
+    my $refresh_error = $@;
+    eval { $c->db->{dbh}->selectrow_array("SELECT RELEASE_LOCK(?)", undef, $lock_name) };
+    $c->app->log->error("Trakt token refresh failed for user $user_id: $refresh_error")
+        unless $refresh_ok;
+    return $token;
+}
+
+# Performs a nonblocking authenticated Trakt GET and resolves with decoded data.
+# Parameters:
+#   $c       : Mojolicious controller
+#   $path    : Trakt API path
+#   $headers : Authenticated Trakt request headers
+# Returns:
+#   Mojo::Promise resolving to decoded response data
+sub _trakt_get_p {
+    my ($c, $path, $headers) = @_;
+    my $url = $path =~ /^https?:/ ? $path : $TRAKT_API . $path;
+    return $c->ua->get_p($url => ($headers || {}))->then(sub {
+        my ($tx) = @_;
+        my $res = $tx->result;
+        die 'Trakt API returned HTTP ' . ($res->code || 500) unless $res->is_success;
+        return $res->json // {};
     });
-    return $res->{access_token};
 }
 
 # Makes an authenticated HTTP request to the Trakt API and returns { success, data/error }.
@@ -800,7 +1277,7 @@ sub _trakt_request {
         if ($conn && ($conn->{status} || '') eq 'disconnected') {
             return { success => 0, error => 'Trakt session expired — reconnect your account' };
         }
-        return { success => 0, error => 'Connect Trakt first' };
+        return { success => 0, error => 'Unable to refresh the Trakt session; try again' };
     }
 
     my %headers = (
@@ -855,7 +1332,8 @@ sub _token_exchange {
     };
     return { success => 0, error => 'Unable to connect Trakt account' } if $@ || !$tx;
     my $res = $tx->result;
-    return { success => 1, %{$res->json || {}} } if $res->is_success;
+    my $json = $res->json || {};
+    return { success => 1, %$json } if $res->is_success && $json->{access_token};
     return { success => 0, error => 'Unable to connect Trakt account' };
 }
 
@@ -873,18 +1351,12 @@ sub _token_refresh {
     };
     return { success => 0, error => 'Unable to refresh Trakt token' } if $@ || !$tx;
     my $res = $tx->result;
-    return { success => 1, %{$res->json || {}} } if $res->is_success;
-
     my $json = $res->json || {};
-    my $reason = $json->{error} || 'unknown';
+    return { success => 1, %$json } if $res->is_success && $json->{access_token};
+
+    my $reason = $json->{error} || ($res->is_success ? 'invalid_response' : 'unknown');
     $c->app->log->warn("Trakt token refresh rejected: $reason");
     return { success => 0, error => 'Unable to refresh Trakt token', reason => $reason };
-}
-
-# Builds a Trakt sync payload from items in the request params.
-sub _sync_payload_from_param {
-    my ($c) = @_;
-    return _sync_payload_from_items(_items_from_param($c));
 }
 
 # Parses and returns the items JSON array from the request params.
@@ -917,6 +1389,28 @@ sub _sync_payload_from_items {
 
     delete $payload{$_} for grep { !@{$payload{$_}} } keys %payload;
     return keys %payload ? \%payload : undef;
+}
+
+# Builds a Trakt sync payload from personal-list API rows.
+# Parameters:
+#   $rows : Arrayref of rows containing movie, show, or episode objects
+# Returns:
+#   Trakt sync payload hashref, or undef when no supported media exists
+sub _sync_payload_from_trakt_rows {
+    my ($rows) = @_;
+    my @items;
+
+    for my $row (@{$rows || []}) {
+        next unless ref $row eq 'HASH';
+        for my $type (qw(movie show episode)) {
+            my $id = ((($row->{$type} || {})->{ids} || {})->{trakt} || 0);
+            next unless $id;
+            push @items, { media_type => $type, trakt_id => 0 + $id };
+            last;
+        }
+    }
+
+    return _sync_payload_from_items(\@items);
 }
 
 # Validates that a Trakt sync history response accepted the expected items.
@@ -965,44 +1459,6 @@ sub _history_response_count {
         return $count;
     }
     return 0;
-}
-
-# Parses and validates watchlist show IDs from request params against the user's lists.
-sub _watchlist_show_ids_from_param {
-    my ($c) = @_;
-    my $ids = eval { decode_json($c->param('watchlist_show_ids') || '[]') };
-    return [] if $@ || ref $ids ne 'ARRAY';
-
-    my %allowed;
-    eval {
-        for my $list (@{$c->db->get_trakt_lists($c->current_user_id) || []}) {
-            next unless ($list->{trakt_list_id} || 0) == 0;
-            for my $item (@{$list->{items} || []}) {
-                next unless ($item->{media_type} || '') eq 'show' && ($item->{trakt_id} || 0);
-                $allowed{0 + $item->{trakt_id}} = 1;
-            }
-        }
-    };
-
-    my (%seen, @out);
-    for my $id (@$ids) {
-        next unless defined $id && $id =~ /\A\d+\z/;
-        $id = 0 + $id;
-        next unless $allowed{$id} && !$seen{$id}++;
-        push @out, $id;
-    }
-    return \@out;
-}
-
-# Re-adds specified shows back to the Trakt watchlist (used after a clear operation).
-sub _preserve_watchlist_shows {
-    my ($c, $show_ids) = @_;
-    $show_ids ||= [];
-    return { success => 1 } unless @$show_ids;
-
-    my @shows = map { { ids => { trakt => 0 + $_ } } } @$show_ids;
-    my $res = _trakt_request($c, 'POST', '/sync/watchlist', { shows => \@shows });
-    return $res->{success} ? { success => 1 } : $res;
 }
 
 # Normalizes Trakt search results into a consistent format with watched status.
@@ -1169,6 +1625,7 @@ sub register_routes {
     my ($class, $r) = @_;
     $r->{family}->get('/trakt')->to('trakt#index');
     $r->{family}->get('/trakt/api/state')->to('trakt#api_state');
+    $r->{family}->get('/trakt/api/unwatched')->to('trakt#api_unwatched');
     $r->{family}->get('/trakt/oauth/start')->to('trakt#oauth_start');
     $r->{family}->get('/trakt/oauth')->to('trakt#oauth_callback');
     $r->{family}->post('/trakt/api/oauth/disconnect')->to('trakt#api_disconnect');
