@@ -958,23 +958,6 @@ CREATE TABLE `todo_list` (
   KEY `idx_todo_emoji` (`has_emoji`),
   CONSTRAINT `todo_list_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE TABLE `trakt_assignments` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) NOT NULL,
-  `list_item_id` int(11) NOT NULL,
-  `assigned_to_user_id` int(11) NOT NULL,
-  `status` enum('assigned','watching','done','skipped') NOT NULL DEFAULT 'assigned',
-  `note` text DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT current_timestamp(),
-  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_trakt_assignment_item` (`user_id`,`list_item_id`),
-  KEY `idx_trakt_assignment_assignee` (`assigned_to_user_id`),
-  KEY `idx_trakt_assignment_item` (`list_item_id`),
-  CONSTRAINT `trakt_assignments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `trakt_assignments_ibfk_2` FOREIGN KEY (`assigned_to_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `trakt_assignments_ibfk_3` FOREIGN KEY (`list_item_id`) REFERENCES `trakt_list_items` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE `trakt_connections` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
@@ -988,6 +971,8 @@ CREATE TABLE `trakt_connections` (
   `status` enum('connected','disconnected') NOT NULL DEFAULT 'connected',
   `connected_at` datetime DEFAULT NULL,
   `last_synced_at` datetime DEFAULT NULL,
+  `watchlist_trakt_list_id` int(11) DEFAULT NULL,
+  `cache_revision` bigint(20) unsigned NOT NULL DEFAULT 0,
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_trakt_connections_user` (`user_id`),
