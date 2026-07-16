@@ -72,6 +72,26 @@
     animation: trakt-pulse 1.8s ease-in-out infinite;
 }
 
+.trakt-background-status {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: fit-content;
+    margin: 0 0 0.75rem auto;
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.85rem;
+}
+
+.trakt-background-status::before {
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 2px solid rgba(255, 255, 255, 0.16);
+    border-top-color: rgba(100, 180, 255, 0.9);
+    border-radius: 50%;
+    content: '';
+    animation: trakt-spin 0.8s linear infinite;
+}
+
 @keyframes trakt-spin {
     to { transform: rotate(360deg); }
 }
@@ -204,17 +224,6 @@
 
 .trakt-list-actions {
     justify-content: flex-end;
-}
-
-.trakt-list-badge {
-    display: inline-block;
-    margin-left: 0.5rem;
-    padding: 0.1rem 0.45rem;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    background: rgba(80, 140, 255, 0.2);
-    border: 1px solid rgba(120, 170, 255, 0.35);
-    vertical-align: middle;
 }
 
 .trakt-list-chevron {
