@@ -119,7 +119,7 @@ sub api_fcm_register {
 #   HTTP 500 if the system process fork fails.
 # Behavior:
 #   - Forks a background process to avoid blocking the HTTP response.
-#   - Executes 'hypnotoad -s' followed by a fresh start.
+#   - Executes Hypnotoad's native zero-downtime deploy command.
 sub restart {
     my $c = shift;
     return $c->render('noperm') unless $c->is_admin;
@@ -129,11 +129,10 @@ sub restart {
     my $base_path = $c->app->home; 
 
     if ($pid == 0) {
-        # Child Process: Execute shell command sequence
+        # Child Process: Execute the Hypnotoad deploy command
         # 1. Navigate to app root
-        # 2. Hot deploy/Stop (-s)
-        # 3. Start fresh instance
-        my $cmd = "cd $base_path && hypnotoad -s mojo.pl && hypnotoad mojo.pl";
+        # 2. Start or hot-deploy the application
+        my $cmd = "cd $base_path && hypnotoad mojo.pl";
 
         exec('sh', '-c', $cmd) or die "Failed to execute shell command: $!";
     } elsif ($pid > 0) {
