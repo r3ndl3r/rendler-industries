@@ -146,6 +146,12 @@ sub DB::mark_user_paid {
             last;
         }
     }
+
+    # Preserve any amount beyond the user's current fines as future credit.
+    if ($remaining > 0) {
+        my $sth_credit = $self->{dbh}->prepare("INSERT INTO swear_ledger (type, name, amount, reason, payer_name, status, paid_at) VALUES ('credit', ?, ?, 'Extra Credit', ?, 1, NOW())");
+        $sth_credit->execute($name, $remaining, $payer_name);
+    }
 }
 
 # Records money taken out of the jar.
@@ -200,7 +206,7 @@ sub DB::get_swear_history {
     $self->ensure_connection;
     
     # Fetch recent history including payments and payer name, excluding migration markers
-    my $sth = $self->{dbh}->prepare("SELECT id, type, name as perpetrator, amount, reason, payer_name, created_at FROM swear_ledger WHERE type IN ('fine', 'spend', 'payment') AND reason NOT IN ('Legacy Payment Conversion', 'Legacy Fine Payment') ORDER BY created_at DESC LIMIT 20");
+    my $sth = $self->{dbh}->prepare("SELECT id, type, name as perpetrator, amount, reason, payer_name, created_at FROM swear_ledger WHERE type IN ('fine', 'spend', 'payment', 'credit') AND reason NOT IN ('Legacy Payment Conversion', 'Legacy Fine Payment') ORDER BY created_at DESC LIMIT 20");
     $sth->execute();
     
     return $sth->fetchall_arrayref({});
