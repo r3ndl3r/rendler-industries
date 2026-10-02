@@ -889,7 +889,7 @@ CREATE TABLE `stash_pages` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `swear_ledger` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `type` enum('member','fine','spend','payment') NOT NULL,
+  `type` enum('member','fine','spend','payment','credit') NOT NULL,
   `name` varchar(100) DEFAULT NULL,
   `amount` decimal(10,2) DEFAULT 0.00,
   `reason` varchar(255) DEFAULT NULL,
