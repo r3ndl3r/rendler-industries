@@ -181,14 +181,17 @@ const SwearModule = {
                 title = `<strong class="white-text">${escapeHtml(item.perpetrator)}</strong> owed`;
             } else if (item.type === 'payment') {
                 title = `<strong class="success-text">${escapeHtml(item.perpetrator)}</strong> deposited`;
+            } else if (item.type === 'credit') {
+                title = `<strong class="success-text">${escapeHtml(item.perpetrator)}</strong> received credit`;
             } else {
                 title = `<strong class="success-text">JAR SPEND</strong>`;
             }
 
-            const amountClass = item.type === 'payment' ? 'success-text' : 'white-text';
-            const amountPrefix = item.type === 'payment' ? '+' : '';
+            const isPositive = item.type === 'payment' || item.type === 'credit';
+            const amountClass = isPositive ? 'success-text' : 'white-text';
+            const amountPrefix = isPositive ? '+' : '';
             const reason = item.reason ? `- ${escapeHtml(item.reason)}` : '';
-            const payer = (item.type === 'payment' && item.payer_name) ? ` By ${escapeHtml(item.payer_name)}` : '';
+            const payer = (isPositive && item.payer_name) ? ` By ${escapeHtml(item.payer_name)}` : '';
 
             return `
                 <div class="history-item type-${item.type}">
