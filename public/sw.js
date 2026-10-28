@@ -15,7 +15,7 @@
  *   - Periodic cache cleanup and versioned cache naming
  */
 
-const CACHE_NAME = 'rendler-offline-v151';
+const CACHE_NAME = 'rendler-offline-v152';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 const OFFLINE_CACHE_PREFIX = 'rendler-offline-';
 const NAVIGATION_NETWORK_TIMEOUT_MS = 1500;
@@ -162,7 +162,8 @@ function isApiGet(request, url) {
 }
 
 function shouldBypassApiGetCache(url) {
-    return url.pathname === '/admin/automator/api/status'
+    return url.pathname === '/admin/settings/api/state'
+        || url.pathname === '/admin/automator/api/status'
         || url.pathname === '/admin/automator/api/state'
         || url.pathname.startsWith('/trakt/api/');
 }
