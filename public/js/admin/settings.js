@@ -89,7 +89,7 @@ async function loadState() {
     if (retryButton) retryButton.disabled = true;
 
     try {
-        const data = await apiGet('/admin/settings/api/state');
+        const data = await apiGet('/admin/settings/api/state', 30000);
 
         if (requestId !== loadStateRequestId) return;
         
@@ -308,7 +308,11 @@ function renderProviderOptions(active) {
  */
 function renderModelOptions(provider, active) {
     const engine = getAIEngines()[provider] || {};
-    const models = [...(engine.models || engine.fallback_models || [])];
+    const models = [...new Set([
+        engine.active_model,
+        ...(engine.models || []),
+        ...(engine.fallback_models || [])
+    ].filter(Boolean))];
     const selected = active || activeModelForProvider(provider);
     if (selected && !models.includes(selected)) models.unshift(selected);
 
