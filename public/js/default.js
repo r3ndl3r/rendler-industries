@@ -245,7 +245,8 @@ async function apiPost(url, data = {}, timeout = 30000) {
 function shouldCacheApiGet(url) {
     try {
         const pathname = new URL(url, window.location.origin).pathname;
-        return pathname !== '/admin/automator/api/status'
+        return pathname !== '/admin/settings/api/state'
+            && pathname !== '/admin/automator/api/status'
             && pathname !== '/admin/automator/api/state'
             && !pathname.startsWith('/trakt/api/');
     } catch (_) {
