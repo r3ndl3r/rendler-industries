@@ -1,1 +1,104 @@
-hypnotoad -s mojo.pl
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+use Cwd qw(getcwd);
+use File::Spec;
+
+my $app_dir = getcwd();
+my $app_path = File::Spec->catfile($app_dir, 'mojo.pl');
+my $pid_file = File::Spec->catfile($app_dir, 'hypnotoad.pid');
+
+system('hypnotoad', '-s', 'mojo.pl') == 0 or die "Failed to request Hypnotoad shutdown\n";
+
+wait_until(sub { !-e $pid_file }, 30, 'Hypnotoad manager to stop');
+
+
+# The manager can exit before its workers release the shared listening socket.
+my @app_pids = app_listener_pids();
+
+if (@app_pids) {
+    print "Stopping orphaned Hypnotoad listener $_ gracefully.\n" for @app_pids;
+    kill 'QUIT', @app_pids or die "Failed to signal orphaned Hypnotoad listener: $!\n";
+
+    if (!wait_until(sub { !app_listener_pids() }, 30, 'Hypnotoad listener to stop', 1)) {
+        @app_pids = app_listener_pids();
+        if (@app_pids) {
+            warn "Orphaned Hypnotoad listener did not stop gracefully; sending TERM.\n";
+            kill 'TERM', @app_pids or die "Failed to terminate orphaned Hypnotoad listener: $!\n";
+            wait_until(sub { !app_listener_pids() }, 10, 'Hypnotoad listener to release port', 1);
+            @app_pids = app_listener_pids();
+            if (@app_pids) {
+                warn "Hypnotoad listener still holds port 8082; sending KILL.\n";
+                kill 'KILL', @app_pids or die "Failed to kill orphaned Hypnotoad listener: $!\n";
+                wait_until(sub { !app_listener_pids() }, 30, 'Hypnotoad listener to release port', 1);
+            }
+        }
+    }
+}
+
+
+# Never let the next start collide with another process already bound here.
+my ($listening, @remaining_pids) = listener_state();
+die "Port 8082 is still occupied" . (@remaining_pids ? " by PID(s) @remaining_pids" : '') . "; refusing to start another server.\n"
+    if $listening;
+
+
+sub wait_until {
+    my ($condition, $seconds, $description, $quiet) = @_;
+
+    for (1 .. $seconds) {
+        return 1 if $condition->();
+        sleep 1;
+    }
+
+    return 1 if $condition->();
+
+    die "Timed out waiting for $description.\n" unless $quiet;
+
+    return 0;
+}
+
+
+sub listener_state {
+    open my $ss, '-|', 'ss', '-H', '-ltnp', 'sport = :8082' or die "Could not run ss to inspect port 8082: $!\n";
+
+    my (@pids, $listening);
+
+    while (my $line = <$ss>) {
+        $listening = 1;
+        push @pids, $1 while $line =~ /pid=(\d+)/g;
+    }
+
+    close $ss or die "ss failed while inspecting port 8082\n";
+
+    my %seen;
+
+    return ($listening, grep { !$seen{$_}++ } @pids);
+}
+
+
+sub read_first_arg {
+    my ($pid) = @_;
+
+    open my $cmdline, '<:raw', "/proc/$pid/cmdline" or return;
+
+    local $/;
+    my $content = <$cmdline>;
+
+    return unless defined $content;
+    return (split /\0/, $content, 2)[0];
+}
+
+
+sub app_listener_pids {
+    my (undef, @pids) = listener_state();
+
+    return grep {
+        my $pid = $_;
+        my $cmdline = read_first_arg($pid);
+        my $cwd = readlink "/proc/$pid/cwd";
+
+        defined($cmdline) && $cmdline eq $app_path && defined($cwd) && $cwd eq $app_dir;
+    } @pids;
+}

@@ -1,1 +1,7 @@
-hypnotoad mojo.pl
+#!/bin/sh
+
+set -eu
+
+./stop
+
+exec hypnotoad mojo.pl

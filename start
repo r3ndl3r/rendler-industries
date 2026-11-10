@@ -1,1 +1,5 @@
-hypnotoad -f mojo.pl
+#!/bin/sh
+
+set -eu
+
+exec hypnotoad mojo.pl
