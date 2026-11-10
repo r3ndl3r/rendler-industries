@@ -4,7 +4,10 @@ package MyApp::Controller::Trakt;
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::JSON qw(decode_json encode_json from_json);
 use Mojo::Promise;
-use Mojo::Util qw(trim url_escape);
+use Mojo::Util qw(trim url_escape secure_compare);
+use Crypt::PRNG qw(random_bytes);
+use Digest::SHA qw(sha256 hmac_sha256);
+use MIME::Base64 qw(encode_base64url decode_base64url);
 
 # Controller for Trakt OAuth integration and media management.
 #
@@ -20,7 +23,8 @@ use Mojo::Util qw(trim url_escape);
 #   - Consumes the Trakt v2 REST API for all external operations.
 
 my $TRAKT_API  = 'https://api.trakt.tv';
-my $TRAKT_AUTH = 'https://trakt.tv/oauth/authorize';
+my $TRAKT_AUTH = 'https://auth.trakt.tv/oauth/authorize';
+my $TRAKT_TOKEN = 'https://auth.trakt.tv/oauth/token';
 my $WATCHLIST_NAME = 'Watchlist';
 my $UNWATCHED_CACHE_GENERATION = 0;
 
@@ -159,17 +163,27 @@ sub oauth_start {
 
     my $creds = $c->db->get_trakt_app_credentials();
     return $c->render(text => 'Trakt API credentials are not configured', status => 400)
-        unless $creds->{client_id} && $creds->{client_secret};
-
-    my $state = int(rand(1_000_000_000)) . $c->now->epoch . $c->current_user_id;
-    $c->session(trakt_oauth_state => $state);
+        unless $creds->{client_id};
 
     my $redirect_uri = _redirect_uri($c);
+    my $state = encode_base64url(random_bytes(32));
+    my $pending = {
+        state => $state, user_id => $c->current_user_id,
+        client_id => $creds->{client_id}, redirect_uri => $redirect_uri,
+        started_at => $c->now->epoch
+    };
+    $c->signed_cookie(trakt_oauth_pending => encode_base64url(encode_json($pending)), {
+        path => '/trakt/oauth', httponly => 1, secure => 1,
+        samesite => 'Lax', max_age => 600
+    });
+    my $challenge = encode_base64url(sha256(_pkce_verifier($c, $pending)));
     my $url = $TRAKT_AUTH
         . '?response_type=code'
         . '&client_id=' . url_escape($creds->{client_id})
         . '&redirect_uri=' . url_escape($redirect_uri)
-        . '&state=' . url_escape($state);
+        . '&state=' . url_escape($state)
+        . '&code_challenge=' . url_escape($challenge)
+        . '&code_challenge_method=S256';
     return $c->redirect_to($url);
 }
 
@@ -184,15 +198,28 @@ sub oauth_callback {
 
     my $code = trim($c->param('code') // '');
     my $state = trim($c->param('state') // '');
+    my $pending = eval { decode_json(decode_base64url($c->signed_cookie('trakt_oauth_pending') || '')) };
     return $c->render(text => 'Invalid OAuth state', status => 400)
-        unless $code && $state && (($c->session('trakt_oauth_state') || '') eq $state);
+        unless ref($pending) eq 'HASH' && $state
+            && secure_compare($pending->{state} || '', $state)
+            && ($pending->{user_id} || 0) == $c->current_user_id
+            && ($pending->{started_at} || 0) <= $c->now->epoch
+            && ($pending->{started_at} || 0) >= $c->now->epoch - 600;
+    $c->signed_cookie(trakt_oauth_pending => '', {
+        path => '/trakt/oauth', httponly => 1, secure => 1,
+        samesite => 'Lax', max_age => 0, expires => 1
+    });
+    return $c->render(text => 'Trakt authorization was cancelled. Please connect again.', status => 400)
+        if $c->param('error') || !$code;
 
     my $creds = $c->db->get_trakt_app_credentials();
+    return $c->render(text => 'Trakt configuration changed. Please connect again.', status => 400)
+        unless ($creds->{client_id} || '') eq ($pending->{client_id} || '');
     my $token = _token_exchange($c, {
         code          => $code,
         client_id     => $creds->{client_id},
-        client_secret => $creds->{client_secret},
-        redirect_uri  => _redirect_uri($c)
+        code_verifier => _pkce_verifier($c, $pending),
+        redirect_uri  => $pending->{redirect_uri}
     });
     return $c->render(text => $token->{error}, status => 400) unless $token->{success};
 
@@ -209,7 +236,6 @@ sub oauth_callback {
         expires_at     => _mysql_time($c, $token->{expires_in} || 0),
         scope          => $token->{scope}
     });
-    $c->session(trakt_oauth_state => undef);
     my ($synced, $sync_error) = _sync_user($c);
     $c->app->log->warn("Initial Trakt sync failed: $sync_error") unless $synced;
 
@@ -1322,10 +1348,10 @@ sub _trakt_request {
 sub _token_exchange {
     my ($c, $args) = @_;
     my $tx = eval {
-        $c->ua->post($TRAKT_API . '/oauth/token' => json => {
+        $c->ua->post($TRAKT_TOKEN => json => {
             code          => $args->{code},
             client_id     => $args->{client_id},
-            client_secret => $args->{client_secret},
+            code_verifier => $args->{code_verifier},
             redirect_uri  => $args->{redirect_uri},
             grant_type    => 'authorization_code'
         });
@@ -1341,11 +1367,9 @@ sub _token_exchange {
 sub _token_refresh {
     my ($c, $conn, $creds) = @_;
     my $tx = eval {
-        $c->ua->post($TRAKT_API . '/oauth/token' => json => {
+        $c->ua->post($TRAKT_TOKEN => json => {
             refresh_token => $conn->{refresh_token},
             client_id     => $creds->{client_id},
-            client_secret => $creds->{client_secret},
-            redirect_uri  => _redirect_uri($c),
             grant_type    => 'refresh_token'
         });
     };
@@ -1582,11 +1606,21 @@ sub _first_image_url {
     return undef;
 }
 
-# Checks whether Trakt app credentials (client_id and client_secret) are configured.
+# Checks whether the Trakt PKCE application client ID is configured.
 sub _trakt_configured {
     my ($c) = @_;
     my $creds = $c->db->get_trakt_app_credentials();
-    return $creds->{client_id} && $creds->{client_secret};
+    return $creds->{client_id} ? 1 : 0;
+}
+
+# Derives a per-login PKCE verifier without exposing it in signed session cookies.
+# The random state is bound to the user, client, callback, and private app secret.
+sub _pkce_verifier {
+    my ($c, $pending) = @_;
+    return encode_base64url(hmac_sha256(
+        join("\0", 'trakt-pkce', map { $pending->{$_} } qw(state user_id client_id redirect_uri started_at)),
+        $c->app->secrets->[0]
+    ));
 }
 
 # Builds the absolute URL for the Trakt OAuth redirect endpoint.
