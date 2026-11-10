@@ -22,13 +22,14 @@
             <p class="loading-sub">Loading OAuth state, lists, and watch progress</p>
         </div>
     </div>
+    <p class="trakt-attribution">Rendler Industries uses <a href="https://trakt.tv" target="_blank" rel="noopener noreferrer">Trakt</a> but is not endorsed or certified by Trakt.</p>
 </div>
 
-<div id="showDetailsModal" class="modal-overlay">
+<div id="showDetailsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="showDetailsTitle" tabindex="-1">
     <div class="modal-content trakt-details-modal">
         <div class="modal-header">
             <h3 id="showDetailsTitle">Show Details</h3>
-            <span class="close-btn" onclick="closeShowDetailsModal()">&times;</span>
+            <button type="button" class="close-btn" aria-label="Close show details" onclick="closeShowDetailsModal()">&times;</button>
         </div>
         <div id="showDetailsBody" class="modal-body">
             <div class="component-loading">
@@ -40,11 +41,11 @@
     </div>
 </div>
 
-<div id="listEditModal" class="modal-overlay">
+<div id="listEditModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="listEditTitle" tabindex="-1">
     <div class="modal-content trakt-list-edit-modal">
         <div class="modal-header">
-            <h3>✎ Edit List</h3>
-            <span class="close-btn" onclick="closeListEditModal()">&times;</span>
+            <h3 id="listEditTitle">✎ Edit List</h3>
+            <button type="button" class="close-btn" aria-label="Close list editor" onclick="closeListEditModal()">&times;</button>
         </div>
         <form id="listEditForm" onsubmit="submitListEdit(event)">
             <div class="modal-body">
@@ -65,11 +66,11 @@
     </div>
 </div>
 
-<div id="searchListModal" class="modal-overlay">
+<div id="searchListModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="searchListModalTitle" tabindex="-1">
     <div class="modal-content trakt-list-edit-modal">
         <div class="modal-header">
             <h3 id="searchListModalTitle">Manage Lists</h3>
-            <span class="close-btn" onclick="closeSearchListModal()">&times;</span>
+            <button type="button" class="close-btn" aria-label="Close list manager" onclick="closeSearchListModal()">&times;</button>
         </div>
         <div id="searchListModalBody" class="modal-body"></div>
     </div>
