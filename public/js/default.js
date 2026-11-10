@@ -292,6 +292,12 @@ async function apiGet(url, timeout = 3000) {
             }
         }
 
+        // Worker cache misses and server outages must still try the local backup.
+        if (response.status >= 500) {
+            const cached = getCached();
+            if (cached) return cached;
+        }
+
         const text = await response.text();
         let result;
         try {
