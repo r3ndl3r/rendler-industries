@@ -52,8 +52,7 @@ let STATE = {
         key: ''
     },
     trakt: {
-        client_id_configured: false,
-        client_secret_configured: false
+        client_id_configured: false
     }
 };
 
@@ -444,7 +443,7 @@ function renderIntegrationsPanel() {
     const s = STATE.settings;
     const cloud = STATE.google_cloud;
     const trakt = STATE.trakt || {};
-    const traktConfigured = !!(trakt.client_id_configured && trakt.client_secret_configured);
+    const traktConfigured = !!trakt.client_id_configured;
 
     return `
         <div class="settings-panel" id="panel-integrations">
@@ -479,11 +478,7 @@ function renderIntegrationsPanel() {
                 <div class="settings-fields">
                     <div class="form-group">
                         <label>Client ID</label>
-                        <div class="render-row-input" data-id="trakt_client_id" data-name="trakt_client_id" data-type="password" data-value="" data-placeholder="${trakt.client_id_configured ? '(configured — paste new value to replace)' : 'Client ID'}" data-no-button="true"></div>
-                    </div>
-                    <div class="form-group">
-                        <label>Client Secret</label>
-                        <div class="render-row-input" data-id="trakt_client_secret" data-name="trakt_client_secret" data-type="password" data-value="" data-placeholder="${trakt.client_secret_configured ? '(configured — paste new value to replace)' : 'Client Secret'}"></div>
+                        <div class="render-row-input" data-id="trakt_client_id" data-name="trakt_client_id" data-type="password" data-value="" data-placeholder="${trakt.client_id_configured ? '(configured — paste new value to replace)' : 'Client ID'}"></div>
                     </div>
                 </div>
             `, true)}
