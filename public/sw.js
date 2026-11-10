@@ -15,7 +15,7 @@
  *   - Periodic cache cleanup and versioned cache naming
  */
 
-const CACHE_NAME = 'rendler-offline-v152';
+const CACHE_NAME = 'rendler-offline-v153';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 const OFFLINE_CACHE_PREFIX = 'rendler-offline-';
 const NAVIGATION_NETWORK_TIMEOUT_MS = 1500;
@@ -60,6 +60,7 @@ function shouldBypass(request, url) {
     if (url.pathname === '/rendler-industries.apk') return true;
     if (url.pathname === '/login') return true;
     if (url.pathname.startsWith('/auth/')) return true;
+    if (url.pathname === '/trakt/oauth' || url.pathname.startsWith('/trakt/oauth/')) return true;
     if (url.pathname.startsWith('/audiobooks/api/cover/')) return false;
     if (url.pathname.startsWith('/files/serve/') && request.destination === 'image') return false;
     if (url.pathname.startsWith('/files/serve/')) return true;
