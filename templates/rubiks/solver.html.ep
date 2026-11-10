@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/css/rubiks.css">
     <script src="/js/rubiks.js"></script>
     <%# min2phase.js - A lightweight Kociemba solver library %>
-    <script src="https://cdn.jsdelivr.net/npm/min2phase.js@1.0.1/dist/min2phase.min.js"></script>
+    <script src="/js/vendor/min2phase.js"></script>
 % end
 
 <div class="rubiks-container app-container">
