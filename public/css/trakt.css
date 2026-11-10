@@ -34,6 +34,10 @@
     margin: 1rem 0;
 }
 
+.trakt-create-list-action {
+    margin-left: auto;
+}
+
 .trakt-tab {
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 999px;
@@ -299,7 +303,10 @@
 .trakt-show-poster,
 .trakt-mobile-art {
     display: block;
+    width: auto;
     height: 4.4rem;
+    aspect-ratio: 2 / 3;
+    flex-shrink: 0;
     object-fit: cover;
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.06);
@@ -313,6 +320,31 @@
 
 .trakt-item-art {
     height: 6rem;
+}
+
+.trakt-attribution {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 0.85rem;
+}
+
+.trakt-container button:focus-visible,
+#showDetailsModal button:focus-visible,
+#listEditModal button:focus-visible,
+#searchListModal button:focus-visible {
+    outline: 2px solid #38bdf8;
+    outline-offset: 3px;
+}
+
+#showDetailsModal .close-btn,
+#listEditModal .close-btn,
+#searchListModal .close-btn {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    font-size: 1.5rem;
+    cursor: pointer;
 }
 
 .trakt-mobile-art {
@@ -660,6 +692,10 @@
 }
 
 @media (max-width: 760px) {
+    .trakt-create-list-action {
+        margin-left: 0;
+    }
+
     .trakt-panel-stage {
         overflow: hidden;
     }
