@@ -34,8 +34,19 @@
     margin: 1rem 0;
 }
 
-.trakt-create-list-action {
+.trakt-list-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     margin-left: auto;
+}
+
+.trakt-list-title-filter {
+    width: min(16rem, 32vw);
+}
+
+.trakt-create-list-action {
+    flex: 0 0 auto;
 }
 
 .trakt-tab {
@@ -692,8 +703,24 @@
 }
 
 @media (max-width: 760px) {
+    .trakt-list-controls {
+        flex: 0 0 100%;
+        min-width: 0;
+        margin-left: 0;
+    }
+
+    .trakt-list-title-filter {
+        flex: 1 1 0;
+        min-width: 0;
+        width: auto;
+        max-width: 100%;
+        margin-left: 0;
+        box-sizing: border-box;
+    }
+
     .trakt-create-list-action {
         margin-left: 0;
+        flex-shrink: 0;
     }
 
     .trakt-panel-stage {
