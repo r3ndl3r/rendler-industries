@@ -3871,14 +3871,14 @@ async function handleNoteKeydown(e, id) {
             await toggleInlineEdit(btn, id, false, true);
         }
     }
-    // Ctrl + E: Toggle between edit modes, or exit if already in click-to-edit
+    // Ctrl + E: Save and exit the current edit mode
     else if (e.ctrlKey && key === 'e') {
         const el = document.getElementById(`note-${id}`);
         const btn = el?.querySelector('.btn-icon-edit');
         if (btn && el?.classList.contains('is-editing')) {
             e.preventDefault();
             e.stopPropagation();
-            await toggleInlineEdit(btn, id);
+            await toggleInlineEdit(btn, id, false, el.classList.contains('is-raw-editing'));
         }
     }
     else if (e.key === 'Escape') {
