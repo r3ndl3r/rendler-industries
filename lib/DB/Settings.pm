@@ -98,36 +98,33 @@ sub DB::get_all_settings {
     return $settings;
 }
 
-# Retrieves the stored Trakt OAuth client ID and secret from app_secrets.
-# Returns: HashRef { client_id, client_secret }
+# Retrieves the Trakt PKCE client ID from admin-owned app_secrets.
+# Returns: HashRef { client_id }
 sub DB::get_trakt_app_credentials {
     my ($self) = @_;
     $self->ensure_connection;
 
     my $creds = {
-        client_id     => '',
-        client_secret => ''
+        client_id     => ''
     };
 
     eval {
-        my $sth = $self->{dbh}->prepare("SELECT key_name, secret_value FROM app_secrets WHERE key_name IN ('trakt_client_id', 'trakt_client_secret')");
+        my $sth = $self->{dbh}->prepare("SELECT key_name, secret_value FROM app_secrets WHERE key_name = 'trakt_client_id'");
         $sth->execute();
         while (my ($key, $value) = $sth->fetchrow_array()) {
             $creds->{client_id} = $value if $key eq 'trakt_client_id';
-            $creds->{client_secret} = $value if $key eq 'trakt_client_secret';
         }
     };
 
     return $creds;
 }
 
-# Upserts the Trakt OAuth client ID and secret into app_secrets.
+# Upserts the Trakt PKCE client ID into app_secrets.
 # Parameters:
 #   client_id     : New Trakt client ID.
-#   client_secret : New Trakt client secret.
 # Returns: Void.
 sub DB::update_trakt_app_credentials {
-    my ($self, $client_id, $client_secret) = @_;
+    my ($self, $client_id) = @_;
     $self->ensure_connection;
 
     my $sth = $self->{dbh}->prepare(
@@ -137,7 +134,6 @@ sub DB::update_trakt_app_credentials {
     );
 
     $sth->execute('trakt_client_id', $client_id) if defined $client_id && length $client_id;
-    $sth->execute('trakt_client_secret', $client_secret) if defined $client_secret && length $client_secret;
 }
 
 # Updates or creates the Pushover API configuration.
