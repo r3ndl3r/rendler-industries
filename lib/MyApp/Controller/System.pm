@@ -1331,6 +1331,7 @@ sub run_trakt_episode_notifications {
         FROM trakt_upcoming u
         INNER JOIN trakt_watchlist_items w
                 ON w.user_id = u.user_id AND w.show_trakt_id = u.show_trakt_id
+        INNER JOIN trakt_connections c ON c.user_id = u.user_id AND c.status = 'connected'
         WHERE u.first_aired <= ?
           AND u.first_aired >= ?
           AND u.episode_trakt_id IS NOT NULL
@@ -1342,10 +1343,13 @@ sub run_trakt_episode_notifications {
     $stats->{rows_found} = scalar @$rows;
 
     foreach my $row (@$rows) {
-        my $episode_label = sprintf("S%02dE%02d", $row->{season} // 0, $row->{episode} // 0);
-
         eval {
             my $queued = $c->_with_maintenance_notification_txn(sub {
+                my ($connected) = $c->db->{dbh}->selectrow_array(
+                    "SELECT 1 FROM trakt_connections WHERE user_id = ? AND status = 'connected' FOR UPDATE",
+                    undef, $row->{user_id},
+                );
+                return 0 unless $connected;
                 my ($still_watchlisted) = $c->db->{dbh}->selectrow_array(
                     "SELECT 1 FROM trakt_watchlist_items WHERE user_id = ? AND show_trakt_id = ? FOR UPDATE",
                     undef,
@@ -1353,6 +1357,17 @@ sub run_trakt_episode_notifications {
                     $row->{show_trakt_id},
                 );
                 return 0 unless $still_watchlisted;
+
+                my $current = $c->db->{dbh}->selectrow_hashref(
+                    "SELECT show_title, season, episode, title, first_aired, network
+                     FROM trakt_upcoming
+                     WHERE user_id = ? AND show_trakt_id = ? AND episode_trakt_id = ?
+                       AND first_aired <= ? AND first_aired >= ? FOR UPDATE",
+                    undef, $row->{user_id}, $row->{show_trakt_id}, $row->{episode_trakt_id},
+                    $now_str, $cutoff,
+                );
+                return 0 unless $current;
+                my $episode_label = sprintf("S%02dE%02d", $current->{season} // 0, $current->{episode} // 0);
 
                 # Claim with INSERT IGNORE to prevent double-firing.
                 my $rv = $c->db->{dbh}->do(
@@ -1362,10 +1377,10 @@ sub run_trakt_episode_notifications {
                     undef,
                     $row->{user_id},
                     $row->{episode_trakt_id},
-                    $row->{show_title}   || '',
+                    $current->{show_title}   || '',
                     $episode_label,
-                    $row->{title}        || '',
-                    $row->{first_aired},
+                    $current->{title}        || '',
+                    $current->{first_aired},
                     $now_str,
                 );
 
@@ -1375,10 +1390,10 @@ sub run_trakt_episode_notifications {
                     $row->{user_id},
                     'trakt_episode_airing',
                     {
-                    show_title    => $row->{show_title} || '',
+                    show_title    => $current->{show_title} || '',
                     episode_label => $episode_label,
-                    title         => $row->{title}      || '',
-                    network       => $row->{network}    || '',
+                    title         => $current->{title}      || '',
+                    network       => $current->{network}    || '',
                     },
                     0  # caller_id: system-originated notification
                 );
