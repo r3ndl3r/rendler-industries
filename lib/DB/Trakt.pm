@@ -45,8 +45,19 @@ sub DB::upsert_trakt_connection {
     my ($self, $user_id, $conn) = @_;
     $self->ensure_connection;
 
-    my $sth = $self->{dbh}->prepare(
-        q{INSERT INTO trakt_connections
+    my $dbh = $self->{dbh};
+    local $dbh->{AutoCommit} = 0;
+    eval {
+        my $previous = $dbh->selectrow_hashref(
+            'SELECT trakt_user_id FROM trakt_connections WHERE user_id = ? FOR UPDATE',
+            undef, $user_id,
+        );
+        if ($previous && (($previous->{trakt_user_id} // '') ne ($conn->{trakt_user_id} // ''))) {
+            _clear_user_cache($dbh, $user_id);
+            $dbh->do('UPDATE trakt_connections SET last_synced_at = NULL WHERE user_id = ?', undef, $user_id);
+        }
+        my $sth = $dbh->prepare(
+            q{INSERT INTO trakt_connections
           (user_id, trakt_user_id, trakt_username, access_token, refresh_token, token_type, expires_at, scope, status, connected_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'connected', NOW(), NOW())
           ON DUPLICATE KEY UPDATE
@@ -61,17 +72,24 @@ sub DB::upsert_trakt_connection {
             scope = VALUES(scope),
             status = 'connected',
             updated_at = NOW()}
-    );
-    $sth->execute(
-        $user_id,
-        $conn->{trakt_user_id},
-        $conn->{trakt_username},
-        $conn->{access_token},
-        $conn->{refresh_token},
-        $conn->{token_type} || 'bearer',
-        $conn->{expires_at},
-        $conn->{scope} || ''
-    );
+        );
+        $sth->execute(
+            $user_id,
+            $conn->{trakt_user_id},
+            $conn->{trakt_username},
+            $conn->{access_token},
+            $conn->{refresh_token},
+            $conn->{token_type} || 'bearer',
+            $conn->{expires_at},
+            $conn->{scope} || ''
+        );
+        $dbh->commit;
+    };
+    if ($@) {
+        my $err = $@;
+        eval { $dbh->rollback };
+        die $err;
+    }
 }
 
 # Stores rotated OAuth tokens only while the original connection is still current.
@@ -103,25 +121,6 @@ sub DB::update_trakt_refreshed_connection {
         $expected_refresh_token,
     );
     return ($sth->rows || 0) > 0 ? 1 : 0;
-}
-
-# Stores the authoritative custom Watchlist Trakt ID for a connected user.
-# Parameters:
-#   $self : DB instance
-#   $user_id : User ID
-#   $trakt_list_id : Remote Trakt personal-list ID
-# Returns:
-#   DBI execute result
-sub DB::set_trakt_watchlist_list_id {
-    my ($self, $user_id, $trakt_list_id) = @_;
-    $self->ensure_connection;
-
-    my $sth = $self->{dbh}->prepare(
-        q{UPDATE trakt_connections
-          SET watchlist_trakt_list_id = ?, updated_at = NOW()
-          WHERE user_id = ?}
-    );
-    return $sth->execute($trakt_list_id, $user_id);
 }
 
 # Returns the mutation revision used to reject stale full-sync snapshots.
@@ -205,12 +204,9 @@ sub DB::clear_trakt_user_cache {
     my $dbh = $self->{dbh};
     local $dbh->{AutoCommit} = 0;
     eval {
-        $dbh->do("DELETE FROM trakt_episode_notifications WHERE user_id = ?", undef, $user_id);
-        $dbh->do("DELETE FROM trakt_list_items WHERE user_id = ?", undef, $user_id);
-        $dbh->do("DELETE FROM trakt_lists WHERE user_id = ?", undef, $user_id);
-        $dbh->do("DELETE FROM trakt_unwatched_cache WHERE user_id = ?", undef, $user_id);
-        $dbh->do("DELETE FROM trakt_watchlist_items WHERE user_id = ?", undef, $user_id);
-        $dbh->do("DELETE FROM trakt_upcoming WHERE user_id = ?", undef, $user_id);
+        $dbh->selectrow_array('SELECT user_id FROM trakt_connections WHERE user_id = ? FOR UPDATE', undef, $user_id);
+        $dbh->do('UPDATE trakt_connections SET cache_revision = cache_revision + 1 WHERE user_id = ?', undef, $user_id);
+        _clear_user_cache($dbh, $user_id);
         $dbh->commit;
     };
     if ($@) {
@@ -225,17 +221,35 @@ sub DB::clear_trakt_user_cache {
 #   $self  : DB instance
 #   $user_id : User ID
 # Returns:
-#   Hashref with keys: connection, lists, upcoming, unwatched
+#   Consistent hashref with connection, lists, upcoming, unwatched, and cache_revision
 sub DB::get_trakt_dashboard_state {
     my ($self, $user_id) = @_;
     $self->ensure_connection;
 
-    return {
-        connection  => $self->get_trakt_public_connection($user_id),
-        lists       => $self->get_trakt_lists($user_id),
-        upcoming    => $self->get_trakt_upcoming($user_id),
-        unwatched   => []
+    my $dbh = $self->{dbh};
+    my $started_txn = $dbh->{AutoCommit};
+    my $state;
+    eval {
+        $dbh->begin_work if $started_txn;
+        my ($revision) = $dbh->selectrow_array(
+            'SELECT cache_revision FROM trakt_connections WHERE user_id = ? FOR UPDATE',
+            undef, $user_id,
+        );
+        $state = {
+            connection     => $self->get_trakt_public_connection($user_id),
+            lists          => $self->get_trakt_lists($user_id),
+            upcoming       => $self->get_trakt_upcoming($user_id),
+            unwatched      => [],
+            cache_revision => defined $revision ? 0 + $revision : 0,
+        };
+        $dbh->commit if $started_txn;
     };
+    if ($@) {
+        my $err = $@;
+        eval { $dbh->rollback if $started_txn };
+        die $err;
+    }
+    return $state;
 }
 
 # Returns a safe public subset of the connection (no tokens).
@@ -324,16 +338,25 @@ sub DB::get_trakt_upcoming {
 #   $self     : DB instance
 #   $user_id  : User ID
 #   $upcoming : Arrayref of Trakt calendar rows
+#   $expected_revision : Revision captured before remote calendar hydration (required)
 # Returns:
 #   1 on success, 0 on invalid input
 sub DB::replace_trakt_upcoming_cache {
-    my ($self, $user_id, $upcoming) = @_;
+    my ($self, $user_id, $upcoming, $expected_revision) = @_;
     $self->ensure_connection;
     return 0 unless ref $upcoming eq 'ARRAY';
 
     my $dbh = $self->{dbh};
     local $dbh->{AutoCommit} = 0;
     eval {
+        my $connection = $dbh->selectrow_hashref(
+            'SELECT status, cache_revision FROM trakt_connections WHERE user_id = ? FOR UPDATE',
+            undef, $user_id,
+        );
+        die "TRAKT_SYNC_DISCONNECTED\n"
+            unless $connection && ($connection->{status} || '') eq 'connected';
+        die "TRAKT_SYNC_STALE\n"
+            unless defined $expected_revision && $connection->{cache_revision} == $expected_revision;
         my $watchlist_ids = $dbh->selectcol_arrayref(
             "SELECT show_trakt_id FROM trakt_watchlist_items WHERE user_id = ? FOR UPDATE",
             undef,
@@ -347,6 +370,7 @@ sub DB::replace_trakt_upcoming_cache {
 
         $dbh->do("DELETE FROM trakt_upcoming WHERE user_id = ?", undef, $user_id);
         _insert_upcoming($dbh, $user_id, \@current);
+        _bump_cache_revision($dbh, $user_id);
         $dbh->commit;
     };
     if ($@) {
@@ -419,9 +443,10 @@ sub DB::replace_trakt_cache {
         }
 
         my $sth = $dbh->prepare($mark_synced
-            ? "UPDATE trakt_connections SET last_synced_at = NOW(), updated_at = NOW() WHERE user_id = ?"
-            : "UPDATE trakt_connections SET updated_at = NOW() WHERE user_id = ?");
-        $sth->execute($user_id);
+            ? "UPDATE trakt_connections SET watchlist_trakt_list_id = ?, last_synced_at = NOW(), updated_at = NOW() WHERE user_id = ?"
+            : "UPDATE trakt_connections SET watchlist_trakt_list_id = ?, updated_at = NOW() WHERE user_id = ?");
+        $sth->execute($watchlist_trakt_list_id, $user_id);
+        _bump_cache_revision($dbh, $user_id);
         $dbh->commit;
     };
     if ($@) {
@@ -452,6 +477,56 @@ sub DB::get_trakt_list_for_owner {
     );
     $sth->execute($user_id, $id);
     return $sth->fetchrow_hashref || undef;
+}
+
+# Stores remote list metadata without replacing cached items or collapsed state.
+# Parameters: user ID, remote list hashref containing ids.trakt, optional expected revision.
+# Returns: Local list ID; throws on invalid input or a disconnected connection.
+sub DB::upsert_trakt_cached_list {
+    my ($self, $user_id, $list, $expected_revision) = @_;
+    die "Invalid Trakt list\n" unless ref $list eq 'HASH' && ($list->{ids} || {})->{trakt};
+    $self->ensure_connection;
+    my $dbh = $self->{dbh};
+    local $dbh->{AutoCommit} = 0;
+    my $list_id;
+    eval {
+        _bump_cache_revision($dbh, $user_id, $expected_revision);
+        $list_id = _upsert_list($dbh, $user_id, $list);
+        _refresh_list_item_count($dbh, $user_id, $list_id);
+        $dbh->commit;
+    };
+    if ($@) {
+        my $err = $@;
+        eval { $dbh->rollback };
+        die $err;
+    }
+    return $list_id;
+}
+
+# Removes an owned cached custom list and its items, preserving the application Watchlist.
+# Parameters: user ID, owned local list hashref containing id, optional expected revision.
+# Returns: 1 on success; throws on invalid input or a protected/disconnected connection.
+sub DB::delete_trakt_cached_list {
+    my ($self, $user_id, $list, $expected_revision) = @_;
+    die "Invalid Trakt list\n" unless ref $list eq 'HASH' && $list->{id};
+    $self->ensure_connection;
+    my $dbh = $self->{dbh};
+    local $dbh->{AutoCommit} = 0;
+    eval {
+        _bump_cache_revision($dbh, $user_id, $expected_revision);
+        my $owned = $self->get_trakt_list_for_owner($user_id, $list->{id});
+        die "Trakt list not found\n" unless $owned;
+        die "Cannot delete application Watchlist\n" if $owned->{is_watchlist};
+        $dbh->do('DELETE FROM trakt_list_items WHERE user_id = ? AND list_id = ?', undef, $user_id, $list->{id});
+        $dbh->do('DELETE FROM trakt_lists WHERE user_id = ? AND id = ?', undef, $user_id, $list->{id});
+        $dbh->commit;
+    };
+    if ($@) {
+        my $err = $@;
+        eval { $dbh->rollback };
+        die $err;
+    }
+    return 1;
 }
 
 # Updates the collapsed state of a user's list.
@@ -495,17 +570,18 @@ sub DB::get_trakt_list_item_for_owner {
 #   $user_id : User ID
 #   $list  : List hashref
 #   $items : Arrayref of item hashrefs
+#   $expected_revision : Optional revision captured before remote mutation
 # Returns:
 #   1 on success, 0 on invalid input
 sub DB::add_trakt_cached_list_items {
-    my ($self, $user_id, $list, $items) = @_;
+    my ($self, $user_id, $list, $items, $expected_revision) = @_;
     $self->ensure_connection;
     return 0 unless $list && $list->{id} && ref $items eq 'ARRAY';
 
     my $dbh = $self->{dbh};
     local $dbh->{AutoCommit} = 0;
     eval {
-        _bump_cache_revision($dbh, $user_id);
+        _bump_cache_revision($dbh, $user_id, $expected_revision);
         for my $item (@$items) {
             _upsert_client_list_item($dbh, $user_id, $list->{id}, $item);
             _upsert_watchlist_show_from_client($dbh, $user_id, $item)
@@ -529,17 +605,18 @@ sub DB::add_trakt_cached_list_items {
 #   $user_id : User ID
 #   $list  : List hashref
 #   $items : Arrayref of item hashrefs
+#   $expected_revision : Optional revision captured before remote mutation
 # Returns:
 #   1 on success, 0 on invalid input
 sub DB::remove_trakt_cached_list_items {
-    my ($self, $user_id, $list, $items) = @_;
+    my ($self, $user_id, $list, $items, $expected_revision) = @_;
     $self->ensure_connection;
     return 0 unless $list && $list->{id} && ref $items eq 'ARRAY';
 
     my $dbh = $self->{dbh};
     local $dbh->{AutoCommit} = 0;
     eval {
-        _bump_cache_revision($dbh, $user_id);
+        _bump_cache_revision($dbh, $user_id, $expected_revision);
         my $delete_sth = $dbh->prepare(
             q{DELETE FROM trakt_list_items
               WHERE user_id = ? AND list_id = ? AND media_type = ? AND trakt_id = ? AND season = ? AND episode = ?}
@@ -575,17 +652,18 @@ sub DB::remove_trakt_cached_list_items {
 #   $user_id : User ID
 #   $items : Arrayref of item hashrefs
 #   $watched : Boolean watched state
+#   $expected_revision : Optional revision captured before remote mutation
 # Returns:
 #   1 on success, 0 on invalid input
 sub DB::set_trakt_cached_items_watched {
-    my ($self, $user_id, $items, $watched) = @_;
+    my ($self, $user_id, $items, $watched, $expected_revision) = @_;
     $self->ensure_connection;
     return 0 unless ref $items eq 'ARRAY';
 
     my $dbh = $self->{dbh};
     local $dbh->{AutoCommit} = 0;
     eval {
-        _bump_cache_revision($dbh, $user_id);
+        _bump_cache_revision($dbh, $user_id, $expected_revision);
         my $sth = $dbh->prepare(
             q{UPDATE trakt_list_items
               SET watched = ?, updated_at = NOW()
@@ -714,7 +792,8 @@ sub _insert_watchlist {
           VALUES (?, ?, ?, ?, ?, NOW())}
     );
     for my $row (@$items) {
-        my $show = $row->{show} || next;
+        my ($type, $show) = _media_from_row($row);
+        next unless ($type || '') eq 'show';
         $sth->execute($user_id, $show->{ids}{trakt}, $show->{title} || '', $show->{year}, encode_json($row));
     }
 }
@@ -808,7 +887,8 @@ sub _upsert_list_item {
     return unless $type && $media;
 
     my $ids = $media->{ids} || {};
-    my $episode = $row->{episode} || {};
+    my $episode = $type eq 'episode' && ref $row->{episode} eq 'HASH' ? $row->{episode} : {};
+    my $season = $type eq 'season' ? ($media->{number} // 0) : ($episode->{season} // 0);
     my $sth = $dbh->prepare(
         q{INSERT INTO trakt_list_items
           (user_id, list_id, media_type, trakt_id, imdb_id, tmdb_id, title, year, season, episode, watched, raw_json, updated_at)
@@ -835,7 +915,7 @@ sub _upsert_list_item {
         $ids->{tmdb},
         $media->{title} || '',
         $media->{year},
-        $episode->{season} || 0,
+        $season,
         $episode->{number} || 0,
         $watched_flag,
         encode_json($row)
@@ -931,39 +1011,60 @@ sub _refresh_list_item_count {
 # Parameters:
 #   $dbh : Database handle
 #   $user_id : User ID
+#   $expected_revision : Optional revision; a mismatch throws TRAKT_SYNC_STALE
 # Returns:
 #   DBI execute result; dies if the connection changed or disconnected
 sub _bump_cache_revision {
-    my ($dbh, $user_id) = @_;
+    my ($dbh, $user_id, $expected_revision) = @_;
+    my $revision_guard = defined $expected_revision ? ' AND cache_revision = ?' : '';
     my $updated = $dbh->do(
         q{UPDATE trakt_connections
           SET cache_revision = cache_revision + 1, updated_at = NOW()
-          WHERE user_id = ? AND status = 'connected'},
+          WHERE user_id = ? AND status = 'connected'} . $revision_guard,
         undef,
         $user_id,
+        (defined $expected_revision ? ($expected_revision) : ()),
     );
+    die "TRAKT_SYNC_STALE\n" if defined $expected_revision && !($updated && $updated > 0);
     die "TRAKT_CONNECTION_CHANGED\n" unless $updated && $updated > 0;
     return $updated;
 }
 
+# Clears account-scoped data using the caller's connection lock and transaction.
+# Parameters: database handle and local user ID.
+sub _clear_user_cache {
+    my ($dbh, $user_id) = @_;
+    for my $table (qw(trakt_episode_notifications trakt_list_items trakt_lists
+                      trakt_unwatched_cache trakt_watchlist_items trakt_upcoming)) {
+        $dbh->do("DELETE FROM $table WHERE user_id = ?", undef, $user_id);
+    }
+}
+
 # Extracts the media type and data hash from a Trakt API row.
-# Checks for movie/show/season/episode keys in order.
+# Explicit media_type/type wins; nested episode/season rows precede their show parent.
 # Parameters:
 #   $row : Trakt API item row
 # Returns:
 #   (type, media_hashref) or undef
 sub _media_from_row {
     my ($row) = @_;
-    for my $type (qw(movie show season episode)) {
+    return unless ref $row eq 'HASH';
+    my $explicit = $row->{media_type} || $row->{type};
+    if (defined $explicit && length $explicit) {
+        return unless $explicit =~ /\A(?:movie|show|season|episode)\z/;
+        return ($explicit, $row->{$explicit}) if ref $row->{$explicit} eq 'HASH';
+        return;
+    }
+    for my $type (qw(episode season movie show)) {
         return ($type, $row->{$type}) if ref $row->{$type} eq 'HASH';
     }
     return;
 }
 
 # Determines whether an item row should be marked watched based on the watched hashref.
-# Handles movie, show, and episode types with different lookup strategies.
+# Handles movie, show, season, and episode types with different lookup strategies.
 # Parameters:
-#   $type    : Media type (movie|show|episode)
+#   $type    : Media type (movie|show|season|episode)
 #   $row     : Trakt API item row
 #   $watched : Watched status hashref {movies => {}, shows => {}, episodes => {}}
 # Returns:
@@ -980,6 +1081,23 @@ sub _is_watched_row {
     if ($type eq 'show') {
         my $show_id = (($row->{show} || {})->{ids} || {})->{trakt};
         return $show_id && $watched->{shows}{$show_id} ? 1 : 0;
+    }
+
+    if ($type eq 'season') {
+        my $show_id = (($row->{show} || {})->{ids} || {})->{trakt};
+        my $season = $row->{season} || {};
+        my $number = $season->{number};
+        return 0 unless $show_id && defined $number;
+        my $key = join(':', $show_id, $number);
+        return $watched->{seasons}{$key} ? 1 : 0
+            if exists $watched->{seasons}{$key};
+        my $total = $season->{episode_count} || 0;
+        return 0 unless $total > 0;
+        my $completed = 0;
+        for my $episode_key (keys %{$watched->{episodes} || {}}) {
+            $completed++ if $episode_key =~ /\A\Q$key\E:\d+\z/ && $watched->{episodes}{$episode_key};
+        }
+        return $completed >= $total ? 1 : 0;
     }
 
     if ($type eq 'episode') {
