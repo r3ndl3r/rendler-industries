@@ -24,6 +24,13 @@ let SHOW_DETAILS_OPEN_SEASONS = {};
 let SHOW_DETAILS_REQUEST_ID = 0;
 let traktHistoryActionInFlight = false;
 let traktListCollapseNonce = {};
+const COLLAPSE_SAVES = new Map();
+let STATE_VERSION = 0;
+let STATE_REQUEST_ID = 0;
+let UPCOMING_VERSION = 0;
+const MODAL_FOCUS = new Map();
+const MUTATION_REVISIONS = new Map();
+let DASHBOARD_REVISION = 0;
 let SEARCH_QUERY = '';
 let SEARCH_TYPE = 'movie,show';
 let SEARCH_DEBOUNCE_TIMER = null;
@@ -33,6 +40,9 @@ let UNWATCHED_LOADED = false;
 let UNWATCHED_REFRESH_QUEUED = false;
 let UNWATCHED_VERSION = 0;
 let UNWATCHED_REQUEST_ID = 0;
+let UNWATCHED_PENDING = false;
+let UNWATCHED_RETRY_TIMER = null;
+let UNWATCHED_RETRY_ATTEMPTS = 0;
 let REFRESH_IN_PROGRESS = false;
 let REFRESH_ACTIVITY_COUNT = 0;
 let TRAKT_SYNC_IN_PROGRESS = false;
@@ -57,7 +67,11 @@ const TAB_ORDER = ['upcoming', 'unwatched', 'lists', 'search'];
 document.addEventListener('DOMContentLoaded', () => {
     IS_COMPACT_LAYOUT = compactLayout();
     window.addEventListener('resize', handleViewportResize, { passive: true });
-    setupGlobalModalClosing(['modal-overlay'], [closeShowDetailsModal, closeListEditModal, closeSearchListModal]);
+    document.addEventListener('keydown', handleTraktModalKeydown, true);
+    document.addEventListener('click', event => {
+        const close = traktModalClosers()[event.target.id];
+        if (close) close();
+    });
     const app = document.getElementById('traktApp');
     if (app) {
         app.addEventListener('touchstart', onSwipeStart, { passive: true });
@@ -73,11 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>}
  */
 async function loadState() {
+    const version = STATE_VERSION;
+    const requestId = ++STATE_REQUEST_ID;
     try {
         const data = await apiGet('/trakt/api/state', 30000);
+        if (version !== STATE_VERSION || requestId !== STATE_REQUEST_ID || isOlderSnapshot(data)) return;
         if (data && data.success) {
             const unwatchedNeedsRefresh = Number(data.unwatched_stale) === 1;
-            STATE = { ...STATE, ...data };
+            mergeDashboardState(data);
             if (Array.isArray(data.unwatched)) {
                 UNWATCHED_LOADING = false;
                 UNWATCHED_LOADED = true;
@@ -86,7 +103,7 @@ async function loadState() {
                 UNWATCHED_LOADING = false;
                 UNWATCHED_LOADED = false;
                 UNWATCHED_REFRESH_QUEUED = false;
-                UNWATCHED_VERSION += 1;
+                invalidateUnwatchedStateLoads();
                 UNWATCHED_REQUEST_ID += 1;
                 STATE.unwatched = [];
             }
@@ -123,12 +140,13 @@ function renderTrakt() {
     renderHeaderActions();
     const app = document.getElementById('traktApp');
     if (!app) return;
+    const focus = captureTraktFocus(app);
 
     if (!STATE.configured) {
         app.innerHTML = `
             <div class="glass-panel trakt-empty">
                 <h2>Trakt API credentials needed</h2>
-                <p>An admin needs to configure the Trakt client ID and secret in Settings before family users can connect.</p>
+                <p>An admin needs to configure the Trakt client ID in Settings before family users can connect.</p>
                 <a class="btn-primary" href="/admin/settings">Open Settings</a>
             </div>`;
         return;
@@ -144,18 +162,27 @@ function renderTrakt() {
         return;
     }
 
+    const results = activeTab === 'search' && document.getElementById('searchResults');
+    if (results) {
+        results.innerHTML = renderSearchResults();
+        restoreTraktFocus(app, focus);
+        return;
+    }
+
     app.innerHTML = `
         <div class="trakt-tabs">
             ${renderTabButton('upcoming', 'Upcoming')}
             ${renderTabButton('unwatched', 'Unwatched')}
             ${renderTabButton('lists', 'Lists')}
             ${renderTabButton('search', 'Search')}
+            ${activeTab === 'lists' ? '<button type="button" class="btn-primary trakt-create-list-action" onclick="createList()">Create List</button>' : ''}
         </div>
         <div class="trakt-panel-stage">
             <div class="trakt-panel">
                 ${renderActiveTab()}
             </div>
         </div>`;
+    restoreTraktFocus(app, focus);
 }
 
 /**
@@ -277,11 +304,14 @@ function renderUpcoming() {
  * @returns {string} HTML string.
  */
 function renderUnwatched() {
-    if (UNWATCHED_LOADING && !UNWATCHED_LOADED) {
+    if (!UNWATCHED_LOADED && !UNWATCHED_LOADING && !UNWATCHED_PENDING) {
+        return '<div class="empty-state"><p>Unwatched episodes are not available yet.</p><p class="empty-hint">Use Refresh to try again.</p></div>';
+    }
+    if ((UNWATCHED_LOADING || UNWATCHED_PENDING) && !UNWATCHED_LOADED) {
         return `<div class="empty-state trakt-loading"><div class="trakt-spinner"></div><p>Computing unwatched episodes...</p><p class="empty-hint">Gathering data from Trakt for each show in your watchlist</p></div>`;
     }
 
-    const updating = UNWATCHED_LOADING
+    const updating = UNWATCHED_LOADING || UNWATCHED_PENDING
         ? '<div class="trakt-background-status">Updating unwatched episodes...</div>'
         : '';
 
@@ -325,9 +355,6 @@ function renderUnwatched() {
  */
 function renderLists() {
     return `
-        <div class="trakt-toolbar">
-            <button type="button" class="btn-primary" onclick="createList()">Create List</button>
-        </div>
         ${STATE.lists.length ? STATE.lists.map(renderListCard).join('') : '<div class="empty-state"><p>No Trakt lists synced yet.</p></div>'}`;
 }
 
@@ -342,7 +369,7 @@ function renderListCard(list) {
     return `
         <section class="glass-panel trakt-list ${collapsed ? 'collapsed' : ''}" data-list-id="${list.id}">
             <div class="trakt-list-header">
-                <button type="button" class="trakt-list-title" onclick="toggleListCollapsed(${list.id}, ${collapsed ? 0 : 1})">
+                <button type="button" class="trakt-list-title" aria-expanded="${!collapsed}" onclick="toggleListCollapsed(${list.id}, ${collapsed ? 0 : 1})">
                     <span class="trakt-list-chevron">${collapsed ? '▸' : '▾'}</span>
                     <div class="trakt-list-heading">
                         <h3>${escapeHtml(list.name || 'Untitled list')} <span class="trakt-muted">(${list.item_count || 0})</span></h3>
@@ -354,7 +381,7 @@ function renderListCard(list) {
                 </div>
             </div>
             <div class="trakt-items ${collapsed ? 'hidden' : ''}">
-                ${(list.items || []).length ? list.items.map(item => renderListItem(item, list)).join('') : '<p class="trakt-muted">No items in this list.</p>'}
+                ${collapsed ? '' : (list.items || []).length ? list.items.map(item => renderListItem(item, list)).join('') : '<p class="trakt-muted">No items in this list.</p>'}
             </div>
         </section>`;
 }
@@ -367,18 +394,28 @@ function renderSearch() {
     return `
         <div class="glass-panel trakt-search">
             <form class="trakt-search-form" onsubmit="searchTrakt(event)">
-                <select id="searchType" class="game-input">
+                <select id="searchType" class="game-input" aria-label="Media type" onchange="debouncedSearch()">
                     <option value="movie,show" ${SEARCH_TYPE === 'movie,show' ? 'selected' : ''}>Movies & Shows</option>
                     <option value="movie" ${SEARCH_TYPE === 'movie' ? 'selected' : ''}>Movies</option>
                     <option value="show" ${SEARCH_TYPE === 'show' ? 'selected' : ''}>Shows</option>
                 </select>
-                <input id="searchQuery" class="game-input" placeholder="Search Trakt..." autocomplete="off" value="${escapeHtml(SEARCH_QUERY)}" oninput="debouncedSearch()">
+                <input id="searchQuery" class="game-input" aria-label="Search Trakt" placeholder="Search Trakt..." autocomplete="off" value="${escapeHtml(SEARCH_QUERY)}" oninput="debouncedSearch()">
                 <button type="submit" class="btn-primary">Search</button>
             </form>
             <div id="searchResults" class="trakt-items">
-                ${STATE.search_results.length ? `<div class="trakt-search-count">${STATE.search_results.length} result${STATE.search_results.length === 1 ? '' : 's'}</div>${STATE.search_results.map(item => renderSearchItem(item)).join('')}` : renderSearchEmptyState()}
+                ${renderSearchResults()}
             </div>
         </div>`;
+}
+
+/**
+ * Renders result rows independently of the live search form.
+ * @returns {string} Search result count and rows, or the idle placeholder.
+ */
+function renderSearchResults() {
+    return STATE.search_results.length
+        ? `<div class="trakt-search-count">${STATE.search_results.length} result${STATE.search_results.length === 1 ? '' : 's'}</div>${STATE.search_results.map(item => renderSearchItem(item)).join('')}`
+        : renderSearchEmptyState();
 }
 
 /**
@@ -458,9 +495,9 @@ function renderListItem(item, list) {
         <div class="trakt-item${openable.className}" data-trakt-item="${payload}"${openable.attrs}>
             ${renderItemContent(item)}
             <div class="trakt-item-actions">
-                <button type="button" class="btn-icon-delete trakt-item-action" onclick="removeListItem(${Number(list.id)}, '${payload}', this)" title="${removeTitle}">🗑️</button>
-                <button type="button" class="${watched ? 'btn-icon-reset' : 'btn-icon-view'} trakt-item-action" onclick="toggleListItemWatched('${payload}', ${watched ? 'true' : 'false'}, this)" title="${watched ? 'Mark Unwatched' : 'Mark Watched'}">${watched ? '↺' : '✓'}</button>
-                <button type="button" class="btn-icon-edit trakt-item-action" onclick="openItemMoveModal(${Number(list.id)}, '${payload}', this)" title="Move to another list">🔀</button>
+                <button type="button" class="btn-icon-delete trakt-item-action" onclick="removeListItem(${Number(list.id)}, this.closest('.trakt-item').dataset.traktItem, this)" title="${removeTitle}">🗑️</button>
+                <button type="button" class="${watched ? 'btn-icon-reset' : 'btn-icon-view'} trakt-item-action" onclick="toggleListItemWatched(this.closest('.trakt-item').dataset.traktItem, ${watched ? 'true' : 'false'}, this)" title="${watched ? 'Mark Unwatched' : 'Mark Watched'}">${watched ? '↺' : '✓'}</button>
+                <button type="button" class="btn-icon-edit trakt-item-action" onclick="openItemMoveModal(${Number(list.id)}, this.closest('.trakt-item').dataset.traktItem)" title="Move to another list">🔀</button>
             </div>
         </div>`;
 }
@@ -482,8 +519,8 @@ function renderSearchItem(item) {
         <div class="trakt-item${openable.className}" data-trakt-item="${payload}"${openable.attrs}>
             ${renderItemContent(item)}
             <div class="trakt-item-actions">
-                <button type="button" class="btn-icon-edit trakt-item-action" onclick="openSearchListModal('${payload}', this)" title="${escapeHtml(listActionTitle)}">➕</button>
-                <button type="button" class="${watched ? 'btn-icon-reset' : 'btn-icon-view'} trakt-item-action" onclick="toggleSearchItemWatched('${payload}', ${watched ? 'true' : 'false'}, this)" title="${watched ? 'Mark Unwatched' : 'Mark Watched'}">${watched ? '↺' : '✓'}</button>
+                <button type="button" class="btn-icon-edit trakt-item-action" onclick="openSearchListModal(this.closest('.trakt-item').dataset.traktItem, this)" title="${escapeHtml(listActionTitle)}">➕</button>
+                <button type="button" class="${watched ? 'btn-icon-reset' : 'btn-icon-view'} trakt-item-action" onclick="toggleSearchItemWatched(this.closest('.trakt-item').dataset.traktItem, ${watched ? 'true' : 'false'}, this)" title="${watched ? 'Mark Unwatched' : 'Mark Watched'}">${watched ? '↺' : '✓'}</button>
             </div>
         </div>`;
 }
@@ -515,6 +552,7 @@ function renderItemContent(item) {
  */
 async function syncTrakt() {
     if (REFRESH_IN_PROGRESS) return;
+    const collapseSnapshot = { ...traktListCollapseNonce };
     let refreshUnwatched = false;
     TRAKT_SYNC_IN_PROGRESS = true;
     invalidateUnwatchedStateLoads();
@@ -522,9 +560,13 @@ async function syncTrakt() {
     try {
         const result = await apiPost('/trakt/api/sync', {});
         if (result && result.success) {
-            STATE = { ...STATE, ...result.state };
-            renderTrakt();
             refreshUnwatched = true;
+            if (!isOlderSnapshot(result.state)) {
+                mergeDashboardState(result.state, collapseSnapshot);
+                renderTrakt();
+            } else {
+                await loadState();
+            }
         }
         if (result?.success && !result.message && typeof showToast === 'function') {
             showToast('Trakt synced', 'success');
@@ -545,6 +587,9 @@ async function syncTrakt() {
  * @returns {Promise<void>}
  */
 async function loadUnwatchedState() {
+    clearTimeout(UNWATCHED_RETRY_TIMER);
+    UNWATCHED_RETRY_TIMER = null;
+    UNWATCHED_PENDING = false;
     const requestVersion = UNWATCHED_VERSION;
     const requestId = ++UNWATCHED_REQUEST_ID;
     UNWATCHED_LOADING = true;
@@ -554,8 +599,17 @@ async function loadUnwatchedState() {
         const stateData = await apiGet('/trakt/api/unwatched', 90000);
         if (requestVersion !== UNWATCHED_VERSION || requestId !== UNWATCHED_REQUEST_ID) return;
         if (stateData && stateData.success) {
+            if (stateData.refreshing || stateData.pending) {
+                if (!UNWATCHED_LOADED && stateData.unwatched?.length) {
+                    hydrateUnwatchedState(stateData);
+                    UNWATCHED_LOADED = true;
+                }
+                scheduleUnwatchedRetry(stateData);
+                return;
+            }
+            UNWATCHED_PENDING = false;
+            UNWATCHED_RETRY_ATTEMPTS = 0;
             if (stateData.outdated) {
-                UNWATCHED_REFRESH_QUEUED = true;
                 return;
             }
             if (stateData.stale && UNWATCHED_LOADED) {
@@ -564,6 +618,8 @@ async function loadUnwatchedState() {
                 }
                 return;
             }
+            if (stateData.stale && !stateData.unwatched?.length) return;
+            if (!Array.isArray(stateData.unwatched)) return;
             hydrateUnwatchedState(stateData);
             UNWATCHED_LOADED = true;
             if (stateData.stale && typeof showToast === 'function') {
@@ -577,9 +633,31 @@ async function loadUnwatchedState() {
     } finally {
         if (requestId === UNWATCHED_REQUEST_ID) {
             UNWATCHED_LOADING = false;
-            if (activeTab === 'unwatched') renderTrakt();
+            if (activeTab === 'unwatched' || activeTab === 'lists') renderTrakt();
         }
     }
+}
+
+/**
+ * Waits for an active server rebuild with bounded, coalesced retry delays.
+ * @param {Object} data - Pending response with an optional retry delay.
+ * @returns {void}
+ */
+function scheduleUnwatchedRetry(data) {
+    if (UNWATCHED_RETRY_TIMER || UNWATCHED_RETRY_ATTEMPTS >= 20) {
+        UNWATCHED_PENDING = !!UNWATCHED_RETRY_TIMER;
+        return;
+    }
+    UNWATCHED_PENDING = true;
+    UNWATCHED_REFRESH_QUEUED = false;
+    UNWATCHED_RETRY_ATTEMPTS += 1;
+    const version = UNWATCHED_VERSION;
+    const delay = Math.min(10000, Math.max(1000, Number(data.retry_after_ms) || UNWATCHED_RETRY_ATTEMPTS * 2000));
+    UNWATCHED_RETRY_TIMER = setTimeout(() => {
+        UNWATCHED_RETRY_TIMER = null;
+        if (version !== UNWATCHED_VERSION || !STATE.connection?.connected) return;
+        refreshUnwatchedStateInBackground();
+    }, delay);
 }
 
 /**
@@ -587,6 +665,7 @@ async function loadUnwatchedState() {
  * @returns {void}
  */
 function refreshUnwatchedStateInBackground() {
+    if (UNWATCHED_RETRY_TIMER) return;
     if (!STATE.connection?.connected) {
         UNWATCHED_REFRESH_QUEUED = false;
         return;
@@ -629,11 +708,17 @@ function refreshUpcomingStateInBackground() {
     }
 
     UPCOMING_REFRESH_IN_PROGRESS = true;
+    const version = UPCOMING_VERSION;
     beginRefreshActivity();
     apiPost('/trakt/api/upcoming/sync', {}, 30000)
         .then(result => {
             if (!result?.success || !Array.isArray(result.upcoming)) return;
-            STATE.upcoming = result.upcoming;
+            if (version !== UPCOMING_VERSION || isOlderSnapshot(result)) {
+                UPCOMING_REFRESH_QUEUED = !!STATE.connection?.connected;
+                return;
+            }
+            STATE.upcoming = filterWatchlistRows(result.upcoming);
+            STATE.cache_revision = Math.max(Number(STATE.cache_revision) || 0, Number(result.cache_revision) || 0);
             renderTrakt();
         })
         .catch(err => {
@@ -684,6 +769,10 @@ function refreshUnwatchedAfterMutation() {
  * @returns {void}
  */
 function invalidateUnwatchedStateLoads() {
+    clearTimeout(UNWATCHED_RETRY_TIMER);
+    UNWATCHED_RETRY_TIMER = null;
+    UNWATCHED_RETRY_ATTEMPTS = 0;
+    UNWATCHED_PENDING = false;
     UNWATCHED_VERSION += 1;
     if (UNWATCHED_LOADING) UNWATCHED_REFRESH_QUEUED = true;
 }
@@ -694,7 +783,7 @@ function invalidateUnwatchedStateLoads() {
  * @returns {void}
  */
 function hydrateUnwatchedState(stateData) {
-    STATE.unwatched = stateData.unwatched || [];
+    STATE.unwatched = filterWatchlistRows(stateData.unwatched || []);
     const counts = stateData.unwatched_counts || {};
     STATE.lists = (STATE.lists || []).map(list => ({
         ...list,
@@ -745,8 +834,7 @@ async function createList() {
     descriptionInput.value = '';
     if (title) title.textContent = '✎ Create List';
     saveButton.textContent = '💾 Create List';
-    modal.classList.add('show');
-    document.body.classList.add('modal-open');
+    showTraktModal(modal);
     nameInput.focus();
 }
 
@@ -771,8 +859,7 @@ function openListEditModal(id) {
     descriptionInput.value = list.description || '';
     if (title) title.textContent = '✎ Edit List';
     saveButton.textContent = '💾 Save Changes';
-    modal.classList.add('show');
-    document.body.classList.add('modal-open');
+    showTraktModal(modal);
     nameInput.focus();
     nameInput.select();
 }
@@ -784,7 +871,7 @@ function openListEditModal(id) {
 function closeListEditModal() {
     const modal = document.getElementById('listEditModal');
     if (!modal) return;
-    modal.classList.remove('show');
+    hideTraktModal(modal);
     syncModalBodyState();
 }
 
@@ -802,8 +889,7 @@ function openSearchListModal(payload, button) {
     SEARCH_LIST_MODAL_TRIGGER = button || null;
     if (!item || !modal || !title) return;
     title.textContent = `Lists for ${mediaTitle(item)}`;
-    modal.classList.add('show');
-    document.body.classList.add('modal-open');
+    showTraktModal(modal);
     renderSearchListModalBody();
 }
 
@@ -814,7 +900,7 @@ function openSearchListModal(payload, button) {
 function closeSearchListModal() {
     const modal = document.getElementById('searchListModal');
     if (!modal) return;
-    modal.classList.remove('show');
+    hideTraktModal(modal);
     SEARCH_LIST_MODAL_ITEM = null;
     SEARCH_LIST_MODAL_TRIGGER = null;
     ITEM_MOVE_SOURCE_ITEM = null;
@@ -843,8 +929,7 @@ function openItemMoveModal(sourceListId, payload) {
     const otherLists = STATE.lists.filter(l => Number(l.id) !== Number(sourceListId));
 
     title.textContent = `Move ${mediaTitle(item)}`;
-    modal.classList.add('show');
-    document.body.classList.add('modal-open');
+    showTraktModal(modal);
 
     if (!otherLists.length) {
         body.innerHTML = '<p class="trakt-muted">No other lists available.</p>';
@@ -888,7 +973,8 @@ async function executeItemMove(targetListId) {
             const removeResult = await apiPost(`/trakt/api/lists/${sourceId}/items/remove`, { items: JSON.stringify([item]) });
             if (removeResult && removeResult.success && removeResult.state) {
                 removeCachedListItemLocally(sourceId, item);
-                applyResultState(removeResult);
+                applyResultState(addResult, { kind: 'add', listId: targetListId, item });
+                applyResultState(removeResult, { kind: 'remove', listId: sourceId, item });
                 if (touchesWatchlist) refreshUnwatchedAfterMutation();
                 if (isWatchlistListId(targetListId) && item.media_type === 'show') {
                     refreshUpcomingStateInBackground();
@@ -898,7 +984,7 @@ async function executeItemMove(targetListId) {
                 return;
             }
 
-            if (addResult.state) applyResultState(addResult);
+            if (addResult.state) applyResultState(addResult, { kind: 'add', listId: targetListId, item });
             if (touchesWatchlist) refreshUnwatchedAfterMutation();
             if (isWatchlistListId(targetListId) && item.media_type === 'show') {
                 refreshUpcomingStateInBackground();
@@ -908,7 +994,7 @@ async function executeItemMove(targetListId) {
         } catch (err) {
             console.error('Trakt item move failed:', err);
             if (addResult && addResult.success && addResult.state) {
-                applyResultState(addResult);
+                applyResultState(addResult, { kind: 'add', listId: targetListId, item });
                 if (touchesWatchlist) refreshUnwatchedAfterMutation();
                 if (isWatchlistListId(targetListId) && item.media_type === 'show') {
                     refreshUpcomingStateInBackground();
@@ -957,7 +1043,7 @@ async function submitListEdit(event) {
         const payload = { name, description: String(formData.get('description') || '').trim() };
         const result = await apiPost(url, payload);
         if (result && result.success && result.state) {
-            applyResultState(result);
+            applyResultState(result, { kind: isCreate ? 'create' : 'update', listId, ...payload });
             closeListEditModal();
             if (!result.message && typeof showToast === 'function') {
                 showToast(isCreate ? 'List created' : 'List updated', 'success');
@@ -985,7 +1071,7 @@ async function deleteList(id) {
         onConfirm: async () => {
             const result = await apiPost(`/trakt/api/lists/${id}/delete`, {});
             if (result && result.success && result.state) {
-                applyResultState(result);
+                applyResultState(result, { kind: 'delete', listId: id });
                 if (!result.message && typeof showToast === 'function') showToast('List deleted', 'success');
             }
         }
@@ -1005,33 +1091,41 @@ async function toggleListCollapsed(id, collapsed) {
     const previous = STATE.lists.find(list => Number(list.id) === listId);
     if (!previous) return;
 
-    const nonce = (traktListCollapseNonce[listId] || 0) + 1;
-    traktListCollapseNonce[listId] = nonce;
+    traktListCollapseNonce[listId] = (traktListCollapseNonce[listId] || 0) + 1;
+    STATE_VERSION += 1;
+    let save = COLLAPSE_SAVES.get(listId);
+    if (!save) {
+        save = { confirmed: previous.collapsed, desired: nextCollapsed, running: false };
+        COLLAPSE_SAVES.set(listId, save);
+    }
+    save.desired = nextCollapsed;
     STATE.lists = STATE.lists.map(list =>
         Number(list.id) === listId ? { ...list, collapsed: nextCollapsed } : list
     );
     renderTrakt();
 
-    try {
-        const result = await apiPost(`/trakt/api/lists/${listId}/collapse`, { collapsed: nextCollapsed });
-        if (nonce !== traktListCollapseNonce[listId]) return;
-
-        if (!(result && result.success)) {
-            STATE.lists = STATE.lists.map(list =>
-                Number(list.id) === listId ? { ...list, collapsed: previous.collapsed } : list
-            );
-            renderTrakt();
+    if (save.running) return;
+    save.running = true;
+    while (true) {
+        const nonce = traktListCollapseNonce[listId];
+        const desired = save.desired;
+        try {
+            const result = await apiPost(`/trakt/api/lists/${listId}/collapse`, { collapsed: desired });
+            if (result?.success) {
+                save.confirmed = desired;
+                STATE_VERSION += 1;
+                STATE.cache_revision = Math.max(Number(STATE.cache_revision) || 0, Number(result.state?.cache_revision || result.cache_revision) || 0);
+            }
+            else if (nonce === traktListCollapseNonce[listId]) save.desired = save.confirmed;
+        } catch (err) {
+            if (nonce === traktListCollapseNonce[listId]) save.desired = save.confirmed;
+            if (typeof showToast === 'function') showToast('Unable to save list collapse state', 'error');
         }
-    } catch (err) {
-        console.error('Trakt list collapse save failed:', err);
-        if (nonce !== traktListCollapseNonce[listId]) return;
-        STATE.lists = STATE.lists.map(list =>
-            Number(list.id) === listId ? { ...list, collapsed: previous.collapsed } : list
-        );
+        if (nonce !== traktListCollapseNonce[listId]) continue;
+        STATE.lists = STATE.lists.map(list => Number(list.id) === listId ? { ...list, collapsed: save.desired } : list);
+        COLLAPSE_SAVES.delete(listId);
         renderTrakt();
-        if (typeof showToast === 'function') showToast('Unable to save list collapse state', 'error');
-    } finally {
-        if (nonce === traktListCollapseNonce[listId]) delete traktListCollapseNonce[listId];
+        break;
     }
 }
 
@@ -1043,9 +1137,10 @@ async function toggleListCollapsed(id, collapsed) {
  */
 async function searchTrakt(event) {
     event.preventDefault();
+    clearTimeout(SEARCH_DEBOUNCE_TIMER);
     const q = document.getElementById('searchQuery')?.value.trim() || '';
     const type = document.getElementById('searchType')?.value || 'movie,show';
-    SEARCH_QUERY = q;
+    SEARCH_QUERY = document.getElementById('searchQuery')?.value || '';
     SEARCH_TYPE = type;
     if (q.length < 2) {
         SEARCH_REQUEST_ID += 1;
@@ -1058,7 +1153,7 @@ async function searchTrakt(event) {
     await withBusyButton(button, 'Searching...', async () => {
         try {
             const data = await apiGet(`/trakt/api/search?type=${encodeURIComponent(type)}&q=${encodeURIComponent(q)}`, 15000);
-            if (requestId !== SEARCH_REQUEST_ID || q !== SEARCH_QUERY || type !== SEARCH_TYPE) return;
+            if (requestId !== SEARCH_REQUEST_ID || q !== SEARCH_QUERY.trim() || type !== SEARCH_TYPE) return;
             if (data && data.success) {
                 STATE.search_results = data.results || [];
                 renderTrakt();
@@ -1097,7 +1192,7 @@ async function removeListItem(listId, payload, button) {
                 const result = await apiPost(`/trakt/api/lists/${listId}/items/remove`, { items: JSON.stringify([item]) });
                 if (result && result.success && result.state) {
                     removeCachedListItemLocally(listId, item);
-                    applyResultState(result);
+                    applyResultState(result, { kind: 'remove', listId, item });
                     if (isWatchlistListId(listId)) refreshUnwatchedAfterMutation();
                     if (!result.message && typeof showToast === 'function') showToast('Removed from list', 'success');
                 }
@@ -1141,6 +1236,7 @@ function renderSearchListModalBody() {
     const body = document.getElementById('searchListModalBody');
     const item = SEARCH_LIST_MODAL_ITEM;
     if (!body) return;
+    const focus = captureTraktFocus(body);
     if (!item) {
         body.innerHTML = '<p class="trakt-muted">No item selected.</p>';
         return;
@@ -1169,6 +1265,7 @@ function renderSearchListModalBody() {
                     </div>`;
             }).join('')}
         </div>`;
+    restoreTraktFocus(body, focus);
 }
 
 /**
@@ -1189,7 +1286,7 @@ async function toggleSearchItemListMembership(listId, button) {
             const result = await apiPost(`/trakt/api/lists/${list.id}/items/${endpoint}`, { items: JSON.stringify([item]) });
             if (result && result.success && result.state) {
                 if (inList) removeCachedListItemLocally(list.id, item);
-                applyResultState(result);
+                applyResultState(result, { kind: endpoint, listId: list.id, item });
                 if (Number(list.is_watchlist) === 1) {
                     refreshUnwatchedAfterMutation();
                     if (!inList && item.media_type === 'show') refreshUpcomingStateInBackground();
@@ -1296,8 +1393,7 @@ async function openShowDetails(traktId) {
             <span class="loading-icon-pulse">🎬</span>
             <p class="loading-label">Loading show details...</p>
         </div>`;
-    modal.classList.add('show');
-    document.body.classList.add('modal-open');
+    showTraktModal(modal);
 
     try {
         const data = await apiGet(`/trakt/api/shows/${traktId}`, 30000);
@@ -1324,7 +1420,7 @@ function closeShowDetailsModal() {
     const modal = document.getElementById('showDetailsModal');
     if (!modal) return;
     SHOW_DETAILS_REQUEST_ID += 1;
-    modal.classList.remove('show');
+    hideTraktModal(modal);
     SHOW_DETAILS = null;
     SHOW_DETAILS_OPEN_SEASONS = {};
     syncModalBodyState();
@@ -1338,13 +1434,14 @@ function renderShowDetailsModal() {
     const title = document.getElementById('showDetailsTitle');
     const body = document.getElementById('showDetailsBody');
     if (!title || !body || !SHOW_DETAILS) return;
+    const focus = captureTraktFocus(body);
     const artUrl = showDetailArtUrl();
 
     title.textContent = SHOW_DETAILS.title || 'Show Details';
     body.innerHTML = `
         <div class="trakt-show-summary">
             <div class="trakt-show-summary-grid">
-                ${artUrl ? `<img class="trakt-show-poster" src="${escapeHtml(artUrl)}" alt="${escapeHtml(SHOW_DETAILS.title || 'Show')} poster" loading="lazy">` : '<div class="trakt-show-poster trakt-show-poster-placeholder" aria-hidden="true"></div>'}
+                ${artUrl ? `<img class="trakt-show-poster" width="200" height="300" src="${escapeHtml(artUrl)}" alt="${escapeHtml(SHOW_DETAILS.title || 'Show')} poster" loading="lazy" decoding="async">` : '<div class="trakt-show-poster trakt-show-poster-placeholder" aria-hidden="true"></div>'}
                 <div>
                     <div class="trakt-show-meta">
                         ${SHOW_DETAILS.year ? `<span>${escapeHtml(String(SHOW_DETAILS.year))}</span>` : ''}
@@ -1360,6 +1457,7 @@ function renderShowDetailsModal() {
         <div class="trakt-season-list">
             ${(SHOW_DETAILS.seasons || []).map(renderSeasonSection).join('')}
         </div>`;
+    restoreTraktFocus(body, focus);
 }
 
 /**
@@ -1377,7 +1475,7 @@ function renderSeasonSection(season) {
             <div class="trakt-season-header">
                 <div class="trakt-season-heading">
                     <div class="trakt-season-toggle-row">
-                        <button type="button" class="trakt-season-toggle" onclick="toggleShowDetailSeason(${Number(season.number || 0)})">
+                        <button type="button" class="trakt-season-toggle" aria-expanded="${isOpen}" onclick="toggleShowDetailSeason(${Number(season.number || 0)})">
                             <span class="trakt-list-chevron">${isOpen ? '▾' : '▸'}</span>
                             <h4>Season ${escapeHtml(String(season.number || 0))}${season.title ? ` · ${escapeHtml(season.title)}` : ''}</h4>
                         </button>
@@ -1387,7 +1485,7 @@ function renderSeasonSection(season) {
                 </div>
             </div>
             <div class="trakt-episode-list ${isOpen ? '' : 'hidden'}">
-                ${(season.episodes || []).map(renderEpisodeRow).join('')}
+                ${isOpen ? (season.episodes || []).map(renderEpisodeRow).join('') : ''}
             </div>
         </section>`;
 }
@@ -1494,6 +1592,9 @@ async function toggleEpisodeFromShowDetails(traktId, watched, button) {
                 items.push({
                     media_type: 'episode',
                     trakt_id: episode.trakt_id,
+                    show_trakt_id: episode.show_trakt_id || SHOW_DETAILS.trakt_id,
+                    season: episode.season ?? season.number,
+                    episode: episode.episode,
                     title: episode.title || ''
                 });
                 episodeInfo = episode;
@@ -1535,6 +1636,9 @@ async function toggleSeasonFromShowDetails(seasonNumber, watched, button) {
         .map(episode => ({
             media_type: 'episode',
             trakt_id: episode.trakt_id,
+            show_trakt_id: episode.show_trakt_id || SHOW_DETAILS.trakt_id,
+            season: episode.season ?? season.number,
+            episode: episode.episode,
             title: episode.title || ''
         }));
     if (!items.length) return;
@@ -1580,19 +1684,101 @@ async function mutateAndRefresh(url, payload, successMessage = '') {
 /**
  * Merges server state into STATE and re-renders the dashboard.
  * @param {Object} result - Successful mutation result containing state.
+ * @param {Object} operation - Fields owned by the completed operation.
  * @returns {void}
  */
-function applyResultState(result) {
+function applyResultState(result, operation = {}) {
     const reloadInitialUnwatched = UNWATCHED_LOADING && !UNWATCHED_LOADED;
+    STATE_VERSION += 1;
     invalidateUnwatchedStateLoads();
-    STATE = { ...STATE, ...(result?.state || {}) };
-    if (Array.isArray(result?.state?.unwatched)) {
-        UNWATCHED_LOADED = true;
+    const { kind, listId, item } = operation;
+    const lists = result?.state?.lists || [];
+    const revision = Number(result?.state?.cache_revision) || 0;
+    const scope = item ? `item:${listId}:${item.media_type}:${item.trakt_id}:${item.season || 0}:${item.episode || 0}`
+        : `list:${listId || result.list_id || result.list?.id}`;
+    if (kind && revision && (revision < DASHBOARD_REVISION || revision < (MUTATION_REVISIONS.get(scope) || 0))) return;
+    if (kind && revision) MUTATION_REVISIONS.set(scope, revision);
+    if (kind === 'create') {
+        const createdId = result.list_id || result.list?.id;
+        const created = result.list || lists.find(list => Number(list.id) === Number(createdId));
+        if (created && !STATE.lists.some(list => Number(list.id) === Number(created.id))) {
+            STATE.lists.push(created);
+        }
+    } else if (kind === 'delete') {
+        STATE.lists = STATE.lists.filter(list => Number(list.id) !== Number(listId));
+    } else if (kind === 'update') {
+        const serverList = lists.find(list => Number(list.id) === Number(listId));
+        STATE.lists = STATE.lists.map(list => Number(list.id) === Number(listId)
+            ? { ...list, name: serverList?.name ?? operation.name, description: serverList?.description ?? operation.description } : list);
+    } else if (kind === 'add' || kind === 'remove') {
+        const list = STATE.lists.find(row => Number(row.id) === Number(listId));
+        if (list) {
+            const serverList = lists.find(row => Number(row.id) === Number(listId));
+            const serverItem = serverList?.items?.find(row => sameMediaItem(row, item));
+            const currentItem = [...STATE.search_results, ...STATE.lists.flatMap(row => row.items || [])]
+                .find(row => sameMediaItem(row, item));
+            const added = { ...(serverItem || item) };
+            if (currentItem) {
+                added.watched = currentItem.watched;
+                added.unwatched_count = currentItem.unwatched_count;
+            }
+            const others = (list.items || []).filter(row => !sameMediaItem(row, item));
+            const present = serverList ? !!serverItem : kind === 'add';
+            list.items = present ? [...others, added] : others;
+            list.item_count = list.items.length;
+            if (Number(list.is_watchlist) === 1) UPCOMING_VERSION += 1;
+        }
     }
+    STATE.cache_revision = Math.max(Number(STATE.cache_revision) || 0, Number(result?.state?.cache_revision) || 0);
+    STATE.upcoming = filterWatchlistRows(STATE.upcoming);
+    STATE.unwatched = filterWatchlistRows(STATE.unwatched);
     renderTrakt();
     if (reloadInitialUnwatched) {
         refreshUnwatchedStateInBackground();
     }
+}
+
+/**
+ * Rejects snapshots older than the latest acknowledged server revision.
+ * @param {Object} data - Server snapshot.
+ * @returns {boolean} Whether this snapshot predates current state.
+ */
+function isOlderSnapshot(data) {
+    return Number(data?.cache_revision) < Number(STATE.cache_revision || 0);
+}
+
+/**
+ * Merges a dashboard while retaining collapse choices made during its request.
+ * @param {Object} data - Server dashboard snapshot.
+ * @param {Object|null} collapseSnapshot - Collapse counters at request start.
+ * @returns {void}
+ */
+function mergeDashboardState(data, collapseSnapshot = null) {
+    const localCollapse = new Map(STATE.lists.map(list => [Number(list.id), list.collapsed]));
+    UPCOMING_VERSION += 1;
+    DASHBOARD_REVISION = Number(data?.cache_revision) || 0;
+    STATE = { ...STATE, ...data };
+    STATE.lists = STATE.lists.map(list => {
+        const id = Number(list.id);
+        if (COLLAPSE_SAVES.has(id)) return { ...list, collapsed: COLLAPSE_SAVES.get(id).desired };
+        if (collapseSnapshot && localCollapse.has(id)
+            && (traktListCollapseNonce[id] || 0) > (collapseSnapshot[id] || 0)) {
+            return { ...list, collapsed: localCollapse.get(id) };
+        }
+        return list;
+    });
+    STATE.upcoming = filterWatchlistRows(STATE.upcoming);
+}
+
+/**
+ * Limits derived episode rows to current Watchlist show membership.
+ * @param {Array<Object>} rows - Calendar or unwatched episodes.
+ * @returns {Array<Object>} Rows still belonging to the Watchlist.
+ */
+function filterWatchlistRows(rows) {
+    const ids = new Set(STATE.lists.filter(list => Number(list.is_watchlist) === 1)
+        .flatMap(list => (list.items || []).filter(item => item.media_type === 'show').map(item => Number(item.trakt_id))));
+    return (rows || []).filter(row => ids.has(Number(row.show_trakt_id)));
 }
 
 /**
@@ -1716,6 +1902,102 @@ function syncModalBodyState() {
 }
 
 /**
+ * Captures focus identity and selection before replacing a subtree.
+ * @param {HTMLElement} root - Subtree being rendered.
+ * @returns {Object|null} Focus restoration descriptor.
+ */
+function captureTraktFocus(root) {
+    const element = document.activeElement;
+    if (!element || !root.contains(element) || element === document.body) return null;
+    const path = [];
+    for (let node = element; node && node !== root; node = node.parentElement) {
+        path.unshift(Array.from(node.parentElement.children).indexOf(node));
+    }
+    return { element, id: element.id, path, start: element.selectionStart, end: element.selectionEnd };
+}
+
+/**
+ * Restores a replaced control without stealing focus from an open dialog.
+ * @param {HTMLElement} root - Rendered subtree.
+ * @param {Object|null} focus - Captured focus descriptor.
+ * @returns {void}
+ */
+function restoreTraktFocus(root, focus) {
+    if (!focus) return;
+    if (document.activeElement !== document.body && document.activeElement?.isConnected
+        && document.activeElement !== focus.element) return;
+    const element = focus.element.isConnected ? focus.element
+        : (focus.id && document.getElementById(focus.id)) || focus.path.reduce((node, index) => node?.children[index], root);
+    if (!element || !root.contains(element)) return;
+    element.focus({ preventScroll: true });
+    if (typeof focus.start === 'number' && element.setSelectionRange) {
+        element.setSelectionRange(focus.start, focus.end);
+    }
+}
+
+/**
+ * Maps owned dialogs to their cleanup-aware close handlers.
+ * @returns {Object<string, Function>} Close handlers keyed by dialog ID.
+ */
+function traktModalClosers() {
+    return { showDetailsModal: closeShowDetailsModal, listEditModal: closeListEditModal, searchListModal: closeSearchListModal };
+}
+
+/**
+ * Opens an owned dialog and remembers its invoking control.
+ * @param {HTMLElement} modal - Dialog overlay.
+ * @returns {void}
+ */
+function showTraktModal(modal) {
+    if (!modal.classList.contains('show')) MODAL_FOCUS.set(modal.id, captureTraktFocus(document.body));
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+    (modal.querySelector('button:not([disabled])') || modal).focus();
+}
+
+/**
+ * Closes a dialog and returns focus even when its trigger was re-rendered.
+ * @param {HTMLElement} modal - Dialog overlay.
+ * @returns {void}
+ */
+function hideTraktModal(modal) {
+    if (!modal.classList.contains('show')) return;
+    const focus = MODAL_FOCUS.get(modal.id);
+    modal.classList.remove('show');
+    MODAL_FOCUS.delete(modal.id);
+    if (modal.contains(document.activeElement)) document.activeElement.blur();
+    restoreTraktFocus(document.body, focus);
+}
+
+/**
+ * Traps Tab and closes only the active Trakt dialog on Escape.
+ * @param {KeyboardEvent} event - Captured keyboard event.
+ * @returns {void}
+ */
+function handleTraktModalKeydown(event) {
+    const id = [...MODAL_FOCUS.keys()].pop();
+    const confirmation = document.querySelector('#globalConfirmActionModal.show');
+    const modal = confirmation || (id && document.getElementById(id));
+    if (!modal?.classList.contains('show')) return;
+    if (event.key === 'Escape') {
+        if (confirmation) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        traktModalClosers()[id]();
+    } else if (event.key === 'Tab') {
+        const controls = [...modal.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')]
+            .filter(element => !element.disabled && element.tabIndex >= 0 && element.getClientRects().length);
+        const first = controls[0] || modal;
+        const last = controls[controls.length - 1] || modal;
+        if (!modal.contains(document.activeElement) || document.activeElement === modal
+            || (event.shiftKey ? document.activeElement === first : document.activeElement === last)) {
+            event.preventDefault();
+            (event.shiftKey ? last : first).focus();
+        }
+    }
+}
+
+/**
  * Encodes an item as a URI-encoded JSON payload for a Trakt row action.
  * @param {Object} item - Media item with media_type, trakt_id, id, title.
  * @returns {string} URI-encoded JSON string.
@@ -1724,26 +2006,28 @@ function itemPayload(item) {
     return encodeURIComponent(JSON.stringify({
         media_type: item.media_type,
         trakt_id: item.trakt_id,
+        show_trakt_id: item.show_trakt_id || null,
         id: item.id || null,
         title: item.title || '',
         year: item.year || null,
         season: item.season || null,
         episode: item.episode || null,
         watched: item.watched ? 1 : 0,
-        images: item.images || null,
-        show_images: item.show_images || null,
-        overview: item.overview || ''
+        // Row actions need identity and labels, not artwork or synopses.
     })).replace(/'/g, '%27');
 }
 
 /**
- * Decodes a Trakt row payload back into a plain object.
+ * Resolves compact row identity to live metadata before posting list changes.
  * @param {string} payload - Encoded JSON payload.
  * @returns {Object|null} Decoded item or null.
  */
 function decodeItemPayload(payload) {
     try {
-        return JSON.parse(decodeURIComponent(payload || ''));
+        const item = JSON.parse(decodeURIComponent(payload || ''));
+        const live = (STATE.search_results || []).find(row => sameMediaItem(row, item))
+            || STATE.lists.map(list => (list.items || []).find(row => sameMediaItem(row, item))).find(Boolean);
+        return { ...item, ...(live || {}) };
     } catch (e) {
         return null;
     }
@@ -1833,7 +2117,7 @@ function renderUnwatchedCompactCard(item) {
 function renderPosterArt(label, images, artClass, placeholderClass) {
     const artUrl = preferredImageUrl(images);
     return artUrl
-        ? `<img class="${artClass}" src="${escapeHtml(artUrl)}" alt="${escapeHtml(label)} poster" loading="lazy">`
+        ? `<img class="${artClass}" width="200" height="300" src="${escapeHtml(artUrl)}" alt="${escapeHtml(label)} poster" loading="lazy" decoding="async">`
         : `<div class="${artClass} ${placeholderClass}" aria-hidden="true"></div>`;
 }
 
@@ -1971,6 +2255,9 @@ function setPillButtonsDisabled(disabled, activeButton = null) {
  * @returns {void}
  */
 function debouncedSearch() {
+    SEARCH_QUERY = document.getElementById('searchQuery')?.value || '';
+    SEARCH_TYPE = document.getElementById('searchType')?.value || 'movie,show';
+    SEARCH_REQUEST_ID += 1;
     if (SEARCH_DEBOUNCE_TIMER) clearTimeout(SEARCH_DEBOUNCE_TIMER);
     if (activeTab !== 'search') return;
     SEARCH_DEBOUNCE_TIMER = setTimeout(() => {
