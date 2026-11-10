@@ -17,6 +17,7 @@ let STATE = {
 };
 
 let activeTab = 'upcoming';
+let LIST_TITLE_FILTER = '';
 let attemptedInitialSync = false;
 let autoRefreshed = false;
 let SHOW_DETAILS = null;
@@ -175,7 +176,11 @@ function renderTrakt() {
             ${renderTabButton('unwatched', 'Unwatched')}
             ${renderTabButton('lists', 'Lists')}
             ${renderTabButton('search', 'Search')}
-            ${activeTab === 'lists' ? '<button type="button" class="btn-primary trakt-create-list-action" onclick="createList()">Create List</button>' : ''}
+            ${activeTab === 'lists' ? `
+                <div class="trakt-list-controls">
+                    <input id="traktListTitleFilter" class="game-input trakt-list-title-filter" type="search" aria-label="Filter lists by media title" placeholder="Filter titles..." autocomplete="off" value="${escapeHtml(LIST_TITLE_FILTER)}" oninput="filterListTitles(this.value)">
+                    <button type="button" class="btn-primary trakt-create-list-action" onclick="createList()">➕ Create</button>
+                </div>` : ''}
         </div>
         <div class="trakt-panel-stage">
             <div class="trakt-panel">
@@ -354,23 +359,34 @@ function renderUnwatched() {
  * @returns {string} HTML string.
  */
 function renderLists() {
-    return `
-        ${STATE.lists.length ? STATE.lists.map(renderListCard).join('') : '<div class="empty-state"><p>No Trakt lists synced yet.</p></div>'}`;
+    const query = LIST_TITLE_FILTER.trim().toLocaleLowerCase();
+    if (!STATE.lists.length) return '<div class="empty-state"><p>No Trakt lists synced yet.</p></div>';
+    if (!query) return STATE.lists.map(list => renderListCard(list)).join('');
+    const matchingLists = STATE.lists.map(list => ({
+        list,
+        items: (list.items || []).filter(item => mediaTitle(item).toLocaleLowerCase().includes(query))
+    })).filter(result => result.items.length);
+    return matchingLists.length
+        ? matchingLists.map(result => renderListCard(result.list, result.items, true)).join('')
+        : '<div class="empty-state"><p>No media titles match your filter.</p></div>';
 }
 
 /**
  * Renders a single list card with header, actions, and items.
  * @param {Object} list - List object with id, name, description, items, collapsed, etc.
+ * @param {Object[]} [visibleItems=list.items] - Items to render in this card.
+ * @param {boolean} [filtered=false] - Whether the title filter is active.
  * @returns {string} HTML string.
  */
-function renderListCard(list) {
+function renderListCard(list, visibleItems = list.items || [], filtered = false) {
     const collapsed = Number(list.collapsed) !== 0;
     const isWatchlist = Number(list.is_watchlist) === 1;
+    const expanded = !collapsed || filtered;
     return `
-        <section class="glass-panel trakt-list ${collapsed ? 'collapsed' : ''}" data-list-id="${list.id}">
+        <section class="glass-panel trakt-list ${collapsed && !filtered ? 'collapsed' : ''}" data-list-id="${list.id}">
             <div class="trakt-list-header">
-                <button type="button" class="trakt-list-title" aria-expanded="${!collapsed}" onclick="toggleListCollapsed(${list.id}, ${collapsed ? 0 : 1})">
-                    <span class="trakt-list-chevron">${collapsed ? '▸' : '▾'}</span>
+                <button type="button" class="trakt-list-title" aria-expanded="${expanded}" ${filtered ? 'disabled title="Results stay expanded while filtering; collapse state is not saved."' : `onclick="toggleListCollapsed(${list.id}, ${collapsed ? 0 : 1})"`}>
+                    <span class="trakt-list-chevron">${expanded ? '▾' : '▸'}</span>
                     <div class="trakt-list-heading">
                         <h3>${escapeHtml(list.name || 'Untitled list')} <span class="trakt-muted">(${list.item_count || 0})</span></h3>
                     </div>
@@ -380,10 +396,21 @@ function renderListCard(list) {
                     ${isWatchlist ? '' : `<button type="button" class="btn-icon-delete" onclick="deleteList(${list.id})" title="Delete List">🗑️</button>`}
                 </div>
             </div>
-            <div class="trakt-items ${collapsed ? 'hidden' : ''}">
-                ${collapsed ? '' : (list.items || []).length ? list.items.map(item => renderListItem(item, list)).join('') : '<p class="trakt-muted">No items in this list.</p>'}
+            <div class="trakt-items ${collapsed && !filtered ? 'hidden' : ''}">
+                ${filtered ? visibleItems.map(item => renderListItem(item, list)).join('')
+                    : collapsed ? '' : visibleItems.length ? visibleItems.map(item => renderListItem(item, list)).join('') : '<p class="trakt-muted">No items in this list.</p>'}
             </div>
         </section>`;
+}
+
+/**
+ * Updates the client-side title filter and restores its focus and caret after rendering.
+ * @param {string} value - Current filter text.
+ * @returns {void}
+ */
+function filterListTitles(value) {
+    LIST_TITLE_FILTER = value;
+    renderTrakt();
 }
 
 /**
@@ -832,7 +859,7 @@ async function createList() {
     idInput.value = '';
     nameInput.value = '';
     descriptionInput.value = '';
-    if (title) title.textContent = '✎ Create List';
+    if (title) title.textContent = '➕ Create List';
     saveButton.textContent = '💾 Create List';
     showTraktModal(modal);
     nameInput.focus();
