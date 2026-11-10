@@ -3,22 +3,25 @@
 /**
  * Service Worker for Offline and Cache Management
  *
- * Implements cache-first strategies for static assets, network-first with
- * timeout for navigation requests, and runtime image caching with size limits.
+ * Uses native connectivity for fresh online pages and app code, with cached
+ * offline viewing and runtime image caching with size limits.
  * Serves an offline fallback HTML page when network is unavailable.
  *
  * Features:
- *   - Cache-first strategy for static assets (js, css, fonts, images, wav)
- *   - Network-first navigation with 1.5s timeout
+ *   - Native-confirmed online refresh with cached offline fallback
+ *   - Cache-first pages and app code without native connectivity support
  *   - Runtime image caching with 50MB size cap
  *   - Offline fallback HTML for uncached navigation requests
- *   - Periodic cache cleanup and versioned cache naming
+ *   - Preserves visited pages across cache versions
  */
 
 const CACHE_NAME = 'rendler-offline-v153';
 const MAX_RUNTIME_IMAGE_BYTES = 50 * 1024 * 1024;
 const OFFLINE_CACHE_PREFIX = 'rendler-offline-';
 const NAVIGATION_NETWORK_TIMEOUT_MS = 1500;
+let nativeNetworkSupported = null;
+let nativeNetworkRequest = null;
+let lastCacheWriteFailure = null;
 
 const OFFLINE_HTML = `
 <!DOCTYPE html>
@@ -46,10 +49,10 @@ const OFFLINE_HTML = `
 </body>
 </html>`;
 
-function fetchWithTimeout(request, timeoutMs) {
+function fetchWithTimeout(request, timeoutMs, options = {}) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
-    return fetch(request, { signal: controller.signal })
+    return fetch(request, { ...options, signal: controller.signal })
         .finally(() => clearTimeout(timer));
 }
 
@@ -57,13 +60,22 @@ function shouldBypass(request, url) {
     if (request.method !== 'GET') return true;
     if (request.headers.has('range')) return true;
     if (url.origin !== self.location.origin) return true;
-    if (url.pathname === '/rendler-industries.apk') return true;
-    if (url.pathname === '/login') return true;
-    if (url.pathname.startsWith('/auth/')) return true;
-    if (url.pathname === '/trakt/oauth' || url.pathname.startsWith('/trakt/oauth/')) return true;
-    if (url.pathname.startsWith('/audiobooks/api/cover/')) return false;
-    if (url.pathname.startsWith('/files/serve/') && request.destination === 'image') return false;
-    if (url.pathname.startsWith('/files/serve/')) return true;
+    if (request.cache === 'no-store') return true;
+    const path = normalizePath(url.pathname);
+    if (path === '/__native_network_state') return true;
+    if (path === '/rendler-industries.apk') return true;
+    if (path === '/login') return true;
+    if (path === '/auth' || path.startsWith('/auth/')) return true;
+    if (path === '/admin/auth' || path.startsWith('/admin/auth/')) return true;
+    if (path === '/cdn-cgi/access' || path.startsWith('/cdn-cgi/access/')) return true;
+    if (path === '/trakt/oauth' || path.startsWith('/trakt/oauth/')) return true;
+    if (shouldBypassApiGetCache(url)) return true;
+    if (path === '/admin/automator') return true;
+    if (path === '/audiobooks/api/state' || path.startsWith('/audiobooks/api/stream/')) return true;
+    if (path.startsWith('/audiobooks/api/cover/')) return false;
+    if (path.startsWith('/files/serve/') && request.mode === 'navigate') return true;
+    if (path.startsWith('/files/serve/') && request.destination === 'image') return false;
+    if (path.startsWith('/files/serve/')) return true;
     return false;
 }
 
@@ -72,6 +84,7 @@ function cacheableResponse(response, request) {
     if (!request) return true;
 
     const url = new URL(request.url);
+    if (shouldBypass(request, url)) return false;
     const contentType = response.headers.get('content-type') || '';
     const contentLength = parseInt(response.headers.get('content-length') || '0', 10);
     const isImage = request.destination === 'image' || contentType.startsWith('image/');
@@ -82,12 +95,26 @@ function cacheableResponse(response, request) {
     return true;
 }
 
-function cacheResponse(request, response) {
-    if (!cacheableResponse(response, request)) return Promise.resolve(false);
-    return caches.open(CACHE_NAME)
-        .then(cache => cache.put(request, response.clone()))
-        .then(() => true)
-        .catch(() => false);
+async function cacheResponse(request, response) {
+    try {
+        if (!cacheableResponse(response, request)) return false;
+        // Clone before yielding, while the browser has not consumed the response.
+        const cachedResponse = response.clone();
+        const url = new URL(request.url);
+        const contentType = response.headers.get('content-type') || '';
+        if (isTraktState(url) || (isApiGet(request, url) && /(?:application\/json|\+json)(?:\s*;|$)/i.test(contentType))) {
+            const data = await cachedResponse.clone().json();
+            if (data?.success === 0 || data?.success === false || (data?.error && !data?.success)) return false;
+            if (isTraktState(url) && (!data?.success || data.pending || data.refreshing || data.outdated)) return false;
+        }
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, cachedResponse);
+        return true;
+    } catch (error) {
+        lastCacheWriteFailure = { path: new URL(request.url).pathname, name: error?.name || 'Error', at: Date.now() };
+        console.warn('Offline cache write failed:', lastCacheWriteFailure);
+        return false;
+    }
 }
 
 function matchInOfflineCaches(request, options = {}) {
@@ -95,7 +122,7 @@ function matchInOfflineCaches(request, options = {}) {
         const offlineKeys = keys.filter(k => k.startsWith(OFFLINE_CACHE_PREFIX));
         const names = [
             CACHE_NAME,
-            ...offlineKeys.filter(k => k !== CACHE_NAME).sort().reverse(),
+            ...offlineKeys.filter(k => k !== CACHE_NAME).sort((a, b) => b.localeCompare(a, undefined, { numeric: true })),
         ];
 
         return names.reduce((promise, name) => {
@@ -112,7 +139,7 @@ function normalizePath(pathname) {
 }
 
 function matchCachedNavigation(request, url) {
-    if (url.pathname === '/login') return Promise.resolve(null);
+    if (shouldBypass(request, url)) return Promise.resolve(null);
 
     const matchOpts = { ignoreSearch: true, ignoreVary: true };
     const normalized = normalizePath(url.pathname);
@@ -141,46 +168,97 @@ function fetchNavigation(request) {
     });
 }
 
+function nativeNetworkState() {
+    if (nativeNetworkSupported === false) return Promise.resolve(null);
+    if (nativeNetworkRequest) return nativeNetworkRequest;
+
+    // The APK answers this locally, including on a cold offline launch.
+    const request = new Request(new URL('/__native_network_state', self.location.origin), { cache: 'no-store' });
+    nativeNetworkRequest = fetchWithTimeout(request, 300)
+        .then(response => {
+            const state = response.headers.get('X-Rendler-Network-State');
+            nativeNetworkSupported = response.ok && (state === 'online' || state === 'offline');
+            return nativeNetworkSupported ? state : null;
+        })
+        .catch(() => null)
+        .finally(() => { nativeNetworkRequest = null; });
+    return nativeNetworkRequest;
+}
+
+function freshAppResponse(event, fallback) {
+    return fetchWithTimeout(event.request, NAVIGATION_NETWORK_TIMEOUT_MS, { cache: 'no-cache' })
+        .then(response => {
+            if (response.status >= 500) return fallback().then(cached => cached || response);
+            event.waitUntil(cacheResponse(event.request, response));
+            return response;
+        })
+        .catch(fallback);
+}
+
 function apiGetResponse(event) {
     const request = event.request;
     const matchOpts = { ignoreSearch: false, ignoreVary: true };
+    const fallback = () => matchInOfflineCaches(request, matchOpts).then(cached => {
+        return cached || new Response(JSON.stringify({
+            success: 0,
+            error: 'Network unavailable'
+        }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    });
+
+    if (isTraktState(new URL(request.url))) {
+        return nativeNetworkState().then(state => {
+            if (state === 'offline') return fallback();
+            // Trakt's state reads retain their caller's longer timeout.
+            return fetch(request).then(response => {
+                event.waitUntil(cacheResponse(request, response));
+                return response;
+            }).catch(fallback);
+        });
+    }
 
     return fetchWithTimeout(request, NAVIGATION_NETWORK_TIMEOUT_MS)
         .then(response => cacheResponse(request, response).then(() => response))
-        .catch(() => matchInOfflineCaches(request, matchOpts).then(cached => {
-            return cached || new Response(JSON.stringify({
-                success: 0,
-                error: 'Network unavailable'
-            }), {
-                status: 503,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }));
+        .catch(fallback);
 }
 
 function isApiGet(request, url) {
     return request.method === 'GET' && (url.pathname.startsWith('/api/') || url.pathname.includes('/api/'));
 }
 
+function isTraktState(url) {
+    const path = normalizePath(url.pathname);
+    return path === '/trakt/api/state' || path === '/trakt/api/unwatched';
+}
+
 function shouldBypassApiGetCache(url) {
-    return url.pathname === '/admin/settings/api/state'
-        || url.pathname === '/admin/automator/api/status'
-        || url.pathname === '/admin/automator/api/state'
-        || url.pathname.startsWith('/trakt/api/');
+    const path = normalizePath(url.pathname);
+    return path === '/admin/settings/api/state'
+        || path === '/admin/automator/api/status'
+        || path === '/admin/automator/api/state'
+        || ((path === '/trakt/api' || path.startsWith('/trakt/api/')) && !isTraktState(url));
 }
 
 function cacheStatusResponse() {
     return caches.keys().then(keys => Promise.all(
-        keys.filter(k => k.startsWith(OFFLINE_CACHE_PREFIX)).sort().reverse().map(name => {
+        keys.filter(k => k.startsWith(OFFLINE_CACHE_PREFIX)).sort((a, b) => b.localeCompare(a, undefined, { numeric: true })).map(name => {
             return caches.open(name).then(cache => cache.keys()).then(requests => ({
                 name,
                 urls: requests.map(r => new URL(r.url).pathname).sort(),
             }));
         })
-    )).then(cacheInfo => {
+    )).then(async cacheInfo => {
+        let storage = null;
+        try {
+            storage = await self.navigator.storage.estimate();
+        } catch (_) { }
         return new Response(JSON.stringify({
             cacheName: CACHE_NAME,
             caches: cacheInfo,
+            storage,
+            lastCacheWriteFailure,
         }, null, 2), {
             headers: { 'Content-Type': 'application/json' },
         });
@@ -192,11 +270,8 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then(keys => Promise.all(
-            keys.filter(k => k.startsWith(OFFLINE_CACHE_PREFIX) && k !== CACHE_NAME).map(k => caches.delete(k))
-        )).then(() => self.clients.claim())
-    );
+    // A new cache version does not contain every previously visited page yet.
+    event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('push', (event) => {
@@ -246,16 +321,24 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
+    if (shouldBypass(event.request, url)) {
+        // Never cache login responses, but retain cached-origin cold offline boot.
+        if (event.request.method === 'GET' && !event.request.headers.has('range') && event.request.cache !== 'no-store'
+            && url.origin === self.location.origin && normalizePath(url.pathname) === '/login'
+            && event.request.mode === 'navigate') {
+            event.respondWith(nativeNetworkState().then(state => {
+                if (state === 'offline') return navigationFallback(event.request, url);
+                return fetchWithTimeout(event.request, NAVIGATION_NETWORK_TIMEOUT_MS, { cache: 'no-store' })
+                    .catch(() => navigationFallback(event.request, url));
+            }));
+        }
+        return;
+    }
+
     if (url.pathname === '/__sw_cache_status') {
         event.respondWith(cacheStatusResponse());
         return;
     }
-
-    if (url.pathname.startsWith('/audiobooks/api/stream/')) return;
-    if (url.pathname === '/audiobooks/api/state') return;
-
-    if (shouldBypassApiGetCache(url)) return;
-    if (url.pathname === '/admin/automator') return;
 
     if (isApiGet(event.request, url)) {
         event.respondWith(apiGetResponse(event));
@@ -263,22 +346,24 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (event.request.mode === 'navigate') {
-        if (url.pathname.startsWith('/files/serve/')) return;
         event.respondWith(
-            matchCachedNavigation(event.request, url).then(cached => {
-                if (cached) {
-                    event.waitUntil(fetchNavigation(event.request).catch(() => { }));
-                    return cached;
-                }
+            nativeNetworkState().then(state => {
+                const fallback = () => navigationFallback(event.request, url);
+                if (state === 'offline') return fallback();
+                if (state === 'online') return freshAppResponse(event, fallback);
 
-                return fetchNavigation(event.request)
-                    .catch(() => navigationFallback(event.request, url));
+                return matchCachedNavigation(event.request, url).then(cached => {
+                    if (cached) {
+                        event.waitUntil(fetchNavigation(event.request).catch(() => { }));
+                        return cached;
+                    }
+
+                    return fetchNavigation(event.request).catch(fallback);
+                });
             })
         );
         return;
     }
-
-    if (shouldBypass(event.request, url)) return;
 
     const isAppCode = url.pathname.startsWith('/css/') || url.pathname.startsWith('/js/');
     const isStatic = isAppCode ||
@@ -289,14 +374,19 @@ self.addEventListener('fetch', (event) => {
     if (isStatic) {
         if (isAppCode) {
             event.respondWith(
-                matchInOfflineCaches(event.request, { ignoreSearch: true, ignoreVary: true }).then(cached => {
-                    if (cached) {
-                        event.waitUntil(fetchAndCache(event.request, { cache: 'no-cache' }).catch(() => { }));
-                        return cached;
-                    }
+                nativeNetworkState().then(state => {
+                    const fallback = () => matchInOfflineCaches(event.request, { ignoreSearch: true, ignoreVary: true });
+                    if (state === 'offline') return fallback();
+                    if (state === 'online') return freshAppResponse(event, fallback);
 
-                    return fetchAndCache(event.request, { cache: 'no-cache' })
-                        .catch(() => cached);
+                    return fallback().then(cached => {
+                        if (cached) {
+                            event.waitUntil(fetchAndCache(event.request, { cache: 'no-cache' }).catch(() => { }));
+                            return cached;
+                        }
+
+                        return fetchAndCache(event.request, { cache: 'no-cache' }).catch(() => cached);
+                    });
                 })
             );
             return;
