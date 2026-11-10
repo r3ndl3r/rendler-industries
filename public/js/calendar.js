@@ -875,6 +875,33 @@ function syncAllDayTimeGroups() {
 }
 
 /**
+ * Keeps the end date implicit for normal same-day events.
+ * @returns {void}
+ */
+function syncMultiDayDateFields() {
+    const checkbox = document.getElementById('eventSpansMultipleDays');
+    const startInput = document.getElementById('eventStartDate');
+    const endInput = document.getElementById('eventEndDate');
+    const endDateGroup = document.getElementById('endDateGroup');
+    if (!checkbox || !startInput || !endInput || !endDateGroup) return;
+
+    endDateGroup.classList.toggle('hidden', !checkbox.checked);
+    if (!checkbox.checked && startInput.value) endInput.value = startInput.value;
+}
+
+/**
+ * Applies multi-day state when an existing or parsed event populates the form.
+ * @param {string} startDate - YYYY-MM-DD start date.
+ * @param {string} endDate - YYYY-MM-DD end date.
+ * @returns {void}
+ */
+function setMultiDayState(startDate, endDate) {
+    const checkbox = document.getElementById('eventSpansMultipleDays');
+    if (checkbox) checkbox.checked = !!startDate && !!endDate && startDate !== endDate;
+    syncMultiDayDateFields();
+}
+
+/**
  * Orchestrates navigation control and filter registration.
  * 
  * @returns {void}
@@ -940,7 +967,15 @@ function setupEventListeners() {
     const startInput = document.getElementById('eventStartDate');
     const endInput = document.getElementById('eventEndDate');
     if (startInput && endInput) {
-        startInput.onchange = () => { if (!endInput.value || endInput.value < startInput.value) endInput.value = startInput.value; };
+        startInput.onchange = () => {
+            const multiDay = document.getElementById('eventSpansMultipleDays')?.checked;
+            if (!multiDay || !endInput.value || endInput.value < startInput.value) endInput.value = startInput.value;
+        };
+    }
+
+    const multiDayCb = document.getElementById('eventSpansMultipleDays');
+    if (multiDayCb) {
+        multiDayCb.onchange = syncMultiDayDateFields;
     }
 
     const allDayCb = document.getElementById('eventAllDay');
@@ -1193,6 +1228,7 @@ function _fillModalFromAI(data) {
     if (startTimeEl) startTimeEl.value = (startTime || '').substring(0, 5);
     if (endDateEl) endDateEl.value = endDate || '';
     if (endTimeEl) endTimeEl.value = (endTime || '').substring(0, 5);
+    setMultiDayState(startDate, endDate);
 
     const allDayCb = document.getElementById('eventAllDay');
     if (allDayCb) {
@@ -1253,6 +1289,38 @@ function resetAnnouncementCheckbox() {
 }
 
 /**
+ * Returns the next occurrence start for overlap validation.
+ * @param {Date} start - First occurrence start.
+ * @param {string} rule - Recurrence rule.
+ * @param {number} interval - Recurrence interval.
+ * @returns {Date|null}
+ */
+function getNextOccurrenceStart(start, rule, interval) {
+    const next = new Date(start);
+    const step = Math.max(1, Number.parseInt(interval, 10) || 1);
+
+    if (rule === 'daily') next.setDate(next.getDate() + step);
+    else if (rule === 'weekly') next.setDate(next.getDate() + (7 * step));
+    else if (rule === 'monthly') {
+        const day = next.getDate();
+        next.setDate(1);
+        next.setMonth(next.getMonth() + step);
+        const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+        next.setDate(Math.min(day, lastDay));
+    } else if (rule === 'yearly') {
+        const month = next.getMonth();
+        const day = next.getDate();
+        next.setDate(1);
+        next.setFullYear(next.getFullYear() + step);
+        next.setMonth(month);
+        const lastDay = new Date(next.getFullYear(), month + 1, 0).getDate();
+        next.setDate(Math.min(day, lastDay));
+    } else return null;
+
+    return next;
+}
+
+/**
  * Executes persistent record creation or modification.
  * 
  * @async
@@ -1276,6 +1344,14 @@ async function handleEventSubmit(event) {
         formData.set('recurrence_rule', 'weekly');
         formData.set('recurrence_interval', '2');
     }
+
+    const multiDayCb = document.getElementById('eventSpansMultipleDays');
+    const spansMultipleDays = !!multiDayCb?.checked;
+    if (!spansMultipleDays) {
+        formData.set('end_date', formData.get('start_date'));
+        document.getElementById('eventEndDate').value = formData.get('start_date');
+    }
+    formData.set('spans_multiple_days', spansMultipleDays ? 1 : 0);
     
     // VALIDATION: If notifications are enabled, at least one attendee MUST be selected
     const notifyMins = parseInt(document.getElementById('notificationMinutes').value || 0);
@@ -1296,6 +1372,27 @@ async function handleEventSubmit(event) {
     const end = `${formData.get('end_date')} ${formData.get('end_time') || '23:59'}:59`;
     formData.set('start_date', start);
     formData.set('end_date', end);
+
+    const nextOccurrence = getNextOccurrenceStart(
+        new Date(start.replace(' ', 'T')),
+        formData.get('recurrence_rule'),
+        formData.get('recurrence_interval')
+    );
+    const overlapConfirmed = form.dataset.overlapConfirmed === '1';
+    delete form.dataset.overlapConfirmed;
+    if (spansMultipleDays && nextOccurrence && new Date(end.replace(' ', 'T')) > nextOccurrence && !overlapConfirmed) {
+        window.showConfirmModal({
+            title: 'Overlapping occurrences',
+            message: 'Each event lasts beyond the start of the next occurrence. This can make the event appear on every day in between.',
+            confirmText: 'Save anyway',
+            alignment: 'center',
+            onConfirm: () => {
+                form.dataset.overlapConfirmed = '1';
+                form.requestSubmit();
+            }
+        });
+        return;
+    }
 
     // Explicitly set checkbox values to ensure they are captured in FormData.
     formData.set('all_day', document.getElementById('eventAllDay').checked ? 1 : 0);
@@ -1384,6 +1481,7 @@ function openAddEventModal(dateStr) {
     form.reset();
     resetAIParser();
     syncAllDayTimeGroups();
+    syncMultiDayDateFields();
     resetAnnouncementCheckbox();
     document.getElementById('eventId').value = '';
     document.getElementById('modalTitle').innerHTML = `Add Event`;
@@ -1422,6 +1520,7 @@ function openAddEventModal(dateStr) {
         document.getElementById('eventStartDate').value = dateStr;
         document.getElementById('eventEndDate').value = dateStr;
     }
+    syncMultiDayDateFields();
 
     const activeFilter = document.getElementById('categoryFilter').value;
     if (activeFilter) {
@@ -1458,6 +1557,7 @@ function openEditModalById(id) {
     document.getElementById('eventStartTime').value = (sTime || '').substring(0, 5);
     document.getElementById('eventEndDate').value = eDate;
     document.getElementById('eventEndTime').value = (eTime || '').substring(0, 5);
+    setMultiDayState(sDate, eDate);
 
     const attendeeIds = (event.attendees || '').split(',');
     document.querySelectorAll('#attendees-container input[type="checkbox"]').forEach(cb => {
@@ -1562,6 +1662,7 @@ function openEditModalByUid(uid) {
     document.getElementById('eventStartTime').value = (sTime || '').substring(0, 5);
     document.getElementById('eventEndDate').value = eDate;
     document.getElementById('eventEndTime').value = (eTime || '').substring(0, 5);
+    setMultiDayState(sDate, eDate);
 
     const attendeeIds = (event.attendees || '').split(',');
     document.querySelectorAll('#attendees-container input[type="checkbox"]').forEach(cb => {

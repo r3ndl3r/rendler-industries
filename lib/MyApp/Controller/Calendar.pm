@@ -463,6 +463,7 @@ sub api_add {
     my $recurrence_rule      = $c->param('recurrence_rule')      || undef;
     my $recurrence_interval  = $c->param('recurrence_interval')  || 1;
     my $recurrence_end_date  = $c->param('recurrence_end_date')  || undef;
+    my $spans_multiple_days  = $c->param('spans_multiple_days') ? 1 : 0;
 
     return $c->render(json => { success => 0, error => 'Title is required' }) unless $title;
     return $c->render(json => { success => 0, error => 'Start date is required' }) unless $start_date;
@@ -479,6 +480,12 @@ sub api_add {
 
     if ($end_date lt $start_date) {
         return $c->render(json => { success => 0, error => 'End date cannot be before start date' });
+    }
+    if (!$spans_multiple_days && substr($end_date, 0, 10) ne substr($start_date, 0, 10)) {
+        return $c->render(json => { success => 0, error => 'Enable multi-day events when the end date differs from the start date' });
+    }
+    if ($recurrence_end_date && $recurrence_end_date lt substr($start_date, 0, 10)) {
+        return $c->render(json => { success => 0, error => 'Repeat until cannot be before the event start date' });
     }
 
     my $user_id = $c->current_user_id;
@@ -559,6 +566,7 @@ sub api_edit {
     my $recurrence_rule      = $c->param('recurrence_rule')      || undef;
     my $recurrence_interval  = $c->param('recurrence_interval')  || 1;
     my $recurrence_end_date  = $c->param('recurrence_end_date')  || undef;
+    my $spans_multiple_days  = $c->param('spans_multiple_days') ? 1 : 0;
 
     return $c->render(json => { success => 0, error => 'Event ID is required' }) unless $id;
     return $c->render(json => { success => 0, error => 'Title is required' }) unless $title;
@@ -574,6 +582,12 @@ sub api_edit {
 
     if ($end_date lt $start_date) {
         return $c->render(json => { success => 0, error => 'End date cannot be before start date' });
+    }
+    if (!$spans_multiple_days && substr($end_date, 0, 10) ne substr($start_date, 0, 10)) {
+        return $c->render(json => { success => 0, error => 'Enable multi-day events when the end date differs from the start date' });
+    }
+    if ($recurrence_end_date && $recurrence_end_date lt substr($start_date, 0, 10)) {
+        return $c->render(json => { success => 0, error => 'Repeat until cannot be before the event start date' });
     }
 
     # Reset notification status if the start time is modified to ensure 

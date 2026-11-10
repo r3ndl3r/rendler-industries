@@ -168,9 +168,16 @@
                     </div>
                 </div>
 
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="eventSpansMultipleDays" name="spans_multiple_days" class="no-emoji">
+                        This event spans multiple days
+                    </label>
+                </div>
+
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="eventEndDate">End Date *</label>
+                    <div class="form-group hidden" id="endDateGroup">
+                        <label for="eventEndDate">Event End Date *</label>
                         <input type="date" id="eventEndDate" name="end_date" class="game-input no-emoji" required>
                     </div>
                     <div class="form-group" id="endTimeGroup">
@@ -202,7 +209,7 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="recurrenceEndDate">Ends on (optional)</label>
+                            <label for="recurrenceEndDate">Repeat until (optional)</label>
                             <input type="date" id="recurrenceEndDate" name="recurrence_end_date" class="game-input no-emoji">
                         </div>
                     </div>
