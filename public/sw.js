@@ -162,12 +162,6 @@ function fetchAndCache(request, options = {}) {
     });
 }
 
-function fetchNavigation(request) {
-    return fetchWithTimeout(request, NAVIGATION_NETWORK_TIMEOUT_MS).then(response => {
-        return cacheResponse(request, response).then(() => response);
-    });
-}
-
 function nativeNetworkState() {
     if (nativeNetworkSupported === false) return Promise.resolve(null);
     if (nativeNetworkRequest) return nativeNetworkRequest;
@@ -185,14 +179,29 @@ function nativeNetworkState() {
     return nativeNetworkRequest;
 }
 
-function freshAppResponse(event, fallback) {
-    return fetchWithTimeout(event.request, NAVIGATION_NETWORK_TIMEOUT_MS, { cache: 'no-cache' })
-        .then(response => {
-            if (response.status >= 500) return fallback().then(cached => cached || response);
-            event.waitUntil(cacheResponse(event.request, response));
-            return response;
-        })
-        .catch(fallback);
+// Slow networks get a saved copy after the timeout only if one exists; otherwise keep waiting.
+function freshAppResponse(event, cachedLookup, fallback) {
+    const readCached = () => Promise.resolve().then(cachedLookup).catch(() => null);
+    let saving = Promise.resolve(false);
+    const network = fetch(event.request, { cache: 'no-cache' }).then(response => {
+        // cacheResponse clones synchronously, before the response is handed out.
+        if (response.status < 500) saving = cacheResponse(event.request, response);
+        return response;
+    });
+    // Registered up front so a late network response can still be saved after a cached reply.
+    event.waitUntil(network.then(() => saving, () => false));
+
+    const fromNetwork = network.then(response => {
+        if (response.status >= 500) return readCached().then(cached => cached || response);
+        return response;
+    }, () => fallback());
+    const slow = new Promise(resolve => {
+        const timer = setTimeout(resolve, NAVIGATION_NETWORK_TIMEOUT_MS);
+        const clear = () => clearTimeout(timer);
+        fromNetwork.then(clear, clear);
+    }).then(readCached).then(cached => cached || fromNetwork);
+
+    return Promise.race([fromNetwork, slow]);
 }
 
 function apiGetResponse(event) {
@@ -220,7 +229,10 @@ function apiGetResponse(event) {
     }
 
     return fetchWithTimeout(request, NAVIGATION_NETWORK_TIMEOUT_MS)
-        .then(response => cacheResponse(request, response).then(() => response))
+        .then(response => {
+            event.waitUntil(cacheResponse(request, response));
+            return response;
+        })
         .catch(fallback);
 }
 
@@ -350,15 +362,15 @@ self.addEventListener('fetch', (event) => {
             nativeNetworkState().then(state => {
                 const fallback = () => navigationFallback(event.request, url);
                 if (state === 'offline') return fallback();
-                if (state === 'online') return freshAppResponse(event, fallback);
+                if (state === 'online') return freshAppResponse(event, () => matchCachedNavigation(event.request, url), fallback);
 
                 return matchCachedNavigation(event.request, url).then(cached => {
                     if (cached) {
-                        event.waitUntil(fetchNavigation(event.request).catch(() => { }));
+                        event.waitUntil(fetchAndCache(event.request).catch(() => { }));
                         return cached;
                     }
 
-                    return fetchNavigation(event.request).catch(fallback);
+                    return fetchAndCache(event.request).catch(fallback);
                 });
             })
         );
@@ -375,17 +387,18 @@ self.addEventListener('fetch', (event) => {
         if (isAppCode) {
             event.respondWith(
                 nativeNetworkState().then(state => {
-                    const fallback = () => matchInOfflineCaches(event.request, { ignoreSearch: true, ignoreVary: true });
+                    const cachedLookup = () => matchInOfflineCaches(event.request, { ignoreSearch: true, ignoreVary: true });
+                    const fallback = () => cachedLookup().then(cached => cached || Response.error());
                     if (state === 'offline') return fallback();
-                    if (state === 'online') return freshAppResponse(event, fallback);
+                    if (state === 'online') return freshAppResponse(event, cachedLookup, fallback);
 
-                    return fallback().then(cached => {
+                    return cachedLookup().then(cached => {
                         if (cached) {
                             event.waitUntil(fetchAndCache(event.request, { cache: 'no-cache' }).catch(() => { }));
                             return cached;
                         }
 
-                        return fetchAndCache(event.request, { cache: 'no-cache' }).catch(() => cached);
+                        return fetchAndCache(event.request, { cache: 'no-cache' }).catch(() => Response.error());
                     });
                 })
             );
