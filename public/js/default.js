@@ -258,7 +258,7 @@ function shouldCacheApiGet(url) {
  * Performs a GET request with response caching and abort support.
  * @async
  * @param {string} url - Request URL.
- * @param {number} [timeout=3000] - Abort timeout in ms.
+ * @param {number} [timeout=3000] - Abort timeout for fetching and reading the body, in ms.
  * @returns {Promise<*>} - Response data.
  */
 async function apiGet(url, timeout = 3000) {
@@ -277,12 +277,14 @@ async function apiGet(url, timeout = 3000) {
         return null;
     };
 
+    let timeoutId;
+    let authDenied = false;
     try {
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeout);
+        timeoutId = setTimeout(() => controller.abort(), timeout);
 
         const response = await fetch(url, { signal: controller.signal });
-        clearTimeout(id);
+        authDenied = response.status === 401 || response.status === 403;
 
         // Intercept Cloudflare Access 403s on native mobile
         if (response.status === 403 && window.Capacitor && window.Capacitor.isNativePlatform()) {
@@ -308,7 +310,7 @@ async function apiGet(url, timeout = 3000) {
         }
 
         // Cache successful state responses
-        if (cacheable && result && result.success) {
+        if (!authDenied && cacheable && result && result.success) {
             try {
                 localStorage.setItem(cacheKey, JSON.stringify({
                     data: result,
@@ -322,13 +324,15 @@ async function apiGet(url, timeout = 3000) {
         console.warn(`apiGet failed for ${url}:`, err);
 
         // Fallback to cache if available
-        const cached = getCached();
+        const cached = authDenied ? null : getCached();
         if (cached) return cached;
 
         if (err.name !== 'AbortError' && (typeof navigator === 'undefined' || typeof navigator.onLine === 'undefined' || navigator.onLine)) {
             showToast('Network error', 'error');
         }
         return null;
+    } finally {
+        clearTimeout(timeoutId);
     }
 }
 
