@@ -17,6 +17,10 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+        document.documentElement.classList.add('quick-native');
+    }
+
     const toggleBtn = document.getElementById('quick-edit-toggle');
     const tilesContainer = document.getElementById('quick-tiles');
     if (!toggleBtn || !tilesContainer || typeof Sortable === 'undefined') return;

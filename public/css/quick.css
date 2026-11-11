@@ -119,6 +119,15 @@
     box-shadow: 0 12px 25px rgba(0, 0, 0, 0.5);
 }
 
+.quick-native .tile {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.quick-native .tile:hover {
+    transform: none;
+}
+
 /* Icon Styling */
 .icon {
     font-size: 2.8rem;
