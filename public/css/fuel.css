@@ -272,7 +272,8 @@
     font-size: 0.9rem;
 }
 
-.fuel-status {
+.fuel-status,
+.fuel-fill {
     display: inline-flex;
     align-items: center;
     border-radius: 999px;
@@ -295,6 +296,28 @@
 .fuel-status.pending {
     background: rgba(245, 158, 11, 0.18);
     color: #fde68a;
+}
+
+.fuel-fill.full {
+    background: rgba(59, 130, 246, 0.18);
+    color: #93c5fd;
+}
+
+.fuel-fill.partial {
+    background: rgba(148, 163, 184, 0.18);
+    color: #cbd5e1;
+}
+
+/* Desktop only: the table collapses to stacked cards at 900px and below. */
+@media (min-width: 901px) {
+    .fuel-table th:nth-child(7),
+    .fuel-table th:nth-child(8),
+    .fuel-table th:nth-child(9),
+    .fuel-table td[data-label="Status"],
+    .fuel-table td[data-label="Fill type"],
+    .fuel-table td[data-label="Actions"] {
+        text-align: center;
+    }
 }
 
 .fuel-amount {
@@ -397,6 +420,11 @@
         color: #94a3b8;
         font-size: 0.78rem;
         text-transform: uppercase;
+    }
+
+    .fuel-table .fuel-status,
+    .fuel-table .fuel-fill {
+        justify-self: start;
     }
 
     .fuel-table .fuel-empty-row {

@@ -73,12 +73,13 @@
                     <th>Fuel</th>
                     <th>Economy</th>
                     <th>Status</th>
+                    <th>Fill type</th>
                     <th class="col-actions-header">Actions</th>
                 </tr>
             </thead>
             <tbody id="fuelTableBody">
                 <tr>
-                    <td colspan="8">
+                    <td colspan="9">
                         <div class="component-loading">
                             <div class="loading-scan-line"></div>
                             <span class="loading-icon-pulse">⌛</span>

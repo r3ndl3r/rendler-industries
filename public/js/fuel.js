@@ -207,7 +207,7 @@ function renderLogs() {
     if (!tbody) return;
 
     if (STATE.logs.length === 0) {
-        tbody.innerHTML = '<tr class="fuel-empty-row"><td colspan="8" class="fuel-empty-ledger">📭 No fuel logs yet.</td></tr>';
+        tbody.innerHTML = '<tr class="fuel-empty-row"><td colspan="9" class="fuel-empty-ledger">📭 No fuel logs yet.</td></tr>';
         return;
     }
 
@@ -215,6 +215,7 @@ function renderLogs() {
         const station = log.station_name || 'Unknown station';
         const vehicle = vehicleLabel(log);
         const status = log.ai_status || 'pending';
+        const fillType = log.fill_type === 'partial' ? 'partial' : 'full';
         const canEdit = (log.uploaded_by === STATE.currentUser || STATE.isAdmin);
         const discount = Number(log.discount_per_litre || 0);
         const discountText = discount > 0 ? ` (-${discount.toFixed(discount % 1 === 0 ? 0 : 1)}c/L)` : '';
@@ -245,6 +246,9 @@ function renderLogs() {
                 </td>
                 <td data-label="Status">
                     <span class="fuel-status ${escapeHtml(status)}">${statusLabel(status)}</span>
+                </td>
+                <td data-label="Fill type">
+                    <span class="fuel-fill ${fillType}">${fillType === 'partial' ? 'Partial' : 'Full'}</span>
                 </td>
                 <td class="col-actions" data-label="Actions">
                     <div class="action-buttons">
