@@ -333,6 +333,9 @@ function setupUploadMode() {
  */
 function setUploadMode(mode) {
     const manual = mode === 'manual';
+    const skipAi = !manual && document.getElementById('skipAi')?.checked;
+    const manualFieldsEnabled = manual || skipAi;
+    const skipAiOption = document.getElementById('skipAiOption');
     const photoFields = document.getElementById('photoEntryFields');
     const manualFields = document.getElementById('manualEntryFields');
     const submit = document.getElementById('uploadSubmitBtn');
@@ -341,9 +344,10 @@ function setUploadMode(mode) {
     const image2 = document.getElementById('image2');
 
     if (photoFields) photoFields.classList.toggle('hidden', manual);
-    if (manualFields) manualFields.classList.toggle('hidden', !manual);
-    if (submit) submit.innerHTML = manual ? 'Save' : 'Upload & Scan';
-    if (date) date.required = manual;
+    if (manualFields) manualFields.classList.toggle('hidden', !manualFieldsEnabled);
+    if (skipAiOption) skipAiOption.classList.toggle('hidden', manual);
+    if (submit) submit.innerHTML = manualFieldsEnabled ? 'Save Fuel Log' : 'Upload & Scan';
+    if (date) date.required = manualFieldsEnabled;
 
     [image1, image2].forEach(input => {
         if (!input) return;
@@ -354,8 +358,8 @@ function setUploadMode(mode) {
     MANUAL_UPLOAD_FIELDS.forEach(id => {
         const input = document.getElementById(id);
         if (!input) return;
-        input.required = manual;
-        input.disabled = !manual;
+        input.required = manualFieldsEnabled;
+        input.disabled = !manualFieldsEnabled;
     });
 }
 
@@ -609,11 +613,12 @@ async function handleUpload(event) {
     if (!form || !btn) return;
 
     const mode = document.getElementById('uploadMode')?.value === 'manual' ? 'manual' : 'photos';
+    const skipAi = mode === 'photos' && document.getElementById('skipAi')?.checked;
     const original = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = mode === 'manual' ? 'Saving...' : 'Scanning...';
+    btn.innerHTML = mode === 'manual' || skipAi ? 'Saving...' : 'Scanning...';
     if (typeof showLoadingOverlay === 'function') {
-        const detail = mode === 'manual' ? 'Saving manual fuel log.' : 'Uploading images and extracting values.';
+        const detail = mode === 'manual' || skipAi ? 'Saving fuel log.' : 'Uploading images and extracting values.';
         showLoadingOverlay('Processing fuel log...', detail);
     }
 
@@ -636,11 +641,11 @@ async function handleUpload(event) {
             formData.append('image2', STATE.refinedBlobs.image2, 'image2.jpg');
         }
 
-        const result = await apiPost(endpoint, formData, mode === 'manual' ? undefined : 90000);
+        const result = await apiPost(endpoint, formData, mode === 'manual' || skipAi ? undefined : 90000);
         if (result && result.success) {
             closeUploadModal();
             await loadState(true);
-            if (mode === 'photos' && result.log && result.log.id) openEditModal(result.log.id);
+            if (mode === 'photos' && !skipAi && result.log && result.log.id) openEditModal(result.log.id);
         }
     } catch (err) {
         if (typeof showToast === 'function') showToast(err.message || 'Fuel upload failed', 'error');
