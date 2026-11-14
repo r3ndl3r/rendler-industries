@@ -78,6 +78,34 @@ sub api_upload {
     my $prepared2 = _prepare_upload($c, $image2, 'image2');
     return $c->render(json => { success => 0, error => $prepared2->{error} }) if $prepared2->{error};
 
+    if (($c->param('skip_ai') // '') eq '1') {
+        my ($data, $reasons) = _extract_manual_create_payload($c);
+        return $c->render(json => { success => 0, error => join(', ', @$reasons) }) if @$reasons;
+
+        my $id;
+        eval {
+            $id = $c->db->store_manual_fuel_log({
+                %$data,
+                %$prepared1,
+                %$prepared2,
+                uploaded_by => $c->session('user'),
+                review_reasons => encode_json([])
+            });
+        };
+        if ($@ || !$id) {
+            $c->app->log->error("Fuel upload failure: $@");
+            return $c->render(json => { success => 0, error => 'Database write error' });
+        }
+
+        my $log = $c->db->get_all_fuel_logs(1, 0, { id => $id }, $c->session('user'))->[0];
+        return $c->render(json => {
+            success => 1,
+            log => $log,
+            summary => $c->db->get_fuel_summary(),
+            message => 'Fuel log saved'
+        });
+    }
+
     my $fill_type = ($c->param('fill_type') // 'full') eq 'partial' ? 'partial' : 'full';
     my $description = trim($c->param('description') // '');
     my $discount = _non_negative_decimal($c->param('discount_per_litre')) // 0;
