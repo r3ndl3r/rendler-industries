@@ -110,6 +110,11 @@
                     </div>
                 </div>
 
+                <label id="skipAiOption" class="fuel-checkbox">
+                    <input type="checkbox" id="skipAi" name="skip_ai" value="1" onchange="setUploadMode(document.getElementById('uploadMode').value)">
+                    Skip AI scan; enter fill-up details myself
+                </label>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>Vehicle</label>
