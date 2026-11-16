@@ -38,12 +38,14 @@ sub api_state {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
-    my $logs     = $c->db->get_medication_logs_by_user();
-    my $registry = $c->db->get_registry_with_stats();
-    my $members  = $c->db->get_medication_members();
-    my $recent_taken = $c->is_parent ? $c->db->get_recent_medications_taken(10) : [];
+    my $parent = $c->is_parent;
+    my $member_filter = $parent ? undef : $c->current_user_id;
+    my $logs     = $c->db->get_medication_logs_by_user($member_filter);
+    my $registry = $c->db->get_registry_with_stats($member_filter);
+    my $members  = $c->db->get_medication_members($member_filter);
+    my $recent_taken = $parent ? $c->db->get_recent_medications_taken(10) : [];
     
-    my $reminders      = $c->db->get_medication_reminders();
+    my $reminders      = $c->db->get_medication_reminders($member_filter);
     my $current_date   = $c->now->strftime('%Y-%m-%d');
     my $current_user   = $c->current_user_id;
     my $pending_events = $c->db->get_pending_medication_reminders($current_user, $current_date);
@@ -56,7 +58,7 @@ sub api_state {
         recent_taken => $recent_taken,
         current_user_id => $current_user,
         is_admin      => $c->is_admin ? 1 : 0,
-        is_parent     => $c->is_parent ? 1 : 0,
+        is_parent     => $parent ? 1 : 0,
         reminders     => $reminders,
         pending_events => $pending_events
     });
@@ -79,6 +81,8 @@ sub add {
     unless ($medication_name && $family_member_id && $dosage > 0) {
         return $c->render(json => { success => 0, error => "Missing required fields." });
     }
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_parent || $family_member_id == $c->current_user_id;
     
     eval {
         $c->db->log_medication_dose($medication_name, $family_member_id, $logged_by_id, $dosage, $taken_at || undef);
@@ -106,6 +110,9 @@ sub edit {
     unless ($id && $medication_name && $family_member_id && $dosage > 0) {
         return $c->render(json => { success => 0, error => "Missing required fields." });
     }
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_parent || ($family_member_id == $c->current_user_id
+            && ($c->db->get_medication_log_member_id($id) // 0) == $c->current_user_id);
 
     eval {
         if ($c->db->update_medication_log($id, $medication_name, $family_member_id, $dosage, $taken_at || undef)) {
@@ -126,6 +133,8 @@ sub reset {
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $id = $c->param('id');
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_parent || ($c->db->get_medication_log_member_id($id) // 0) == $c->current_user_id;
     my $taken_at = trim($c->param('taken_at') // '');
     
     $taken_at =~ s/T/ / if $taken_at;
@@ -194,6 +203,8 @@ sub delete {
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
     my $id = $c->param('id');
+    return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403)
+        unless $c->is_parent || ($c->db->get_medication_log_member_id($id) // 0) == $c->current_user_id;
     
     eval {
         if ($c->db->delete_medication_log($id)) {
@@ -250,7 +261,7 @@ sub api_reminders {
     my $c = shift;
     return $c->render(json => { success => 0, error => 'Unauthorized' }, status => 403) unless $c->is_family;
 
-    my $reminders = $c->db->get_medication_reminders();
+    my $reminders = $c->db->get_medication_reminders($c->is_parent ? undef : $c->current_user_id);
     my $current_date = $c->now->strftime('%Y-%m-%d');
     my $pending_events = $c->db->get_pending_medication_reminders($c->current_user_id, $current_date);
 
