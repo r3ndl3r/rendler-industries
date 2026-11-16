@@ -20,12 +20,12 @@ use warnings;
 #   - Coordinates with Family Pulse AI for health context snapshots.
 #   - Supports MVC separation by isolating SQL logic from controller actions.
 
-# Retrieves all medication log entries grouped by family member.
-# Parameters: None
+# Retrieves medication log entries grouped by family member.
+# Parameters: $member_id - Optional user ID; undef returns all family members
 # Returns:
 #   HashRef: { 'Username' => [ {id, medication_name, family_member, logged_by, dosage, taken_at, taken_at_unix}, ... ], ... }
 sub DB::get_medication_logs_by_user {
-    my ($self) = @_;
+    my ($self, $member_id) = @_;
     $self->ensure_connection;
     
     my $sth = $self->{dbh}->prepare("
@@ -44,9 +44,10 @@ sub DB::get_medication_logs_by_user {
         JOIN users u1 ON ml.family_member_id = u1.id
         JOIN users u2 ON ml.logged_by_id = u2.id
         WHERE ml.deleted_at IS NULL
+          AND (? IS NULL OR ml.family_member_id = ?)
         ORDER BY u1.username ASC, ml.taken_at DESC
     ");
-    $sth->execute();
+    $sth->execute($member_id, $member_id);
     
     my %grouped;
     while (my $row = $sth->fetchrow_hashref()) {
@@ -311,23 +312,26 @@ sub DB::delete_medication_log {
     return $deleted;
 }
 
-# Retrieves the registry with usage counts.
-# Parameters: None
+# Retrieves the registry with usage counts, optionally limited to one member's medications.
+# Parameters: $member_id - Optional user ID; undef returns the full registry
 # Returns:
 #   ArrayRef of HashRefs: [ {id, name, default_dosage, usage_count}, ... ]
 sub DB::get_registry_with_stats {
-    my ($self) = @_;
+    my ($self, $member_id) = @_;
     $self->ensure_connection;
     
     my $sth = $self->{dbh}->prepare("
         SELECT mr.*, (COUNT(DISTINCT ml.id) + COUNT(DISTINCT mrem.id)) as usage_count
         FROM medication_registry mr
-        LEFT JOIN medication_logs ml ON mr.id = ml.medication_id
-        LEFT JOIN medication_reminders mrem ON mr.id = mrem.medication_id
+        LEFT JOIN medication_logs ml ON mr.id = ml.medication_id AND ml.deleted_at IS NULL
+          AND (? IS NULL OR ml.family_member_id = ?)
+        LEFT JOIN medication_reminders mrem ON mr.id = mrem.medication_id AND mrem.deleted_at IS NULL
+          AND (? IS NULL OR mrem.family_member_id = ?)
+        WHERE ? IS NULL OR ml.id IS NOT NULL OR mrem.id IS NOT NULL
         GROUP BY mr.id
         ORDER BY mr.name ASC
     ");
-    $sth->execute();
+    $sth->execute($member_id, $member_id, $member_id, $member_id, $member_id);
     return $sth->fetchall_arrayref({});
 }
 
@@ -369,29 +373,41 @@ sub DB::delete_registry_item {
     return ($sth->execute($id), "");
 }
 
-# Retrieves list of family members (all approved users).
-# Parameters: None
+# Retrieves approved family members, optionally limited to one user.
+# Parameters: $member_id - Optional user ID; undef returns all family members
 # Returns:
 #   ArrayRef of HashRefs: [ {id, username}, ... ]
 sub DB::get_medication_members {
-    my ($self) = @_;
+    my ($self, $member_id) = @_;
     $self->ensure_connection;
     
-    my $sth = $self->{dbh}->prepare("SELECT id, username FROM users WHERE is_family = 1 ORDER BY username ASC");
-    $sth->execute();
+    my $sth = $self->{dbh}->prepare("SELECT id, username FROM users WHERE is_family = 1 AND (? IS NULL OR id = ?) ORDER BY username ASC");
+    $sth->execute($member_id, $member_id);
     
     return $sth->fetchall_arrayref({});
+}
+
+# Retrieves the owner of a non-deleted medication log.
+# Parameters: $id - Medication log ID
+# Returns: Integer family member ID, or undef if the log is missing or deleted
+sub DB::get_medication_log_member_id {
+    my ($self, $id) = @_;
+    $self->ensure_connection;
+    return $self->{dbh}->selectrow_array(
+        "SELECT family_member_id FROM medication_logs WHERE id = ? AND deleted_at IS NULL",
+        undef, $id
+    );
 }
 
 ###############################################################################
 # MEDICATION REMINDERS
 ###############################################################################
 
-# Retrieves all medication reminder schedules with related registry names.
-# Parameters: None
+# Retrieves non-deleted medication reminder schedules with related registry names.
+# Parameters: $member_id - Optional user ID; undef returns all family members
 # Returns: ArrayRef of HashRefs
 sub DB::get_medication_reminders {
-    my ($self) = @_;
+    my ($self, $member_id) = @_;
     $self->ensure_connection;
 
     my $sth = $self->{dbh}->prepare("
@@ -404,9 +420,10 @@ sub DB::get_medication_reminders {
         JOIN medication_registry reg ON mr.medication_id = reg.id
         JOIN users u ON mr.family_member_id = u.id
         WHERE mr.deleted_at IS NULL
+          AND (? IS NULL OR mr.family_member_id = ?)
         ORDER BY u.username ASC, mr.reminder_time ASC
     ");
-    $sth->execute();
+    $sth->execute($member_id, $member_id);
     return $sth->fetchall_arrayref({});
 }
 
