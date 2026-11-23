@@ -231,7 +231,7 @@ function populateDropdowns() {
     // 2. Attendee Checkboxes
     const recipients = STATE.users.map(u => ({
         id: u.id,
-        label: `${window.getUserIcon ? window.getUserIcon(u.username) : '👤'} ${escapeHtml(u.username)}`
+        label: escapeHtml(`${u.emoji || '👤'} ${u.username}`)
     }));
     window.renderSelectorGrid('attendees-container', recipients, { name: 'attendees[]', prefix: 'attendee', type: 'day' });
 
